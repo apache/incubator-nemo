@@ -58,6 +58,7 @@ public final class StreamingScheduler implements Scheduler {
   private final PipeManagerMaster pipeManagerMaster;
   private final TaskIndexMaster taskIndexMaster;
   private final TransferIndexMaster transferIndexMaster;
+  private final TaskOffloadingManager taskOffloadingManager;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -66,7 +67,8 @@ public final class StreamingScheduler implements Scheduler {
                      final PlanStateManager planStateManager,
                      final PipeManagerMaster pipeManagerMaster,
                      final TaskIndexMaster taskIndexMaster,
-                     final TransferIndexMaster transferIndexMaster) {
+                     final TransferIndexMaster transferIndexMaster,
+                     final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.executorRegistry = executorRegistry;
@@ -74,6 +76,7 @@ public final class StreamingScheduler implements Scheduler {
     this.pipeManagerMaster = pipeManagerMaster;
     this.taskIndexMaster = taskIndexMaster;
     this.transferIndexMaster = transferIndexMaster;
+    this.taskOffloadingManager = taskOffloadingManager;
   }
 
   @Override
@@ -85,6 +88,8 @@ public final class StreamingScheduler implements Scheduler {
     planStateManager.storeJSON("submitted");
 
     // Prepare tasks
+    taskOffloadingManager.setStageDAG(submittedPhysicalPlan.getStageDAG());
+
     final List<Stage> allStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
     final List<Task> allTasks = allStages.stream().flatMap(stageToSchedule -> {
       // Helper variables for this stage

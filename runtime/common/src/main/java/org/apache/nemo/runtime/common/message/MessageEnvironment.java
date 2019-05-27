@@ -40,6 +40,7 @@ public interface MessageEnvironment {
 
   String SCALEOUT_MESSAGE_LISTENER_ID = "SCALEOUT_MESSAGE_LISTENER_ID";
   String TRANSFER_INDEX_LISTENER_ID = "TRANSFER_INDEX_LISTENER_ID";
+  String TASK_OFFLOADING_LISTENER_ID = "TASK_OFFLOADING_LISTENER_ID";
 
   /**
    * Set up a {@link MessageListener} with a listener id.
