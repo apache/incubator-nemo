@@ -9,21 +9,74 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+@ThreadSafe
+@DriverSide
 public final class TaskOffloadingManager {
 
   private DAG<Stage, StageEdge> stageDAG;
+
+  private enum Status {
+    PENDING,
+    RUNNING
+  }
+
+  private final Map<String, Status> stageStatusMap;
+  private final Map<String, Stage> stageIdMap;
+
+  private static final Logger LOG = LoggerFactory.getLogger(TransferIndexMaster.class.getName());
 
   @Inject
   private TaskOffloadingManager(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID,
       new TaskOffloadingReceiver());
+    this.stageStatusMap = new HashMap<>();
+    this.stageIdMap = new HashMap<>();
   }
 
-  public void setStageDAG(DAG<Stage, StageEdge> stageDAG) {
-    this.stageDAG = stageDAG;
+  public void setStageDAG(DAG<Stage, StageEdge> dag) {
+    this.stageDAG = dag;
+    for (Stage stage : stageDAG.getVertices()) {
+      stageIdMap.put(stage.getId(), stage);
+      stageStatusMap.put(stage.getId(), Status.RUNNING);
+    }
+  }
+
+  private List<String> getDependencies(final Stage stage) {
+    final List<StageEdge> outgoing = stageDAG.getOutgoingEdgesOf(stage);
+    final List<StageEdge> incoming = stageDAG.getIncomingEdgesOf(stage);
+
+    final List<String> dependencies = new ArrayList<>(outgoing.size() + incoming.size());
+
+    outgoing.forEach(edge -> {
+      dependencies.add(edge.getDst().getId());
+    });
+
+    incoming.forEach(edge -> {
+      dependencies.add(edge.getSrc().getId());
+    });
+
+    return dependencies;
+  }
+
+  private boolean hasPendingDependencies(final List<String> dependencies) {
+    for (final String stageId : dependencies) {
+      if (stageStatusMap.get(stageId).equals(Status.PENDING)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -36,29 +89,56 @@ public final class TaskOffloadingManager {
     }
 
     @Override
-    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+    public synchronized void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-        case RequestTransferIndex:
-          final ControlMessage.RequestTransferIndexMessage requestIndexMessage = message.getRequestTransferIndexMsg();
-          final int isInputContext = (int) requestIndexMessage.getIsInputContext();
+        case RequestTaskOffloading: {
+          final ControlMessage.RequestTaskOffloadingMessage offloadingMessage =
+            message.getRequestTaskOffloadingMsg();
+          final String taskId = offloadingMessage.getTaskId();
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+          final Stage stage = stageIdMap.get(stageId);
 
-          //final int index = isInputContext == 1 ? inputContextIndex.getAndIncrement() : outputContextIndex.getAndIncrement();
-          final int index = contextIndex.getAndIncrement();
 
-          LOG.info("Send input/output ({}) context index {}", isInputContext, index);
+          final List<String> dependencies = getDependencies(stage);
 
-          messageContext.reply(
-            ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
-              .setType(ControlMessage.MessageType.TransferIndexInfo)
-              .setTransferIndexInfoMsg(ControlMessage.TransferIndexInfoMessage.newBuilder()
-                .setRequestId(message.getId())
-                .setIndex(index)
-                .build())
-              .build());
+          LOG.info("Receive RequestTaskOffloading {}, dependncies: {}, map: {}", taskId, dependencies,
+            stageStatusMap);
+
+          if (hasPendingDependencies(dependencies)) {
+            messageContext.reply(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
+                .setType(ControlMessage.MessageType.TaskOffloadingInfo)
+                .setTaskOffloadingInfoMsg(ControlMessage.TaskOffloadingInfoMessage.newBuilder()
+                  .setRequestId(message.getId())
+                  .setCanOffloading(false)
+                  .build())
+                .build());
+          } else {
+            stageStatusMap.put(stageId, Status.PENDING);
+            messageContext.reply(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
+                .setType(ControlMessage.MessageType.TaskOffloadingInfo)
+                .setTaskOffloadingInfoMsg(ControlMessage.TaskOffloadingInfoMessage.newBuilder()
+                  .setRequestId(message.getId())
+                  .setCanOffloading(true)
+                  .build())
+                .build());
+          }
 
           break;
+        }
+        case RequestTaskOffloadingDone: {
+          final ControlMessage.RequestTaskOffloadingDoneMessage offloadingMessage =
+            message.getRequestTaskOffloadingDoneMsg();
+          final String taskId = offloadingMessage.getTaskId();
+          stageStatusMap.put(taskId, Status.RUNNING);
+          LOG.info("Receive TaskOffloadingDone {}, map: {}", taskId, stageStatusMap);
+          break;
+        }
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }

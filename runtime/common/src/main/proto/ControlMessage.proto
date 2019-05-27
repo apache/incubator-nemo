@@ -74,6 +74,9 @@ enum MessageType {
     TaskIndexInfo = 17;
     RequestTransferIndex = 18;
     TransferIndexInfo = 19;
+    RequestTaskOffloading = 20;
+    RequestTaskOffloadingDone = 21;
+    TaskOffloadingInfo = 22;
 }
 
 message Message {
@@ -99,6 +102,9 @@ message Message {
     optional TaskIndexInfoMessage taskIndexInfoMsg = 20;
     optional RequestTransferIndexMessage requestTransferIndexMsg = 21;
     optional TransferIndexInfoMessage transferIndexInfoMsg = 22;
+    optional RequestTaskOffloadingMessage requestTaskOffloadingMsg = 23;
+    optional RequestTaskOffloadingDoneMessage requestTaskOffloadingDoneMsg = 24;
+    optional TaskOffloadingInfoMessage taskOffloadingInfoMsg = 25;
 }
 
 // Messages from Master to Executors
@@ -275,4 +281,19 @@ message RequestTransferIndexMessage {
 message TransferIndexInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required int64 index = 2;
+}
+
+message RequestTaskOffloadingMessage {
+  required string executorId = 1;
+  required string taskId = 2;
+}
+
+message RequestTaskOffloadingDoneMessage {
+  required string executorId = 1;
+  required string taskId = 2;
+}
+
+message TaskOffloadingInfoMessage {
+  required int64 requestId = 1; // To find the matching request msg
+  required bool canOffloading = 2;
 }
