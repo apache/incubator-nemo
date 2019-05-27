@@ -38,6 +38,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
 
     final ByteBuf data = in.controlMsg.encode();
     final byte[] idBytes = id.getBytes();
+    LOG.info("ID bytes: {}", idBytes);
 
     try {
       bos.writeChar(1);
@@ -50,6 +51,11 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
       throw new RuntimeException(e);
     }
 
+
+    final byte[] loggingBytes = new byte[header.readableBytes()];
+    header.getBytes(header.readableBytes(), loggingBytes);
+
+    LOG.info("Loging bytes in controlFrameEncoder {}", loggingBytes);
 
     out.add(header);
 

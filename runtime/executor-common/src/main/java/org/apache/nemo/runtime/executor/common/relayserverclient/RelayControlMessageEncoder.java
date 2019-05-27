@@ -32,6 +32,7 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
 
     final byte[] idBytes = id.getBytes();
+    LOG.info("ID bytes: {}", idBytes);
     try {
       bos.writeChar(2); // 2 means control message
       bos.writeInt(idBytes.length);
@@ -41,6 +42,11 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+
+    final byte[] loggingBytes = new byte[header.readableBytes()];
+    header.getBytes(header.readableBytes(), loggingBytes);
+
+    LOG.info("Loging bytes in controlMessageEncoder {}", loggingBytes);
 
     out.add(header);
   }

@@ -35,6 +35,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   private char type;
   private int idLength;
   private ByteBufInputStream bis;
+  private boolean waitingStr = false;
 
   private final Map<String, List<ByteBuf>> pendingBytes = new HashMap<>();
 
@@ -42,7 +43,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
     this.taskChannelMap = taskChannelMap;
   }
 
-  public void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
+  private void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
 
     while (byteBuf.readableBytes() > 0) {
       LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
@@ -62,10 +63,19 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         case WAITING_HEADER2: {
           if (byteBuf.readableBytes() < idLength + 4) {
             LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+            waitingStr = true;
             return;
           } else {
             final byte[] idBytes = new byte[idLength];
             bis.read(idBytes);
+            LOG.info("ID bytes: {}", idBytes);
+
+            if (waitingStr) {
+              final int readableBytes = byteBuf.readableBytes();
+              final byte[] logginBytes = new byte[readableBytes];
+              byteBuf.getBytes(readableBytes, logginBytes);
+              LOG.info("logging bytes: {}", logginBytes);
+            }
             dst = new String(idBytes);
 
             LOG.info("Dst: {}", dst);
