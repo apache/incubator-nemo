@@ -90,8 +90,9 @@ public final class TaskOffloadingManager {
           final ControlMessage.RequestTaskOffloadingDoneMessage offloadingMessage =
             message.getRequestTaskOffloadingDoneMsg();
           final String taskId = offloadingMessage.getTaskId();
-          stageStatusMap.put(taskId, Status.RUNNING);
-          LOG.info("Receive TaskOffloadingDone {}, map: {}", taskId, stageStatusMap);
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+          stageStatusMap.put(stageId, Status.RUNNING);
+          LOG.info("Receive TaskOffloadingDone {}, map: {}", stageId, stageStatusMap);
           break;
         }
         default:
