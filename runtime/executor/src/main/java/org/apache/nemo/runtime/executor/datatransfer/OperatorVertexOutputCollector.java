@@ -181,7 +181,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
   @Override
   public void emit(final O output) {
-    //LOG.info("{} emits {} to {}", irVertex.getId(), output);
+    if (irVertex.getId().equals("vertex12")) {
+      LOG.info("{} emits {} to {}", irVertex.getId(), output);
+    }
 
     //LOG.info("Offloading {}, Start offloading {}, End offloading {}, in {}",
     //  offloading, startOffloading, endOffloading, irVertex.getId());
