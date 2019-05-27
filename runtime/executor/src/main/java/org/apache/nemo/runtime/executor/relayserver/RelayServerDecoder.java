@@ -66,7 +66,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
           } else {
             final byte[] idBytes = new byte[idLength];
             bis.read(idBytes);
-            LOG.info("ID bytes: {}", idBytes);
             dst = new String(idBytes);
 
             LOG.info("Dst: {}", dst);

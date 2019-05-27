@@ -34,7 +34,6 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
 
     final String id = in.dstId;
     final byte[] idBytes = id.getBytes();
-    LOG.info("ID bytes: {}", idBytes);
 
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
