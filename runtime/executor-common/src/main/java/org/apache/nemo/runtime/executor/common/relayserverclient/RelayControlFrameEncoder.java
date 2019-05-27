@@ -38,6 +38,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
 
     final ByteBuf data = in.controlMsg.encode();
     final byte[] idBytes = id.getBytes();
+    LOG.info("ID bytes: {}", idBytes);
 
     try {
       bos.writeChar(1);
