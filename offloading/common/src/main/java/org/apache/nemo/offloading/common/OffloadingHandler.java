@@ -178,7 +178,7 @@ public final class OffloadingHandler {
       final ByteBuf bb = ochannel.alloc().buffer();
       bb.writeDouble(cpuLoad);
       ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
-    }, 1, 1, TimeUnit.MILLISECONDS);
+    }, 1, 1, TimeUnit.SECONDS);
 
     // load class loader
 
