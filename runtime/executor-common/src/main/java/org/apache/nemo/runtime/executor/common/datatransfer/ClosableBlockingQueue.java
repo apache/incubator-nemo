@@ -26,6 +26,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ThreadSafe
 public final class ClosableBlockingQueue<T> implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ClosableBlockingQueue.class.getName());
-  private final ArrayBlockingQueue<T> queue;
+  private final Queue<T> queue;
   private volatile boolean closed = false;
   private volatile Throwable throwable = null;
 
@@ -44,7 +45,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ArrayBlockingQueue<>(100);
+    queue = new ConcurrentLinkedQueue<>();
   }
 
   public boolean isEmpty() {
@@ -57,7 +58,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @param numElements the lower bound on initial capacity of the queue
    */
   public ClosableBlockingQueue(final int numElements) {
-    queue = new ArrayBlockingQueue<>(numElements);
+    queue = new ConcurrentLinkedQueue<>();
   }
 
   /**
