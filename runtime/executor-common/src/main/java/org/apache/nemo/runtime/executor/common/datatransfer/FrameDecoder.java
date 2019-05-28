@@ -240,6 +240,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           inputContext.onByteBuf(pendingByte);
         }
       }
+
+      LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
       inputContext.onByteBuf(body);
     }
 
