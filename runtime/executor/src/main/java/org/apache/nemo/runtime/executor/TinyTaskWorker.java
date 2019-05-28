@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class TinyTaskWorker {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskWorker.class.getName());
 
-  private static final int SLOT = 5;
+  private static final int SLOT = 10;
 
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
