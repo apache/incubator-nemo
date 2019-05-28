@@ -163,8 +163,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    LOG.info("input context {} On byteBuf, bytes: {}, hashCode: {}", getContextId().getTransferIndex(), byteBuf.readableBytes(),
-      LambdaRemoteByteInputContext.this.hashCode());
+    //LOG.info("input context {} On byteBuf, bytes: {}, hashCode: {}", getContextId().getTransferIndex(), byteBuf.readableBytes(),
+    //  LambdaRemoteByteInputContext.this.hashCode());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
     } else {
@@ -361,9 +361,11 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public boolean hasNext() {
+      /*
       LOG.info("input context {} byteBufQueue size: {}," +
           "hashCode: {}",getContextId().getTransferIndex(), currentByteBufInputStream.byteBufQueue.isEmpty(),
         LambdaRemoteByteInputContext.this.hashCode());
+        */
 
       if (currentByteBufInputStream.byteBufQueue.isEmpty() || isFinished) {
 
@@ -387,7 +389,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public void run() {
-      LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
+      //LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
       if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
         ackHandler.onNext(1);
       } else {
