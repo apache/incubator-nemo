@@ -46,7 +46,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ArrayDeque<>();
+    queue = new ConcurrentLinkedQueue<>();
   }
 
   public boolean isEmpty() {
@@ -79,9 +79,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
     //LOG.info("BlockingQueue add");
 
-    synchronized (queue) {
-      queue.add(element);
-    }
+    queue.add(element);
 
     count.getAndIncrement();
 
@@ -130,10 +128,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
     count.decrementAndGet();
-
-    synchronized (queue) {
-      return queue.poll();
-    }
+    return queue.poll();
   }
 
   /**
@@ -160,8 +155,6 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     */
 
     // retrieves the head of the underlying collection, or return null if the queue is empty
-    synchronized (queue) {
-      return queue.peek();
-    }
+    return queue.peek();
   }
 }
