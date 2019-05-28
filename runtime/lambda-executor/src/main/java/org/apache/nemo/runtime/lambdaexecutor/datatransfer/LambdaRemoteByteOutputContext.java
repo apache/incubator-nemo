@@ -352,10 +352,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
             LOG.info("Ack pending to relay {}", message);
-            currChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+            relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
           } else if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
-            LOG.info("Ack pending {}", message);
-            currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+            LOG.info("Ack pending to vm {}", message);
+            vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
           }
           pendingByteBufs.add(byteBuf);
 
