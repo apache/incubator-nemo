@@ -745,4 +745,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   public void setIRVertexPutOnHold(IRVertex irVertex) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public String toString() {
+    return getId();
+  }
 }
