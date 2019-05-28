@@ -25,8 +25,6 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -45,10 +43,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ConcurrentLinkedQueue<>();
+    queue = new ArrayDeque<>();
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return queue.isEmpty();
   }
 
@@ -58,7 +56,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @param numElements the lower bound on initial capacity of the queue
    */
   public ClosableBlockingQueue(final int numElements) {
-    queue = new ConcurrentLinkedQueue<>();
+    queue = new ArrayDeque<>(numElements);
   }
 
   /**
@@ -68,7 +66,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws IllegalStateException if the input end of this queue has been closed
    * @throws NullPointerException if {@code element} is {@code null}
    */
-  public void put(final T element) {
+  public synchronized void put(final T element) {
     if (element == null) {
       throw new NullPointerException();
     }
@@ -107,12 +105,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public T take() throws InterruptedException {
+  public synchronized T take() throws InterruptedException {
     if (queue.isEmpty()) {
-      throw new RuntimeException("The queue should not be empty");
+      throw new RuntimeException("this should not be empty");
     }
-
-    return queue.poll();
 
     /*
     while (queue.isEmpty() && !closed) {
@@ -123,13 +119,12 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
+    */
 
     //LOG.info("Remaining byteBuf: {}", queue.size());
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
-    count.decrementAndGet();
     return queue.poll();
-    */
   }
 
   /**
@@ -139,8 +134,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public T peek() throws InterruptedException {
-    return queue.peek();
+  public synchronized T peek() throws InterruptedException {
+    if (queue.isEmpty()) {
+      throw new RuntimeException("this should not be empty");
+    }
 
     /*
     while (queue.isEmpty() && !closed) {
@@ -151,9 +148,9 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
+    */
 
     // retrieves the head of the underlying collection, or return null if the queue is empty
     return queue.peek();
-    */
   }
 }
