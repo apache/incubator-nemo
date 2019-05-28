@@ -163,7 +163,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    LOG.info("On byteBuf {}, bytes: {}, hashCode: {}", getContextId().getTransferIndex(), byteBuf.readableBytes(),
+    LOG.info("input context {} On byteBuf, bytes: {}, hashCode: {}", getContextId().getTransferIndex(), byteBuf.readableBytes(),
       LambdaRemoteByteInputContext.this.hashCode());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
@@ -361,10 +361,12 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public boolean hasNext() {
+      LOG.info("input context {} byteBufQueue size: {}," +
+          "hashCode: {}",getContextId().getTransferIndex(), currentByteBufInputStream.byteBufQueue.isEmpty(),
+        LambdaRemoteByteInputContext.this.hashCode());
+
       if (currentByteBufInputStream.byteBufQueue.isEmpty() || isFinished) {
-        LOG.info("byteBufQueue size: {} for input context {}," +
-          "hashCode: {}",currentByteBufInputStream.byteBufQueue.isEmpty(), getContextId().getTransferIndex(),
-          LambdaRemoteByteInputContext.this.hashCode());
+
         return false;
       }
       return true;
