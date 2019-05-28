@@ -204,251 +204,58 @@ public final class TaskOffloader {
      return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks, statelessRunningTasks, statefulRunningTasks);
   }
 
+  private void offloading(String stageId, int time) {
+    se.schedule(() -> {
+      LOG.info("Start offloading {}", stageId);
+
+      //final int offloadCnt = taskExecutorMap.keySet().stream()
+      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+      final int offloadCnt = taskExecutorMap.size();
+
+      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+        if (taskExecutor.getId().contains(stageId) && isTaskOffloadable(taskExecutor.getId())) {
+          //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
+          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+            sendOffloadingDoneEvent(taskExecutor.getId());
+          });
+        }
+      }
+    }, time, TimeUnit.SECONDS);
+  }
+
+  private void deoffloading(String stageId, int time) {
+    se.schedule(() -> {
+      LOG.info("Start deoffloading {}", stageId);
+
+      //final int offloadCnt = taskExecutorMap.keySet().stream()
+      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+
+      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+      while (iterator.hasNext()) {
+        final Pair<TaskExecutor, Long> pair = iterator.next();
+        if (pair.left().getId().contains(stageId)) {
+          if (isTaskOffloadable(pair.left().getId())) {
+            LOG.info("Deoffloading {}", pair.left().getId());
+            pair.left().endOffloading((m) -> {
+              LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
+              sendOffloadingDoneEvent(pair.left().getId());
+            });
+            iterator.remove();
+          }
+        }
+      }
+    }, time, TimeUnit.SECONDS);
+  }
+
   public void startDownstreamDebugging() {
     // For offloading debugging
 
-    se.schedule(() -> {
-      LOG.info("Start offloading kafka (only stage1)");
-      int cnt = 0;
+    offloading("Stage0", 25);
+    offloading("Stage2", 55);
 
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage1") && isTaskOffloadable(taskExecutor.getId())) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-            sendOffloadingDoneEvent(taskExecutor.getId());
-          });
-          cnt += 1;
-        }
-      }
-    }, 20, TimeUnit.SECONDS);
-
-    se.schedule(() -> {
-      LOG.info("Start offloading kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage0") &&
-          isTaskOffloadable(taskExecutor.getId())) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-            sendOffloadingDoneEvent(taskExecutor.getId());
-          });
-          cnt += 1;
-        }
-      }
-    }, 50, TimeUnit.SECONDS);
-
-    /*
-    se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-      while (iterator.hasNext()) {
-        final Pair<TaskExecutor, Long> pair = iterator.next();
-        if (pair.left().getId().contains("Stage0")) {
-          LOG.info("Deoffloading {}", pair.left().getId());
-          pair.left().endOffloading();
-
-          iterator.remove();
-        }
-      }
-    }, 90, TimeUnit.SECONDS);
-
-    se.schedule(() -> {
-      LOG.info("Start offloading kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage0")) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
-          cnt += 1;
-        }
-      }
-    }, 110, TimeUnit.SECONDS);
-
-
-    se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage2)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-      while (iterator.hasNext()) {
-        final Pair<TaskExecutor, Long> pair = iterator.next();
-        if (pair.left().getId().contains("Stage2")) {
-          LOG.info("Deoffloading {}", pair.left().getId());
-          pair.left().endOffloading();
-
-          iterator.remove();
-        }
-      }
-    }, 130, TimeUnit.SECONDS);
-
-
-    se.schedule(() -> {
-      LOG.info("Start off kafka (only stage2)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage2")) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
-          cnt += 1;
-        }
-      }
-    }, 150, TimeUnit.SECONDS);
-
-
-    se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage2)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-      while (iterator.hasNext()) {
-        final Pair<TaskExecutor, Long> pair = iterator.next();
-        if (pair.left().getId().contains("Stage2")) {
-          LOG.info("Deoffloading {}", pair.left().getId());
-          pair.left().endOffloading();
-
-          iterator.remove();
-        }
-      }
-    }, 170, TimeUnit.SECONDS);
-
-
-    se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-      while (iterator.hasNext()) {
-        final Pair<TaskExecutor, Long> pair = iterator.next();
-        if (pair.left().getId().contains("Stage0")) {
-          LOG.info("Deoffloading {}", pair.left().getId());
-          pair.left().endOffloading();
-
-          iterator.remove();
-        }
-      }
-    }, 190, TimeUnit.SECONDS);
-
-
-
-    se.schedule(() -> {
-      LOG.info("Start off kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage0")) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
-          cnt += 1;
-        }
-      }
-    }, 210, TimeUnit.SECONDS);
-
-
-    se.schedule(() -> {
-      LOG.info("Start off kafka (only stage2)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage2")) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
-          cnt += 1;
-        }
-      }
-    }, 230, TimeUnit.SECONDS);
-
-
-
-    se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage2)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-      while (iterator.hasNext()) {
-        final Pair<TaskExecutor, Long> pair = iterator.next();
-        if (pair.left().getId().contains("Stage2")) {
-          LOG.info("Deoffloading {}", pair.left().getId());
-          pair.left().endOffloading();
-
-          iterator.remove();
-        }
-      }
-    }, 250, TimeUnit.SECONDS);
-    */
-
-
-    /*
-    se.scheduleAtFixedRate(() -> {
-      LOG.info("Start Deoffloading kafka (only stage0)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
-        LOG.info("Deoffloading {}", pair.left().getId());
-        pair.left().endOffloading();
-      }
-
-      offloadedExecutors.clear();
-    }, 70,  100, TimeUnit.SECONDS);
-    */
+    deoffloading("Stage0", 75);
+    deoffloading("Stage2", 90);
   }
 
   public void startDebugging() {

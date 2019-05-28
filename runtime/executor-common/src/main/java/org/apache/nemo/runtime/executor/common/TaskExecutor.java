@@ -75,7 +75,7 @@ public interface TaskExecutor extends AutoCloseable {
 
   void startOffloading(final long baseTime, EventHandler<Integer> offloadingDoneHandler);
 
-  void endOffloading();
+  void endOffloading(final EventHandler<Integer> endOffloadingHandler);
 
   void execute();
 

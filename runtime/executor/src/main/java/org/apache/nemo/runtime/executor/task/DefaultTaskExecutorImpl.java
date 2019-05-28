@@ -176,6 +176,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   final Optional<Offloader> offloader;
 
   private EventHandler<Integer> offloadingDoneHandler;
+  private EventHandler<Integer> endOffloadingHandler;
 
   private final TaskInputContextMap taskInputContextMap;
 
@@ -562,8 +563,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     offloadingDoneHandler = doneHandler;
     offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime));
   }
+
   @Override
-  public void endOffloading() {
+  public void endOffloading(final EventHandler<Integer> handler) {
+    endOffloadingHandler = handler;
     offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
   }
 
@@ -1054,12 +1057,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           if (offloader.isPresent()) {
             offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
           }
+          endOffloadingHandler.onNext(1);
 
         } else if (data instanceof StateOutput) {
 
           if (offloader.isPresent()) {
             offloader.get().handleStateOutput((StateOutput) data);
           }
+          endOffloadingHandler.onNext(1);
 
         } else if (data instanceof EndOffloadingKafkaEvent) {
 
