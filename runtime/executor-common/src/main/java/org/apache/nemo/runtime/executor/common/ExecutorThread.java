@@ -89,7 +89,7 @@ public final class ExecutorThread {
                 processedCnt += 1;
               }
 
-              LOG.info("handling task {}, cnt: {}", availableTask.getId(), processedCnt);
+              //LOG.info("handling task {}, cnt: {}", availableTask.getId(), processedCnt);
 
               final long et = System.nanoTime();
               availableTask.getTaskExecutionTime().addAndGet(et - st);
