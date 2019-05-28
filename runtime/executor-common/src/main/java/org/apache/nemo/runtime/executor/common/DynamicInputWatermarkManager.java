@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
 
   @Override
   public synchronized void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
-    //LOG.info("Watermark from {}: {} at {}, min: {}", edgeIndex, watermark, vertex.getId(), currMinWatermark);
+    LOG.info("Watermark from {}: {} at {}, min: {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(), currMinWatermark);
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
       if (taskWatermarkMap.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
@@ -118,7 +119,8 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
             LOG.debug("Emit watermark {}", currMinWatermark);
           }
 
-          //LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId, currMinWatermark);
+          LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId,
+            new Instant(currMinWatermark.getTimestamp()));
           watermarkCollector.emitWatermark(currMinWatermark);
         }
       }
