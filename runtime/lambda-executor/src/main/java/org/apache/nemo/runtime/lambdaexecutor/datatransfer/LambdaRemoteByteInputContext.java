@@ -361,6 +361,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     @Override
     public boolean hasNext() {
       if (currentByteBufInputStream.byteBufQueue.isEmpty() || isFinished) {
+        LOG.info("byteBufQueue size: {} for input context {}",currentByteBufInputStream.byteBufQueue.isEmpty(), getContextId().getTransferIndex());
         return false;
       }
       return true;
