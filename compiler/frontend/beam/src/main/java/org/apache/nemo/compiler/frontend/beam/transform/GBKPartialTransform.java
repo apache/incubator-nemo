@@ -428,6 +428,7 @@ public final class GBKPartialTransform<K, InputT>
     @Override
     public void emitWatermark(final Watermark watermark) {
 
+      LOG.info("Emit watermark in partial: {}", new Instant(watermark.getTimestamp()));
       outputCollector.emitWatermark(watermark);
     }
     @Override
