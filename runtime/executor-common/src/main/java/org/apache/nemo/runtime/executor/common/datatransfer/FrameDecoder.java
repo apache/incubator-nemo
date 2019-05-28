@@ -241,7 +241,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         }
       }
 
-      LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+      //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
       inputContext.onByteBuf(body);
     }
 

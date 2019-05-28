@@ -84,11 +84,12 @@ public final class ExecutorThread {
 
               final long st = System.nanoTime();
 
-              LOG.info("handling task {}", availableTask.getId());
 
               while (availableTask.handleData() && processedCnt < batchSize) {
                 processedCnt += 1;
               }
+
+              LOG.info("handling task {}, cnt: {}", availableTask.getId(), processedCnt);
 
               final long et = System.nanoTime();
               availableTask.getTaskExecutionTime().addAndGet(et - st);
