@@ -134,7 +134,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
-              //LOG.info("Sending to {}", dst);
+              LOG.info("Sending to {}", dst);
 
               dstChannel.writeAndFlush(bb);
 
