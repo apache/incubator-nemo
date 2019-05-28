@@ -285,7 +285,9 @@ public final class TaskOffloader {
       while (!offloadedExecutors.isEmpty()) {
         final TaskExecutor endTask = offloadedExecutors.remove(0).left();
         LOG.info("End task {}", endTask);
-        endTask.endOffloading();
+        endTask.endOffloading((m) -> {
+          // do sth
+        });
       }
     }, 40, 50, TimeUnit.SECONDS);
   }
@@ -432,7 +434,9 @@ public final class TaskOffloader {
             if (cur - elem.right() >= TimeUnit.SECONDS.toMillis(1000)) {
               // force close!
               LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
-              elem.left().endOffloading();
+              elem.left().endOffloading((m) -> {
+                // do sth
+              });
               it.remove();
               prevDeOffloadingTime = System.currentTimeMillis();
             }
@@ -530,7 +534,9 @@ public final class TaskOffloader {
                     LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
                       taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
                     iterator.remove();
-                    taskExecutor.endOffloading();
+                    taskExecutor.endOffloading((m) -> {
+                      // do sth
+                    });
                     currCpuTimeSum += avgCpuTimeSum;
                     prevDeOffloadingTime = System.currentTimeMillis();
                   }
@@ -539,7 +545,9 @@ public final class TaskOffloader {
                 // pending means that it is not offloaded yet.
                 // close immediately!
                 LOG.info("Immediately deoffloading!");
-                taskExecutor.endOffloading();
+                taskExecutor.endOffloading((m) -> {
+                  // do sth
+                });
                 iterator.remove();
               }
             }

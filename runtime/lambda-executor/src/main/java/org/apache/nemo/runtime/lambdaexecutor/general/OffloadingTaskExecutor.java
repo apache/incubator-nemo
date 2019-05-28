@@ -726,7 +726,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void endOffloading() {
+  public void endOffloading(EventHandler<Integer> m) {
     throw new UnsupportedOperationException();
   }
 

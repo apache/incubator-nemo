@@ -203,7 +203,9 @@ public final class SeepTaskOffloader {
       while (!offloadedExecutors.isEmpty()) {
         final TaskExecutor endTask = offloadedExecutors.remove(0).left();
         LOG.info("End task {}", endTask);
-        endTask.endOffloading();
+        endTask.endOffloading((m) -> {
+          // do sth
+        });
       }
     }, 40, 50, TimeUnit.SECONDS);
   }
