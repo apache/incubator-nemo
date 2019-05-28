@@ -252,10 +252,10 @@ public final class TaskOffloader {
     // For offloading debugging
 
     offloading("Stage0", 25);
-    offloading("Stage2", 55);
+    offloading("Stage2", 65);
 
-    deoffloading("Stage0", 75);
-    deoffloading("Stage2", 90);
+    deoffloading("Stage0", 85);
+    deoffloading("Stage2", 105);
   }
 
   public void startDebugging() {

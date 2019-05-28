@@ -77,9 +77,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                                        final ContextId contextId,
                                        final byte[] contextDescriptor,
                                        final ContextManager contextManager,
-                                       final String relayDst) {
+                                       final String relayDst,
+                                       final TaskLocationMap.LOC sendDataTo) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    this.sendDataTo = relayDst == null ? VM : SF;
+    this.sendDataTo = sendDataTo;
     if (sendDataTo.equals(VM)) {
       this.vmChannel = contextManager.getChannel();
       this.currChannel = vmChannel;

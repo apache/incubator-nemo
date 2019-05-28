@@ -455,13 +455,13 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst),
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, SF),
         executorId, isPipe, relayDst);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, null),
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, VM),
         executorId, isPipe, relayDst);
     }
   }
