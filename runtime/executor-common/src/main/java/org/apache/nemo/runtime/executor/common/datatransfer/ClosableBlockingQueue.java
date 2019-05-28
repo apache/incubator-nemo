@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A blocking queue implementation which is capable of closing.
@@ -38,6 +39,8 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   private volatile boolean closed = false;
   private volatile Throwable throwable = null;
 
+  private final AtomicInteger count = new AtomicInteger(0);
+
   /**
    * Creates a closable blocking queue.
    */
@@ -46,7 +49,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   }
 
   public boolean isEmpty() {
-    return queue.isEmpty();
+    return count.get() == 0;
   }
 
   /**
@@ -76,6 +79,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     //LOG.info("BlockingQueue add");
 
     queue.add(element);
+    count.getAndIncrement();
     notifyAll();
   }
 
@@ -117,6 +121,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     //LOG.info("Remaining byteBuf: {}", queue.size());
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
+    count.decrementAndGet();
     return queue.poll();
   }
 
