@@ -61,7 +61,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
           }
         }
         case WAITING_HEADER2: {
-          if (byteBuf.readableBytes() < idLength + 4) {
+          if (bis.available() < idLength + 4) {
             //LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
             waitingStr = true;
             return;
@@ -81,7 +81,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
             dst = new String(idBytes);
 
-            //LOG.info("Dst: {}", dst);
+            LOG.info("Dst: {}, readable: {}", dst, bis.available());
 
             if (type == 0 || type == 1) {
               // data frame and control frame

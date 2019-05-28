@@ -158,10 +158,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
         Coder<AccumT> accumCoder,
         final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
       if (stateCoderMap.containsKey(address)) {
-        LOG.info("Bind combining value multiple: {}/{}", namespace, address);
+        //LOG.info("Bind combining value multiple: {}/{}", namespace, address);
         return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
       } else {
-        LOG.info("Bind combining value first: {}/{}", namespace, address);
+        //LOG.info("Bind combining value first: {}/{}", namespace, address);
         final CombiningState<InputT, AccumT, OutputT> state = new InMemoryCombiningState<>(combineFn, accumCoder);
         stateCoderMap.put(address, Pair.of(state, new CombiningStateCoder<>(accumCoder, combineFn)));
         return state;
