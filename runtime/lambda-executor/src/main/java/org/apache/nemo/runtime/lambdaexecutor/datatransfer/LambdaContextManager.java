@@ -447,8 +447,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     LOG.info("Output context for {}/{}, index: {}", descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), transferIndex);
 
     final byte[] encodedDescriptor = descriptor.encode();
+    final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
     if (isRelayServerChannel) {
-      final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
@@ -459,7 +459,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, null),
-        executorId, isPipe, null);
+        executorId, isPipe, relayDst);
     }
   }
 

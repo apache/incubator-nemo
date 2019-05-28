@@ -29,7 +29,7 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
   @Override
   public void encode(CombiningState<InputT, AccumT, OutputT> value, OutputStream outStream) throws CoderException, IOException {
     final AccumT state = value.getAccum();
-    LOG.info("Combining state: {}", state);
+    //LOG.info("Combining state: {}", state);
 
     coder.encode(state, outStream);
     SerializationUtils.serialize(combineFn, outStream);

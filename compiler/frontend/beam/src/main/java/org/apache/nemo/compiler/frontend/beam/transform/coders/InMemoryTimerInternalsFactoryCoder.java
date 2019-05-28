@@ -40,7 +40,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     encodeNavigableSet(value.processingTimers, dos);
     encodeNavigableSet(value.synchronizedProcessingTimers, dos);
 
-    LOG.info("Encoded navigable sets");
+    //LOG.info("Encoded navigable sets");
 
     SerializationUtils.serialize(value.inputWatermarkTime, dos);
     SerializationUtils.serialize(value.processingTime, dos);
@@ -138,7 +138,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
       SerializationUtils.serialize(synchronizedProcessingTime, dos);
       SerializationUtils.serialize(outputWatermarkTime, dos);
 
-      LOG.info("Serialize instances");
+      //LOG.info("Serialize instances");
     }
   }
 
@@ -173,7 +173,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
                            final DataOutputStream dos) throws IOException {
     dos.writeInt(existingTimers.size());
 
-    LOG.info("Start encode table");
+    //LOG.info("Start encode table");
 
     for (final Table.Cell<StateNamespace, String, TimerInternals.TimerData> cell : existingTimers.cellSet()) {
       dos.writeUTF(cell.getRowKey().stringKey());
@@ -181,7 +181,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
       timerCoder.encode(cell.getValue(), dos);
     }
 
-    LOG.info("End encode table");
+    //LOG.info("End encode table");
   }
 
   private Table<StateNamespace, String, TimerInternals.TimerData> decodeTable(final DataInputStream dis) throws IOException {
