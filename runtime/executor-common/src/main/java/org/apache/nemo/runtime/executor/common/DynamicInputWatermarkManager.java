@@ -121,7 +121,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
           nextMinWatermarkIndex,
           new Instant(currMinWatermark.getTimestamp()), vertex.getId());
 
-        if (nextMinWatermark.getTimestamp() < currMinWatermark.getTimestamp()) {
+        if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
           // it is possible
           minWatermarkIndex = nextMinWatermarkIndex;
           LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
