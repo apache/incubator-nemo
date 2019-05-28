@@ -34,7 +34,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
   private char type;
   private int idLength;
-  private ByteBufInputStream bis;
   private boolean waitingStr = false;
 
   private final Map<String, List<ByteBuf>> pendingBytes = new HashMap<>();
@@ -51,23 +50,22 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
       switch (status) {
         case WAITING_HEADER1: {
           if (byteBuf.readableBytes() < 6) {
-            //LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
+            LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
             return;
           } else {
-            bis = new ByteBufInputStream(byteBuf);
-            type = bis.readChar();
-            idLength = bis.readInt();
+            type = byteBuf.readChar();
+            idLength = byteBuf.readInt();
             status = Status.WAITING_HEADER2;
           }
         }
         case WAITING_HEADER2: {
-          if (bis.available() < idLength + 4) {
-            //LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+          if (byteBuf.readableBytes() < idLength + 4) {
+            LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
             waitingStr = true;
             return;
           } else {
             final byte[] idBytes = new byte[idLength];
-            bis.read(idBytes);
+            byteBuf.readBytes(idBytes);
             //LOG.info("ID bytes: {}", idBytes);
 
             /*
@@ -81,17 +79,17 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
             dst = new String(idBytes);
 
-            LOG.info("Dst: {}, readable: {}", dst, bis.available());
+            LOG.info("Dst: {}, readable: {}", dst, byteBuf.readableBytes());
 
             if (type == 0 || type == 1) {
               // data frame and control frame
-              remainingBytes = bis.readInt();
+              remainingBytes = byteBuf.readInt();
               status = Status.WAITING_DATA;
             } else if (type == 2) {
               // control message
               status = Status.WAITING_HEADER1;
 
-              final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[bis.readInt()];
+              final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[byteBuf.readInt()];
               switch (controlMsgType) {
                 case REGISTER: {
                   LOG.info("Registering {} / {}", dst, ctx.channel());
