@@ -262,7 +262,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
                 outputCollector, edgeIndex, watermarkManager);
-
             availableFetchers.add(
               new LambdaParentTaskDataFetcher(
                 offloadingTask.taskId,

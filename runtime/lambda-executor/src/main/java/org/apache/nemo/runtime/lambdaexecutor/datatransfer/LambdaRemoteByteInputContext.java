@@ -163,7 +163,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    //LOG.info("On byteBuf {}", getContextId().getTransferIndex());
+    LOG.info("On byteBuf {}, bytes: {}", getContextId().getTransferIndex(), byteBuf.readableBytes());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
     } else {
