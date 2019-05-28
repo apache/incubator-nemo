@@ -50,7 +50,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
       switch (status) {
         case WAITING_HEADER1: {
           if (byteBuf.readableBytes() < 6) {
-            LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
+            //LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
             return;
           } else {
             type = byteBuf.readChar();
@@ -60,7 +60,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         }
         case WAITING_HEADER2: {
           if (byteBuf.readableBytes() < idLength + 4) {
-            LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+            //LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
             waitingStr = true;
             return;
           } else {
@@ -79,7 +79,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
             dst = new String(idBytes);
 
-            LOG.info("Dst: {}, readable: {}", dst, byteBuf.readableBytes());
+            //LOG.info("Dst: {}, readable: {}", dst, byteBuf.readableBytes());
 
             if (type == 0 || type == 1) {
               // data frame and control frame
@@ -132,7 +132,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
-              LOG.info("Sending to {}", dst);
+              //LOG.info("Sending to {}", dst);
 
               dstChannel.writeAndFlush(bb);
 

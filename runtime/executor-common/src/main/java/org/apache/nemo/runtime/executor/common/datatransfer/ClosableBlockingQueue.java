@@ -40,15 +40,17 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   private volatile boolean closed = false;
   private volatile Throwable throwable = null;
 
+  private final AtomicInteger count = new AtomicInteger(0);
+
   /**
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ConcurrentLinkedQueue<>();
+    queue = new ArrayDeque<>();
   }
 
   public boolean isEmpty() {
-    return queue.isEmpty();
+    return count.get() == 0;
   }
 
   /**
@@ -57,7 +59,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @param numElements the lower bound on initial capacity of the queue
    */
   public ClosableBlockingQueue(final int numElements) {
-    queue = new ConcurrentLinkedQueue<>();
+    queue = new ArrayDeque<>(numElements);
   }
 
   /**
@@ -77,7 +79,12 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
     //LOG.info("BlockingQueue add");
 
-    queue.add(element);
+    synchronized (queue) {
+      queue.add(element);
+    }
+
+    count.getAndIncrement();
+
     //notifyAll();
   }
 
@@ -107,9 +114,6 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public T take() throws InterruptedException {
-    if (queue.isEmpty()) {
-      throw new RuntimeException("this should not be empty");
-    }
 
     /*
     while (queue.isEmpty() && !closed) {
@@ -125,7 +129,11 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     //LOG.info("Remaining byteBuf: {}", queue.size());
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
-    return queue.poll();
+    count.decrementAndGet();
+
+    synchronized (queue) {
+      return queue.poll();
+    }
   }
 
   /**
@@ -152,6 +160,8 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     */
 
     // retrieves the head of the underlying collection, or return null if the queue is empty
-    return queue.peek();
+    synchronized (queue) {
+      return queue.peek();
+    }
   }
 }
