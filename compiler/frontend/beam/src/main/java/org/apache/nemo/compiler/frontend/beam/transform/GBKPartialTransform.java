@@ -273,8 +273,8 @@ public final class GBKPartialTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    LOG.info("Triggering partial timers... {}/{}", inMemoryTimerInternalsFactory.hashCode(),
-      inMemoryTimerInternalsFactory);
+    //LOG.info("Triggering partial timers... {}/{}", inMemoryTimerInternalsFactory.hashCode(),
+    //  inMemoryTimerInternalsFactory);
 
     final long st = System.currentTimeMillis();
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();

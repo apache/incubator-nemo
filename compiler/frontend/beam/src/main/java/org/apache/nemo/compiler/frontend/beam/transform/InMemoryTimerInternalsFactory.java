@@ -178,7 +178,8 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     private Pair<K, TimerInternals.TimerData> removeNextTimer(Instant currentTime, TimeDomain domain) {
       NavigableSet<Pair<K, TimerInternals.TimerData>> timers = timersForDomain(domain);
 
-      if (!timers.isEmpty() && currentTime.isAfter(timers.first().right().getTimestamp())) {
+      final Instant timerStamp = timers.first().right().getTimestamp();
+      if (!timers.isEmpty() && (currentTime.isAfter(timerStamp) || currentTime.isEqual(timerStamp)))  {
         Pair<K, TimerInternals.TimerData> timer = timers.pollFirst();
         timerInternalsMap.get(timer.left()).deleteTimer(timer.right());
         return timer;
