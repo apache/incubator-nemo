@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -43,10 +44,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Creates a closable blocking queue.
    */
   public ClosableBlockingQueue() {
-    queue = new ArrayDeque<>();
+    queue = new ConcurrentLinkedQueue<>();
   }
 
-  public synchronized boolean isEmpty() {
+  public boolean isEmpty() {
     return queue.isEmpty();
   }
 
@@ -56,7 +57,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @param numElements the lower bound on initial capacity of the queue
    */
   public ClosableBlockingQueue(final int numElements) {
-    queue = new ArrayDeque<>(numElements);
+    queue = new ConcurrentLinkedQueue<>();
   }
 
   /**
@@ -66,7 +67,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws IllegalStateException if the input end of this queue has been closed
    * @throws NullPointerException if {@code element} is {@code null}
    */
-  public synchronized void put(final T element) {
+  public void put(final T element) {
     if (element == null) {
       throw new NullPointerException();
     }
@@ -84,7 +85,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * Mark the input end of this queue as closed.
    */
   @Override
-  public synchronized void close() {
+  public void close() {
     closed = true;
     //notifyAll();
   }
@@ -105,7 +106,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public synchronized T take() throws InterruptedException {
+  public T take() throws InterruptedException {
     if (queue.isEmpty()) {
       throw new RuntimeException("this should not be empty");
     }
@@ -134,7 +135,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    * @throws InterruptedException when interrupted while waiting
    */
   @Nullable
-  public synchronized T peek() throws InterruptedException {
+  public T peek() throws InterruptedException {
     if (queue.isEmpty()) {
       throw new RuntimeException("this should not be empty");
     }
