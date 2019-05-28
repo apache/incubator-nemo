@@ -224,7 +224,10 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
             break;
           }
         }
+
+        break;
       }
+
       case ACK_FROM_PARENT_STOP_OUTPUT: {
         final ByteInputContext context = inputContexts.get(transferIndex);
         LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
