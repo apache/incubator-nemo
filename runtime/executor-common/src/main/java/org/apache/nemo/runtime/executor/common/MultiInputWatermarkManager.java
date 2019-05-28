@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +67,12 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     return index;
   }
 
+  private void printWatermarks() {
+    for (int i = 0; i < watermarks.size(); i++) {
+      LOG.info("[{}: {}]", i, new Instant(watermarks.get(i)));
+    }
+  }
+
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
     if (LOG.isDebugEnabled()) {
@@ -73,12 +80,11 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         watermarks.toString());
     }
 
-    /*
     if (vertex != null) {
-      LOG.info("At {} Track watermark {} emitted from edge {}:, {}", vertex.getId(), watermark.getTimestamp(), edgeIndex,
-        watermarks.toString());
+      LOG.info("At {} Track watermark {} emitted from edge {}", vertex.getId(), new Instant(watermark.getTimestamp()), edgeIndex);
+      LOG.info("Print watermarks: ");
+      printWatermarks();
     }
-    */
 
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
@@ -98,6 +104,10 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         // Emit the min watermark
         if (LOG.isDebugEnabled()) {
           LOG.debug("Emit watermark {}, {}", minWatermark, watermarks);
+        }
+
+        if (vertex != null) {
+          LOG.info("Emitting watermark in {}:  {}", vertex.getId(), new Instant(minWatermark.getTimestamp()));
         }
         watermarkCollector.emitWatermark(minWatermark);
       }
