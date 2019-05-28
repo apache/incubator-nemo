@@ -69,7 +69,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
   private void printWatermarks() {
     for (int i = 0; i < watermarks.size(); i++) {
-      LOG.info("[{}: {}]", i, new Instant(watermarks.get(i)));
+      LOG.info("[{}: {}]", i, new Instant(watermarks.get(i).getTimestamp()));
     }
   }
 
