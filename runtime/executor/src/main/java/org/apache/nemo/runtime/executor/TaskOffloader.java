@@ -425,10 +425,13 @@ public final class TaskOffloader {
 
         final long currTime = System.currentTimeMillis();
 
+        LOG.info("CPU Load: {}, Elapsed Time: {}", cpuLoad, elapsedCpuTimeSum);
+
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
         LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
           cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
+        /*
         if (!offloadedExecutors.isEmpty()) {
           final long cur = System.currentTimeMillis();
           final Iterator<Pair<TaskExecutor, Long>> it = offloadedExecutors.iterator();
@@ -462,12 +465,6 @@ public final class TaskOffloader {
               currCpuTimeSum  += entry.getValue() / 1000;
             }
           }
-
-          /*
-          long currCpuTimeSum = elapsedCpuTimeSum -
-            deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
-              .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
-          */
 
           //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
@@ -554,71 +551,9 @@ public final class TaskOffloader {
                 iterator.remove();
               }
             }
-
-            /*
-            if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded == 0) {
-              // special case!
-              final int offloadCnt = offloadedExecutors.size() / 3;
-              final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-              int cnt = 0;
-              while (cnt < offloadCnt && iterator.hasNext()) {
-                final Pair<TaskExecutor, Long> pair = iterator.next();
-                final TaskExecutor taskExecutor = pair.left();
-                if (taskExecutor.isOffloaded()) {
-                  final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
-
-                  if (currTime - offloadingTime >= deoffloadSlackTime) {
-                    LOG.info("Deoffloading task {}",
-                      taskExecutor.getId());
-                    iterator.remove();
-                    taskExecutor.endOffloading();
-                    prevDeOffloadingTime = System.currentTimeMillis();
-                    cnt += 1;
-                  }
-                }
-              }
-            } else if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded > 0) {
-              // waiting
-              LOG.info("Deoffload waiting... {}", taskStatInfo.deoffloaded);
-            } else {
-
-              final long avgCpuTimeSum = elapsedCpuTimeSum / (taskStatInfo.running + taskStatInfo.offload_pending);
-
-              long currCpuTimeSum = elapsedCpuTimeSum +
-                avgCpuTimeSum * deltaMap.entrySet()
-                  .stream().filter(entry -> entry.getKey().isDeoffloadPending())
-                  .collect(Collectors.toList()).size();
-
-              final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-              while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
-                final Pair<TaskExecutor, Long> pair = iterator.next();
-                final TaskExecutor taskExecutor = pair.left();
-                if (taskExecutor.isOffloaded()) {
-                  final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
-
-                  LOG.info("CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
-                    currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
-
-                  if (currTime - offloadingTime >= deoffloadSlackTime) {
-                    LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
-                      taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
-                    iterator.remove();
-                    taskExecutor.endOffloading();
-                    currCpuTimeSum += avgCpuTimeSum;
-                    prevDeOffloadingTime = System.currentTimeMillis();
-                  }
-                } else if (taskExecutor.isOffloadPending()) {
-                  // pending means that it is not offloaded yet.
-                  // close immediately!
-                  LOG.info("Immediately deoffloading!");
-                  taskExecutor.endOffloading();
-                  iterator.remove();
-                }
-              }
-            }
-            */
           }
         }
+          */
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);

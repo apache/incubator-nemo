@@ -1191,8 +1191,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    */
   private boolean handleDataFetchers() {
 
-
-
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || offloader.isPresent()) {
 
