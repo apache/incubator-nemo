@@ -51,13 +51,19 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private volatile boolean isFinishd = false;
   private volatile boolean finishedAck = false;
 
+  private boolean isPrepared = false;
+
+  private final ExecutorService prepareService;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
-                                 final OutputCollector outputCollector) {
+                                 final OutputCollector outputCollector,
+                                 final ExecutorService prepareService) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
     this.bounded = dataSource.isBounded();
+    this.prepareService = prepareService;
 
     LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
     if (!bounded) {
@@ -72,6 +78,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   public void setReadable(final Readable r) {
     readable = r;
+    isPrepared = false;
     isStarted = false;
   }
 
@@ -99,7 +106,15 @@ public class SourceVertexDataFetcher extends DataFetcher {
     if (!isStarted) {
       isStarted = true;
       LOG.info("Readable: {}", readable);
-      this.readable.prepare();
+      prepareService.execute(() -> {
+        this.readable.prepare();
+        isPrepared = true;
+      });
+    }
+
+    if (!isPrepared) {
+      LOG.info("Not prepared... ");
+      throw new NoSuchElementException();
     }
 
     if (readable.isFinished()) {

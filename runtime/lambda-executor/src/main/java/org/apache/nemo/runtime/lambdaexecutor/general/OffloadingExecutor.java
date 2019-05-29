@@ -66,6 +66,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private transient RelayServerClient relayServerClient;
   private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocMap;
 
+  private transient ExecutorService prepareService;
+
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
@@ -99,6 +101,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
     this.oc = outputCollector;
     this.ackScheduledService = new AckScheduledService();
+    this.prepareService = Executors.newCachedThreadPool();
 
     executorThreads = new ArrayList<>();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -198,7 +201,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         pipeManagerWorker,
         intermediateDataIOFactory,
         oc,
-        scheduledExecutorService);
+        scheduledExecutorService,
+        prepareService);
 
       // Emit offloading done
       oc.emit(new OffloadingDoneEvent(

@@ -74,6 +74,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final List<Future<Integer>> pendingFutures = new ArrayList<>();
 
+  private final ExecutorService prepareService;
+
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
@@ -82,7 +84,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final PipeManagerWorker pipeManagerWorker,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
                                 final OffloadingOutputCollector oc,
-                                final ScheduledExecutorService pollingTrigger) {
+                                final ScheduledExecutorService pollingTrigger,
+                                final ExecutorService prepareService) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
     this.executorAddressMap = executorAddressMap;
@@ -97,6 +100,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.availableFetchers = new LinkedList<>();
     this.pendingFetchers = new LinkedList<>();
     this.pollingTrigger = pollingTrigger;
+    this.prepareService = prepareService;
 
 
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -236,7 +240,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, readable, outputCollector);
+          beamUnboundedSourceVertex, edge, readable, outputCollector, prepareService);
         availableFetchers.add(dataFetcher);
       }
 

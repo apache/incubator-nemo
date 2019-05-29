@@ -192,6 +192,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
 
+  private final ExecutorService prepareService;
+
   /**
    * Constructor.
    *
@@ -223,12 +225,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final EvalConf evalConf,
                                  final TaskInputContextMap taskInputContextMap,
                                  final RelayServer relayServer,
-                                 final TaskLocationMap taskLocationMap) {
+                                 final TaskLocationMap taskLocationMap,
+                                 final ExecutorService prepareService) {
     // Essential information
     LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
     LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
     this.copyIncomingEdges = copyIncomingEdges;
+    this.prepareService = prepareService;
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
@@ -771,7 +775,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           (SourceVertex) irVertex,
           edge,
           sourceReader.get(),
-          outputCollector));
+          outputCollector,
+          prepareService));
       }
 
       // Parent-task read

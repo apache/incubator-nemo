@@ -129,6 +129,8 @@ public final class Executor {
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
 
+  private final ExecutorService prepareService = Executors.newCachedThreadPool();
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -325,7 +327,8 @@ public final class Executor {
         evalConf,
         taskInputContextMap,
         relayServer,
-        taskLocationMap);
+        taskLocationMap,
+        prepareService);
 
       taskExecutorMap.put(taskExecutor, true);
       final int numTask = numReceivedTasks.getAndIncrement();

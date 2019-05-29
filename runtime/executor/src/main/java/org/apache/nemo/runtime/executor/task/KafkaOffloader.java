@@ -475,7 +475,7 @@ public final class KafkaOffloader implements Offloader {
           new UnboundedSourceReadable(splitSource, null, splitCheckpointMark);
 
         final SourceVertexDataFetcher sourceVertexDataFetcher =
-          new SourceVertexDataFetcher(sourceVertex, dataFetcher.edge, newReadable, dataFetcher.getOutputCollector());
+          new SourceVertexDataFetcher(sourceVertex, dataFetcher.edge, newReadable, dataFetcher.getOutputCollector(), null);
 
         final Coder<UnboundedSource.CheckpointMark> coder = splitSource.getCheckpointMarkCoder();
         final ControlMessage.Message message;
