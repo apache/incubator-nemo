@@ -49,7 +49,9 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-      LOG.info("Available tasks: {}, pending: {}", availableTasks, pendingTasks);
+      LOG.info("{} Available tasks {}: {}, pending {}: {}",
+        executorThreadName,
+        availableTasks.size(), availableTasks, pendingTasks.size(), pendingTasks);
     }, 500, 500, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
