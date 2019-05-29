@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.ir.edge.Stage;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
 @DriverSide
@@ -31,7 +33,7 @@ public final class TaskOffloadingManager {
     RUNNING
   }
 
-  private final Map<String, Status> stageStatusMap;
+  private final Map<String, Pair<Status, AtomicInteger>> stageStatusMap;
   private final Map<String, Stage> stageIdMap;
 
   private static final Logger LOG = LoggerFactory.getLogger(TransferIndexMaster.class.getName());
@@ -48,7 +50,7 @@ public final class TaskOffloadingManager {
     this.stageDAG = dag;
     for (Stage stage : stageDAG.getVertices()) {
       stageIdMap.put(stage.getId(), stage);
-      stageStatusMap.put(stage.getId(), Status.RUNNING);
+      stageStatusMap.put(stage.getId(), Pair.of(Status.RUNNING, new AtomicInteger()));
     }
   }
 
@@ -91,7 +93,13 @@ public final class TaskOffloadingManager {
             message.getRequestTaskOffloadingDoneMsg();
           final String taskId = offloadingMessage.getTaskId();
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-          stageStatusMap.put(stageId, Status.RUNNING);
+          final Pair<Status, AtomicInteger> status = stageStatusMap.get(stageId);
+
+          if (status.right().decrementAndGet() == 0) {
+            stageStatusMap.put(stageId, Pair.of(Status.RUNNING, status.right()));
+            LOG.info("Setting stage {} to running ", stageId);
+          }
+
           LOG.info("Receive TaskOffloadingDone {}, map: {}", stageId, stageStatusMap);
           break;
         }
@@ -128,7 +136,10 @@ public final class TaskOffloadingManager {
                   .build())
                 .build());
           } else {
-            stageStatusMap.put(stageId, Status.PENDING);
+            final Pair<Status, AtomicInteger> status = stageStatusMap.getOrDefault(stageId, Pair.of(Status.PENDING, new AtomicInteger()));
+            status.right().getAndIncrement();
+            stageStatusMap.put(stageId, status);
+
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
