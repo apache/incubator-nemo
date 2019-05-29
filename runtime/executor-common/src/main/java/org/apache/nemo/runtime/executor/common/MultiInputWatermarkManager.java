@@ -80,11 +80,13 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         watermarks.toString());
     }
 
+    /*
     if (vertex != null) {
       LOG.info("At {} Track watermark {} emitted from edge {}", vertex.getId(), new Instant(watermark.getTimestamp()), edgeIndex);
       LOG.info("Print watermarks: ");
       printWatermarks();
     }
+    */
 
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
@@ -106,9 +108,11 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
           LOG.debug("Emit watermark {}, {}", minWatermark, watermarks);
         }
 
+        /*
         if (vertex != null) {
           LOG.info("Emitting watermark in {}:  {}", vertex.getId(), new Instant(minWatermark.getTimestamp()));
         }
+        */
         watermarkCollector.emitWatermark(minWatermark);
       }
     } else {
