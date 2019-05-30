@@ -199,7 +199,8 @@ public final class Executor {
 
     this.tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
       offloadingWorkerFactory,
-      lambdaExecutor);
+      lambdaExecutor,
+      evalConf);
   }
 
   public String getExecutorId() {

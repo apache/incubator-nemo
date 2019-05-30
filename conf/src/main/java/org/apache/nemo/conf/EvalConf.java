@@ -99,6 +99,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "executor_threads", default_value = "1")
   public static final class ExecutorThreadNum implements Name<Integer> {}
 
+  @NamedParameter(short_name = "task_slot", default_value = "2")
+  public static final class TaskSlot implements Name<Integer> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -121,6 +124,7 @@ public final class EvalConf {
   public final String offloadingType;
   public final int middleParallelism;
   public final int executorThreadNum;
+  public final int taskSlot;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -142,7 +146,8 @@ public final class EvalConf {
                    @Parameter(EventThreshold.class) final int eventThreshold,
                    @Parameter(OffloadingType.class) final String offloadingType,
                    @Parameter(MiddleParallelism.class) final int middleParallelism,
-                   @Parameter(ExecutorThreadNum.class) final int executorThreadNum) throws IOException {
+                   @Parameter(ExecutorThreadNum.class) final int executorThreadNum,
+                   @Parameter(TaskSlot.class) final int taskSlot) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -163,6 +168,7 @@ public final class EvalConf {
     this.offloadingType = offloadingType;
     this.middleParallelism = middleParallelism;
     this.executorThreadNum = executorThreadNum;
+    this.taskSlot = taskSlot;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -194,6 +200,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(OffloadingType.class, offloadingType);
     jcb.bindNamedParameter(MiddleParallelism.class, Integer.toString(middleParallelism));
     jcb.bindNamedParameter(ExecutorThreadNum.class, Integer.toString(executorThreadNum));
+    jcb.bindNamedParameter(TaskSlot.class, Integer.toString(taskSlot));
     return jcb.build();
   }
 
@@ -219,6 +226,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(OffloadingType.class);
     cl.registerShortNameOfClass(MiddleParallelism.class);
     cl.registerShortNameOfClass(ExecutorThreadNum.class);
+    cl.registerShortNameOfClass(TaskSlot.class);
   }
 
   @Override
@@ -246,6 +254,7 @@ public final class EvalConf {
     sb.append("offloadingType: "); sb.append(offloadingType); sb.append("\n");
     sb.append("middleParallelism: "); sb.append(middleParallelism); sb.append("\n");
     sb.append("executorThreadNum: "); sb.append(executorThreadNum); sb.append("\n");
+    sb.append("taskSlotNum: "); sb.append(taskSlot); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

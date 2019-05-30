@@ -6,6 +6,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
@@ -23,15 +24,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class TinyTaskWorker {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskWorker.class.getName());
 
-  private static final int SLOT = 10;
-
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
   private final AtomicInteger deletePending = new AtomicInteger(0);
+  private final int SLOT;
 
-  public TinyTaskWorker(final OffloadingWorker offloadingWorker) {
+  public TinyTaskWorker(final OffloadingWorker offloadingWorker,
+                        final EvalConf evalConf) {
     this.offloadingWorker = offloadingWorker;
+    this.SLOT = evalConf.taskSlot;
   }
 
   public synchronized void addTask(final OffloadingTask task) {

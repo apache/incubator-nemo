@@ -8,6 +8,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -57,9 +58,14 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final ConcurrentMap<String, TinyTaskWorker> deletePendingWorkers = new ConcurrentHashMap<>();
 
+  private final EvalConf evalConf;
+
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
-    final OffloadingTransform offloadingTransform) {
+    final OffloadingTransform offloadingTransform,
+    final EvalConf evalConf) {
+
+    this.evalConf = evalConf;
 
     LOG.info("Start cached pool serverless executor service");
 
@@ -177,7 +183,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     // find worker
     if (workers.size() == 0) {
       workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
-        createNewWorker(offloadingSerializer))));
+        createNewWorker(offloadingSerializer), evalConf)));
     }
 
     final int index = workers.size() - 1;
@@ -185,7 +191,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     if (!worker.canHandleTask()) {
       final TinyTaskWorker newWorker =  new TinyTaskWorker(
-        createNewWorker(offloadingSerializer));
+        createNewWorker(offloadingSerializer), evalConf);
 
       workers.add(Pair.of(System.currentTimeMillis(), newWorker));
 
