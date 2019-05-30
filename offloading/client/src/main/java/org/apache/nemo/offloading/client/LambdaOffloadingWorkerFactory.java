@@ -68,6 +68,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
 
+    LOG.info("Invoke async request {}", request);
     awsLambda.invokeAsync(request);
   }
 
