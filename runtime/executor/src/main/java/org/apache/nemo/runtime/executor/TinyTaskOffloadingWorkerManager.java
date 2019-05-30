@@ -83,8 +83,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           final Pair<Long, TinyTaskWorker> pair = iterator.next();
           final TinyTaskWorker taskWorker = pair.right();
 
-          LOG.info("Worker {}, scheduled: {}, pending: {}",
-            taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks());
+          LOG.info("Worker {}, scheduled: {}, pending: {}, workers size: {}",
+            taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks(), workers.size());
 
           if (taskWorker.isReady()) {
             taskWorker.executePending();
@@ -182,6 +182,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     // find worker
     if (workers.size() == 0) {
+      LOG.info("Add worker... 111");
       workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
         createNewWorker(offloadingSerializer), evalConf)));
     }
@@ -190,6 +191,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     final TinyTaskWorker worker = workers.get(index).right();
 
     if (!worker.canHandleTask()) {
+      LOG.info("Add worker... 22");
       final TinyTaskWorker newWorker =  new TinyTaskWorker(
         createNewWorker(offloadingSerializer), evalConf);
 
