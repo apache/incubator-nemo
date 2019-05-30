@@ -1,9 +1,12 @@
 package org.apache.nemo.offloading.client;
 
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
@@ -37,6 +40,10 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private final AWSLambdaAsync awsLambda;
 
+  private final AWSLambda awsLambdaSync = AWSLambdaClientBuilder.standard().withClientConfiguration(
+    new ClientConfiguration().withMaxConnections(500)).build();
+  private final ExecutorService invokeService = Executors.newCachedThreadPool();
+
   private final AtomicInteger dataId = new AtomicInteger(0);
   private final AtomicInteger workerId = new AtomicInteger(0);
 
@@ -68,8 +75,14 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
 
-    LOG.info("Invoke async request {}", request);
-    awsLambda.invokeAsync(request);
+    invokeService.execute(() -> {
+      LOG.info("Invoke sync request {}", request);
+      final InvokeResult result = awsLambdaSync.invoke(request);
+      LOG.info("Get invoke result {}", result);
+    });
+
+    //LOG.info("Invoke async request {}", request);
+    //awsLambda.invokeAsync(request);
   }
 
   @Override
