@@ -67,6 +67,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       try {
         final Pair<Channel, OffloadingEvent> pair = channelFuture.get();
         channel = pair.left();
+
+        LOG.info("Get channel {}", channel);
+
         final ByteBuf byteBuf = pair.right().getByteBuf();
         final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
         final int cnt;
