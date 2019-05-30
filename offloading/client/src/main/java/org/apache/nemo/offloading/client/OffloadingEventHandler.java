@@ -37,6 +37,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
     this.readyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
     this.channelEventHandlerMap = null;
+    this.channelBufferMap = null;
   }
 
   public AtomicInteger getPendingRequest() {
