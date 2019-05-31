@@ -482,8 +482,12 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) {
     channelGroup.remove(ctx.channel());
+    LOG.info("Channel closed !! {}", ctx.channel());
+
+    /*
     final Throwable cause = new Exception("Channel closed");
     throwChannelErrorOnContexts(outputContexts, cause);
+    */
   }
 
   private <T extends ByteTransferContext> void throwChannelErrorOnContexts(final ConcurrentMap<Integer, T> contexts,
