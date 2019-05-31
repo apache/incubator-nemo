@@ -237,5 +237,17 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void close() {
      // TODO: 1 disconnect relay server channel
+    prepareService.shutdown();
+    LOG.info("Shutting down prepare service");
+    try {
+      prepareService.awaitTermination(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+    LOG.info("End of Shutting down prepare service");
+
+    byteTransport.close();
+    LOG.info("End of byte transport");
   }
 }

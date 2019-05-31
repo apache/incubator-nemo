@@ -36,6 +36,11 @@ public final class TinyTaskWorker {
     this.SLOT = evalConf.taskSlot;
   }
 
+  @Override
+  public String toString() {
+    return "Worker-" + offloadingWorker.getId();
+  }
+
   public synchronized void addTask(final OffloadingTask task) {
     pendingTasks.add(task);
   }
