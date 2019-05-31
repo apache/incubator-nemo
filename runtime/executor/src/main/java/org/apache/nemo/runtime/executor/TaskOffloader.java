@@ -484,28 +484,27 @@ public final class TaskOffloader {
             //if (cnt < runningTasks.size() - 1) {
 
             if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime &&
-              isTaskOffloadable(runningTask.getId())) {
-              //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+              currCpuTimeSum > targetCpuTime) {
 
-              LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-                currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
+              if (isTaskOffloadable(runningTask.getId())) {
+                //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-              // offload this task!
-              LOG.info("Offloading task {}", runningTask.getId());
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
-                sendOffloadingDoneEvent(runningTask.getId());
-              });
+                LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+                  currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
 
-              offloadedExecutors.add(Pair.of(runningTask, currTime));
-              currCpuTimeSum -= currTaskCpuTime;
+                // offload this task!
+                LOG.info("Offloading task {}", runningTask.getId());
+                runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                  sendOffloadingDoneEvent(runningTask.getId());
+                });
 
-              cnt += 1;
+                offloadedExecutors.add(Pair.of(runningTask, currTime));
+                currCpuTimeSum -= currTaskCpuTime;
 
-              if (currCpuTimeSum <= targetCpuTime) {
-                break;
+                cnt += 1;
+
               }
             }
-            //}
           }
 
         } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow) {
@@ -520,7 +519,7 @@ public final class TaskOffloader {
               if (entry.getKey().isRunning()) {
                 currCpuTimeSum  += entry.getValue() / 1000;
               } else if (entry.getKey().isDeoffloadPending()) {
-                currCpuTimeSum  += entry.getKey().calculateOffloadedTaskTime();
+                currCpuTimeSum  += (entry.getKey().calculateOffloadedTaskTime() / 1000);
               }
             }
 
@@ -532,7 +531,7 @@ public final class TaskOffloader {
               final TaskExecutor taskExecutor = pair.left();
               if (taskExecutor.isOffloaded()) {
                 final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
-                final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime();
+                final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
 
                 if (avgCpuTimeSum > 0) {
                   LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
