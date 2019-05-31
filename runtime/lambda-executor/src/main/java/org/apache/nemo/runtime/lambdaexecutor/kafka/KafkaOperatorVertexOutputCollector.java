@@ -100,6 +100,8 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
     LOG.info("Sampling rate of vertex " + irVertex.getId() + ": " + samplingRate);
 
+    LOG.info("Hello world!!");
+
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.offloadingOutputCollector = offloadingOutputCollector;
     this.outputCollectorMap = outputCollectorMap;
