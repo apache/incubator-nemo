@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.reef.wake.EventHandler;
+import org.apache.nemo.offloading.common.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

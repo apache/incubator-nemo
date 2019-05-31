@@ -22,12 +22,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayDataFrame;
-import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

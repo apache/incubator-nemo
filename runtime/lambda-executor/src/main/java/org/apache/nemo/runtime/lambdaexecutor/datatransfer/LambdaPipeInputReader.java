@@ -23,9 +23,9 @@ import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
-import org.apache.reef.wake.EventHandler;
 
 import java.util.ArrayList;
 import java.util.Collections;
