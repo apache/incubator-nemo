@@ -175,11 +175,13 @@ public final class TinyTaskOffloader implements Offloader {
 
     this.taskLocationMap = taskLocationMap;
 
+    /*
     logger.scheduleAtFixedRate(() -> {
 
       LOG.info("Pending offloaded ids at {}: {}", taskId, offloadedDataFetcherMap.keySet());
 
     }, 2, 2, TimeUnit.SECONDS);
+    */
   }
 
   @Override
