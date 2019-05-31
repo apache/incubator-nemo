@@ -56,6 +56,8 @@ public final class VMOffloadingRequester {
   private final List<String> vmAddresses = Arrays.asList("172.31.16.202", "172.31.17.96", "172.31.18.133", "172.31.25.250", "172.31.21.223");
   private final List<String> instanceIds = Arrays.asList("i-0707e910d42ab99fb", "i-081f578c165a41a7a", "i-0d346bd15aed1a33f", "i-0756c588bf6b60a71", "i-09355b96aac481c5d");
 
+  private final AtomicInteger requestId = new AtomicInteger(0);
+
   /**
    * Netty client bootstrap.
    */
@@ -67,7 +69,7 @@ public final class VMOffloadingRequester {
 
   private final BlockingQueue<Integer> offloadingRequests = new LinkedBlockingQueue<>();
 
-  final OffloadingEvent requestEvent;
+  //final OffloadingEvent requestEvent;
 
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 8;
@@ -97,9 +99,6 @@ public final class VMOffloadingRequester {
       .handler(new NettyChannelInitializer(new NettyLambdaInboundHandler(map)))
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
-    final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
-      serverAddress, serverPort).getBytes();
-    this.requestEvent = new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length);
 
 
     /*
@@ -295,8 +294,8 @@ public final class VMOffloadingRequester {
     LOG.info("Open channel for VM: {}", openChannel);
 
     // send handshake
-    final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
-      serverAddress, serverPort).getBytes();
+    final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+      serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
     openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
 
     /*

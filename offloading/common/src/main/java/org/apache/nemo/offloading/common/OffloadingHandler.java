@@ -166,6 +166,8 @@ public final class OffloadingHandler {
       opendChannel = channelOpen(input);
     }
 
+    final int requestId = (Integer) input.get("requestId");
+
     map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
 
     System.out.println("Open channel: " + opendChannel);
@@ -200,7 +202,8 @@ public final class OffloadingHandler {
     // write handshake
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
-    byte[] bytes = ByteBuffer.allocate(4).putInt(dataProcessingCnt).array();
+
+    byte[] bytes = ByteBuffer.allocate(8).putInt(requestId).putInt(dataProcessingCnt).array();
 
     ChannelFuture channelFuture =
     opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
@@ -403,7 +406,9 @@ public final class OffloadingHandler {
         case END:
           // send result
           System.out.println("Offloading end");
-          offloadingTransform.close();
+          if (offloadingTransform != null) {
+            offloadingTransform.close();
+          }
           nemoEvent.getByteBuf().release();
           endBlockingQueue.add(0);
           // end of event

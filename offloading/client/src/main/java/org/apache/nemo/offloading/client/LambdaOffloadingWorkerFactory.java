@@ -40,10 +40,6 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private final AWSLambdaAsync awsLambda;
 
-  private final AWSLambda awsLambdaSync = AWSLambdaClientBuilder.standard().withClientConfiguration(
-    new ClientConfiguration().withMaxConnections(500)).build();
-  private final ExecutorService invokeService = Executors.newCachedThreadPool();
-
   private final AtomicInteger dataId = new AtomicInteger(0);
   private final AtomicInteger workerId = new AtomicInteger(0);
 
@@ -52,7 +48,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AtomicInteger extraRequest = new AtomicInteger(0);
   */
 
-  private final InvokeRequest request;
+  //private final InvokeRequest request;
+  private final AtomicInteger requestId = new AtomicInteger(0);
 
   @Inject
   private LambdaOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider) {
@@ -66,23 +63,19 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
 
-    this.request = new InvokeRequest()
-      .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-      .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-        nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
+
   }
 
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
 
-    invokeService.execute(() -> {
-      LOG.info("Invoke sync request {}", request);
-      final InvokeResult result = awsLambdaSync.invoke(request);
-      LOG.info("Get invoke result {}", result);
-    });
+    final InvokeRequest request = new InvokeRequest()
+      .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+      .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+        nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort(), requestId.getAndIncrement()));
 
-    //LOG.info("Invoke async request {}", request);
-    //awsLambda.invokeAsync(request);
+    LOG.info("Invoke async request {}", request);
+    awsLambda.invokeAsync(request);
   }
 
   @Override
