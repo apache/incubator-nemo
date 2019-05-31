@@ -45,12 +45,13 @@ public final class ServerlessContainerWarmer {
   public void start(final int poolSize) {
     LOG.info("Warm up start: {}", poolSize);
     for (int i = 0; i < poolSize; i++) {
+      final int index = i;
       executorService.submit(() -> {
         // Trigger lambdas
         final InvokeRequest request = new InvokeRequest()
           .withFunctionName(Constants.SIDEINPUT_LAMBDA_NAME2)
-          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-            nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
+          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+            nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort(), index));
         return awsLambda.invokeAsync(request);
       });
     }
