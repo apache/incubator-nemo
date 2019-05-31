@@ -525,6 +525,7 @@ public final class TaskOffloader {
 
             // add deoffload pending
 
+            LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
             final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
             while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
               final Pair<TaskExecutor, Long> pair = iterator.next();
@@ -551,6 +552,7 @@ public final class TaskOffloader {
                   }
                 }
               } else if (taskExecutor.isOffloadPending()) {
+                LOG.info("Tas {} is offload pending... ", taskExecutor.getId());
                 /*
                 // pending means that it is not offloaded yet.
                 // close immediately!
