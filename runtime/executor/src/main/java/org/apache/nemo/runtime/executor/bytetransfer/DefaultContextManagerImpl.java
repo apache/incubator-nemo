@@ -664,9 +664,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) {
     channelGroup.remove(ctx.channel());
+
+    LOG.info("Channel closed !! {}", ctx.channel());
+
+    /*
     final Throwable cause = new Exception("Channel closed");
     throwChannelErrorOnContexts(inputContexts, cause);
     throwChannelErrorOnContexts(outputContexts, cause);
+    */
+
     //throwChannelErrorOnContexts(inputContextsInitiatedByRemote, cause);
     //throwChannelErrorOnContexts(outputContextsInitiatedByRemote, cause);
   }
