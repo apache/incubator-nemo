@@ -130,6 +130,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
         if (msg instanceof OffloadingHeartbeatEvent) {
           final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
+          LOG.info("Set heartbeat for task {} / time {}", heartbeatEvent.taskId, heartbeatEvent.time);
           te.setOffloadedTaskTime(heartbeatEvent.time);
 
         } else if (msg instanceof OffloadingResultEvent) {
