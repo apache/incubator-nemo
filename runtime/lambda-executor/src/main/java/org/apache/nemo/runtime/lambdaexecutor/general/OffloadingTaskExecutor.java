@@ -451,7 +451,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         outputWriter.close();
       }
 
-      Thread.sleep(3000);
+      //Thread.sleep(3000);
 
       // TODO: we send checkpoint mark to vm
     } catch (Exception e) {
