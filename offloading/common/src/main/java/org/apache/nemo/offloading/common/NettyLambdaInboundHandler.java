@@ -6,15 +6,19 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 @ChannelHandler.Sharable
 public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapter {
 
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap;
+  private final ExecutorService executorService;
 
   public NettyLambdaInboundHandler(final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap) {
     this.channelMap = channelMap;
+    this.executorService = Executors.newSingleThreadExecutor();
   }
 
   /**
@@ -29,7 +33,9 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
     while (true) {
       final EventHandler<OffloadingEvent> eventHandler = channelMap.get(ctx.channel());
       if (eventHandler != null) {
-        eventHandler.onNext((OffloadingEvent) msg);
+        executorService.execute(() -> {
+          eventHandler.onNext((OffloadingEvent) msg);
+        });
         return;
       }
 
