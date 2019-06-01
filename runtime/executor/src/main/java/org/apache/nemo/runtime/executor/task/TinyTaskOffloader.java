@@ -311,7 +311,7 @@ public final class TinyTaskOffloader implements Offloader {
     final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
     tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 
-    LOG.info("Waiting worker {}", tinyTaskWorker);
+    LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
     pendingStatus = PendingState.WORKER_PENDING;
@@ -352,7 +352,7 @@ public final class TinyTaskOffloader implements Offloader {
       }
       case OUTPUT_PENDING: {
         if (checkIsAllOutputPendingReady()) {
-          LOG.info("Output stop done");
+          LOG.info("Output stop done for {}", taskId);
           outputStopPendingFutures.clear();
           return true;
         } else {
@@ -485,6 +485,8 @@ public final class TinyTaskOffloader implements Offloader {
 
       tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
     }
+
+    LOG.info("Send actual task {}", taskId);
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 

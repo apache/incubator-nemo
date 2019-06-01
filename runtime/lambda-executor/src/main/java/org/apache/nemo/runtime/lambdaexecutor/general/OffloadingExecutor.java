@@ -196,6 +196,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final ExecutorThread executorThread = executorThreads.get(executorIndex);
 
       final OffloadingTask task = (OffloadingTask) event;
+
+      LOG.info("Receive task {}", task.taskId);
+
       for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
         : task.taskLocationMap.entrySet()) {
         taskLocMap.put(entry.getKey(), entry.getValue());
