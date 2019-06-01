@@ -206,6 +206,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       createNewWorker(offloadingSerializer), evalConf);
     workers.add(Pair.of(System.currentTimeMillis(), newWorker));
 
+    newWorker.prepareTaskIfPossible();
     return newWorker;
   }
 

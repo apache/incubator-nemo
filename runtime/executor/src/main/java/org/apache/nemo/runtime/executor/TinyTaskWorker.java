@@ -39,6 +39,7 @@ public final class TinyTaskWorker {
 
   public boolean prepareTaskIfPossible() {
     final int req = prepareRequest.incrementAndGet();
+    LOG.info("prepare cnt for worker {}: {}", offloadingWorker.getId(), req);
     if (offloadedTasks.size() + pendingTasks.size() + req <= SLOT) {
       return true;
     } else {
@@ -56,7 +57,8 @@ public final class TinyTaskWorker {
     final int prepCnt = prepareRequest.decrementAndGet();
 
     if (prepCnt < 0) {
-      throw new RuntimeException("Invalid prepare request cnt... " + prepCnt);
+      throw new RuntimeException("Invalid prepare request cnt for worker "
+      + offloadingWorker.getId() + ": " + prepCnt);
     }
 
     pendingTasks.add(task);
