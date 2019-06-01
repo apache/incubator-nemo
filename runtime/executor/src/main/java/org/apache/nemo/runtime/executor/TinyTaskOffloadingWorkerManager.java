@@ -177,35 +177,53 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }
   }
 
+  private TinyTaskWorker findExecutableWorker() {
+    for (final Pair<Long, TinyTaskWorker> pair : workers) {
+      final TinyTaskWorker worker = pair.right();
+      if (worker.canHandleTask()) {
+        return worker;
+      }
+    }
+
+    throw new RuntimeException("No executable worker");
+  }
+
+  public synchronized TinyTaskWorker prepareSendTask(
+    final OffloadingSerializer<I, O> offloadingSerializer) {
+    //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
+
+    for (final Pair<Long, TinyTaskWorker> pair : workers) {
+      final TinyTaskWorker worker = pair.right();
+      if (worker.prepareTaskIfPossible()) {
+        LOG.info("There are preparable worker");
+        return worker;
+      }
+    }
+
+    LOG.info("No preparable worker.. create new one");
+
+    final TinyTaskWorker newWorker = new TinyTaskWorker(
+      createNewWorker(offloadingSerializer), evalConf);
+    workers.add(Pair.of(System.currentTimeMillis(), newWorker));
+
+    return newWorker;
+  }
+
   public synchronized void sendTask(final OffloadingTask offloadingTask,
                                     final TaskExecutor taskExecutor,
-                                    final OffloadingSerializer<I, O> offloadingSerializer) {
+                                    final TinyTaskWorker worker) {
+    //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
+    offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
+    worker.addTask(offloadingTask);
+  }
 
+  private synchronized void sendTask(final OffloadingTask offloadingTask,
+                                    final TaskExecutor taskExecutor) {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
 
-    // find worker
-    if (workers.size() == 0) {
-      LOG.info("Add worker... 111");
-      workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), evalConf)));
-    }
-
-    final int index = workers.size() - 1;
-    final TinyTaskWorker worker = workers.get(index).right();
-
-    if (!worker.canHandleTask()) {
-      LOG.info("Add worker... 22");
-      final TinyTaskWorker newWorker =  new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), evalConf);
-
-      workers.add(Pair.of(System.currentTimeMillis(), newWorker));
-
-      newWorker.addTask(offloadingTask);
-
-    } else {
-      worker.addTask(offloadingTask);
-    }
+    final TinyTaskWorker worker = findExecutableWorker();
+    worker.addTask(offloadingTask);
   }
 
   private TinyTaskWorker findWorkerThatHandleTask(final String taskId) {

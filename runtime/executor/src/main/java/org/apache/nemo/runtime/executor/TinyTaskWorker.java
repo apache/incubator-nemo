@@ -28,6 +28,7 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
   private final AtomicInteger deletePending = new AtomicInteger(0);
+  private final AtomicInteger prepareRequest = new AtomicInteger(0);
   private final int SLOT;
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
@@ -36,12 +37,28 @@ public final class TinyTaskWorker {
     this.SLOT = evalConf.taskSlot;
   }
 
+  public boolean prepareTaskIfPossible() {
+    final int req = prepareRequest.incrementAndGet();
+    if (offloadedTasks.size() + pendingTasks.size() + req <= SLOT) {
+      return true;
+    } else {
+      prepareRequest.decrementAndGet();
+      return false;
+    }
+  }
+
   @Override
   public String toString() {
     return "Worker-" + offloadingWorker.getId();
   }
 
   public synchronized void addTask(final OffloadingTask task) {
+    final int prepCnt = prepareRequest.decrementAndGet();
+
+    if (prepCnt < 0) {
+      throw new RuntimeException("Invalid prepare request cnt... " + prepCnt);
+    }
+
     pendingTasks.add(task);
   }
 

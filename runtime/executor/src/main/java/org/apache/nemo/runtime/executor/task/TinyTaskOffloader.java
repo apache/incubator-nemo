@@ -1,41 +1,30 @@
 package org.apache.nemo.runtime.executor.task;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.offloading.common.OffloadingWorker;
-import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
-import org.apache.nemo.runtime.executor.TransformContextImpl;
+import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -43,26 +32,19 @@ import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public final class TinyTaskOffloader implements Offloader {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloader.class.getName());
@@ -112,11 +94,22 @@ public final class TinyTaskOffloader implements Offloader {
   private final List<StageEdge> copyOutgoingEdges;
   private final List<StageEdge> copyIncomingEdges;
 
-  private final List<Future> pendingFutures = new ArrayList<>();
+  private final List<Future> inputStopPendingFutures = new ArrayList<>();
+  private final List<Future> outputStopPendingFutures = new ArrayList<>();
 
   private final List<DataFetcher> allFetchers = new ArrayList<>();
 
   private final TaskLocationMap taskLocationMap;
+
+  private enum PendingState {
+    WORKER_PENDING,
+    INPUT_PENDING,
+    OUTPUT_PENDING,
+  }
+
+  private PendingState pendingStatus = PendingState.WORKER_PENDING;
+  private TinyTaskWorker tinyTaskWorker;
+
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -314,27 +307,81 @@ public final class TinyTaskOffloader implements Offloader {
     // TODO: 1) Remove available and pending fetchers!!
     // Stop sources and output emission!!
 
-    // Source stop!!
-    // Source stop!!
-    // Source stop!!
-    for (final DataFetcher dataFetcher : allFetchers) {
-      pendingFutures.add(dataFetcher.stop());
-    }
+    // Prepare task offloading
+    final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
+    tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 
-    // Source stop!!
-    // Source stop!!
+    LOG.info("Waiting worker {}", tinyTaskWorker);
+
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
+    pendingStatus = PendingState.WORKER_PENDING;
 
-    LOG.info("Waiting for source stop futures...");
   }
 
   @Override
   public boolean hasPendingStraemingWorkers() {
-    return !pendingFutures.isEmpty() && checkIsAllPendingReady() && availableFetchers.isEmpty();
+    if (!taskStatus.get().equals(TaskExecutor.Status.OFFLOAD_PENDING)) {
+      return false;
+    }
+
+    switch (pendingStatus) {
+      case WORKER_PENDING: {
+        if (tinyTaskWorker.isReady()) {
+          LOG.info("Worker is in ready {}", tinyTaskWorker);
+          // Source stop!!
+          for (final DataFetcher dataFetcher : allFetchers) {
+            inputStopPendingFutures.add(dataFetcher.stop());
+          }
+          LOG.info("Waiting for source stop futures...");
+          pendingStatus = PendingState.INPUT_PENDING;
+        } else {
+          break;
+        }
+      }
+      case INPUT_PENDING: {
+        if (checkIsAllInputPendingReady() && availableFetchers.isEmpty()) {
+          LOG.info("End of waiting source stop futures...");
+          inputStopPendingFutures.clear();
+
+          LOG.info("Close current output contexts");
+          startOutputPending();
+          pendingStatus = PendingState.OUTPUT_PENDING;
+        } else {
+          break;
+        }
+      }
+      case OUTPUT_PENDING: {
+        if (checkIsAllOutputPendingReady()) {
+          LOG.info("Output stop done");
+          outputStopPendingFutures.clear();
+          return true;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return false;
   }
 
-  private boolean checkIsAllPendingReady() {
-    for (final Future future : pendingFutures) {
+  private boolean checkIsAllInputPendingReady() {
+    for (final Future future : inputStopPendingFutures) {
+      if (!future.isDone()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void startOutputPending() {
+    outputWriters.forEach(writer -> {
+      LOG.info("Stopping writer {}", writer);
+      outputStopPendingFutures.add(writer.stop());
+    });
+  }
+
+  private boolean checkIsAllOutputPendingReady() {
+    for (final Future future : outputStopPendingFutures) {
       if (!future.isDone()) {
         return false;
       }
@@ -377,23 +424,6 @@ public final class TinyTaskOffloader implements Offloader {
     availableFetchers.clear();
     pendingFetchers.clear();
 
-
-    pendingFutures.clear();
-    LOG.info("End of waiting source stop futures...");
-
-    // Sink stop!!
-    // Sink stop!!
-    // Sink stop!!
-
-    LOG.info("Close current output contexts");
-
-    outputWriters.forEach(writer -> {
-      LOG.info("Stopping writer {}", writer);
-      writer.stop();
-    });
-    // Sink stop!!
-    // Sink stop!!
-    // Sink stop!!
     final OffloadingTask offloadingTask;
     final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
       stateAndCoderMap = getStateAndCoderMap();
@@ -434,7 +464,7 @@ public final class TinyTaskOffloader implements Offloader {
 
       final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
     } else {
       offloadingTask = new OffloadingTask(
         executorId,
@@ -453,8 +483,7 @@ public final class TinyTaskOffloader implements Offloader {
         taskLocationMap.locationMap);
 
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
     }
 
     prevOffloadStartTime.set(System.currentTimeMillis());

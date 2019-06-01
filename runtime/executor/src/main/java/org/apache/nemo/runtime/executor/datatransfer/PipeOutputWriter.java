@@ -39,9 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
@@ -231,7 +229,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void stop() {
+  public Future<Boolean> stop() {
     // send stop message!
 
     final CountDownLatch count = new CountDownLatch(pipes.size());
@@ -257,13 +255,32 @@ public final class PipeOutputWriter implements OutputWriter {
       });
     }
 
-    try {
-      LOG.info("Waiting for ack...");
-      count.await();
-      LOG.info("End of Waiting for ack...");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    return new Future<Boolean>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return count.getCount() == 0;
+      }
+
+      @Override
+      public Boolean get() throws InterruptedException, ExecutionException {
+        return count.getCount() == 0;
+      }
+
+      @Override
+      public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return count.getCount() == 0;
+      }
+    };
 
     // DO nothing
 

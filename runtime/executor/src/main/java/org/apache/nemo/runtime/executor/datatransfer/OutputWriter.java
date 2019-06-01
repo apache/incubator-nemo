@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.*;
+import java.util.concurrent.Future;
 
 /**
  * Represents the output data transfer from a task.
@@ -46,7 +47,7 @@ public interface OutputWriter {
 
   void close();
 
-  void stop();
+  Future<Boolean> stop();
 
   void restart();
 }
