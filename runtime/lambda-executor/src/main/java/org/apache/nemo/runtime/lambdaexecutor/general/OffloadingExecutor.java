@@ -226,6 +226,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final TaskEndEvent endEvent = (TaskEndEvent) event;
       final TaskExecutor deletedTask = findTask(endEvent.taskId);
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
+      taskExecutorStartTimeMap.remove(deletedTask);
+
       executorThread.deleteTask(deletedTask);
 
     } else {
