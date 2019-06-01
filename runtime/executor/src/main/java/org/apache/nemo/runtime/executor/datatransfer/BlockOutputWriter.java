@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Future;
 
 /**
  * Represents the output data transfer from a task.
@@ -123,7 +124,7 @@ public final class BlockOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void stop() {
+  public Future<Boolean> stop() {
     throw new UnsupportedOperationException();
   }
 
