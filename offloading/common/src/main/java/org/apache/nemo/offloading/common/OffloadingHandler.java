@@ -174,16 +174,6 @@ public final class OffloadingHandler {
 
     System.out.println("Open channel: " + opendChannel);
 
-    // cpu heartbeat
-    final Channel ochannel = opendChannel;
-    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
-      System.out.println("CPU Load: " + cpuLoad);
-      final ByteBuf bb = ochannel.alloc().buffer();
-      bb.writeDouble(cpuLoad);
-      ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
-    }, 1, 1, TimeUnit.SECONDS);
-
     // load class loader
 
     if (classLoader == null) {
@@ -360,6 +350,16 @@ public final class OffloadingHandler {
 
           outputCollector.emit(new OffloadingEvent(
             OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
+
+          // cpu heartbeat
+          final Channel ochannel = opendChannel;
+          workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+            final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+            System.out.println("CPU Load: " + cpuLoad);
+            final ByteBuf bb = ochannel.alloc().buffer();
+            bb.writeDouble(cpuLoad);
+            ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+          }, 1, 1, TimeUnit.SECONDS);
 
           break;
         }
