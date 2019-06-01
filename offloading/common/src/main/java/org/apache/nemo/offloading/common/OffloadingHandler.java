@@ -64,6 +64,8 @@ public final class OffloadingHandler {
 
   private final OperatingSystemMXBean operatingSystemMXBean;
 
+  private transient CountDownLatch workerInitLatch;
+
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
@@ -90,6 +92,8 @@ public final class OffloadingHandler {
     // 1) connect to the VM worker
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
+
+    this.workerInitLatch = new CountDownLatch(1);
 
     final ChannelFuture channelFuture;
     channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
@@ -218,6 +222,29 @@ public final class OffloadingHandler {
         break;
       }
     }
+
+    // Waiting worker init done..
+    LOG.info("Waiting worker init");
+    try {
+      workerInitLatch.await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
+
+    LOG.info("Sending worker init done");
+
+    // cpu heartbeat
+    final Channel ochannel = opendChannel;
+    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+      System.out.println("CPU Load: " + cpuLoad);
+      final ByteBuf bb = ochannel.alloc().buffer();
+      bb.writeDouble(cpuLoad);
+      ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+    }, 1, 1, TimeUnit.SECONDS);
+
 
     // ready state
     //opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.READY, new byte[0], 0));
@@ -348,18 +375,7 @@ public final class OffloadingHandler {
 
           workerFinishTime = System.currentTimeMillis();
 
-          outputCollector.emit(new OffloadingEvent(
-            OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
-
-          // cpu heartbeat
-          final Channel ochannel = opendChannel;
-          workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-            final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
-            System.out.println("CPU Load: " + cpuLoad);
-            final ByteBuf bb = ochannel.alloc().buffer();
-            bb.writeDouble(cpuLoad);
-            ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
-          }, 1, 1, TimeUnit.SECONDS);
+          workerInitLatch.countDown();
 
           break;
         }
