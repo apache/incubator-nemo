@@ -140,6 +140,8 @@ public final class OffloadingHandler {
 		System.out.println("Input: " + input);
     final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
 
+    offloadingTransform = null;
+
     // open channel
     Channel opendChannel = null;
     for (final Map.Entry<Channel, EventHandler<OffloadingEvent>> entry : map.entrySet()) {

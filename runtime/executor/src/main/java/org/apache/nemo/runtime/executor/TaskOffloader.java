@@ -204,29 +204,37 @@ public final class TaskOffloader {
      return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks, statelessRunningTasks, statefulRunningTasks);
   }
 
-  private void offloading(String stageId, int time) {
+  private void offloading(String stageId, int time, final int cnt) {
     se.schedule(() -> {
       LOG.info("Start offloading {}", stageId);
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
+      int offloadCnt = 0;
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains(stageId) && isTaskOffloadable(taskExecutor.getId())) {
+        if (taskExecutor.getId().contains(stageId)
+          &&  taskExecutor.isRunning()
+          && isTaskOffloadable(taskExecutor.getId())) {
           //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-            sendOffloadingDoneEvent(taskExecutor.getId());
-          });
+
+          if (offloadCnt < cnt) {
+            LOG.info("Offloading task {}", taskExecutor.getId());
+            offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
+            taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+              sendOffloadingDoneEvent(taskExecutor.getId());
+            });
+            offloadCnt += 1;
+          }
         }
       }
     }, time, TimeUnit.SECONDS);
   }
 
-  private void deoffloading(String stageId, int time) {
+  private void deoffloading(String stageId, int time, final int cnt) {
     se.schedule(() -> {
       LOG.info("Start deoffloading {}", stageId);
+      int deoffloadCnt = 0;
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
@@ -236,12 +244,15 @@ public final class TaskOffloader {
         final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains(stageId)) {
           if (isTaskOffloadable(pair.left().getId())) {
-            LOG.info("Deoffloading {}", pair.left().getId());
-            pair.left().endOffloading((m) -> {
-              LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
-              sendOffloadingDoneEvent(pair.left().getId());
-            });
-            iterator.remove();
+            if (deoffloadCnt < cnt) {
+              LOG.info("Deoffloading {}", pair.left().getId());
+              pair.left().endOffloading((m) -> {
+                LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
+                sendOffloadingDoneEvent(pair.left().getId());
+              });
+              iterator.remove();
+              deoffloadCnt += 1;
+            }
           }
         }
       }
@@ -251,15 +262,15 @@ public final class TaskOffloader {
   public void startDownstreamDebugging() {
     // For offloading debugging
 
-    offloading("Stage0", 25);
+    offloading("Stage0", 25, 5);
 
     //offloading("Stage1", 65);
 
-    deoffloading("Stage0", 60);
+    deoffloading("Stage0", 60, 3);
 
-    offloading("Stage0", 80);
+    offloading("Stage0", 85, 2);
 
-    deoffloading("Stage0", 110);
+    deoffloading("Stage0", 110, 5);
     //deoffloading("Stage1", 140);
 
 
