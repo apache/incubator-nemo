@@ -18,7 +18,7 @@ import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
 public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingEvent>> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingEventHandler.class.getName());
   private final BlockingQueue<Pair<Channel,OffloadingEvent>> handshakeQueue;
-  private final BlockingQueue<Pair<Channel, OffloadingEvent>> readyQueue;
+  private final BlockingQueue<Pair<Channel,OffloadingEvent>> workerReadyQueue;
   private final BlockingQueue<Pair<Channel, OffloadingEvent>> endQueue;
   private final AtomicInteger pendingRequest = new AtomicInteger();
   private final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
@@ -28,7 +28,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
 
   public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap) {
     this.handshakeQueue = new LinkedBlockingQueue<>();
-    this.readyQueue = new LinkedBlockingQueue<>();
+    this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
     //this.channelBufferMap = new ConcurrentHashMap<>();
     this.channelEventHandlerMap = channelEventHandlerMap;
@@ -37,7 +37,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
 
   public OffloadingEventHandler() {
     this.handshakeQueue = new LinkedBlockingQueue<>();
-    this.readyQueue = new LinkedBlockingQueue<>();
+    this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
     this.channelEventHandlerMap = null;
     this.receivedRequests = new HashSet<>();
@@ -48,8 +48,8 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
     return pendingRequest;
   }
 
-  public BlockingQueue<Pair<Channel, OffloadingEvent>> getReadyQueue() {
-    return readyQueue;
+  public BlockingQueue<Pair<Channel, OffloadingEvent>> getWorkerReadyQueue() {
+    return workerReadyQueue;
   }
 
   public BlockingQueue<Pair<Channel, OffloadingEvent>> getHandshakeQueue() {
@@ -74,6 +74,11 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
         }
         //nemoEvent.right().getByteBuf().release();
         break;
+      case WORKER_INIT_DONE: {
+        LOG.info("Worker is ready for channel {}", nemoEvent.left());
+        workerReadyQueue.add(nemoEvent);
+        break;
+      }
       default:
         if (channelEventHandlerMap != null) {
           if (channelEventHandlerMap.containsKey(nemoEvent.left())) {

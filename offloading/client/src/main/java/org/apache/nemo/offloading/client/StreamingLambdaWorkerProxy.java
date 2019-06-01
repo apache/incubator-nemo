@@ -16,7 +16,7 @@ import java.util.concurrent.*;
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
   private volatile Channel channel;
-  private volatile int dataProcessingCnt = 0;
+  //private volatile int dataProcessingCnt = 0;
   private volatile boolean finished = false;
   private final BlockingQueue<OffloadingEvent> endQueue;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
@@ -70,6 +70,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
         LOG.info("Get channel {}", channel);
 
+        /*
         final ByteBuf byteBuf = pair.right().getByteBuf();
         final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
         final int cnt;
@@ -81,6 +82,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         }
         dataProcessingCnt = cnt;
         byteBuf.release();
+        */
 
         channelEventHandlerMap.put(channel, new EventHandler<OffloadingEvent>() {
           @Override
@@ -151,7 +153,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public int getDataProcessingCnt() {
-    return dataProcessingCnt;
+    throw new RuntimeException("Not supported");
+    //return dataProcessingCnt;
   }
 
   @Override

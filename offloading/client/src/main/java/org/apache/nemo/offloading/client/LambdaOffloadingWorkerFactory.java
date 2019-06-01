@@ -110,9 +110,14 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
           throw new RuntimeException(e);
         }
 
+        pair.right().getByteBuf().release();
+
         pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
 
-        return pair;
+        LOG.info("Waiting worker init");
+        final Pair<Channel, OffloadingEvent> workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
+        LOG.info("Waiting worker init done");
+        return workerDonePair;
       }
 
       @Override
@@ -129,6 +134,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   public OffloadingWorker createOffloadingWorker(final ByteBuf workerInitBuffer,
                                                  final OffloadingSerializer offloadingSerializer) {
 
+    // TODO: not supported!
     createChannelRequest();
 
     final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {

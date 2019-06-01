@@ -357,6 +357,10 @@ public final class OffloadingHandler {
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 
           workerFinishTime = System.currentTimeMillis();
+
+          outputCollector.emit(new OffloadingEvent(
+            OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
+
           break;
         }
         case DATA: {
