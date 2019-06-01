@@ -76,8 +76,12 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     this.workers = new LinkedList<>();
 
     scheduler.scheduleAtFixedRate(() -> {
-      // scheduling
-      try {
+      schedulingWorkers();
+    }, 2, 2, TimeUnit.SECONDS);
+  }
+
+  private synchronized void schedulingWorkers() {
+     try {
         final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
         while (iterator.hasNext()) {
           final Pair<Long, TinyTaskWorker> pair = iterator.next();
@@ -94,7 +98,6 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-    }, 1, 1, TimeUnit.SECONDS);
   }
 
   private StreamingLambdaWorkerProxy createNewWorker(
