@@ -58,6 +58,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private transient AckScheduledService ackScheduledService;
 
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskAssignedMap;
+  private final ConcurrentMap<TaskExecutor, Long> taskExecutorStartTimeMap;
   private final Map<TransferKey, Integer> taskTransferIndexMap;
 
   private final String relayServerAddress;
@@ -82,6 +83,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskAssignedMap = new ConcurrentHashMap<>();
+    this.taskExecutorStartTimeMap = new ConcurrentHashMap<>();
     this.relayServerAddress = relayServerAddress;
     this.relayServerPort = relayServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
@@ -121,12 +123,18 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
 
+      final long currTime = System.currentTimeMillis();
+
       for (final TaskExecutor taskExecutor : taskAssignedMap.keySet()) {
         final long et = taskExecutor.getTaskExecutionTime().get();
         taskExecutor.getTaskExecutionTime().getAndAdd(-et);
-        LOG.info("Send heartbeat {}/{}", taskExecutor.getId(), et);
-        outputCollector.emit(new OffloadingHeartbeatEvent(
-          taskExecutor.getId(), getIndexFromTaskId(taskExecutor.getId()), et));
+
+        if (currTime - taskExecutorStartTimeMap.get(taskExecutor)
+          >= TimeUnit.SECONDS.toMillis(10)) {
+          LOG.info("Send heartbeat {}/{}", taskExecutor.getId(), et);
+          outputCollector.emit(new OffloadingHeartbeatEvent(
+            taskExecutor.getId(), getIndexFromTaskId(taskExecutor.getId()), et));
+        }
       }
 
       for (final SocketChannel channel : channels.keySet()) {
@@ -210,6 +218,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       executorThread.addNewTask(taskExecutor);
 
+      taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
       taskAssignedMap.put(taskExecutor, executorThread);
 
     } else if (event instanceof TaskEndEvent) {

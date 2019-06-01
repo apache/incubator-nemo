@@ -414,6 +414,8 @@ public final class TinyTaskOffloader implements Offloader {
       LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
       LOG.info("Sending location map at {}: {}", taskId, taskLocationMap.locationMap);
 
+      taskExecutor.setOffloadedTaskTime(0);
+
       offloadingTask = new OffloadingTask(
         executorId,
         taskId,
