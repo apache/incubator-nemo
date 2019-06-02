@@ -240,7 +240,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, readable, outputCollector, prepareService);
+          beamUnboundedSourceVertex, edge, readable, outputCollector, prepareService, offloadingTask.taskId);
         availableFetchers.add(dataFetcher);
       }
 
