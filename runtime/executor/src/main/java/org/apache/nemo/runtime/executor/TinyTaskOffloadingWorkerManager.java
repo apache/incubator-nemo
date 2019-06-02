@@ -155,6 +155,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           if (taskWorker.hasNoTask() && pendingCnt == 0) {
             taskWorker.close();
             removeRunningWorker(taskWorker);
+            deletePendingWorkers.remove(te.getId());
           }
 
           te.getOffloadingQueue().add(msg);
@@ -260,6 +261,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         LOG.info("Closing worker...");
         worker.close();
         removeRunningWorker(worker);
+        deletePendingWorkers.remove(taskId);
       }
     }
   }

@@ -327,12 +327,12 @@ public final class TinyTaskOffloader implements Offloader {
     switch (pendingStatus) {
       case WORKER_PENDING: {
         if (tinyTaskWorker.isReady()) {
-          LOG.info("Worker is in ready {}", tinyTaskWorker);
+          LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
           // Source stop!!
           for (final DataFetcher dataFetcher : allFetchers) {
             inputStopPendingFutures.add(dataFetcher.stop());
           }
-          LOG.info("Waiting for source stop futures...");
+          LOG.info("Waiting for source stop futures in {}", taskId);
           pendingStatus = PendingState.INPUT_PENDING;
         } else {
           break;
@@ -343,7 +343,7 @@ public final class TinyTaskOffloader implements Offloader {
           LOG.info("End of waiting source stop futures...");
           inputStopPendingFutures.clear();
 
-          LOG.info("Close current output contexts");
+          LOG.info("Close current output contexts in {}", taskId);
           startOutputPending();
           pendingStatus = PendingState.OUTPUT_PENDING;
         } else {

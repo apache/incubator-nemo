@@ -49,7 +49,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private long prevWatermarkTimestamp = -1L;
 
   private volatile boolean isFinishd = false;
-  private volatile boolean finishedAck = false;
+  //private volatile boolean finishedAck = false;
 
   private boolean isPrepared = false;
 
@@ -98,7 +98,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public Object fetchDataElement() throws NoSuchElementException, IOException {
     if (isFinishd) {
-      finishedAck = true;
+      //finishedAck = true;
       LOG.info("Fetch data element after isFinished set");
       throw new NoSuchElementException();
     }
@@ -144,7 +144,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
       @Override
       public boolean isDone() {
-        return finishedAck;
+        return true;
       }
 
       @Override
@@ -161,7 +161,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void restart() {
-    finishedAck = false;
+    //finishedAck = false;
     isFinishd = false;
   }
 
