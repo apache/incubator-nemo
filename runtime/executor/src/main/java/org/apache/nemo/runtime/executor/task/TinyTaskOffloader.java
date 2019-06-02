@@ -339,13 +339,16 @@ public final class TinyTaskOffloader implements Offloader {
         }
       }
       case INPUT_PENDING: {
-        if (checkIsAllInputPendingReady() && availableFetchers.isEmpty()) {
-          LOG.info("End of waiting source stop futures...");
+        if (checkIsAllInputPendingReady()) {
           inputStopPendingFutures.clear();
+          LOG.info("Input pending done {}", taskId);
+          if (availableFetchers.isEmpty()) {
+            LOG.info("End of waiting source stop futures...");
 
-          LOG.info("Close current output contexts in {}", taskId);
-          startOutputPending();
-          pendingStatus = PendingState.OUTPUT_PENDING;
+            LOG.info("Close current output contexts in {}", taskId);
+            startOutputPending();
+            pendingStatus = PendingState.OUTPUT_PENDING;
+          }
         } else {
           break;
         }

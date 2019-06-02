@@ -776,7 +776,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           edge,
           sourceReader.get(),
           outputCollector,
-          prepareService));
+          prepareService,
+          taskId));
       }
 
       // Parent-task read

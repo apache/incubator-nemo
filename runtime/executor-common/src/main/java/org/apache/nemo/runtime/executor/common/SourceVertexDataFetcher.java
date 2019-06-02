@@ -55,15 +55,19 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private final ExecutorService prepareService;
 
+  private final String taskId;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
                                  final OutputCollector outputCollector,
-                                 final ExecutorService prepareService) {
+                                 final ExecutorService prepareService,
+                                 final String taskId) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
     this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
+    this.taskId = taskId;
 
     LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
     if (!bounded) {
@@ -99,7 +103,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   public Object fetchDataElement() throws NoSuchElementException, IOException {
     if (isFinishd) {
       //finishedAck = true;
-      LOG.info("Fetch data element after isFinished set");
+      LOG.info("Fetch data element after isFinished set for {}", taskId);
       throw new NoSuchElementException();
     }
 
