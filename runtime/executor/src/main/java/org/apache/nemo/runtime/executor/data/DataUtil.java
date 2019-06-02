@@ -92,14 +92,8 @@ public final class DataUtil {
       final InputStreamIterator iterator =
           new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
       iterator.forEachRemaining(deserializedData::add);
-      //iterator.forEachRemaining(data -> LOG.info("iterator check"));
-      deserializedData.forEach(data -> LOG.info("inside DataUtil: {} {}", key, data));
       return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
           iterator.getNumEncodedBytes());
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      return null;
     }
   }
 
@@ -267,7 +261,6 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
-          LOG.info("IOException", e);
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
