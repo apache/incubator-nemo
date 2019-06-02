@@ -51,8 +51,11 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-      loggingTime = true;
     }, 500, 500, TimeUnit.MILLISECONDS);
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      loggingTime = true;
+    }, 2, 2, TimeUnit.SECONDS);
 
     executorService.execute(() -> {
       try {
