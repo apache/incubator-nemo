@@ -55,7 +55,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   /**
    * Constructor.
    *
-   * @param volumeDirectory   the CrailStore directory which will contain the files.
+   * @param volumeDirectory   the CrailStore directory where we contain the files.
    * @param jobId             the job id.
    * @param serializerManager the serializer manager.
    * @throws Exception for any error occurred while trying to set Crail requirements.

@@ -75,7 +75,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     try {
       fs.delete(metaFilePath, true).get().syncDir();
     } catch (Exception e) {
-      LOG.info("HY: metadata deletion failed");
+      LOG.info("Metadata deletion failed");
       e.printStackTrace();
     }
   }
@@ -86,7 +86,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   @Override
   public synchronized void commitBlock() throws IOException {
-    LOG.info("HY: metadata commit for block {}", metaFilePath);
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
     try {
       CrailBufferedOutputStream metaFileOutputstream =
@@ -101,7 +100,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
       }
       metaFileOutputstream.close();
     } catch (Exception e) {
-      LOG.info("HY: CrailBufferedOutputStream exception occurred");
+      LOG.info("Error while writing meta data");
       e.printStackTrace();
     }
     setCommitted(true);
@@ -130,7 +129,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath,
                                                                    final CrailStore fs) throws IOException {
-    LOG.info("HY: metafilePath {}", metaFilePath);
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try {
       CrailBufferedInputStream dataInputStream = fs.lookup(metaFilePath).get().asFile().getBufferedInputStream(0);
@@ -149,7 +147,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
         partitionMetadataList.add(partitionMetadata);
       }
     } catch (Exception e) {
-      throw new IOException("HY: File " + metaFilePath + " does not exist!");
+      throw new IOException("Metadata " + metaFilePath + " does not exist!");
     }
     return new CrailFileMetadata<>(metaFilePath, partitionMetadataList, fs);
   }

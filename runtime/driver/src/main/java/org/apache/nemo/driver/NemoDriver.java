@@ -158,20 +158,16 @@ public final class NemoDriver {
       try {
         conf = new CrailConfiguration();
         fs = CrailStore.newInstance(conf);
-
-        LOG.info("creating main dir /tmp_crail");
-      try{
+        try{
         fs.delete("/tmp_crail", true).get().syncDir();
-      }
-      catch(Exception e){
+        } catch(Exception e){
         LOG.info("failed to delete /tmp_crail");
-      }
+        }
         fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
         fs.create("/tmp_crail/files", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-        LOG.info("creating main dir done");
       }
       catch(Exception e){
-        LOG.info("HY: Error occurred during driver crail main dir setup");
+        LOG.info("Failed to create Crail directory");
         e.printStackTrace();
       }
       runtimeMaster.requestContainer(resourceSpecificationString);

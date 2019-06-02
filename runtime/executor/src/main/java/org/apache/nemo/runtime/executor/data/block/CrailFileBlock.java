@@ -76,20 +76,17 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
     this.filePath = filePath;
     this.metadata = metadata;
       try {
-        LOG.info("HY: FileBlock entered");
         this.fs = fs;
-        this.file =
-          fs.create(filePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true)
-            .get().asFile();
+        this.file = fs.create(filePath, CrailNodeType.DATAFILE,
+                              CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true)
+                              .get().asFile();
         file.syncDir();
-        LOG.info("HY: crail file block created");
       } catch (Exception e1) {
         try {
           this.fs = fs;
           this.file = fs.lookup(filePath).get().asFile();
-          LOG.info("HY: {} fetched", blockId);
         } catch (Exception e2) {
-          LOG.info("HY: {} fetch failed");
+          LOG.info("{} fetch failed", blockId);
         }
       }
     }
@@ -107,7 +104,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
     for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
       metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
       fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
-      LOG.info(String.format("HY: Expected write = %d, actual write = %d", serializedPartition.getLength(), serializedPartition.getData().length));
     }
     fileOutputStream.close();
   }
@@ -207,14 +203,11 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
-                LOG.info("HY: partition length of the block to read {}", partitionMetadata.getPartitionSize());
-                int readBytes = fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
-                LOG.info("HY: readBytes: {}", readBytes);
+                fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
-                LOG.info("HY: partition skipped");
               }
             }
         } catch (Exception e) {
@@ -332,7 +325,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
     } catch (IOException e) {
       e.printStackTrace();
     } catch (Exception e) {
-      LOG.info("HY: deleteFile failed");
+      LOG.info("Failed to delete file");
       e.printStackTrace();
     }
   }
@@ -349,7 +342,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
       if (!metadata.isCommitted()) {
         commitPartitions();
         metadata.commitBlock();
-        LOG.info("HY: block and metadata commit for {}", id);
       }
       final List<PartitionMetadata<K>> partitionMetadataList = metadata.getPartitionMetadataList();
       final Map<K, Long> partitionSizes = new HashMap<>(partitionMetadataList.size());
