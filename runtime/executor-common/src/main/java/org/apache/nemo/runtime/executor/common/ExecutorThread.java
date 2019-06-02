@@ -43,20 +43,27 @@ public final class ExecutorThread {
     newTasks.add(task);
   }
 
+  private volatile boolean loggingTime = false;
+
   public void start() {
 
     final int batchSize = 100;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-      LOG.info("{} Available tasks {}: {}, pending {}: {}",
-        executorThreadName,
-        availableTasks.size(), availableTasks, pendingTasks.size(), pendingTasks);
+      loggingTime = true;
     }, 500, 500, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
       try {
         while (!finished) {
+
+          if (loggingTime) {
+            loggingTime = false;
+            LOG.info("{} Available tasks {}: {}, pending {}: {}",
+              executorThreadName,
+              availableTasks.size(), availableTasks, pendingTasks.size(), pendingTasks);
+          }
 
           while (!newTasks.isEmpty()) {
             final TaskExecutor newTask = newTasks.poll();
