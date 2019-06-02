@@ -74,9 +74,9 @@ enum MessageType {
     TaskIndexInfo = 17;
     RequestTransferIndex = 18;
     TransferIndexInfo = 19;
-    RequestTaskOffloading = 20;
-    RequestTaskOffloadingDone = 21;
-    TaskOffloadingInfo = 22;
+    RequestStageOffloading = 20;
+    RequestStageOffloadingDone = 21;
+    StageOffloadingInfo = 22;
 }
 
 message Message {
@@ -102,9 +102,9 @@ message Message {
     optional TaskIndexInfoMessage taskIndexInfoMsg = 20;
     optional RequestTransferIndexMessage requestTransferIndexMsg = 21;
     optional TransferIndexInfoMessage transferIndexInfoMsg = 22;
-    optional RequestTaskOffloadingMessage requestTaskOffloadingMsg = 23;
-    optional RequestTaskOffloadingDoneMessage requestTaskOffloadingDoneMsg = 24;
-    optional TaskOffloadingInfoMessage taskOffloadingInfoMsg = 25;
+    optional RequestStageOffloadingMessage requestStageOffloadingMsg = 23;
+    optional RequestStageOffloadingDoneMessage requestStageOffloadingDoneMsg = 24;
+    optional StageOffloadingInfoMessage stageOffloadingInfoMsg = 25;
 }
 
 // Messages from Master to Executors
@@ -283,17 +283,17 @@ message TransferIndexInfoMessage {
   required int64 index = 2;
 }
 
-message RequestTaskOffloadingMessage {
+message RequestStageOffloadingMessage {
   required string executorId = 1;
-  required string taskId = 2;
+  required string stageId = 2;
 }
 
-message RequestTaskOffloadingDoneMessage {
+message RequestStageOffloadingDoneMessage {
   required string executorId = 1;
-  required string taskId = 2;
+  required string stageId = 2;
 }
 
-message TaskOffloadingInfoMessage {
+message StageOffloadingInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required bool canOffloading = 2;
 }

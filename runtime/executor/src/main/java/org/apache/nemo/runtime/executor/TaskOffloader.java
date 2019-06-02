@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public final class TaskOffloader {
@@ -66,6 +67,8 @@ public final class TaskOffloader {
 
   private final String executorId;
 
+  private final StageOffloadingWorkerManager stageOffloadingWorkerManager;
+
   @Inject
   private TaskOffloader(
     @Parameter(JobConf.ExecutorId.class) String executorId,
@@ -78,9 +81,11 @@ public final class TaskOffloader {
     final CpuEventModel cpuEventModel,
     final PolynomialCpuTimeModel cpuTimeModel,
     final EvalConf evalConf,
-    final PersistentConnectionToMasterMap toMaster) {
+    final PersistentConnectionToMasterMap toMaster,
+    final StageOffloadingWorkerManager stageOffloadingWorkerManager) {
     this.executorId = executorId;
     this.evalConf = evalConf;
+    this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
     this.r = r;
     this.k = k;
     this.threshold = threshold;
@@ -96,7 +101,7 @@ public final class TaskOffloader {
     this.eventAverage = new DescriptiveStatistics();
     eventAverage.setWindowSize(2);
 
-    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
+    this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
     this.cpuEventModel = cpuEventModel;
     this.offloadedExecutors = new LinkedList<>();
 
@@ -215,14 +220,14 @@ public final class TaskOffloader {
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
         if (taskExecutor.getId().contains(stageId)
           &&  taskExecutor.isRunning()
-          && isTaskOffloadable(taskExecutor.getId())) {
+          && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
           //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
 
           if (offloadCnt < cnt) {
             LOG.info("Offloading task {}", taskExecutor.getId());
             offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
             taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-              sendOffloadingDoneEvent(taskExecutor.getId());
+              stageOffloadingWorkerManager.endOffloading(stageId);
             });
             offloadCnt += 1;
           }
@@ -243,12 +248,13 @@ public final class TaskOffloader {
       while (iterator.hasNext()) {
         final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains(stageId)) {
-          if (isTaskOffloadable(pair.left().getId())) {
+          if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
             if (deoffloadCnt < cnt) {
               LOG.info("Deoffloading {}", pair.left().getId());
               pair.left().endOffloading((m) -> {
                 LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
-                sendOffloadingDoneEvent(pair.left().getId());
+                stageOffloadingWorkerManager.endOffloading(stageId);
+                //sendOffloadingDoneEvent(pair.left().getId());
               });
               iterator.remove();
               deoffloadCnt += 1;
@@ -282,77 +288,6 @@ public final class TaskOffloader {
     deoffloading("Stage2", 135);
     deoffloading("Stage0", 160);
     */
-  }
-
-  public void startDebugging() {
-    // For offloading debugging
-    se.scheduleAtFixedRate(() -> {
-      LOG.info("Start offloading kafka (only first stage)");
-      int cnt = 0;
-
-      //final int offloadCnt = taskExecutorMap.keySet().stream()
-      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
-      final int offloadCnt = taskExecutorMap.size();
-
-      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (cnt < offloadCnt) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-            sendOffloadingDoneEvent(taskExecutor.getId());
-          });
-          cnt += 1;
-        }
-      }
-    }, 25, 50, TimeUnit.SECONDS);
-
-    se.scheduleAtFixedRate(() -> {
-      LOG.info("End offloading kafka");
-      while (!offloadedExecutors.isEmpty()) {
-        final TaskExecutor endTask = offloadedExecutors.remove(0).left();
-        LOG.info("End task {}", endTask);
-        endTask.endOffloading((m) -> {
-          // do sth
-        });
-      }
-    }, 40, 50, TimeUnit.SECONDS);
-  }
-
-  private void sendOffloadingDoneEvent(final String taskId) {
-    LOG.info("Send offloading done for {}", taskId);
-    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID).request(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestTaskOffloadingDone)
-          .setRequestTaskOffloadingDoneMsg(ControlMessage.RequestTaskOffloadingDoneMessage.newBuilder()
-            .setExecutorId(executorId)
-            .setTaskId(taskId)
-            .build())
-          .build());
-  }
-
-  private boolean isTaskOffloadable(final String taskId) {
-    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID).request(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestTaskOffloading)
-          .setRequestTaskOffloadingMsg(ControlMessage.RequestTaskOffloadingMessage.newBuilder()
-            .setExecutorId(executorId)
-            .setTaskId(taskId)
-            .build())
-          .build());
-
-    try {
-      final ControlMessage.Message msg = msgFuture.get();
-      return msg.getTaskOffloadingInfoMsg().getCanOffloading();
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
   }
 
   private Map<TaskExecutor, Long> calculateCpuTimeDelta(
@@ -496,6 +431,7 @@ public final class TaskOffloader {
           final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
           final long curr = System.currentTimeMillis();
           int cnt = 0;
+
           for (final TaskExecutor runningTask : runningTasks) {
             final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
             //if (cnt < runningTasks.size() - 1) {
@@ -503,7 +439,9 @@ public final class TaskOffloader {
             if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime &&
               currCpuTimeSum > targetCpuTime) {
 
-              if (isTaskOffloadable(runningTask.getId())) {
+              final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+
+              if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
                 //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
                 LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
@@ -512,7 +450,7 @@ public final class TaskOffloader {
                 // offload this task!
                 LOG.info("Offloading task {}", runningTask.getId());
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
-                  sendOffloadingDoneEvent(runningTask.getId());
+                  stageOffloadingWorkerManager.endOffloading(stageId);
                 });
 
                 offloadedExecutors.add(Pair.of(runningTask, currTime));
@@ -541,6 +479,8 @@ public final class TaskOffloader {
             }
 
             // add deoffload pending
+            final Map<String, Boolean> stageOffloadableMap = new HashMap<>();
+            final Map<String, AtomicInteger> stageOffloadingCntMap = new HashMap<>();
 
             LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
             final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
@@ -551,18 +491,27 @@ public final class TaskOffloader {
                 final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
                 final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
 
+                final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
+
                 if (avgCpuTimeSum > 0) {
                   LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
                     currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
                   if (currTime - offloadingTime >= deoffloadSlackTime
-                     && isTaskOffloadable(taskExecutor.getId())) {
+                     && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+
+                    final AtomicInteger cnt =
+                      stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
+
+                    cnt.getAndIncrement();
+                    stageOffloadingCntMap.putIfAbsent(stageId, cnt);
+
                     LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
                       taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
                     iterator.remove();
                     taskExecutor.endOffloading((m) -> {
                       // do sth
-                      sendOffloadingDoneEvent(taskExecutor.getId());
+                      stageOffloadingWorkerManager.endOffloading(stageId);
                     });
                     currCpuTimeSum += avgCpuTimeSum;
                     prevDeOffloadingTime = System.currentTimeMillis();

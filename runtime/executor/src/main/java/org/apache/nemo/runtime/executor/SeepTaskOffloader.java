@@ -90,7 +90,7 @@ public final class SeepTaskOffloader {
     this.eventAverage = new DescriptiveStatistics();
     eventAverage.setWindowSize(2);
 
-    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
+    this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
     this.cpuEventModel = cpuEventModel;
     this.offloadedExecutors = new LinkedList<>();
   }

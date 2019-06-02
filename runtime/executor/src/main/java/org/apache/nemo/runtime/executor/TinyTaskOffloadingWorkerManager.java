@@ -80,20 +80,22 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }, 2, 2, TimeUnit.SECONDS);
   }
 
-  private synchronized void schedulingWorkers() {
+  private void schedulingWorkers() {
      try {
-        final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
-        while (iterator.hasNext()) {
-          final Pair<Long, TinyTaskWorker> pair = iterator.next();
-          final TinyTaskWorker taskWorker = pair.right();
+       synchronized (workers) {
+         final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+         while (iterator.hasNext()) {
+           final Pair<Long, TinyTaskWorker> pair = iterator.next();
+           final TinyTaskWorker taskWorker = pair.right();
 
-          LOG.info("Worker {}, scheduled: {}, pending: {}, workers size: {}",
-            taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks(), workers.size());
+           LOG.info("Worker {}, scheduled: {}, pending: {}, workers size: {}",
+             taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks(), workers.size());
 
-          if (taskWorker.isReady()) {
-            taskWorker.executePending();
-          }
-        }
+           if (taskWorker.isReady()) {
+             taskWorker.executePending();
+           }
+         }
+       }
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -167,21 +169,25 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private void removeRunningWorker(final TinyTaskWorker worker) {
     LOG.info("Remove worker {} from workers", worker);
-    final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
-    while (iterator.hasNext()) {
-      final Pair<Long, TinyTaskWorker> pair = iterator.next();
-      if (pair.right().equals(worker)) {
-        iterator.remove();
-        break;
+    synchronized (workers) {
+      final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+      while (iterator.hasNext()) {
+        final Pair<Long, TinyTaskWorker> pair = iterator.next();
+        if (pair.right().equals(worker)) {
+          iterator.remove();
+          break;
+        }
       }
     }
   }
 
   private TinyTaskWorker findExecutableWorker() {
-    for (final Pair<Long, TinyTaskWorker> pair : workers) {
-      final TinyTaskWorker worker = pair.right();
-      if (worker.canHandleTask()) {
-        return worker;
+    synchronized (workers) {
+      for (final Pair<Long, TinyTaskWorker> pair : workers) {
+        final TinyTaskWorker worker = pair.right();
+        if (worker.canHandleTask()) {
+          return worker;
+        }
       }
     }
 
@@ -192,22 +198,24 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     final OffloadingSerializer<I, O> offloadingSerializer) {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
 
-    for (final Pair<Long, TinyTaskWorker> pair : workers) {
-      final TinyTaskWorker worker = pair.right();
-      if (worker.prepareTaskIfPossible()) {
-        LOG.info("There are preparable worker");
-        return worker;
+    synchronized (workers) {
+      for (final Pair<Long, TinyTaskWorker> pair : workers) {
+        final TinyTaskWorker worker = pair.right();
+        if (worker.prepareTaskIfPossible()) {
+          LOG.info("There are preparable worker");
+          return worker;
+        }
       }
+
+      LOG.info("No preparable worker.. create new one");
+
+      final TinyTaskWorker newWorker = new TinyTaskWorker(
+        createNewWorker(offloadingSerializer), evalConf);
+      workers.add(Pair.of(System.currentTimeMillis(), newWorker));
+
+      newWorker.prepareTaskIfPossible();
+      return newWorker;
     }
-
-    LOG.info("No preparable worker.. create new one");
-
-    final TinyTaskWorker newWorker = new TinyTaskWorker(
-      createNewWorker(offloadingSerializer), evalConf);
-    workers.add(Pair.of(System.currentTimeMillis(), newWorker));
-
-    newWorker.prepareTaskIfPossible();
-    return newWorker;
   }
 
   public synchronized void sendTask(final OffloadingTask offloadingTask,
@@ -228,9 +236,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   }
 
   private TinyTaskWorker findWorkerThatHandleTask(final String taskId) {
-    for (final Pair<Long, TinyTaskWorker> pair : workers) {
-      if (pair.right().hasTask(taskId)) {
-        return pair.right();
+    synchronized (workers) {
+      for (final Pair<Long, TinyTaskWorker> pair : workers) {
+        if (pair.right().hasTask(taskId)) {
+          return pair.right();
+        }
       }
     }
 

@@ -207,21 +207,21 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case RequestMetricFlush:
       case MetricFlushed:
       case PipeInit:
-      case RequestTaskOffloadingDone:
+      case RequestStageOffloadingDone:
         return MessageType.Send;
       case RequestBlockLocation:
       case RequestBroadcastVariable:
       case RequestPipeLoc:
       case RequestTaskIndex:
       case RequestTransferIndex:
-      case RequestTaskOffloading:
+      case RequestStageOffloading:
         return MessageType.Request;
       case BlockLocationInfo:
       case InMasterBroadcastVariable:
       case PipeLocInfo:
       case TaskIndexInfo:
       case TransferIndexInfo:
-      case TaskOffloadingInfo:
+      case StageOffloadingInfo:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -240,10 +240,10 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getRequestTaskIndexMsg().getExecutorId();
       case RequestTransferIndex:
         return controlMessage.getRequestTransferIndexMsg().getExecutorId();
-      case RequestTaskOffloading:
-        return controlMessage.getRequestTaskOffloadingMsg().getExecutorId();
-      case RequestTaskOffloadingDone:
-        return controlMessage.getRequestTaskOffloadingDoneMsg().getExecutorId();
+      case RequestStageOffloading:
+        return controlMessage.getRequestStageOffloadingMsg().getExecutorId();
+      case RequestStageOffloadingDone:
+        return controlMessage.getRequestStageOffloadingDoneMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -261,8 +261,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getTaskIndexInfoMsg().getRequestId();
       case TransferIndexInfo:
         return controlMessage.getTransferIndexInfoMsg().getRequestId();
-      case TaskOffloadingInfo:
-        return controlMessage.getTaskOffloadingInfoMsg().getRequestId();
+      case StageOffloadingInfo:
+        return controlMessage.getStageOffloadingInfoMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }

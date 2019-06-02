@@ -106,7 +106,7 @@ public final class Executor {
 
   private volatile boolean started = false;
 
-  private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
@@ -179,7 +179,7 @@ public final class Executor {
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
-    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
@@ -331,7 +331,7 @@ public final class Executor {
         taskLocationMap,
         prepareService);
 
-      taskExecutorMap.put(taskExecutor, true);
+      taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
 

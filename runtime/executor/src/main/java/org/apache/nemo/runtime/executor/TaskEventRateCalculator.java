@@ -12,7 +12,7 @@ public final class TaskEventRateCalculator {
 
   @Inject
   private TaskEventRateCalculator(final TaskExecutorMapWrapper taskExecutorMapWrapper) {
-    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
+    this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
   }
 
   public int calculateProcessedEvent() {

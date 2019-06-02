@@ -19,7 +19,7 @@ public final class SystemLoadProfiler {
   private SystemLoadProfiler(final TaskExecutorMapWrapper wrapper) {
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    this.taskExecutors = wrapper.taskExecutorMap;
+    this.taskExecutors = wrapper.getTaskExecutorMap();
     this.threadMXBean = ManagementFactory.getThreadMXBean();
 
   }
