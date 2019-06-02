@@ -244,7 +244,7 @@ public final class OffloadingTask {
         stateCoderMap,
         taskLocationMap);
 
-    } catch (IOException | ClassNotFoundException e) {
+    } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
