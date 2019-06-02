@@ -344,7 +344,6 @@ public final class TinyTaskOffloader implements Offloader {
           LOG.info("Input pending done {}", taskId);
           if (availableFetchers.isEmpty()) {
             LOG.info("End of waiting source stop futures...");
-
             LOG.info("Close current output contexts in {}", taskId);
             startOutputPending();
             pendingStatus = PendingState.OUTPUT_PENDING;
