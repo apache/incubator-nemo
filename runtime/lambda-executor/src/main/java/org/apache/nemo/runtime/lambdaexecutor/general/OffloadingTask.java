@@ -170,6 +170,7 @@ public final class OffloadingTask {
       final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
       LOG.info("{}, samplingMap: {}", taskId, samplingMap);
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
+      LOG.info("{}, irDag: {}", taskId, irDag);
       final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
       LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
       final List<StageEdge> outgoingEdges = (List<StageEdge>) ois.readObject();
