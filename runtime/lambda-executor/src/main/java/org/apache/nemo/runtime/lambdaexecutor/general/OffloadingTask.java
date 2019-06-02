@@ -175,6 +175,8 @@ public final class OffloadingTask {
       final String taskId = dis.readUTF();
       final int taskIndex = dis.readInt();
 
+      LOG.info("Decoding task!! {}", taskId);
+
       final Map<String, Double> samplingMap = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, samplingMap: {}", taskId, samplingMap);
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
