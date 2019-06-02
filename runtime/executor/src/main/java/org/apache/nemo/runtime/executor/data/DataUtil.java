@@ -29,7 +29,6 @@ import org.apache.nemo.runtime.executor.data.streamchainer.EncodeStreamChainer;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.annotation.ExceptionProxy;
 
 import java.io.*;
 import java.util.*;
