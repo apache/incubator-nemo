@@ -409,7 +409,7 @@ public final class TaskOffloader {
         if (cpuHighMean > threshold && observedCnt >= observeWindow &&
           System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
-          final long targetCpuTime = 6500000;
+          final long targetCpuTime = 6000000;
           //cpuTimeModel
           //  .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
 
@@ -465,7 +465,7 @@ public final class TaskOffloader {
         } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
             //final long targetCpuTime = cpuTimeModel.desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
-            final long targetCpuTime = 6000000;
+            final long targetCpuTime = 5500000;
 
             long currCpuTimeSum = 0;
             // correct
