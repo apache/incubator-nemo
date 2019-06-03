@@ -54,7 +54,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
   private final PolynomialCpuTimeModel cpuTimeModel;
 
   private int observedCnt = 0;
-  private final int observeWindow = 10;
+  private final int observeWindow = 20;
 
 
   private long prevDeOffloadingTime = System.currentTimeMillis();
@@ -203,7 +203,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
         final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
         final long curr = System.currentTimeMillis();
         int cnt = 0;
-        final int multiple = (int) Math.pow(2, multiplicativeOffloading);
+        final int multiple = baseOffloadingTaskNum * (int) Math.pow(2, multiplicativeOffloading);
 
         for (final TaskExecutor runningTask : runningTasks) {
           final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
