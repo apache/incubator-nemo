@@ -203,7 +203,11 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
         final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
         final long curr = System.currentTimeMillis();
         int cnt = 0;
-        final int multiple = baseOffloadingTaskNum * (int) Math.pow(2, multiplicativeOffloading);
+        //final int multiple = baseOffloadingTaskNum * (int) Math.pow(2, multiplicativeOffloading);
+        final double percentage = Math.min(0.9, 0.1 * (multiplicativeOffloading + 1));
+        final int multiple = (int) (runningTasks.size() * percentage);
+
+        LOG.info("Running tasks: {}, percentage:{}, multiple: {}", runningTasks.size(), percentage, multiple);
 
         for (final TaskExecutor runningTask : runningTasks) {
           final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
@@ -217,8 +221,8 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
               //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
               // offload this task!
-              LOG.info("Offloading task {}, cnt: {}, multiple: {}, multiplicative: {}",
-                runningTask.getId(), cnt, multiple, multiplicativeOffloading);
+              //LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
+              //  runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
               runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
                 stageOffloadingWorkerManager.endOffloading(stageId);
