@@ -105,10 +105,10 @@ public final class OffloadingTask {
 
 
       SerializationUtils.serialize((Serializable) samplingMap, bos);
-      SerializationUtils.serialize((Serializable) irDag, bos);
       SerializationUtils.serialize((Serializable) taskOutgoingEdges, bos);
       SerializationUtils.serialize((Serializable) outgoingEdges, bos);
       SerializationUtils.serialize((Serializable) incomingEdges, bos);
+      SerializationUtils.serialize((Serializable) irDag, bos);
 
       /*
       final ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -179,14 +179,16 @@ public final class OffloadingTask {
 
       final Map<String, Double> samplingMap = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, samplingMap: {}", taskId, samplingMap);
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
-      LOG.info("{}, irDag: {}", taskId, irDag);
+
       final Map<String, List<String>> taskOutgoingEdges = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
       final List<StageEdge> outgoingEdges = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
       final List<StageEdge> incomingEdges = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
+
+            final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
+      LOG.info("{}, irDag: {}", taskId, irDag);
 
       /*
       final ObjectInputStream ois = new ObjectInputStream(inputStream);
