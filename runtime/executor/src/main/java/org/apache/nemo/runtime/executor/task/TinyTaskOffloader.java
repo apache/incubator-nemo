@@ -313,9 +313,14 @@ public final class TinyTaskOffloader implements Offloader {
 
     LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 
+    // Source stop!!
+    for (final DataFetcher dataFetcher : allFetchers) {
+      inputStopPendingFutures.add(dataFetcher.stop());
+    }
+    LOG.info("Waiting for source stop futures in {}", taskId);
+
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
     pendingStatus = PendingState.WORKER_PENDING;
-
   }
 
   @Override
@@ -328,11 +333,6 @@ public final class TinyTaskOffloader implements Offloader {
       case WORKER_PENDING: {
         if (tinyTaskWorker.isReady()) {
           LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
-          // Source stop!!
-          for (final DataFetcher dataFetcher : allFetchers) {
-            inputStopPendingFutures.add(dataFetcher.stop());
-          }
-          LOG.info("Waiting for source stop futures in {}", taskId);
           pendingStatus = PendingState.INPUT_PENDING;
         } else {
           break;
