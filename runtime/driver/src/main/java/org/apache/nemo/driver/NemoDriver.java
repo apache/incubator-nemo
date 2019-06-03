@@ -154,7 +154,7 @@ public final class NemoDriver {
     public void onNext(final StartTime startTime) {
       setUpLogger();
       try {
-        conf = new CrailConfiguration();
+        conf = CrailConfiguration.createConfigurationFromFile();
         fs = CrailStore.newInstance(conf);
         try{
           fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
