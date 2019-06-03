@@ -56,7 +56,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -154,19 +153,17 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      boolean baseDirExists;
       try {
         conf = new CrailConfiguration();
         fs = CrailStore.newInstance(conf);
         try{
-        fs.delete("/tmp_crail", true).get().syncDir();
-        } catch(Exception e){
-        LOG.info("failed to delete /tmp_crail");
+          fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+        } catch(Exception e ) {
+          LOG.info("tmp_crail already exists");
         }
-        fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-        fs.create("/tmp_crail/files", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+        fs.create("/tmp_crail/"+jobId, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
       }
-      catch(Exception e){
+      catch(Exception e) {
         LOG.info("Failed to create Crail directory");
         e.printStackTrace();
       }

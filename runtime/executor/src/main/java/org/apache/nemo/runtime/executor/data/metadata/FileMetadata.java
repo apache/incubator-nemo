@@ -90,7 +90,7 @@ public abstract class FileMetadata<K extends Serializable> {
    *
    * @throws IOException if fail to delete.
    */
-  public abstract void deleteMetadata() throws IOException;
+  public abstract void deleteMetadata() throws IOException, Exception;
 
   /**
    * Notifies that all writes are finished for the block corresponding to this metadata.

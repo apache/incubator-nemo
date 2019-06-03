@@ -29,8 +29,6 @@ import org.apache.nemo.runtime.executor.data.block.CrailFileBlock;
 import org.apache.nemo.runtime.executor.data.metadata.CrailFileMetadata;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -47,10 +45,9 @@ import java.util.Optional;
  */
 @ThreadSafe
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
-  private static final Logger LOG = LoggerFactory.getLogger(CrailFileStore.class.getName());
   private final String fileDirectory;
-  private CrailConfiguration conf = null;
-  private CrailStore fs = null;
+  private CrailConfiguration conf;
+  private CrailStore fs;
 
   /**
    * Constructor.
@@ -67,7 +64,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     super(serializerManager);
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
-    this.fileDirectory = volumeDirectory + "/files";
+    this.fileDirectory = volumeDirectory + jobId;
   }
 
   @Override

@@ -71,7 +71,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @see FileMetadata#deleteMetadata()
    */
   @Override
-  public void deleteMetadata() throws IOException {
+  public void deleteMetadata() {
     try {
       fs.delete(metaFilePath, true).get().syncDir();
     } catch (Exception e) {
