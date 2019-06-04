@@ -132,11 +132,12 @@ public final class OffloadingTask {
       if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
         dos.writeInt(stateMap.size());
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
-          LOG.info("Encoding state for {}...", vertexIdAndState.getKey());
           dos.writeUTF(vertexIdAndState.getKey());
           SerializationUtils.serialize(stateCoderMap.get(vertexIdAndState.getKey()), bos);
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
+
+        LOG.info("Encoding state done for {}", taskId);
       } else {
         dos.writeInt(0);
       }
@@ -223,12 +224,13 @@ public final class OffloadingTask {
       final int size = dis.readInt();
       for (int i = 0; i < size; i++) {
         final String key = dis.readUTF();
-        LOG.info("Decoding state key {}", key);
         final Coder<GBKFinalState> stateCoder = SerializationUtils.deserialize(dis);
         final GBKFinalState state = stateCoder.decode(inputStream);
         stateMap.put(key, state);
         stateCoderMap.put(key, stateCoder);
       }
+
+      LOG.info("Decoding state {}", taskId);
 
       final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
         SerializationUtils.deserialize(inputStream);
