@@ -154,7 +154,7 @@ public final class OffloadingTask {
 
       //bbos.close();
 
-      LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
+      //LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
       //LOG.info("Byte array logging");
       //LOG.info(Arrays.toString(barray));
 
