@@ -188,7 +188,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   @Override
-  public synchronized void onData(Object event) {
+  public void onData(Object event) {
 
     if (event instanceof OffloadingTask) {
 
@@ -239,13 +239,20 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   private TaskExecutor findTask(final String taskId) {
-    for (final TaskExecutor taskExecutor : taskAssignedMap.keySet()) {
-      if (taskExecutor.getId().equals(taskId)) {
-        return taskExecutor;
+    while (true) {
+      for (final TaskExecutor taskExecutor : taskAssignedMap.keySet()) {
+        if (taskExecutor.getId().equals(taskId)) {
+          return taskExecutor;
+        }
+      }
+
+      LOG.info("Not finding {}... waiting for task start", taskId);
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
     }
-
-    throw new RuntimeException("Cannot find task " + taskId);
   }
 
   @Override

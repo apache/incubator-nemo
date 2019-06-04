@@ -179,8 +179,8 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
         }
       }
 
-      if (cpuHighMean > threshold && observedCnt >= observeWindow &&
-        System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
+      if (cpuHighMean > threshold && observedCnt >= observeWindow) {
+
 
         //cpuTimeModel
         //  .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
@@ -276,8 +276,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
                 LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
                   currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-                if (currTime - offloadingTime >= deoffloadSlackTime
-                  && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
 
                   final AtomicInteger cnt =
                     stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
