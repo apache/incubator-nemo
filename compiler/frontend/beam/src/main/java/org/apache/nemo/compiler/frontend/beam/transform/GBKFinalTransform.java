@@ -145,12 +145,12 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     dataReceived = true;
-    LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
-      element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+    //LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
+    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      LOG.info("Final input process: {}", element);
+      //LOG.info("Final input process: {}", element);
 
       //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
@@ -421,7 +421,7 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      LOG.info("Emitting output: {}", output);
+      //LOG.info("Emitting output: {}", output);
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);
     }
