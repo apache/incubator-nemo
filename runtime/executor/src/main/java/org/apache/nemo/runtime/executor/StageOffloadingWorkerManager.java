@@ -101,6 +101,8 @@ public final class StageOffloadingWorkerManager {
     final AtomicInteger count =
       stageOffloadingCntMap.get(stageId);
 
+    LOG.info("Offloading cnt {} of {}", count, stageId);
+
     if (count.decrementAndGet() == 0) {
       LOG.info("Offloading done for stage {}", stageId);
       sendOffloadingDoneEvent(stageId);
