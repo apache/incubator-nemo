@@ -153,6 +153,8 @@ public final class PipeManagerMaster {
                 throw new IllegalStateException(keyPair.toString());
               }
 
+              LOG.info("Reply to message {}", message.getId());
+
               // Reply the location
               messageContext.reply(
                 ControlMessage.Message.newBuilder()

@@ -95,6 +95,11 @@ public final class PipeManagerWorker {
                     final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // Get the location of the dst task (blocking call)
+
+    final long messageId = RuntimeIdManager.generateMessageId();
+
+    LOG.info("Send message id {}", messageId);
+
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
       .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
         ControlMessage.Message.newBuilder()
