@@ -161,6 +161,12 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     */
 
     // retrieves the head of the underlying collection, or return null if the queue is empty
-    return queue.peek();
+    T obj = queue.peek();
+    while (obj == null) {
+      Thread.sleep(500);
+      obj = queue.peek();
+    }
+
+    return obj;
   }
 }
