@@ -126,6 +126,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
     //LOG.info("Remaining byteBuf: {}", queue.size());
 
+    if (queue.isEmpty()) {
+      throw new RuntimeException("this should not be empty");
+    }
+
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
     count.decrementAndGet();
     return queue.poll();
@@ -139,9 +143,11 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public T peek() throws InterruptedException {
+    /*
     if (queue.isEmpty()) {
       throw new RuntimeException("this should not be empty");
     }
+    */
 
     /*
     while (queue.isEmpty() && !closed) {
