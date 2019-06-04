@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import com.google.common.collect.Lists;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,8 +92,12 @@ public final class StreamingScheduler implements Scheduler {
     // Prepare tasks
     taskOffloadingManager.setStageDAG(submittedPhysicalPlan.getStageDAG());
 
-    final List<Stage> allStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
-    final List<Task> allTasks = allStages.stream().flatMap(stageToSchedule -> {
+    // Reverse topological sort
+    final List<Stage> allStages = Lists.reverse(submittedPhysicalPlan.getStageDAG().getTopologicalSort());
+
+    final List<Task> allTasks = new ArrayList<>();
+
+    for (final Stage stageToSchedule : allStages) {
       // Helper variables for this stage
       final List<StageEdge> stageIncomingEdges =
         submittedPhysicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
@@ -100,27 +106,32 @@ public final class StreamingScheduler implements Scheduler {
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
 
-
-
-
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
         taskIndexMaster.onTaskScheduled(taskId);
         stageIncomingEdges.forEach(inEdge ->
           pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
-       // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
+        // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
       });
 
       // Create tasks of this stage
-      return taskIdsToSchedule.stream().map(taskId -> new Task(
-        submittedPhysicalPlan.getPlanId(),
-        taskId,
-        stageToSchedule.getExecutionProperties(),
-        stageToSchedule.getSerializedIRDAG(),
-        stageIncomingEdges,
-        stageOutgoingEdges,
-        vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))));
-    }).collect(Collectors.toList());
+      allTasks.addAll(
+        taskIdsToSchedule.stream().map(taskId -> new Task(
+          submittedPhysicalPlan.getPlanId(),
+          taskId,
+          stageToSchedule.getExecutionProperties(),
+          stageToSchedule.getSerializedIRDAG(),
+          stageIncomingEdges,
+          stageOutgoingEdges,
+          vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))))
+          .collect(Collectors.toList()));
+
+      try {
+        Thread.sleep(5000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
     // Schedule everything at once
     pendingTaskCollectionPointer.setToOverwrite(allTasks);
