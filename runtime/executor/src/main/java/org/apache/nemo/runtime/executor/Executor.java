@@ -161,10 +161,10 @@ public final class Executor {
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskInputContextMap = taskInputContextMap;
     this.taskLocationMap = taskLocationMap;
-    this.executorService = Executors.newFixedThreadPool(40);
-    //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
-    //          .namingPattern("TaskExecutor thread-%d")
-    //          .build());
+    //this.executorService = Executors.newFixedThreadPool(40);
+    this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
+              .namingPattern("TaskExecutor thread-%d")
+              .build());
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;

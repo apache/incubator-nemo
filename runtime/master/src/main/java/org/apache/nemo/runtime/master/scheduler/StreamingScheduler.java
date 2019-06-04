@@ -127,7 +127,7 @@ public final class StreamingScheduler implements Scheduler {
           .collect(Collectors.toList()));
 
       try {
-        Thread.sleep(5000);
+        Thread.sleep(2500);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
