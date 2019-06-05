@@ -424,7 +424,6 @@ public final class BlockManagerWorker {
             numSerializedBytes += partition.getNumSerializedBytes();
             numEncodedBytes += partition.getNumEncodedBytes();
           }
-          LOG.info("HY: numSerializedBytes {}, numEncodedBytes {}", numSerializedBytes, numEncodedBytes);
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
               numEncodedBytes));
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
