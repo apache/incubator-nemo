@@ -159,10 +159,14 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
       final long currTime = System.currentTimeMillis();
 
-      LOG.info("CPU Load: {}, Elapsed Time: {}, Off pending: {}, Deoff pending: {}"
-        , cpuLoad, elapsedCpuTimeSum, offloadingPendingCnt, deoffloadingPendingCnt);
-
       final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
+
+
+      LOG.info("CPU Load: {}, Elapsed Time: {}, Off pending: {}, Deoff pending: {}, runningTasks: {}, offloaded: {}, " +
+          "off_pending: {}. deoff_pending: {}"
+        , cpuLoad, elapsedCpuTimeSum, offloadingPendingCnt, deoffloadingPendingCnt, taskStatInfo.running,
+        taskStatInfo.offloaded, taskStatInfo.offload_pending, taskStatInfo.deoffloaded);
+
       //LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
       //  cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
