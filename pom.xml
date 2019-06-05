@@ -114,6 +114,11 @@ under the License.
             <version>${powermock.version}</version>
             <scope>test</scope>
         </dependency>
+      <dependency>
+        <groupId>org.apache.crail</groupId>
+        <artifactId>crail-assembly</artifactId>
+        <version>1.2-incubating-SNAPSHOT</version>
+      </dependency>
         <dependency>
           <groupId>org.apache.crail</groupId>
           <artifactId>crail-client</artifactId>
