@@ -33,7 +33,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long slackTime = 10000;
-  private long deoffloadSlackTime = 10000;
+  private long deoffloadSlackTime = 8000;
 
 
   private final int windowSize = 5;
@@ -163,8 +163,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         , cpuLoad, elapsedCpuTimeSum, offloadingPendingCnt, deoffloadingPendingCnt);
 
       final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
-      LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
-        cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
+      //LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
+      //  cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
       if (!offloadedExecutors.isEmpty()) {
         final long cur = System.currentTimeMillis();
@@ -184,7 +184,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
       }
 
       if (cpuHighMean > threshold && observedCnt >= observeWindow
-        && offloadingPendingCnt.get() == 0 && deoffloadingPendingCnt.get() == 0) {
+        && offloadingPendingCnt.get() == 0 && deoffloadingPendingCnt.get() == 0
+        && System.currentTimeMillis() - prevDeOffloadingTime >= deoffloadSlackTime) {
 
 
         //cpuTimeModel
@@ -203,7 +204,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
         //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
-        LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
+        //LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
         //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
         final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
         final long curr = System.currentTimeMillis();
@@ -218,7 +219,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
           final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
           //if (cnt < runningTasks.size() - 1) {
 
-          if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime && cnt < multiple) {
+          if (cnt < multiple) {
 
             final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
@@ -322,8 +323,6 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
             }
           }
         }
-      } else {
-        multiplicativeOffloading = 0;
       }
     } catch (final Exception e) {
       e.printStackTrace();
