@@ -282,9 +282,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         transform = ((OperatorVertex) irVertex).getTransform();
         if (transform instanceof StatefulTransform) {
           final GBKFinalState state = offloadingTask.stateMap.get(irVertex.getId());
-          LOG.info("Set state for operator {}", irVertex.getId());
-          final StatefulTransform statefulTransform = (StatefulTransform) transform;
-          statefulTransform.setState(state);
+          if (state != null) {
+            LOG.info("Set state for operator {}", irVertex.getId());
+            final StatefulTransform statefulTransform = (StatefulTransform) transform;
+            statefulTransform.setState(state);
+          }
         }
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
       }
