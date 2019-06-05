@@ -8,9 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
@@ -23,6 +21,8 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
   private final AtomicInteger pendingRequest = new AtomicInteger();
   private final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
   //private final Map<Channel, List<OffloadingEvent>> channelBufferMap;
+
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   private final Set<Integer> receivedRequests;
 
@@ -93,7 +93,10 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
             }
             */
 
-            channelEventHandlerMap.get(nemoEvent.left()).onNext(event);
+            executorService.execute(() -> {
+              channelEventHandlerMap.get(nemoEvent.left()).onNext(event);
+            });
+
           } else {
             LOG.info("No channel {} for {} // {}", nemoEvent.left(), event, channelEventHandlerMap.values());
           }

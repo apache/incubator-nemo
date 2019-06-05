@@ -67,6 +67,8 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
         dos.writeInt(0);
       }
 
+      LOG.info("End of encoding state output {}", output.taskId);
+
     } else if (data instanceof StateOutput) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(STATE_OUTPUT);
