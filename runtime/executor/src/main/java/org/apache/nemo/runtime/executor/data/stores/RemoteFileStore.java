@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.data.stores;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for remote block stores (e.g., GlusterFS, ...).
+ * Interface for remote block stores (e.g., GlusterFS, CrailFS...).
  */
 
 @DefaultImplementation(CrailFileStore.class)
