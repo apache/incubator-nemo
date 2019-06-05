@@ -112,6 +112,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
       false, relayServerClient, byteTransfer);
 
+    System.out.println("Init channel " + ch);
+
     channels.put(ch, true);
 
     ch.pipeline()

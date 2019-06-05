@@ -93,7 +93,6 @@ public final class OffloadingHandler {
     final Integer port = (Integer) input.get("port");
 
 
-
     final ChannelFuture channelFuture;
     channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
     channelFuture.awaitUninterruptibly();
@@ -321,6 +320,13 @@ public final class OffloadingHandler {
     }
 
     workerHeartbeatExecutor.shutdown();
+
+    LOG.info("Finishing channels");
+    map.entrySet().forEach(entry -> {
+      entry.getKey().close().awaitUninterruptibly();
+    });
+
+    map.clear();
 
     return null;
 	}

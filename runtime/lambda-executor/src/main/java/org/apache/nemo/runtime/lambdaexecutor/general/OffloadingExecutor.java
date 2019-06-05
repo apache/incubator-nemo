@@ -273,6 +273,14 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
     LOG.info("End of Shutting down prepare service");
 
+    scheduledExecutorService.shutdown();
+    try {
+      scheduledExecutorService.awaitTermination(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     byteTransport.close();
     LOG.info("End of byte transport");
   }
