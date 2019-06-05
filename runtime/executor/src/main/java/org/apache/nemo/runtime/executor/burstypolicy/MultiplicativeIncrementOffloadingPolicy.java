@@ -138,7 +138,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
       }
 
       // calculate stable cpu time
-      if (cpuLoad >= 0.28) {
+      if (cpuLoad >= 0.28 && elapsedCpuTimeSum > 100000) {
         cpuLoadStable += 1;
         if (cpuLoadStable >= 2) {
           observedCnt += 1;
