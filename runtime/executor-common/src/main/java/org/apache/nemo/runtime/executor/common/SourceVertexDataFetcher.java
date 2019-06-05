@@ -113,6 +113,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       LOG.info("Reset readable: {} for {}", readable, taskId);
       prepareService.execute(() -> {
         this.readable.prepare();
+        LOG.info("Prepare finished {}", taskId);
         isPrepared = true;
       });
     }
