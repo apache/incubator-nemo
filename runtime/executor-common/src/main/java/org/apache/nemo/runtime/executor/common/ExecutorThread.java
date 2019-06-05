@@ -3,10 +3,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,6 +20,8 @@ public final class ExecutorThread {
   private final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
   private final String executorThreadName;
+
+  private final ConcurrentMap<String, Integer> taskCounterMap = new ConcurrentHashMap<>();
 
   public ExecutorThread(final ScheduledExecutorService scheduledExecutorService,
                         final int executorThreadIndex,
@@ -56,6 +55,11 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       loggingTime = true;
+
+      for (final String taskId : taskCounterMap.keySet()) {
+        LOG.info("{} processed cnt: {}", taskId, taskCounterMap.remove(taskId));
+      }
+
     }, 2, 2, TimeUnit.SECONDS);
 
     executorService.execute(() -> {
@@ -101,6 +105,9 @@ public final class ExecutorThread {
               while (availableTask.handleData() && processedCnt < batchSize) {
                 processedCnt += 1;
               }
+
+              final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
+              taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
 
               //LOG.info("handling task {}, cnt: {}", availableTask.getId(), processedCnt);
 
