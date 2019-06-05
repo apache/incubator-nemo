@@ -60,7 +60,7 @@ public final class OffloadingHandler {
 
   private final Map<String, LambdaEventHandler> lambdaEventHandlerMap;
 
-  private final ScheduledExecutorService workerHeartbeatExecutor;
+  private ScheduledExecutorService workerHeartbeatExecutor;
 
   private final OperatingSystemMXBean operatingSystemMXBean;
 
@@ -69,7 +69,6 @@ public final class OffloadingHandler {
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
-    this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
 
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -93,7 +92,7 @@ public final class OffloadingHandler {
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
 
-    this.workerInitLatch = new CountDownLatch(1);
+
 
     final ChannelFuture channelFuture;
     channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
@@ -140,6 +139,7 @@ public final class OffloadingHandler {
 
 	public Object handleRequest(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
+    this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
 
 		System.out.println("Input: " + input);
     final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
@@ -148,6 +148,8 @@ public final class OffloadingHandler {
 
     // open channel
     Channel opendChannel = null;
+    this.workerInitLatch = new CountDownLatch(1);
+
     for (final Map.Entry<Channel, EventHandler<OffloadingEvent>> entry : map.entrySet()) {
       final Channel channel = entry.getKey();
       final String address = (String) input.get("address");
@@ -167,6 +169,7 @@ public final class OffloadingHandler {
         map.remove(channel);
       }
     }
+
 
     if (opendChannel == null) {
       opendChannel = channelOpen(input);
@@ -317,6 +320,7 @@ public final class OffloadingHandler {
       throw new RuntimeException(e);
     }
 
+    workerHeartbeatExecutor.shutdown();
 
     return null;
 	}
