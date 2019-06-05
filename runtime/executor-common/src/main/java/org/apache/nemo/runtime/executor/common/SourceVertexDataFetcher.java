@@ -81,6 +81,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   }
 
   public void setReadable(final Readable r) {
+    LOG.info("Set readable for {}", taskId);
     readable = r;
     isPrepared = false;
     isStarted = false;
@@ -109,7 +110,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
     if (!isStarted) {
       isStarted = true;
-      LOG.info("Readable: {}", readable);
+      LOG.info("Reset readable: {} for {}", readable, taskId);
       prepareService.execute(() -> {
         this.readable.prepare();
         isPrepared = true;
@@ -117,7 +118,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     }
 
     if (!isPrepared) {
-      LOG.info("Not prepared... ");
+      LOG.info("Not prepared for {}...", taskId);
       throw new NoSuchElementException();
     }
 
