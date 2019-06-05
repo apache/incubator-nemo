@@ -60,6 +60,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
+      isCurrentAvailable = reader.start();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -67,16 +68,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public Object readCurrent() {
-    try {
-      if (!isStarted) {
-        isStarted = true;
-        isCurrentAvailable = reader.start();
-      } else {
-        isCurrentAvailable = reader.advance();
-      }
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
 
     if (isCurrentAvailable) {
       final O elem = reader.getCurrent();
@@ -85,6 +76,12 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
+      try {
+        isCurrentAvailable = reader.advance();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
       throw new NoSuchElementException();
     }
   }
