@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,8 +30,8 @@ public final class ExecutorThread {
     this.scheduledExecutorService = scheduledExecutorService;
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
-    this.availableTasks = new LinkedList<>();
-    this.pendingTasks = new LinkedList<>();
+    this.availableTasks = new ArrayList<>();
+    this.pendingTasks = new ArrayList<>();
     this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
   }
