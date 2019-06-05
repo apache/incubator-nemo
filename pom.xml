@@ -146,11 +146,6 @@ under the License.
       </dependency>
       <dependency>
         <groupId>org.apache.crail</groupId>
-        <artifactId>crail-parent</artifactId>
-        <version>1.2-incubating-SNAPSHOT</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.crail</groupId>
         <artifactId>crail-hdfs</artifactId>
         <version>1.2-incubating-SNAPSHOT</version>
       </dependency>
