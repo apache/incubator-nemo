@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.burstypolicy;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-@DefaultImplementation(MultiplicativeIncrementOffloadingPolicy.class)
+@DefaultImplementation(StepwiseOffloadingPolicy.class)
 public interface TaskOffloadingPolicy {
 
   void triggerPolicy();
