@@ -258,7 +258,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
         if (!offloadedExecutors.isEmpty()) {
           //final long targetCpuTime = cpuTimeModel.desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
-          final long targetCpuTime = 5000000;
+          final long targetCpuTime = 3000000;
 
           long currCpuTimeSum = 0;
           // correct
@@ -306,6 +306,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
                   taskExecutor.endOffloading((m) -> {
                     // do sth
+                    LOG.info("Deoffloading done for task {}", taskExecutor.getId());
+
                     stageOffloadingWorkerManager.endOffloading(stageId);
                     deoffloadingPendingCnt.decrementAndGet();
                   });
