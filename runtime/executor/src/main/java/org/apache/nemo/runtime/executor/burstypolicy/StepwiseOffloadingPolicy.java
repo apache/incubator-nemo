@@ -33,7 +33,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long slackTime = 10000;
-  private long deoffloadSlackTime = 8000;
+  private long deoffloadSlackTime = 15000;
 
 
   private final int windowSize = 5;
@@ -184,7 +184,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
       }
 
       if (cpuHighMean > threshold && observedCnt >= observeWindow
-        && offloadingPendingCnt.get() == 0 && deoffloadingPendingCnt.get() == 0
+        && deoffloadingPendingCnt.get() == 0
         && System.currentTimeMillis() - prevDeOffloadingTime >= deoffloadSlackTime) {
 
 
@@ -227,8 +227,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
               //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
               // offload this task!
-              //LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
-              //  runningTask.getId(), cnt, multiple, multiplicativeOffloading);
+              LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
+                runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
               offloadingPendingCnt.getAndIncrement();
 
@@ -249,7 +249,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         multiplicativeOffloading += 1;
 
       } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow
-        && offloadingPendingCnt.get() == 0 && deoffloadingPendingCnt.get() == 0) {
+        && deoffloadingPendingCnt.get() == 0) {
         multiplicativeOffloading = 0;
 
         if (!offloadedExecutors.isEmpty()) {
