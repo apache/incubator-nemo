@@ -153,13 +153,9 @@ public final class TinyTaskWorker {
       return;
     }
 
-    LOG.info("Execute pending222 !!");
-
     for (final OffloadingTask pending : pendingTasks) {
       offloadingWorker.execute(pending.encode(), 1, false);
     }
-
-    LOG.info("Execute pending333 !!");
 
     offloadedTasks.addAll(pendingTasks);
     pendingTasks.clear();

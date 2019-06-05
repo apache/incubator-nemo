@@ -94,10 +94,10 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     for (final Pair<K, TimerInternals.TimerData> data : set) {
       keyCoder.encode(data.left(), dos);
-      LOG.info("Encode key");
+      //LOG.info("Encode key");
       final TimerInternals.TimerData timerData = data.right();
       timerCoder.encode(timerData, dos);
-      LOG.info("Encode timer");
+      //LOG.info("Encode timer");
     }
   }
 

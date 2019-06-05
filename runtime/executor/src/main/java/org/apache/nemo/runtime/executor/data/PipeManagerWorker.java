@@ -191,6 +191,7 @@ public final class PipeManagerWorker {
 
 
   public void notifyMaster(final String runtimeEdgeId, final long dstTaskIndex) {
+    LOG.info("Notify to master {}/{}", runtimeEdgeId, dstTaskIndex);
     // Notify the master that we're using this pipe.
     toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
