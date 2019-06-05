@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.driver;
 
-import org.apache.crail.*;
-import org.apache.crail.conf.CrailConfiguration;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
@@ -88,10 +86,6 @@ public final class NemoDriver {
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
 
-  //Crail
-  CrailConfiguration conf;
-  CrailStore fs;
-
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -153,20 +147,6 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      try {
-        conf = CrailConfiguration.createConfigurationFromFile();
-        fs = CrailStore.newInstance(conf);
-        try{
-          fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-        } catch(Exception e ) {
-          LOG.info("tmp_crail already exists");
-        }
-        fs.create("/tmp_crail/"+jobId, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-      }
-      catch(Exception e) {
-        LOG.info("Failed to create Crail directory");
-        e.printStackTrace();
-      }
       runtimeMaster.requestContainer(resourceSpecificationString);
     }
   }
