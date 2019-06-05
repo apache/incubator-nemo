@@ -224,16 +224,21 @@ public final class OffloadingHandler {
     }
 
     // Waiting worker init done..
-    LOG.info("Waiting worker init");
-    try {
-      workerInitLatch.await();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    LOG.info("Waiting worker init or end");
+    final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
+
+    while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
 
-    opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
-
-    LOG.info("Sending worker init done");
+    if (workerInitLatch.getCount() == 0) {
+      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
+      LOG.info("Sending worker init done");
+    }
 
     // cpu heartbeat
     final Channel ochannel = opendChannel;
@@ -249,7 +254,6 @@ public final class OffloadingHandler {
     // ready state
     //opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.READY, new byte[0], 0));
 
-    final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
 
 		final List<ChannelFuture> futures = new LinkedList<>();
 
