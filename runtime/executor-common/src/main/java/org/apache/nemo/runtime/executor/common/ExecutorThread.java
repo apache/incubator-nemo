@@ -23,6 +23,8 @@ public final class ExecutorThread {
 
   private final ConcurrentMap<String, Integer> taskCounterMap = new ConcurrentHashMap<>();
 
+  private volatile boolean closed = false;
+
   public ExecutorThread(final ScheduledExecutorService scheduledExecutorService,
                         final int executorThreadIndex,
                         final String executorId) {
@@ -145,6 +147,36 @@ public final class ExecutorThread {
             }
           }
         }
+
+        final List<TaskExecutor> tasks = new ArrayList<>(deletedTasks.size());
+
+        while (!deletedTasks.isEmpty()) {
+          final TaskExecutor deletedTask = deletedTasks.poll();
+          tasks.add(deletedTask);
+
+          LOG.info("Deleting task {}", deletedTask.getId());
+          //availableTasks.remove(deletedTask);
+          //pendingTasks.remove(deletedTask);
+
+          try {
+            deletedTask.close();
+          } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }
+
+        for (final TaskExecutor deletedTask : tasks) {
+          LOG.info("Finishing task {}", deletedTask.getId());
+          while (!deletedTask.isFinished()) {
+            Thread.sleep(100);
+          }
+
+          deletedTask.finish();
+          LOG.info("Finished task {}", deletedTask.getId());
+        }
+
+        closed = true;
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -154,5 +186,15 @@ public final class ExecutorThread {
 
   public void close() {
     finished = true;
+
+    LOG.info("Closing executor thread...");
+
+    while (!closed) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 }

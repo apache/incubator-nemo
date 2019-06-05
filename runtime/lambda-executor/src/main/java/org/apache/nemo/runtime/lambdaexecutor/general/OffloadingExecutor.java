@@ -259,6 +259,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void close() {
      // TODO: 1 disconnect relay server channel
     prepareService.shutdown();
+
+    executorThreads.forEach(executor -> {
+      executor.close();
+    });
+
     LOG.info("Shutting down prepare service");
     try {
       prepareService.awaitTermination(10, TimeUnit.SECONDS);
