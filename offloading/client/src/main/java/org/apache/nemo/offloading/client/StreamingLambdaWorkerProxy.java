@@ -97,8 +97,6 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                     final O data = outputDecoder.decode(bis);
                     final long et = System.currentTimeMillis();
 
-                    LOG.info("Decoding time of {}: {}", data, (et - st));
-
                     eventHandler.onNext(data);
                   }
                   msg.getByteBuf().release();

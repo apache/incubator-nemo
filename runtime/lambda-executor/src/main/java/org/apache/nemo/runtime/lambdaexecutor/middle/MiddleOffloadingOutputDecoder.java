@@ -56,8 +56,14 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         case KAFKA_CHECKPOINT: {
           final String taskId = dis.readUTF();
           final int id = dis.readInt();
+
+          final long st = System.currentTimeMillis();
+
           final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = SerializationUtils.deserialize(inputStream);
           final UnboundedSource.CheckpointMark checkpointMark = checkpointMarkCoder.decode(inputStream);
+
+          final long e = System.currentTimeMillis();
+          LOG.info("Checkpoint mark decoding time of {}: {}", taskId, e - st);
 
           final int mapSize = dis.readInt();
           final Map<String, GBKFinalState> stateMap = new HashMap<>();
@@ -69,6 +75,8 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
             stateMap.put(key, state);
             stateCoderMap.put(key, coder);
           }
+
+          LOG.info("Map decoding time of {}: {}", taskId, System.currentTimeMillis() - e);
 
           return Pair.of(taskId,
             new KafkaOffloadingOutput(taskId, id, checkpointMark, checkpointMarkCoder, stateMap, stateCoderMap));
