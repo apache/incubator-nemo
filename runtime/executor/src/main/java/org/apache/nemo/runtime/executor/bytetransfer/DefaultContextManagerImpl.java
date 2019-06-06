@@ -386,29 +386,35 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             final ByteInputContext c = new StreamRemoteByteInputContext(
               remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
 
-            // ADD Task Transfer Index !!
-            final TransferKey key =
-              new TransferKey(cd.getRuntimeEdgeId(),
-                (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
-
-            // This always should be VM
-            taskLocationMap.locationMap.put(
-              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), VM);
-
-
-            taskTransferIndexMap.put(key, transferIndex);
-
-            if (isPipe) {
-              try {
-                pipeManagerWorker.onInputContext(c);
-              } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-              }
+            if (inputContexts.putIfAbsent(transferIndex, c) != null) {
+              LOG.warn(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
+                transferIndex));
             } else {
-              blockManagerWorker.onInputContext(c);
+
+              // ADD Task Transfer Index !!
+              final TransferKey key =
+                new TransferKey(cd.getRuntimeEdgeId(),
+                  (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
+
+              // This always should be VM
+              taskLocationMap.locationMap.put(
+                new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), VM);
+
+
+              taskTransferIndexMap.put(key, transferIndex);
+
+              if (isPipe) {
+                try {
+                  pipeManagerWorker.onInputContext(c);
+                } catch (InvalidProtocolBufferException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+              } else {
+                blockManagerWorker.onInputContext(c);
+              }
+              inputContexts.putIfAbsent(transferIndex, c);
             }
-            inputContexts.putIfAbsent(transferIndex, c);
           }
 
         } else {
