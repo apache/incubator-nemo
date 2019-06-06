@@ -278,10 +278,10 @@ public final class Executor {
 
     LOG.info("Launch task: {}", task.getTaskId());
 
-    LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
     final List<StageEdge> copyOutgoingEdges = SerializationUtils.deserialize(bytes);
-    LOG.info("Copied outgoing edges {}, bytes: {}", copyOutgoingEdges, bytes.length);
+    //LOG.info("Copied outgoing edges {}, bytes: {}", copyOutgoingEdges, bytes.length);
     final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
     final List<StageEdge> copyIncomingEdges = SerializationUtils.deserialize(bytes2);
 
