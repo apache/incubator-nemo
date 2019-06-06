@@ -73,7 +73,7 @@ public final class OperatorMetricCollector {
     this.samplingRate = samplingMap.getOrDefault(srcVertex.getId(), 0.0);
     this.taskId = taskId;
 
-    LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
+    //LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -92,7 +92,7 @@ public final class OperatorMetricCollector {
   }
 
   public void startOffloading() {
-    LOG.info("OPeratorMetricCollector startOffloading");
+    //LOG.info("OPeratorMetricCollector startOffloading");
     checkSink();
     serializedCnt = 0;
     isOffloading = true;

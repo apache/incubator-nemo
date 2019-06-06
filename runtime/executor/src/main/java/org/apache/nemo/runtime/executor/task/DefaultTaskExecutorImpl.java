@@ -228,9 +228,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService) {
     // Essential information
-    LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
-    LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
+    //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
     this.copyIncomingEdges = copyIncomingEdges;
     this.prepareService = prepareService;
 
