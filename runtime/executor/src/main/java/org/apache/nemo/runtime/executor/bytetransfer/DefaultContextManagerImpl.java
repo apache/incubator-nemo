@@ -219,7 +219,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         // It means that the remote dst task is moved to SF (or VM)
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
-        LOG.info("STOP_OUTPUT for moving {} pending {}, {}", sendDataTo, transferIndex, outputContexts);
+        LOG.info("STOP_OUTPUT for moving {} pending {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
 
         if (sendDataTo.equals(VM)) {
@@ -242,7 +242,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case SETTING_INPUT_CONTEXT: {
         final StreamRemoteByteInputContext context =
           (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        LOG.info("SETTING_INPUT_CONTEXT {}, {}", transferIndex, inputContexts);
+        LOG.info("SETTING_INPUT_CONTEXT {}", transferIndex);
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
 
@@ -261,7 +261,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case ACK_FROM_PARENT_STOP_OUTPUT: {
         final StreamRemoteByteInputContext context =
           (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
+        LOG.info("ACK_FOR_STOP_OUTPUT: {}", transferIndex);
         context.receivePendingAck();
         break;
       }
@@ -364,7 +364,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       }
       case CONTROL: {
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
-          LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
+          LOG.info("inputContextsInitiatedByRemote: {}", inputContexts.size());
 
           final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
           LOG.info("Input Receive transfer index : {}/{} {}->{}", transferIndex, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), cd.getDstTaskIndex());
@@ -412,7 +412,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           }
 
         } else {
-          LOG.info("outputContextsInitiatedByRemote: {}", outputContexts);
+          LOG.info("outputContextsInitiatedByRemote: {}", outputContexts.size());
           LOG.info("Output Receive transfer index : {}", transferIndex);
           if (outputContexts.containsKey(transferIndex)) {
             throw new RuntimeException(String.format("Duplicate output context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
