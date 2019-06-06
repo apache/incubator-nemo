@@ -29,4 +29,9 @@ public final class KafkaOffloadingOutput {
     this.stateMap = stateMap;
     this.stateCoderMap = stateCoderMap;
   }
+
+  @Override
+  public String toString() {
+    return "[KafkaOutput: " + taskId + "]";
+  }
 }
