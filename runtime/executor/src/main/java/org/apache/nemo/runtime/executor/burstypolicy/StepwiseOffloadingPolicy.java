@@ -33,7 +33,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long slackTime = 10000;
-  private long deoffloadSlackTime = 70000;
+  private long deoffloadSlackTime = 60000;
 
 
   private final int windowSize = 5;
@@ -249,6 +249,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
               }
             }
+          } else {
+            LOG.info("Task id: {}", runningTask.getId());
           }
         }
 
