@@ -55,8 +55,6 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       SerializationUtils.serialize(output.checkpointMarkCoder, dos);
       output.checkpointMarkCoder.encode(output.checkpointMark, outputStream);
 
-      dos.writeInt(0);
-      /*
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
         dos.writeInt(output.stateMap.size());
         for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
@@ -68,7 +66,6 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       } else {
         dos.writeInt(0);
       }
-      */
 
       LOG.info("End of encoding state output {}", output.taskId);
 

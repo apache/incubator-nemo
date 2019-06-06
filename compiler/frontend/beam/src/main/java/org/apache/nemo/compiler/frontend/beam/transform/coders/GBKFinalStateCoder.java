@@ -8,6 +8,8 @@ import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternalsFactory;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.HashMap;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GBKFinalStateCoder.class.getName());
 
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
@@ -33,26 +36,42 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
   public void encode(GBKFinalState<K> value, OutputStream outStream) throws CoderException, IOException {
     final DataOutputStream dos = new DataOutputStream(outStream);
 
+    final long st = System.currentTimeMillis();
     timerCoder.encode(value.timerInternalsFactory, outStream);
+
+    final long st1 = System.currentTimeMillis();
     stateCoder.encode(value.stateInternalsFactory, outStream);
 
+    final long st2 = System.currentTimeMillis();
     SerializationUtils.serialize(value.prevOutputWatermark, outStream);
     SerializationUtils.serialize(value.inputWatermark, outStream);
 
     encodeKeyAndWatermarkMap(value.keyAndWatermarkHoldMap, dos);
+    final long st3 = System.currentTimeMillis();
+
+    LOG.info("Encoding time: timer: {}, state: {}, keyWatermark: {}", (st1 - st), (st2 - st1), (st3 - st2));
   }
 
   @Override
   public GBKFinalState<K> decode(InputStream inStream) throws CoderException, IOException {
 
+    final long st = System.currentTimeMillis();
     final InMemoryTimerInternalsFactory timerInternalsFactory = timerCoder.decode(inStream);
+
+    final long st1 = System.currentTimeMillis();
     final InMemoryStateInternalsFactory stateInternalsFactory = stateCoder.decode(inStream);
+
+    final long st2 = System.currentTimeMillis();
 
     final Watermark prevOutputWatermark = SerializationUtils.deserialize(inStream);
     final Watermark inputWatermark = SerializationUtils.deserialize(inStream);
 
     final DataInputStream dis = new DataInputStream(inStream);
     final Map<K, Watermark> keyAndWatermarkMap = decodeKeyAndWatermarkMap(dis);
+
+    final long st3 = System.currentTimeMillis();
+
+    LOG.info("Decoding time: timer: {}, state: {}, keyWatermark: {}", (st1 - st), (st2 - st1), (st3 - st2));
 
     final GBKFinalState finalState = new GBKFinalState(
       timerInternalsFactory,

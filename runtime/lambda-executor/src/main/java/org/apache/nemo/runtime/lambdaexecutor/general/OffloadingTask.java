@@ -129,9 +129,6 @@ public final class OffloadingTask {
         dos.writeBoolean(false);
       }
 
-      dos.writeInt(0);
-
-      /*
       if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
         dos.writeInt(stateMap.size());
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
@@ -144,7 +141,6 @@ public final class OffloadingTask {
       } else {
         dos.writeInt(0);
       }
-      */
 
       SerializationUtils.serialize((ConcurrentHashMap) taskLocationMap, bos);
 
