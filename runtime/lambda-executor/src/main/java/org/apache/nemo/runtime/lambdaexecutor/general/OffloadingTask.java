@@ -129,9 +129,6 @@ public final class OffloadingTask {
         dos.writeBoolean(false);
       }
 
-
-      dos.writeInt(0);
-      /*
       if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
         dos.writeInt(stateMap.size());
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
@@ -144,24 +141,12 @@ public final class OffloadingTask {
       } else {
         dos.writeInt(0);
       }
-      */
 
       SerializationUtils.serialize((ConcurrentHashMap) taskLocationMap, bos);
 
       dos.close();
       //oos.close();
       bos.close();
-
-      //final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-      //final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
-      //final byte[] barray = bos.toByteArray();
-      //bbos.write(barray);
-
-      //bbos.close();
-
-      //LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
-      //LOG.info("Byte array logging");
-      //LOG.info(Arrays.toString(barray));
 
       return byteBuf;
     } catch (final IOException e) {
@@ -192,22 +177,8 @@ public final class OffloadingTask {
       final List<StageEdge> incomingEdges = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
 
-            final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
       LOG.info("{}, irDag: {}", taskId, irDag);
-
-      /*
-      final ObjectInputStream ois = new ObjectInputStream(inputStream);
-      final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
-      LOG.info("{}, samplingMap: {}", taskId, samplingMap);
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
-      LOG.info("{}, irDag: {}", taskId, irDag);
-      final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
-      LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
-      final List<StageEdge> outgoingEdges = (List<StageEdge>) ois.readObject();
-      LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
-      final List<StageEdge> incomingEdges = (List<StageEdge>) ois.readObject();
-      LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
-      */
 
       final UnboundedSource.CheckpointMark checkpointMark;
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
