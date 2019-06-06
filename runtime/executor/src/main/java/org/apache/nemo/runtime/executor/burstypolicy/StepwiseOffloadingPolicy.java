@@ -108,7 +108,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
     final Map<TaskExecutor, Long> deltaMap) {
 
     final List<TaskExecutor> tasks = runningTasks
-      .stream().filter(runningTask -> runningTask.getId().startsWith("Stage1")).filter(runningTask -> {
+      .stream().filter(runningTask -> {
         return !offloadedExecutors.stream().map(Pair::left).collect(Collectors.toSet()).contains(runningTask);
       }).collect(Collectors.toList());
 
@@ -208,9 +208,9 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
         //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
-        //LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
-        //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
-        final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
+        //final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
+        final List<TaskExecutor> runningTasks = taskStatInfo.statelessRunningTasks;
+
         final long curr = System.currentTimeMillis();
         int cnt = 0;
         //final int multiple = baseOffloadingTaskNum * (int) Math.pow(2, multiplicativeOffloading);
@@ -220,33 +220,38 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         LOG.info("Running tasks: {}, percentage:{}, multiple: {}", runningTasks.size(), percentage, multiple);
 
         for (final TaskExecutor runningTask : runningTasks) {
+
+          if (runningTask.getId().startsWith("Stage1")) {
             final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
-          //if (cnt < runningTasks.size() - 1) {
+            //if (cnt < runningTasks.size() - 1) {
 
-          if (cnt < multiple) {
+            if (cnt < multiple) {
 
-            final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+              final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
-            if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-              //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+              if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-              // offload this task!
-              LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
-                runningTask.getId(), cnt, multiple, multiplicativeOffloading);
+                // offload this task!
+                LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
+                  runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
-              offloadingPendingCnt.getAndIncrement();
+                offloadingPendingCnt.getAndIncrement();
 
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
-                stageOffloadingWorkerManager.endOffloading(stageId);
-                offloadingPendingCnt.decrementAndGet();
-              });
+                runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                  stageOffloadingWorkerManager.endOffloading(stageId);
+                  offloadingPendingCnt.decrementAndGet();
+                });
 
-              offloadedExecutors.add(Pair.of(runningTask, currTime));
-              currCpuTimeSum -= currTaskCpuTime;
+                offloadedExecutors.add(Pair.of(runningTask, currTime));
+                currCpuTimeSum -= currTaskCpuTime;
 
-              cnt += 1;
+                cnt += 1;
 
+              }
             }
+          } else {
+            LOG.info("Task id {}", runningTask.getId());
           }
 
         }
