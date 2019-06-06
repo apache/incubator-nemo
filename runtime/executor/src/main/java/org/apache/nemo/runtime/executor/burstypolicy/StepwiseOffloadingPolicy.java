@@ -209,7 +209,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
         //final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
-        final List<TaskExecutor> runningTasks = taskStatInfo.statelessRunningTasks;
+        final List<TaskExecutor> runningTasks = taskStatInfo.runningTasks;
 
         final long curr = System.currentTimeMillis();
         int cnt = 0;
