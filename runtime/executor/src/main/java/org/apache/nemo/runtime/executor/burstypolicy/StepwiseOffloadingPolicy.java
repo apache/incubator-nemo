@@ -220,32 +220,34 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
         LOG.info("Running tasks: {}, percentage:{}, multiple: {}", runningTasks.size(), percentage, multiple);
 
         for (final TaskExecutor runningTask : runningTasks) {
-          final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
-          //if (cnt < runningTasks.size() - 1) {
+          if (runningTask.getId().startsWith("Stage1")) {
+            final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
+            //if (cnt < runningTasks.size() - 1) {
 
-          if (cnt < multiple) {
+            if (cnt < multiple) {
 
-            final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+              final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
-            if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-              //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+              if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-              // offload this task!
-              LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
-                runningTask.getId(), cnt, multiple, multiplicativeOffloading);
+                // offload this task!
+                LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
+                  runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
-              offloadingPendingCnt.getAndIncrement();
+                offloadingPendingCnt.getAndIncrement();
 
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
-                stageOffloadingWorkerManager.endOffloading(stageId);
-                offloadingPendingCnt.decrementAndGet();
-              });
+                runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                  stageOffloadingWorkerManager.endOffloading(stageId);
+                  offloadingPendingCnt.decrementAndGet();
+                });
 
-              offloadedExecutors.add(Pair.of(runningTask, currTime));
-              currCpuTimeSum -= currTaskCpuTime;
+                offloadedExecutors.add(Pair.of(runningTask, currTime));
+                currCpuTimeSum -= currTaskCpuTime;
 
-              cnt += 1;
+                cnt += 1;
 
+              }
             }
           }
         }
