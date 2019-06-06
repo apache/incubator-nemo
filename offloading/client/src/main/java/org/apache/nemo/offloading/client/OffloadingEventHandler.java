@@ -22,7 +22,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
   private final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
   //private final Map<Channel, List<OffloadingEvent>> channelBufferMap;
 
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
   private final Set<Integer> receivedRequests;
 
