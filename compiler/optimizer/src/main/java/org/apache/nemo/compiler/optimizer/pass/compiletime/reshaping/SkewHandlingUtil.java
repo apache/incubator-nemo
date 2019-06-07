@@ -19,7 +19,6 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.LongDecoderFactory;
 import org.apache.nemo.common.coder.LongEncoderFactory;
 import org.apache.nemo.common.coder.PairDecoderFactory;
@@ -32,9 +31,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.KeyEncoderProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
 
-import java.io.Serializable;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 /**
  * A utility class for skew handling passes.
