@@ -53,8 +53,10 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
     LOG.info("Encoding time: timer: {}, state: {}, keyWatermark: {}", (st1 - st), (st2 - st1), (st3 - st2));
   }
 
+
   @Override
   public GBKFinalState<K> decode(InputStream inStream) throws CoderException, IOException {
+
 
     final long st = System.currentTimeMillis();
     final InMemoryTimerInternalsFactory timerInternalsFactory = timerCoder.decode(inStream);
