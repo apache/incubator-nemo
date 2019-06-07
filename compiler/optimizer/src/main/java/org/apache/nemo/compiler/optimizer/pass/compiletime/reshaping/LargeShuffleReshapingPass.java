@@ -20,11 +20,11 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
- * Inserts the StreamVertex for each shuffle edge.
+ * Inserts the RelayVertex for each shuffle edge.
  */
 @Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleReshapingPass extends ReshapingPass {
@@ -43,7 +43,7 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          dag.insert(new StreamVertex(), edge);
+          dag.insert(new RelayVertex(), edge);
         }
       });
     });
