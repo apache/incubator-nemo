@@ -148,8 +148,8 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch (final Exception e) {
-	    e.printStackTrace();
-	    throw new BlockFetchException(e);
+      e.printStackTrace();
+      throw new BlockFetchException(e);
     }
   }
 

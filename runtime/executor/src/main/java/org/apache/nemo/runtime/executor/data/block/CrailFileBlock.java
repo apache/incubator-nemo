@@ -107,6 +107,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
     }
     fileOutputStream.close();
   }
+
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
