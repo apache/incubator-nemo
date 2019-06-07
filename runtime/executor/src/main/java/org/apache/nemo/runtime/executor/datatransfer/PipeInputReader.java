@@ -66,6 +66,8 @@ public final class PipeInputReader implements InputReader {
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
 
+  private boolean stopped = false;
+
   PipeInputReader(final String executorId,
                   final int dstTaskIdx,
                   final IRVertex srcIRVertex,
@@ -88,7 +90,38 @@ public final class PipeInputReader implements InputReader {
 
 
   @Override
-  public Future<Integer> stop() {
+  public synchronized Future<Integer> stop() {
+    if (stopped) {
+      return new Future<Integer>() {
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+          return false;
+        }
+
+        @Override
+        public boolean isCancelled() {
+          return false;
+        }
+
+        @Override
+        public boolean isDone() {
+          return true;
+        }
+
+        @Override
+        public Integer get() throws InterruptedException, ExecutionException {
+          return 1;
+        }
+
+        @Override
+        public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+          return null;
+        }
+      };
+    }
+
+    stopped = true;
+
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
@@ -103,7 +136,7 @@ public final class PipeInputReader implements InputReader {
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
-      LOG.info("Send message {}", pendingMsg);
+      LOG.info("Send message {}, edge: {}", pendingMsg, runtimeEdge.getId());
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
@@ -154,7 +187,8 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
-  public void restart() {
+  public synchronized void restart() {
+    stopped = false;
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {

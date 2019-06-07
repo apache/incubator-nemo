@@ -97,7 +97,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final List<Future> inputStopPendingFutures = new ArrayList<>();
   private final List<Future> outputStopPendingFutures = new ArrayList<>();
 
-  private final List<DataFetcher> allFetchers = new ArrayList<>();
+  private final Set<DataFetcher> allFetchers = new HashSet<>();
 
   private final TaskLocationMap taskLocationMap;
 
@@ -317,6 +317,7 @@ public final class TinyTaskOffloader implements Offloader {
     for (final DataFetcher dataFetcher : allFetchers) {
       inputStopPendingFutures.add(dataFetcher.stop());
     }
+
     LOG.info("Waiting for source stop futures in {}", taskId);
 
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
