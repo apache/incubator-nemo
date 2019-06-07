@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.common.message;
 
 import org.apache.nemo.runtime.common.message.grpc.GrpcMessageEnvironment;
-import org.apache.nemo.runtime.common.message.ncs.NcsMessageEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
