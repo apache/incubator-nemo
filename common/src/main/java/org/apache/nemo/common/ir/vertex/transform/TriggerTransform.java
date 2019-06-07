@@ -20,33 +20,34 @@ package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 /**
- * A {@link Transform} that collects task-level statistics used for dynamic optimization.
+ * A {@link Transform} for the trigger vertex.
  *
  * @param <I> input type.
  * @param <K> output key type.
  * @param <V> output value type.
  */
-public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
-  private static final Logger LOG = LoggerFactory.getLogger(MessageBarrierTransform.class.getName());
-  private final BiFunction<I, Map<K, V>, Map<K, V>> userFunction;
+public final class TriggerTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
+  private static final Logger LOG = LoggerFactory.getLogger(TriggerTransform.class.getName());
 
-  private OutputCollector<Pair<K, V>> outputCollector;
-  private Map<K, V> holder;
+  private transient OutputCollector<Pair<K, V>> outputCollector;
+  private transient Map<K, V> holder;
+
+  private final TriggerVertex.MessageGeneratorFunction<I, K, V> userFunction;
 
   /**
-   * MessageBarrierTransform constructor.
+   * TriggerTransform constructor.
    *
    * @param userFunction that analyzes the data.
    */
-  public MessageBarrierTransform(final BiFunction<I, Map<K, V>, Map<K, V>> userFunction) {
+  public TriggerTransform(final TriggerVertex.MessageGeneratorFunction<I, K, V> userFunction) {
     this.userFunction = userFunction;
   }
 
@@ -72,7 +73,7 @@ public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTrans
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(MessageBarrierTransform.class);
+    sb.append(TriggerTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();
