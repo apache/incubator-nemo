@@ -87,7 +87,8 @@ public final class PipeManagerWorker {
     final Set<ByteInputContext> byteInputContexts = byteInputContextMap.get(key);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
-    LOG.info("Size of byte input context map: {}", byteInputContexts.size());
+    LOG.info("Size of byte input context map: {} for stopping {}/{}", byteInputContexts.size(),
+      runtimeEdge, dstIndex);
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
       final ByteTransferContextSetupMessage pendingMsg =
@@ -104,8 +105,7 @@ public final class PipeManagerWorker {
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
-        LOG.info("receive ack for {}!!", key);
-        atomicInteger.decrementAndGet();
+        LOG.info("receive ack for {}, {}!!", key, atomicInteger.decrementAndGet());
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
       });
