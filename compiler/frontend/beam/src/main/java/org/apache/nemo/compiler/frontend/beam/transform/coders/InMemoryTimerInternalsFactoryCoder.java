@@ -78,8 +78,14 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     final Instant processingTime = new Instant(dis.readLong());
     final Instant synchronizedProcessingTime = new Instant(dis.readLong());
 
-    final Map<K, NemoTimerInternals> timerInternalsMap = decodeTimerInternalsMap(
-      watermarkTimers, processingTimers, synchronizedProcessingTimers, dis);
+    final Map<K, NemoTimerInternals> timerInternalsMap;
+    try {
+      timerInternalsMap = decodeTimerInternalsMap(
+        watermarkTimers, processingTimers, synchronizedProcessingTimers, dis);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     return new InMemoryTimerInternalsFactory<>(
       watermarkTimers,
@@ -122,6 +128,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
   private void encodeTimerInternalsMap(final Map<K, NemoTimerInternals> timerInternalsMap,
                                        final DataOutputStream dos) throws IOException {
     dos.writeInt(timerInternalsMap.size());
+    final FSTConfiguration conf = FSTSingleton.getInstance();
 
     for (final Map.Entry<K, NemoTimerInternals> entry : timerInternalsMap.entrySet()) {
       final K key = entry.getKey();
@@ -137,10 +144,10 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
       encodeTable(existingTimers, dos);
 
-      dos.writeLong(inputWatermarkTime.getMillis());
-      dos.writeLong(processingTime.getMillis());
-      dos.writeLong(synchronizedProcessingTime.getMillis());
-      dos.writeLong(outputWatermarkTime.getMillis());
+      conf.encodeToStream(dos, inputWatermarkTime);
+      conf.encodeToStream(dos, processingTime);
+      conf.encodeToStream(dos, synchronizedProcessingTime);
+      conf.encodeToStream(dos, outputWatermarkTime);
 
       //LOG.info("Serialize instances");
     }
@@ -150,18 +157,19 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers,
-    final DataInputStream dis) throws IOException {
+    final DataInputStream dis) throws Exception {
 
     final int size = dis.readInt();
     final Map<K, NemoTimerInternals> map = new HashMap<>();
+    final FSTConfiguration conf = FSTSingleton.getInstance();
 
     for (int i = 0; i < size; i++) {
       final K key = keyCoder.decode(dis);
       final Table<StateNamespace, String, TimerInternals.TimerData> existingTimers = decodeTable(dis);
-      final Instant inputWatermarkTime = new Instant(dis.readLong());
-      final Instant processingTime = new Instant(dis.readLong());
-      final Instant synchronizedProcessingTime = new Instant(dis.readLong());
-      final Instant outputWatermarkTime = new Instant(dis.readLong());
+      final Instant inputWatermarkTime = (Instant) conf.decodeFromStream(dis);
+      final Instant processingTime = (Instant) conf.decodeFromStream(dis);
+      final Instant synchronizedProcessingTime = (Instant) conf.decodeFromStream(dis);
+      final Instant outputWatermarkTime = (Instant) conf.decodeFromStream(dis);
 
       final NemoTimerInternals nemoTimerInternals =
         new NemoTimerInternals(key, watermarkTimers, processingTimers, synchronizedProcessingTimers,
