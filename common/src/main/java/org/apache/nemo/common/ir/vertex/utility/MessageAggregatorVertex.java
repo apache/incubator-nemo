@@ -53,9 +53,19 @@ public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
     this.setProperty(ParallelismProperty.of(1));
   }
 
+  /**
+   * Creates the initial aggregated message.
+   * @param <O> of the output aggregated message.
+   */
   public interface InitialStateSupplier<O> extends Supplier<O>, Serializable {
   }
 
+  /**
+   * Aggregates incoming messages.
+   * @param <K> of the input pair.
+   * @param <V> of the input pair.
+   * @param <O> of the output aggregated message.
+   */
   public interface MessageAggregatorFunction<K, V, O> extends BiFunction<Pair<K, V>, O, O>, Serializable {
   }
 }

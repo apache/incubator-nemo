@@ -47,6 +47,13 @@ public final class TriggerVertex<I, K, V> extends OperatorVertex {
     return messageFunction;
   }
 
+  /**
+   * Applied on the input data elements to produce a message.
+   *
+   * @param <I> input type
+   * @param <K> of the output pair.
+   * @param <V> of the output pair.
+   */
   public interface MessageGeneratorFunction<I, K, V> extends BiFunction<I, Map<K, V>, Map<K, V>>, Serializable {
   }
 }
