@@ -26,8 +26,10 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 /**
  * Aggregates upstream messages.
@@ -41,13 +43,19 @@ public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);
 
   /**
-   * @param initialState to use.
+   * @param initialStateSupplier for producing the initial state.
    * @param userFunction for aggregating the messages.
    */
-  public MessageAggregatorVertex(final O initialState,
-                                 final BiFunction<Pair<K, V>, O, O> userFunction) {
-    super(new MessageAggregatorTransform<>(initialState, userFunction));
+  public MessageAggregatorVertex(final InitialStateSupplier<O> initialStateSupplier,
+                                 final MessageAggregatorFunction<K, V, O> userFunction) {
+    super(new MessageAggregatorTransform<>(initialStateSupplier, userFunction));
     this.setPropertyPermanently(MessageIdVertexProperty.of(MESSAGE_ID_GENERATOR.incrementAndGet()));
     this.setProperty(ParallelismProperty.of(1));
+  }
+
+  public interface InitialStateSupplier<O> extends Supplier<O>, Serializable {
+  }
+
+  public interface MessageAggregatorFunction<K, V, O> extends BiFunction<Pair<K, V>, O, O>, Serializable {
   }
 }

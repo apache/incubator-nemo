@@ -24,11 +24,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
- * This pass assumes that a StreamVertex was previously inserted to receive each shuffle edge.
+ * This pass assumes that a RelayVertex was previously inserted to receive each shuffle edge.
  * <p>
  * src - shuffle-edge - streamvertex - one-to-one-edge - dst
  * <p>
@@ -57,7 +57,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
       dag.getIncomingEdgesOf(irVertex).forEach(edge -> {
-        if (edge.getDst().getClass().equals(StreamVertex.class)) {
+        if (edge.getDst().getClass().equals(RelayVertex.class)) {
           // CASE #1: To a stream vertex
 
           // Data transfers
@@ -67,7 +67,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
 
           // Resource slots
           edge.getDst().setPropertyPermanently(ResourceSlotProperty.of(false));
-        } else if (edge.getSrc().getClass().equals(StreamVertex.class)) {
+        } else if (edge.getSrc().getClass().equals(RelayVertex.class)) {
           // CASE #2: From a stream vertex
 
           // Data transfers

@@ -29,6 +29,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyDecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyEncoderProperty;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -41,31 +43,30 @@ final class SkewHandlingUtil {
   private SkewHandlingUtil() {
   }
 
-  static BiFunction<Object, Map<Object, Long>, Map<Object, Long>> getDynOptCollector(final KeyExtractor keyExtractor) {
-    return (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
-      (element, dynOptData) -> {
-        Object key = keyExtractor.extractKey(element);
-        if (dynOptData.containsKey(key)) {
-          dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-        } else {
-          dynOptData.put(key, 1L);
-        }
-        return dynOptData;
-      };
+  static TriggerVertex.MessageGeneratorFunction<Object, Object, Long> getMessageGenerator(
+    final KeyExtractor keyExtractor) {
+    return (element, dynOptData) -> {
+      Object key = keyExtractor.extractKey(element);
+      if (dynOptData.containsKey(key)) {
+        dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+      } else {
+        dynOptData.put(key, 1L);
+      }
+      return dynOptData;
+    };
   }
 
-  static BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> getDynOptAggregator() {
-    return (BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> & Serializable)
-      (element, aggregatedDynOptData) -> {
-        final Object key = element.left();
-        final Long count = element.right();
-        if (aggregatedDynOptData.containsKey(key)) {
-          aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
-        } else {
-          aggregatedDynOptData.put(key, count);
-        }
-        return aggregatedDynOptData;
-      };
+  static MessageAggregatorVertex.MessageAggregatorFunction<Object, Long, Map<Object, Long>> getMessageAggregator() {
+    return (element, aggregatedDynOptData) -> {
+      final Object key = element.left();
+      final Long count = element.right();
+      if (aggregatedDynOptData.containsKey(key)) {
+        aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
+      } else {
+        aggregatedDynOptData.put(key, count);
+      }
+      return aggregatedDynOptData;
+    };
   }
 
   static EncoderProperty getEncoder(final IREdge irEdge) {
