@@ -199,6 +199,7 @@ public final class GBKFinalTransform<K, InputT>
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
       ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
+      // set this to MIN, in order not to emit input watermark when there are no outputs.
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),

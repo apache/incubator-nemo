@@ -87,6 +87,8 @@ public final class PipeManagerWorker {
     final Set<ByteInputContext> byteInputContexts = byteInputContextMap.get(key);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
+    LOG.info("Size of byte input context map: {}", byteInputContexts.size());
+
     for (final ByteInputContext byteInputContext : byteInputContexts) {
       final ByteTransferContextSetupMessage pendingMsg =
         new ByteTransferContextSetupMessage(executorId,
