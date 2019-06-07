@@ -221,7 +221,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
         for (final TaskExecutor runningTask : runningTasks) {
 
-          if (runningTask.getId().startsWith("Stage1")) {
+          if (runningTask.getId().startsWith("Stage1") &&
+            !offloadedExecutors.contains(runningTask)) {
             final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
             //if (cnt < runningTasks.size() - 1) {
 

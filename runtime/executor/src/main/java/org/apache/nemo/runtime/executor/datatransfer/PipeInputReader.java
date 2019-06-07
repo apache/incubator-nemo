@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -66,7 +67,7 @@ public final class PipeInputReader implements InputReader {
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
 
-  private boolean stopped = false;
+  private final AtomicBoolean stopped = new AtomicBoolean(false);
 
   PipeInputReader(final String executorId,
                   final int dstTaskIdx,
@@ -90,8 +91,8 @@ public final class PipeInputReader implements InputReader {
 
 
   @Override
-  public synchronized Future<Integer> stop() {
-    if (stopped) {
+  public Future<Integer> stop() {
+    if (!stopped.compareAndSet(false, true)) {
       return new Future<Integer>() {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
@@ -119,8 +120,6 @@ public final class PipeInputReader implements InputReader {
         }
       };
     }
-
-    stopped = true;
 
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
@@ -188,7 +187,7 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public synchronized void restart() {
-    stopped = false;
+    stopped.set(false);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
