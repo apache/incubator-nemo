@@ -318,8 +318,9 @@ public final class PipeManagerWorker {
     final int numPipeToWait = (int) descriptor.getNumPipe();
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, dstTaskIndex);
 
-    //LOG.info("On input context: {}, srcTaskIndex: {}, runtimeEdge: {}, dstTaskIndex: {}, numPipe: {}",
-    //  inputContext, srcTaskIndex, runtimeEdgeId, dstTaskIndex, numPipeToWait);
+    LOG.info("On input context: {}, srcTaskIndex: {}, runtimeEdge: {}, dstTaskIndex: {}, numPipe: {}",
+      inputContext.getContextId().getTransferIndex(),
+      srcTaskIndex, runtimeEdgeId, dstTaskIndex, numPipeToWait);
 
     // First, initialize the pair key
     pipeContainer.putPipeListIfAbsent(pairKey, numPipeToWait);
