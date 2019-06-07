@@ -27,7 +27,7 @@ import java.util.Objects;
  * @param <A> type of the left element.
  * @param <B> type of the right element.
  */
-public final class Pair<A, B> implements Serializable {
+public final class Pair<A extends Serializable, B extends Serializable> implements Serializable {
   private final A left;
   private final B right;
 

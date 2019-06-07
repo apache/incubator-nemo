@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -104,7 +105,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    *
    * @param <T> type of the data.
    */
-  private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
+  private static final class InMemorySourceReadable<T extends Serializable> extends BoundedIteratorReadable<T> {
 
     private final Iterable<T> initializedSourceData;
 

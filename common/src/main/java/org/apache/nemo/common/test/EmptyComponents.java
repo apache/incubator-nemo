@@ -168,14 +168,17 @@ public final class EmptyComponents {
 
     @Override
     public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+      // Do nothing in an EmptyTransform.
     }
 
     @Override
     public void onData(final I element) {
+      // Do nothing in an EmptyTransform.
     }
 
     @Override
     public void close() {
+      // Do nothing in an EmptyTransform.
     }
   }
 

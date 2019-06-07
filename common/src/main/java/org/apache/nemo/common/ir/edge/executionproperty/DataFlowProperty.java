@@ -47,7 +47,7 @@ public final class DataFlowProperty extends EdgeExecutionProperty<DataFlowProper
    * Possible values of DataFlowModel ExecutionProperty.
    */
   public enum Value {
-    Pull,
-    Push,
+    PULL,
+    PUSH,
   }
 }
