@@ -53,6 +53,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
+  private boolean dataReceived = false;
 
   /**
    * GroupByKey constructor.
@@ -123,6 +124,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     checkAndInvokeBundle();
+    dataReceived = true;
 
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
@@ -178,8 +180,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void emitOutputWatermark(final Watermark inputWatermark) {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-       // set this to MIN, in order not to emit input watermark when there are no outputs.
-      ? new Watermark(Long.MIN_VALUE)
+      ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
+      // set this to MAX, in order not to emit input watermark when there are no outputs.
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
