@@ -67,6 +67,8 @@ public final class LocalitySchedulingConstraintTest {
   /**
    * {@link LocalitySchedulingConstraint} should fail to schedule a {@link Task} when
    * there are no executors in appropriate location(s).
+   *
+   * @throws InjectionException exception on the way.
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() throws InjectionException {
@@ -87,6 +89,8 @@ public final class LocalitySchedulingConstraintTest {
   /**
    * {@link LocalitySchedulingConstraint} should properly schedule {@link Task}s
    * with multiple source locations.
+   *
+   * @throws InjectionException exception on the way.
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() throws InjectionException {

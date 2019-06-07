@@ -24,11 +24,11 @@ import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 /**
  * Relays input data from upstream vertex to downstream vertex promptly.
  */
-public final class StreamVertex extends OperatorVertex {
+public final class RelayVertex extends OperatorVertex {
   /**
    * Constructor.
    */
-  public StreamVertex() {
+  public RelayVertex() {
     super(new StreamTransform());
   }
 }

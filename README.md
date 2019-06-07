@@ -155,6 +155,13 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
   	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
 ```
 
+## Options for writing metric results to databases.
+
+* `-db_enabled`: Whether or not to turn on the DB (`true` or `false`).
+* `-db_address`: Address of the DB. (ex. PostgreSQL DB starts with `jdbc:postgresql://...`)
+* `-db_id` : ID of the DB from the given address.
+* `-db_password`: Credentials for the DB from the given address.
+
 ## Speeding up builds 
 * To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
 * To exclude Beam related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/beam,\\!examples/beam

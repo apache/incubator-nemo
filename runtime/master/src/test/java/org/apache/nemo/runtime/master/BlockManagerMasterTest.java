@@ -81,7 +81,7 @@ public final class BlockManagerMasterTest {
   /**
    * Test scenario where block becomes committed and then lost.
    *
-   * @throws Exception
+   * @throws Exception exception on the way.
    */
   @Test
   public void testLostAfterCommit() throws Exception {
@@ -112,7 +112,7 @@ public final class BlockManagerMasterTest {
   /**
    * Test scenario where producer task fails.
    *
-   * @throws Exception
+   * @throws Exception exception on the way.
    */
   @Test
   public void testBeforeAfterCommit() throws Exception {

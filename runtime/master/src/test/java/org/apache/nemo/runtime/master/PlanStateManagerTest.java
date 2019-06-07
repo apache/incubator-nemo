@@ -66,6 +66,8 @@ public final class PlanStateManagerTest {
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link PlanStateManager}.
    * State changes are explicitly called to check whether states are managed correctly or not.
+   *
+   * @throws Exception exception on the way.
    */
   @Test
   public void testPhysicalPlanStateChanges() throws Exception {
@@ -97,6 +99,8 @@ public final class PlanStateManagerTest {
 
   /**
    * Test whether the methods waiting for the finish of the plan works properly.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 4000)
   public void testWaitUntilFinish() throws Exception {

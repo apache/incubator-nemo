@@ -45,6 +45,8 @@ public final class BlockTest {
 
   /**
    * Generates the test data and serializer.
+   *
+   * @throws Exception exception on the way.
    */
   @Before
   public void setUp() throws Exception {
@@ -62,6 +64,8 @@ public final class BlockTest {
 
   /**
    * Test {@link NonSerializedMemoryBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testNonSerializedMemoryBlock() throws Exception {
@@ -71,6 +75,8 @@ public final class BlockTest {
 
   /**
    * Test {@link org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testSerializedMemoryBlock() throws Exception {
@@ -80,6 +86,8 @@ public final class BlockTest {
 
   /**
    * Test {@link FileBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testFileBlock() throws Exception {

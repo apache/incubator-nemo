@@ -135,6 +135,8 @@ public final class TaskExecutorTest {
 
   /**
    * Test source vertex data fetching.
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testSourceVertexDataFetching() throws Exception {
@@ -191,6 +193,8 @@ public final class TaskExecutorTest {
 
   /**
    * Test invalid parameter failure.
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testInvalidInputData() throws Exception {
@@ -208,6 +212,8 @@ public final class TaskExecutorTest {
 
   /**
    * This test emits data and watermark by emulating an unbounded source readable.
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testUnboundedSourceVertexDataFetching() throws Exception {
@@ -255,6 +261,8 @@ public final class TaskExecutorTest {
 
   /**
    * Test parent task data fetching.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 5000)
   public void testParentTaskDataFetching() throws Exception {
@@ -294,8 +302,8 @@ public final class TaskExecutorTest {
 
   /**
    * The DAG of the task to test will looks like:
-   * source1 -> vertex1 -> vertex2
-   * source2 -> vertex3 ->
+   * source1 - vertex1 - vertex2
+   * source2 - vertex3 -
    * <p>
    * The vertex2 has two incoming edges (from vertex1 and vertex3)
    * and we test if TaskExecutor handles data and watermarks correctly in this situation.
@@ -304,6 +312,8 @@ public final class TaskExecutorTest {
    * source2 emits watermarks:  1000(ts)                                     2200 (ts)
    * <p>
    * The vertex2 should receive and emits watermarks 500, 600, 1000, 1800, and 2200
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testMultipleIncomingEdges() throws Exception {
@@ -386,11 +396,13 @@ public final class TaskExecutorTest {
 
   /**
    * The DAG of the task to test will looks like:
-   * parent task -> task (vertex 1 -> task 2) -> child task
+   * parent task - task (vertex 1 - task 2) - child task
    * <p>
    * The output data from task 1 will be split according to source parallelism through {@link ParentTaskReaderAnswer}.
    * Because of this, task 1 will process multiple partitions and emit data in multiple times also.
    * On the other hand, task 2 will receive the output data once and produce a single output.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 5000)
   public void testTwoOperators() throws Exception {
@@ -470,6 +482,8 @@ public final class TaskExecutorTest {
    * <p>
    * emit(element) and emit(dstVertexId, element) used together. emit(element) routes results to main output children,
    * and emit(dstVertexId, element) routes results to corresponding additional output children.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 5000)
   public void testAdditionalOutputs() throws Exception {

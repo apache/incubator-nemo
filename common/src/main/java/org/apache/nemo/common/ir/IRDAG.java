@@ -36,9 +36,9 @@ import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +70,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
 
   // To remember original encoders/decoders, and etc
-  private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
+  private final Map<RelayVertex, IREdge> streamVertexToOriginalEdge;
 
   // To remember sampling vertex groups
   private final Map<SamplingVertex, Set<SamplingVertex>> samplingVertexToGroup;
@@ -128,7 +128,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Deletes a previously inserted utility vertex.
-   * (e.g., MessageBarrierVertex, StreamVertex, SamplingVertex)
+   * (e.g., TriggerVertex, RelayVertex, SamplingVertex)
    * <p>
    * Notice that the actual number of vertices that will be deleted after this call returns can be more than one.
    * We roll back the changes made with the previous insert(), while preserving application semantics.
@@ -144,7 +144,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   private Set<IRVertex> getVertexGroupToDelete(final IRVertex vertexToDelete) {
-    if (vertexToDelete instanceof StreamVertex) {
+    if (vertexToDelete instanceof RelayVertex) {
       return Sets.newHashSet(vertexToDelete);
     } else if (vertexToDelete instanceof SamplingVertex) {
       final Set<SamplingVertex> samplingVertexGroup = samplingVertexToGroup.get(vertexToDelete);
@@ -153,7 +153,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         converted.add(sv); // explicit conversion to IRVertex is needed.. otherwise the compiler complains :(
       }
       return converted;
-    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
+    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof TriggerVertex) {
       return messageVertexToGroup.get(vertexToDelete);
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
@@ -200,7 +200,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     Sets.difference(utilityParents, vertexGroupToDelete).forEach(ptd -> deleteRecursively(ptd, visited));
 
     // STEP 2: Delete the specified vertex(vertices)
-    if (vertexToDelete instanceof StreamVertex) {
+    if (vertexToDelete instanceof RelayVertex) {
       final DAGBuilder<IRVertex, IREdge> builder = rebuildExcluding(modifiedDAG, vertexGroupToDelete);
 
       // Add a new edge that directly connects the src of the stream vertex to its dst
@@ -214,7 +214,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             .forEach(srcVertex -> builder.connectVertices(
               Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex))));
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
-    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
+    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof TriggerVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
       final int deletedMessageId = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
@@ -245,16 +245,16 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * Inserts a new vertex that streams data.
    * <p>
    * Before: src - edgeToStreamize - dst
-   * After: src - edgeToStreamizeWithNewDestination - streamVertex - oneToOneEdge - dst
+   * After: src - edgeToStreamizeWithNewDestination - relayVertex - oneToOneEdge - dst
    * (replaces the "Before" relationships)
    * <p>
-   * This preserves semantics as the streamVertex simply forwards data elements from the input edge to the output edge.
+   * This preserves semantics as the relayVertex simply forwards data elements from the input edge to the output edge.
    *
-   * @param streamVertex    to insert.
+   * @param relayVertex    to insert.
    * @param edgeToStreamize to modify.
    */
-  public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
-    assertNonExistence(streamVertex);
+  public void insert(final RelayVertex relayVertex, final IREdge edgeToStreamize) {
+    assertNonExistence(relayVertex);
     assertNonControlEdge(edgeToStreamize);
 
     // Create a completely new DAG with the vertex inserted.
@@ -267,7 +267,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }
 
     // Insert the vertex.
-    final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(streamVertex, edgeToStreamize.getSrc());
+    final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(relayVertex, edgeToStreamize.getSrc());
     builder.addVertex(vertexToInsert);
     edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
@@ -280,14 +280,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         if (edge.equals(edgeToStreamize)) {
           // MATCH!
 
-          // Edge to the streamVertex
+          // Edge to the relayVertex
           final IREdge toSV = new IREdge(
             edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
             edgeToStreamize.getSrc(),
             vertexToInsert);
           edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
-          // Edge from the streamVertex.
+          // Edge from the relayVertex.
           final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
           fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
           fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
@@ -313,12 +313,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
-    if (edgeToStreamize.getSrc() instanceof StreamVertex) {
-      streamVertexToOriginalEdge.put(streamVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getSrc()));
-    } else if (edgeToStreamize.getDst() instanceof StreamVertex) {
-      streamVertexToOriginalEdge.put(streamVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getDst()));
+    if (edgeToStreamize.getSrc() instanceof RelayVertex) {
+      streamVertexToOriginalEdge.put(relayVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getSrc()));
+    } else if (edgeToStreamize.getDst() instanceof RelayVertex) {
+      streamVertexToOriginalEdge.put(relayVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getDst()));
     } else {
-      streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
+      streamVertexToOriginalEdge.put(relayVertex, edgeToStreamize);
     }
     modifiedDAG = builder.build(); // update the DAG.
   }
@@ -329,28 +329,28 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * For each edge in edgesToGetStatisticsOf...
    * <p>
    * Before: src - edge - dst
-   * After: src - oneToOneEdge(a clone of edge) - messageBarrierVertex -
+   * After: src - oneToOneEdge(a clone of edge) - triggerVertex -
    * shuffleEdge - messageAggregatorVertex - broadcastEdge - dst
    * (the "Before" relationships are unmodified)
    * <p>
    * This preserves semantics as the results of the inserted message vertices are never consumed by the original IRDAG.
    * <p>
-   * TODO #345: Simplify insert(MessageBarrierVertex)
+   * TODO #345: Simplify insert(TriggerVertex)
    *
-   * @param messageBarrierVertex    to insert.
+   * @param triggerVertex    to insert.
    * @param messageAggregatorVertex to insert.
-   * @param mbvOutputEncoder        to use.
-   * @param mbvOutputDecoder        to use.
+   * @param triggerOutputEncoder        to use.
+   * @param triggerOutputDecoder        to use.
    * @param edgesToGetStatisticsOf  to examine.
    * @param edgesToOptimize         to optimize.
    */
-  public void insert(final MessageBarrierVertex messageBarrierVertex,
+  public void insert(final TriggerVertex triggerVertex,
                      final MessageAggregatorVertex messageAggregatorVertex,
-                     final EncoderProperty mbvOutputEncoder,
-                     final DecoderProperty mbvOutputDecoder,
+                     final EncoderProperty triggerOutputEncoder,
+                     final DecoderProperty triggerOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf,
                      final Set<IREdge> edgesToOptimize) {
-    assertNonExistence(messageBarrierVertex);
+    assertNonExistence(triggerVertex);
     assertNonExistence(messageAggregatorVertex);
     edgesToGetStatisticsOf.forEach(this::assertNonControlEdge);
     edgesToOptimize.forEach(this::assertNonControlEdge);
@@ -371,43 +371,43 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
     });
 
-    ////////////////////////////////// STEP 1: Insert new vertices and edges (src - mbv - mav - dst)
+    ////////////////////////////////// STEP 1: Insert new vertices and edges (src - trigger - agg - dst)
 
-    // From src to mbv
-    final List<IRVertex> mbvList = new ArrayList<>();
+    // From src to trigger
+    final List<IRVertex> triggerList = new ArrayList<>();
     for (final IREdge edge : edgesToGetStatisticsOf) {
-      final IRVertex mbvToAdd = wrapSamplingVertexIfNeeded(
-        new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction()), edge.getSrc());
-      builder.addVertex(mbvToAdd);
-      mbvList.add(mbvToAdd);
+      final IRVertex triggerToAdd = wrapSamplingVertexIfNeeded(
+        new TriggerVertex<>(triggerVertex.getMessageFunction()), edge.getSrc());
+      builder.addVertex(triggerToAdd);
+      triggerList.add(triggerToAdd);
       edge.getSrc().getPropertyValue(ParallelismProperty.class)
-        .ifPresent(p -> mbvToAdd.setProperty(ParallelismProperty.of(p)));
+        .ifPresent(p -> triggerToAdd.setProperty(ParallelismProperty.of(p)));
 
       final IREdge edgeToClone;
-      if (edge.getSrc() instanceof StreamVertex) {
+      if (edge.getSrc() instanceof RelayVertex) {
         edgeToClone = streamVertexToOriginalEdge.get(edge.getSrc());
-      } else if (edge.getDst() instanceof StreamVertex) {
+      } else if (edge.getDst() instanceof RelayVertex) {
         edgeToClone = streamVertexToOriginalEdge.get(edge.getDst());
       } else {
         edgeToClone = edge;
       }
 
       final IREdge clone = Util.cloneEdge(
-        CommunicationPatternProperty.Value.OneToOne, edgeToClone, edge.getSrc(), mbvToAdd);
+        CommunicationPatternProperty.Value.OneToOne, edgeToClone, edge.getSrc(), triggerToAdd);
       builder.connectVertices(clone);
     }
 
-    // Add mav (no need to wrap inside sampling vertices)
+    // Add agg (no need to wrap inside sampling vertices)
     builder.addVertex(messageAggregatorVertex);
 
-    // From mbv to mav
-    for (final IRVertex mbv : mbvList) {
+    // From trigger to agg
+    for (final IRVertex trigger : triggerList) {
       final IREdge edgeToMav = edgeToMessageAggregator(
-        mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
+        trigger, messageAggregatorVertex, triggerOutputEncoder, triggerOutputDecoder);
       builder.connectVertices(edgeToMav);
     }
 
-    // From mav to dst
+    // From agg to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
     builder.connectVertices(
       Util.createControlEdge(messageAggregatorVertex, edgesToGetStatisticsOf.iterator().next().getDst()));
@@ -426,9 +426,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
 
     final Set<IRVertex> insertedVertices = new HashSet<>();
-    insertedVertices.addAll(mbvList);
+    insertedVertices.addAll(triggerList);
     insertedVertices.add(messageAggregatorVertex);
-    mbvList.forEach(mbv -> messageVertexToGroup.put(mbv, insertedVertices));
+    triggerList.forEach(trigger -> messageVertexToGroup.put(trigger, insertedVertices));
     messageVertexToGroup.put(messageAggregatorVertex, insertedVertices);
 
     modifiedDAG = builder.build(); // update the DAG.
@@ -574,17 +574,17 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   /**
-   * @param mbv     src.
-   * @param mav     dst.
+   * @param trigger src.
+   * @param agg     dst.
    * @param encoder src-dst encoder.
    * @param decoder src-dst decoder.
    * @return the edge.
    */
-  private IREdge edgeToMessageAggregator(final IRVertex mbv,
-                                         final IRVertex mav,
+  private IREdge edgeToMessageAggregator(final IRVertex trigger,
+                                         final IRVertex agg,
                                          final EncoderProperty encoder,
                                          final DecoderProperty decoder) {
-    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);
+    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, trigger, agg);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
@@ -592,7 +592,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setPropertyPermanently(decoder);
     newEdge.setPropertyPermanently(KeyExtractorProperty.of(new PairKeyExtractor()));
 
-    // TODO #345: Simplify insert(MessageBarrierVertex)
+    // TODO #345: Simplify insert(TriggerVertex)
     // these are obviously wrong, but hacks for now...
     newEdge.setPropertyPermanently(KeyEncoderProperty.of(encoder.getValue()));
     newEdge.setPropertyPermanently(KeyDecoderProperty.of(decoder.getValue()));

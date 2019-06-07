@@ -32,7 +32,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +68,7 @@ public final class IRDAGChecker {
     addShuffleEdgeCheckers();
     addPartitioningCheckers();
     addEncodingCompressionCheckers();
-    addMessageBarrierVertexCheckers();
+    addTriggerVertexCheckers();
     addStreamVertexCheckers();
     addLoopVertexCheckers();
     addScheduleGroupCheckers();
@@ -305,7 +305,7 @@ public final class IRDAGChecker {
     neighborCheckerList.add(shuffleChecker);
   }
 
-  void addMessageBarrierVertexCheckers() {
+  void addTriggerVertexCheckers() {
     final GlobalDAGChecker messageIds = (dag -> {
       final long numMessageAggregatorVertices = dag.getVertices()
         .stream()
@@ -468,7 +468,7 @@ public final class IRDAGChecker {
   ///////////////////////////// Private helper methods
 
   private boolean isConnectedToStreamVertex(final IREdge irEdge) {
-    return irEdge.getDst() instanceof StreamVertex || irEdge.getSrc() instanceof StreamVertex;
+    return irEdge.getDst() instanceof RelayVertex || irEdge.getSrc() instanceof RelayVertex;
   }
 
   private Map<Optional<String>, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {

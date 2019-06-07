@@ -19,30 +19,41 @@
 package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
+import org.apache.nemo.common.ir.vertex.transform.TriggerTransform;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
- * Generates messages.
+ * Produces a message and triggers a run-time pass.
  *
  * @param <I> input type
  * @param <K> of the output pair.
  * @param <V> of the output pair.
  */
-public final class MessageBarrierVertex<I, K, V> extends OperatorVertex {
-  private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
+public final class TriggerVertex<I, K, V> extends OperatorVertex {
+  private final MessageGeneratorFunction<I, K, V> messageFunction;
 
   /**
    * @param messageFunction for producing a message.
    */
-  public MessageBarrierVertex(final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction) {
-    super(new MessageBarrierTransform<>(messageFunction));
+  public TriggerVertex(final MessageGeneratorFunction<I, K, V> messageFunction) {
+    super(new TriggerTransform<>(messageFunction));
     this.messageFunction = messageFunction;
   }
 
-  public BiFunction<I, Map<K, V>, Map<K, V>> getMessageFunction() {
+  public MessageGeneratorFunction<I, K, V> getMessageFunction() {
     return messageFunction;
+  }
+
+  /**
+   * Applied on the input data elements to produce a message.
+   *
+   * @param <I> input type
+   * @param <K> of the output pair.
+   * @param <V> of the output pair.
+   */
+  public interface MessageGeneratorFunction<I, K, V> extends BiFunction<I, Map<K, V>, Map<K, V>>, Serializable {
   }
 }
