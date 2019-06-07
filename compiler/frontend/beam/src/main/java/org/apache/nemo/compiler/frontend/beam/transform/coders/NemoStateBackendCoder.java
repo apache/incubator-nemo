@@ -8,7 +8,9 @@ import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.state.State;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.NemoStateBackend;
+import org.nustaq.serialization.FSTConfiguration;
 
 import java.io.*;
 import java.util.HashMap;
@@ -25,6 +27,8 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
   @Override
   public void encode(NemoStateBackend value, OutputStream outStream) throws CoderException, IOException {
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = value.map;
     final int size = map.size();
     final DataOutputStream dos = new DataOutputStream(outStream);
@@ -41,22 +45,28 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
   private void encode(final Map<StateTag, Pair<State, Coder>> stateMap,
                       final DataOutputStream outputStream) throws IOException {
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+
     final int size = stateMap.size();
     outputStream.writeInt(size);
 
     for (final Map.Entry<StateTag, Pair<State, Coder>> entry : stateMap.entrySet()) {
       final StateTag stateTag = entry.getKey();
-      SerializationUtils.serialize(stateTag, outputStream);
+
+      conf.encodeToStream(outputStream, stateTag);
+
       final Coder stateCoder = entry.getValue().right();
       final State state = entry.getValue().left();
 
-      SerializationUtils.serialize(stateCoder, outputStream);
+      conf.encodeToStream(outputStream, stateCoder);
       stateCoder.encode(state, outputStream);
     }
   }
 
   @Override
   public NemoStateBackend decode(InputStream inStream) throws CoderException, IOException {
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
 
@@ -65,7 +75,13 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     for (int i = 0; i < size; i++) {
       final StateNamespace stateNamespace =
         StateNamespaces.fromString(dis.readUTF(), windowCoder);
-      final Map<StateTag, Pair<State, Coder>> val = decodeMap(dis);
+      final Map<StateTag, Pair<State, Coder>> val;
+      try {
+        val = decodeMap(dis);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
 
       map.put(stateNamespace, val);
     }
@@ -73,13 +89,15 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     return new NemoStateBackend(map);
   }
 
-  private Map<StateTag, Pair<State, Coder>> decodeMap(final DataInputStream dis) throws IOException {
+  private Map<StateTag, Pair<State, Coder>> decodeMap(final DataInputStream dis) throws Exception {
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+
     final int size = dis.readInt();
     final Map<StateTag, Pair<State, Coder>> map = new HashMap<>();
 
     for (int i = 0; i < size; i++) {
-      final StateTag stateTag = SerializationUtils.deserialize(dis);
-      final Coder<State> stateCoder = SerializationUtils.deserialize(dis);
+      final StateTag stateTag = (StateTag) conf.decodeFromStream(dis);
+      final Coder<State> stateCoder = (Coder<State>) conf.decodeFromStream(dis);
       final State state = stateCoder.decode(dis);
 
       map.put(stateTag, Pair.of(state, stateCoder));

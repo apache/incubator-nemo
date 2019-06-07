@@ -78,6 +78,12 @@ under the License.
         <artifactId>wake</artifactId>
         <version>0.16.0</version>
       </dependency>
+      <!-- https://mvnrepository.com/artifact/de.ruedigermoeller/fst -->
+      <dependency>
+        <groupId>de.ruedigermoeller</groupId>
+        <artifactId>fst</artifactId>
+        <version>2.57</version>
+      </dependency>
 
     </dependencies>
 

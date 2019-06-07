@@ -43,8 +43,9 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
     stateCoder.encode(value.stateInternalsFactory, outStream);
 
     final long st2 = System.currentTimeMillis();
-    SerializationUtils.serialize(value.prevOutputWatermark, outStream);
-    SerializationUtils.serialize(value.inputWatermark, outStream);
+
+    dos.writeLong(value.prevOutputWatermark.getTimestamp());
+    dos.writeLong(value.inputWatermark.getTimestamp());
 
     encodeKeyAndWatermarkMap(value.keyAndWatermarkHoldMap, dos);
     final long st3 = System.currentTimeMillis();
@@ -63,10 +64,11 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     final long st2 = System.currentTimeMillis();
 
-    final Watermark prevOutputWatermark = SerializationUtils.deserialize(inStream);
-    final Watermark inputWatermark = SerializationUtils.deserialize(inStream);
-
     final DataInputStream dis = new DataInputStream(inStream);
+
+    final Watermark prevOutputWatermark = new Watermark(dis.readLong());
+    final Watermark inputWatermark = new Watermark(dis.readLong());
+
     final Map<K, Watermark> keyAndWatermarkMap = decodeKeyAndWatermarkMap(dis);
 
     final long st3 = System.currentTimeMillis();
@@ -89,7 +91,7 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     for (final Map.Entry<K, Watermark> entry : map.entrySet()) {
       keyCoder.encode(entry.getKey(), dos);
-      SerializationUtils.serialize(entry.getValue(), dos);
+      dos.writeLong(entry.getValue().getTimestamp());
     }
   }
 
@@ -99,7 +101,7 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     for (int i = 0; i < size; i++) {
       final K key = keyCoder.decode(dis);
-      final Watermark watermark = SerializationUtils.deserialize(dis);
+      final Watermark watermark = new Watermark(dis.readLong());
       map.put(key, watermark);
     }
 

@@ -32,13 +32,11 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
     //LOG.info("Combining state: {}", state);
 
     coder.encode(state, outStream);
-    SerializationUtils.serialize(combineFn, outStream);
   }
 
   @Override
   public CombiningState<InputT, AccumT, OutputT> decode(InputStream inStream) throws CoderException, IOException {
     final AccumT accum = coder.decode(inStream);
-    final Combine.CombineFn<InputT, AccumT, OutputT> combineFn = SerializationUtils.deserialize(inStream);
     final CombiningState<InputT, AccumT, OutputT> state =
       new InMemoryStateInternals.InMemoryCombiningState<>(combineFn, coder);
 

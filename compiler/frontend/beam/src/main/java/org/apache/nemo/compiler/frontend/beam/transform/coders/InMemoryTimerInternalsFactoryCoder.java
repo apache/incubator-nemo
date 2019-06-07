@@ -9,9 +9,11 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
 import org.apache.nemo.compiler.frontend.beam.transform.NemoTimerInternals;
 import org.joda.time.Instant;
+import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
   @Override
   public void encode(InMemoryTimerInternalsFactory<K> value, OutputStream outStream) throws CoderException, IOException {
+
     final DataOutputStream dos = new DataOutputStream(outStream);
 
     encodeNavigableSet(value.watermarkTimers, dos);
@@ -42,9 +45,9 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     //LOG.info("Encoded navigable sets");
 
-    SerializationUtils.serialize(value.inputWatermarkTime, dos);
-    SerializationUtils.serialize(value.processingTime, dos);
-    SerializationUtils.serialize(value.synchronizedProcessingTime, dos);
+    dos.writeLong(value.inputWatermarkTime.getMillis());
+    dos.writeLong(value.processingTime.getMillis());
+    dos.writeLong(value.synchronizedProcessingTime.getMillis());
 
     encodeTimerInternalsMap(value.timerInternalsMap, dos);
   }
@@ -71,9 +74,9 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers = decodeNavigableSet(dis, comparator);
     final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers = decodeNavigableSet(dis, comparator);
 
-    final Instant inputWatermarkTime = SerializationUtils.deserialize(dis);
-    final Instant processingTime = SerializationUtils.deserialize(dis);
-    final Instant synchronizedProcessingTime = SerializationUtils.deserialize(dis);
+    final Instant inputWatermarkTime = new Instant(dis.readLong());
+    final Instant processingTime = new Instant(dis.readLong());
+    final Instant synchronizedProcessingTime = new Instant(dis.readLong());
 
     final Map<K, NemoTimerInternals> timerInternalsMap = decodeTimerInternalsMap(
       watermarkTimers, processingTimers, synchronizedProcessingTimers, dis);
@@ -133,10 +136,11 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
 
       encodeTable(existingTimers, dos);
-      SerializationUtils.serialize(inputWatermarkTime, dos);
-      SerializationUtils.serialize(processingTime, dos);
-      SerializationUtils.serialize(synchronizedProcessingTime, dos);
-      SerializationUtils.serialize(outputWatermarkTime, dos);
+
+      dos.writeLong(inputWatermarkTime.getMillis());
+      dos.writeLong(processingTime.getMillis());
+      dos.writeLong(synchronizedProcessingTime.getMillis());
+      dos.writeLong(outputWatermarkTime.getMillis());
 
       //LOG.info("Serialize instances");
     }
@@ -154,10 +158,10 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     for (int i = 0; i < size; i++) {
       final K key = keyCoder.decode(dis);
       final Table<StateNamespace, String, TimerInternals.TimerData> existingTimers = decodeTable(dis);
-      final Instant inputWatermarkTime = SerializationUtils.deserialize(dis);
-      final Instant processingTime = SerializationUtils.deserialize(dis);
-      final Instant synchronizedProcessingTime = SerializationUtils.deserialize(dis);
-      final Instant outputWatermarkTime = SerializationUtils.deserialize(dis);
+      final Instant inputWatermarkTime = new Instant(dis.readLong());
+      final Instant processingTime = new Instant(dis.readLong());
+      final Instant synchronizedProcessingTime = new Instant(dis.readLong());
+      final Instant outputWatermarkTime = new Instant(dis.readLong());
 
       final NemoTimerInternals nemoTimerInternals =
         new NemoTimerInternals(key, watermarkTimers, processingTimers, synchronizedProcessingTimers,

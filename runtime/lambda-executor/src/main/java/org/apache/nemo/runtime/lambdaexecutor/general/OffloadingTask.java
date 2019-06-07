@@ -8,6 +8,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -15,6 +16,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +83,8 @@ public final class OffloadingTask {
   public ByteBuf encode() {
     try {
 
+      final FSTConfiguration conf = FSTSingleton.getInstance();
+
       //final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
 
       //LOG.info("Before Task ordinal11 !!");
@@ -103,12 +107,11 @@ public final class OffloadingTask {
       dos.writeUTF(taskId);
       dos.writeInt(taskIndex);
 
-
-      SerializationUtils.serialize((Serializable) samplingMap, bos);
-      SerializationUtils.serialize((Serializable) taskOutgoingEdges, bos);
-      SerializationUtils.serialize((Serializable) outgoingEdges, bos);
-      SerializationUtils.serialize((Serializable) incomingEdges, bos);
-      SerializationUtils.serialize((Serializable) irDag, bos);
+      conf.encodeToStream(bos, samplingMap);
+      conf.encodeToStream(bos, taskOutgoingEdges);
+      conf.encodeToStream(bos, outgoingEdges);
+      conf.encodeToStream(bos, incomingEdges);
+      conf.encodeToStream(bos, irDag);
 
       /*
       final ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -122,9 +125,9 @@ public final class OffloadingTask {
 
       if (checkpointMark != null) {
         dos.writeBoolean(true);
-        SerializationUtils.serialize(checkpointMarkCoder, bos);
+        conf.encodeToStream(bos, checkpointMarkCoder);
         checkpointMarkCoder.encode(checkpointMark, bos);
-        SerializationUtils.serialize(unboundedSource, bos);
+        conf.encodeToStream(bos, unboundedSource);
       } else {
         dos.writeBoolean(false);
       }
@@ -133,7 +136,7 @@ public final class OffloadingTask {
         dos.writeInt(stateMap.size());
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
           dos.writeUTF(vertexIdAndState.getKey());
-          SerializationUtils.serialize(stateCoderMap.get(vertexIdAndState.getKey()), bos);
+          conf.encodeToStream(bos, stateCoderMap.get(vertexIdAndState.getKey()));
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
 
@@ -142,7 +145,7 @@ public final class OffloadingTask {
         dos.writeInt(0);
       }
 
-      SerializationUtils.serialize((ConcurrentHashMap) taskLocationMap, bos);
+      conf.encodeToStream(bos, taskLocationMap);
 
       dos.close();
       //oos.close();
@@ -160,6 +163,8 @@ public final class OffloadingTask {
 
     try {
 
+      final FSTConfiguration conf = FSTSingleton.getInstance();
+
       final DataInputStream dis = new DataInputStream(inputStream);
       final String executorId = dis.readUTF();
       final String taskId = dis.readUTF();
@@ -167,17 +172,18 @@ public final class OffloadingTask {
 
       LOG.info("Decoding task!! {}", taskId);
 
-      final Map<String, Double> samplingMap = SerializationUtils.deserialize(inputStream);
+      final Map<String, Double> samplingMap = (Map<String, Double>) conf.decodeFromStream(inputStream);
       LOG.info("{}, samplingMap: {}", taskId, samplingMap);
 
-      final Map<String, List<String>> taskOutgoingEdges = SerializationUtils.deserialize(inputStream);
+      final Map<String, List<String>> taskOutgoingEdges =  (Map<String, List<String>>) conf.decodeFromStream(inputStream);
       LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
-      final List<StageEdge> outgoingEdges = SerializationUtils.deserialize(inputStream);
+      final List<StageEdge> outgoingEdges = (List<StageEdge>) conf.decodeFromStream(inputStream);
       LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
-      final List<StageEdge> incomingEdges = SerializationUtils.deserialize(inputStream);
+      final List<StageEdge> incomingEdges = (List<StageEdge>) conf.decodeFromStream(inputStream);
       LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
 
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(inputStream);
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
+        (DAG<IRVertex, RuntimeEdge<IRVertex>>) conf.decodeFromStream(inputStream);
       LOG.info("{}, irDag: {}", taskId, irDag);
 
       final UnboundedSource.CheckpointMark checkpointMark;
@@ -185,9 +191,9 @@ public final class OffloadingTask {
       final UnboundedSource unboundedSource;
       final boolean hasCheckpoint = dis.readBoolean();
       if (hasCheckpoint) {
-        checkpointMarkCoder = SerializationUtils.deserialize(inputStream);
+        checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>) conf.decodeFromStream(inputStream);
         checkpointMark = checkpointMarkCoder.decode(inputStream);
-        unboundedSource = SerializationUtils.deserialize(inputStream);
+        unboundedSource = (UnboundedSource) conf.decodeFromStream(inputStream);
       } else {
         checkpointMark = null;
         unboundedSource = null;
@@ -199,7 +205,7 @@ public final class OffloadingTask {
       final int size = dis.readInt();
       for (int i = 0; i < size; i++) {
         final String key = dis.readUTF();
-        final Coder<GBKFinalState> stateCoder = SerializationUtils.deserialize(dis);
+        final Coder<GBKFinalState> stateCoder = (Coder<GBKFinalState>) conf.decodeFromStream(inputStream);
         final GBKFinalState state = stateCoder.decode(inputStream);
         stateMap.put(key, state);
         stateCoderMap.put(key, stateCoder);
@@ -208,7 +214,7 @@ public final class OffloadingTask {
       LOG.info("Decoding state {}", taskId);
 
       final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
-        SerializationUtils.deserialize(inputStream);
+        (Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC>) conf.decodeFromStream(inputStream);
 
       return new OffloadingTask(executorId,
         taskId,
@@ -225,7 +231,7 @@ public final class OffloadingTask {
         stateCoderMap,
         taskLocationMap);
 
-    } catch (IOException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
