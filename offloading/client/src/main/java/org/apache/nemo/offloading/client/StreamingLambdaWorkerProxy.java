@@ -171,7 +171,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
-  public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
+  public synchronized Future<Optional<O>> execute(final ByteBuf input, final int dataId,
                                      final boolean speculative) {
     input.writeInt(dataId);
 
