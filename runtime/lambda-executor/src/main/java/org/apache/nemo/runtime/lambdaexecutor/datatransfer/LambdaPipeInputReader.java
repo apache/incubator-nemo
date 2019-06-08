@@ -47,20 +47,23 @@ public final class LambdaPipeInputReader implements InputReader {
    */
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
+  private final String taskId;
 
   LambdaPipeInputReader(final int dstTaskIdx,
                         final IRVertex srcIRVertex,
                         final RuntimeEdge runtimeEdge,
-                        final PipeManagerWorker pipeManagerWorker) {
+                        final PipeManagerWorker pipeManagerWorker,
+                        final String taskId) {
     this.dstTaskIndex = dstTaskIdx;
     this.srcVertex = srcIRVertex; this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.taskId = taskId;
   }
 
 
   @Override
   public Future<Integer> stop() {
-    return pipeManagerWorker.stop(runtimeEdge, dstTaskIndex);
+    return pipeManagerWorker.stop(runtimeEdge, dstTaskIndex, taskId);
   }
 
   @Override

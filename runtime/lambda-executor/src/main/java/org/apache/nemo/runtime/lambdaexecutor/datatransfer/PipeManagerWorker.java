@@ -82,13 +82,13 @@ public final class PipeManagerWorker {
     return false;
   }
 
-  public Future<Integer> stop(final RuntimeEdge runtimeEdge, final int dstIndex) {
+  public Future<Integer> stop(final RuntimeEdge runtimeEdge, final int dstIndex,
+                              final String taskId) {
     final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstIndex);
     final Set<ByteInputContext> byteInputContexts = byteInputContextMap.get(key);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
-    LOG.info("Size of byte input context map: {} for stopping {}/{}", byteInputContexts.size(),
-      runtimeEdge, dstIndex);
+    LOG.info("Size of byte input context map: {} at {}", byteInputContexts.size(), taskId);
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
       final ByteTransferContextSetupMessage pendingMsg =
@@ -100,12 +100,12 @@ public final class PipeManagerWorker {
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
           TaskLocationMap.LOC.VM);
 
-      LOG.info("Send message for input context {}, {} {}",
-        byteInputContext.getContextId().getTransferIndex(), key, pendingMsg);
+      LOG.info("Send message for input context {}, {} {} for {}",
+        byteInputContext.getContextId().getTransferIndex(), key, pendingMsg, taskId);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
-        LOG.info("receive ack for {}, {}!!", key, atomicInteger.decrementAndGet());
+        LOG.info("receive ack for {}, {}!!", taskId, atomicInteger.decrementAndGet());
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
       });
