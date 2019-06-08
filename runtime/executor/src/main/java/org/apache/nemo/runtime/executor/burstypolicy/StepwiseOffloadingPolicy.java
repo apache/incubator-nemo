@@ -32,8 +32,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
   // key: offloaded task executor, value: start time of offloading
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
-  private long slackTime = 10000;
-  private long deoffloadSlackTime = 60000;
+  private long slackTime = 60000;
+  private long deoffloadSlackTime = 20000;
 
 
   private final int windowSize = 5;
@@ -189,7 +189,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
       if (cpuHighMean > threshold && observedCnt >= observeWindow
         && deoffloadingPendingCnt.get() == 0
-        && System.currentTimeMillis() - prevDeOffloadingTime >= deoffloadSlackTime) {
+        && System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
 
         //cpuTimeModel
@@ -237,6 +237,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                   runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
                 offloadingPendingCnt.getAndIncrement();
+
+                runningTask.getPrevOffloadStartTime().set(System.currentTimeMillis());
 
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
                   stageOffloadingWorkerManager.endOffloading(stageId);
@@ -288,37 +290,40 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
             final TaskExecutor taskExecutor = pair.left();
             if (taskExecutor.isOffloaded()) {
               final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
-              final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
+              if (System.currentTimeMillis() - offloadingTime >= deoffloadSlackTime) {
 
-              final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
+                final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
 
-              if (avgCpuTimeSum > 0) {
-                LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
-                  currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
+                final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
 
-                if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                if (avgCpuTimeSum > 0) {
+                  LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
+                    currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-                  final AtomicInteger cnt =
-                    stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
+                  if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
 
-                  cnt.getAndIncrement();
-                  stageOffloadingCntMap.putIfAbsent(stageId, cnt);
+                    final AtomicInteger cnt =
+                      stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
 
-                  LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
-                    taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
-                  iterator.remove();
+                    cnt.getAndIncrement();
+                    stageOffloadingCntMap.putIfAbsent(stageId, cnt);
 
-                  deoffloadingPendingCnt.getAndIncrement();
+                    LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
+                      taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
+                    iterator.remove();
 
-                  taskExecutor.endOffloading((m) -> {
-                    // do sth
-                    LOG.info("Deoffloading done for task {}", taskExecutor.getId());
+                    deoffloadingPendingCnt.getAndIncrement();
 
-                    stageOffloadingWorkerManager.endOffloading(stageId);
-                    deoffloadingPendingCnt.decrementAndGet();
-                  });
-                  currCpuTimeSum += avgCpuTimeSum;
-                  prevDeOffloadingTime = System.currentTimeMillis();
+                    taskExecutor.endOffloading((m) -> {
+                      // do sth
+                      LOG.info("Deoffloading done for task {}", taskExecutor.getId());
+
+                      stageOffloadingWorkerManager.endOffloading(stageId);
+                      deoffloadingPendingCnt.decrementAndGet();
+                    });
+                    currCpuTimeSum += avgCpuTimeSum;
+                    prevDeOffloadingTime = System.currentTimeMillis();
+                  }
                 }
               }
             } else if (taskExecutor.isOffloadPending()) {
