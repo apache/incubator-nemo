@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Licensed to the Apache Software Foundation (ASF) under one # or more contributor license agreements.  See the NOTICE file
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
 # regarding copyright ownership.  The ASF licenses this file
 # to you under the Apache License, Version 2.0 (the
@@ -18,19 +19,20 @@
 #
 # run this by ./bin/generate_javadocs.sh
 
-TIMEOUT=840
-WINDOW=40
-INTERVAL=40
-RATE=10
-EVENTS=$((RATE*TIMEOUT))
+TIMEOUT=60
+WINDOW=30
+INTERVAL=30
+EVENTS=0
 PARALLELISM=1
+EVENT_RATE=10
 
 echo run query $1
 
 ./bin/run_nexmark.sh \
         -job_id nexmark-Q$1 \
-        -executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+        -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json  \
         -user_main org.apache.beam.sdk.nexmark.Main \
   -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
   -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
-        -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$RATE --nextEventRate=$RATE --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1 --samplingRate=1.0"
+        -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$EVENT_RATE --nextEventRate=$EVENT_RATE --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1"
+
