@@ -254,7 +254,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             offloadingTask.taskId);
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(offloadingTask.taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge));
+            .createReader(offloadingTask.taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge,
+              offloadingTask.taskId));
         })
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
@@ -410,7 +411,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       pendingFutures.add(dataFetcher.stop());
     }
 
-    LOG.info("Waiting pending futures...");
+    LOG.info("Waiting pending futures {}...", offloadingTask.taskId);
     finished = true;
   }
 
@@ -650,7 +651,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    LOG.info("Isfinished: {}, pendingDone: {}", allPendingDone());
+    LOG.info("Isfinished: {}, pendingDone: {} for {}", allPendingDone(), offloadingTask.taskId);
     return finished && allPendingDone();
   }
 

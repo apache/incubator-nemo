@@ -44,7 +44,8 @@ public final class IntermediateDataIOFactory {
 
   public InputReader createReader(final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
-                                  final RuntimeEdge runtimeEdge) {
-    return new LambdaPipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
+                                  final RuntimeEdge runtimeEdge,
+                                  final String taskId) {
+    return new LambdaPipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskId);
   }
 }
