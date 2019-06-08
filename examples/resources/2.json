@@ -1,0 +1,12 @@
+[
+  {
+    "type": "Reserved",
+    "memory_mb": 30000,
+    "capacity": 100
+  },
+  {
+    "type": "Reserved",
+    "memory_mb": 30000,
+    "capacity": 100
+  }
+]
