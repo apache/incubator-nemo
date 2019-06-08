@@ -130,8 +130,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
                           final EventHandler<Integer> handler) {
     ackHandler = handler;
     // send message to the upstream task!
-    LOG.info("Send message to remote: {}", message);
-    currChannel.writeAndFlush(message);
+    //LOG.info("Send message to remote: {}", message);
+    //currChannel.writeAndFlush(message);
 
     if (currChannel == sfChannel) {
       LOG.info("Send message to relay: {}", message);
