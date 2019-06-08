@@ -19,9 +19,9 @@
 # run this by ./bin/generate_javadocs.sh
 
 TIMEOUT=840
-WINDOW=60
-INTERVAL=60
-RATE=100
+WINDOW=40
+INTERVAL=40
+RATE=10
 EVENTS=$((RATE*TIMEOUT))
 PARALLELISM=1
 
@@ -33,4 +33,4 @@ echo run query $1
         -user_main org.apache.beam.sdk.nexmark.Main \
   -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
   -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
-        -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$RATE --nextEventRate=$RATE --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1"
+        -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$RATE --nextEventRate=$RATE --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1 --samplingRate=1.0"

@@ -1,13 +1,12 @@
 [
   {
     "type": "Reserved",
-    "memory_mb": 1024,
-    "capacity": 10
+    "memory_mb": 30000,
+    "capacity": 100
   },
   {
     "type": "Reserved",
-    "memory_mb": 1024,
-    "capacity": 10
+    "memory_mb": 30000,
+    "capacity": 100
   }
-
 ]

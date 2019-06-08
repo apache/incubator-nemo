@@ -25,18 +25,19 @@ INTERVAL=30
 EVENTS=0
 PARALLELISM=8
 PERIOD=50
-NORMAL=100000
-BURSTY=1000000
+NORMAL=50000
+BURSTY=200000
 CPU_DELAY=0
-SAMPLING=0.0002
+SAMPLING=1
 
 ENABLE_OFFLOADING=true
 ENABLE_OFFLOADING_DEBUG=false
 #POOL_SIZE=0
 POOL_SIZE=170
 FLUSH_BYTES=$((10 * 1024 * 1024)) 
-FLUSH_COUNT=10000
+FLUSH_COUNT=6000
 FLUSH_PERIOD=1000
+SAMPLING_PATH=$2
 
 echo run query $1
 
@@ -52,4 +53,5 @@ echo run query $1
         -flush_bytes $FLUSH_BYTES \
         -flush_count $FLUSH_COUNT \
         -flush_period $FLUSH_PERIOD \
+        -sampling_path $2 \
         -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$NORMAL --nextEventRate=$BURSTY --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1 --rateShape=BURSTY --ratePeriodSec=$PERIOD --auctionSkip=1 --cpuDelayMs=$CPU_DELAY --samplingRate=$SAMPLING"

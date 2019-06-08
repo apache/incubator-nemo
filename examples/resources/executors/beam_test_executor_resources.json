@@ -1,7 +1,12 @@
 [
   {
     "type": "Reserved",
-    "memory_mb": 2048,
-    "capacity": 50000
+    "memory_mb": 20000,
+    "capacity": 20000
+  },
+  {
+    "type": "Reserved",
+    "memory_mb": 20000,
+    "capacity": 20000
   }
 ]
