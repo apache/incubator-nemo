@@ -85,7 +85,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.relayServerClient = relayServerClient;
     this.byteTransfer = byteTransfer;
 
-    LOG.info("Transfer index map: {}", taskTransferIndexMap);
+    //LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
 
   @Override
