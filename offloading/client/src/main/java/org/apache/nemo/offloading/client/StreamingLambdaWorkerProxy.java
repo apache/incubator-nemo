@@ -175,7 +175,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                                      final boolean speculative) {
     input.writeInt(dataId);
 
-    LOG.info("Write int!!: readable bytes: {}", input.readableBytes());
+    LOG.info("Write int for {}!!: readable bytes: {}", workerId, input.readableBytes());
 
     if (channel != null) {
       if (Constants.enableLambdaLogging) {
