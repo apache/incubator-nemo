@@ -140,7 +140,6 @@ public final class OffloadingTask {
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
 
-        LOG.info("Encoding state done for {}", taskId);
       } else {
         dos.writeInt(0);
       }
@@ -150,6 +149,8 @@ public final class OffloadingTask {
       dos.close();
       //oos.close();
       bos.close();
+
+      LOG.info("Encoding state done for {}, size: {}", taskId, byteBuf.readableBytes());
 
       return byteBuf;
     } catch (final IOException e) {
