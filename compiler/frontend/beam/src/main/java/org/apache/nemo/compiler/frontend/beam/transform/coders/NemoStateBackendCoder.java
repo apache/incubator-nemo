@@ -64,6 +64,8 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
       indexCoderMap.put(coderList.get(i), i);
     }
 
+    LOG.info("State size: {}, coder size: {}", size, coderList.size());
+
     // encode coder size
     outputStream.writeInt(coderList.size());
     // encoding coders
@@ -97,6 +99,8 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = new HashMap<>();
     final int coderSize = dis.readInt();
     final List<Coder> coderList = new ArrayList<>(coderSize);
+
+    LOG.info("State size: {}, coder size: {}", size, coderList.size());
 
     for (int i = 0; i < coderSize; i++) {
       final Coder coder;
