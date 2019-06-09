@@ -283,7 +283,7 @@ public final class TinyTaskOffloader implements Offloader {
       if (tinyWorkerManager.deleteTask(taskId)) {
         // removed immediately !!
         // restart
-        LOG.info("{} is not offloaded.. just restart it");
+        LOG.info("{} is not offloaded.. just restart it", taskId);
         outputWriters.forEach(writer -> {
           LOG.info("Restarting writer {}", writer);
           writer.restart();
@@ -293,7 +293,7 @@ public final class TinyTaskOffloader implements Offloader {
           dataFetcher.restart();
         }
 
-        availableFetchers.add(sourceVertexDataFetcher);
+        availableFetchers.addAll(allFetchers);
         taskStatus.set(TaskExecutor.Status.RUNNING);
       }
 
