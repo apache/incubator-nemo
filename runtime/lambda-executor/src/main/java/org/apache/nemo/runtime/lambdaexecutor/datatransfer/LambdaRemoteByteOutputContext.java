@@ -374,7 +374,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
           }
           case NO_PENDING: {
             if (!pendingByteBufs.isEmpty()) {
-              LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+              //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
               for (final ByteBuf pendingByteBuf : pendingByteBufs) {
                 writeByteBuf(pendingByteBuf);
               }

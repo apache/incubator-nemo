@@ -312,8 +312,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
-      LOG.info("Writing element in {} to {}/{}, pending: {}, pendingBytes: {}",
-        getContextId().getTransferIndex(), edgeId, opId, currStatus, pendingByteBufs.size());
+      //LOG.info("Writing element in {} to {}/{}, pending: {}, pendingBytes: {}",
+      //  getContextId().getTransferIndex(), edgeId, opId, currStatus, pendingByteBufs.size());
 
       final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
@@ -352,7 +352,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           }
           case NO_PENDING: {
             if (!pendingByteBufs.isEmpty()) {
-              LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+              //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
               for (final ByteBuf pendingByteBuf : pendingByteBufs) {
                 writeByteBuf(pendingByteBuf);
               }
