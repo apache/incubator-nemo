@@ -54,14 +54,15 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
     final Map<Coder, Integer> indexCoderMap = new HashMap<>();
 
-    final Coder[] coderList = (Coder[]) coderSet.toArray();
-    for (int i = 0; i < coderList.length; i++) {
-      indexCoderMap.put(coderList[i], i);
+    final List<Coder> coderList = new ArrayList<>(coderSet);
+
+    for (int i = 0; i < coderList.size(); i++) {
+      indexCoderMap.put(coderList.get(i), i);
     }
 
     // encoding coders
-    for (int i = 0; i < coderList.length; i++) {
-      conf.encodeToStream(outputStream, coderList[i]);
+    for (int i = 0; i < coderList.size(); i++) {
+      conf.encodeToStream(outputStream, coderList.get(i));
     }
 
     for (final Map.Entry<StateTag, Pair<State, Coder>> entry : stateMap.entrySet()) {
