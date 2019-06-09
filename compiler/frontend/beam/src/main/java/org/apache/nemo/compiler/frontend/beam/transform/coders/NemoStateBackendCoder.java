@@ -36,29 +36,14 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final DataOutputStream dos = new DataOutputStream(outStream);
     dos.writeInt(size);
 
-    for (final Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>> entry : map.entrySet()) {
-      final StateNamespace stateNamespace = entry.getKey();
-      final Map<StateTag, Pair<State, Coder>> val = entry.getValue();
-
-      dos.writeUTF(stateNamespace.stringKey());
-      encode(val, dos);
-    }
-  }
-
-  private void encode(final Map<StateTag, Pair<State, Coder>> stateMap,
-                      final DataOutputStream outputStream) throws IOException {
-    final FSTConfiguration conf = FSTSingleton.getInstance();
-
-    final int size = stateMap.size();
-    outputStream.writeInt(size);
-
-    final Set<Coder> coderSet = stateMap.values().stream()
-      .map(pair -> pair.right()).collect(Collectors.toSet());
+    final Set<Coder> coderSet = map.values().stream()
+      .flatMap(val -> val.values().stream())
+      .map(Pair::right)
+      .collect(Collectors.toSet());
 
     final Map<Coder, Integer> indexCoderMap = new HashMap<>();
 
     final List<Coder> coderList = new ArrayList<>(coderSet);
-
 
     for (int i = 0; i < coderList.size(); i++) {
       indexCoderMap.put(coderList.get(i), i);
@@ -67,11 +52,28 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     LOG.info("State size: {}, coder size: {}", size, coderList.size());
 
     // encode coder size
-    outputStream.writeInt(coderList.size());
+    dos.writeInt(coderList.size());
     // encoding coders
     for (int i = 0; i < coderList.size(); i++) {
-      conf.encodeToStream(outputStream, coderList.get(i));
+      conf.encodeToStream(dos, coderList.get(i));
     }
+
+    for (final Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>> entry : map.entrySet()) {
+      final StateNamespace stateNamespace = entry.getKey();
+      final Map<StateTag, Pair<State, Coder>> val = entry.getValue();
+
+      dos.writeUTF(stateNamespace.stringKey());
+      encode(val, indexCoderMap, dos);
+    }
+  }
+
+  private void encode(final Map<StateTag, Pair<State, Coder>> stateMap,
+                      final Map<Coder, Integer> indexCoderMap,
+                      final DataOutputStream outputStream) throws IOException {
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+
+    final int size = stateMap.size();
+    outputStream.writeInt(size);
 
     for (final Map.Entry<StateTag, Pair<State, Coder>> entry : stateMap.entrySet()) {
       final StateTag stateTag = entry.getKey();
