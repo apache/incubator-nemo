@@ -11,12 +11,15 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.NemoStateBackend;
 import org.nustaq.serialization.FSTConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
+  private static final Logger LOG = LoggerFactory.getLogger(NemoStateBackendCoder.class.getName());
 
   private final Coder windowCoder;
 
@@ -86,6 +89,8 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
+
+    LOG.info("Size: {}", size);
 
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = new HashMap<>();
     final List<Coder> coderList = new ArrayList<>(size);
