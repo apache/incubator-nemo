@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.Objects;
 
 public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
 
@@ -54,5 +55,24 @@ public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
     coder.verifyDeterministic();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ValueStateCoder<?> that = (ValueStateCoder<?>) o;
+    return Objects.equals(coder, that.coder);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(coder);
+  }
+
+  @Override
+  public String toString() {
+    return coder.toString();
   }
 }

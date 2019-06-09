@@ -14,11 +14,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.Objects;
 
 public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<CombiningState<InputT, AccumT, OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(CombiningStateCoder.class.getName());
   private final Coder<AccumT> coder;
   private final Combine.CombineFn<InputT, AccumT, OutputT> combineFn;
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    CombiningStateCoder<?, ?, ?> that = (CombiningStateCoder<?, ?, ?>) o;
+    return Objects.equals(coder, that.coder) &&
+      Objects.equals(combineFn, that.combineFn);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(coder, combineFn);
+  }
 
   public CombiningStateCoder(final Coder<AccumT> coder,
                              final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
@@ -52,5 +68,10 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
     coder.verifyDeterministic();
+  }
+
+  @Override
+  public String toString() {
+    return coder.toString();
   }
 }

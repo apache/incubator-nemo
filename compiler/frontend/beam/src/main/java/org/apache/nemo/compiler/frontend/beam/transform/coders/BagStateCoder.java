@@ -8,10 +8,25 @@ import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class BagStateCoder<T> extends Coder<BagState<T>> {
 
   private final Coder<T> coder;
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    BagStateCoder<?> that = (BagStateCoder<?>) o;
+    return Objects.equals(coder, that.coder);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(coder);
+  }
 
   public BagStateCoder(final Coder<T> coder) {
     this.coder = coder;
@@ -50,5 +65,10 @@ public final class BagStateCoder<T> extends Coder<BagState<T>> {
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
     coder.verifyDeterministic();
+  }
+
+  @Override
+  public String toString() {
+    return coder.toString();
   }
 }

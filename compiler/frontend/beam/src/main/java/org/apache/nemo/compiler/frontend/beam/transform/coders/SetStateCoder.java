@@ -9,6 +9,7 @@ import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class SetStateCoder<T> extends Coder<SetState<T>> {
 
@@ -63,5 +64,24 @@ public final class SetStateCoder<T> extends Coder<SetState<T>> {
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
     coder.verifyDeterministic();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetStateCoder<?> that = (SetStateCoder<?>) o;
+    return Objects.equals(coder, that.coder);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(coder);
+  }
+
+  @Override
+  public String toString() {
+    return coder.toString();
   }
 }

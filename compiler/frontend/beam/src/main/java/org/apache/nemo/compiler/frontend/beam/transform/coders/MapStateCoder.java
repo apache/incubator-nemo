@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, ValueT>> {
 
@@ -73,5 +74,25 @@ public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, Valu
   public void verifyDeterministic() throws Coder.NonDeterministicException {
     keyCoder.verifyDeterministic();
     valueCoder.verifyDeterministic();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    MapStateCoder<?, ?> that = (MapStateCoder<?, ?>) o;
+    return Objects.equals(keyCoder, that.keyCoder) &&
+      Objects.equals(valueCoder, that.valueCoder);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(keyCoder, valueCoder);
+  }
+
+  @Override
+  public String toString() {
+    return keyCoder.toString() + ": " + valueCoder.toString();
   }
 }
