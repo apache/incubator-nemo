@@ -125,6 +125,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void pending(final TaskLocationMap.LOC sdt) {
+    LOG.info("Setting pending in {}, {}", this, getContextId().getTransferIndex());
     sendDataTo = sdt;
     isPending = true;
   }
@@ -304,7 +305,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
-      LOG.info("Writing element to {}/{}", edgeId, opId);
+      LOG.info("Writing element in {} to {}/{}, pending: {}, pendingBytes: {}",
+        getContextId().getTransferIndex(), edgeId, opId, isPending, pendingByteBufs.size());
 
       final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
