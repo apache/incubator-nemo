@@ -37,6 +37,7 @@ import java.util.List;
 
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext.Status.PENDING;
 
 
 /**
@@ -54,8 +55,14 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   private String vmTaskId;
 
   private volatile boolean closed = false;
-  private volatile boolean isPending = false;
 
+  enum Status {
+    PENDING_INIT,
+    PENDING,
+    NO_PENDING
+  }
+
+  private Status currStatus = Status.NO_PENDING;
 
   private TaskLocationMap.LOC sendDataTo = VM;
 
@@ -127,7 +134,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void pending(final TaskLocationMap.LOC sdt) {
     LOG.info("Setting pending in {}, {}", this, getContextId().getTransferIndex());
     sendDataTo = sdt;
-    isPending = true;
+    currStatus = Status.PENDING_INIT;
   }
 
   @Override
@@ -163,7 +170,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     vmChannel = channel;
     currChannel = vmChannel;
     sendDataTo = SF;
-    isPending = false;
+    currStatus = Status.NO_PENDING;
   }
 
   @Override
@@ -172,7 +179,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     channel = c;
     currChannel = channel;
     sendDataTo = VM;
-    isPending = false;
+    currStatus = Status.NO_PENDING;
   }
 
   public Channel getChannel() {
@@ -300,13 +307,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
      * @param serializer serializer
      */
     @Override
-    public synchronized void writeElement(final Object element,
+    public void writeElement(final Object element,
                              final Serializer serializer,
                              final String edgeId,
                              final String opId) {
 
       LOG.info("Writing element in {} to {}/{}, pending: {}, pendingBytes: {}",
-        getContextId().getTransferIndex(), edgeId, opId, isPending, pendingByteBufs.size());
+        getContextId().getTransferIndex(), edgeId, opId, currStatus, pendingByteBufs.size());
 
       final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
@@ -324,36 +331,40 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
       }
 
       try {
-        if (isPending) {
-          // If it is pending, buffer data
-          final ByteTransferContextSetupMessage message =
-            new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-              getContextId().getTransferIndex(),
-              getContextId().getDataDirection(),
-              getContextDescriptor(),
-              getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-              VM);
+        switch (currStatus) {
+          case PENDING_INIT: {
+            final ByteTransferContextSetupMessage message =
+              new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+                getContextId().getTransferIndex(),
+                getContextId().getDataDirection(),
+                getContextDescriptor(),
+                getContextId().isPipe(),
+                ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+                VM);
 
-          if (pendingByteBufs.isEmpty()) {
             LOG.info("Ack pending to {} {}",sendDataTo, message);
             currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+            currStatus = PENDING;
           }
-
-          pendingByteBufs.add(byteBuf);
-
-        } else {
-
-          if (!pendingByteBufs.isEmpty()) {
-            LOG.info("[Send pending events: {}]", pendingByteBufs.size());
-            for (final ByteBuf pendingByteBuf : pendingByteBufs) {
-              writeByteBuf(pendingByteBuf);
+          case PENDING: {
+            pendingByteBufs.add(byteBuf);
+            break;
+          }
+          case NO_PENDING: {
+            if (!pendingByteBufs.isEmpty()) {
+              LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+              for (final ByteBuf pendingByteBuf : pendingByteBufs) {
+                writeByteBuf(pendingByteBuf);
+              }
+              pendingByteBufs.clear();
             }
-            pendingByteBufs.clear();
+            writeByteBuf(byteBuf);
+            break;
           }
-          writeByteBuf(byteBuf);
+          default: {
+            throw new RuntimeException("Unsupported status " + currStatus);
+          }
         }
-
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }

@@ -39,6 +39,7 @@ import java.util.List;
 
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteOutputContext.Status.PENDING;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -55,7 +56,14 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   private String vmTaskId;
 
   private volatile boolean closed = false;
-  private volatile boolean isPending = false;
+
+  enum Status {
+    PENDING_INIT,
+    PENDING,
+    NO_PENDING
+  }
+
+  private Status currStatus = Status.NO_PENDING;
 
   private TaskLocationMap.LOC sendDataTo;
 
@@ -129,7 +137,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void pending(final TaskLocationMap.LOC sdt) {
     sendDataTo = sdt;
-    isPending = true;
+    currStatus = Status.PENDING_INIT;
   }
 
   @Override
@@ -164,7 +172,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     LOG.info("Scale out to relay channel {}", channel);
     relayChannel = channel;
     currChannel = relayChannel;
-    isPending = false;
+    currStatus = Status.NO_PENDING;
     /*
     LOG.info("Scale out to channel {}", channel);
     vmChannel = channel;
@@ -177,7 +185,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     LOG.info("Scale in to channel {}", channel);
     vmChannel = channel;
     currChannel = vmChannel;
-    isPending = false;
+    currStatus = Status.NO_PENDING;
   }
 
   public Channel getChannel() {
@@ -340,38 +348,42 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
       }
 
       try {
-        if (isPending) {
-          // If it is pending, buffer data
-          final ByteTransferContextSetupMessage message =
-            new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-              getContextId().getTransferIndex(),
-              getContextId().getDataDirection(),
-              getContextDescriptor(),
-              getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-              SF);
+        switch (currStatus) {
+          case PENDING_INIT: {
+            final ByteTransferContextSetupMessage message =
+              new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+                getContextId().getTransferIndex(),
+                getContextId().getDataDirection(),
+                getContextDescriptor(),
+                getContextId().isPipe(),
+                ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+                SF);
 
-          if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
-            LOG.info("Ack pending to relay {}", message);
-            relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
-          } else if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
-            LOG.info("Ack pending to vm {}", message);
-            vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
-          }
-          pendingByteBufs.add(byteBuf);
-
-        } else {
-
-          if (!pendingByteBufs.isEmpty()) {
-            LOG.info("[Send pending events: {}]", pendingByteBufs.size());
-            for (final ByteBuf pendingByteBuf : pendingByteBufs) {
-              writeByteBuf(pendingByteBuf);
+            if (sendDataTo.equals(VM)) {
+              LOG.info("Ack pending to relay {}", message);
+              relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+            } else if (sendDataTo.equals(SF)) {
+              LOG.info("Ack pending to vm {}", message);
+              vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
             }
-            pendingByteBufs.clear();
+            currStatus = PENDING;
           }
-          writeByteBuf(byteBuf);
+          case PENDING: {
+            pendingByteBufs.add(byteBuf);
+            break;
+          }
+          case NO_PENDING: {
+            if (!pendingByteBufs.isEmpty()) {
+              LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+              for (final ByteBuf pendingByteBuf : pendingByteBufs) {
+                writeByteBuf(pendingByteBuf);
+              }
+              pendingByteBufs.clear();
+            }
+            writeByteBuf(byteBuf);
+            break;
+          }
         }
-
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
