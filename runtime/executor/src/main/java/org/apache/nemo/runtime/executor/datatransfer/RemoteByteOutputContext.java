@@ -299,10 +299,12 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
      * @param serializer serializer
      */
     @Override
-    public void writeElement(final Object element,
+    public synchronized void writeElement(final Object element,
                              final Serializer serializer,
                              final String edgeId,
                              final String opId) {
+
+      LOG.info("Writing element to {}/{}", edgeId, opId);
 
       final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);

@@ -219,7 +219,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         // It means that the remote dst task is moved to SF (or VM)
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
-        LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT for index {}", transferIndex);
         //LOG.info("STOP_OUTPUT for moving {} pending {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
 
@@ -237,6 +236,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           outputContext.sendMessageToVM(ackMessage, (m) -> {});
         }
 
+        LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT for index {}, pending to {}", transferIndex,
+          sendDataTo);
         outputContext.pending(sendDataTo);
         break;
       }
