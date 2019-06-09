@@ -59,10 +59,13 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
     final List<Coder> coderList = new ArrayList<>(coderSet);
 
+
     for (int i = 0; i < coderList.size(); i++) {
       indexCoderMap.put(coderList.get(i), i);
     }
 
+    // encode coder size
+    outputStream.writeInt(coderList.size());
     // encoding coders
     for (int i = 0; i < coderList.size(); i++) {
       conf.encodeToStream(outputStream, coderList.get(i));
@@ -90,12 +93,12 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
 
-    LOG.info("Size: {}", size);
 
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = new HashMap<>();
-    final List<Coder> coderList = new ArrayList<>(size);
+    final int coderSize = dis.readInt();
+    final List<Coder> coderList = new ArrayList<>(coderSize);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < coderSize; i++) {
       final Coder coder;
       try {
         coder = (Coder) conf.decodeFromStream(inStream);
