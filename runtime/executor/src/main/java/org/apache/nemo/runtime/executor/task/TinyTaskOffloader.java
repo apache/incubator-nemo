@@ -280,7 +280,22 @@ public final class TinyTaskOffloader implements Offloader {
     prevOffloadEndTime.set(System.currentTimeMillis());
 
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
-      tinyWorkerManager.deleteTask(taskId);
+      if (tinyWorkerManager.deleteTask(taskId)) {
+        // removed immediately !!
+        // restart
+        LOG.info("{} is not offloaded.. just restart it");
+        outputWriters.forEach(writer -> {
+          LOG.info("Restarting writer {}", writer);
+          writer.restart();
+        });
+
+        for (final DataFetcher dataFetcher : allFetchers) {
+          dataFetcher.restart();
+        }
+
+        availableFetchers.add(sourceVertexDataFetcher);
+        taskStatus.set(TaskExecutor.Status.RUNNING);
+      }
 
     } else {
       throw new RuntimeException("Unsupported status: " + taskStatus);

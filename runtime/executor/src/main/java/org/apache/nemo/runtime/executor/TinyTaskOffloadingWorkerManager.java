@@ -247,7 +247,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     throw new RuntimeException("No worker that handles task " + taskId);
   }
 
-  public synchronized void deleteTask(final String taskId) {
+  public synchronized boolean deleteTask(final String taskId) {
     LOG.info("Delete task {}", taskId);
     final TinyTaskWorker worker = findWorkerThatHandleTask(taskId);
     if (!worker.deleteTask(taskId)) {
@@ -255,6 +255,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       deletePendingWorkers.put(taskId, worker);
       LOG.info("Put task {} to pending ... size: {}, deletePending: {}",
         taskId, deletePendingWorkers.size(), worker.getDeletePending());
+
+      return false;
     } else {
       if (worker.hasNoTask() && worker.getDeletePending().get() == 0) {
         LOG.info("Closing worker for {}...", taskId);
@@ -262,6 +264,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         removeRunningWorker(worker);
         deletePendingWorkers.remove(taskId);
       }
+
+      return true;
     }
   }
 
