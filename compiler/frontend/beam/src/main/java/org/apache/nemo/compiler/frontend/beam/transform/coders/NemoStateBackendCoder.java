@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
   private static final Logger LOG = LoggerFactory.getLogger(NemoStateBackendCoder.class.getName());
@@ -36,10 +37,14 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final DataOutputStream dos = new DataOutputStream(outStream);
     dos.writeInt(size);
 
-    final Set<Coder> coderSet = map.values().stream()
+    final Stream<Coder> coderStream = map.values().stream()
       .flatMap(val -> val.values().stream())
-      .map(Pair::right)
+      .map(Pair::right);
+
+    final Set<Coder> coderSet = coderStream
       .collect(Collectors.toSet());
+
+    final int stateSize = (int) coderStream.count();
 
     final Map<Coder, Integer> indexCoderMap = new HashMap<>();
 
@@ -49,7 +54,7 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
       indexCoderMap.put(coderList.get(i), i);
     }
 
-    LOG.info("State size: {}, coder size: {}", size, coderList.size());
+    LOG.info("State size: {}, coder size: {}", stateSize, coderList.size());
 
     // encode coder size
     dos.writeInt(coderList.size());
@@ -102,7 +107,7 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final int coderSize = dis.readInt();
     final List<Coder> coderList = new ArrayList<>(coderSize);
 
-    LOG.info("State size: {}, coder size: {}", size, coderSize);
+    LOG.info("coder size: {}", coderSize);
 
     for (int i = 0; i < coderSize; i++) {
       final Coder coder;

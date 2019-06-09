@@ -17,7 +17,13 @@ import java.util.List;
 public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
 
 
-  public WatermarkHoldStateCoder() {
+  private WatermarkHoldStateCoder() {
+  }
+
+  private static final WatermarkHoldStateCoder INSTANCE = new WatermarkHoldStateCoder();
+
+  public static WatermarkHoldStateCoder getInstance() {
+    return INSTANCE;
   }
 
   @Override

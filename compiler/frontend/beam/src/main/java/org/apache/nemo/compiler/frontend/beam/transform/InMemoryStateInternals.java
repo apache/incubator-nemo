@@ -175,7 +175,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
         return (WatermarkHoldState) stateCoderMap.get(address).left();
       } else {
         final WatermarkHoldState state = new InMemoryWatermarkHold(timestampCombiner);
-        stateCoderMap.put(address, Pair.of(state, new WatermarkHoldStateCoder()));
+        stateCoderMap.put(address, Pair.of(state, WatermarkHoldStateCoder.getInstance()));
         return state;
       }
     }
