@@ -100,7 +100,7 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
     final int coderSize = dis.readInt();
     final List<Coder> coderList = new ArrayList<>(coderSize);
 
-    LOG.info("State size: {}, coder size: {}", size, coderList.size());
+    LOG.info("State size: {}, coder size: {}", size, coderSize);
 
     for (int i = 0; i < coderSize; i++) {
       final Coder coder;
