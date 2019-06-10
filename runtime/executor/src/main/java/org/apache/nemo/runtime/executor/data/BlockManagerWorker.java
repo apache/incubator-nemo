@@ -518,6 +518,7 @@ public final class BlockManagerWorker {
    */
   private static DataStoreProperty.Value convertBlockStore(
       final ControlMessage.BlockStore blockStoreType) {
+    LOG.info("HY: {}", blockStoreType.getClass().getName());
     switch (blockStoreType) {
       case MEMORY:
         return DataStoreProperty.Value.MemoryStore;
@@ -526,7 +527,8 @@ public final class BlockManagerWorker {
       case LOCAL_FILE:
         return DataStoreProperty.Value.LocalFileStore;
       case REMOTE_FILE:
-        return DataStoreProperty.Value.CrailFileStore;
+        if (blockStoreType.getClass().getName() == "CrailFileStore") return DataStoreProperty.Value.CrailFileStore;
+        else return DataStoreProperty.Value.GlusterFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }

@@ -42,7 +42,7 @@ public final class CrailEdgeDataStorePass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
+    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with CrailFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge ->
         edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.CrailFileStore)));

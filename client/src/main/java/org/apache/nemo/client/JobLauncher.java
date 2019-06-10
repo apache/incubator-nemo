@@ -27,8 +27,6 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
-import org.apache.nemo.runtime.executor.data.stores.RemoteFileStore;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
