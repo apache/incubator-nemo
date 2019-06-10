@@ -86,7 +86,7 @@ public final class TaskOffloadingManager {
    */
   public final class TaskOffloadingReceiver implements MessageListener<ControlMessage.Message> {
     @Override
-    public void onMessage(final ControlMessage.Message message) {
+    public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
         case RequestStageOffloadingDone: {
           final ControlMessage.RequestStageOffloadingDoneMessage offloadingMessage =
@@ -121,7 +121,7 @@ public final class TaskOffloadingManager {
 
           final List<String> dependencies = getDependencies(stage);
 
-          LOG.info("Receive RequestStageOffloading {}, dependncies: {}, map: {}", stage, dependencies,
+          LOG.info("Receive RequestStageOffloading {}, dependncies: {}, map: {}", stageId, dependencies,
             stageStatusMap);
 
           if (hasPendingDependencies(dependencies)) {
@@ -136,9 +136,9 @@ public final class TaskOffloadingManager {
                   .build())
                 .build());
           } else {
-            final Pair<Status, AtomicInteger> status = stageStatusMap.getOrDefault(stageId, Pair.of(Status.PENDING, new AtomicInteger()));
+            final Pair<Status, AtomicInteger> status = stageStatusMap.get(stageId);
             status.right().getAndIncrement();
-            stageStatusMap.put(stageId, status);
+            stageStatusMap.put(stageId, Pair.of(Status.PENDING, status.right()));
 
             messageContext.reply(
               ControlMessage.Message.newBuilder()
