@@ -32,7 +32,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
   // key: offloaded task executor, value: start time of offloading
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
-  private long slackTime = 400000;
+  private long slackTime = 70000;
   private long deoffloadSlackTime = 60000;
 
 
