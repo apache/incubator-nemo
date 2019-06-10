@@ -115,6 +115,7 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     this.remoteOpt = remoteOpt;
+    LOG.info("HY: {}", remoteOpt);
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
