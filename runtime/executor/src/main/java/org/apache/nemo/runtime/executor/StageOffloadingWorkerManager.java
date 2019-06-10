@@ -82,6 +82,8 @@ public final class StageOffloadingWorkerManager {
 
     try {
       final ControlMessage.Message msg = msgFuture.get();
+
+      LOG.info("Can offloading {}: {}", stageId, msg.getStageOffloadingInfoMsg().getCanOffloading());
       offloadingMap.put(stageId, msg.getStageOffloadingInfoMsg().getCanOffloading());
 
       if (offloadingMap.get(stageId)) {

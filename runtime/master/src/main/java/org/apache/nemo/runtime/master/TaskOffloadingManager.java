@@ -125,6 +125,7 @@ public final class TaskOffloadingManager {
             stageStatusMap);
 
           if (hasPendingDependencies(dependencies)) {
+            LOG.info("Has pending dependency: {}", stageId);
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
@@ -136,6 +137,7 @@ public final class TaskOffloadingManager {
                   .build())
                 .build());
           } else {
+            LOG.info("Has no dependency: {}", stageId);
             final Pair<Status, AtomicInteger> status = stageStatusMap.get(stageId);
             status.right().getAndIncrement();
             stageStatusMap.put(stageId, Pair.of(Status.PENDING, status.right()));
