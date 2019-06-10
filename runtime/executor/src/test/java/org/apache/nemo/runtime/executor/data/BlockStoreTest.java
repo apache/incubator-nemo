@@ -275,7 +275,7 @@ public final class BlockStoreTest {
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
-  private RemoteFileStore createGlusterFileStore(final String executorId)
+  private GlusterFileStore createGlusterFileStore(final String executorId)
       throws InjectionException {
     final Injector injector = LocalMessageEnvironment.forkInjector(baseInjector, executorId);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
