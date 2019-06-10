@@ -31,9 +31,10 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
   // key: offloaded task executor, value: start time of offloading
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
+  private final List<TaskExecutor> offloadPendingExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
-  private long slackTime = 70000;
-  private long deoffloadSlackTime = 60000;
+  private long slackTime = 20000;
+  private long deoffloadSlackTime = 20000;
 
 
   private final int windowSize = 5;
@@ -98,7 +99,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
     eventAverage.setWindowSize(2);
 
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
-    this.offloadedExecutors = new LinkedList<>();
+    this.offloadedExecutors = new ArrayList<>();
+    this.offloadPendingExecutors = new ArrayList<>();
 
     this.toMaster = toMaster;
   }
@@ -110,7 +112,11 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
     final List<TaskExecutor> tasks = runningTasks
       .stream().filter(runningTask -> {
         return !offloadedExecutors.stream().map(Pair::left).collect(Collectors.toSet()).contains(runningTask);
-      }).collect(Collectors.toList());
+      })
+      .filter(runningTask -> {
+        return !offloadPendingExecutors.stream().collect(Collectors.toSet()).contains(runningTask);
+      })
+      .collect(Collectors.toList());
 
     tasks.sort(new Comparator<TaskExecutor>() {
       @Override
@@ -188,8 +194,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
       }
 
       if (cpuHighMean > threshold && observedCnt >= observeWindow
-        && deoffloadingPendingCnt.get() == 0
-        && System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
+        && deoffloadingPendingCnt.get() == 0) {
 
 
         //cpuTimeModel
@@ -221,7 +226,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 
         for (final TaskExecutor runningTask : runningTasks) {
 
-          if (runningTask.getId().startsWith("Stage1")) {
+          // runningTask.getId().startsWith("Stage1") &&
+          if (System.currentTimeMillis() - runningTask.getPrevOffloadEndTime().get() >= slackTime) {
             final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
             //if (cnt < runningTasks.size() - 1) {
 
@@ -237,12 +243,13 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                   runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
                 offloadingPendingCnt.getAndIncrement();
-                offloadedExecutors.add(Pair.of(runningTask, currTime));
+                offloadPendingExecutors.add(runningTask);
 
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
                   stageOffloadingWorkerManager.endOffloading(stageId);
                   offloadingPendingCnt.decrementAndGet();
                   runningTask.getPrevOffloadStartTime().set(System.currentTimeMillis());
+                  offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
                 });
 
                 currCpuTimeSum -= currTaskCpuTime;
@@ -279,7 +286,6 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
           }
 
           // add deoffload pending
-          final Map<String, Boolean> stageOffloadableMap = new HashMap<>();
           final Map<String, AtomicInteger> stageOffloadingCntMap = new HashMap<>();
 
           LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
@@ -316,6 +322,8 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                     taskExecutor.endOffloading((m) -> {
                       // do sth
                       LOG.info("Deoffloading done for task {}", taskExecutor.getId());
+
+                      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
 
                       stageOffloadingWorkerManager.endOffloading(stageId);
                       deoffloadingPendingCnt.decrementAndGet();
