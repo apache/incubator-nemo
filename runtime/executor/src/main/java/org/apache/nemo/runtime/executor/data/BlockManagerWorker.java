@@ -478,7 +478,7 @@ public final class BlockManagerWorker {
       case LocalFileStore:
         return localFileStore;
       case GlusterFileStore:
-        return remoteFileStore;
+        return localFileStore;
       case CrailFileStore:
         return remoteFileStore;
       default:
@@ -502,7 +502,7 @@ public final class BlockManagerWorker {
       case LocalFileStore:
         return ControlMessage.BlockStore.LOCAL_FILE;
       case GlusterFileStore:
-        return ControlMessage.BlockStore.REMOTE_FILE;
+        return ControlMessage.BlockStore.LOCAL_FILE; //since it is treated the same way as LOCAL_FILE
       case CrailFileStore:
         return ControlMessage.BlockStore.REMOTE_FILE;
       default:
@@ -518,7 +518,7 @@ public final class BlockManagerWorker {
    */
   private static DataStoreProperty.Value convertBlockStore(
       final ControlMessage.BlockStore blockStoreType) {
-    LOG.info("HY: {}", blockStoreType.getClass().getName());
+    LOG.info("HY: {}", blockStoreType.getClass());
     switch (blockStoreType) {
       case MEMORY:
         return DataStoreProperty.Value.MemoryStore;
@@ -527,8 +527,7 @@ public final class BlockManagerWorker {
       case LOCAL_FILE:
         return DataStoreProperty.Value.LocalFileStore;
       case REMOTE_FILE:
-        if (blockStoreType.getClass().getName() == "CrailFileStore") return DataStoreProperty.Value.CrailFileStore;
-        else return DataStoreProperty.Value.GlusterFileStore;
+        return DataStoreProperty.Value.CrailFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }
