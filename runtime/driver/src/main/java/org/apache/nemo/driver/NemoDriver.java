@@ -242,8 +242,6 @@ public final class NemoDriver {
     if (remoteOpt.equals("crail")) jcb.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
     final Configuration remoteConf = jcb.build();
 
-
-
     final Configuration contextConfiguration = ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
         .set(ContextConfiguration.ON_CONTEXT_STARTED, NemoContext.ContextStartHandler.class)
