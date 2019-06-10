@@ -25,7 +25,6 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 /**
  * Lambda Policy
- * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
  * Description: A part of lambda executor, to support Lambda policy.
  */
 public final class LambdaPolicy implements Policy {

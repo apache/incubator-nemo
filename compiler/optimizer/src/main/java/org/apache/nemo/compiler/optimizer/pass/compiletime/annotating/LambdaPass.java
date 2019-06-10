@@ -22,8 +22,7 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
 
 /**
- * Lambda Pass
- * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
+ * Lambda Pass.
  * Description: A part of lambda executor, assigning LambdaResourceProperty
  */
 @Annotates(ResourceLambdaProperty.class)

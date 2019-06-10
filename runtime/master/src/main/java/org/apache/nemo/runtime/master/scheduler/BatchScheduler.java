@@ -170,7 +170,7 @@ public final class BatchScheduler implements Scheduler {
       .map(edge -> edge.getExecutionProperties().get(MessageIdEdgeProperty.class).get())
       .findFirst().get();
     // Here we simply use findFirst() for now...
-    // TODO #345: Simplify insert(MessageBarrierVertex)
+    // TODO #345: Simplify insert
     return messageIds.iterator().next();
   }
 
