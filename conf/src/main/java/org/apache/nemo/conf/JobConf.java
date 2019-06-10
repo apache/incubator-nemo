@@ -77,11 +77,19 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Directory points the CrailFileSystem to store files.
-   *
-  */
-  @NamedParameter(doc = "Root Directory of CrailFS volume", short_name = "crail_dir", default_value = "")
-  public final class CrailVolumeDirectory implements  Name<String> {
+   * Directory points the CrailFileStore volume used to store files in remote fashion.
+   * The directory has to be already created to give it as an option. (else exception is thrown)
+   */
+  @NamedParameter(doc = "Directory points the CrailFS volume", short_name = "crail_dir", default_value = "")
+  public final class CrailVolumeDirectory implements Name<String> {
+  }
+
+  /**
+   * RemoteFileStore option specification. Two choices are available: GlusterFileStore or CrailFileStore.
+   * Default is the former one.
+   */
+  @NamedParameter(doc = "Option for RemoteFileStore", short_name = "remote_option", default_value = "glusterFS")
+  public final class RemoteFileStoreOpt implements Name<String> {
   }
 
   //////////////////////////////// Client-Driver RPC
