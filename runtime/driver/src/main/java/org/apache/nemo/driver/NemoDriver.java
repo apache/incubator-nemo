@@ -115,7 +115,6 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     this.remoteOpt = remoteOpt;
-    LOG.info("HY: {}", remoteOpt);
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
@@ -239,9 +238,9 @@ public final class NemoDriver {
         .set(JobConf.JOB_ID, jobId)
         .build();
 
-//    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
-//    jcb.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
-//    final Configuration remoteConf = jcb.build();
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    if (remoteOpt.equals("crail")) jcb.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
+    final Configuration remoteConf = jcb.build();
 
 
 
@@ -254,7 +253,7 @@ public final class NemoDriver {
     final Configuration ncsConfiguration =  getExecutorNcsConfiguration();
     final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
 
-    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration);
+    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration, remoteConf);
   }
 
   private Configuration getExecutorNcsConfiguration() {
