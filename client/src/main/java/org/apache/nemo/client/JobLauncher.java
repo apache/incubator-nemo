@@ -409,6 +409,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
     cl.processCommandLine(args);
+    LOG.info("HY: {}", JobConf.RemoteFileStoreOpt.class.getName());
     if (JobConf.RemoteFileStoreOpt.class.getName() == "Crail") confBuilder.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
     return confBuilder.build();
   }
