@@ -88,7 +88,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * RemoteFileStore option specification. Two choices are available: GlusterFileStore or CrailFileStore.
    * Default is the former one.
    */
-  @NamedParameter(doc = "Option for RemoteFileStore", short_name = "remote_option", default_value = "glusterFS")
+  @NamedParameter(doc = "Option for RemoteFileStore", short_name = "remote_option", default_value = "Gluster")
   public final class RemoteFileStoreOpt implements Name<String> {
   }
 

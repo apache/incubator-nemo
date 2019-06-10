@@ -27,6 +27,8 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
+import org.apache.nemo.runtime.executor.data.stores.RemoteFileStore;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -397,6 +399,8 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.MaxTaskAttempt.class);
     cl.registerShortNameOfClass(JobConf.FileDirectory.class);
     cl.registerShortNameOfClass(JobConf.GlusterVolumeDirectory.class);
+    cl.registerShortNameOfClass(JobConf.CrailVolumeDirectory.class);
+    cl.registerShortNameOfClass(JobConf.RemoteFileStoreOpt.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerBacklog.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumListeningThreads.class);
@@ -405,6 +409,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
     cl.processCommandLine(args);
+    if (JobConf.RemoteFileStoreOpt.class.getName() == "Crail") confBuilder.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
     return confBuilder.build();
   }
 

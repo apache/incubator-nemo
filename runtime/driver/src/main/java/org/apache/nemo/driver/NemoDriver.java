@@ -24,6 +24,8 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
+import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
+import org.apache.nemo.runtime.executor.data.stores.RemoteFileStore;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -42,6 +44,7 @@ import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -79,6 +82,7 @@ public final class NemoDriver {
   private final String localDirectory;
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
+  private final String remoteOpt;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
       new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
@@ -97,7 +101,8 @@ public final class NemoDriver {
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
-                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
+                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
+                     @Parameter(JobConf.RemoteFileStoreOpt.class) final String remoteOpt) {
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
@@ -109,6 +114,7 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    this.remoteOpt = remoteOpt;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
@@ -231,6 +237,12 @@ public final class NemoDriver {
         .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
         .set(JobConf.JOB_ID, jobId)
         .build();
+
+//    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+//    jcb.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
+//    final Configuration remoteConf = jcb.build();
+
+
 
     final Configuration contextConfiguration = ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
