@@ -6,7 +6,6 @@ import org.apache.beam.runners.core.StateTag;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.state.State;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.NemoStateBackend;
@@ -16,8 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
   private static final Logger LOG = LoggerFactory.getLogger(NemoStateBackendCoder.class.getName());
@@ -30,41 +27,22 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
   @Override
   public void encode(NemoStateBackend value, OutputStream outStream) throws CoderException, IOException {
-    final FSTConfiguration conf = FSTSingleton.getInstance();
+    throw new RuntimeException("Unsupported");
+  }
+
+  public void encode(NemoStateBackend value, OutputStream outStream, Map<Coder, Integer> coderIndexMap)  throws CoderException, IOException{
 
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = value.map;
     final int size = map.size();
     final DataOutputStream dos = new DataOutputStream(outStream);
     dos.writeInt(size);
 
-    final Set<Coder> coderSet = map.values().stream()
-      .flatMap(val -> val.values().stream())
-      .map(Pair::right)
-      .collect(Collectors.toSet());
-
-    final Map<Coder, Integer> indexCoderMap = new HashMap<>();
-
-    final List<Coder> coderList = new ArrayList<>(coderSet);
-
-    for (int i = 0; i < coderList.size(); i++) {
-      indexCoderMap.put(coderList.get(i), i);
-    }
-
-    LOG.info("Coder size: {}", coderList.size());
-
-    // encode coder size
-    dos.writeInt(coderList.size());
-    // encoding coders
-    for (int i = 0; i < coderList.size(); i++) {
-      conf.encodeToStream(dos, coderList.get(i));
-    }
-
     for (final Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>> entry : map.entrySet()) {
       final StateNamespace stateNamespace = entry.getKey();
       final Map<StateTag, Pair<State, Coder>> val = entry.getValue();
 
       dos.writeUTF(stateNamespace.stringKey());
-      encode(val, indexCoderMap, dos);
+      encode(val, coderIndexMap, dos);
     }
   }
 
@@ -93,28 +71,14 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
   @Override
   public NemoStateBackend decode(InputStream inStream) throws CoderException, IOException {
-    final FSTConfiguration conf = FSTSingleton.getInstance();
+    throw new RuntimeException("Unsupported");
+  }
 
+  public NemoStateBackend decode(InputStream inStream, List<Coder> coderList) throws CoderException, IOException {
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
 
-
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = new HashMap<>();
-    final int coderSize = dis.readInt();
-    final List<Coder> coderList = new ArrayList<>(coderSize);
-
-    LOG.info("Coder size: {}", coderSize);
-
-    for (int i = 0; i < coderSize; i++) {
-      final Coder coder;
-      try {
-        coder = (Coder) conf.decodeFromStream(inStream);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-      coderList.add(coder);
-    }
 
     for (int i = 0; i < size; i++) {
       final StateNamespace stateNamespace =
