@@ -249,7 +249,9 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                   stageOffloadingWorkerManager.endOffloading(stageId);
                   offloadingPendingCnt.decrementAndGet();
                   runningTask.getPrevOffloadStartTime().set(System.currentTimeMillis());
-                  offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
+                  synchronized (offloadedExecutors) {
+                    offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
+                  }
                 });
 
                 currCpuTimeSum -= currTaskCpuTime;
@@ -288,62 +290,55 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
           // add deoffload pending
           final Map<String, AtomicInteger> stageOffloadingCntMap = new HashMap<>();
 
-          LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
-          final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
-          while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
-            final Pair<TaskExecutor, Long> pair = iterator.next();
-            final TaskExecutor taskExecutor = pair.left();
-            if (taskExecutor.isOffloaded()) {
-              final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
-              if (System.currentTimeMillis() - offloadingTime >= deoffloadSlackTime) {
+          synchronized (offloadedExecutors) {
+            LOG.info("Try to deoffload... currCpuTimeSum: {}, targetCpuTime: {}", currCpuTimeSum, targetCpuTime);
+            final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+            while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
+              final Pair<TaskExecutor, Long> pair = iterator.next();
+              final TaskExecutor taskExecutor = pair.left();
+              if (taskExecutor.isOffloaded()) {
+                final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
+                if (System.currentTimeMillis() - offloadingTime >= deoffloadSlackTime) {
 
-                final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
+                  final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
 
-                final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
+                  final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
 
-                if (avgCpuTimeSum > 0) {
-                  LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
-                    currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
+                  if (avgCpuTimeSum > 0) {
+                    LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
+                      currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-                  if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                    if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
 
-                    final AtomicInteger cnt =
-                      stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
+                      final AtomicInteger cnt =
+                        stageOffloadingCntMap.getOrDefault(stageId, new AtomicInteger(0));
 
-                    cnt.getAndIncrement();
-                    stageOffloadingCntMap.putIfAbsent(stageId, cnt);
+                      cnt.getAndIncrement();
+                      stageOffloadingCntMap.putIfAbsent(stageId, cnt);
 
-                    LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
-                      taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
-                    iterator.remove();
+                      LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
+                        taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
+                      iterator.remove();
 
-                    deoffloadingPendingCnt.getAndIncrement();
+                      deoffloadingPendingCnt.getAndIncrement();
 
-                    taskExecutor.endOffloading((m) -> {
-                      // do sth
-                      LOG.info("Deoffloading done for task {}", taskExecutor.getId());
+                      taskExecutor.endOffloading((m) -> {
+                        // do sth
+                        LOG.info("Deoffloading done for task {}", taskExecutor.getId());
 
-                      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
+                        taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
 
-                      stageOffloadingWorkerManager.endOffloading(stageId);
-                      deoffloadingPendingCnt.decrementAndGet();
-                    });
-                    currCpuTimeSum += avgCpuTimeSum;
-                    prevDeOffloadingTime = System.currentTimeMillis();
+                        stageOffloadingWorkerManager.endOffloading(stageId);
+                        deoffloadingPendingCnt.decrementAndGet();
+                      });
+                      currCpuTimeSum += avgCpuTimeSum;
+                      prevDeOffloadingTime = System.currentTimeMillis();
+                    }
                   }
                 }
+              } else if (taskExecutor.isOffloadPending()) {
+                LOG.info("Tas {} is offload pending... ", taskExecutor.getId());
               }
-            } else if (taskExecutor.isOffloadPending()) {
-              LOG.info("Tas {} is offload pending... ", taskExecutor.getId());
-                /*
-                // pending means that it is not offloaded yet.
-                // close immediately!
-                LOG.info("Immediately deoffloading!");
-                taskExecutor.endOffloading((m) -> {
-                  // do sth
-                });
-                iterator.remove();
-                */
             }
           }
         }
