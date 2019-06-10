@@ -243,12 +243,20 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
                   runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
                 offloadingPendingCnt.getAndIncrement();
-                offloadPendingExecutors.add(runningTask);
+
+                synchronized (offloadPendingExecutors) {
+                  offloadPendingExecutors.add(runningTask);
+                }
 
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
                   stageOffloadingWorkerManager.endOffloading(stageId);
                   offloadingPendingCnt.decrementAndGet();
                   runningTask.getPrevOffloadStartTime().set(System.currentTimeMillis());
+
+                  synchronized (offloadPendingExecutors) {
+                    offloadPendingExecutors.remove(runningTask);
+                  }
+
                   synchronized (offloadedExecutors) {
                     offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
                   }
