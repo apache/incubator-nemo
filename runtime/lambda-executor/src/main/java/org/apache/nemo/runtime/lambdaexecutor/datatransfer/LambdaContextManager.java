@@ -100,7 +100,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   @Override
   public ByteInputContext getInputContext(ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection, int transferIndex) {
-    LOG.info("Input context find index: {}", transferIndex);
+    //LOG.info("Input context find index: {}", transferIndex);
     return inputContexts.get(transferIndex);
   }
 

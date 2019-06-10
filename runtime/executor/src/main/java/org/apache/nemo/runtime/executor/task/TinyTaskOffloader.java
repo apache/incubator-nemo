@@ -351,7 +351,7 @@ public final class TinyTaskOffloader implements Offloader {
           LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
           pendingStatus = PendingState.INPUT_PENDING;
         } else {
-          LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
+          //LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
           break;
         }
       }
@@ -366,7 +366,7 @@ public final class TinyTaskOffloader implements Offloader {
             pendingStatus = PendingState.OUTPUT_PENDING;
           }
         } else {
-          LOG.info("Input pending not done {}", taskId);
+          //LOG.info("Input pending not done {}", taskId);
           break;
         }
       }
