@@ -73,7 +73,7 @@ public final class TaskOffloadingManager {
 
   private boolean hasPendingDependencies(final List<String> dependencies) {
     for (final String stageId : dependencies) {
-      if (stageStatusMap.get(stageId).equals(Status.PENDING)) {
+      if (stageStatusMap.get(stageId).left().equals(Status.PENDING)) {
         return true;
       }
     }
