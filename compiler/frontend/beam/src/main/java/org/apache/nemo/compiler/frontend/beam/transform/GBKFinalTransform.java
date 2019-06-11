@@ -207,13 +207,11 @@ public final class GBKFinalTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-    /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
-      new Instant(prevKeyAndWatermarkMinHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+      new Instant(inputWatermark.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
       new Instant(prevOutputWatermark.getTimestamp()),
       new Instant(inputWatermark.getTimestamp()),
       getContext().getTaskId());
-      */
 
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
@@ -234,7 +232,7 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
-    //LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();

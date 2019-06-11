@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskOffloader.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ThresholdBasedOffloadingPolicy.class.getName());
 
   private final SystemLoadProfiler profiler;
 
