@@ -46,6 +46,7 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     dos.writeLong(value.prevOutputWatermark.getTimestamp());
     dos.writeLong(value.inputWatermark.getTimestamp());
+    dos.writeLong(value.prevKeyAndWatermarkHold.getTimestamp());
 
     encodeKeyAndWatermarkMap(value.keyAndWatermarkHoldMap, dos);
     final long st3 = System.currentTimeMillis();
@@ -70,6 +71,7 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     final Watermark prevOutputWatermark = new Watermark(dis.readLong());
     final Watermark inputWatermark = new Watermark(dis.readLong());
+    final Watermark prevKeyAndWatermarkHold = new Watermark(dis.readLong());
 
     final Map<K, Watermark> keyAndWatermarkMap = decodeKeyAndWatermarkMap(dis);
 
@@ -82,7 +84,8 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
       stateInternalsFactory,
       prevOutputWatermark,
       keyAndWatermarkMap,
-      inputWatermark);
+      inputWatermark,
+      prevKeyAndWatermarkHold);
 
     return finalState;
   }
