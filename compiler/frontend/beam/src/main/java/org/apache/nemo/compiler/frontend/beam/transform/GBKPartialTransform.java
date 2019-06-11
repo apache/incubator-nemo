@@ -324,6 +324,7 @@ public final class GBKPartialTransform<K, InputT>
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
       // Remove states
+      inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(timer.left());
       inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace());
 
       /*

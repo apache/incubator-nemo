@@ -131,6 +131,16 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
+  public void removeTimerForKeyIfEmpty(final K key) {
+    final NemoTimerInternals<K> timerInternals = timerInternalsMap.get(key);
+    if (timerInternals.isEmpty()) {
+      // remove from timerInternalsMap
+      timerInternalsMap.remove(key);
+      //LOG.info("Remove timer for key {}, timer: {}, # of keys: {}",
+      //  timer.left(),  timer.right(), timerInternalsMap.size());
+    }
+  }
+
 
     /** Returns the next eligible event time timer, if none returns null. */
     @Nullable
@@ -185,14 +195,6 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
         final NemoTimerInternals<K> timerInternals = timerInternalsMap.get(timer.left());
 
         timerInternals.deleteTimer(timer.right());
-
-        if (timerInternals.isEmpty()) {
-          // remove from timerInternalsMap
-          timerInternalsMap.remove(timer.left());
-          //LOG.info("Remove timer for key {}, timer: {}, # of keys: {}",
-          //  timer.left(),  timer.right(), timerInternalsMap.size());
-        }
-
         return timer;
       } else {
         return null;

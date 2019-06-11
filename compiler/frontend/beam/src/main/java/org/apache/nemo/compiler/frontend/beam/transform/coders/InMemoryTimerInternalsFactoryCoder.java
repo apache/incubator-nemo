@@ -49,6 +49,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     dos.writeLong(value.processingTime.getMillis());
     dos.writeLong(value.synchronizedProcessingTime.getMillis());
 
+    LOG.info("Encoding timer key size: {}", value.timerInternalsMap.size());
     encodeTimerInternalsMap(value.timerInternalsMap, dos);
   }
 
