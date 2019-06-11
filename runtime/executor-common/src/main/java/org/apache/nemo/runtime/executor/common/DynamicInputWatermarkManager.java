@@ -92,21 +92,19 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
 
   private void printWatermarks() {
     for (final int index : taskWatermarkMap.keySet()) {
-      LOG.info("[{}: {}] at {}", index, new Instant(taskWatermarkMap.get(index).getTimestamp()), vertex.getId());
+      LOG.info("[{}: {}] at {}, {}", index, new Instant(taskWatermarkMap.get(index).getTimestamp()), vertex.getId(), taskId);
     }
   }
 
   @Override
   public synchronized void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
 
-    /*
     if (vertex != null) {
-      LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(), currMinWatermark,
-        minWatermarkIndex);
+      LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}, task {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(), currMinWatermark,
+        minWatermarkIndex, taskId);
       LOG.info("Print watermarks");
       printWatermarks();
     }
-    */
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
       if (taskWatermarkMap.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
