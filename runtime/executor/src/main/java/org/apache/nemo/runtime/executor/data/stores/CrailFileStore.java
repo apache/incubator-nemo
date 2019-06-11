@@ -46,8 +46,8 @@ import java.util.Optional;
 @ThreadSafe
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
   private final String fileDirectory;
-  private CrailConfiguration conf;
-  private CrailStore fs;
+  private final CrailConfiguration conf;
+  private final CrailStore fs;
 
   /**
    * Constructor.
@@ -103,8 +103,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
 
-  @Override
-
   public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     try {
@@ -117,12 +115,10 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
         } catch (final IOException e) {
           throw new BlockFetchException(e);
         } catch (Exception e) {
-          e.printStackTrace();
           throw new BlockFetchException(e);
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
       throw new BlockFetchException(e);
     }
   }
@@ -148,7 +144,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch (final Exception e) {
-      e.printStackTrace();
       throw new BlockFetchException(e);
     }
   }

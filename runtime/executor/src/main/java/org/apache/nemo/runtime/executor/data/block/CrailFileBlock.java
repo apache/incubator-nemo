@@ -52,8 +52,8 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
-  private CrailStore fs = null;
-  private CrailFile file = null;
+  private final CrailStore fs;
+  private CrailFile file;
 
   /**
    * Constructor.
@@ -75,21 +75,20 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
     this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
-      try {
-        this.fs = fs;
-        this.file = fs.create(filePath, CrailNodeType.DATAFILE,
+    this.fs = fs;
+    try {
+      this.file = fs.create(filePath, CrailNodeType.DATAFILE,
                               CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true)
                               .get().asFile();
         file.syncDir();
-      } catch (Exception e1) {
-        try {
-          this.fs = fs;
-          this.file = fs.lookup(filePath).get().asFile();
-        } catch (Exception e2) {
-          LOG.info("{} fetch failed", blockId);
-        }
+    } catch (Exception e1) {
+      try {
+        this.file = fs.lookup(filePath).get().asFile();
+      } catch (Exception e2) {
+        LOG.info("{} fetch failed", blockId);
       }
     }
+  }
 
   /**
    * Writes the serialized data of this block having a specific key value as a partition to the file

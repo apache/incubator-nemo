@@ -349,7 +349,7 @@ public final class BlockManagerWorker {
                   os.writeFileArea(fileArea);
                 }
               }
-            } else if(DataStoreProperty.Value.CrailFileStore.equals(blockStore)){
+            } else if (DataStoreProperty.Value.CrailFileStore.equals(blockStore)){
               final List<FileArea> fileAreas = ((CrailFileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()){
@@ -518,7 +518,6 @@ public final class BlockManagerWorker {
    */
   private static DataStoreProperty.Value convertBlockStore(
       final ControlMessage.BlockStore blockStoreType) {
-    LOG.info("HY: {}", blockStoreType.getClass());
     switch (blockStoreType) {
       case MEMORY:
         return DataStoreProperty.Value.MemoryStore;

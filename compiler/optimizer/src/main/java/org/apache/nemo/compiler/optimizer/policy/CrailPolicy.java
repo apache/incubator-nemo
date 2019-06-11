@@ -28,7 +28,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimiz
 import org.apache.reef.tang.Injector;
 
 /**
- * A policy to demonstrate the disaggregation optimization, that uses GlusterFS as file  storage.
+ * A policy to demonstrate the disaggregation optimization, that uses CrailFS as file  storage.
  */
 public final class CrailPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
