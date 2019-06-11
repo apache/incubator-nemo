@@ -53,7 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class GBKPartialTransform<K, InputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> implements StatefulTransform<GBKFinalState<K>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GBKFinalTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(GBKPartialTransform.class.getName());
 
   private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
