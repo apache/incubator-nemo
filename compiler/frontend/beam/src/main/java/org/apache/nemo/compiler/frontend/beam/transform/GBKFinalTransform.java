@@ -245,7 +245,12 @@ public final class GBKFinalTransform<K, InputT>
     inputWatermark = watermark;
 
     final long st = System.currentTimeMillis();
-    processElementsAndTriggerTimers(Instant.now(), Instant.now(), inputWatermark);
+    try {
+      processElementsAndTriggerTimers(Instant.now(), Instant.now(), inputWatermark);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
     // Emit watermark to downstream operators
     LOG.info("After trigger at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
