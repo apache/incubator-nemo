@@ -70,7 +70,6 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
     final Watermark prevOutputWatermark = new Watermark(dis.readLong());
     final Watermark inputWatermark = new Watermark(dis.readLong());
-    final Watermark prevKeyAndWatermarkHold = new Watermark(dis.readLong());
 
     final Map<K, Watermark> keyAndWatermarkMap = decodeKeyAndWatermarkMap(dis);
 
