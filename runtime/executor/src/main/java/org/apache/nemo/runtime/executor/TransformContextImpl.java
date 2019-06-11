@@ -34,6 +34,7 @@ public final class TransformContextImpl implements Transform.Context {
   private String data;
   private final IRVertex irVertex;
   private final ServerlessExecutorProvider serverlessExecutorProvider;
+  private final String taskId;
 
   /**
    * Constructor of Context Implementation.
@@ -41,11 +42,18 @@ public final class TransformContextImpl implements Transform.Context {
    */
   public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
                               final IRVertex irVertex,
-                              final ServerlessExecutorProvider serverlessExecutorProvider) {
+                              final ServerlessExecutorProvider serverlessExecutorProvider,
+                              final String taskId) {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.data = null;
     this.irVertex = irVertex;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
+    this.taskId = taskId;
+  }
+
+  @Override
+  public String getTaskId() {
+    return taskId;
   }
 
   @Override

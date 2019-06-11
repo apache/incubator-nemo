@@ -765,7 +765,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
         irVertex, outputCollector, new TransformContextImpl(
-          broadcastManagerWorker, irVertex, serverlessExecutorProvider),
+          broadcastManagerWorker, irVertex, serverlessExecutorProvider, taskId),
         externalMainOutputs, externalAdditionalOutputMap);
 
       TaskExecutorUtil.prepareTransform(vertexHarness);

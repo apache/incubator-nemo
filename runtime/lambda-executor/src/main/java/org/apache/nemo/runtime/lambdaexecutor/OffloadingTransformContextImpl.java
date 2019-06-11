@@ -39,6 +39,11 @@ public final class OffloadingTransformContextImpl implements Transform.Context {
   }
 
   @Override
+  public String getTaskId() {
+    return null;
+  }
+
+  @Override
   public ServerlessExecutorProvider getServerlessExecutorProvider() {
     return null;
   }

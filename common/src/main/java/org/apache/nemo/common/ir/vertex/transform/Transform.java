@@ -65,6 +65,8 @@ public interface Transform<I, O> extends Serializable {
    */
   interface Context extends Serializable {
 
+    String getTaskId();
+
     ServerlessExecutorProvider getServerlessExecutorProvider();
 
     /**

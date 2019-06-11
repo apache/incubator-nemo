@@ -105,6 +105,7 @@ public final class GBKPartialTransform<K, InputT>
    */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
+
     final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
 
     if (inMemoryStateInternalsFactory == null) {
@@ -211,6 +212,12 @@ public final class GBKPartialTransform<K, InputT>
     }
 
 
+    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
+      new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+      new Instant(prevOutputWatermark.getTimestamp()),
+      new Instant(inputWatermark.getTimestamp()),
+      getContext().getTaskId());
+
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
@@ -231,6 +238,9 @@ public final class GBKPartialTransform<K, InputT>
 
     //LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
     //LOG.info("Watermark at GBKW: {}", watermark);
+
+    LOG.info("Partial watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+
     checkAndInvokeBundle();
     inputWatermark = watermark;
 
