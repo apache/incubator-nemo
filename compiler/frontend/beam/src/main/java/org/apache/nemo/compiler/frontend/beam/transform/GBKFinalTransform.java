@@ -252,10 +252,10 @@ public final class GBKFinalTransform<K, InputT>
       throw new RuntimeException(e);
     }
     // Emit watermark to downstream operators
-    LOG.info("After trigger at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    LOG.info("After trigger at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     emitOutputWatermark();
-    LOG.info("After emitwatermark at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    LOG.info("After emitwatermark at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     final long et1 = System.currentTimeMillis();
     checkAndFinishBundle();
