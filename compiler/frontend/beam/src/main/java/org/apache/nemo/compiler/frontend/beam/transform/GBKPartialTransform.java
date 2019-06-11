@@ -210,13 +210,12 @@ public final class GBKPartialTransform<K, InputT>
     }
 
 
-    /*
+
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
-      new Instant(prevKeyAndWatermarkMinHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+      new Instant(inputWatermark.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
       new Instant(prevOutputWatermark.getTimestamp()),
       new Instant(inputWatermark.getTimestamp()),
       getContext().getTaskId());
-      */
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
@@ -236,7 +235,7 @@ public final class GBKPartialTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
-    //LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
+    LOG.info("Parital watermark receive: {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     //LOG.info("Watermark at GBKW: {}", watermark);
 
     //LOG.info("Partial watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
