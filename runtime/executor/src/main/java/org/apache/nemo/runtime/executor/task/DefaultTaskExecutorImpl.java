@@ -180,7 +180,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final TaskInputContextMap taskInputContextMap;
 
-  public final AtomicLong taskExecutionTime = new AtomicLong(0);
+  private final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private long offloadedExecutionTime = 0;
   private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
@@ -322,6 +322,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
       });
     }
+  }
+
+  @Override
+  public PendingState getPendingStatus() {
+    if (offloader.isPresent()) {
+      return offloader.get().getPendingStatus();
+    }
+
+    throw new RuntimeException("not supported");
   }
 
   @Override

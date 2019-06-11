@@ -67,6 +67,8 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
   private final AtomicInteger offloadingPendingCnt = new AtomicInteger(0);
   private final AtomicInteger deoffloadingPendingCnt = new AtomicInteger(0);
 
+  private final Map<TaskExecutor, DescriptiveStatistics> taskExecutionTimeMap = new HashMap<>();
+
   @Inject
   private ThresholdBasedOffloadingPolicy(
     final SystemLoadProfiler profiler,
@@ -103,8 +105,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
   }
 
   private List<TaskExecutor> runningTasksInCpuTimeOrder(
-    final List<TaskExecutor> runningTasks,
-    final Map<TaskExecutor, Long> deltaMap) {
+    final List<TaskExecutor> runningTasks) {
 
     final List<TaskExecutor> tasks = runningTasks
       .stream().filter(runningTask -> {
@@ -114,11 +115,38 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
     tasks.sort(new Comparator<TaskExecutor>() {
       @Override
       public int compare(TaskExecutor o1, TaskExecutor o2) {
-        return (int) (deltaMap.get(o2) - deltaMap.get(o1));
+        return (int) (taskExecutionTimeMap.get(o2).getMean() - taskExecutionTimeMap.get(o1).getMean());
       }
     });
 
     return tasks;
+  }
+
+  private boolean checkAllInputStop() {
+    synchronized (offloadPendingExecutors) {
+      for (final TaskExecutor executor : offloadPendingExecutors) {
+        if (!executor.getPendingStatus().equals(TaskExecutor.PendingState.OUTPUT_PENDING)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private void updateTaskExecutionTime(final Map<TaskExecutor, Long> deltaMap) {
+    for (final Map.Entry<TaskExecutor, Long> entry : deltaMap.entrySet()) {
+      final TaskExecutor executor = entry.getKey();
+      final Long time = entry.getValue();
+
+      if (!taskExecutionTimeMap.containsKey(executor)) {
+        final DescriptiveStatistics s = new DescriptiveStatistics();
+        s.setWindowSize(5);
+        taskExecutionTimeMap.put(executor, s);
+      }
+
+      final DescriptiveStatistics stat = taskExecutionTimeMap.get(executor);
+      stat.addValue(time / 1000);
+    }
   }
 
   @Override
@@ -134,9 +162,12 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
             return Pair.of(taskExecutor, executionTime);
           }).collect(Collectors.toMap(Pair::left, Pair::right));
 
+      // update time
+      updateTaskExecutionTime(deltaMap);
+
       long elapsedCpuTimeSum = 0L;
-      for (final Long val : deltaMap.values()) {
-        elapsedCpuTimeSum += (val / 1000);
+      for (final DescriptiveStatistics val : taskExecutionTimeMap.values()) {
+        elapsedCpuTimeSum += val.getMean();
       }
 
       // calculate stable cpu time
@@ -182,8 +213,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
       }
 
       if (cpuHighMean > threshold && observedCnt >= observeWindow &&
-        System.currentTimeMillis() - prevDeOffloadingTime >= slackTime &&
-        offloadingPendingCnt.get() == 0) {
+        System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
         final long targetCpuTime = cpuTimeModel
           .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
@@ -193,9 +223,9 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
         long currCpuTimeSum = 0;
         // correct
         // jst running worker
-        for (final Map.Entry<TaskExecutor, Long> entry : deltaMap.entrySet()) {
+        for (final Map.Entry<TaskExecutor, DescriptiveStatistics> entry : taskExecutionTimeMap.entrySet()) {
           if (entry.getKey().isRunning()) {
-            currCpuTimeSum  += entry.getValue() / 1000;
+            currCpuTimeSum  += entry.getValue().getMean();
           }
         }
 
@@ -203,12 +233,12 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
         LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
         //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
-        final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
+        final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks);
         final long curr = System.currentTimeMillis();
         int cnt = 0;
 
         for (final TaskExecutor runningTask : runningTasks) {
-          final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
+          final long currTaskCpuTime = (long) taskExecutionTimeMap.get(runningTask).getMean();
           //if (cnt < runningTasks.size() - 1) {
 
           if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime &&
@@ -262,9 +292,9 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
           long currCpuTimeSum = 0;
           // correct
           // jst running worker
-          for (final Map.Entry<TaskExecutor, Long> entry : deltaMap.entrySet()) {
+          for (final Map.Entry<TaskExecutor, DescriptiveStatistics> entry : taskExecutionTimeMap.entrySet()) {
             if (entry.getKey().isRunning()) {
-              currCpuTimeSum += entry.getValue() / 1000;
+              currCpuTimeSum += entry.getValue().getMean();
             } else if (entry.getKey().isDeoffloadPending()) {
               currCpuTimeSum += (entry.getKey().calculateOffloadedTaskTime() / 1000);
             }

@@ -32,12 +32,21 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public interface TaskExecutor extends AutoCloseable {
 
+
+  public enum PendingState {
+    WORKER_PENDING,
+    INPUT_PENDING,
+    OUTPUT_PENDING,
+  }
+
   public enum Status {
     RUNNING,
     OFFLOAD_PENDING,
     OFFLOADED,
     DEOFFLOAD_PENDING
   }
+
+  PendingState getPendingStatus();
 
   boolean isFinished();
 

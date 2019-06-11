@@ -101,13 +101,8 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final TaskLocationMap taskLocationMap;
 
-  private enum PendingState {
-    WORKER_PENDING,
-    INPUT_PENDING,
-    OUTPUT_PENDING,
-  }
 
-  private PendingState pendingStatus = PendingState.WORKER_PENDING;
+  private TaskExecutor.PendingState pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
   private TinyTaskWorker tinyTaskWorker;
 
 
@@ -175,6 +170,11 @@ public final class TinyTaskOffloader implements Offloader {
 
     }, 2, 2, TimeUnit.SECONDS);
     */
+  }
+
+  @Override
+  public TaskExecutor.PendingState getPendingStatus() {
+    return pendingStatus;
   }
 
   @Override
@@ -336,7 +336,7 @@ public final class TinyTaskOffloader implements Offloader {
     LOG.info("Waiting for source stop futures in {}", taskId);
 
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
-    pendingStatus = PendingState.WORKER_PENDING;
+    pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
   }
 
   @Override
@@ -349,7 +349,7 @@ public final class TinyTaskOffloader implements Offloader {
       case WORKER_PENDING: {
         if (tinyTaskWorker.isReady()) {
           LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
-          pendingStatus = PendingState.INPUT_PENDING;
+          pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
         } else {
           //LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
           break;
@@ -363,7 +363,7 @@ public final class TinyTaskOffloader implements Offloader {
             LOG.info("End of waiting source stop futures...");
             LOG.info("Close current output contexts in {}", taskId);
             startOutputPending();
-            pendingStatus = PendingState.OUTPUT_PENDING;
+            pendingStatus = TaskExecutor.PendingState.OUTPUT_PENDING;
           }
         } else {
           //LOG.info("Input pending not done {}", taskId);

@@ -31,6 +31,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -50,6 +51,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public interface Offloader {
+
+
+  public TaskExecutor.PendingState getPendingStatus();
 
   public void handleOffloadingOutput(final KafkaOffloadingOutput output);
 

@@ -189,6 +189,11 @@ public final class DownstreamTaskOffloader implements Offloader {
   }
 
   @Override
+  public TaskExecutor.PendingState getPendingStatus() {
+    throw new RuntimeException("Not supported");
+  }
+
+  @Override
   public void handleOffloadingOutput(KafkaOffloadingOutput output) {
     throw new RuntimeException("Unsupported op: " + output);
   }

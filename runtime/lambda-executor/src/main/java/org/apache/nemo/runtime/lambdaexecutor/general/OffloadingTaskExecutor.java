@@ -650,6 +650,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
+  public PendingState getPendingStatus() {
+    throw new RuntimeException("Not supported");
+  }
+
+  @Override
   public boolean isFinished() {
     LOG.info("Isfinished: {}, pendingDone: {} for {}", allPendingDone(), offloadingTask.taskId);
     return finished && allPendingDone();

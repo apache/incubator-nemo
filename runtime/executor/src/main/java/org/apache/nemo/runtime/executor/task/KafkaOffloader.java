@@ -228,6 +228,11 @@ public final class KafkaOffloader implements Offloader {
   }
 
   @Override
+  public TaskExecutor.PendingState getPendingStatus() {
+    throw new RuntimeException("Not supported");
+  }
+
+  @Override
   public synchronized void handleOffloadingOutput(final KafkaOffloadingOutput output) {
     // handling checkpoint mark to resume the kafka source reading
     // Serverless -> VM
