@@ -402,7 +402,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public void close() {
 
-    final List<DataFetcher> allFetchers = new ArrayList<>();
+    final Set<DataFetcher> allFetchers = new HashSet<>();
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
 
@@ -436,33 +436,32 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public void finish() {
 
-    final List<DataFetcher> allFetchers = new ArrayList<>();
+    final Set<DataFetcher> allFetchers = new HashSet<>();
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
 
     availableFetchers.clear();
     pendingFetchers.clear();
 
-
     // close output writer!!
     // we should first close output writer
     // the code after this should not emit outputs to downstream operators
     prepareService.execute(() -> {
-    try {
-      // TODO: fix
-      for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-        outputWriter.close();
+      try {
+        // TODO: fix
+        for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
+          outputWriter.close();
+        }
+
+        //Thread.sleep(3000);
+
+        // TODO: we send checkpoint mark to vm
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
 
-      //Thread.sleep(3000);
-
-      // TODO: we send checkpoint mark to vm
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
-    boolean hasSource = false;
+      boolean hasSource = false;
       for (final DataFetcher dataFetcher : allFetchers) {
 
         if (dataFetcher instanceof SourceVertexDataFetcher) {
