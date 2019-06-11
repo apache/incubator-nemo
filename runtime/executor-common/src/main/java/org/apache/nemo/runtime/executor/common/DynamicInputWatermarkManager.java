@@ -100,10 +100,11 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   public synchronized void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
 
     if (vertex != null && taskId.startsWith("Stage1")) {
-      LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}, task {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(), currMinWatermark,
+      LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}, task {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(),
+        new Instant(currMinWatermark.getTimestamp()),
         minWatermarkIndex, taskId);
-      LOG.info("Print watermarks");
-      printWatermarks();
+      //LOG.info("Print watermarks");
+      //printWatermarks();
     }
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
@@ -117,11 +118,11 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
         final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
         final Watermark nextMinWatermark = taskWatermarkMap.get(nextMinWatermarkIndex);
 
-        /*
-        LOG.info("nextMin: {}, netMinIndex: {}, currMin: {} at {}", new Instant(nextMinWatermark.getTimestamp()),
-          nextMinWatermarkIndex,
-          new Instant(currMinWatermark.getTimestamp()), vertex.getId());
-          */
+        if (taskId.startsWith("Stage1")) {
+          LOG.info("nextMin: {}, netMinIndex: {}, currMin: {} at {}", new Instant(nextMinWatermark.getTimestamp()),
+            nextMinWatermarkIndex,
+            new Instant(currMinWatermark.getTimestamp()), vertex.getId());
+        }
 
         if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
           // it is possible
