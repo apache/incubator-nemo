@@ -60,7 +60,6 @@ public final class GBKFinalTransform<K, InputT>
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
   private Watermark inputWatermark;
-  private Watermark prevKeyAndWatermarkMinHold;
 
   int numProcessedData = 0;
 
@@ -94,7 +93,6 @@ public final class GBKFinalTransform<K, InputT>
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
-    this.prevKeyAndWatermarkMinHold = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
   }
 
@@ -197,20 +195,17 @@ public final class GBKFinalTransform<K, InputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
-    prevKeyAndWatermarkMinHold =
-      new Watermark(
-        Math.max(prevKeyAndWatermarkMinHold.getTimestamp(),
-          Collections.min(keyAndWatermarkHoldMap.values()).getTimestamp()));
+    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+      ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
 
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
-        Math.min(prevKeyAndWatermarkMinHold.getTimestamp(), inputWatermark.getTimestamp())));
+        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
-        + "inputWatermark: {}, outputWatermark: {}", prevKeyAndWatermarkMinHold, inputWatermark, prevOutputWatermark);
+        + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
-
 
     /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
@@ -229,9 +224,9 @@ public final class GBKFinalTransform<K, InputT>
       //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
-      if (prevKeyAndWatermarkMinHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
+      if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == prevKeyAndWatermarkMinHold.getTimestamp());
+          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp());
       }
     }
   }
@@ -400,8 +395,7 @@ public final class GBKFinalTransform<K, InputT>
       inMemoryStateInternalsFactory,
       prevOutputWatermark,
       keyAndWatermarkHoldMap,
-      inputWatermark,
-      prevKeyAndWatermarkMinHold);
+      inputWatermark);
   }
 
   @Override
@@ -418,7 +412,6 @@ public final class GBKFinalTransform<K, InputT>
 
     inputWatermark = state.inputWatermark;
     prevOutputWatermark = state.prevOutputWatermark;
-    prevKeyAndWatermarkMinHold = state.prevKeyAndWatermarkHold;
 
     keyAndWatermarkHoldMap.clear();
     keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
