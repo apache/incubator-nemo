@@ -76,6 +76,10 @@ public class NemoTimerInternals<K> implements TimerInternals {
     this.outputWatermarkTime = outputWatermarkTime;
   }
 
+  public boolean isEmpty() {
+    return existingTimers.isEmpty();
+  }
+
   @Override
   @Nullable
   public Instant currentOutputWatermarkTime() {

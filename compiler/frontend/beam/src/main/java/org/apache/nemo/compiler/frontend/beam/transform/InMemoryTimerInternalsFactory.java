@@ -117,17 +117,19 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
   @Override
   public TimerInternals timerInternalsForKey(final K key) {
-      if (timerInternalsMap.get(key) != null) {
-        return timerInternalsMap.get(key);
-      } else {
-        final NemoTimerInternals internal =  new NemoTimerInternals<>(key,
-          watermarkTimers,
-          processingTimers,
-          synchronizedProcessingTimers);
-        timerInternalsMap.put(key, internal);
-        return internal;
-      }
+    LOG.info("Get timer key {}, # of keys: {}", key, timerInternalsMap.size());
+
+    if (timerInternalsMap.get(key) != null) {
+      return timerInternalsMap.get(key);
+    } else {
+      final NemoTimerInternals internal =  new NemoTimerInternals<>(key,
+        watermarkTimers,
+        processingTimers,
+        synchronizedProcessingTimers);
+      timerInternalsMap.put(key, internal);
+      return internal;
     }
+  }
 
 
     /** Returns the next eligible event time timer, if none returns null. */
@@ -180,7 +182,17 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
       if (!timers.isEmpty() && !currentTime.isBefore(timers.first().right().getTimestamp())) {
         Pair<K, TimerInternals.TimerData> timer = timers.pollFirst();
-        timerInternalsMap.get(timer.left()).deleteTimer(timer.right());
+        final NemoTimerInternals<K> timerInternals = timerInternalsMap.get(timer.left());
+
+        timerInternals.deleteTimer(timer.right());
+
+        if (timerInternals.isEmpty()) {
+          // remove from timerInternalsMap
+          timerInternalsMap.remove(timer.left());
+          LOG.info("Remove timer for key {}, timer: {}, # of keys: {}",
+            timer.left(),  timer.right(), timerInternalsMap.size());
+        }
+
         return timer;
       } else {
         return null;

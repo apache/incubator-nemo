@@ -2,6 +2,9 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.StateInternals;
 import org.apache.beam.runners.core.StateInternalsFactory;
+import org.apache.beam.runners.core.StateNamespace;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +13,8 @@ import java.util.Map;
    * InMemoryStateInternalsFactory.
  */
 public final class InMemoryStateInternalsFactory<K> implements StateInternalsFactory<K> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternalsFactory.class.getName());
 
   public Map<K, StateInternals> stateInternalMap;
   public Map<K, NemoStateBackend> stateBackendMap;
@@ -38,6 +43,25 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
 
     this.stateInternalMap = stateFactorty.stateInternalMap;
     this.stateBackendMap = stateFactorty.stateBackendMap;
+  }
+
+  public void removeNamespaceForKey(final K key, StateNamespace namespace) {
+
+    LOG.info("Remove namespace for key {}/{}", key, namespace);
+
+    stateBackendMap.get(key).map.remove(namespace);
+
+    if (stateBackendMap.get(key).map.isEmpty()) {
+      LOG.info("Remove key: {}", key);
+      // remove key
+      stateBackendMap.remove(key);
+      stateInternalMap.remove(key);
+    }
+  }
+
+  public void removeKey(final K key) {
+    stateBackendMap.remove(key);
+    stateInternalMap.remove(key);
   }
 
   @Override

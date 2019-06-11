@@ -297,7 +297,7 @@ public final class GBKFinalTransform<K, InputT>
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
-        inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
+        (NemoTimerInternals) inMemoryTimerInternalsFactory.timerInternalsForKey(timer.left());
       timerInternals.setCurrentInputWatermarkTime(new Instant(triggerWatermark.getTimestamp()));
       timerInternals.setCurrentProcessingTime(processingTime);
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
@@ -305,9 +305,14 @@ public final class GBKFinalTransform<K, InputT>
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(timer.left(), Collections.singletonList(timer.right()));
+
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+
+
+      // Remove states
+      inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace());
 
       /*
       timerInternals.decrementRegisteredTimer();

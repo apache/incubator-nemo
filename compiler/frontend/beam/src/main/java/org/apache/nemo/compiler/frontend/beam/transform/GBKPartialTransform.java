@@ -297,7 +297,7 @@ public final class GBKPartialTransform<K, InputT>
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
-        inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
+        (NemoTimerInternals) inMemoryTimerInternalsFactory.timerInternalsForKey(timer.left());
       timerInternals.setCurrentInputWatermarkTime(new Instant(triggerWatermark.getTimestamp()));
       timerInternals.setCurrentProcessingTime(processingTime);
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
@@ -308,6 +308,9 @@ public final class GBKPartialTransform<K, InputT>
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+
+      // Remove states
+      inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace());
 
       /*
       timerInternals.decrementRegisteredTimer();
