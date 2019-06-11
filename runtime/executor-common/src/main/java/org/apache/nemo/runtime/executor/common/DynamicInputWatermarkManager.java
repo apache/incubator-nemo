@@ -99,12 +99,14 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   @Override
   public synchronized void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
 
+    /*
     if (vertex != null) {
       LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}, task {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(), currMinWatermark,
         minWatermarkIndex, taskId);
       LOG.info("Print watermarks");
       printWatermarks();
     }
+    */
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
       if (taskWatermarkMap.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
@@ -126,8 +128,8 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
         if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
           // it is possible
           minWatermarkIndex = nextMinWatermarkIndex;
-          LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
-            vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
+          //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
+          //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
         } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
           // Watermark timestamp progress!
           // Emit the min watermark
@@ -138,7 +140,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
             LOG.debug("Emit watermark {}", currMinWatermark);
           }
 
-          LOG.info("Emit watermark {} in {} for {}", new Instant(currMinWatermark.getTimestamp()), taskId, vertex.getId());
+          //LOG.info("Emit watermark {} in {} for {}", new Instant(currMinWatermark.getTimestamp()), taskId, vertex.getId());
 
           //LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId,
           //  new Instant(currMinWatermark.getTimestamp()));

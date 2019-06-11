@@ -212,11 +212,13 @@ public final class GBKFinalTransform<K, InputT>
     }
 
 
+    /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
       new Instant(prevKeyAndWatermarkMinHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
       new Instant(prevOutputWatermark.getTimestamp()),
       new Instant(inputWatermark.getTimestamp()),
       getContext().getTaskId());
+      */
 
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
@@ -237,11 +239,11 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
-    LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    //LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
-    LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
-    LOG.info("After bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    //LOG.info("After bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     inputWatermark = watermark;
 
     final long st = System.currentTimeMillis();
@@ -252,10 +254,10 @@ public final class GBKFinalTransform<K, InputT>
       throw new RuntimeException(e);
     }
     // Emit watermark to downstream operators
-    LOG.info("After trigger at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+   // LOG.info("After trigger at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     emitOutputWatermark();
-    LOG.info("After emitwatermark at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    //LOG.info("After emitwatermark at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     final long et1 = System.currentTimeMillis();
     checkAndFinishBundle();
