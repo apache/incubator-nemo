@@ -61,8 +61,11 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex,
                                      final Watermark watermark) {
+
+    watermarkCollector.emitWatermark(watermark);
+    return;
+    /*
     if (expectedWatermarkMap == null) {
-      watermarkCollector.emitWatermark(watermark);
     } else {
       final PriorityQueue<Watermark> expectedWatermarkQueue = expectedWatermarkMap.get(irVertex.getId()).left();
       if (!expectedWatermarkQueue.isEmpty()) {
@@ -119,6 +122,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
         watermarkCollector.emitWatermark(watermark);
       }
     }
+    */
   }
 
   @Override

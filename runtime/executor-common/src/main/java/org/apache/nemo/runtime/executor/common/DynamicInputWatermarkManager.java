@@ -129,7 +129,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
           // it is possible
           minWatermarkIndex = nextMinWatermarkIndex;
           LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
-            vertex.getId(), currMinWatermark, nextMinWatermark);
+            vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
         } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
           // Watermark timestamp progress!
           // Emit the min watermark
@@ -139,6 +139,8 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
           if (LOG.isDebugEnabled()) {
             LOG.debug("Emit watermark {}", currMinWatermark);
           }
+
+          LOG.debug("Emit watermark {} in {} for {}", new Instant(currMinWatermark.getTimestamp()), taskId, vertex.getId());
 
           //LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId,
           //  new Instant(currMinWatermark.getTimestamp()));
