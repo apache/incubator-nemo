@@ -211,6 +211,13 @@ public final class GBKFinalTransform<K, InputT>
     }
 
 
+    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
+      new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+      new Instant(prevOutputWatermark.getTimestamp()),
+      new Instant(inputWatermark.getTimestamp()),
+      getContext().getTaskId());
+
+
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;

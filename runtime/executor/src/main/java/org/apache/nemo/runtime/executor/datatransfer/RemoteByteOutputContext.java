@@ -388,7 +388,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         throw new IOException("Stream already closed.");
       }
 
-      currChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+      currChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
         .addListener(getChannelWriteListener());
     }
   }
