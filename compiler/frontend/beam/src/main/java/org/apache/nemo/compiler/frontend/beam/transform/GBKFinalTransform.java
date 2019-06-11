@@ -232,6 +232,12 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
+    if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
+      LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
+        new Instant(inputWatermark.getTimestamp()));
+      return;
+    }
+
     LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());

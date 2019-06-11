@@ -234,6 +234,11 @@ public final class GBKPartialTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
+      LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
+        new Instant(inputWatermark.getTimestamp()));
+      return;
+    }
 
     LOG.info("Parital watermark receive: {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     //LOG.info("Watermark at GBKW: {}", watermark);
