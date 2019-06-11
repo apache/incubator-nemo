@@ -239,7 +239,9 @@ public final class GBKFinalTransform<K, InputT>
 
     LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
+    LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
+    LOG.info("After bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     inputWatermark = watermark;
 
     final long st = System.currentTimeMillis();
