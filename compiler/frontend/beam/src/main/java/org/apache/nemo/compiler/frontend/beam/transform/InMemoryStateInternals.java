@@ -31,7 +31,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
   public static <K> InMemoryStateInternals<K> forKey(@Nullable K key,
                                                      final NemoStateBackend nemoStateBackend) {
 
-    LOG.info("State internals for key {}: {}", key, nemoStateBackend);
+    //LOG.info("State internals for key {}: {}", key, nemoStateBackend);
     return new InMemoryStateInternals<>(key, nemoStateBackend);
   }
 
@@ -110,26 +110,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
       this.c = c;
     }
 
-    public void removeValue(StateTag address) {
-      stateCoderMap.remove(address);
-      LOG.info("Remove value for key {}, size: {}", key, stateCoderMap.size());
-
-      if (stateCoderMap.isEmpty()) {
-        // Remove from state internal factory
-        LOG.info("Remove namespace from inMemoryState {}", namespace);
-        inMemoryState.clearNamespace(namespace);
-
-        if (inMemoryState.getNamespacesInUse().isEmpty()) {
-          LOG.info("Remove key from internal factory {}", namespace);
-          //stateInternalsFactory.removeKey(key);
-        }
-      }
-    }
-
     @Override
     public <T> ValueState<T> bindValue(StateTag<ValueState<T>> address, Coder<T> coder) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, address);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, address);
       if (stateCoderMap.containsKey(address)) {
         return (ValueState<T>) stateCoderMap.get(address).left();
       } else {
@@ -141,8 +125,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
 
     @Override
     public <T> BagState<T> bindBag(final StateTag<BagState<T>> address, Coder<T> elemCoder) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, address);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, address);
       if (stateCoderMap.containsKey(address)) {
         return (BagState<T>) stateCoderMap.get(address).left();
       } else {
@@ -154,8 +138,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
 
     @Override
     public <T> SetState<T> bindSet(StateTag<SetState<T>> spec, Coder<T> elemCoder) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, spec);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, spec);
       if (stateCoderMap.containsKey(spec)) {
         return (SetState<T>) stateCoderMap.get(spec).left();
       } else {
@@ -170,8 +154,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
         StateTag<MapState<KeyT, ValueT>> spec,
         Coder<KeyT> mapKeyCoder,
         Coder<ValueT> mapValueCoder) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, spec);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, spec);
       if (stateCoderMap.containsKey(spec)) {
         return (MapState<KeyT, ValueT>) stateCoderMap.get(spec).left();
       } else {
@@ -186,8 +170,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
         StateTag<CombiningState<InputT, AccumT, OutputT>> address,
         Coder<AccumT> accumCoder,
         final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, address);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, address);
       if (stateCoderMap.containsKey(address)) {
         //LOG.info("Bind combining value multiple: {}/{}", namespace, address);
         return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
@@ -202,8 +186,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public WatermarkHoldState bindWatermark(
         StateTag<WatermarkHoldState> address, TimestampCombiner timestampCombiner) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, address);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, address);
       if (stateCoderMap.containsKey(address)) {
         return (WatermarkHoldState) stateCoderMap.get(address).left();
       } else {
@@ -219,8 +203,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
             StateTag<CombiningState<InputT, AccumT, OutputT>> address,
             Coder<AccumT> accumCoder,
             CombineWithContext.CombineFnWithContext<InputT, AccumT, OutputT> combineFn) {
-      LOG.info("Bind value for key {}, namespace: {}, address: {}",
-        key, namespace, address);
+      //LOG.info("Bind value for key {}, namespace: {}, address: {}",
+      //  key, namespace, address);
       return bindCombiningValue(address, accumCoder, CombineFnUtil.bindContext(combineFn, c));
     }
   }
@@ -241,7 +225,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     public void clear() {
       // Even though we're clearing we can't remove this from the in-memory state map, since
       // other users may already have a handle on this Value.
-      LOG.info("Clear value: {}", value);
+      //LOG.info("Clear value: {}", value);
       value = null;
       isCleared = true;
     }
@@ -299,7 +283,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     public void clear() {
       // Even though we're clearing we can't remove this from the in-memory state map, since
       // other users may already have a handle on this WatermarkBagInternal.
-      LOG.info("Clear value: {}", combinedHold);
+      //LOG.info("Clear value: {}", combinedHold);
       combinedHold = null;
     }
 
@@ -377,7 +361,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     public void clear() {
       // Even though we're clearing we can't remove this from the in-memory state map, since
       // other users may already have a handle on this CombiningValue.
-      LOG.info("Clear value: {}", accum);
+      //LOG.info("Clear value: {}", accum);
       accum = combineFn.createAccumulator();
       isCleared = true;
     }
@@ -460,7 +444,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
       // greater than the window lifetime, in which case this method can be called while
       // the result is still in use. We protect against this by hot-swapping instead of
       // clearing the contents.
-      LOG.info("Clear value: {}", contents);
+      //LOG.info("Clear value: {}", contents);
       contents = new ArrayList<>();
     }
 
@@ -520,7 +504,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
 
     @Override
     public void clear() {
-      LOG.info("Clear value: {}", contents);
+      //LOG.info("Clear value: {}", contents);
       contents = new HashSet<>();
     }
 

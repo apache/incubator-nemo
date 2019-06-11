@@ -117,7 +117,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
   @Override
   public TimerInternals timerInternalsForKey(final K key) {
-    LOG.info("Get timer key {}, # of keys: {}", key, timerInternalsMap.size());
+    //LOG.info("Get timer key {}, # of keys: {}", key, timerInternalsMap.size());
 
     if (timerInternalsMap.get(key) != null) {
       return timerInternalsMap.get(key);
@@ -189,8 +189,8 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
         if (timerInternals.isEmpty()) {
           // remove from timerInternalsMap
           timerInternalsMap.remove(timer.left());
-          LOG.info("Remove timer for key {}, timer: {}, # of keys: {}",
-            timer.left(),  timer.right(), timerInternalsMap.size());
+          //LOG.info("Remove timer for key {}, timer: {}, # of keys: {}",
+          //  timer.left(),  timer.right(), timerInternalsMap.size());
         }
 
         return timer;

@@ -47,21 +47,16 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
 
   public void removeNamespaceForKey(final K key, StateNamespace namespace) {
 
-    LOG.info("Remove namespace for key {}/{}", key, namespace);
+    //LOG.info("Remove namespace for key {}/{}", key, namespace);
 
     stateBackendMap.get(key).map.remove(namespace);
 
     if (stateBackendMap.get(key).map.isEmpty()) {
-      LOG.info("Remove key: {}", key);
+      //LOG.info("Remove key: {}", key);
       // remove key
       stateBackendMap.remove(key);
       stateInternalMap.remove(key);
     }
-  }
-
-  public void removeKey(final K key) {
-    stateBackendMap.remove(key);
-    stateInternalMap.remove(key);
   }
 
   @Override
