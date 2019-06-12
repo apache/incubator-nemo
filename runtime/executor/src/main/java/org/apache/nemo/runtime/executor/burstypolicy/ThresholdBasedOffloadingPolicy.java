@@ -36,7 +36,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long slackTime = 10000;
-  private long deoffloadSlackTime = 10000;
+  private long deoffloadSlackTime = 20000;
 
 
   private final int windowSize = 5;
@@ -140,7 +140,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
       if (!taskExecutionTimeMap.containsKey(executor)) {
         final DescriptiveStatistics s = new DescriptiveStatistics();
-        s.setWindowSize(5);
+        s.setWindowSize(3);
         taskExecutionTimeMap.put(executor, s);
       }
 
@@ -215,8 +215,9 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
       if (cpuHighMean > threshold && observedCnt >= observeWindow &&
         System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
+        final double targetCPuLoad = ((threshold + evalConf.deoffloadingThreshold) / 2.0) - 0.05;
         final long targetCpuTime = cpuTimeModel
-          .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
+          .desirableMetricForLoad(targetCPuLoad);
 
         // Adjust current cpu time
         // Minus the pending tasks!
