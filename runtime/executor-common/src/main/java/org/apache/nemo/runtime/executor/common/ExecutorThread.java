@@ -62,7 +62,7 @@ public final class ExecutorThread {
         LOG.info("{} processed cnt: {}", taskId, taskCounterMap.remove(taskId));
       }
 
-    }, 2, 2, TimeUnit.SECONDS);
+    }, 5, 5, TimeUnit.SECONDS);
 
     executorService.execute(() -> {
       try {

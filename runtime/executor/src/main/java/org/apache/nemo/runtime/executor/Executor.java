@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.log4j.Level;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -154,6 +155,9 @@ public final class Executor {
                    final TaskLocationMap taskLocationMap) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
+    org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
+    org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
+
     this.relayServer = relayServer;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
