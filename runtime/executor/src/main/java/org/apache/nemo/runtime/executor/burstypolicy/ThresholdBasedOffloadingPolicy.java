@@ -109,7 +109,8 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
     final List<TaskExecutor> tasks = runningTasks
       .stream().filter(runningTask -> {
-        return !offloadedExecutors.stream().map(Pair::left).collect(Collectors.toSet()).contains(runningTask);
+        return !offloadedExecutors.stream().map(Pair::left).collect(Collectors.toSet()).contains(runningTask) &&
+          !offloadPendingExecutors.stream().collect(Collectors.toSet()).contains(runningTask);
       }).collect(Collectors.toList());
 
     tasks.sort(new Comparator<TaskExecutor>() {
@@ -234,7 +235,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
         LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
         //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
-        final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks);
+        final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.runningTasks);
         final long curr = System.currentTimeMillis();
         int cnt = 0;
 

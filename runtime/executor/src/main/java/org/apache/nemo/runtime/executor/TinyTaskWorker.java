@@ -39,7 +39,7 @@ public final class TinyTaskWorker {
 
   public boolean prepareTaskIfPossible() {
     final int req = prepareRequest.incrementAndGet();
-    LOG.info("prepare cnt for worker {}: {}", offloadingWorker.getId(), req);
+    LOG.info("prepare cnt for worker {}: {}", this, req);
     if (offloadedTasks.size() + pendingTasks.size() + req <= SLOT) {
       return true;
     } else {

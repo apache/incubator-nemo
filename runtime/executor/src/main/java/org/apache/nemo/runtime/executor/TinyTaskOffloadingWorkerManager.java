@@ -207,10 +207,12 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         }
       }
 
-      LOG.info("No preparable worker.. create new one");
 
       final TinyTaskWorker newWorker = new TinyTaskWorker(
         createNewWorker(offloadingSerializer), evalConf);
+
+      LOG.info("No preparable worker.. create new one {}", newWorker);
+
       workers.add(Pair.of(System.currentTimeMillis(), newWorker));
 
       newWorker.prepareTaskIfPossible();
@@ -223,15 +225,6 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
                                     final TinyTaskWorker worker) {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
-    worker.addTask(offloadingTask);
-  }
-
-  private synchronized void sendTask(final OffloadingTask offloadingTask,
-                                    final TaskExecutor taskExecutor) {
-    //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
-    offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
-
-    final TinyTaskWorker worker = findExecutableWorker();
     worker.addTask(offloadingTask);
   }
 
