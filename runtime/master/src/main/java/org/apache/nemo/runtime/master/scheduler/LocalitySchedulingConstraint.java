@@ -78,7 +78,7 @@ public final class LocalitySchedulingConstraint implements SchedulingConstraint 
           .map(handler -> {
             try {
               return handler.getLocationFuture().get();
-            } catch (ExecutionException e) {
+            } catch (final ExecutionException e) {
               throw new RuntimeException(e);
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();

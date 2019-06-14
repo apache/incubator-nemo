@@ -285,7 +285,7 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void onSpeculativeExecutionCheck() {
-    MutableBoolean isNumOfCloneChanged = new MutableBoolean(false);
+    MutableBoolean isNewCloneCreated = new MutableBoolean(false);
 
     selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
       scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
@@ -294,13 +294,13 @@ public final class BatchScheduler implements Scheduler {
         // Only if the ClonedSchedulingProperty is set...
         stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
           if (!cloneConf.isUpFrontCloning()) { // Upfront cloning is already handled.
-            isNumOfCloneChanged.setValue(modifyStageNumClone(stage, cloneConf));
+            isNewCloneCreated.setValue(doSpeculativeExecution(stage, cloneConf));
           }
         });
       });
     });
 
-    if (isNumOfCloneChanged.booleanValue()) {
+    if (isNewCloneCreated.booleanValue()) {
       doSchedule(); // Do schedule the new clone.
     }
   }
@@ -427,10 +427,10 @@ public final class BatchScheduler implements Scheduler {
   ////////////////////////////////////////////////////////////////////// Task cloning methods.
 
   /**
-   * @return true if the number of clones is modified.
+   * @return true if a new clone is created.
    *         false otherwise.
    */
-  private boolean modifyStageNumClone(final Stage stage, final ClonedSchedulingProperty.CloneConf cloneConf) {
+  private boolean doSpeculativeExecution(final Stage stage, final ClonedSchedulingProperty.CloneConf cloneConf) {
     final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
     final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stage.getId()).toArray();
 
@@ -452,7 +452,7 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * @return true if the number of clones is modified.
+   * @return true if the number of clones for the stage is modified.
    *         false otherwise.
    */
   private boolean modifyStageNumCloneUsingMedianTime(final String stageId,

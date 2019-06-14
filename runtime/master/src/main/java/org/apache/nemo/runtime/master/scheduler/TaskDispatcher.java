@@ -205,7 +205,7 @@ final class TaskDispatcher {
     void await() {
       lock.lock();
       try {
-        while (!hasDelayedSignal) {
+        while (!hasDelayedSignal) { // to avoid spurious wakeups
           condition.await();
         }
         hasDelayedSignal = false;
