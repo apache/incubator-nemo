@@ -205,7 +205,7 @@ final class TaskDispatcher {
     void await() {
       lock.lock();
       try {
-        if (!hasDelayedSignal) {
+        while (!hasDelayedSignal) {
           condition.await();
         }
         hasDelayedSignal = false;

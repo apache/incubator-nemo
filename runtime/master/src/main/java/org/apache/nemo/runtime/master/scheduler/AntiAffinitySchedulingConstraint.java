@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -27,7 +26,6 @@ import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
-import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.Optional;
 
@@ -38,11 +36,6 @@ import java.util.Optional;
 @DriverSide
 @AssociatedProperty(ResourceAntiAffinityProperty.class)
 public final class AntiAffinitySchedulingConstraint implements SchedulingConstraint {
-  @VisibleForTesting
-  @Inject
-  public AntiAffinitySchedulingConstraint() {
-  }
-
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     for (final Task runningTask : executor.getRunningTasks()) {
