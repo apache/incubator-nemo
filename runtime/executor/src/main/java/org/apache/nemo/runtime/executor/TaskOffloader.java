@@ -138,17 +138,17 @@ public final class TaskOffloader {
 
   public void startDownstreamDebugging() {
     // For offloading debugging
-    offloading("Stage0", 60, 5);
+    offloading("Stage0", 30, 8);
 
-    offloading("Stage2", 62, 5);
+    deoffloading("Stage0", 50, 8);
 
+    offloading("Stage0", 70, 8);
 
-    offloading("Stage1", 90, 5);
+    deoffloading("Stage0", 90, 8);
 
+    offloading("Stage0", 110, 8);
 
-    deoffloading("Stage2", 120, 5);
-    deoffloading("Stage0", 120, 5);
-
+    deoffloading("Stage0", 130, 8);
 
 
     //offloading("Stage1", 80, 5);
