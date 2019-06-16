@@ -143,7 +143,7 @@ public final class VMOffloadingRequester {
     final String addr = channel.remoteAddress().toString().split(":")[0];
     final String instanceId = vmChannelMap.remove(addr);
     LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
-    stopVM(instanceId);
+    //stopVM(instanceId);
   }
 
   public synchronized void createChannelRequest() {
