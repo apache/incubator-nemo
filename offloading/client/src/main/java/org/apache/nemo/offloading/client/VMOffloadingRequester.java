@@ -130,8 +130,19 @@ public final class VMOffloadingRequester {
     });
     */
 
+    LOG.info("Create request at VMOffloadingREquestor");
 
-    createChannelRequest();
+    final int index = vmChannelMap.size();
+    LOG.info("Request VM!! {}", index);
+
+    executorService.execute(() -> {
+      try {
+        startInstance(instanceIds.get(index), vmAddresses.get(index));
+      } catch (final Exception e) {
+        e.printStackTrace();;
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   public void start() {
