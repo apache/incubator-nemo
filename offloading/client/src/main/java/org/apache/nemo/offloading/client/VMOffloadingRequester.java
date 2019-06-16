@@ -131,7 +131,7 @@ public final class VMOffloadingRequester {
     */
 
 
-    startVM(instanceIds.get(0));
+    createChannelRequest();
   }
 
   public void start() {
@@ -147,6 +147,7 @@ public final class VMOffloadingRequester {
   }
 
   public synchronized void createChannelRequest() {
+    /*
     LOG.info("Create request at VMOffloadingREquestor");
 
     final int index = vmChannelMap.size();
@@ -160,6 +161,7 @@ public final class VMOffloadingRequester {
         throw new RuntimeException(e);
       }
     });
+    */
 
 
     /*
@@ -262,7 +264,7 @@ public final class VMOffloadingRequester {
               }
             } else {
               LOG.warn("ec2 instance is currently running {}", instanceId);
-              //throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
+              throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
             }
           }
         }
