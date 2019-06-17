@@ -130,6 +130,8 @@ public final class VMOffloadingRequester {
     });
     */
 
+
+    /*
     LOG.info("Create request at VMOffloadingREquestor");
 
     final int index = vmChannelMap.size();
@@ -143,6 +145,7 @@ public final class VMOffloadingRequester {
         throw new RuntimeException(e);
       }
     });
+    */
   }
 
   public void start() {
