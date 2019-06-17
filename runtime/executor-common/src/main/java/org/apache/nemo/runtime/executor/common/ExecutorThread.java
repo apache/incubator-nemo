@@ -53,7 +53,7 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-    }, 500, 500, TimeUnit.MILLISECONDS);
+    }, 100, 100, TimeUnit.MILLISECONDS);
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       loggingTime = true;
