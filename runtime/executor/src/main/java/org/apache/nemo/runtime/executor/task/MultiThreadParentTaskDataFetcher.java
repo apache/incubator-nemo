@@ -199,7 +199,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
 
 
-    throw new NoSuchElementException();
+    return EmptyElement.getInstance();
   }
 
   @Override

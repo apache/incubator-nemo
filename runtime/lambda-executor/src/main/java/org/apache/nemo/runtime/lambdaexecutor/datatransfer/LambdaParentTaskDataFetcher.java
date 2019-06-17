@@ -149,7 +149,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       }
     }
 
-    throw new NoSuchElementException();
+    return EmptyElement.getInstance();
   }
 
   @Override

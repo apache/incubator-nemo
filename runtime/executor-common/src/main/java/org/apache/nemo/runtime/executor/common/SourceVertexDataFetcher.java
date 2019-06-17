@@ -101,11 +101,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
    * @throws NoSuchElementException if the current data is not available
    */
   @Override
-  public Object fetchDataElement() throws NoSuchElementException, IOException {
+  public Object fetchDataElement() {
     if (isFinishd) {
       //finishedAck = true;
       LOG.info("Fetch data element after isFinished set for {}", taskId);
-      throw new NoSuchElementException();
+      return EmptyElement.getInstance();
     }
 
     if (!isStarted) {
@@ -120,7 +120,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
     if (!isPrepared) {
       LOG.info("Not prepared for {}...", taskId);
-      throw new NoSuchElementException();
+      return EmptyElement.getInstance();
     }
 
     if (readable.isFinished()) {
@@ -192,7 +192,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
-  private Object retrieveElement() throws NoSuchElementException, IOException {
+  private Object retrieveElement() {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       // index=0 as there is only 1 input stream

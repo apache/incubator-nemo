@@ -1126,21 +1126,24 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         //final long a = System.currentTimeMillis();
         final Object element = dataFetcher.fetchDataElement();
 
-        //fetchTime += (System.currentTimeMillis() - a);
-
-        //final long b = System.currentTimeMillis();
-        onEventFromDataFetcher(element, dataFetcher);
-        //processingTime += (System.currentTimeMillis() - b);
-        dataProcessed = true;
-
-        if (element instanceof Finishmark) {
+        if (element.equals(EmptyElement.getInstance())) {
+          // No element in current data fetcher, fetch data from next fetcher
+          // move current data fetcher to pending.
           availableIterator.remove();
+          pendingFetchers.add(dataFetcher);
+        } else {
+          onEventFromDataFetcher(element, dataFetcher);
+          //processingTime += (System.currentTimeMillis() - b);
+          dataProcessed = true;
+
+          if (element instanceof Finishmark) {
+            availableIterator.remove();
+          }
         }
+
       } catch (final NoSuchElementException e) {
-        // No element in current data fetcher, fetch data from next fetcher
-        // move current data fetcher to pending.
-        availableIterator.remove();
-        pendingFetchers.add(dataFetcher);
+        e.printStackTrace();
+        throw new RuntimeException("No such element");
       } catch (final IOException e) {
         // IOException means that this task should be retried.
         taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
@@ -1163,19 +1166,25 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           final Object element = dataFetcher.fetchDataElement();
           //fetchTime += (System.currentTimeMillis() - a);
 
-          //final long b = System.currentTimeMillis();
-          onEventFromDataFetcher(element, dataFetcher);
-          // processingTime += (System.currentTimeMillis() - b);
+          if (element.equals(EmptyElement.getInstance())) {
+            // do nothing
+          } else {
+            //final long b = System.currentTimeMillis();
+            onEventFromDataFetcher(element, dataFetcher);
+            // processingTime += (System.currentTimeMillis() - b);
 
-          // We processed data. This means the data fetcher is now available.
-          // Add current data fetcher to available
-          pendingIterator.remove();
-          if (!(element instanceof Finishmark)) {
-            availableFetchers.add(dataFetcher);
+            // We processed data. This means the data fetcher is now available.
+            // Add current data fetcher to available
+            pendingIterator.remove();
+            if (!(element instanceof Finishmark)) {
+              availableFetchers.add(dataFetcher);
+            }
           }
 
         } catch (final NoSuchElementException e) {
           // The current data fetcher is still pending.. try next data fetcher
+          e.printStackTrace();
+          throw new RuntimeException("No such element");
         } catch (final IOException e) {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
