@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.common.punctuation;
 
 public final class EmptyElement {
   private static final EmptyElement INSTANCE = new EmptyElement();

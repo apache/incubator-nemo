@@ -5,6 +5,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -89,7 +90,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-      throw new NoSuchElementException();
+
+      return EmptyElement.getInstance();
     }
   }
 
