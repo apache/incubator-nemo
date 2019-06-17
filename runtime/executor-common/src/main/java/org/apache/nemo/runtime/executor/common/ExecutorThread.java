@@ -53,7 +53,7 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-    }, 100, 100, TimeUnit.MILLISECONDS);
+    }, 50, 50, TimeUnit.MILLISECONDS);
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       loggingTime = true;
@@ -124,7 +124,7 @@ public final class ExecutorThread {
           }
 
           try {
-            Thread.sleep(200);
+            Thread.sleep(50);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
