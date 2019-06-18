@@ -99,14 +99,10 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     try (FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
       final FileChannel channel = fileOutputStream.getChannel();
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
-        LOG.info("Entering FileBlock");
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        // fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
         final List<ByteBuffer> buffers = serializedPartition.getBuffer();
-        final ByteBuffer[] byteBuffers = serializedPartition.getBuffer().toArray(
-          new ByteBuffer[buffers.size()]
-        );
+        final ByteBuffer[] byteBuffers = buffers.toArray(new ByteBuffer[buffers.size()]);
         channel.write(byteBuffers);
         channel.close();
       }

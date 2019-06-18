@@ -123,7 +123,6 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        //final byte[] serializedBytes = bytesOutputStream.toByteArray();
         final List<ByteBuffer> serializedBufList = bytesOutputStream.getBufferList();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(

@@ -135,7 +135,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      //this.serializedData = bytesOutputStream.toByteArray();
       this.dataList = bytesOutputStream.getBufferList();
       this.length = bytesOutputStream.size();
       this.committed = true;
@@ -159,6 +158,9 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   }
 
   /**
+   * This method should be used to retrieve the data only when reading from
+   * existing file to process the data.
+   *
    * @return the serialized data.
    * @throws IOException if the partition is not committed yet.
    */
@@ -167,10 +169,16 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
     } else {
-      throw new RuntimeException("We are not supposed to call this method");
+      return serializedData;
     }
   }
 
+  /**
+   * This method is used to emit the output as {@link SerializedPartition}.
+   *
+   * @return the serialized data in list of {@link ByteBuffer}s
+   * @throws IOException if the partition is not committed yet.
+   */
   public List<ByteBuffer> getBuffer() throws IOException {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");

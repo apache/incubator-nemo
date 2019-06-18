@@ -349,7 +349,6 @@ public final class BlockManagerWorker {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  LOG.info("writeFileArea used");
                   os.writeFileArea(fileArea);
                 }
               }
@@ -357,7 +356,6 @@ public final class BlockManagerWorker {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  LOG.info("writeBuffer used");
                   os.writeSerializedPartitionBuffer(partition);
                 }
               }
