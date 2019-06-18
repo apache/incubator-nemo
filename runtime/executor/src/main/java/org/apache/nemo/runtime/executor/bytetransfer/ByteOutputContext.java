@@ -154,14 +154,6 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       writeByteBuf(byteBuf);
     }
 
-
-    public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
-      //final ByteBuf byteBuf = wrappedBuffer(bufList.stream().toArray(ByteBuffer[]::new));
-      LOG.info("Size of bufList: {}", bufList.size());
-      final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
-      LOG.info("capacity of ByteBuf: {}", byteBuf.capacity());
-      writeByteBuf(byteBuf);
-    }
     /**
      * Writes {@link SerializedPartition}.
      *
@@ -169,17 +161,36 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @return {@code this}
      * @throws IOException when an exception has been set or this stream was closed
      */
-    public ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)
-      throws IOException {
-      write(serializedPartition.getData(), 0, serializedPartition.getLength());
-      return this;
-    }
-
     public ByteOutputStream writeSerializedPartitionBuffer(final SerializedPartition serializedPartition)
       throws IOException {
       writeBuffer(serializedPartition.getBuffer());
       return this;
     }
+
+    /**
+     * Wraps each of the {@link ByteBuffer} in the bufList to {@link ByteBuf} object
+     * to write a data frame.
+     *
+     * @param bufList
+     * @throws IOException
+     */
+    public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
+      final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
+      writeByteBuf(byteBuf);
+    }
+
+
+    /**
+     * Writes a data frame, from {@link ByteBuf}.
+     *
+     * @param byteBuf {@link ByteBuf} to write.
+     */
+    private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
+      if (byteBuf.readableBytes() > 0) {
+        writeDataFrame(byteBuf, byteBuf.readableBytes());
+      }
+    }
+
     /**
      * Writes a data frame from {@link FileArea}.
      *
@@ -211,17 +222,6 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
         writeDataFrame(null, 0);
       }
       closed = true;
-    }
-
-    /**
-     * Writes a data frame, from {@link ByteBuf}.
-     *
-     * @param byteBuf {@link ByteBuf} to write.
-     */
-    private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
-      if (byteBuf.readableBytes() > 0) {
-        writeDataFrame(byteBuf, byteBuf.readableBytes());
-      }
     }
 
     /**
