@@ -100,6 +100,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       final FileChannel channel = fileOutputStream.getChannel();
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
+        LOG.info("HY: testing if it is up-to-date");
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
         final List<ByteBuffer> buffers = serializedPartition.getBuffer();
         final ByteBuffer[] byteBuffers = buffers.toArray(new ByteBuffer[buffers.size()]);
