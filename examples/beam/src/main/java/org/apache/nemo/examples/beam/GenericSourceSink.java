@@ -48,7 +48,7 @@ import java.util.UUID;
  * Helper class for handling source/sink in a generic way.
  * Assumes String-type PCollections.
  */
-public final class GenericSourceSink {
+final class GenericSourceSink {
   /**
    * Default Constructor.
    */
