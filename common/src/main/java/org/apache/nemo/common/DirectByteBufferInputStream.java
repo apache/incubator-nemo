@@ -24,10 +24,19 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+/**
+ * This class is a customized input stream implementation which reads data from
+ * list of {@link ByteBuffer}.
+ */
 public class DirectByteBufferInputStream extends InputStream {
   private List<ByteBuffer> bufList;
   private int current = 0;
 
+  /**
+   * Default Constructor.
+   *
+   * @param bufList is the target data to read.
+   */
   public DirectByteBufferInputStream(final List<ByteBuffer> bufList) {
    this.bufList = bufList;
   }
