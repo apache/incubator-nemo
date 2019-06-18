@@ -19,7 +19,6 @@
 package org.apache.nemo.common.coder;
 
 import org.apache.nemo.common.DirectByteArrayOutputStream;
-import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
