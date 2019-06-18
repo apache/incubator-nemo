@@ -32,6 +32,12 @@ public class DirectByteBufferInputStream extends InputStream {
    this.bufList = bufList;
   }
 
+  /**
+   * Reads data from the list of {@code ByteBuffer}s.
+   *
+   * @return integer.
+   * @throws IOException
+   */
   @Override
   public int read() throws IOException {
     return getBuffer().get() & 0xff;
@@ -39,8 +45,9 @@ public class DirectByteBufferInputStream extends InputStream {
 
   /**
    * Return next non-empty @code{ByteBuffer}.
+   *
    * @return @code{ByteBuffer} to write the data
-   * @throws IOException
+   * @throws IOException when fail to retrieve buffer.
    */
   public ByteBuffer getBuffer() throws IOException {
     while (current < bufList.size()) {
