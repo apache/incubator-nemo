@@ -158,7 +158,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   }
 
   /**
-   * This method should only be used to retrieve the data from existing file.
+   * This method should only be used when this partition is constructed with a data from existing file.
    *
    * @return the serialized data.
    * @throws IOException if the partition is not committed yet.
@@ -168,7 +168,10 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
     } else {
-      return serializedData;
+      if (serializedData.length != 0) {
+        return serializedData;
+      }
+      throw new RuntimeException("This method is not supposed to be called here.");
     }
   }
 
