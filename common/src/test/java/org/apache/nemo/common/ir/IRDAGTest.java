@@ -31,9 +31,9 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
@@ -244,11 +244,11 @@ public class IRDAGTest {
 
   @Test
   public void testStreamVertex() {
-    final StreamVertex svOne = new StreamVertex();
+    final RelayVertex svOne = new RelayVertex();
     irdag.insert(svOne, oneToOneEdge);
     mustPass();
 
-    final StreamVertex svTwo = new StreamVertex();
+    final RelayVertex svTwo = new RelayVertex();
     irdag.insert(svTwo, shuffleEdge);
     mustPass();
 
@@ -260,11 +260,11 @@ public class IRDAGTest {
   }
 
   @Test
-  public void testMessageBarrierVertex() {
-    final MessageAggregatorVertex maOne = insertNewMessageBarrierVertex(irdag, oneToOneEdge);
+  public void testTriggerVertex() {
+    final MessageAggregatorVertex maOne = insertNewTriggerVertex(irdag, oneToOneEdge);
     mustPass();
 
-    final MessageAggregatorVertex maTwo = insertNewMessageBarrierVertex(irdag, shuffleEdge);
+    final MessageAggregatorVertex maTwo = insertNewTriggerVertex(irdag, shuffleEdge);
     mustPass();
 
     irdag.delete(maTwo);
@@ -292,9 +292,9 @@ public class IRDAGTest {
     mustPass();
   }
 
-  private MessageAggregatorVertex insertNewMessageBarrierVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
-    final MessageBarrierVertex mb = new MessageBarrierVertex<>((l, r) -> null);
-    final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(new Object(), (l, r) -> null);
+  private MessageAggregatorVertex insertNewTriggerVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
+    final TriggerVertex mb = new TriggerVertex<>((l, r) -> null);
+    final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(() -> new Object(), (l, r) -> null);
     dag.insert(
       mb,
       ma,
@@ -344,15 +344,15 @@ public class IRDAGTest {
 
         // Reshaping methods
         case 7:
-          final StreamVertex streamVertex = new StreamVertex();
+          final RelayVertex relayVertex = new RelayVertex();
           final IREdge edgeToStreamize = selectRandomEdge();
           if (!(edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
             && !edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).get().isEmpty())) {
-            irdag.insert(streamVertex, edgeToStreamize);
+            irdag.insert(relayVertex, edgeToStreamize);
           }
           break;
         case 8:
-          insertNewMessageBarrierVertex(irdag, selectRandomEdge());
+          insertNewTriggerVertex(irdag, selectRandomEdge());
           break;
         case 9:
           final IRVertex vertexToSample = selectRandomNonUtilityVertex();

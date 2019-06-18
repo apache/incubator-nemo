@@ -173,13 +173,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     doFnTransform.onWatermark(watermark2);
 
     assertEquals(0, oc.outputs.size()); // do not emit anything
-    assertEquals(1, oc.watermarks.size());
-
-    // check output watermark
-    assertEquals(1400,
-      oc.watermarks.get(0).getTimestamp());
-
-    oc.watermarks.clear();
+    assertEquals(0, oc.watermarks.size());
 
     doFnTransform.onData(WindowedValue.of(
       KV.of("3", "a"), ts5, slidingWindows.assignWindows(ts5), PaneInfo.NO_FIRING));

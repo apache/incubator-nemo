@@ -23,9 +23,9 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
@@ -189,8 +189,8 @@ public final class Util {
   public static boolean isUtilityVertex(final IRVertex v) {
     return v instanceof SamplingVertex
       || v instanceof MessageAggregatorVertex
-      || v instanceof MessageBarrierVertex
-      || v instanceof StreamVertex;
+      || v instanceof TriggerVertex
+      || v instanceof RelayVertex;
   }
 
   /**
