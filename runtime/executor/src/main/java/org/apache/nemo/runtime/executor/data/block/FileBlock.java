@@ -103,7 +103,6 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         for (final ByteBuffer buffer: serializedPartition.getBuffer()) {
           fileOutputChannel.write(buffer);
         }
-        fileOutputChannel.close();
       }
     }
   }
