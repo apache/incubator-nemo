@@ -28,7 +28,7 @@ public class DirectByteBufferInputStream extends InputStream {
   private List<ByteBuffer> bufList;
   private int current = 0;
 
-  public DirectByteBufferInputStream(List<ByteBuffer> bufList) {
+  public DirectByteBufferInputStream(final List<ByteBuffer> bufList) {
    this.bufList = bufList;
   }
 
@@ -39,16 +39,16 @@ public class DirectByteBufferInputStream extends InputStream {
 
   /**
    * Return next non-empty @code{ByteBuffer}.
-   * @return
+   * @return @code{ByteBuffer} to write the data
    * @throws IOException
    */
   public ByteBuffer getBuffer() throws IOException {
     while (current < bufList.size()) {
       ByteBuffer buffer = bufList.get(current);
-      if(buffer.hasRemaining()) {
+      if (buffer.hasRemaining()) {
         return buffer;
       }
-      current+=1;
+      current += 1;
     }
     throw new EOFException();
   }

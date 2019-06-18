@@ -184,6 +184,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * Writes a data frame, from {@link ByteBuf}.
      *
      * @param byteBuf {@link ByteBuf} to write.
+     * @throws IOException
      */
     private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
       if (byteBuf.readableBytes() > 0) {

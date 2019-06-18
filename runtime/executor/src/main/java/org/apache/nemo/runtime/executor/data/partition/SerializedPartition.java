@@ -158,8 +158,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   }
 
   /**
-   * This method should be used to retrieve the data only when reading from
-   * existing file to process the data.
+   * This method should only be used to retrieve the data from existing file.
    *
    * @return the serialized data.
    * @throws IOException if the partition is not committed yet.
