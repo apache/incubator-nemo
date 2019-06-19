@@ -166,11 +166,15 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private int getMessageId(final Set<StageEdge> stageEdges) {
-    final Set<Integer> messageIds = stageEdges.stream()
-      .map(edge -> edge.getExecutionProperties().get(MessageIdEdgeProperty.class).get())
-      .findFirst().get();
     // Here we simply use findFirst() for now...
-    // TODO #345: Simplify insert(MessageBarrierVertex)
+    // TODO #345: Simplify insert
+    final Set<Integer> messageIds = stageEdges.stream()
+      .map(edge -> edge.getExecutionProperties()
+        .get(MessageIdEdgeProperty.class)
+        .<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException(edge.getId())))
+      .findFirst().<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException());
+    // Type casting is needed. See: https://stackoverflow.com/a/40865318
+
     return messageIds.iterator().next();
   }
 
@@ -281,7 +285,7 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void onSpeculativeExecutionCheck() {
-    MutableBoolean isNumOfCloneChanged = new MutableBoolean(false);
+    MutableBoolean isNewCloneCreated = new MutableBoolean(false);
 
     selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
       scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
@@ -290,40 +294,13 @@ public final class BatchScheduler implements Scheduler {
         // Only if the ClonedSchedulingProperty is set...
         stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
           if (!cloneConf.isUpFrontCloning()) { // Upfront cloning is already handled.
-            final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
-            final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
-
-            // Only after the fraction of the tasks are done...
-            // Delayed cloning (aggressive)
-            if (completedTaskTimes.length > 0
-              && completedTaskTimes.length >= Math.round(stage.getTaskIndices().size() * fractionToWaitFor)) {
-              Arrays.sort(completedTaskTimes);
-              final long medianTime = (long) completedTaskTimes[completedTaskTimes.length / 2];
-              final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
-              final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
-              for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
-
-                // Only if the running task is considered a 'straggler'....
-                final long runningTime = entry.getValue();
-                if (runningTime > Math.round(medianTime * medianTimeMultiplier)) {
-                  final String taskId = entry.getKey();
-                  final boolean isCloned = planStateManager.setNumOfClones(
-                    stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2);
-                  if (isCloned) {
-                    LOG.info("Cloned {}, because its running time {} (ms) is bigger than {} tasks' "
-                        + "(median) {} (ms) * (multiplier) {}", taskId, runningTime, completedTaskTimes.length,
-                      medianTime, medianTimeMultiplier);
-                  }
-                  isNumOfCloneChanged.setValue(isCloned);
-                }
-              }
-            }
+            isNewCloneCreated.setValue(doSpeculativeExecution(stage, cloneConf));
           }
         });
       });
     });
 
-    if (isNumOfCloneChanged.booleanValue()) {
+    if (isNewCloneCreated.booleanValue()) {
       doSchedule(); // Do schedule the new clone.
     }
   }
@@ -445,6 +422,60 @@ public final class BatchScheduler implements Scheduler {
         vertexIdToReadables.get(taskIdx)));
     });
     return tasks;
+  }
+
+  ////////////////////////////////////////////////////////////////////// Task cloning methods.
+
+  /**
+   * @return true if a new clone is created.
+   *         false otherwise.
+   */
+  private boolean doSpeculativeExecution(final Stage stage, final ClonedSchedulingProperty.CloneConf cloneConf) {
+    final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
+    final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stage.getId()).toArray();
+
+    // Only after the fraction of the tasks are done...
+    // Delayed cloning (aggressive)
+    if (completedTaskTimes.length > 0
+      && completedTaskTimes.length >= Math.round(stage.getTaskIndices().size() * fractionToWaitFor)) {
+      // Only if the running task is considered a 'straggler'....
+      Arrays.sort(completedTaskTimes);
+      final long medianTime = (long) completedTaskTimes[completedTaskTimes.length / 2];
+      final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
+      final Map<String, Long> executingTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stage.getId());
+
+      return modifyStageNumCloneUsingMedianTime(
+        stage.getId(), completedTaskTimes.length, medianTime, medianTimeMultiplier, executingTaskToTime);
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * @return true if the number of clones for the stage is modified.
+   *         false otherwise.
+   */
+  private boolean modifyStageNumCloneUsingMedianTime(final String stageId,
+                                                     final long numCompletedTasks,
+                                                     final long medianTime,
+                                                     final double medianTimeMultiplier,
+                                                     final Map<String, Long> executingTaskToTime) {
+    for (final Map.Entry<String, Long> entry : executingTaskToTime.entrySet()) {
+      final long runningTime = entry.getValue();
+      if (runningTime > Math.round(medianTime * medianTimeMultiplier)) {
+        final String taskId = entry.getKey();
+        final boolean isNumCloneModified = planStateManager
+          .setNumOfClones(stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2);
+        if (isNumCloneModified) {
+          LOG.info("Cloned {}, because its running time {} (ms) is bigger than {} tasks' "
+              + "(median) {} (ms) * (multiplier) {}", taskId, runningTime, numCompletedTasks,
+            medianTime, medianTimeMultiplier);
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   ////////////////////////////////////////////////////////////////////// Task state change handlers

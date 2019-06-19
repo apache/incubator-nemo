@@ -16,19 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.utility;
+package org.apache.nemo.common.ir.vertex.executionproperty;
 
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Relays input data from upstream vertex to downstream vertex promptly.
+ * Resource property supporting Lambda Pass.
  */
-public final class StreamVertex extends OperatorVertex {
+public final class ResourceLambdaProperty extends VertexExecutionProperty<ResourceLambdaProperty.Value> {
   /**
    * Constructor.
+   *
+   * @param value value of the execution property.
    */
-  public StreamVertex() {
-    super(new StreamTransform());
+  private ResourceLambdaProperty(final ResourceLambdaProperty.Value value) {
+    super(value);
+  }
+
+  /**
+   * Static method exposing the constructor.
+   *
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static ResourceLambdaProperty of(final ResourceLambdaProperty.Value value) {
+    return new ResourceLambdaProperty(value);
+  }
+
+  /**
+   * Possible values of DataStore ExecutionProperty.
+   */
+  public enum Value {
+    On,
+    Off,
   }
 }

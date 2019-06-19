@@ -16,36 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
+package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
 
 /**
- * Inserts the RelayVertex for each shuffle edge.
+ * Lambda Pass.
+ * Description: A part of lambda executor, assigning LambdaResourceProperty
  */
-@Requires(CommunicationPatternProperty.class)
-public final class LargeShuffleReshapingPass extends ReshapingPass {
+@Annotates(ResourceLambdaProperty.class)
+public final class LambdaPass extends AnnotatingPass {
 
-  /**
-   * Default constructor.
-   */
-  public LargeShuffleReshapingPass() {
-    super(LargeShuffleReshapingPass.class);
+  public LambdaPass() {
+    super(LambdaPass.class);
   }
-
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.topologicalDo(vertex -> {
-      dag.getIncomingEdgesOf(vertex).forEach(edge -> {
-        if (CommunicationPatternProperty.Value.Shuffle
-          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          dag.insert(new RelayVertex(), edge);
-        }
-      });
+    dag.getVertices().forEach(vertex -> {
+      vertex.setPropertyPermanently(ResourceLambdaProperty.of(ResourceLambdaProperty.Value.On));
     });
     return dag;
   }

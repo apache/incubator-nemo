@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  * (P3 is not cloned here because it is a sink partition, and none of the outgoing edges of its vertices needs to be
  * optimized)
  * <p>
- * For each Px' this pass also inserts a MessageBarrierVertex, to use its data statistics for dynamically optimizing
+ * For each Px' this pass also inserts a TriggerVertex, to use its data statistics for dynamically optimizing
  * the execution behaviors of Px.
  */
 @Requires(CommunicationPatternProperty.class)
@@ -112,8 +112,8 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
 
           final KeyExtractor keyExtractor = e.getPropertyValue(KeyExtractorProperty.class).get();
           dag.insert(
-            new MessageBarrierVertex<>(SkewHandlingUtil.getDynOptCollector(keyExtractor)),
-            new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator()),
+            new TriggerVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor)),
+            new MessageAggregatorVertex(() -> new HashMap<>(), SkewHandlingUtil.getMessageAggregator()),
             SkewHandlingUtil.getEncoder(e),
             SkewHandlingUtil.getDecoder(e),
             new HashSet<>(Arrays.asList(clonedShuffleEdge)), // this works although the clone is not in the dag
