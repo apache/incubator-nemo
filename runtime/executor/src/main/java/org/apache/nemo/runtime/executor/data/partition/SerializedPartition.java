@@ -28,6 +28,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
@@ -185,7 +186,12 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
     } else {
-      return dataList;
+      List<ByteBuffer> result = new ArrayList<>(dataList.size());
+      for (final ByteBuffer buffer : dataList) {
+        final ByteBuffer dupBuffer = buffer.duplicate();
+        result.add(dupBuffer);
+      }
+      return result;
     }
   }
 
