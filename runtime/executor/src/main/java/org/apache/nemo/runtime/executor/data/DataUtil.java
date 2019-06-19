@@ -149,12 +149,20 @@ public final class DataUtil {
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
 
-
-      try (DirectByteBufferInputStream byteBufferInputStream =
-             new DirectByteBufferInputStream(partitionToConvert.getBuffer())) {
+      if (partitionToConvert.isOffheap()) {
+        try (DirectByteBufferInputStream byteBufferInputStream =
+               new DirectByteBufferInputStream(partitionToConvert.getBuffer())) {
+          final NonSerializedPartition<K> deserializePartition = deserializePartition(
+            partitionToConvert.getLength(), serializer, key, byteBufferInputStream);
+          nonSerializedPartitions.add(deserializePartition);
+        }
+      } else {
+      try (ByteArrayInputStream byteArrayInputStream =
+             new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-          partitionToConvert.getLength(), serializer, key, byteBufferInputStream);
+          partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
+        }
       }
     }
     return nonSerializedPartitions;

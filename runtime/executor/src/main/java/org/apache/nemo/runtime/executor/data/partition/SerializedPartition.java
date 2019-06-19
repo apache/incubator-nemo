@@ -54,6 +54,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   @Nullable
   private final EncoderFactory.Encoder encoder;
   private volatile List<ByteBuffer> dataList;
+  private final boolean offheap;
 
   /**
    * Creates a serialized {@link Partition} without actual data.
@@ -72,10 +73,11 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.bytesOutputStream = new DirectByteBufferOutputStream();
     this.wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
     this.encoder = serializer.getEncoderFactory().create(wrappedStream);
+    this.offheap = true;
   }
 
   /**
-   * Creates a serialized {@link Partition} with actual data.
+   * Creates a serialized {@link Partition} with actual data residing in on-heap region.
    * Data cannot be written to this partition after the construction.
    *
    * @param key            the key.
@@ -92,8 +94,17 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.bytesOutputStream = null;
     this.wrappedStream = null;
     this.encoder = null;
+    this.offheap = false;
   }
 
+  /**
+   * Creates a serialized {@link Partition} with actual data residing in off-heap region.
+   * Data cannot be written to this partition after the construction.
+   *
+   * @param key               the key.
+   * @param serializedBufList the serialized data in list list of {@link ByteBuffer}s.
+   * @param length            the length of the actual serialized data. (It can be different with serializedData.length)
+   */
   public SerializedPartition(final K key,
                              final List<ByteBuffer> serializedBufList,
                              final int length) {
@@ -104,6 +115,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.bytesOutputStream = null;
     this.wrappedStream = null;
     this.encoder = null;
+    this.offheap = true;
   }
 
   /**
@@ -168,11 +180,10 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   public byte[] getData() throws IOException {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
+    } else if (offheap) {
+      throw new RuntimeException("This partition does not have on-heap data");
     } else {
-      if (serializedData.length != 0) {
-        return serializedData;
-      }
-      throw new RuntimeException("This method is not supposed to be called here.");
+      return serializedData;
     }
   }
 
@@ -205,5 +216,12 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     } else {
       return length;
     }
+  }
+
+  /**
+   * @return whether this {@code SerializedPartition} is residing in off-heap region.
+   */
+  public boolean isOffheap() {
+    return offheap;
   }
 }
