@@ -30,17 +30,20 @@ import java.util.Optional;
  */
 public final class OffloadingTransformContextImpl implements Transform.Context {
   private final IRVertex irVertex;
+  private final String taskId;
 
   /**
    * Constructor of Context Implementation.
    */
-  public OffloadingTransformContextImpl(final IRVertex irVertex) {
+  public OffloadingTransformContextImpl(final IRVertex irVertex,
+                                        final String taskId) {
     this.irVertex = irVertex;
+    this.taskId = taskId;
   }
 
   @Override
   public String getTaskId() {
-    return null;
+    return taskId;
   }
 
   @Override

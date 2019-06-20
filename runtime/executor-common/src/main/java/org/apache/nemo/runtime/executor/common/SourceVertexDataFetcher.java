@@ -40,6 +40,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PERIOD = 1000; // ms
+  private static final long WATERMARK_PROGRESS = 500; // ms
   private final ScheduledExecutorService watermarkTriggerService;
   private boolean watermarkTriggered = false;
   private final boolean bounded;
@@ -197,7 +198,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     if (!bounded && isWatermarkTriggerTime()) {
       // index=0 as there is only 1 input stream
       final long watermarkTimestamp = readable.readWatermark();
-      if (prevWatermarkTimestamp < watermarkTimestamp) {
+      if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
         prevWatermarkTimestamp = watermarkTimestamp;
         return new Watermark(watermarkTimestamp);
       }
