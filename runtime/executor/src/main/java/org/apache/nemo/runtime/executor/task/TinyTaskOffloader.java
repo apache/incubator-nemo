@@ -457,6 +457,8 @@ public final class TinyTaskOffloader implements Offloader {
       final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
       final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
 
+      final long prevWatermarkTimestamp = sourceVertexDataFetcher.getPrevWatermarkTimestamp();
+
       LOG.info("Get unbounded source: {}", unboundedSource);
 
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
@@ -477,6 +479,7 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         checkpointMark,
         checkpointMarkCoder,
+        prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
         coderMap,
@@ -497,6 +500,7 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         null,
         null,
+        -1,
         null,
         stateMap,
         coderMap,

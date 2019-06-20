@@ -48,6 +48,7 @@ public final class OffloadingTask {
   public final Map<String, GBKFinalState> stateMap;
   final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
   public final Map<String, Coder<GBKFinalState>> stateCoderMap;
+  public final long prevWatermarkTimestamp;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTask(final String executorId,
@@ -60,6 +61,7 @@ public final class OffloadingTask {
                         final List<StageEdge> incomingEdges,
                         final UnboundedSource.CheckpointMark checkpointMark,
                         final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+                        final long prevWatermarkTimestamp,
                         final UnboundedSource unboundedSource,
                         final Map<String, GBKFinalState>  stateMap,
                         final Map<String, Coder<GBKFinalState>> stateCoderMap,
@@ -73,6 +75,7 @@ public final class OffloadingTask {
     this.outgoingEdges = outgoingEdges;
     this.incomingEdges = incomingEdges;
     this.checkpointMark = checkpointMark;
+    this.prevWatermarkTimestamp = prevWatermarkTimestamp;
     this.checkpointMarkCoder = checkpointMarkCoder;
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
@@ -128,6 +131,7 @@ public final class OffloadingTask {
         conf.encodeToStream(bos, checkpointMarkCoder);
         checkpointMarkCoder.encode(checkpointMark, bos);
         conf.encodeToStream(bos, unboundedSource);
+        dos.writeLong(prevWatermarkTimestamp);
       } else {
         dos.writeBoolean(false);
       }
@@ -190,15 +194,18 @@ public final class OffloadingTask {
       final UnboundedSource.CheckpointMark checkpointMark;
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
       final UnboundedSource unboundedSource;
+      final long prevWatermarkTimestamp;
       final boolean hasCheckpoint = dis.readBoolean();
       if (hasCheckpoint) {
         checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>) conf.decodeFromStream(inputStream);
         checkpointMark = checkpointMarkCoder.decode(inputStream);
         unboundedSource = (UnboundedSource) conf.decodeFromStream(inputStream);
+        prevWatermarkTimestamp  = dis.readLong();
       } else {
         checkpointMark = null;
         unboundedSource = null;
         checkpointMarkCoder = null;
+        prevWatermarkTimestamp = -1;
       }
 
       final Map<String, GBKFinalState> stateMap = new HashMap<>();
@@ -227,6 +234,7 @@ public final class OffloadingTask {
         incomingEdges,
         checkpointMark,
         checkpointMarkCoder,
+        prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
         stateCoderMap,

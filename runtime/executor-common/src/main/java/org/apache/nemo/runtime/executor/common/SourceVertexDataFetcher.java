@@ -63,12 +63,14 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final Readable readable,
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
-                                 final String taskId) {
+                                 final String taskId,
+                                 final long prevWatermarkTimestamp) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
-    this.bounded = dataSource.isBounded();
+   this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
     this.taskId = taskId;
+    this.prevWatermarkTimestamp = prevWatermarkTimestamp;
 
     LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
     if (!bounded) {
@@ -79,6 +81,16 @@ public class SourceVertexDataFetcher extends DataFetcher {
     } else {
       this.watermarkTriggerService = null;
     }
+
+  }
+
+  public SourceVertexDataFetcher(final SourceVertex dataSource,
+                                 final RuntimeEdge edge,
+                                 final Readable readable,
+                                 final OutputCollector outputCollector,
+                                 final ExecutorService prepareService,
+                                 final String taskId) {
+    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1);
   }
 
   public void setReadable(final Readable r) {
@@ -86,6 +98,10 @@ public class SourceVertexDataFetcher extends DataFetcher {
     readable = r;
     isPrepared = false;
     isStarted = false;
+  }
+
+  public long getPrevWatermarkTimestamp() {
+    return prevWatermarkTimestamp;
   }
 
   public boolean isStarted() {
