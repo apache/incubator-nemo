@@ -211,10 +211,12 @@ public final class GBKPartialTransform<K, InputT>
 
 
 
-    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
+    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
+        "keyAndWatermarkHoldMap: {}, at {}",
       new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
       new Instant(prevOutputWatermark.getTimestamp()),
       new Instant(inputWatermark.getTimestamp()),
+      keyAndWatermarkHoldMap,
       getContext().getTaskId());
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
