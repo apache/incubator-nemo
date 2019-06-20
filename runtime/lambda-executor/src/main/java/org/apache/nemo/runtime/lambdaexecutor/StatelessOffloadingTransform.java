@@ -115,7 +115,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final Transform transform;
         if (irVertex instanceof OperatorVertex) {
           transform = ((OperatorVertex) irVertex).getTransform();
-          transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+          transform.prepare(new OffloadingTransformContextImpl(irVertex, ""), outputCollector);
         }
       }
     });

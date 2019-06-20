@@ -289,7 +289,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             statefulTransform.setState(state);
           }
         }
-        transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+        transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
       }
     });
   }

@@ -325,7 +325,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
       final Transform transform;
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
-        transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+        transform.prepare(new OffloadingTransformContextImpl(irVertex, ""), outputCollector);
       }
 
 

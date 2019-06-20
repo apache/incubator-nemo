@@ -307,7 +307,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       final Transform transform;
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
-        transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+        transform.prepare(new OffloadingTransformContextImpl(irVertex,""), outputCollector);
       }
 
     });
