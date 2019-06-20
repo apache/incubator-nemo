@@ -195,10 +195,10 @@ public final class GBKFinalTransform<K, InputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
-    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+ Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
       ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
 
-    final Watermark outputWatermarkCandidate = new Watermark(
+    Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
         Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
@@ -207,14 +207,16 @@ public final class GBKFinalTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, at {}",
-      new Instant(inputWatermark.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+    LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
+        "keyAndWatermarkHoldMap: {}, at {}",
+      new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
       new Instant(prevOutputWatermark.getTimestamp()),
       new Instant(inputWatermark.getTimestamp()),
+      keyAndWatermarkHoldMap,
       getContext().getTaskId());
 
-
-    if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
+    // keep going if the watermark increases
+    while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
@@ -223,9 +225,25 @@ public final class GBKFinalTransform<K, InputT>
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
+        final long minWatermarkTimestamp = minWatermarkHold.getTimestamp();
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp());
+          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkTimestamp);
       }
+
+      minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+        ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
+
+      outputWatermarkCandidate = new Watermark(
+        Math.max(prevOutputWatermark.getTimestamp(),
+          Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
+
+      LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
+          "keyAndWatermarkHoldMap: {}, at {}",
+        new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
+        new Instant(prevOutputWatermark.getTimestamp()),
+        new Instant(inputWatermark.getTimestamp()),
+        keyAndWatermarkHoldMap,
+        getContext().getTaskId());
     }
   }
 
