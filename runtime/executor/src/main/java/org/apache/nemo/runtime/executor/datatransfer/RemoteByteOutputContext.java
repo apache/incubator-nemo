@@ -68,6 +68,9 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   private EventHandler<Integer> ackHandler;
 
+  private volatile boolean settingContext = false;
+  private volatile boolean restarted = false;
+
   /**
    * Creates a output context.
    *
@@ -165,21 +168,31 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void scaleoutToVm(Channel channel) {
+  public synchronized void scaleoutToVm(Channel channel) {
     LOG.info("Scale out to SF: {}, channel: {}", getContextId().getTransferIndex(), channel);
+    settingContext = true;
     vmChannel = channel;
     currChannel = vmChannel;
     sendDataTo = SF;
     currStatus = Status.NO_PENDING;
+
+    if (restarted) {
+      restart();
+    }
   }
 
   @Override
-  public void scaleInToVm(Channel c) {
+  public synchronized void scaleInToVm(Channel c) {
     LOG.info("Scaling in to VM");
+    settingContext = true;
     channel = c;
     currChannel = channel;
     sendDataTo = VM;
     currStatus = Status.NO_PENDING;
+
+    if (restarted) {
+      restart();
+    }
   }
 
   public Channel getChannel() {
@@ -187,8 +200,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() {
     // just send stop message
+
+    settingContext = false;
 
     LOG.info("Stop context {} to {}", getContextId(), sendDataTo);
 
@@ -197,18 +212,23 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void restart() {
-    final ByteTransferContextSetupMessage message =
-      new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-        getContextId().getTransferIndex(),
-        getContextId().getDataDirection(), getContextDescriptor(),
-        getContextId().isPipe(),
-        ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-        VM);
+  public synchronized void restart() {
+    if (settingContext) {
+      final ByteTransferContextSetupMessage message =
+        new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+          getContextId().getTransferIndex(),
+          getContextId().getDataDirection(), getContextDescriptor(),
+          getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
+          VM);
 
-    LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
+      LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
 
-    currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+      currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+      restarted = false;
+    } else {
+      restarted = true;
+    }
   }
 
   /**

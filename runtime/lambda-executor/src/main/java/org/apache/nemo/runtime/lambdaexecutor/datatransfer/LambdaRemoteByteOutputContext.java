@@ -208,6 +208,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void restart() {
+
+    throw new RuntimeException("Not supported");
+
+    /*
     final ByteTransferContextSetupMessage message =
       new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
         getContextId().getTransferIndex(),
@@ -223,6 +227,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     } else {
       vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
     }
+    */
   }
 
   /**
