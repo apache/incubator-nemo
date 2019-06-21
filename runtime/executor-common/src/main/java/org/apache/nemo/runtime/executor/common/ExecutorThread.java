@@ -16,7 +16,8 @@ public final class ExecutorThread {
   private final List<TaskExecutor> pendingTasks;
 
   private volatile boolean finished = false;
-  private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
+  //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
+  private volatile boolean isPollingTime = false;
   private final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
   private final String executorThreadName;
@@ -52,7 +53,8 @@ public final class ExecutorThread {
     final int batchSize = 100;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      isPollingTime.set(true);
+      //isPollingTime.set(true);
+      isPollingTime = true;
     }, 50, 50, TimeUnit.MILLISECONDS);
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
@@ -99,10 +101,16 @@ public final class ExecutorThread {
             final Iterator<TaskExecutor> iterator = availableTasks.iterator();
             while (iterator.hasNext()) {
               final TaskExecutor availableTask = iterator.next();
+
+              if (!availableTask.handleData()) {
+                iterator.remove();
+                pendingTasks.add(availableTask);
+              }
+
+              /*
               int processedCnt = 0;
 
               final long st = System.nanoTime();
-
 
               while (availableTask.handleData() && processedCnt < batchSize) {
                 processedCnt += 1;
@@ -120,17 +128,18 @@ public final class ExecutorThread {
                 iterator.remove();
                 pendingTasks.add(availableTask);
               }
+              */
             }
           }
 
           try {
-            Thread.sleep(50);
+            Thread.sleep(10);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
 
-          if (isPollingTime.get()) {
-            isPollingTime.set(false);
+          if (isPollingTime) {
+            isPollingTime = false;
             boolean pendingSet = false;
             // how to check whether the task is ready or not?
             for (final TaskExecutor pendingTask : pendingTasks) {
