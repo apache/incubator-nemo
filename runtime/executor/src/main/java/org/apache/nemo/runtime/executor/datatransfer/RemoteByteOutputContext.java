@@ -226,6 +226,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
       currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
       restarted = false;
+      settingContext = false;
     } else {
       restarted = true;
     }
