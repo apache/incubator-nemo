@@ -97,15 +97,14 @@ public final class ExecutorThread {
             }
           }
 
-          while (!availableTasks.isEmpty()) {
-            final Iterator<TaskExecutor> iterator = availableTasks.iterator();
-            while (iterator.hasNext()) {
-              final TaskExecutor availableTask = iterator.next();
+          final Iterator<TaskExecutor> iterator = availableTasks.iterator();
+          while (iterator.hasNext()) {
+            final TaskExecutor availableTask = iterator.next();
 
-              if (!availableTask.handleData()) {
-                iterator.remove();
-                pendingTasks.add(availableTask);
-              }
+            if (!availableTask.handleData()) {
+              iterator.remove();
+              pendingTasks.add(availableTask);
+            }
 
               /*
               int processedCnt = 0;
@@ -129,13 +128,14 @@ public final class ExecutorThread {
                 pendingTasks.add(availableTask);
               }
               */
-            }
           }
 
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+          if (availableTasks.isEmpty()) {
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
 
           if (isPollingTime) {
