@@ -107,9 +107,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.executorGlobalInstances = executorGlobalInstances;
 
 
+    /*
     pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
+    */
 
     prepare();
   }
@@ -343,40 +345,38 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
 
-    if (pollingTime) {
-      // We check pending data every polling interval
-      pollingTime = false;
+    // We check pending data every polling interval
+    pollingTime = false;
 
-      while (pendingIterator.hasNext()) {
-        final DataFetcher dataFetcher = pendingIterator.next();
-        try {
-          //final long a = System.currentTimeMillis();
-          final Object element = dataFetcher.fetchDataElement();
-          //fetchTime += (System.currentTimeMillis() - a);
+    while (pendingIterator.hasNext()) {
+      final DataFetcher dataFetcher = pendingIterator.next();
+      try {
+        //final long a = System.currentTimeMillis();
+        final Object element = dataFetcher.fetchDataElement();
+        //fetchTime += (System.currentTimeMillis() - a);
 
-          if (element.equals(EmptyElement.getInstance())) {
-            // The current data fetcher is still pending.. try next data fetcher
-          } else {
-            //final long b = System.currentTimeMillis();
-            onEventFromDataFetcher(element, dataFetcher);
-            // processingTime += (System.currentTimeMillis() - b);
+        if (element.equals(EmptyElement.getInstance())) {
+          // The current data fetcher is still pending.. try next data fetcher
+        } else {
+          //final long b = System.currentTimeMillis();
+          onEventFromDataFetcher(element, dataFetcher);
+          // processingTime += (System.currentTimeMillis() - b);
 
-            // We processed data. This means the data fetcher is now available.
-            // Add current data fetcher to available
-            pendingIterator.remove();
-            if (!(element instanceof Finishmark)) {
-              availableFetchers.add(dataFetcher);
-            }
-
-            dataProcessed = true;
+          // We processed data. This means the data fetcher is now available.
+          // Add current data fetcher to available
+          pendingIterator.remove();
+          if (!(element instanceof Finishmark)) {
+            availableFetchers.add(dataFetcher);
           }
-        } catch (final NoSuchElementException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (final IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
+
+          dataProcessed = true;
         }
+      } catch (final NoSuchElementException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
 

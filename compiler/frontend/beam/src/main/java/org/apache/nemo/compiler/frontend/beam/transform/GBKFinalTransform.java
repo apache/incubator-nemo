@@ -207,6 +207,7 @@ public final class GBKFinalTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
+    /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
         "keyAndWatermarkHoldMap: {}, at {}",
       new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
@@ -214,6 +215,7 @@ public final class GBKFinalTransform<K, InputT>
       new Instant(inputWatermark.getTimestamp()),
       keyAndWatermarkHoldMap,
       getContext().getTaskId());
+      */
 
     // keep going if the watermark increases
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
@@ -237,6 +239,7 @@ public final class GBKFinalTransform<K, InputT>
         Math.max(prevOutputWatermark.getTimestamp(),
           Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
+      /*
       LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
           "keyAndWatermarkHoldMap: {}, at {}",
         new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
@@ -244,6 +247,7 @@ public final class GBKFinalTransform<K, InputT>
         new Instant(inputWatermark.getTimestamp()),
         keyAndWatermarkHoldMap,
         getContext().getTaskId());
+        */
     }
   }
 

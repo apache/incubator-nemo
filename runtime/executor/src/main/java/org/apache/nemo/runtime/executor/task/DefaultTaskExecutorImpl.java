@@ -151,7 +151,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
 
-  private final int pollingInterval = 50; // ms
+  private final int pollingInterval = 20; // ms
   private final ScheduledExecutorService pollingTrigger;
 
   private boolean pollingTime = false;
@@ -303,9 +303,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     LOG.info("Executor address map: {}", byteTransport.getExecutorAddressMap());
 
+    /*
     pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
+    */
 
     if (evalConf.isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
@@ -1163,44 +1165,42 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
     final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
+    // We check pending data every polling interval
+    pollingTime = false;
 
-    if (pollingTime) {
-      // We check pending data every polling interval
-      pollingTime = false;
+    while (pendingIterator.hasNext()) {
+      final DataFetcher dataFetcher = pendingIterator.next();
+      try {
+        //final long a = System.currentTimeMillis();
+        final Object element = dataFetcher.fetchDataElement();
+        //fetchTime += (System.currentTimeMillis() - a);
 
-      while (pendingIterator.hasNext()) {
-        final DataFetcher dataFetcher = pendingIterator.next();
-        try {
-          //final long a = System.currentTimeMillis();
-          final Object element = dataFetcher.fetchDataElement();
-          //fetchTime += (System.currentTimeMillis() - a);
+        if (element.equals(EmptyElement.getInstance())) {
+          // do nothing
+        } else {
+          //final long b = System.currentTimeMillis();
+          onEventFromDataFetcher(element, dataFetcher);
+          dataProcessed = true;
+          // processingTime += (System.currentTimeMillis() - b);
 
-          if (element.equals(EmptyElement.getInstance())) {
-            // do nothing
-          } else {
-            //final long b = System.currentTimeMillis();
-            onEventFromDataFetcher(element, dataFetcher);
-            // processingTime += (System.currentTimeMillis() - b);
-
-            // We processed data. This means the data fetcher is now available.
-            // Add current data fetcher to available
-            pendingIterator.remove();
-            if (!(element instanceof Finishmark)) {
-              availableFetchers.add(dataFetcher);
-            }
+          // We processed data. This means the data fetcher is now available.
+          // Add current data fetcher to available
+          pendingIterator.remove();
+          if (!(element instanceof Finishmark)) {
+            availableFetchers.add(dataFetcher);
           }
-
-        } catch (final NoSuchElementException e) {
-          // The current data fetcher is still pending.. try next data fetcher
-          e.printStackTrace();
-          throw new RuntimeException("No such element");
-        } catch (final IOException e) {
-          // IOException means that this task should be retried.
-          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-            Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-          return false;
         }
+
+      } catch (final NoSuchElementException e) {
+        // The current data fetcher is still pending.. try next data fetcher
+        e.printStackTrace();
+        throw new RuntimeException("No such element");
+      } catch (final IOException e) {
+        // IOException means that this task should be retried.
+        taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+          Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+        return false;
       }
     }
 

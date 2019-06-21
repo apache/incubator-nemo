@@ -209,6 +209,7 @@ public final class GBKPartialTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
+    /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
         "keyAndWatermarkHoldMap: {}, at {}",
       new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
@@ -216,6 +217,7 @@ public final class GBKPartialTransform<K, InputT>
       new Instant(inputWatermark.getTimestamp()),
       keyAndWatermarkHoldMap,
       getContext().getTaskId());
+      */
 
     // keep going if the watermark increases
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
@@ -239,6 +241,7 @@ public final class GBKPartialTransform<K, InputT>
         Math.max(prevOutputWatermark.getTimestamp(),
           Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
+      /*
       LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
           "keyAndWatermarkHoldMap: {}, at {}",
         new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
@@ -246,6 +249,7 @@ public final class GBKPartialTransform<K, InputT>
         new Instant(inputWatermark.getTimestamp()),
         keyAndWatermarkHoldMap,
         getContext().getTaskId());
+        */
     }
   }
 
@@ -257,7 +261,8 @@ public final class GBKPartialTransform<K, InputT>
       return;
     }
 
-    LOG.info("Parital watermark receive: {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    //LOG.info("Parital watermark receive: {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+
     //LOG.info("Watermark at GBKW: {}", watermark);
 
     //LOG.info("Partial watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
