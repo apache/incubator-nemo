@@ -117,17 +117,15 @@ public final class TaskOffloader {
       while (iterator.hasNext()) {
         final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains(stageId)) {
-          if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-            if (deoffloadCnt < cnt) {
-              LOG.info("Deoffloading {}", pair.left().getId());
-              pair.left().endOffloading((m) -> {
-                LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
-                stageOffloadingWorkerManager.endOffloading(stageId);
-                //sendOffloadingDoneEvent(pair.left().getId());
-              });
-              iterator.remove();
-              deoffloadCnt += 1;
-            }
+          if (deoffloadCnt < cnt && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+            LOG.info("Deoffloading {}", pair.left().getId());
+            pair.left().endOffloading((m) -> {
+              LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
+              stageOffloadingWorkerManager.endOffloading(stageId);
+              //sendOffloadingDoneEvent(pair.left().getId());
+            });
+            iterator.remove();
+            deoffloadCnt += 1;
           }
         }
       }
