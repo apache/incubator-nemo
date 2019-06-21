@@ -160,11 +160,14 @@ public final class ExecutorThread {
 
           try {
             deletedTask.close();
+            LOG.info("Call {} close", deletedTask.getId());
           } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
         }
+
+        LOG.info("deleted tasks: {}", tasks.size());
 
         for (final TaskExecutor deletedTask : tasks) {
           LOG.info("Finishing task {}", deletedTask.getId());

@@ -411,7 +411,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public void close() {
-
     final Set<DataFetcher> allFetchers = new HashSet<>();
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
@@ -665,7 +664,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    LOG.info("Isfinished: {}, pendingDone: {} for {}", allPendingDone(), offloadingTask.taskId);
+    LOG.info("Isfinished: {}, pendingDone: {} for {}", finished, allPendingDone(), offloadingTask.taskId);
     return finished && allPendingDone();
   }
 
