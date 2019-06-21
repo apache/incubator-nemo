@@ -420,7 +420,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       pendingFutures.add(dataFetcher.stop());
     }
 
-    LOG.info("Waiting pending futures {}...", offloadingTask.taskId);
+    LOG.info("Waiting pending futures haha {}...", offloadingTask.taskId);
     finished = true;
   }
 
