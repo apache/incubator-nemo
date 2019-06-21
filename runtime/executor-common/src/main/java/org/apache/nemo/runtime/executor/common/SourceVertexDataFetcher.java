@@ -39,9 +39,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private Readable readable;
   private long boundedSourceReadTime = 0;
-  private static final long WATERMARK_PERIOD = 1000; // ms
   private static final long WATERMARK_PROGRESS = 500; // ms
-  private final ScheduledExecutorService watermarkTriggerService;
   private boolean watermarkTriggered = false;
   private final boolean bounded;
 
@@ -58,30 +56,39 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private final String taskId;
 
+  private final ExecutorGlobalInstances executorGlobalInstances;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
-                                 final long prevWatermarkTimestamp) {
+                                 final long prevWatermarkTimestamp,
+                                 final ExecutorGlobalInstances executorGlobalInstances) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
    this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
     this.taskId = taskId;
     this.prevWatermarkTimestamp = prevWatermarkTimestamp;
+    this.executorGlobalInstances = executorGlobalInstances;
 
-    LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
     if (!bounded) {
-      this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
-      this.watermarkTriggerService.scheduleAtFixedRate(() -> {
+      this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
         watermarkTriggered = true;
-      }, WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
-    } else {
-      this.watermarkTriggerService = null;
+      });
     }
+  }
 
+  public SourceVertexDataFetcher(final SourceVertex dataSource,
+                                 final RuntimeEdge edge,
+                                 final Readable readable,
+                                 final OutputCollector outputCollector,
+                                 final ExecutorService prepareService,
+                                 final String taskId,
+                                 final ExecutorGlobalInstances executorGlobalInstances) {
+    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, executorGlobalInstances);
   }
 
   public SourceVertexDataFetcher(final SourceVertex dataSource,
@@ -90,7 +97,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId) {
-    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1);
+    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, null);
   }
 
   public void setReadable(final Readable r) {
@@ -153,6 +160,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public Future<Integer> stop() {
     isFinishd = true;
+    executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     // do nothing
     return new Future<Integer>() {
       @Override
@@ -184,6 +192,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void restart() {
+    executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
+      watermarkTriggered = true;
+    });
     //finishedAck = false;
     isFinishd = false;
   }
@@ -194,10 +205,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void close() throws Exception {
+    executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     readable.close();
-    if (watermarkTriggerService != null) {
-      watermarkTriggerService.shutdown();
-    }
   }
 
   private boolean isWatermarkTriggerTime() {

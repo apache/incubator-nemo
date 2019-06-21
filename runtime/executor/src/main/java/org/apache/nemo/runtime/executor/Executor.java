@@ -132,6 +132,8 @@ public final class Executor {
 
   private final ExecutorService prepareService = Executors.newCachedThreadPool();
 
+  private final ExecutorGlobalInstances executorGlobalInstances;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -158,6 +160,7 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.executorGlobalInstances = new ExecutorGlobalInstances();
     this.relayServer = relayServer;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
@@ -334,7 +337,8 @@ public final class Executor {
         taskInputContextMap,
         relayServer,
         taskLocationMap,
-        prepareService);
+        prepareService,
+        executorGlobalInstances);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
       final int numTask = numReceivedTasks.getAndIncrement();

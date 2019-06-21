@@ -69,6 +69,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient ExecutorService prepareService;
 
+  private transient ExecutorGlobalInstances executorGlobalInstances;
+
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
@@ -104,6 +106,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.oc = outputCollector;
     this.ackScheduledService = new AckScheduledService();
     this.prepareService = Executors.newCachedThreadPool();
+    this.executorGlobalInstances = new ExecutorGlobalInstances();
 
     executorThreads = new ArrayList<>();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -213,7 +216,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         intermediateDataIOFactory,
         oc,
         scheduledExecutorService,
-        prepareService);
+        prepareService,
+        executorGlobalInstances);
 
       // Emit offloading done
       oc.emit(new OffloadingDoneEvent(
@@ -263,6 +267,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads.forEach(executor -> {
       executor.close();
     });
+
+    try {
+      executorGlobalInstances.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     LOG.info("Shutting down prepare service");
     try {
