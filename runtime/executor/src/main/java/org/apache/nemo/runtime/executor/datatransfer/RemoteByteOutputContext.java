@@ -166,7 +166,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void scaleoutToVm(Channel channel) {
-    LOG.info("Scale out to channel {}", channel);
+    LOG.info("Scale out to SF: {}, channel: {}", getContextId().getTransferIndex(), channel);
     vmChannel = channel;
     currChannel = vmChannel;
     sendDataTo = SF;
@@ -206,7 +206,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         VM);
 
-    LOG.info("Restart context to {} {}", sendDataTo, message);
+    LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
 
     currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
   }
