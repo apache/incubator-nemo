@@ -27,7 +27,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
 
     this.watermarkTriggerService.scheduleAtFixedRate(() -> {
       synchronized (watermarkServices) {
-        LOG.info("Trigger watermarks:{}", watermarkServices.size());
+        //LOG.info("Trigger watermarks:{}", watermarkServices.size());
         watermarkServices.forEach(pair -> pair.right().run());
       }
     }, WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
@@ -35,7 +35,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
 
   public void registerWatermarkService(final SourceVertex sv, final Runnable runnable) {
     synchronized (watermarkServices) {
-      LOG.info("Register {}: ", sv);
+      //LOG.info("Register {}: ", sv);
       watermarkServices.add(Pair.of(sv, runnable));
     }
   }
