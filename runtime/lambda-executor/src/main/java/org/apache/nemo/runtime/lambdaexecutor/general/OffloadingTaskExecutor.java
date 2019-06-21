@@ -64,7 +64,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final List<DataFetcher> availableFetchers;
   private final List<DataFetcher> pendingFetchers;
 
-  private final int pollingInterval = 200; // ms
+  private final int pollingInterval = 50; // ms
   private boolean pollingTime = false;
 
   private final ScheduledExecutorService pollingTrigger;

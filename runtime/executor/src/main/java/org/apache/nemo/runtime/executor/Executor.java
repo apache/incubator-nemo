@@ -192,7 +192,7 @@ public final class Executor {
 
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
-      executorThreads.add(new ExecutorThread(scheduledExecutorService, i, executorId));
+      executorThreads.add(new ExecutorThread(i, executorId));
       executorThreads.get(i).start();
     }
 

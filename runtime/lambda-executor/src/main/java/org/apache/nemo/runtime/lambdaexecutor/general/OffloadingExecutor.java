@@ -112,7 +112,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(scheduledExecutorService, 1, "lambda"));
+        new ExecutorThread(1, "lambda"));
       executorThreads.get(i).start();
     }
 
