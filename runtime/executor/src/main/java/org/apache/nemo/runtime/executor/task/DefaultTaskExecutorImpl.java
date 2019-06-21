@@ -151,8 +151,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
 
-  private final int pollingInterval = 200; // ms
-  private final ScheduledExecutorService pollingTrigger = Executors.newSingleThreadScheduledExecutor();
+  private final int pollingInterval = 50; // ms
+  private final ScheduledExecutorService pollingTrigger;
 
   private boolean pollingTime = false;
   private boolean kafkaOffloading = false;
@@ -241,6 +241,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
+
+    this.pollingTrigger = executorGlobalInstances.getPollingTrigger();
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -1158,6 +1160,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         return false;
       }
     }
+
 
     final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
 

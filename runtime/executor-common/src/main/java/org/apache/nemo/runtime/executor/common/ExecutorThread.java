@@ -26,10 +26,9 @@ public final class ExecutorThread {
 
   private volatile boolean closed = false;
 
-  public ExecutorThread(final ScheduledExecutorService scheduledExecutorService,
-                        final int executorThreadIndex,
+  public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
-    this.scheduledExecutorService = scheduledExecutorService;
+    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
     this.availableTasks = new ArrayList<>();

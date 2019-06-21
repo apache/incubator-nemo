@@ -17,6 +17,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorGlobalInstances.class.getName());
 
   private final ScheduledExecutorService watermarkTriggerService;
+  private final ScheduledExecutorService pollingTrigger;
   private static final long WATERMARK_PERIOD = 250; // ms
   private final List<Pair<SourceVertex, Runnable>> watermarkServices;
 
@@ -24,6 +25,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
   public ExecutorGlobalInstances() {
     this.watermarkTriggerService = Executors.newScheduledThreadPool(3);
     this.watermarkServices = new ArrayList<>();
+    this.pollingTrigger = Executors.newScheduledThreadPool(3);
 
     this.watermarkTriggerService.scheduleAtFixedRate(() -> {
       synchronized (watermarkServices) {
@@ -31,6 +33,10 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
         watermarkServices.forEach(pair -> pair.right().run());
       }
     }, WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
+  }
+
+  public ScheduledExecutorService getPollingTrigger() {
+    return pollingTrigger;
   }
 
   public void registerWatermarkService(final SourceVertex sv, final Runnable runnable) {
