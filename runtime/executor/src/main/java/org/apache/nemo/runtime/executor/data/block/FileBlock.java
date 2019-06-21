@@ -100,7 +100,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        for (final ByteBuffer buffer: serializedPartition.getBuffer()) {
+        for (final ByteBuffer buffer: serializedPartition.getDirectBufferList()) {
           fileOutputChannel.write(buffer);
         }
       }

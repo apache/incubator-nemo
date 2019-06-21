@@ -26,11 +26,13 @@ import java.util.List;
 
 /**
  * This class is a customized input stream implementation which reads data from
- * list of {@link ByteBuffer}.
+ * list of {@link ByteBuffer}. If the {@link ByteBuffer} is direct, it may reside outside
+ * the normal garbage-collected heap memory.
  */
 public class DirectByteBufferInputStream extends InputStream {
   private List<ByteBuffer> bufList;
   private int current = 0;
+  private static final int BITMASK = 0xff;
 
   /**
    * Default Constructor.
@@ -49,7 +51,9 @@ public class DirectByteBufferInputStream extends InputStream {
    */
   @Override
   public int read() throws IOException {
-    return getBuffer().get() & 0xff;
+    // Since java's byte is signed type, we have to mask it to make byte
+    // become unsigned type to properly retrieve `int` from sequence of bytes.
+    return getBuffer().get() & BITMASK;
   }
 
   /**

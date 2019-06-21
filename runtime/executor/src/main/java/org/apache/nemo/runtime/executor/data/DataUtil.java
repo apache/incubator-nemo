@@ -123,7 +123,7 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        final List<ByteBuffer> serializedBufList = bytesOutputStream.getBufferList();
+        final List<ByteBuffer> serializedBufList = bytesOutputStream.getDirectByteBufferList();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
           new SerializedPartition<>(partitionToConvert.getKey(), serializedBufList, actualLength));
@@ -148,22 +148,17 @@ public final class DataUtil {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
+      final InputStream inputStream;
 
       if (partitionToConvert.isOffheap()) {
-        try (DirectByteBufferInputStream byteBufferInputStream =
-               new DirectByteBufferInputStream(partitionToConvert.getBuffer())) {
-          final NonSerializedPartition<K> deserializePartition = deserializePartition(
-            partitionToConvert.getLength(), serializer, key, byteBufferInputStream);
-          nonSerializedPartitions.add(deserializePartition);
-        }
+        inputStream = new DirectByteBufferInputStream(partitionToConvert.getDirectBufferList());
       } else {
-      try (ByteArrayInputStream byteArrayInputStream =
-             new ByteArrayInputStream(partitionToConvert.getData())) {
-        final NonSerializedPartition<K> deserializePartition = deserializePartition(
-          partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
-        nonSerializedPartitions.add(deserializePartition);
-        }
+        inputStream = new ByteArrayInputStream(partitionToConvert.getData());
       }
+      final NonSerializedPartition<K> deserializePartition = deserializePartition(
+        partitionToConvert.getLength(), serializer, key, inputStream);
+      nonSerializedPartitions.add(deserializePartition);
+      inputStream.close();
     }
     return nonSerializedPartitions;
   }

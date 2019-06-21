@@ -36,6 +36,8 @@ import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 /**
  * A collection of data elements. The data is stored as an array of bytes.
  * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
+ * Releasing the memory(either off-heap or on-heap) occurs on block deletion.
+ * TODO #396: Refactoring SerializedPartition into multiple classes
  *
  * @param <K> the key type of its partitions.
  */
@@ -148,7 +150,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      this.dataList = bytesOutputStream.getBufferList();
+      this.dataList = bytesOutputStream.getDirectByteBufferList();
       this.length = bytesOutputStream.size();
       this.committed = true;
     }
@@ -171,7 +173,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   }
 
   /**
-   * This method should only be used when this partition is constructed with a data from existing file.
+   * This method should only be used when this partition is residing in on-heap region.
    *
    * @return the serialized data.
    * @throws IOException if the partition is not committed yet.
@@ -193,7 +195,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * @return the serialized data in list of {@link ByteBuffer}s
    * @throws IOException if the partition is not committed yet.
    */
-  public List<ByteBuffer> getBuffer() throws IOException {
+  public List<ByteBuffer> getDirectBufferList() throws IOException {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
     } else {

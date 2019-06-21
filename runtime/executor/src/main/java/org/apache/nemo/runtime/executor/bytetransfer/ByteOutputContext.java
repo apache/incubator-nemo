@@ -135,24 +135,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * <p>Public methods are thread safe,
    * although the execution order may not be linearized if they were called from different threads.</p>
    */
-  public final class ByteOutputStream extends OutputStream {
+  public final class ByteOutputStream {
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
-
-    @Override
-    public void write(final int i) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
-      byteBuf.writeByte(i);
-      writeByteBuf(byteBuf);
-    }
-
-    @Override
-    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
-      byteBuf.writeBytes(bytes, offset, length);
-      writeByteBuf(byteBuf);
-    }
 
     /**
      * Writes {@link SerializedPartition}.
@@ -163,7 +149,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      */
     public ByteOutputStream writeSerializedPartitionBuffer(final SerializedPartition serializedPartition)
       throws IOException {
-      writeBuffer(serializedPartition.getBuffer());
+      writeBuffer(serializedPartition.getDirectBufferList());
       return this;
     }
 
@@ -171,8 +157,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * Wraps each of the {@link ByteBuffer} in the bufList to {@link ByteBuf} object
      * to write a data frame.
      *
-     * @param bufList
-     * @throws IOException
+     * @param bufList       list of {@link ByteBuffer}s to wrap.
+     * @throws IOException  when fails to write the data.
      */
     public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
       final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
@@ -183,8 +169,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     /**
      * Writes a data frame, from {@link ByteBuf}.
      *
-     * @param byteBuf {@link ByteBuf} to write.
-     * @throws IOException
+     * @param byteBuf       {@link ByteBuf} to write.
+     * @throws IOException  when fails to write data.
      */
     private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
       if (byteBuf.readableBytes() > 0) {
@@ -213,7 +199,13 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       return this;
     }
 
-    @Override
+    /**
+     * Closing the outputStream.
+     * This was originally overridden method for extending OutputStream, but now it doesn't
+     * extend OutputStream and should manually be called after use.
+     *
+     * @throws IOException when it fails to close.
+     */
     public void close() throws IOException {
       if (closed) {
         return;
