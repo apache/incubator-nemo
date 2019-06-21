@@ -91,17 +91,15 @@ public final class TaskOffloader {
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
         if (taskExecutor.getId().contains(stageId)
           &&  taskExecutor.isRunning()
+          && offloadCnt < cnt
           && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
           //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
-
-          if (offloadCnt < cnt) {
-            LOG.info("Offloading task {}", taskExecutor.getId());
-            offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-            taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
-              stageOffloadingWorkerManager.endOffloading(stageId);
-            });
-            offloadCnt += 1;
-          }
+          LOG.info("Offloading task {}", taskExecutor.getId());
+          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+            stageOffloadingWorkerManager.endOffloading(stageId);
+          });
+          offloadCnt += 1;
         }
       }
     }, time, TimeUnit.SECONDS);
