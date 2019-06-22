@@ -8,10 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Queue;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 public final class ExecutorGlobalInstances implements AutoCloseable {
@@ -20,12 +18,12 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
   private final ScheduledExecutorService watermarkTriggerService;
   private final ScheduledExecutorService pollingTrigger;
   private static final long WATERMARK_PERIOD = 250; // ms
-  private final List<Pair<SourceVertex, Runnable>> watermarkServices;
+  private final Queue<Pair<SourceVertex, Runnable>> watermarkServices;
 
 
   public ExecutorGlobalInstances() {
     this.watermarkTriggerService = Executors.newScheduledThreadPool(3);
-    this.watermarkServices = new CopyOnWriteArrayList<>();
+    this.watermarkServices = new ConcurrentLinkedQueue<>();
     this.pollingTrigger = Executors.newScheduledThreadPool(3);
 
     this.watermarkTriggerService.scheduleAtFixedRate(() -> {
