@@ -45,7 +45,7 @@ public final class ExecutorThread {
     newTasks.add(task);
   }
 
-  private boolean loggingTime = false;
+  private volatile boolean loggingTime = false;
 
   public void start() {
 
