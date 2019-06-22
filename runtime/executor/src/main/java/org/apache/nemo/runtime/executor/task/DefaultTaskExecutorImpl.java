@@ -1058,7 +1058,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
 
       // check offloading queue to process events
-      if (!offloadingEventQueue.isEmpty()) {
+      while (!offloadingEventQueue.isEmpty()) {
         dataProcessed = true;
         // fetch events
         final Object data = offloadingEventQueue.poll();
