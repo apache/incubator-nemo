@@ -200,7 +200,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       final OffloadingTask task = (OffloadingTask) event;
 
-      LOG.info("Receive task {}", task.taskId);
+      LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
       for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
         : task.taskLocationMap.entrySet()) {
