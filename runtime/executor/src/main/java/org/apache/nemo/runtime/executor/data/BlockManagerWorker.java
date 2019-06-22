@@ -348,16 +348,16 @@ public final class BlockManagerWorker {
               || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
-                ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream();
-                os.writeFileArea(fileArea);
-                os.close();
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeFileArea(fileArea);
+                }
               }
             } else {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
-                ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream();
-                os.writeSerializedPartitionBuffer(partition);
-                os.close();
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeSerializedPartitionBuffer(partition);
+                }
               }
             }
             handleDataPersistence(blockStore, blockId);

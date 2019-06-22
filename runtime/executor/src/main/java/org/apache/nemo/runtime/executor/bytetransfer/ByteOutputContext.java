@@ -135,7 +135,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * <p>Public methods are thread safe,
    * although the execution order may not be linearized if they were called from different threads.</p>
    */
-  public final class ByteOutputStream {
+  public final class ByteOutputStream implements AutoCloseable {
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
@@ -199,13 +199,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       return this;
     }
 
-    /**
-     * Closing the outputStream.
-     * This was originally overridden method for extending OutputStream, but now it doesn't
-     * extend OutputStream and should manually be called after use.
-     *
-     * @throws IOException when it fails to close.
-     */
+    @Override
     public void close() throws IOException {
       if (closed) {
         return;
