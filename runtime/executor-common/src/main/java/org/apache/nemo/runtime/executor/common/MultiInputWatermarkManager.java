@@ -57,6 +57,8 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     for (int i = 0; i < numEdges; i++) {
       watermarks.add(new Watermark(Long.MIN_VALUE));
     }
+
+    LOG.info("MultiInputWatermarkManager start");
   }
 
   public MultiInputWatermarkManager(final IRVertex vertex,
