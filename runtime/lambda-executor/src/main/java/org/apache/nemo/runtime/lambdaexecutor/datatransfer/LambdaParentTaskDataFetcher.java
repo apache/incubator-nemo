@@ -143,8 +143,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
         }
       } else {
         //LOG.info("No next element in iterator {}, cnt: {}, size: {}", iteratorIndex, cnt, iterators.size());
-        //iteratorIndex = (iteratorIndex + 1) % iterators.size();
-
+        iteratorIndex = (iteratorIndex + 1) % iterators.size();
         cnt += 1;
       }
     }
