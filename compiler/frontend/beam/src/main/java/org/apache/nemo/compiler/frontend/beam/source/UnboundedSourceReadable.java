@@ -27,7 +27,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   private UnboundedSource.UnboundedReader<O> reader;
   private boolean isStarted = false;
   private volatile boolean isCurrentAvailable = false;
-  private volatile boolean isFetchTime = false;
+  //private volatile boolean isFetchTime = false;
   private boolean isFinished = false;
 
   private final PipelineOptions pipelineOptions;
@@ -35,7 +35,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   private static final Logger LOG = LoggerFactory.getLogger(UnboundedSourceReadable.class.getName());
 
-  private ExecutorService readableService;
+  //private ExecutorService readableService;
+
   /**
    * Constructor.
    * @param unboundedSource unbounded source.
@@ -64,10 +65,10 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   public void prepare() {
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
-      readableService = ReadableService.getInstance();
+      //readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
       isCurrentAvailable = reader.start();
-      isFetchTime = !isCurrentAvailable;
+      //isFetchTime = !isCurrentAvailable;
 
     } catch (final Exception e) {
       throw new RuntimeException(e);
@@ -77,6 +78,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   @Override
   public Object readCurrent() {
 
+    /*
     if (isFetchTime) {
       isFetchTime = false;
       readableService.execute(() -> {
@@ -89,13 +91,22 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
         }
       });
     }
+    */
 
     if (isCurrentAvailable) {
       final O elem = reader.getCurrent();
       final Instant currTs = reader.getCurrentTimestamp();
       //LOG.info("Curr timestamp: {}", currTs);
 
-      isCurrentAvailable = false;
+      try {
+        isCurrentAvailable = reader.advance();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      //isCurrentAvailable = false;
+      /*
       readableService.execute(() -> {
         try {
           isCurrentAvailable = reader.advance();
@@ -105,9 +116,17 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
           throw new RuntimeException(e);
         }
       });
+      */
 
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
+    } else {
+      try {
+        isCurrentAvailable = reader.advance();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
 
     return EmptyElement.getInstance();
