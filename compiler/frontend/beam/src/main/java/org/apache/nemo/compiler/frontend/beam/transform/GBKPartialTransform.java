@@ -209,7 +209,6 @@ public final class GBKPartialTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-    /*
     LOG.info("MinWatermarkHold: {}, OutputWatermarkCandidate: {}, PrevOutputWatermark: {}, inputWatermark: {}, " +
         "keyAndWatermarkHoldMap: {}, at {}",
       new Instant(minWatermarkHold.getTimestamp()), new Instant(outputWatermarkCandidate.getTimestamp()),
@@ -217,7 +216,6 @@ public final class GBKPartialTransform<K, InputT>
       new Instant(inputWatermark.getTimestamp()),
       keyAndWatermarkHoldMap,
       getContext().getTaskId());
-      */
 
     // keep going if the watermark increases
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
