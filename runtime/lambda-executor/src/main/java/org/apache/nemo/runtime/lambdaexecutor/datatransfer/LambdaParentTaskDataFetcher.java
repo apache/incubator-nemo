@@ -180,8 +180,10 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
     numOfIterators = inputs.size();
 
+    LOG.info("Number of parents: {}", numOfIterators);
+
     if (numOfIterators > 1) {
-      inputWatermarkManager = new MultiInputWatermarkManager(getDataSource(), numOfIterators, new WatermarkCollector());
+      inputWatermarkManager = new MultiInputWatermarkManager(getDataSource(), numOfIterators, new WatermarkCollector(), taskId);
     } else {
       inputWatermarkManager = new SingleInputWatermarkManager(
         new WatermarkCollector(), null, null, null, null);

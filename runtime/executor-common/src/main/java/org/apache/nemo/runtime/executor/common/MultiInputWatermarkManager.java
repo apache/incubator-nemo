@@ -37,22 +37,32 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final List<Watermark> watermarks;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
+  private Watermark currMinWatermark = new Watermark(Long.MIN_VALUE);
   private String sourceId;
   private final IRVertex vertex;
+  private final String taskId;
 
   public MultiInputWatermarkManager(final IRVertex vertex,
                                     final int numEdges,
-                                    final OutputCollector<?> watermarkCollector) {
+                                    final OutputCollector<?> watermarkCollector,
+                                    final String taskId) {
     super();
     this.vertex = vertex;
     this.watermarks = new ArrayList<>(numEdges);
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
+    this.taskId = taskId;
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
     for (int i = 0; i < numEdges; i++) {
       watermarks.add(new Watermark(Long.MIN_VALUE));
     }
+  }
+
+  public MultiInputWatermarkManager(final IRVertex vertex,
+                                    final int numEdges,
+                                    final OutputCollector<?> watermarkCollector) {
+    this(vertex, numEdges, watermarkCollector, "");
   }
 
   private int findNextMinWatermarkIndex() {
@@ -90,40 +100,48 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
-      final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
       watermarks.set(minWatermarkIndex, watermark);
+
        // find min watermark
-      minWatermarkIndex = findNextMinWatermarkIndex();
-      final Watermark minWatermark = watermarks.get(minWatermarkIndex);
+      final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
+      final Watermark nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
 
-      if (minWatermark.getTimestamp() < prevMinWatermark.getTimestamp()) {
-        throw new IllegalStateException(
-          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark + " at " + vertex.getId());
-      }
-
-      if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
+      if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
+        // it is possible
+        minWatermarkIndex = nextMinWatermarkIndex;
+        //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
+        //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
+      } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
+        minWatermarkIndex = nextMinWatermarkIndex;
+        currMinWatermark = nextMinWatermark;
+
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Emit watermark {}, {}", minWatermark, watermarks);
+          LOG.debug("Emit watermark {}", currMinWatermark);
         }
 
-        /*
-        if (vertex != null) {
-          LOG.info("Emitting watermark in {}:  {}", vertex.getId(), new Instant(minWatermark.getTimestamp()));
-        }
-        */
-        watermarkCollector.emitWatermark(minWatermark);
+          /*
+          if (taskId.startsWith("Stage1")) {
+            LOG.info("Emit watermark {} in {} for {}", new Instant(currMinWatermark.getTimestamp()), taskId, vertex.getId());
+          }
+          */
+
+        LOG.info("Emit watermark multiManager {}/{}, {}", vertex.getId(),
+          taskId,
+          new Instant(currMinWatermark.getTimestamp()));
+        watermarkCollector.emitWatermark(currMinWatermark);
       }
     } else {
       // The recent watermark timestamp cannot be less than the previous one
       // because watermark is monotonically increasing.
       if (watermarks.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
-        throw new IllegalStateException(
+        LOG.warn(
           "The recent watermark timestamp cannot be less than the previous one "
             + "because watermark is monotonically increasing.");
+      } else {
+        watermarks.set(edgeIndex, watermark);
       }
-      watermarks.set(edgeIndex, watermark);
     }
   }
 
