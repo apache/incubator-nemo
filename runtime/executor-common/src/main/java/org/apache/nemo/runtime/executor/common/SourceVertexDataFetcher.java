@@ -40,7 +40,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PROGRESS = 500; // ms
-  private boolean watermarkTriggered = false;
+  private volatile boolean watermarkTriggered = false;
   private final boolean bounded;
 
   private boolean isStarted = false;
