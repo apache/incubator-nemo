@@ -152,8 +152,19 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
+  public void scaleoutToVmWoRestart(Channel channel) {
+    throw new RuntimeException("Not supporteD");
+  }
+
+  @Override
   public void scaleInToVm(Channel channel) {
     throw new RuntimeException("Not supported");
+  }
+
+  @Override
+  public void scaleInToVmWoRestart(Channel channel) {
+
+    throw new RuntimeException("Not supporteD");
   }
 
   public Channel getChannel() {

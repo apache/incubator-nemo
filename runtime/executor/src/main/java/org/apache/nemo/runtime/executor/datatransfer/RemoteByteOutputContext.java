@@ -182,8 +182,17 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
+  public void scaleoutToVmWoRestart(Channel channel) {
+    LOG.info("Scale out to SF wo restart: {}, channel: {}", getContextId().getTransferIndex(), channel);
+     vmChannel = channel;
+    currChannel = vmChannel;
+    sendDataTo = SF;
+    currStatus = Status.NO_PENDING;
+  }
+
+  @Override
   public synchronized void scaleInToVm(Channel c) {
-    LOG.info("Scaling in to VM");
+    LOG.info("Scaling in to VM: {}", getContextId().getTransferIndex());
     settingContext = true;
     channel = c;
     currChannel = channel;
@@ -193,6 +202,15 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     if (restarted) {
       restart();
     }
+  }
+
+  @Override
+  public void scaleInToVmWoRestart(Channel c) {
+    LOG.info("Scaling in to VM wo restart: {}", getContextId().getTransferIndex());
+    channel = c;
+    currChannel = channel;
+    sendDataTo = VM;
+    currStatus = Status.NO_PENDING;
   }
 
   public Channel getChannel() {

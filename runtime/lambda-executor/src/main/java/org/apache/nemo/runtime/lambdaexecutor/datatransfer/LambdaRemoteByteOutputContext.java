@@ -181,11 +181,22 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
+  public void scaleoutToVmWoRestart(Channel channel) {
+      throw new RuntimeException("Not supporteD");
+  }
+
+  @Override
   public void scaleInToVm(Channel channel) {
     LOG.info("Scale in to channel {}", channel);
     vmChannel = channel;
     currChannel = vmChannel;
     currStatus = Status.NO_PENDING;
+  }
+
+  @Override
+  public void scaleInToVmWoRestart(Channel channel) {
+
+    throw new RuntimeException("Not supporteD");
   }
 
   public Channel getChannel() {

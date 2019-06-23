@@ -48,10 +48,16 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   // This should be initiated when the byteOutputContext is in SF
   void scaleoutToVm(final String address, final String taskId);
 
-  // This should be initiated when the byteOutputContext is in VM
+  // this is called when the upstream operator moves to vm and the downstream is in SF
   void scaleoutToVm(final Channel channel);
 
+  // this is called when the downstream operator moves to sf
+  void scaleoutToVmWoRestart(final Channel channel);
+
+  // this is called when the upstream operator moves to VM and the downstream is in VM
   void scaleInToVm(Channel channel);
+  // this is called when the downstream operator moves to VM
+  void scaleInToVmWoRestart(Channel channel);
 
   void stop();
 

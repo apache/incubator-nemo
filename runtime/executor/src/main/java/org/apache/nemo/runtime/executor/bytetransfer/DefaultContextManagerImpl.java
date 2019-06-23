@@ -354,11 +354,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
         switch (sendDataTo) {
           case SF: {
-            outputContext.scaleoutToVm(channel);
+            outputContext.scaleoutToVmWoRestart(channel);
             break;
           }
           case VM: {
-            outputContext.scaleInToVm(channel);
+            outputContext.scaleInToVmWoRestart(channel);
             break;
           }
         }

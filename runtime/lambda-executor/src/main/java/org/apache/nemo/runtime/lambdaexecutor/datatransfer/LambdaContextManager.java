@@ -190,7 +190,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
           case SF: {
             final String relayServerAddress = message.getRelayServerAddress();
             final int relayServerPort = message.getRelayServerPort();
-            LOG.info("Connecting to relay server for input {}/{}", relayServerAddress, relayServerPort);
+            LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
+              relayServerAddress, relayServerPort, transferIndex);
 
             connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
               relayServerClient.registerTask(relayServerChannel,
@@ -217,7 +218,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               vmContextManager.getChannel().write(ackMessage);
 
               // then pending the output
-              LOG.info("Set pending ...");
+              LOG.info("Set pending for transferIndex {}...", transferIndex);
               outputContext.pending(sendDataTo);
             });
 
