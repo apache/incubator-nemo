@@ -111,8 +111,8 @@ public final class PipeManagerWorker {
         if (cnt == 0) {
           // delete it from map
           synchronized (byteInputContexts) {
-            LOG.info("Remove byte input context {}", byteInputContext.getContextId().getTransferIndex());
-            byteInputContexts.remove(byteInputContext);
+            LOG.info("Clear byte input contexts for {}", taskId);
+            byteInputContexts.clear();
           }
         }
         //byteInputContext.sendMessage();
