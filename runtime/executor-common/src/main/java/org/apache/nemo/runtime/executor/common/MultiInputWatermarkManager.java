@@ -92,6 +92,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         watermarks.toString());
     }
 
+    /*
     if (vertex != null) {
       LOG.info("Watermark from {}: {} at {}, min: {}, minIndex: {}, task {}", edgeIndex, new Instant(watermark.getTimestamp()), vertex.getId(),
         new Instant(currMinWatermark.getTimestamp()),
@@ -99,6 +100,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       //LOG.info("Print watermarks");
       //printWatermarks();
     }
+    */
 
     /*
     if (vertex != null) {
@@ -137,9 +139,9 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
           }
           */
 
-        LOG.info("Emit watermark multiManager {}/{}, {}", vertex.getId(),
-          taskId,
-          new Instant(currMinWatermark.getTimestamp()));
+        //LOG.info("Emit watermark multiManager {}/{}, {}", vertex.getId(),
+        //  taskId,
+        //  new Instant(currMinWatermark.getTimestamp()));
         watermarkCollector.emitWatermark(currMinWatermark);
       }
     } else {
