@@ -105,7 +105,15 @@ public final class PipeManagerWorker {
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
+        final int cnt = atomicInteger.decrementAndGet();
         LOG.info("receive ack for {}, {}!!", taskId, atomicInteger.decrementAndGet());
+
+        if (cnt == 0) {
+          // delete it from map
+          synchronized (byteInputContexts) {
+            byteInputContexts.remove(byteInputContext);
+          }
+        }
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
       });
