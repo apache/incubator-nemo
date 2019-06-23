@@ -106,11 +106,12 @@ public final class PipeManagerWorker {
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
         final int cnt = atomicInteger.decrementAndGet();
-        LOG.info("receive ack for {}, {}!!", taskId, atomicInteger.decrementAndGet());
+        LOG.info("receive ack for {}, {}!!", taskId, cnt);
 
         if (cnt == 0) {
           // delete it from map
           synchronized (byteInputContexts) {
+            LOG.info("Remove byte input context {}", byteInputContext.getContextId().getTransferIndex());
             byteInputContexts.remove(byteInputContext);
           }
         }
