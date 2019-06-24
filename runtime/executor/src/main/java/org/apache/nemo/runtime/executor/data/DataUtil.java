@@ -148,17 +148,14 @@ public final class DataUtil {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
-      final InputStream inputStream;
+      try (InputStream inputStream = partitionToConvert.isOffheap()
+        ? new DirectByteBufferInputStream(partitionToConvert.getDirectBufferList())
+        : new ByteArrayInputStream(partitionToConvert.getData())) {
 
-      if (partitionToConvert.isOffheap()) {
-        inputStream = new DirectByteBufferInputStream(partitionToConvert.getDirectBufferList());
-      } else {
-        inputStream = new ByteArrayInputStream(partitionToConvert.getData());
+        final NonSerializedPartition<K> deserializePartition = deserializePartition(
+          partitionToConvert.getLength(), serializer, key, inputStream);
+        nonSerializedPartitions.add(deserializePartition);
       }
-      final NonSerializedPartition<K> deserializePartition = deserializePartition(
-        partitionToConvert.getLength(), serializer, key, inputStream);
-      nonSerializedPartitions.add(deserializePartition);
-      inputStream.close();
     }
     return nonSerializedPartitions;
   }
