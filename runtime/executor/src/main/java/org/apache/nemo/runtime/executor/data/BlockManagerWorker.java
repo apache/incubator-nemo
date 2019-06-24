@@ -342,17 +342,11 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+                || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeFileArea(fileArea);
-                }
-              }
-            } else if (DataStoreProperty.Value.CrailFileStore.equals(blockStore)){
-              final List<FileArea> fileAreas = ((CrailFileBlock) optionalBlock.get()).asFileAreas(keyRange);
-              for (final FileArea fileArea : fileAreas) {
-                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()){
                   os.writeFileArea(fileArea);
                 }
               }
