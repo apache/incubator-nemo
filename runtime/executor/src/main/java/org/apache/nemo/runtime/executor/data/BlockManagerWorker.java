@@ -36,7 +36,6 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.block.CrailFileBlock;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;

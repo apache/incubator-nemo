@@ -25,7 +25,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.block.CrailFileBlock;
+import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.metadata.CrailFileMetadata;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
@@ -39,8 +39,8 @@ import java.util.Optional;
 /**
  * Stores blocks in CrailStore.
  * Since the data is stored in CrailStore and globally accessed by multiple nodes,
- * each read, or deletion for a file needs one instance of {@link CrailFileBlock}.
- * When CrailFileBlock is created, it's metadata is maintained in memory until the block is committed.
+ * each read, or deletion for a file needs one instance of {@link FileBlock}.
+ * When FileBlock in Crail is created, it's metadata is maintained in memory until the block is committed.
  * After the block is committed, the metadata is stored in and read from a CrailStore.
  */
 @ThreadSafe
@@ -74,7 +74,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final String metaPath = DataUtil.blockIdToMetaFilePath(blockId, fileDirectory);
     final CrailFileMetadata metadata = CrailFileMetadata.create(metaPath, fs);
-    return new CrailFileBlock<>(blockId, serializer, filePath, metadata, fs);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
   /**
@@ -86,9 +86,9 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
   @Override
   public void writeBlock(final Block block) throws BlockWriteException {
-    if (!(block instanceof CrailFileBlock)) {
+    if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-        this.toString() + " only accept " + CrailFileBlock.class.getName()));
+        this.toString() + " only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     }
@@ -110,7 +110,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
         return Optional.empty();
       } else {
         try {
-          final CrailFileBlock block = getBlockFromFile(blockId);
+          final FileBlock block = getBlockFromFile(blockId);
           return Optional.of(block);
         } catch (final IOException e) {
           throw new BlockFetchException(e);
@@ -135,7 +135,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
     try {
       if (fs.lookup(filePath).get() != null) {
-        final CrailFileBlock block = getBlockFromFile(blockId);
+        final FileBlock block = getBlockFromFile(blockId);
         block.deleteFile();
         return true;
       } else {
@@ -149,21 +149,21 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   }
 
   /**
-   * Gets a {@link CrailFileBlock} from the block and it's metadata file.
+   * Gets a {@link FileBlock} from the block and it's metadata file.
    * Because the data is stored in CrailStore and globally accessed by multiple nodes,
-   * each read, or deletion for a file needs one instance of {@link CrailFileBlock},
+   * each read, or deletion for a file needs one instance of {@link FileBlock},
    * and the temporary block will not be maintained by this executor.
    *
    * @param blockId the ID of the block to get.
    * @param <K>     the type of the key of the block.
-   * @return the {@link CrailFileBlock} gotten.
+   * @return the {@link FileBlock} gotten.
    * @throws Exception if fail to get.
    */
-  private <K extends Serializable> CrailFileBlock<K> getBlockFromFile(final String blockId) throws Exception {
+  private <K extends Serializable> FileBlock<K> getBlockFromFile(final String blockId) throws Exception {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final CrailFileMetadata<K> metadata =
       CrailFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory), fs);
-    return new CrailFileBlock<>(blockId, serializer, filePath, metadata, fs);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 }
