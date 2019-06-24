@@ -59,9 +59,12 @@ public final class ExecutorThread {
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       loggingTime = true;
 
+      int totalProcessedCnt = 0;
       for (final String taskId : taskCounterMap.keySet()) {
-        LOG.info("{} processed cnt: {}", taskId, taskCounterMap.remove(taskId));
+        totalProcessedCnt += taskCounterMap.remove(taskId);
       }
+
+      LOG.info("{} total processed cnt: {}", executorThreadName, totalProcessedCnt);
 
     }, 5, 5, TimeUnit.SECONDS);
 
@@ -100,10 +103,15 @@ public final class ExecutorThread {
           while (iterator.hasNext()) {
             final TaskExecutor availableTask = iterator.next();
 
-            if (!availableTask.handleData()) {
+            final int processedCnt = availableTask.handleData();
+
+            if (processedCnt == 0) {
               iterator.remove();
               pendingTasks.add(availableTask);
             }
+
+            final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
+            taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
 
               /*
               int processedCnt = 0;

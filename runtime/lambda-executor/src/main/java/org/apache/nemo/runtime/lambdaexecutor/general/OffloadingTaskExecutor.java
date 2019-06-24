@@ -304,7 +304,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   // receive batch (list) data
   @Override
-  public boolean handleData() {
+  public int handleData() {
+    int processedCnt = 0;
     boolean dataProcessed = false;
 
     // We first fetch data from available data fetchers
@@ -330,6 +331,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           onEventFromDataFetcher(element, dataFetcher);
           //processingTime += (System.currentTimeMillis() - b);
           dataProcessed = true;
+          processedCnt += 1;
 
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -370,6 +372,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             availableFetchers.add(dataFetcher);
           }
 
+          processedCnt += 1;
           dataProcessed = true;
         }
       } catch (final NoSuchElementException e) {
@@ -381,7 +384,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
     }
 
-    return dataProcessed;
+    if (dataProcessed && processedCnt == 0) {
+      processedCnt += 1;
+    }
+    return processedCnt;
   }
 
   private void processWatermark(final OutputCollector outputCollector,

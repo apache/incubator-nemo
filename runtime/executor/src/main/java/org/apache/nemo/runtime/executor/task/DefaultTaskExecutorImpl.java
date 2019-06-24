@@ -1044,8 +1044,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * @return true if an event is processed
    */
   @Override
-  public boolean handleData() {
+  public int handleData() {
     // handling control event
+    int processedCnt = 0;
+
     boolean dataProcessed = false;
     if (!controlEventQueue.isEmpty()) {
       final ControlEvent event = controlEventQueue.poll();
@@ -1145,6 +1147,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           onEventFromDataFetcher(element, dataFetcher);
           //processingTime += (System.currentTimeMillis() - b);
           dataProcessed = true;
+          processedCnt += 1;
 
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -1159,7 +1162,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
           Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
         LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-        return false;
+        return 0;
       }
     }
 
@@ -1181,6 +1184,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           //final long b = System.currentTimeMillis();
           onEventFromDataFetcher(element, dataFetcher);
           dataProcessed = true;
+          processedCnt += 1;
           // processingTime += (System.currentTimeMillis() - b);
 
           // We processed data. This means the data fetcher is now available.
@@ -1200,11 +1204,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
           Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
         LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-        return false;
+        return 0;
       }
     }
 
-    return dataProcessed;
+    if (dataProcessed && processedCnt == 0) {
+      processedCnt += 1;
+    }
+
+    return processedCnt;
   }
 
   /**

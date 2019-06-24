@@ -98,7 +98,7 @@ public interface TaskExecutor extends AutoCloseable {
    * Executor should call this function.
    * @return true if an event is processed
    */
-  boolean handleData();
+  int handleData();
 
   ////////////////////////////////////////////// Misc
 
