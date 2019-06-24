@@ -121,7 +121,7 @@ public final class Executor {
   private ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService taskEventExecutorService;
 
-  private final List<ExecutorThread> executorThreads;
+  private final Map<String, Pair<AtomicInteger, List<ExecutorThread>>> stageExecutorThreadMap;
 
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final TaskInputContextMap taskInputContextMap;
@@ -190,11 +190,14 @@ public final class Executor {
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
+    this.stageExecutorThreadMap = new ConcurrentHashMap<>();
+    /*
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
       executorThreads.add(new ExecutorThread(i, executorId));
       executorThreads.get(i).start();
     }
+    */
 
     final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
       byteTransport.getExecutorAddressMap(),
@@ -341,12 +344,40 @@ public final class Executor {
         executorGlobalInstances);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
-      final int numTask = numReceivedTasks.getAndIncrement();
+
+
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
+      final Pair<AtomicInteger, List<ExecutorThread>> pair = stageExecutorThreadMap.getOrDefault(stageId,
+        Pair.of(new AtomicInteger(0), new ArrayList<>(evalConf.executorThreadNum)));
+
+      final List<ExecutorThread> executorThreads = pair.right();
+
+      if (stageExecutorThreadMap.putIfAbsent(stageId, pair) == null) {
+        // initialize threads
+        synchronized (executorThreads) {
+          for (int i = 0; i < evalConf.executorThreadNum; i++) {
+            executorThreads.add(new ExecutorThread(i, executorId + "-" + stageId));
+            executorThreads.get(i).start();
+          }
+        }
+      }
+
+      final int numTask = pair.left().getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
 
-      LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
 
-      executorThreads.get(index).addNewTask(taskExecutor);
+      while (true) {
+        synchronized (executorThreads) {
+          if (executorThreads.size() == evalConf.executorThreadNum) {
+            LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
+            executorThreads.get(index).addNewTask(taskExecutor);
+            break;
+          } else {
+            Thread.sleep(500);
+          }
+        }
+      }
+
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
@@ -361,7 +392,9 @@ public final class Executor {
                   .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
                   .build())
               .build());
-      throw e;
+
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
@@ -397,7 +430,9 @@ public final class Executor {
 
   public void terminate() {
     try {
-      executorThreads.forEach(ExecutorThread::close);
+      for (final Pair<AtomicInteger, List<ExecutorThread>> pair : stageExecutorThreadMap.values()) {
+        pair.right().forEach(ExecutorThread::close);
+      }
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
