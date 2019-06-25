@@ -62,7 +62,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
                          @Parameter(JobConf.JobId.class) final String jobId,
                          final SerializerManager serializerManager) throws Exception {
     super(serializerManager);
-    this.conf = CrailConfiguration.createConfigurationFromFile();
+    this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
     this.fileDirectory = volumeDirectory;
   }
