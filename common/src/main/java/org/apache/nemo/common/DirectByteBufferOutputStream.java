@@ -150,7 +150,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     int start = 0;
 
     for (final ByteBuffer buffer : dataList) {
-      // We use duplicated buffer to read the data so that there is complicated
+      // We use duplicated buffer to read the data so that there is no complicated
       // alteration of position and limit when switching between read and write mode.
       final ByteBuffer dupBuffer = buffer.duplicate();
       dupBuffer.flip();
