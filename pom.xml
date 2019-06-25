@@ -64,7 +64,7 @@ under the License.
     <sqlite-jdbc.version>3.25.2</sqlite-jdbc.version>
     <postgresql.version>42.2.5</postgresql.version>
     <slf4j.version>1.7.20</slf4j.version>
-    <crail.version>1.2-incubating-SNAPSHOT</crail.version>
+    <crail.version>1.1-incubating</crail.version>
     <!-- Tests -->
     <mockito.version>2.13.0</mockito.version>
     <powermock.version>2.0.0-beta.5</powermock.version>
