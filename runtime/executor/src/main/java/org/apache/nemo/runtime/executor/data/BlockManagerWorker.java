@@ -359,7 +359,7 @@ public final class BlockManagerWorker {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeSerializedPartition(partition);
+                  os.writeSerializedPartitionBuffer(partition);
                 }
               }
             }

@@ -19,7 +19,8 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.ByteBufferInputStream;
+import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -112,8 +114,8 @@ public final class DataUtil {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-        DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream();
+        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers())
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
@@ -121,10 +123,10 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
+        final List<ByteBuffer> serializedBufList = bytesOutputStream.getDirectByteBufferList();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
-          new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
+          new SerializedPartition<>(partitionToConvert.getKey(), serializedBufList, actualLength));
       }
     }
     return serializedPartitions;
@@ -146,12 +148,12 @@ public final class DataUtil {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
+      try (InputStream inputStream = partitionToConvert.isOffheap()
+        ? new ByteBufferInputStream(partitionToConvert.getDirectBufferList())
+        : new ByteArrayInputStream(partitionToConvert.getData())) {
 
-
-      try (ByteArrayInputStream byteArrayInputStream =
-             new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-          partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
+          partitionToConvert.getLength(), serializer, key, inputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }

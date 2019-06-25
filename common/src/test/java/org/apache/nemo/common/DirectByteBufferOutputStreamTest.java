@@ -97,11 +97,11 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testGetBufferList() {
+  public void testGetDirectBufferList() {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     byte[] totalOutput = outputStream.toByteArray();
-    List<ByteBuffer> bufList = outputStream.getBufferListAndClear();
+    List<ByteBuffer> bufList = outputStream.getDirectByteBufferList();
     int offset = 0;
     int byteToRead;
     for (final ByteBuffer temp : bufList) {
