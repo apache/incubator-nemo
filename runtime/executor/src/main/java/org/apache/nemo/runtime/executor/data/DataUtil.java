@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
-import org.apache.nemo.common.DirectByteBufferInputStream;
+import org.apache.nemo.common.ByteBufferInputStream;
 import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -149,7 +149,7 @@ public final class DataUtil {
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
       try (InputStream inputStream = partitionToConvert.isOffheap()
-        ? new DirectByteBufferInputStream(partitionToConvert.getDirectBufferList())
+        ? new ByteBufferInputStream(partitionToConvert.getDirectBufferList())
         : new ByteArrayInputStream(partitionToConvert.getData())) {
 
         final NonSerializedPartition<K> deserializePartition = deserializePartition(

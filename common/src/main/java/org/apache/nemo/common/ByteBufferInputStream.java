@@ -29,7 +29,7 @@ import java.util.List;
  * list of {@link ByteBuffer}. If the {@link ByteBuffer} is direct, it may reside outside
  * the normal garbage-collected heap memory.
  */
-public class DirectByteBufferInputStream extends InputStream {
+public class ByteBufferInputStream extends InputStream {
   private List<ByteBuffer> bufList;
   private int current = 0;
   private static final int BITMASK = 0xff;
@@ -39,7 +39,7 @@ public class DirectByteBufferInputStream extends InputStream {
    *
    * @param bufList is the target data to read.
    */
-  public DirectByteBufferInputStream(final List<ByteBuffer> bufList) {
+  public ByteBufferInputStream(final List<ByteBuffer> bufList) {
    this.bufList = bufList;
   }
 
