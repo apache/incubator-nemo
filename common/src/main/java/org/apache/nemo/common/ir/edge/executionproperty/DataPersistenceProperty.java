@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 public final class DataPersistenceProperty extends EdgeExecutionProperty<DataPersistenceProperty.Value> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private DataPersistenceProperty(final Value value) {
@@ -34,6 +35,7 @@ public final class DataPersistenceProperty extends EdgeExecutionProperty<DataPer
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

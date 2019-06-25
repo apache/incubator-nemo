@@ -26,9 +26,9 @@ import java.util.List;
 
 public final class TestUtil {
   public static List<String> generateTaskIds(final Stage stage) {
-    final List<String> result = new ArrayList<>(stage.getParallelism());
+    final List<String> result = new ArrayList<>();
     final int first_attempt = 0;
-    for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+    for (final int taskIndex : stage.getTaskIndices()) {
       result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
     }
     return result;

@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 /**
  * This class represents a custom implementation of {@link ByteArrayOutputStream},
  * which enables to get bytes buffer directly (without memory copy).
+ * TODO #370: Substitute ByteArrayOutputStream with java.nio.ByteBuffer
  */
 public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
 
@@ -35,6 +36,7 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
 
   /**
    * Constructor specifying the size.
+   *
    * @param size the initial size.
    */
   public DirectByteArrayOutputStream(final int size) {
@@ -42,16 +44,12 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
   }
 
   /**
+   * Note that serializedBytes include invalid bytes.
+   * So we have to use it with the actualLength by using size() whenever needed.
+   *
    * @return the buffer where data is stored.
    */
   public byte[] getBufDirectly() {
     return buf;
-  }
-
-  /**
-   * @return the number of valid bytes in the buffer.
-   */
-  public int getCount() {
-    return count;
   }
 }

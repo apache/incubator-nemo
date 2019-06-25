@@ -18,19 +18,22 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.XGBoostPass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
 import org.apache.nemo.runtime.executor.data.stores.RemoteFileStore;
 import org.apache.nemo.runtime.master.ClientRPC;
+
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -85,7 +88,7 @@ public final class NemoDriver {
   private final String remoteOpt;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
-      new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
+    new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
@@ -117,6 +120,7 @@ public final class NemoDriver {
     this.remoteOpt = remoteOpt;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
@@ -126,7 +130,7 @@ public final class NemoDriver {
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
+      .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
   /**
@@ -165,7 +169,7 @@ public final class NemoDriver {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
-          getExecutorConfiguration(executorId));
+        getExecutorConfiguration(executorId));
     }
   }
 
@@ -179,7 +183,7 @@ public final class NemoDriver {
 
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
+          .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
       }
     }
   }
@@ -187,15 +191,32 @@ public final class NemoDriver {
   /**
    * Start to schedule a submitted user DAG.
    *
-   * @param dagString  the serialized DAG to schedule.
+   * @param dagString the serialized DAG to schedule.
    */
   private void startSchedulingUserDAG(final String dagString) {
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-          .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
+        .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
+      // flush metrics
+      runtimeMaster.flushMetrics();
     });
+  }
+
+  /**
+   * handler for notifications from the client.
+   *
+   * @param message message from the client.
+   */
+  private void handleNotification(final ControlMessage.ClientToDriverMessage message) {
+    switch (message.getMessage().getOptimizationType()) {
+      case XGBoost:
+        XGBoostPass.pushMessage(message.getMessage().getData());
+        break;
+      default:
+        break;
+    }
   }
 
   /**
@@ -215,7 +236,7 @@ public final class NemoDriver {
     @Override
     public void onNext(final FailedContext failedContext) {
       throw new RuntimeException(failedContext.getId() + " failed. See driver's log for the stack trace in executor.",
-          failedContext.asError());
+        failedContext.asError());
     }
   }
 
@@ -232,23 +253,23 @@ public final class NemoDriver {
 
   private Configuration getExecutorConfiguration(final String executorId) {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
-        .set(JobConf.EXECUTOR_ID, executorId)
-        .set(JobConf.GLUSTER_DISK_DIRECTORY, glusterDirectory)
-        .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
-        .set(JobConf.JOB_ID, jobId)
-        .build();
+      .set(JobConf.EXECUTOR_ID, executorId)
+      .set(JobConf.GLUSTER_DISK_DIRECTORY, glusterDirectory)
+      .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
+      .set(JobConf.JOB_ID, jobId)
+      .build();
 
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     if (remoteOpt.equals("crail")) jcb.bindImplementation(RemoteFileStore.class, CrailFileStore.class);
     final Configuration remoteConf = jcb.build();
 
     final Configuration contextConfiguration = ContextConfiguration.CONF
-        .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
-        .set(ContextConfiguration.ON_CONTEXT_STARTED, NemoContext.ContextStartHandler.class)
-        .set(ContextConfiguration.ON_CONTEXT_STOP, NemoContext.ContextStopHandler.class)
-        .build();
+      .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
+      .set(ContextConfiguration.ON_CONTEXT_STARTED, NemoContext.ContextStartHandler.class)
+      .set(ContextConfiguration.ON_CONTEXT_STOP, NemoContext.ContextStopHandler.class)
+      .build();
 
-    final Configuration ncsConfiguration =  getExecutorNcsConfiguration();
+    final Configuration ncsConfiguration = getExecutorNcsConfiguration();
     final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
 
     return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration, remoteConf);
@@ -256,15 +277,15 @@ public final class NemoDriver {
 
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
-        .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
+      .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
+      .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+      .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+      .build();
   }
 
   private Configuration getExecutorMessageConfiguration(final String executorId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, executorId)
-        .build();
+      .bindNamedParameter(MessageParameters.SenderId.class, executorId)
+      .build();
   }
 }

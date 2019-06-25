@@ -18,19 +18,22 @@
  */
 package org.apache.nemo.common.ir.vertex.executionproperty;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.io.Serializable;
 
 /**
  * Specifies cloned execution of a vertex.
- *
+ * <p>
  * A major limitations of the current implementation:
  * *ALL* of the clones are always scheduled immediately
  */
 public final class ClonedSchedulingProperty extends VertexExecutionProperty<ClonedSchedulingProperty.CloneConf> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private ClonedSchedulingProperty(final CloneConf value) {
@@ -39,6 +42,7 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
   /**
    * Static method exposing the constructor.
+   *
    * @param conf value of the new execution property.
    * @return the newly created execution property.
    */
@@ -72,7 +76,8 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
     /**
      * Clone stragglers judiciously.
-     * @param fractionToWaitFor before trying to clone.
+     *
+     * @param fractionToWaitFor    before trying to clone.
      * @param medianTimeMultiplier to identify stragglers.
      */
     public CloneConf(final double fractionToWaitFor, final double medianTimeMultiplier) {
@@ -118,6 +123,34 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
       sb.append(" / multiplier: ");
       sb.append(medianTimeMultiplier);
       return sb.toString();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      CloneConf cloneConf = (CloneConf) o;
+
+      return new EqualsBuilder()
+        .append(isUpFrontCloning(), cloneConf.isUpFrontCloning())
+        .append(getFractionToWaitFor(), cloneConf.getFractionToWaitFor())
+        .append(getMedianTimeMultiplier(), cloneConf.getMedianTimeMultiplier())
+        .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+      return new HashCodeBuilder(17, 37)
+        .append(isUpFrontCloning())
+        .append(getFractionToWaitFor())
+        .append(getMedianTimeMultiplier())
+        .toHashCode();
     }
   }
 }

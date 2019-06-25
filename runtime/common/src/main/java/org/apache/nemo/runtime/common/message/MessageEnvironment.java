@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.common.message;
 
-import org.apache.nemo.runtime.common.message.ncs.NcsMessageEnvironment;
+import org.apache.nemo.runtime.common.message.grpc.GrpcMessageEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
@@ -27,7 +27,7 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(NcsMessageEnvironment.class)
+@DefaultImplementation(GrpcMessageEnvironment.class)
 public interface MessageEnvironment {
 
   // The ID of the master used for distinguish the sender or receiver.
@@ -42,8 +42,8 @@ public interface MessageEnvironment {
    * Set up a {@link MessageListener} with a listener id.
    *
    * @param listenerId an identifier of the message listener
-   * @param listener a message listener
-   * @param <T> The type of the message to be sent in the environment
+   * @param listener   a message listener
+   * @param <T>        The type of the message to be sent in the environment
    */
   <T> void setupListener(String listenerId, MessageListener<T> listener);
 
@@ -60,13 +60,14 @@ public interface MessageEnvironment {
    *
    * @param receiverId a receiver id
    * @param listenerId an identifier of the message listener
-   * @param <T> The type of the message to be sent in the environment
+   * @param <T>        The type of the message to be sent in the environment
    * @return a message sender
    */
   <T> Future<MessageSender<T>> asyncConnect(String receiverId, String listenerId);
 
   /**
    * Close this message environment.
+   *
    * @throws Exception while closing
    */
   void close() throws Exception;

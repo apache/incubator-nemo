@@ -24,7 +24,9 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
@@ -122,7 +124,7 @@ public final class Task implements Serializable {
    * @return the execution property.
    */
   public <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 

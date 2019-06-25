@@ -35,6 +35,7 @@ final class GrpcMessageSender implements MessageSender<ControlMessage.Message> {
 
   /**
    * Constructor.
+   *
    * @param receiverId id of the receiver.
    * @param listenerId id of the listener.
    * @param grpcClient grpc message client.

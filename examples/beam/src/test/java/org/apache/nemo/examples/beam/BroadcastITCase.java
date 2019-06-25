@@ -43,15 +43,15 @@ public final class BroadcastITCase {
   private static final String outputFileName = "test_output_broadcast";
   private static final String expectedOutputFileName = "outputs/expected_output_broadcast";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(Broadcast.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
-        .addResourceJson(executorResourceFileName);
+      .addUserMain(Broadcast.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath)
+      .addResourceJson(executorResourceFileName);
   }
 
   @After
@@ -63,19 +63,19 @@ public final class BroadcastITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addJobId(BroadcastITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testTransientResource() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName() + "_transient")
-        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addJobId(BroadcastITCase.class.getSimpleName() + "_transient")
+      .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 }

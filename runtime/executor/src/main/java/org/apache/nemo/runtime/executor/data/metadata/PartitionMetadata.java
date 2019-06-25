@@ -22,6 +22,7 @@ import java.io.Serializable;
 
 /**
  * This class represents a metadata for a partition.
+ *
  * @param <K> the key type of its partitions.
  */
 public final class PartitionMetadata<K extends Serializable> {

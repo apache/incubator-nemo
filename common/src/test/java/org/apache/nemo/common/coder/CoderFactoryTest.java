@@ -55,8 +55,8 @@ public class CoderFactoryTest {
    * @return the decoded element.
    */
   private <T> T encodeAndDecodeElement(final EncoderFactory<T> encoderFactory,
-                                                     final DecoderFactory<T> decoderFactory,
-                                                     final T element) throws Exception {
+                                       final DecoderFactory<T> decoderFactory,
+                                       final T element) throws Exception {
     final byte[] encodedElement;
     try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final EncoderFactory.Encoder<T> encoder = encoderFactory.create(out);

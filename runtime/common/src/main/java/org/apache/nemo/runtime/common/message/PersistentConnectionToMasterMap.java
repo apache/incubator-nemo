@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.runtime.common.message;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.exception.NodeConnectionException;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -40,11 +40,11 @@ public final class PersistentConnectionToMasterMap {
     try {
       // Connect the globally known message listener IDs.
       messageSenders.put(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
-          messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
-              MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).get());
+        messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
+          MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).get());
       messageSenders.put(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
-          messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
-              MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
+        messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
+          MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
     } catch (InterruptedException | ExecutionException e) {
       Thread.currentThread().interrupt();
       throw new NodeConnectionException(e);
@@ -65,7 +65,7 @@ public final class PersistentConnectionToMasterMap {
       final MessageSender<ControlMessage.Message> createdMessageSender;
       try {
         createdMessageSender = messageEnvironment.<ControlMessage.Message>asyncConnect(
-            MessageEnvironment.MASTER_COMMUNICATION_ID, listenerId).get();
+          MessageEnvironment.MASTER_COMMUNICATION_ID, listenerId).get();
         messageSenders.put(listenerId, createdMessageSender);
       } catch (InterruptedException | ExecutionException e) {
         Thread.currentThread().interrupt();

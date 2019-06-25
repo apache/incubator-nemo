@@ -23,7 +23,8 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
-import org.apache.spark.*;
+import org.apache.spark.Partition;
+import org.apache.spark.TaskContext$;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConverters;
 
@@ -33,10 +34,12 @@ import java.util.*;
 
 /**
  * Bounded source vertex for Spark Dataset.
+ *
  * @param <T> type of data to read.
  */
 public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   private List<Readable<T>> readables;
+  private long estimatedByteSize;
 
   /**
    * Constructor.
@@ -45,17 +48,19 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    * @param dataset      Dataset to read data from.
    */
   public SparkDatasetBoundedSourceVertex(final SparkSession sparkSession, final Dataset<T> dataset) {
-    super();
     this.readables = new ArrayList<>();
     final RDD rdd = dataset.sparkRDD();
     final Partition[] partitions = rdd.getPartitions();
     for (int i = 0; i < partitions.length; i++) {
       readables.add(new SparkDatasetBoundedSourceReadable(
-          partitions[i],
-          sparkSession.getDatasetCommandsList(),
-          sparkSession.getInitialConf(),
-          i));
+        partitions[i],
+        sparkSession.getDatasetCommandsList(),
+        sparkSession.getInitialConf(),
+        i));
     }
+    this.estimatedByteSize = dataset.javaRDD()
+      .map(o -> (long) o.toString().getBytes("UTF-8").length)
+      .reduce((a, b) -> a + b);
   }
 
   /**
@@ -63,7 +68,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    *
    * @param that the source object for copying
    */
-  public SparkDatasetBoundedSourceVertex(final SparkDatasetBoundedSourceVertex<T> that) {
+  private SparkDatasetBoundedSourceVertex(final SparkDatasetBoundedSourceVertex<T> that) {
     super(that);
     this.readables = new ArrayList<>();
     that.readables.forEach(this.readables::add);
@@ -82,6 +87,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   @Override
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) {
     return readables;
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return this.estimatedByteSize;
   }
 
   @Override

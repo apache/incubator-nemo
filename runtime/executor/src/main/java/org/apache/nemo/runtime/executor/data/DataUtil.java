@@ -81,18 +81,18 @@ public final class DataUtil {
                                                                                      final Serializer serializer,
                                                                                      final K key,
                                                                                      final InputStream inputStream)
-      throws IOException {
+    throws IOException {
     final List deserializedData = new ArrayList();
     // We need to limit read bytes on this inputStream, which could be over-read by wrapped
     // compression stream. This depends on the nature of the compression algorithm used.
     // We recommend to wrap with LimitedInputStream once more when
     // reading input from chained compression InputStream.
-    try (final LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
+    try (LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
       final InputStreamIterator iterator =
-          new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
+        new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
       iterator.forEachRemaining(deserializedData::add);
       return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
-          iterator.getNumEncodedBytes());
+        iterator.getNumEncodedBytes());
     }
   }
 
@@ -107,22 +107,24 @@ public final class DataUtil {
    * @throws IOException if fail to convert.
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
-      final Serializer serializer,
-      final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
+    final Serializer serializer,
+    final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-          final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-          final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
+        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
+        // Note that serializedBytes include invalid bytes.
+        // So we have to use it with the actualLength by using size() whenever needed.
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
-        final int actualLength = bytesOutputStream.getCount();
+        final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
-            new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
+          new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
       }
     }
     return serializedPartitions;
@@ -139,17 +141,17 @@ public final class DataUtil {
    * @throws IOException if fail to convert.
    */
   public static <K extends Serializable> Iterable<NonSerializedPartition<K>> convertToNonSerPartitions(
-      final Serializer serializer,
-      final Iterable<SerializedPartition<K>> partitionsToConvert) throws IOException {
+    final Serializer serializer,
+    final Iterable<SerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
 
 
-      try (final ByteArrayInputStream byteArrayInputStream =
-               new ByteArrayInputStream(partitionToConvert.getData())) {
+      try (ByteArrayInputStream byteArrayInputStream =
+             new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-            partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
+          partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }
@@ -189,7 +191,7 @@ public final class DataUtil {
    * @throws IOException if fail to concatenate.
    */
   public static Iterable concatNonSerPartitions(final Iterable<NonSerializedPartition> partitionsToConcat)
-      throws IOException {
+    throws IOException {
     final List concatStreamBase = new ArrayList<>();
     Stream<Object> concatStream = concatStreamBase.stream();
     for (final NonSerializedPartition nonSerializedPartition : partitionsToConcat) {
@@ -244,7 +246,7 @@ public final class DataUtil {
             if (inputStreams.hasNext()) {
               serializedCountingStream = new CountingInputStream(inputStreams.next());
               encodedCountingStream = new CountingInputStream(buildInputStream(
-                  serializedCountingStream, serializer.getDecodeStreamChainers()));
+                serializedCountingStream, serializer.getDecodeStreamChainers()));
               decoder = serializer.getDecoderFactory().create(encodedCountingStream);
             } else {
               cannotContinueDecoding = true;
@@ -309,7 +311,7 @@ public final class DataUtil {
    */
   public static InputStream buildInputStream(final InputStream in,
                                              final List<DecodeStreamChainer> decodeStreamChainers)
-      throws IOException {
+    throws IOException {
     InputStream chained = in;
     for (final DecodeStreamChainer encodeStreamChainer : decodeStreamChainers) {
       chained = encodeStreamChainer.chainInput(chained);
@@ -327,7 +329,7 @@ public final class DataUtil {
    */
   public static OutputStream buildOutputStream(final OutputStream out,
                                                final List<EncodeStreamChainer> encodeStreamChainers)
-      throws IOException {
+    throws IOException {
     OutputStream chained = out;
     final List<EncodeStreamChainer> temporaryEncodeStreamChainerList = new ArrayList<>(encodeStreamChainers);
     Collections.reverse(temporaryEncodeStreamChainerList);

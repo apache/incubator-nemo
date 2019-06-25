@@ -19,17 +19,18 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.crail.*;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.FileArea;
+import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
+import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
-import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,13 +169,13 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-      throws BlockWriteException {
+    throws BlockWriteException {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
-            DataUtil.convertToSerPartitions(serializer, partitions);
+          DataUtil.convertToSerPartitions(serializer, partitions);
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -191,7 +192,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-      throws BlockWriteException {
+    throws BlockWriteException {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -236,9 +237,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         }
         for (final Pair<K, byte[]> partitionKeyBytes : partitionKeyBytesPairs) {
           final NonSerializedPartition<K> deserializePartition =
-              DataUtil.deserializePartition(
-                  partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
-                  new ByteArrayInputStream(partitionKeyBytes.right()));
+            DataUtil.deserializePartition(
+              partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
+              new ByteArrayInputStream(partitionKeyBytes.right()));
           deserializedPartitions.add(deserializePartition);
         }
       } catch (final IOException e1) {
@@ -382,7 +383,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final long partitionSize = partitionMetadata.getPartitionSize();
         if (partitionSizes.containsKey(key)) {
           partitionSizes.compute(key,
-              (existingKey, existingValue) -> existingValue + partitionSize);
+            (existingKey, existingValue) -> existingValue + partitionSize);
         } else {
           partitionSizes.put(key, partitionSize);
         }

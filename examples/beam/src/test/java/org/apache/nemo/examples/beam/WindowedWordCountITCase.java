@@ -23,7 +23,8 @@ import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
-import org.apache.nemo.examples.beam.policy.*;
+import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
+import org.apache.nemo.examples.beam.policy.StreamingPolicyParallelismFive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -46,20 +47,20 @@ public final class WindowedWordCountITCase {
   private static final String expectedOutputFileName = "outputs/expected_output_windowed_wordcount";
   private static final String expectedSlidingWindowOutputFileName = "outputs/expected_output_sliding_windowed_wordcount";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testBatchFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(outputFilePath, "fixed", INPUT_TYPE_BOUNDED, inputFilePath);
 
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchFixedWindow")
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchFixedWindow")
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
@@ -69,7 +70,7 @@ public final class WindowedWordCountITCase {
   }
 
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testBatchSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
@@ -88,7 +89,7 @@ public final class WindowedWordCountITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
@@ -109,7 +110,7 @@ public final class WindowedWordCountITCase {
   }
 
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")

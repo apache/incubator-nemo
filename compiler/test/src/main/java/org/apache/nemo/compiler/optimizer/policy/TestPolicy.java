@@ -18,15 +18,15 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * A policy for tests.
@@ -47,16 +47,16 @@ public final class TestPolicy implements Policy {
 
     compileTimePasses.add(new DefaultScheduleGroupPass());
 
-    this.policy = new PolicyImpl(compileTimePasses, new ArrayList<>());
+    this.policy = new PolicyImpl(compileTimePasses, new HashSet<>());
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
+  public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }

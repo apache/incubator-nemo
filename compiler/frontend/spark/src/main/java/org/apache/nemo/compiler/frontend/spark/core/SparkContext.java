@@ -57,9 +57,9 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   /**
    * Initiate a JavaRDD with the number of parallelism.
    *
-   * @param seq        input data as list.
-   * @param numSlices  number of slices (parallelism).
-   * @param evidence   type of the initial element.
+   * @param seq       input data as list.
+   * @param numSlices number of slices (parallelism).
+   * @param evidence  type of the initial element.
    * @return the newly initiated JavaRDD.
    */
   @Override

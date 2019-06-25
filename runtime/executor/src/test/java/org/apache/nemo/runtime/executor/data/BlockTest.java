@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
@@ -28,7 +29,6 @@ import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +45,8 @@ public final class BlockTest {
 
   /**
    * Generates the test data and serializer.
+   *
+   * @throws Exception exception on the way.
    */
   @Before
   public void setUp() throws Exception {
@@ -62,6 +64,8 @@ public final class BlockTest {
 
   /**
    * Test {@link NonSerializedMemoryBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testNonSerializedMemoryBlock() throws Exception {
@@ -71,6 +75,8 @@ public final class BlockTest {
 
   /**
    * Test {@link org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testSerializedMemoryBlock() throws Exception {
@@ -80,6 +86,8 @@ public final class BlockTest {
 
   /**
    * Test {@link FileBlock}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testFileBlock() throws Exception {
@@ -125,6 +133,7 @@ public final class BlockTest {
 
   /**
    * Compare the contents of a list and an iterable.
+   *
    * @param list     the list to test.
    * @param iterable the iterable to test.
    * @throws RuntimeException if the contents are not matched.

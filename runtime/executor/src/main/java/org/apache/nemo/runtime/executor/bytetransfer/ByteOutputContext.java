@@ -18,13 +18,15 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.channel.Channel;
+import io.netty.channel.DefaultFileRegion;
+import io.netty.channel.FileRegion;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.FileArea;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,10 +55,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   /**
    * Creates a output context.
    *
-   * @param remoteExecutorId    id of the remote executor
-   * @param contextId           identifier for this context
-   * @param contextDescriptor   user-provided context descriptor
-   * @param contextManager      {@link ContextManager} for the channel
+   * @param remoteExecutorId  id of the remote executor
+   * @param contextId         identifier for this context
+   * @param contextDescriptor user-provided context descriptor
+   * @param contextManager    {@link ContextManager} for the channel
    */
   ByteOutputContext(final String remoteExecutorId,
                     final ContextId contextId,
@@ -68,6 +70,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
   /**
    * Closes existing sub-stream (if any) and create a new sub-stream.
+   *
    * @return new {@link ByteOutputStream}
    * @throws IOException if an exception was set or this context was closed.
    */
@@ -149,6 +152,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     /**
      * Writes {@link SerializedPartition}.
+     *
      * @param serializedPartition {@link SerializedPartition} to write.
      * @return {@code this}
      * @throws IOException when an exception has been set or this stream was closed
@@ -194,6 +198,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     /**
      * Writes a data frame, from {@link ByteBuf}.
+     *
      * @param byteBuf {@link ByteBuf} to write.
      */
     private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
@@ -204,7 +209,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     /**
      * Write an element to the channel.
-     * @param element element
+     *
+     * @param element    element
      * @param serializer serializer
      */
     public void writeElement(final Object element,
@@ -226,8 +232,9 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     /**
      * Writes a data frame.
-     * @param body        the body or {@code null}
-     * @param length      the length of the body, in bytes
+     *
+     * @param body   the body or {@code null}
+     * @param length the length of the body, in bytes
      * @throws IOException when an exception has been set or this stream was closed
      */
     private void writeDataFrame(final Object body, final long length) throws IOException {

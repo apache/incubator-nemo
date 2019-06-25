@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler.frontend.beam.coder;
 
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +30,7 @@ import java.io.OutputStream;
 
 /**
  * {@link EncoderFactory} from {@link Coder}.
+ *
  * @param <T> the type of element to encode.
  */
 public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
@@ -53,6 +54,11 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     } else {
       return new BeamEncoder<>(outputStream, beamCoder);
     }
+  }
+
+  @Override
+  public String toString() {
+    return beamCoder.getClass().getName();
   }
 
   /**
@@ -109,10 +115,5 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     public void encode(final T2 element) throws IOException {
       outputStream.write(0); // emit 0 instead of null to enable to count emitted elements.
     }
-  }
-
-  @Override
-  public String toString() {
-    return beamCoder.toString();
   }
 }

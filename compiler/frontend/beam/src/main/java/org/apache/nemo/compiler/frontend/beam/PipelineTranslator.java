@@ -23,10 +23,22 @@ import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.runners.core.construction.ParDoTranslation;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.CannotProvideCoderException;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -35,20 +47,19 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
-import org.apache.beam.sdk.coders.*;
-import org.apache.beam.sdk.io.Read;
-import org.apache.beam.sdk.transforms.*;
-import org.apache.beam.sdk.transforms.windowing.Window;
-import org.apache.beam.sdk.transforms.windowing.WindowFn;
-import org.apache.beam.sdk.values.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -92,7 +103,7 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param context provides translation context.
+   * @param context   provides translation context.
    * @param primitive primitive node.
    */
   void translatePrimitive(final PipelineTranslationContext context,
@@ -117,7 +128,7 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param context context.
+   * @param context   context.
    * @param composite transform.
    * @return behavior controls whether or not child transforms are visited.
    */
@@ -174,8 +185,8 @@ final class PipelineTranslator {
   /////////////////////// PRIMITIVE TRANSFORMS
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Read.Unbounded.class)
@@ -189,8 +200,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Read.Bounded.class)
@@ -204,8 +215,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
@@ -225,8 +236,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
@@ -251,8 +262,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -266,8 +277,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
@@ -290,8 +301,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
@@ -306,8 +317,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Flatten.PCollections.class)
@@ -328,8 +339,8 @@ final class PipelineTranslator {
    * ({@link Combine.Globally} internally uses {@link Combine.PerKey} which will also be optimized by this translator)
    * Here, we translate this composite transform as a whole, exploiting its accumulator semantics.
    *
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    * @return behavior controls whether or not child transforms are visited.
    */
@@ -387,8 +398,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context
-   * @param beamNode the beam node to be translated
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    * @return behavior controls whether or not child transforms are visited.
    */
@@ -414,8 +425,8 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ctx provides translation context.
-   * @param beamNode the beam node to be translated.
+   * @param ctx          provides translation context.
+   * @param beamNode     the beam node to be translated.
    * @param sideInputMap side inputs.
    * @return the created DoFnTransform.
    */
@@ -431,6 +442,10 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
+      final HasDisplayData displayData = (builder) -> {
+        builder.add(DisplayData.item("name", beamNode.getFullName()));
+      };
+
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(
           doFn,
@@ -440,7 +455,7 @@ final class PipelineTranslator {
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(displayData));
       } else {
         return new PushBackDoFnTransform(
           doFn,
@@ -451,7 +466,7 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           sideInputMap,
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(displayData));
 
       }
     } catch (final IOException e) {
@@ -475,7 +490,8 @@ final class PipelineTranslator {
   /**
    * Create a group by key transform.
    * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
-   * @param ctx translation context
+   *
+   * @param ctx      translation context
    * @param beamNode the beam node to be translated
    * @return group by key transform
    */

@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 
@@ -28,6 +29,7 @@ import java.util.List;
 
 /**
  * Source vertex with the data in memory.
+ *
  * @param <T> type of data.
  */
 public final class InMemorySourceVertex<T> extends SourceVertex<T> {
@@ -39,7 +41,6 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    * @param initializedSourceData the initial data object.
    */
   public InMemorySourceVertex(final Iterable<T> initializedSourceData) {
-    super();
     this.initializedSourceData = initializedSourceData;
   }
 
@@ -48,7 +49,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    *
    * @param that the source object for copying
    */
-  public InMemorySourceVertex(final InMemorySourceVertex that) {
+  private InMemorySourceVertex(final InMemorySourceVertex that) {
     super(that);
     this.initializedSourceData = that.initializedSourceData;
   }
@@ -87,12 +88,20 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public long getEstimatedSizeBytes() {
+    final ArrayList<Long> list = new ArrayList<>();
+    initializedSourceData.spliterator().forEachRemaining(obj -> list.add(Util.getObjectSize(obj)));
+    return list.stream().reduce((a, b) -> a + b).orElse(0L);
+  }
+
+  @Override
   public void clearInternalStates() {
     initializedSourceData = null;
   }
 
   /**
    * Simply returns the in-memory data.
+   *
    * @param <T> type of the data.
    */
   private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
@@ -101,6 +110,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
 
     /**
      * Constructor.
+     *
      * @param initializedSourceData the source data.
      */
     private InMemorySourceReadable(final Iterable<T> initializedSourceData) {

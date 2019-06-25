@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This collector receives data from DataFetcher and forwards it to the next operator.
+ *
  * @param <O> output type.
  */
 public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
@@ -36,9 +37,10 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   /**
    * It forwards output to the next operator.
+   *
    * @param nextOperatorVertex next operator to emit data and watermark
-   * @param edgeIndex edge index
-   * @param watermarkManager watermark manager
+   * @param edgeIndex          edge index
+   * @param watermarkManager   watermark manager
    */
   public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex,
                                     final int edgeIndex,

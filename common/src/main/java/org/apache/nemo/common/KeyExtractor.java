@@ -31,5 +31,5 @@ public interface KeyExtractor extends Serializable {
    * @param element Element to get the key from.
    * @return The extracted key of the element.
    */
-  Object extractKey(final Object element);
+  Object extractKey(Object element);
 }

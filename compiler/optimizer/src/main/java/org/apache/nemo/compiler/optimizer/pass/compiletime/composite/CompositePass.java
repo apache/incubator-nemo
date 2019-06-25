@@ -18,14 +18,15 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A compile-time pass composed of multiple compile-time passes, which each modifies an IR DAG.
@@ -36,6 +37,7 @@ public abstract class CompositePass extends CompileTimePass {
 
   /**
    * Constructor.
+   *
    * @param passList list of compile time passes.
    */
   public CompositePass(final List<CompileTimePass> passList) {
@@ -51,6 +53,7 @@ public abstract class CompositePass extends CompileTimePass {
 
   /**
    * Getter for list of compile time passes.
+   *
    * @return the list of CompileTimePass.
    */
   public final List<CompileTimePass> getPassList() {
@@ -58,18 +61,18 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irVertexIREdgeDAG) {
+  public final IRDAG apply(final IRDAG irVertexIREdgeDAG) {
     return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
   }
 
   /**
    * Recursively apply the give list of passes.
-   * @param dag dag.
+   *
+   * @param dag          dag.
    * @param passIterator pass iterator.
    * @return dag.
    */
-  private DAG<IRVertex, IREdge> recursivelyApply(final DAG<IRVertex, IREdge> dag,
-                                                 final Iterator<CompileTimePass> passIterator) {
+  private IRDAG recursivelyApply(final IRDAG dag, final Iterator<CompileTimePass> passIterator) {
     if (passIterator.hasNext()) {
       return recursivelyApply(passIterator.next().apply(dag), passIterator);
     } else {

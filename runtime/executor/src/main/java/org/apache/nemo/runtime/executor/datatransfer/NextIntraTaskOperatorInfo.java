@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
  * -- edgeIndex: the index of edge to next operator.
  * -- nextOperator: next operator vertex
  * -- watermarkManager: next operator's watermark manager
- *
+ * <p>
  * ex)
  * --edge (index 0)--&gt;
  * --edge (index 1)--&gt;  watermarkManager --&gt; nextOperator

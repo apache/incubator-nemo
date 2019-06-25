@@ -44,6 +44,7 @@ public final class JavaWordAndLineCount {
 
   /**
    * Main method.
+   *
    * @param args arguments.
    * @throws Exception exceptions.
    */
@@ -55,9 +56,9 @@ public final class JavaWordAndLineCount {
     }
 
     SparkSession spark = SparkSession
-        .builder()
-        .appName("JavaWordAndLineCount")
-        .getOrCreate();
+      .builder()
+      .appName("JavaWordAndLineCount")
+      .getOrCreate();
 
     JavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
 

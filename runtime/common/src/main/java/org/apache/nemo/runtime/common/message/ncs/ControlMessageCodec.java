@@ -26,7 +26,7 @@ import org.apache.reef.io.serialization.Codec;
  * Codec for ControlMessage.
  */
 final class ControlMessageCodec implements Codec<ControlMessage.Message>,
-    org.apache.reef.wake.remote.Codec<ControlMessage.Message> {
+  org.apache.reef.wake.remote.Codec<ControlMessage.Message> {
 
   ControlMessageCodec() {
   }

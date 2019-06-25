@@ -32,9 +32,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Test {@link ExecutionPropertyMap}.
@@ -57,7 +55,6 @@ public class ExecutionPropertyMapTest {
   @Test
   public void testDefaultValues() {
     assertEquals(comPattern, edgeMap.get(CommunicationPatternProperty.class).get());
-    assertEquals(1, vertexMap.get(ParallelismProperty.class).get().longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());
   }

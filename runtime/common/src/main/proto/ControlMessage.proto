@@ -23,14 +23,17 @@ package protobuf;
 option java_package = "org.apache.nemo.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
+// Messages from client to driver
 enum ClientToDriverMessageType {
     LaunchDAG = 0;
     DriverShutdown = 1;
+    Notification = 2;
 }
 
 message ClientToDriverMessage {
     required ClientToDriverMessageType type = 1;
     optional LaunchDAGMessage launchDAG = 2;
+    optional NotificationMessage message = 3;
 }
 
 message LaunchDAGMessage {
@@ -38,27 +41,39 @@ message LaunchDAGMessage {
     optional bytes broadcastVars = 2;
 }
 
-message DataCollectMessage {
-    required string data = 1;
+enum OptimizationType {
+    XGBoost = 0;
 }
 
+message NotificationMessage {
+    required OptimizationType optimizationType = 1;
+    required string data = 2;
+}
+
+// Messages from driver to client
 enum DriverToClientMessageType {
     DriverStarted = 0;
     DriverReady = 1;
     DataCollected = 2;
     ExecutionDone = 3;
+    LaunchOptimization = 4;
 }
 
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
+    optional OptimizationType optimizationType = 3;
+}
+
+message DataCollectMessage {
+    required string data = 1;
 }
 
 enum MessageType {
     TaskStateChanged = 0;
     ScheduleTask = 1;
     BlockStateChanged = 2;
-    DataSizeMetric = 3;
+    RunTimePassMessage = 3;
     RequestBlockLocation = 4;
     BlockLocationInfo = 5;
     ExecutorFailed = 6;
@@ -80,7 +95,7 @@ message Message {
     optional TaskStateChangedMsg taskStateChangedMsg = 4;
     optional ScheduleTaskMsg scheduleTaskMsg = 5;
     optional BlockStateChangedMsg blockStateChangedMsg = 6;
-    optional DataSizeMetricMsg dataSizeMetricMsg = 7;
+    optional RunTimePassMessageMsg runTimePassMessageMsg = 7;
     optional RequestBlockLocationMsg requestBlockLocationMsg = 8;
     optional BlockLocationInfoMsg blockLocationInfoMsg = 9;
     optional ExecutorFailedMsg executorFailedMsg = 10;
@@ -129,13 +144,14 @@ message BlockStateChangedMsg {
     required string location = 4; // The location of the block (e.g., executor id or remote store).
 }
 
-message DataSizeMetricMsg {
-    repeated PartitionSizeEntry partitionSize = 1;
+message RunTimePassMessageMsg {
+    required string taskId = 1;
+    repeated RunTimePassMessageEntry entry = 2;
 }
 
-message PartitionSizeEntry {
+message RunTimePassMessageEntry {
     required string key = 1;
-    required int64 size = 2;
+    required int64 value = 2;
 }
 
 message RequestBlockLocationMsg {
@@ -157,7 +173,6 @@ message MetricMsg {
 }
 
 // Messages between Executors
-
 enum ByteTransferDataDirection {
     INITIATOR_SENDS_DATA = 0;
     INITIATOR_RECEIVES_DATA = 1;

@@ -33,11 +33,12 @@ public interface NettyChannelImplementationSelector {
 
   /**
    * Creates a new {@link EventLoopGroup}.
+   *
    * @param numThreads    the number of threads
    * @param threadFactory the {@link ThreadFactory}
    * @return a new {@link EventLoopGroup}
    */
-  EventLoopGroup newEventLoopGroup(int numThreads, final ThreadFactory threadFactory);
+  EventLoopGroup newEventLoopGroup(int numThreads, ThreadFactory threadFactory);
 
   /**
    * @return class for server channel

@@ -63,7 +63,7 @@ public final class MemoryStore extends LocalBlockStore {
   public void writeBlock(final Block block) throws BlockWriteException {
     if (!(block instanceof NonSerializedMemoryBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + "only accept " + NonSerializedPartition.class.getName()));
+        this.toString() + "only accept " + NonSerializedPartition.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     } else {

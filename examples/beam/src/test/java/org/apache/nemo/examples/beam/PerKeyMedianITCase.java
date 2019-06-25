@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.compiler.optimizer.policy.SamplingLargeShuffleSkewPolicy;
 import org.apache.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -42,15 +43,15 @@ public final class PerKeyMedianITCase {
   private static final String outputFileName = "test_output_median";
   private static final String expectedOutputFileName = "outputs/expected_output_median";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addResourceJson(executorResourceFileName)
-        .addUserMain(PerKeyMedian.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
+      .addResourceJson(executorResourceFileName)
+      .addUserMain(PerKeyMedian.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -64,13 +65,27 @@ public final class PerKeyMedianITCase {
 
   /**
    * Testing data skew dynamic optimization.
+   *
    * @throws Exception exception on the way.
    */
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
-        .addJobId(PerKeyMedianITCase.class.getSimpleName())
-        .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addJobId(PerKeyMedianITCase.class.getSimpleName())
+      .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  /**
+   * Testing large shuffle and data skew dynamic optimization.
+   *
+   * @throws Exception exception on the way.
+   */
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  public void testLargeShuffleSamplingSkew() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(PerKeyMedianITCase.class.getSimpleName() + "_LargeShuffleSamplingSkew")
+      .addOptimizationPolicy(SamplingLargeShuffleSkewPolicy.class.getCanonicalName())
+      .build());
   }
 }

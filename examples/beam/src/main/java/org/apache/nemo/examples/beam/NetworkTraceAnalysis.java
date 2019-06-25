@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.Filter;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
@@ -52,14 +52,14 @@ public final class NetworkTraceAnalysis {
 
   /**
    * Main function for the Beam program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
     final String input0FilePath = args[0];
     final String input1FilePath = args[1];
     final String outputFilePath = args[2];
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("NetworkTraceAnalysis");
 
     // Given "4 0.0 192.168.3.1 -> 192.168.0.2 Len=29", this finds "192.168.3.1", "192.168.0.2" and "29"
@@ -72,7 +72,7 @@ public final class NetworkTraceAnalysis {
       }
     };
     final SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Long>> mapToStdev
-        = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Long>>() {
+      = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Long>>() {
       @Override
       public KV<String, Long> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
         return KV.of(kv.getKey(), stdev(kv.getValue()));
@@ -81,44 +81,44 @@ public final class NetworkTraceAnalysis {
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<KV<String, Long>> in0 = GenericSourceSink.read(p, input0FilePath)
-        .apply(Filter.by(filter))
-        .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
-          @Override
-          public KV<String, KV<String, Long>> apply(final String line) {
-            final Matcher matcher = pattern.matcher(line);
-            matcher.find();
-            return KV.of(matcher.group(2), KV.of(matcher.group(1), Long.valueOf(matcher.group(3))));
-          }
-        }))
-        .apply(GroupByKey.create())
-        .apply(MapElements.via(mapToStdev));
+      .apply(Filter.by(filter))
+      .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
+        @Override
+        public KV<String, KV<String, Long>> apply(final String line) {
+          final Matcher matcher = pattern.matcher(line);
+          matcher.find();
+          return KV.of(matcher.group(2), KV.of(matcher.group(1), Long.valueOf(matcher.group(3))));
+        }
+      }))
+      .apply(GroupByKey.create())
+      .apply(MapElements.via(mapToStdev));
     final PCollection<KV<String, Long>> in1 = GenericSourceSink.read(p, input1FilePath)
-        .apply(Filter.by(filter))
-        .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
-          @Override
-          public KV<String, KV<String, Long>> apply(final String line) {
-            final Matcher matcher = pattern.matcher(line);
-            matcher.find();
-            return KV.of(matcher.group(1), KV.of(matcher.group(2), Long.valueOf(matcher.group(3))));
-          }
-        }))
-        .apply(GroupByKey.create())
-        .apply(MapElements.via(mapToStdev));
+      .apply(Filter.by(filter))
+      .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
+        @Override
+        public KV<String, KV<String, Long>> apply(final String line) {
+          final Matcher matcher = pattern.matcher(line);
+          matcher.find();
+          return KV.of(matcher.group(1), KV.of(matcher.group(2), Long.valueOf(matcher.group(3))));
+        }
+      }))
+      .apply(GroupByKey.create())
+      .apply(MapElements.via(mapToStdev));
     final TupleTag<Long> tag0 = new TupleTag<>();
     final TupleTag<Long> tag1 = new TupleTag<>();
     final PCollection<KV<String, CoGbkResult>> joined =
-        KeyedPCollectionTuple.of(tag0, in0).and(tag1, in1).apply(CoGroupByKey.create());
+      KeyedPCollectionTuple.of(tag0, in0).and(tag1, in1).apply(CoGroupByKey.create());
     final PCollection<String> result = joined
-        .apply(MapElements.via(new SimpleFunction<KV<String, CoGbkResult>, String>() {
-          @Override
-          public String apply(final KV<String, CoGbkResult> kv) {
-            final long source = getLong(kv.getValue().getAll(tag0));
-            final long destination = getLong(kv.getValue().getAll(tag1));
-            final String intermediate = kv.getKey();
-            return new StringBuilder(intermediate).append(",").append(source).append(",")
-                .append(destination).toString();
-          }
-        }));
+      .apply(MapElements.via(new SimpleFunction<KV<String, CoGbkResult>, String>() {
+        @Override
+        public String apply(final KV<String, CoGbkResult> kv) {
+          final long source = getLong(kv.getValue().getAll(tag0));
+          final long destination = getLong(kv.getValue().getAll(tag1));
+          final String intermediate = kv.getKey();
+          return new StringBuilder(intermediate).append(",").append(source).append(",")
+            .append(destination).toString();
+        }
+      }));
     GenericSourceSink.write(result, outputFilePath);
     p.run();
   }

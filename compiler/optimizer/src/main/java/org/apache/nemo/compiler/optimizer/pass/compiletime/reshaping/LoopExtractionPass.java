@@ -18,17 +18,22 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.OptionalInt;
 
 /**
  * Pass for extracting and  grouping each loops together using the LoopVertex.
@@ -46,21 +51,25 @@ public final class LoopExtractionPass extends ReshapingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
-    return groupLoops(dag, maxStackDepth);
+  public IRDAG apply(final IRDAG inputDAG) {
+    inputDAG.reshapeUnsafely(dag -> {
+      final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
+      return groupLoops(dag, maxStackDepth);
+    });
+    return inputDAG;
   }
 
   /**
    * This method finds the maximum loop vertex stack depth of a specific DAG. This is to handle nested loops.
+   *
    * @param dag DAG to observe.
    * @return The maximum stack depth of the DAG.
    * @throws Exception exceptions through the way.
    */
   private Integer findMaxLoopVertexStackDepth(final DAG<IRVertex, IREdge> dag) {
     final OptionalInt maxDepth = dag.getVertices().stream().filter(dag::isCompositeVertex)
-        .mapToInt(dag::getLoopStackDepthOf)
-        .max();
+      .mapToInt(dag::getLoopStackDepthOf)
+      .max();
     return maxDepth.orElse(0);
   }
 
@@ -68,7 +77,8 @@ public final class LoopExtractionPass extends ReshapingPass {
    * This part groups each iteration of loops together by observing the LoopVertex assigned to primitive operators,
    * which is assigned by the NemoPipelineVisitor. This also shows in which depth of
    * nested loops the function handles. It recursively calls itself from the maximum depth until 0.
-   * @param dag DAG to process
+   *
+   * @param dag   DAG to process
    * @param depth the depth of the stack to process. Must be greater than 0.
    * @return processed DAG.
    * @throws Exception exceptions through the way.
@@ -135,9 +145,10 @@ public final class LoopExtractionPass extends ReshapingPass {
 
   /**
    * Method for connecting an element to a loop. That is, loop -> loop OR operator -> loop.
-   * @param dag to observe the inEdges from.
-   * @param builder to add the new edge to.
-   * @param dstVertex the destination vertex that belongs to a certain loop.
+   *
+   * @param dag                to observe the inEdges from.
+   * @param builder            to add the new edge to.
+   * @param dstVertex          the destination vertex that belongs to a certain loop.
    * @param assignedLoopVertex the loop that dstVertex belongs to.
    */
   private static void connectElementToLoop(final DAG<IRVertex, IREdge> dag, final DAGBuilder<IRVertex, IREdge> builder,
@@ -152,7 +163,7 @@ public final class LoopExtractionPass extends ReshapingPass {
         } else { // loop -> loop connection
           assignedLoopVertex.addDagIncomingEdge(irEdge);
           final IREdge edgeToLoop = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-              srcLoopVertex, assignedLoopVertex);
+            srcLoopVertex, assignedLoopVertex);
           irEdge.copyExecutionPropertiesTo(edgeToLoop);
           builder.connectVertices(edgeToLoop);
           assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
@@ -160,7 +171,7 @@ public final class LoopExtractionPass extends ReshapingPass {
       } else { // operator -> loop
         assignedLoopVertex.addDagIncomingEdge(irEdge);
         final IREdge edgeToLoop = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            irEdge.getSrc(), assignedLoopVertex);
+          irEdge.getSrc(), assignedLoopVertex);
         irEdge.copyExecutionPropertiesTo(edgeToLoop);
         builder.connectVertices(edgeToLoop);
         assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
@@ -171,14 +182,18 @@ public final class LoopExtractionPass extends ReshapingPass {
   /**
    * This part rolls the repetitive LoopVertices into a single one, leaving only the root LoopVertex.
    * Following iterations can be generated with the information included in the LoopVertex.
+   *
    * @param dag DAG to process.
    * @return Processed DAG.
    * @throws Exception exceptions through the way.
    */
   private DAG<IRVertex, IREdge> loopRolling(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    // Map for LoopVertex --> RootLoopVertex
     final HashMap<LoopVertex, LoopVertex> loopVerticesOfSameLoop = new HashMap<>();
+    // RootLoopVertex --> Map of (RolledVertex --> (Root)Vertex)
     final HashMap<LoopVertex, HashMap<IRVertex, IRVertex>> equivalentVerticesOfLoops = new HashMap<>();
+    // The RootLoopVertex that we're processing now.
     LoopVertex rootLoopVertex = null;
 
     // observe the DAG in a topological order.
@@ -196,8 +211,10 @@ public final class LoopExtractionPass extends ReshapingPass {
           rootLoopVertex = loopVertex;
           loopVerticesOfSameLoop.putIfAbsent(rootLoopVertex, rootLoopVertex);
           equivalentVerticesOfLoops.putIfAbsent(rootLoopVertex, new HashMap<>());
+          // Add the initial vertices
           for (IRVertex vertex : rootLoopVertex.getDAG().getTopologicalSort()) {
             equivalentVerticesOfLoops.get(rootLoopVertex).putIfAbsent(vertex, vertex);
+            IdManager.saveVertexId(vertex, vertex.getId());
           }
           addVertexToBuilder(builder, dag, rootLoopVertex, loopVerticesOfSameLoop);
         } else { // following loops
@@ -209,11 +226,15 @@ public final class LoopExtractionPass extends ReshapingPass {
 
           // Zip current vertices together. We rely on the fact that getTopologicalSort() brings consistent results.
           final Iterator<IRVertex> verticesOfRootLoopVertex =
-              finalRootLoopVertex.getDAG().getTopologicalSort().iterator();
+            finalRootLoopVertex.getDAG().getTopologicalSort().iterator();
           final Iterator<IRVertex> verticesOfCurrentLoopVertex = loopVertex.getDAG().getTopologicalSort().iterator();
+          // Map of (RolledVertex --> (Root)Vertex)
           final HashMap<IRVertex, IRVertex> equivalentVertices = equivalentVerticesOfLoops.get(finalRootLoopVertex);
           while (verticesOfRootLoopVertex.hasNext() && verticesOfCurrentLoopVertex.hasNext()) {
-            equivalentVertices.put(verticesOfCurrentLoopVertex.next(), verticesOfRootLoopVertex.next());
+            final IRVertex vertexOfCurrentLoopVertex = verticesOfCurrentLoopVertex.next();
+            final IRVertex vertexOfRootLoopVertex = verticesOfRootLoopVertex.next();
+            equivalentVertices.put(vertexOfCurrentLoopVertex, vertexOfRootLoopVertex);
+            IdManager.saveVertexId(vertexOfRootLoopVertex, vertexOfCurrentLoopVertex.getId());
           }
 
           // reset non iterative incoming edges.
@@ -223,7 +244,7 @@ public final class LoopExtractionPass extends ReshapingPass {
           // incoming edges to the DAG.
           loopVertex.getDagIncomingEdges().forEach((dstVertex, edges) -> edges.forEach(edge -> {
             final IRVertex srcVertex = edge.getSrc();
-            final IRVertex equivalentDstVertex = equivalentVertices.get(dstVertex);
+            final IRVertex equivalentDstVertex = equivalentVertices.get(dstVertex);  // find the (Root)Vertex
 
             if (equivalentVertices.containsKey(srcVertex)) {
               // src is from the previous loop. vertex in previous loop -> DAG.
@@ -231,13 +252,13 @@ public final class LoopExtractionPass extends ReshapingPass {
 
               // add the new IREdge to the iterative incoming edges list.
               final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  equivalentSrcVertex, equivalentDstVertex);
+                equivalentSrcVertex, equivalentDstVertex);
               edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addIterativeIncomingEdge(newIrEdge);
             } else {
               // src is from outside the previous loop. vertex outside previous loop -> DAG.
               final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  srcVertex, equivalentDstVertex);
+                srcVertex, equivalentDstVertex);
               edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addNonIterativeIncomingEdge(newIrEdge);
             }
@@ -250,7 +271,7 @@ public final class LoopExtractionPass extends ReshapingPass {
             final IRVertex equivalentSrcVertex = equivalentVertices.get(srcVertex);
 
             final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                equivalentSrcVertex, dstVertex);
+              equivalentSrcVertex, dstVertex);
             edge.copyExecutionPropertiesTo(newIrEdge);
             finalRootLoopVertex.addDagOutgoingEdge(newIrEdge);
             finalRootLoopVertex.mapEdgeWithLoop(loopVertex.getEdgeWithLoop(edge), newIrEdge);
@@ -267,9 +288,10 @@ public final class LoopExtractionPass extends ReshapingPass {
 
   /**
    * Adds the vertex and the incoming edges of the vertex to the builder.
-   * @param builder Builder that it adds to.
-   * @param irVertex Vertex to add.
-   * @param dag DAG to observe the incoming edges of the vertex.
+   *
+   * @param builder                Builder that it adds to.
+   * @param irVertex               Vertex to add.
+   * @param dag                    DAG to observe the incoming edges of the vertex.
    * @param loopVerticesOfSameLoop List that keeps track of the iterations of the identical loop.
    */
   private static void addVertexToBuilder(final DAGBuilder<IRVertex, IREdge> builder, final DAG<IRVertex, IREdge> dag,
@@ -295,7 +317,7 @@ public final class LoopExtractionPass extends ReshapingPass {
         builder.connectVertices(edge);
       } else {
         final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            firstEquivalentVertex, irVertex);
+          firstEquivalentVertex, irVertex);
         edge.copyExecutionPropertiesTo(newIrEdge);
         builder.connectVertices(newIrEdge);
       }

@@ -41,8 +41,9 @@ public final class DriverEndpoint {
   /**
    * Construct an endpoint in driver side.
    * This method will be called by {@link ClientEndpoint}.
+   *
    * @param planStateManager of running plan.
-   * @param clientEndpoint of running plan.
+   * @param clientEndpoint   of running plan.
    */
   public DriverEndpoint(final PlanStateManager planStateManager,
                         final ClientEndpoint clientEndpoint) {
@@ -54,6 +55,7 @@ public final class DriverEndpoint {
   /**
    * Get the current state of the running plan.
    * This method will be called by {@link ClientEndpoint}.
+   *
    * @return the current state of the running plan.
    */
   PlanState.State getState() {
@@ -64,8 +66,9 @@ public final class DriverEndpoint {
    * Wait for this plan to be finished and return the final state.
    * It wait for at most the given time.
    * This method will be called by {@link ClientEndpoint}.
+   *
    * @param timeout of waiting.
-   * @param unit of the timeout.
+   * @param unit    of the timeout.
    * @return the final state of this plan.
    */
   PlanState.State waitUntilFinish(final long timeout,
@@ -76,6 +79,7 @@ public final class DriverEndpoint {
   /**
    * Wait for this plan to be finished and return the final state.
    * This method will be called by {@link ClientEndpoint}.
+   *
    * @return the final state of this plan.
    */
   PlanState.State waitUntilFinish() {

@@ -32,6 +32,7 @@ public interface NemoSparkUserFacingClass {
 
   /**
    * Set the userTriggered flag.
+   *
    * @param bool boolean to set the flag to.
    */
   default void setIsUserTriggered(boolean bool) {
@@ -45,6 +46,7 @@ public interface NemoSparkUserFacingClass {
 
   /**
    * A method to distinguish user-called functions from internal calls.
+   *
    * @param args arguments of the method
    * @return whether or not this function has been called by the user.
    */

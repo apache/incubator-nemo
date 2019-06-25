@@ -28,6 +28,7 @@ import java.io.OutputStream;
 
 /**
  * Spark EncoderFactory for serialization.
+ *
  * @param <T> type of the object to serialize.
  */
 public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
@@ -47,8 +48,16 @@ public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
     return new SparkEncoder<>(outputStream, serializer.newInstance());
   }
 
+  @Override
+  public String toString() {
+    return "SparkEncoderFactory{"
+      + "serializer=" + serializer
+      + '}';
+  }
+
   /**
    * SparkEncoder.
+   *
    * @param <T2> type of the object to serialize.
    */
   private final class SparkEncoder<T2> implements Encoder<T2> {

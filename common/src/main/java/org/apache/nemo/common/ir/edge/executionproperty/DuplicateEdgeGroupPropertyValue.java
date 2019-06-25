@@ -28,8 +28,10 @@ import java.io.Serializable;
  */
 public final class DuplicateEdgeGroupPropertyValue implements Serializable {
   private static final int GROUP_SIZE_UNDECIDED = -1;
+
+  private final String groupId;
+
   private boolean isRepresentativeEdgeDecided;
-  private String groupId;
   private String representativeEdgeId;
   private int groupSize;
 

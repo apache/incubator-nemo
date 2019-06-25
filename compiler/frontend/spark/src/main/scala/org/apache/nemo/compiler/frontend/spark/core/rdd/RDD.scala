@@ -35,6 +35,7 @@ import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import org.apache.nemo.compiler.frontend.spark.transform._
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
+import org.apache.nemo.common.ir.IRDAG
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}
 import org.apache.spark.partial.{BoundedDouble, PartialResult}
 import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, PartitionCoalescer, SequenceFileRDDFunctions}
@@ -230,7 +231,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
-    JobLauncher.launchDAG(builder.build, SparkBroadcastVariables.getAll, "")
+    JobLauncher.launchDAG(new IRDAG(builder.build), SparkBroadcastVariables.getAll, "")
   }
 
   /////////////// CACHING ///////////////
