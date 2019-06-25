@@ -110,28 +110,28 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * Creates a new block metadata.
    *
    * @param metaFilePath the path of the file to write metadata.
-   * @param fs           the CrailStore instance.
+   * @param cs           the CrailStore instance.
    * @param <T>          the key type of the block's partitions.
    * @return the created block metadata.
    */
-  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath, final CrailStore fs) {
-    return new CrailFileMetadata<>(metaFilePath, fs);
+  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath, final CrailStore cs) {
+    return new CrailFileMetadata<>(metaFilePath, cs);
   }
 
   /**
    * Opens a existing block metadata in file.
    *
    * @param metaFilePath the path of the file to write metadata.
-   * @param fs           the CrailStore instance
+   * @param cs           the CrailStore instance
    * @param <T>          the key type of the block's partitions.
    * @return the created block metadata.
    * @throws IOException if fail to open.
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath,
-                                                                   final CrailStore fs) throws IOException {
+                                                                   final CrailStore cs) throws IOException {
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try {
-      CrailBufferedInputStream dataInputStream = fs.lookup(metaFilePath).get().asFile().getBufferedInputStream(0);
+      CrailBufferedInputStream dataInputStream = cs.lookup(metaFilePath).get().asFile().getBufferedInputStream(0);
       while (dataInputStream.available() > 0) {
         final int keyLength = dataInputStream.readInt();
         final byte[] desKey = new byte[keyLength];
@@ -149,6 +149,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     } catch (Exception e) {
       throw new IOException("Metadata " + metaFilePath + " does not exist!");
     }
-    return new CrailFileMetadata<>(metaFilePath, partitionMetadataList, fs);
+    return new CrailFileMetadata<>(metaFilePath, partitionMetadataList, cs);
   }
 }

@@ -420,11 +420,15 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @return the ID of this block.
    */
   @Override
-  public String getId() { return id; }
+  public String getId() {
+    return id;
+  }
 
   /**
    * @return whether this block is committed or not.
    */
   @Override
-  public boolean isCommitted() { return metadata.isCommitted(); }
+  public boolean isCommitted() {
+    return metadata.isCommitted();
+  }
 }
