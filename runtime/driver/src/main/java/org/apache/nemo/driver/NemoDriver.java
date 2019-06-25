@@ -30,7 +30,6 @@ import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
 import org.apache.nemo.runtime.executor.data.stores.RemoteFileStore;
-import org.apache.nemo.runtime.master.ClientRPC;
 
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
