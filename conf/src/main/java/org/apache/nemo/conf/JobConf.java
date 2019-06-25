@@ -90,7 +90,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "Option for RemoteFileStore", short_name = "remote_option", default_value = "Gluster")
   public final class RemoteFileStoreOpt implements Name<String> {
   }
-  
+
   /**
    * Specifies the type of the environment the workload runs on. (e.g., transient / large_shuffle)
    */
