@@ -268,7 +268,8 @@ public final class BlockManagerWorker {
         .setBlockId(blockId)
         .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
-    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+        || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       blockStateChangedMsgBuilder.setLocation(executorId);
@@ -302,7 +303,8 @@ public final class BlockManagerWorker {
           .setBlockId(blockId)
           .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
-      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+          || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         blockStateChangedMsgBuilder.setLocation(executorId);
@@ -345,7 +347,8 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-              || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+                || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -420,7 +423,6 @@ public final class BlockManagerWorker {
             numSerializedBytes += partition.getNumSerializedBytes();
             numEncodedBytes += partition.getNumEncodedBytes();
           }
-
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
             numEncodedBytes));
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
@@ -476,6 +478,8 @@ public final class BlockManagerWorker {
       case LocalFileStore:
         return localFileStore;
       case GlusterFileStore:
+        return localFileStore;
+      case CrailFileStore:
         return remoteFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
@@ -499,6 +503,8 @@ public final class BlockManagerWorker {
       case LocalFileStore:
         return ControlMessage.BlockStore.LOCAL_FILE;
       case GlusterFileStore:
+        return ControlMessage.BlockStore.LOCAL_FILE; //since it is treated the same way as LOCAL_FILE
+      case CrailFileStore:
         return ControlMessage.BlockStore.REMOTE_FILE;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
@@ -522,7 +528,7 @@ public final class BlockManagerWorker {
       case LOCAL_FILE:
         return DataStoreProperty.Value.LocalFileStore;
       case REMOTE_FILE:
-        return DataStoreProperty.Value.GlusterFileStore;
+        return DataStoreProperty.Value.CrailFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }

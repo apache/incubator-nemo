@@ -409,6 +409,8 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.MaxTaskAttempt.class);
     cl.registerShortNameOfClass(JobConf.FileDirectory.class);
     cl.registerShortNameOfClass(JobConf.GlusterVolumeDirectory.class);
+    cl.registerShortNameOfClass(JobConf.CrailVolumeDirectory.class);
+    cl.registerShortNameOfClass(JobConf.RemoteFileStoreOpt.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerBacklog.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumListeningThreads.class);
