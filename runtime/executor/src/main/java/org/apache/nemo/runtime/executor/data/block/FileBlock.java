@@ -40,7 +40,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.OutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -136,7 +135,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions) throws Exception {
     if (crail) {
-      try (OutputStream fileOutputStream = file.getBufferedOutputStream(0)) {
+      try (CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0)) {
         for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
           // Reserve a partition write and get the metadata.
           metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
