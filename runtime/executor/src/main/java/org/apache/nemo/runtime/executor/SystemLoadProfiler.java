@@ -25,7 +25,7 @@ public final class SystemLoadProfiler {
   }
 
   public double getCpuLoad() {
-    return operatingSystemMXBean.getSystemCpuLoad();
+    return operatingSystemMXBean.getProcessCpuLoad();
   }
 
   public Map<TaskExecutor, Long> getTaskExecutorCpuTimeMap() {
