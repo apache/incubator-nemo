@@ -116,14 +116,16 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
           int offcnt = offloadedExecutors.size();
           for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
             final TaskExecutor offloadedTask = pair.left();
-            if (stageOffloadingWorkerManager.isStageOffloadable(offloadedTask.getId())) {
+            final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
+
+            if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
 
               offcnt -= 1;
               LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
 
               offloadedTask.endOffloading((m) -> {
                 // do sth
-                stageOffloadingWorkerManager.endOffloading(RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId()));
+                stageOffloadingWorkerManager.endOffloading(stageId);
               });
             }
           }
