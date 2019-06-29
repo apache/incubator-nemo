@@ -9,6 +9,7 @@ import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
+import org.apache.nemo.runtime.lambdaexecutor.ThpEvent;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,14 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       dos.writeUTF(element.vertexId);
       dos.writeLong(element.timestamp);
       dos.writeLong(element.watermark);
+    } else if (data instanceof ThpEvent) {
+
+      final ThpEvent element = (ThpEvent) data;
+      final DataOutputStream dos = new DataOutputStream(outputStream);
+      dos.writeChar(THP);
+      dos.writeUTF(element.taskId);
+      dos.writeLong(element.thp);
+
     } else if (data instanceof OffloadingHeartbeatEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingHeartbeatEvent element = (OffloadingHeartbeatEvent) data;

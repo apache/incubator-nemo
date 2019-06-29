@@ -24,6 +24,7 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
   public static final char HEARTBEAT = 2;
   public static final char STATE_OUTPUT = 3;
   public static final char OFFLOADING_DONE = 4;
+  public static final char THP = 5;
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
 

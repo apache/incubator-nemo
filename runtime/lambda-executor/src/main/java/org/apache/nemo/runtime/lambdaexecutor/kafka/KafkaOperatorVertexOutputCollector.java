@@ -26,9 +26,8 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
-import org.apache.nemo.runtime.lambdaexecutor.Triple;
+import org.apache.nemo.runtime.lambdaexecutor.ThpEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.PipeOutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +70,9 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   private final Edge encodingEdge;
   private final String taskId;
 
+  private long prevLogtime;
+  private int processedCnt = 0;
+
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -94,6 +96,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     this.edge = edge;
     this.internalMainOutputs = new HashMap<>();
     this.nextOperators = nextOperators;
+    this.prevLogtime = System.currentTimeMillis();
     for (final NextIntraTaskOperatorInfo info : nextOperators) {
       internalMainOutputs.put(info.getNextOperator().getId(), info);
     }
@@ -136,6 +139,15 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   public void emit(final O output) {
     List<String> nextOpIds = null;
     //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
+
+    processedCnt += 1;
+
+    final long currTime = System.currentTimeMillis();
+    if (currTime - prevLogtime >= 1000) {
+      offloadingOutputCollector.emit(new ThpEvent(taskId, processedCnt / currTime));
+      processedCnt = 0;
+      prevLogtime = System.currentTimeMillis();
+    }
 
     if (irVertex.isSink) {
       if (random.nextDouble() < samplingRate) {

@@ -46,6 +46,12 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           return Pair.of(taskId,
             new OffloadingResultTimestampEvent(taskId, vertexId, timestamp, watermark));
         }
+        case THP: {
+          final String taskId = dis.readUTF();
+          final long thp = dis.readLong();
+          return Pair.of(taskId,
+            new ThpEvent(taskId, thp));
+        }
         case HEARTBEAT: {
           final String taskId = dis.readUTF();
           final Integer taskIndex = dis.readInt();

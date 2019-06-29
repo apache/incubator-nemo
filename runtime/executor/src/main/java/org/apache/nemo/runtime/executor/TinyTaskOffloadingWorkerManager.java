@@ -15,6 +15,7 @@ import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
+import org.apache.nemo.runtime.lambdaexecutor.ThpEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -143,6 +144,10 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
             //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
             te.getOffloadingQueue().add(msg);
           }
+        } else if (msg instanceof ThpEvent) {
+          // just print the log
+          final ThpEvent thpEvent = (ThpEvent) msg;
+          LOG.info("Thp: {} at {}", thpEvent.thp, thpEvent.taskId);
         } else if (msg instanceof KafkaOffloadingOutput || msg instanceof StateOutput) {
           // End of the task!
 
