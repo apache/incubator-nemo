@@ -210,10 +210,22 @@ public final class OperatorMetricCollector {
     }
   }
 
+  int proceseedCnt = 0;
+  long prevLogTime = System.currentTimeMillis();
+
   public void processDone(final long startTimestamp) {
+    proceseedCnt += 1;
+
     if (isMonitor) {
       final long currTime = System.currentTimeMillis();
       final int latency = (int)((currTime - startTimestamp) - adjustTime);
+
+      if (currTime - prevLogTime >= 1000) {
+        LOG.info("Thp: {} at {}/{}", (1000* proceseedCnt / (currTime - prevLogTime)),
+          irVertex.getId(), taskId);
+        proceseedCnt = 0;
+        prevLogTime = currTime;
+      }
 
       if (random.nextDouble() < samplingRate) {
         LOG.info("Event Latency {} from {} in {}", latency, irVertex.getId(),

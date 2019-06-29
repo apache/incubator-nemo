@@ -140,16 +140,18 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     List<String> nextOpIds = null;
     //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
 
-    processedCnt += 1;
-
-    final long currTime = System.currentTimeMillis();
-    if (currTime - prevLogtime >= 1000) {
-      offloadingOutputCollector.emit(new ThpEvent(taskId, processedCnt / currTime));
-      processedCnt = 0;
-      prevLogtime = System.currentTimeMillis();
-    }
 
     if (irVertex.isSink) {
+      processedCnt += 1;
+
+      final long currTime = System.currentTimeMillis();
+      if (currTime - prevLogtime >= 1000) {
+        offloadingOutputCollector.emit(
+          new ThpEvent(taskId, irVertex.getId(), 1000 * processedCnt / (currTime - prevLogtime)));
+        processedCnt = 0;
+        prevLogtime = System.currentTimeMillis();
+      }
+
       if (random.nextDouble() < samplingRate) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();

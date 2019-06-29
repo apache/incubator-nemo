@@ -147,7 +147,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         } else if (msg instanceof ThpEvent) {
           // just print the log
           final ThpEvent thpEvent = (ThpEvent) msg;
-          LOG.info("Thp: {} at {}", thpEvent.thp, thpEvent.taskId);
+          LOG.info("Thp: {} at {}/{} from lambda", thpEvent.thp, thpEvent.opId, thpEvent.taskId);
         } else if (msg instanceof KafkaOffloadingOutput || msg instanceof StateOutput) {
           // End of the task!
 

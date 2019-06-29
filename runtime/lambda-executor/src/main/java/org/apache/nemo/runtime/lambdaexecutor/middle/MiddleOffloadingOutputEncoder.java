@@ -46,6 +46,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(THP);
       dos.writeUTF(element.taskId);
+      dos.writeUTF(element.opId);
       dos.writeLong(element.thp);
 
     } else if (data instanceof OffloadingHeartbeatEvent) {
