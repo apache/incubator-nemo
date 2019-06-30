@@ -55,6 +55,26 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
     //this.offloadedExecutors = new ArrayList<>();
 
     this.toMaster = toMaster;
+    LOG.info("Start StaticOffloadingPolicy");
+
+    try {
+      final BufferedReader br =
+        new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/scaling.txt"));
+
+      String s;
+      String lastLine = null;
+      int cnt = 0;
+      while ((s = br.readLine()) != null) {
+        lastLine = s;
+        cnt += 1;
+      }
+
+      br.close();
+      prevFileReadCnt = cnt;
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   private void updateTaskExecutionTime(final Map<TaskExecutor, Long> deltaMap) {
@@ -109,6 +129,8 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
         lastLine = s;
         cnt += 1;
       }
+
+      br.close();
 
       if (cnt > prevFileReadCnt) {
         prevFileReadCnt = cnt;
