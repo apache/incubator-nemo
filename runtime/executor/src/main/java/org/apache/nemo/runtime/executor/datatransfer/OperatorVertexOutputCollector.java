@@ -257,6 +257,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // calculate thp
     if (isSourceVertex) {
+      proceseedCnt += 1;
       final long currTime = System.currentTimeMillis();
 
       if (currTime - prevLogTime >= 1000) {
