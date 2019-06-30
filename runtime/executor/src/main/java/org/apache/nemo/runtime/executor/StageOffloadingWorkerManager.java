@@ -88,9 +88,9 @@ public final class StageOffloadingWorkerManager {
       LOG.info("Can offloading {}: {}", stageId, msg.getStageOffloadingInfoMsg().getCanOffloading());
       offloadingMap.put(stageId, msg.getStageOffloadingInfoMsg().getCanOffloading());
 
-      if (offloadingMap.get(stageId)) {
+      //if (offloadingMap.get(stageId)) {
         increaseCnt(stageId);
-      }
+      //}
 
       offloadingStartTimeMap.put(stageId, System.currentTimeMillis());
 
