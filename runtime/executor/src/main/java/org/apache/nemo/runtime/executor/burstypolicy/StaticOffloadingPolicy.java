@@ -23,7 +23,9 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(StaticOffloadingPolicy.class.getName());
 
   // key: offloaded task executor, value: start time of offloading
-  private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
+  //private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
+
+  private List<List<TaskExecutor>> offloadedTasksPerStage;
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
 
@@ -50,7 +52,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
     final StageOffloadingWorkerManager stageOffloadingWorkerManager) {
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
-    this.offloadedExecutors = new ArrayList<>();
+    //this.offloadedExecutors = new ArrayList<>();
 
     this.toMaster = toMaster;
   }
@@ -69,6 +71,29 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
       final DescriptiveStatistics stat = taskExecutionTimeMap.get(executor);
       stat.addValue(time / 1000);
     }
+  }
+
+  private List<List<TaskExecutor>> stageTasks(final List<TaskExecutor> runningTasks) {
+    final Map<String, List<TaskExecutor>> map = new HashMap<>();
+    final List<String> stages = new ArrayList<>();
+
+    for (final TaskExecutor runningTask : runningTasks) {
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+      if (!map.containsKey(stageId)) {
+        map.put(stageId, new ArrayList<>());
+        stages.add(stageId);
+      }
+
+      map.get(stageId).add(runningTask);
+    }
+
+    stages.sort(String::compareTo);
+    final List<List<TaskExecutor>> results = new ArrayList<>(stages.size());
+    for (final String stageId : stages) {
+      results.add(map.get(stageId));
+    }
+
+    return results;
   }
 
   @Override
@@ -90,35 +115,58 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
         if (lastLine.equals("o")) {
           // scale out
           final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
-          int offloadCnt = 0;
-          for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
 
-            if (offloadCnt < taskStatInfo.runningTasks.size() / 2) {
+          final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
+          offloadedTasksPerStage = stageTasks;
 
-              final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+          for (final List<TaskExecutor> tasks : stageTasks) {
+            int offloadCnt = 0;
 
-              if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+            for (final TaskExecutor runningTask : tasks) {
+              if (offloadCnt < tasks.size() / 2) {
+                final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+
+                while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                  // waiting for stage offloading
+                  LOG.info("Waiting for stage offloading {}", stageId);
+                  try {
+                    Thread.sleep(1000);
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
+                }
                 //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
                 offloadCnt += 1;
                 LOG.info("Offloading {}, cnt: {}", runningTask.getId(), offloadCnt);
 
-                offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
+                //offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
 
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
                   stageOffloadingWorkerManager.endOffloading(stageId);
                 });
               }
+              }
             }
-          }
-        } else if (lastLine.equals("i")) {
-          // scale in
-          int offcnt = offloadedExecutors.size();
-          for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
-            final TaskExecutor offloadedTask = pair.left();
-            final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
 
-            if (stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+          } else if (lastLine.equals("i")) {
+          // scale in
+          for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
+            int offcnt = offloadedTasks.size();
+            for (final TaskExecutor offloadedTask : offloadedTasks) {
+              final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
+
+              while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+                // waiting for stage offloading
+                LOG.info("Waiting for stage deoffloading {}", stageId);
+                try {
+                  Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+              }
 
               offcnt -= 1;
               LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
@@ -129,7 +177,6 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
               });
             }
           }
-          offloadedExecutors.clear();
         }
       }
     } catch (FileNotFoundException e) {
