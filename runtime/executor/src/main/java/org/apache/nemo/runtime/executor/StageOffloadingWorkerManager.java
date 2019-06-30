@@ -107,10 +107,10 @@ public final class StageOffloadingWorkerManager {
 
     LOG.info("Offloading cnt {} of {}", count, stageId);
 
-    if (count.decrementAndGet() == 0) {
+    //if (count.decrementAndGet() == 0) {
       LOG.info("Offloading done for stage {}", stageId);
       sendOffloadingDoneEvent(stageId);
-    }
+    //}
   }
 
   private void sendOffloadingDoneEvent(final String stageId) {
