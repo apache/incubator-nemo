@@ -267,6 +267,10 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   message.getTaskId());
 
               inputContext.sendMessage(ackMessage, (m) -> {});
+
+              LOG.info("Setting input channel to SF {}",
+                message.getTaskId());
+              inputContext.receiveFromSF(relayServerChannel);
             });
 
             break;
@@ -297,6 +301,10 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   SF,
                   message.getTaskId());
               inputContext.sendMessage(ackMessage, (m) -> {});
+
+              LOG.info("Setting input channel to VM {}",
+                message.getTaskId());
+              inputContext.receiveFromSF(vmContextManager.getChannel());
             });
             break;
           }
@@ -310,7 +318,10 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         break;
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
-        LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
+        LOG.info("Signal from parent restarting output from {}, {} / {}",
+          message.getTaskId(), sendDataTo, transferIndex);
+
+        /*
         final LambdaRemoteByteInputContext inputContext = (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
         // reset the channel!
         if (isRelayServerChannel) {
@@ -318,6 +329,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         } else {
           inputContext.receiveFromVM(channel);
         }
+        */
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
