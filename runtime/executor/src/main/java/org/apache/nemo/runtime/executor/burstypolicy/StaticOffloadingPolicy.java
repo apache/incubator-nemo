@@ -25,7 +25,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
   // key: offloaded task executor, value: start time of offloading
   //private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
 
-  private List<List<TaskExecutor>> offloadedTasksPerStage;
+  private final List<List<TaskExecutor>> offloadedTasksPerStage;
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
 
@@ -52,6 +52,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
     final StageOffloadingWorkerManager stageOffloadingWorkerManager) {
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
+    this.offloadedTasksPerStage = new ArrayList<>();
     //this.offloadedExecutors = new ArrayList<>();
 
     this.toMaster = toMaster;
@@ -139,13 +140,15 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
           final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
           final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
-          offloadedTasksPerStage = stageTasks;
+          final List<TaskExecutor> offloaded = new ArrayList<>();
+          offloadedTasksPerStage.add(offloaded);
 
           for (final List<TaskExecutor> tasks : stageTasks) {
             int offloadCnt = 0;
 
             for (final TaskExecutor runningTask : tasks) {
               if (offloadCnt < tasks.size() / 2) {
+                offloaded.add(runningTask);
                 final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
                 while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
@@ -199,6 +202,8 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
               });
             }
           }
+
+          offloadedTasksPerStage.clear();
         }
       }
     } catch (FileNotFoundException e) {
