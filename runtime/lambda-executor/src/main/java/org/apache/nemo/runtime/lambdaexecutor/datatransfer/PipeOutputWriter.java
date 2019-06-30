@@ -112,7 +112,7 @@ public final class PipeOutputWriter {
     writeData(watermarkWithIndex, pipes, true);
   }
 
-  public void close() {
+  public void close(final String taskId) {
     // send stop message!
 
     final CountDownLatch count = new CountDownLatch(pipes.size());
@@ -127,18 +127,18 @@ public final class PipeOutputWriter {
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
           TaskLocationMap.LOC.VM);
 
-      LOG.info("Send finish message {}", pendingMsg);
+      LOG.info("Send finish message at {} {}", taskId, pendingMsg);
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
-        LOG.info("receive ack from downstream!!");
+        LOG.info("receive ack from downstream at {}!!", taskId);
         count.countDown();
       });
     }
 
     try {
-      LOG.info("Waiting for ack...");
+      LOG.info("Waiting for ack {}...", taskId);
       count.await();
-      LOG.info("End of Waiting for ack...");
+      LOG.info("End of Waiting for ack {}...", taskId);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }

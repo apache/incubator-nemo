@@ -300,7 +300,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       }
 
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-        outputWriter.close();
+        outputWriter.close("");
       }
 
       Thread.sleep(3000);

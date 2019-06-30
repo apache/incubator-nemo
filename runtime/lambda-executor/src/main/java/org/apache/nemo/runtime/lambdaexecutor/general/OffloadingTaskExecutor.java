@@ -464,6 +464,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     availableFetchers.clear();
     pendingFetchers.clear();
 
+    LOG.info("Finishing {}", offloadingTask.taskId);
+
     // close output writer!!
     // we should first close output writer
     // the code after this should not emit outputs to downstream operators
@@ -471,8 +473,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       try {
         // TODO: fix
         for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-          outputWriter.close();
+          outputWriter.close(offloadingTask.taskId);
         }
+
+        LOG.info("Closing output writer {}", offloadingTask.taskId);
 
         //Thread.sleep(3000);
 

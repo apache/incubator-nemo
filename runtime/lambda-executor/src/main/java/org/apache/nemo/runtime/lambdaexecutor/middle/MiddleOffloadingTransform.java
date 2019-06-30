@@ -339,7 +339,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       }
 
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-        outputWriter.close();
+        outputWriter.close("");
       }
 
       Thread.sleep(3000);

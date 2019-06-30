@@ -374,7 +374,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
       }
 
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-        outputWriter.close();
+        outputWriter.close("");
       }
 
       Thread.sleep(3000);
