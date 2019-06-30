@@ -262,7 +262,7 @@ public final class KafkaOffloader implements Offloader {
 
       // Restart contexts
       LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
+      //outputWriters.forEach(OutputWriter::restart);
 
       LOG.info("Merge {} sources into one", kafkaOffloadingOutputs.size());
       // TODO: merge sources!!
@@ -559,7 +559,7 @@ public final class KafkaOffloader implements Offloader {
 
         outputWriters.forEach(writer -> {
           LOG.info("Stopping writer {}", writer);
-          writer.stop();
+          writer.stop("");
         });
       }
     }

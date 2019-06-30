@@ -64,7 +64,7 @@ public abstract class DataFetcher implements AutoCloseable {
     return dataSource;
   }
 
-  public abstract Future<Integer> stop();
+  public abstract Future<Integer> stop(final String taskId);
 
   public abstract void restart();
 }

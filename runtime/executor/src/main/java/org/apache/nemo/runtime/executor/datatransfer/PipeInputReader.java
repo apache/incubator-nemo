@@ -91,7 +91,7 @@ public final class PipeInputReader implements InputReader {
 
 
   @Override
-  public Future<Integer> stop() {
+  public Future<Integer> stop(final String taskId) {
     if (!stopped.compareAndSet(false, true)) {
       return new Future<Integer>() {
         @Override
@@ -132,15 +132,15 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
           SF,
+          taskId,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
-      LOG.info("Send message {}, edge: {}", pendingMsg, runtimeEdge.getId());
+      LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
-        LOG.info("receive ack!!");
-        atomicInteger.decrementAndGet();
+        LOG.info("receive ack at {}, {}!!", taskId, atomicInteger.decrementAndGet());
 
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
@@ -198,7 +198,8 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
-          VM);
+          VM,
+          "??");
 
       LOG.info("Send resume message {}", pendingMsg);
 

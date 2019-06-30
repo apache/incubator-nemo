@@ -238,7 +238,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
             ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-            SF);
+            SF,"");
 
         LOG.info("Send message {}", pendingMsg);
 
@@ -293,7 +293,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
       // Restart contexts
       LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
+     //outputWriters.forEach(OutputWriter::restart);
 
 
       if (!runningWorkers.isEmpty()) {
@@ -391,7 +391,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
             ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
-            SF);
+            SF,"");
 
         LOG.info("Send message {}", pendingMsg);
 

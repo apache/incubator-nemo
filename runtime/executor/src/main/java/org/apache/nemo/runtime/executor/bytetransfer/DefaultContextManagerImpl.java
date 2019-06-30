@@ -232,7 +232,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextDescriptor,
               contextId.isPipe(),
               ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-              VM);
+              VM,
+              message.getTaskId());
           outputContext.sendMessageToVM(ackMessage, (m) -> {});
         }
 
@@ -286,7 +287,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                 contextDescriptor,
                 contextId.isPipe(),
                 ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
-                VM);
+                VM,
+                message.getTaskId());
             context.sendMessageToVM(settingMsg, (m) -> {});
           }
 
@@ -297,7 +299,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextDescriptor,
               contextId.isPipe(),
               ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-              VM);
+              VM,
+              message.getTaskId());
 
           channel.writeAndFlush(ackMessage);
         });

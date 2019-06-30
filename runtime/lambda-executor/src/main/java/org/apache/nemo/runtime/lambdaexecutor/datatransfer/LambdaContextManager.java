@@ -212,7 +212,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-                  SF);
+                  SF,
+                  message.getTaskId());
 
               LOG.info("Send init message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
@@ -261,7 +262,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  SF);
+                  SF,
+                  message.getTaskId());
 
               inputContext.sendMessage(ackMessage, (m) -> {});
             });
@@ -278,7 +280,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
-                  SF);
+                  SF,
+                  message.getTaskId());
 
               LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
               vmContextManager.getChannel().write(settingMsg);
@@ -290,7 +293,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  SF);
+                  SF,
+                  message.getTaskId());
               inputContext.sendMessage(ackMessage, (m) -> {});
             });
             break;
@@ -428,7 +432,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextDescriptor(),
         context.getContextId().isPipe(),
         messageType,
-        SF);
+        SF,
+        "??");
 
     if (isRelayServerChannel) {
       LOG.info("No Skip... because the remote is already connected with relayServer");

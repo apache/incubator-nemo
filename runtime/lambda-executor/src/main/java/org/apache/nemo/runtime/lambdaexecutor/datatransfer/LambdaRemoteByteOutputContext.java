@@ -218,7 +218,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
-  public void restart() {
+  public void restart(final String taskId) {
 
     throw new RuntimeException("Not supported");
 
@@ -373,7 +373,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                 getContextDescriptor(),
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                SF);
+                SF,
+                "??");
 
             if (sendDataTo.equals(VM)) {
               LOG.info("Ack pending to relay {}", message);

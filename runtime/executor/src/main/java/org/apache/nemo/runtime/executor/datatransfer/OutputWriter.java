@@ -47,7 +47,7 @@ public interface OutputWriter {
 
   void close();
 
-  Future<Boolean> stop();
+  Future<Boolean> stop(final String taskId);
 
-  void restart();
+  void restart(final String taskId);
 }

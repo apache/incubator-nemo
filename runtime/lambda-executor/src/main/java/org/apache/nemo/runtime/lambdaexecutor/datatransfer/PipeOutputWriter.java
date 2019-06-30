@@ -125,7 +125,8 @@ public final class PipeOutputWriter {
           byteOutputContext.getContextDescriptor(),
           byteOutputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-          TaskLocationMap.LOC.VM);
+          TaskLocationMap.LOC.VM,
+          taskId);
 
       LOG.info("Send finish message at {} {}", taskId, pendingMsg);
 

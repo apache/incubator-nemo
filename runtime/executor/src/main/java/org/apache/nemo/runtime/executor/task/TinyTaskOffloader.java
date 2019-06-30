@@ -219,7 +219,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     outputWriters.forEach(writer -> {
       LOG.info("Restarting writer {}", writer);
-      writer.restart();
+      writer.restart(taskId);
     });
 
     for (final DataFetcher dataFetcher : allFetchers) {
@@ -253,7 +253,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     outputWriters.forEach(writer -> {
       LOG.info("Restarting writer {}", writer);
-      writer.restart();
+      writer.restart(taskId);
     });
 
     // Source stop!!
@@ -286,7 +286,7 @@ public final class TinyTaskOffloader implements Offloader {
         LOG.info("{} is not offloaded.. just restart it", taskId);
         outputWriters.forEach(writer -> {
           LOG.info("Restarting writer {}", writer);
-          writer.restart();
+          writer.restart(taskId);
         });
 
         for (final DataFetcher dataFetcher : allFetchers) {
@@ -330,7 +330,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     // Source stop!!
     for (final DataFetcher dataFetcher : allFetchers) {
-      inputStopPendingFutures.add(dataFetcher.stop());
+      inputStopPendingFutures.add(dataFetcher.stop(taskId));
     }
 
     LOG.info("Waiting for source stop futures in {}", taskId);
@@ -396,7 +396,7 @@ public final class TinyTaskOffloader implements Offloader {
   private void startOutputPending() {
     outputWriters.forEach(writer -> {
       LOG.info("Stopping writer {}", writer);
-      outputStopPendingFutures.add(writer.stop());
+      outputStopPendingFutures.add(writer.stop(taskId));
     });
   }
 

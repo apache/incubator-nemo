@@ -429,7 +429,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     for (final DataFetcher dataFetcher : allFetchers) {
       LOG.info("Stopping data fetcher {}", dataFetcher);
-      pendingFutures.add(dataFetcher.stop());
+      pendingFutures.add(dataFetcher.stop(offloadingTask.taskId));
     }
 
     LOG.info("Waiting pending futures haha {}...", offloadingTask.taskId);

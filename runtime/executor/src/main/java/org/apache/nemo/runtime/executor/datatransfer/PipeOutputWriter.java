@@ -229,7 +229,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
-  public Future<Boolean> stop() {
+  public Future<Boolean> stop(final String taskId) {
     // send stop message!
 
     final CountDownLatch count = new CountDownLatch(pipes.size());
@@ -244,6 +244,7 @@ public final class PipeOutputWriter implements OutputWriter {
           byteOutputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
           SF,
+          taskId,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
@@ -293,9 +294,9 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void restart() {
+  public void restart(final String taskId) {
     pipes.forEach(pipe -> {
-      pipe.restart();
+      pipe.restart(taskId);
     });
   }
 

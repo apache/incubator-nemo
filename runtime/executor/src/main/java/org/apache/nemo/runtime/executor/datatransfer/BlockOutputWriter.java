@@ -124,12 +124,12 @@ public final class BlockOutputWriter implements OutputWriter {
   }
 
   @Override
-  public Future<Boolean> stop() {
+  public Future<Boolean> stop(final String taskId) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void restart() {
+  public void restart(final String taksId) {
     throw new UnsupportedOperationException();
   }
 

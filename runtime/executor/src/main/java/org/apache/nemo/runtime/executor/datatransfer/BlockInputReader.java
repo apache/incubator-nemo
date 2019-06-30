@@ -62,7 +62,7 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
-  public Future<Integer> stop() {
+  public Future<Integer> stop(final String taskId) {
     throw new RuntimeException("unsupported");
   }
 

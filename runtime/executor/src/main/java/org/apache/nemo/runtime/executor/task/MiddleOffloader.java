@@ -242,7 +242,7 @@ public final class MiddleOffloader implements Offloader {
 
       // Restart contexts
       LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
+      //outputWriters.forEach(OutputWriter::restart);
 
 
       taskStatus.set(TaskExecutor.Status.RUNNING);
@@ -266,7 +266,7 @@ public final class MiddleOffloader implements Offloader {
 
       // Restart contexts
       LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
+      //outputWriters.forEach(OutputWriter::restart);
 
 
       if (!runningWorkers.isEmpty()) {
@@ -406,7 +406,7 @@ public final class MiddleOffloader implements Offloader {
 
         outputWriters.forEach(writer -> {
           LOG.info("Stopping writer {}", writer);
-          writer.stop();
+          //writer.stop();
         });
       }
     }

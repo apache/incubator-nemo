@@ -105,7 +105,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  public Future<Integer> stop() {
+  public Future<Integer> stop(final String taskId) {
     return null;
   }
 

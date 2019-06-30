@@ -52,6 +52,7 @@ public final class ByteTransferContextSetupMessage {
   private final String relayServerAddress;
   private final int relayServerPort;
   private final TaskLocationMap.LOC location;
+  private final String taskId;
 
   public ByteTransferContextSetupMessage(
     final String initiatorExecutorId,
@@ -59,18 +60,7 @@ public final class ByteTransferContextSetupMessage {
     final ByteTransferDataDirection dataDirection,
     final byte[] contextDescriptor,
     final boolean isPipe) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, CONTROL, TaskLocationMap.LOC.VM);
-  }
-
-  public ByteTransferContextSetupMessage(
-    final String initiatorExecutorId,
-    final int transferIndex,
-    final ByteTransferDataDirection dataDirection,
-    final byte[] contextDescriptor,
-    final boolean isPipe,
-    final MessageType messageType,
-    final TaskLocationMap.LOC location) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, location, "", 0);
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, CONTROL, TaskLocationMap.LOC.VM, "");
   }
 
   public ByteTransferContextSetupMessage(
@@ -81,6 +71,19 @@ public final class ByteTransferContextSetupMessage {
     final boolean isPipe,
     final MessageType messageType,
     final TaskLocationMap.LOC location,
+    final String taskId) {
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, location, taskId, "", 0);
+  }
+
+  public ByteTransferContextSetupMessage(
+    final String initiatorExecutorId,
+    final int transferIndex,
+    final ByteTransferDataDirection dataDirection,
+    final byte[] contextDescriptor,
+    final boolean isPipe,
+    final MessageType messageType,
+    final TaskLocationMap.LOC location,
+    final String taskId,
     final String relayServerAddress,
     final int relayServerPort) {
     this.initiatorExecutorId = initiatorExecutorId;
@@ -92,6 +95,11 @@ public final class ByteTransferContextSetupMessage {
     this.messageType = messageType;
     this.relayServerAddress = relayServerAddress;
     this.relayServerPort = relayServerPort;
+    this.taskId = taskId;
+  }
+
+  public String getTaskId() {
+    return taskId;
   }
 
   public String getInitiatorExecutorId() {
@@ -153,6 +161,7 @@ public final class ByteTransferContextSetupMessage {
       dos.writeBoolean(isPipe);
       dos.writeInt(messageType.ordinal());
       dos.writeInt(location.ordinal());
+      dos.writeUTF(taskId);
       dos.writeUTF(relayServerAddress);
       dos.writeInt(relayServerPort);
       //dos.writeUTF(address); //dos.writeUTF(taskId);
@@ -186,12 +195,13 @@ public final class ByteTransferContextSetupMessage {
       final int ordinal = dis.readInt();
       final MessageType type = MessageType.values()[ordinal];
       final TaskLocationMap.LOC loc = TaskLocationMap.LOC.values()[dis.readInt()];
+      final String taskId = dis.readUTF();
       final String relayServerAddress = dis.readUTF();
       final int relayServerPort = dis.readInt();
 
       return new ByteTransferContextSetupMessage(
         localExecutorId, transferIndex, direction, contextDescriptor,
-        isPipe, type, loc, relayServerAddress, relayServerPort);
+        isPipe, type, loc, taskId, relayServerAddress, relayServerPort);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -204,6 +214,6 @@ public final class ByteTransferContextSetupMessage {
   public String toString() {
     return "InitExecutor: " + initiatorExecutorId + ", TransferIndex: " + transferIndex
       + ", " + "Direction: " + dataDirection + ", " + ", Type: "
-      + messageType + "Addr: " + relayServerAddress + ", port: "+  relayServerPort;
+      + messageType + "Addr: " + relayServerAddress + ", port: "+  relayServerPort + ", taskId: " + taskId;
   }
 }

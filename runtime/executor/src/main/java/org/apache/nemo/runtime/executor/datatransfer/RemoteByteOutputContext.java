@@ -177,7 +177,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     currStatus = Status.NO_PENDING;
 
     if (restarted) {
-      restart();
+      restart("??");
     }
   }
 
@@ -200,7 +200,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     currStatus = Status.NO_PENDING;
 
     if (restarted) {
-      restart();
+      restart("??");
     }
   }
 
@@ -230,7 +230,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public synchronized void restart() {
+  public synchronized void restart(final String taskId) {
     if (settingContext) {
       final ByteTransferContextSetupMessage message =
         new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
@@ -238,7 +238,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           getContextId().getDataDirection(), getContextDescriptor(),
           getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-          VM);
+          VM,
+          taskId);
 
       LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
 
@@ -379,7 +380,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                 getContextDescriptor(),
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                VM);
+                VM,
+                "??");
 
             LOG.info("Ack pending to {} {}",sendDataTo, message);
             currChannel.writeAndFlush(message).addListener(getChannelWriteListener());

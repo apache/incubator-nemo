@@ -61,7 +61,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
   void stop();
 
-  void restart();
+  void restart(final String taskId);
 
   void sendMessage(ByteTransferContextSetupMessage msg, EventHandler<Integer> ackHandler);
 

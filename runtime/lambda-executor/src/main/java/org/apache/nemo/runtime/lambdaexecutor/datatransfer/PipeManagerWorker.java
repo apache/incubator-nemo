@@ -98,15 +98,16 @@ public final class PipeManagerWorker {
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
-          TaskLocationMap.LOC.VM);
+          TaskLocationMap.LOC.VM,
+          taskId);
 
-      LOG.info("Send message for input context {}, {} {} for {}",
+      LOG.info("Send message for input context {}, {} {} from {}",
         byteInputContext.getContextId().getTransferIndex(), key, pendingMsg, taskId);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
         final int cnt = atomicInteger.decrementAndGet();
-        LOG.info("receive ack for {}, {}!!", taskId, cnt);
+        LOG.info("receive ack at {}, {}!!", taskId, cnt);
 
         if (cnt == 0) {
           // delete it from map

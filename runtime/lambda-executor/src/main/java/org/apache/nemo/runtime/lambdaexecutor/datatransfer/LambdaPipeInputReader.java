@@ -62,7 +62,7 @@ public final class LambdaPipeInputReader implements InputReader {
 
 
   @Override
-  public Future<Integer> stop() {
+  public Future<Integer> stop(final String taksId) {
     return pipeManagerWorker.stop(runtimeEdge, dstTaskIndex, taskId);
   }
 

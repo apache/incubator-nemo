@@ -203,8 +203,8 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  public Future<Integer> stop() {
-    return readersForParentTask.stop();
+  public Future<Integer> stop(final String taskId) {
+    return readersForParentTask.stop(taskId);
   }
 
   @Override

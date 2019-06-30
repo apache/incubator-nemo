@@ -32,7 +32,7 @@ import java.util.concurrent.Future;
  */
 public interface InputReader {
 
-  Future<Integer> stop();
+  Future<Integer> stop(final String taskId);
 
   void restart();
 

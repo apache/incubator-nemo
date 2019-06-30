@@ -177,7 +177,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
     //getContextManager().onContextStopLocal(getContextId().getTransferIndex());
   }
 
-  public void restart() {
+  public void restart(final String taskId) {
     LOG.info("Restart local context {}", getContextId());
     //getContextManager().onContextRestartLocal(getContextId().getTransferIndex());
   }
