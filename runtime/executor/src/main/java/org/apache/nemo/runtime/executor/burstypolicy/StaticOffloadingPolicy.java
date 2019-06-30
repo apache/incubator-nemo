@@ -169,6 +169,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
                 //offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
 
                 runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                  LOG.info("Offloading done for {}", runningTask.getId());
                   stageOffloadingWorkerManager.endOffloading(stageId);
                 });
               }
@@ -198,6 +199,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
 
               offloadedTask.endOffloading((m) -> {
                 // do sth
+                LOG.info("Deoffloading done for {}", offloadedTask.getId());
                 stageOffloadingWorkerManager.endOffloading(stageId);
               });
             }
