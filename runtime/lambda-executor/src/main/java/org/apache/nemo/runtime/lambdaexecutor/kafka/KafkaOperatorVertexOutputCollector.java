@@ -22,6 +22,7 @@ import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
@@ -73,6 +74,8 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   private long prevLogtime;
   private int processedCnt = 0;
 
+  private final boolean isSourceVertex;
+
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -92,6 +95,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     final List<PipeOutputWriter> externalMainOutputs) {
     this.taskId = taskId;
     this.irVertex = irVertex;
+    this.isSourceVertex = irVertex instanceof SourceVertex;
     this.samplingRate = samplingRate;
     this.edge = edge;
     this.internalMainOutputs = new HashMap<>();
@@ -139,9 +143,26 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   public void emit(final O output) {
     List<String> nextOpIds = null;
     //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
-
-
     if (irVertex.isSink) {
+
+    }
+
+    //LOG.info("Operator " + irVertex.getId() + " emit to ");
+
+    for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
+      //LOG.info("Set timestamp {} to {}", inputTimestamp, internalVertex.getNextOperator().getId());
+      final KafkaOperatorVertexOutputCollector oc =
+        outputCollectorMap.get(internalVertex.getNextOperator().getId());
+      oc.inputTimestamp = inputTimestamp;
+      emit(internalVertex.getNextOperator(), output);
+    }
+
+    for (final PipeOutputWriter outputWriter : externalMainOutputs) {
+      //LOG.info("Emit to output vertex at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
+      outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
+    }
+
+    if (isSourceVertex) {
       processedCnt += 1;
 
       final long currTime = System.currentTimeMillis();
@@ -174,20 +195,6 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
     }
 
-    //LOG.info("Operator " + irVertex.getId() + " emit to ");
-
-    for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      //LOG.info("Set timestamp {} to {}", inputTimestamp, internalVertex.getNextOperator().getId());
-      final KafkaOperatorVertexOutputCollector oc =
-        outputCollectorMap.get(internalVertex.getNextOperator().getId());
-      oc.inputTimestamp = inputTimestamp;
-      emit(internalVertex.getNextOperator(), output);
-    }
-
-    for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      //LOG.info("Emit to output vertex at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
-      outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
-    }
   }
 
   @Override

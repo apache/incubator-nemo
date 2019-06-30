@@ -749,7 +749,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             vertexIdAndCollectorMap,
             irVertex, internalMainOutputs, internalAdditionalOutputMap,
             externalMainOutputs, externalAdditionalOutputMap, omc,
-            prevWatermarkMap, expectedWatermarkMap, this, edges.get(0).getId());
+            prevWatermarkMap, expectedWatermarkMap, this,
+            edges.get(0).getId(), taskId, samplingMap);
 
         } else {
           omc = new OperatorMetricCollector(irVertex,
@@ -765,7 +766,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             vertexIdAndCollectorMap,
             irVertex, internalMainOutputs, internalAdditionalOutputMap,
             externalMainOutputs, externalAdditionalOutputMap, omc,
-            prevWatermarkMap, expectedWatermarkMap, this, null);
+            prevWatermarkMap, expectedWatermarkMap, this, null,
+            taskId, samplingMap);
         }
 
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
@@ -983,7 +985,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       // Process data element
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
-
     } else {
       throw new RuntimeException("Invalid type of event: " + event);
     }

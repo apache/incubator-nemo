@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
@@ -65,10 +66,12 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
   private final TaskExecutor taskExecutor;
 
-  private final List<String> offloadingMainIds;
-  private final List<String> offloadingAdditionalIds;
-  private final List<String> offloadingIds;
   private final String edgeId;
+
+  private final boolean isSourceVertex;
+
+  private final String taskId;
+  private final double samplingRate;
 
   /**
    * Constructor of the output collector.
@@ -89,9 +92,12 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<Long, Long> prevWatermarkMap,
     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
     final TaskExecutor taskExecutor,
-    final String edgeId) {
+    final String edgeId,
+    final String taskId,
+    final Map<String, Double> samplingMap) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
+    this.taskId = taskId;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
@@ -101,15 +107,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.taskExecutor = taskExecutor;
     this.edgeId = edgeId;
-    this.offloadingMainIds = internalMainOutputs.stream()
-      .filter(opInfo -> !(opInfo.getNextOperator().isStateful || opInfo.getNextOperator().isSink))
-      .map(opInfo -> opInfo.getNextOperator().getId()).collect(Collectors.toList());
-    this.offloadingAdditionalIds = internalAdditionalOutputs.values().stream()
-      .flatMap(m -> m.stream())
-      .filter(opInfo -> !(opInfo.getNextOperator().isStateful || opInfo.getNextOperator().isSink))
-      .map(opInfo -> opInfo.getNextOperator().getId()).collect(Collectors.toList());
-    this.offloadingIds = new ArrayList<>(offloadingMainIds);
-    offloadingIds.addAll(offloadingAdditionalIds);
+    this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 1.0);
+    this.isSourceVertex = irVertex instanceof SourceVertex;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -254,46 +253,43 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     for (final OutputWriter externalWriter : externalMainOutputs) {
       emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
     }
+
+
+    // calculate thp
+    if (isSourceVertex) {
+      final long currTime = System.currentTimeMillis();
+
+      if (currTime - prevLogTime >= 1000) {
+        LOG.info("Thp: {} at {}", (1000* proceseedCnt / (currTime - prevLogTime)),
+          taskId);
+        proceseedCnt = 0;
+        prevLogTime = currTime;
+      }
+
+      if (random.nextDouble() < samplingRate) {
+        final int latency = (int)((currTime - inputTimestamp));
+        LOG.info("Event Latency {} from {} in {}", latency,
+          irVertex.getId(),
+          taskId);
+      }
+    }
   }
+
+  int proceseedCnt = 0;
+  long prevLogTime = System.currentTimeMillis();
+  private final Random random = new Random();
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
 
-
-    // offloading
-    /* TODO: for middle offloader
-    if (taskExecutor.isOffloaded() && !offloadingAdditionalIds.isEmpty()) {
-      //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
-      taskExecutor.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingAdditionalIds, currWatermark, edgeId);
-      return;
-    }
-    */
-
-
-    List<String> offloadingIds = null;
-
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        if (offloading) {
-          if (offloadingIds == null) {
-            offloadingIds = new LinkedList<>();
-          }
-          offloadingIds.add(internalVertex.getNextOperator().getId());
-        } else {
-          final Pair<OperatorMetricCollector, OutputCollector> pair =
-            outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
-          emit(internalVertex.getNextOperator(), (O) output);
-        }
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+        emit(internalVertex.getNextOperator(), (O) output);
       }
-    }
-
-    // For offloading
-    if (offloadingIds != null) {
-      operatorMetricCollector.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingIds, currWatermark);
     }
 
     if (externalAdditionalOutputs.containsKey(dstVertexId)) {
