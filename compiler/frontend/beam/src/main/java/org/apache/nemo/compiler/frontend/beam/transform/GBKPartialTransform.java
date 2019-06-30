@@ -469,8 +469,11 @@ public final class GBKPartialTransform<K, InputT>
     public void emitWatermark(final Watermark watermark) {
 
       //LOG.info("Emit watermark in partial: {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
-      //outputCollector.emitWatermark(watermark);
+
+
+      outputCollector.emitWatermark(watermark);
     }
+
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
       outputCollector.emit(dstVertexId, output);

@@ -478,7 +478,9 @@ public final class GBKFinalTransform<K, InputT>
     public void emitWatermark(final Watermark watermark) {
 
       //LOG.info("Emit watermark in final: {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
-      //outputCollector.emitWatermark(watermark);
+
+
+      outputCollector.emitWatermark(watermark);
     }
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
