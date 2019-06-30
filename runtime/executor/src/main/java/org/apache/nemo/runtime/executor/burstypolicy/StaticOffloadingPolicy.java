@@ -18,6 +18,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(StaticOffloadingPolicy.class.getName());
@@ -143,6 +144,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
           final List<TaskExecutor> offloaded = new ArrayList<>();
           offloadedTasksPerStage.add(offloaded);
 
+
           for (final List<TaskExecutor> tasks : stageTasks) {
             int offloadCnt = 0;
 
@@ -173,10 +175,10 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
                   stageOffloadingWorkerManager.endOffloading(stageId);
                 });
               }
-              }
             }
+          }
 
-          } else if (lastLine.equals("i")) {
+        } else if (lastLine.equals("i")) {
           // scale in
           for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
             int offcnt = offloadedTasks.size();

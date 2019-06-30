@@ -50,6 +50,7 @@ public final class StageOffloadingWorkerManager {
 
   public boolean isStageOffloadable(final String stageId) {
 
+    /*
     if (offloadingStartTimeMap.containsKey(stageId)) {
       final long time = offloadingStartTimeMap.get(stageId);
       final long currtime = System.currentTimeMillis();
@@ -68,6 +69,7 @@ public final class StageOffloadingWorkerManager {
       }
       return offloadingMap.get(stageId);
     }
+    */
 
     final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
       .getMessageSender(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID).request( ControlMessage.Message.newBuilder()
