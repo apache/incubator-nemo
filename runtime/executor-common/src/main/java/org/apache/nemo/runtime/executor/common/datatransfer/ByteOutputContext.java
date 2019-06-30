@@ -42,7 +42,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   ByteOutputStream newOutputStream() throws IOException;
 
   // pending for moving downstream tasks
-  void pending(TaskLocationMap.LOC sendDataTo);
+  void pending(TaskLocationMap.LOC sendDataTo, String tId);
 
   // resume after moving downstream tasks
   // This should be initiated when the byteOutputContext is in SF

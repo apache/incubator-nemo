@@ -237,9 +237,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           outputContext.sendMessageToVM(ackMessage, (m) -> {});
         }
 
-        LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT for index {}, pending to {}", transferIndex,
+        LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, pending to {}", message.getTaskId(), transferIndex,
           sendDataTo);
-        outputContext.pending(sendDataTo);
+        outputContext.pending(sendDataTo, message.getTaskId());
         break;
       }
       case SETTING_INPUT_CONTEXT: {

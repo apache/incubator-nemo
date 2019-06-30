@@ -114,7 +114,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC dt) {
+  public void pending(final TaskLocationMap.LOC dt, String tid) {
     LOG.info("LocalByteOutputContext pending: {}", getContextId().getTransferIndex());
     sendDataTo = dt;
     isPending = true;

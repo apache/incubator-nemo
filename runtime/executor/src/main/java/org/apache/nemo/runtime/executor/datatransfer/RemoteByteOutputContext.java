@@ -71,6 +71,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   private volatile boolean settingContext = false;
   private volatile boolean restarted = false;
 
+  private String taskId;
+
   /**
    * Creates a output context.
    *
@@ -134,10 +136,11 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC sdt) {
+  public void pending(final TaskLocationMap.LOC sdt, final String tid) {
     LOG.info("Setting pending in {}, {}", this, getContextId().getTransferIndex());
     sendDataTo = sdt;
     currStatus = Status.PENDING_INIT;
+    taskId = tid;
   }
 
   @Override
@@ -381,7 +384,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
                 VM,
-                "??");
+                taskId);
 
             LOG.info("Ack pending to {} {}",sendDataTo, message);
             currChannel.writeAndFlush(message).addListener(getChannelWriteListener());

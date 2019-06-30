@@ -53,7 +53,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   private Channel relayChannel;
   private Channel vmChannel;
   private Channel currChannel;
-  private String vmTaskId;
+  private String taskId;
 
   private volatile boolean closed = false;
 
@@ -135,9 +135,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC sdt) {
+  public void pending(final TaskLocationMap.LOC sdt, final String tid) {
     sendDataTo = sdt;
     currStatus = Status.PENDING_INIT;
+    taskId = tid;
   }
 
   @Override
@@ -374,7 +375,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
                 SF,
-                "??");
+                taskId);
 
             if (sendDataTo.equals(VM)) {
               LOG.info("Ack pending to relay {}", message);

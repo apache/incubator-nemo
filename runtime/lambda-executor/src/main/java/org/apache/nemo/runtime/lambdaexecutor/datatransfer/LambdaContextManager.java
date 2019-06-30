@@ -184,7 +184,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        LOG.info("Pending output context for moving downstream to {}, transferIndex: {}", sendDataTo, transferIndex);
+        LOG.info("SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} Pending output context for moving downstream to {}, transferIndex: {}",
+          message.getTaskId(), sendDataTo, transferIndex);
 
         switch (sendDataTo) {
           case SF: {
@@ -197,7 +198,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               relayServerClient.registerTask(relayServerChannel,
                 cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
 
-              outputContext.pending(sendDataTo);
+              outputContext.pending(sendDataTo, message.getTaskId());
             });
             break;
           }
@@ -219,8 +220,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               vmContextManager.getChannel().write(ackMessage);
 
               // then pending the output
-              LOG.info("Set pending for transferIndex {}...", transferIndex);
-              outputContext.pending(sendDataTo);
+              LOG.info("Set pending for ransferIndex {}...", transferIndex);
+              outputContext.pending(sendDataTo, message.getTaskId());
             });
 
             break;
