@@ -36,7 +36,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutor.class.getName());
 
-  private final int executorThreadNum = 1;
+  private final int executorThreadNum = 2;
   private List<ExecutorThread> executorThreads;
   private ScheduledExecutorService scheduledExecutorService;
 
