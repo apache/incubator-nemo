@@ -77,6 +77,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ExecutorService prepareService;
 
   private final ExecutorGlobalInstances executorGlobalInstances;
+  final List<DataFetcher> allFetchers;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
@@ -100,8 +101,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.operatorVertexMap = new HashMap<>();
     this.pipeOutputWriters = new HashSet<>();
     this.resultCollector = new OffloadingResultCollector(oc);
-    this.availableFetchers = new LinkedList<>();
-    this.pendingFetchers = new LinkedList<>();
+    this.availableFetchers = new ArrayList<>();
+    this.pendingFetchers = new ArrayList<>();
     this.pollingTrigger = pollingTrigger;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
@@ -114,6 +115,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     */
 
     prepare();
+
+    allFetchers = new ArrayList<>(availableFetchers);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -737,6 +740,20 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public String getId() {
     return offloadingTask.taskId;
+  }
+
+  @Override
+  public boolean hasData() {
+    return hasEventInFetchers();
+  }
+
+  private boolean hasEventInFetchers() {
+    for (final DataFetcher fetcher : allFetchers) {
+      if (fetcher.isAvailable()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

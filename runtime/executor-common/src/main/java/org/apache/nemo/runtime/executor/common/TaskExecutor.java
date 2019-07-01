@@ -74,6 +74,8 @@ public interface TaskExecutor extends AutoCloseable {
 
   String getId();
 
+  boolean hasData();
+
   boolean isStateless();
 
   AtomicInteger getProcessedCnt();

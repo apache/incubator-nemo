@@ -34,6 +34,10 @@ public interface Readable<O> extends Serializable {
    */
   void prepare();
 
+  default boolean isAvailable() {
+    return true;
+  }
+
   /**
    * Method to read current data from the source.
    * The caller should check whether the Readable is finished or not by using isFinished() method

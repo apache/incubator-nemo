@@ -134,7 +134,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private transient OffloadingContext currOffloadingContext = null;
 
   private final ConcurrentLinkedQueue<Object> offloadingEventQueue = new ConcurrentLinkedQueue<>();
-  private final ConcurrentLinkedQueue<ControlEvent> controlEventQueue = new ConcurrentLinkedQueue<>();
+  //private final ConcurrentLinkedQueue<ControlEvent> controlEventQueue = new ConcurrentLinkedQueue<>();
 
 
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
@@ -174,6 +174,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   final List<DataFetcher> availableFetchers;
   final List<DataFetcher> pendingFetchers;
+  final List<DataFetcher> allFetchers;
   final Optional<Offloader> offloader;
 
   private EventHandler<Integer> offloadingDoneHandler;
@@ -292,12 +293,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     // Prepare data structures
     this.sortedHarnesses = prepare(task, irVertexDag, intermediateDataIOFactory);
-    this.availableFetchers = new LinkedList<>(sourceVertexDataFetchers);
+    this.availableFetchers = new ArrayList<>(sourceVertexDataFetchers);
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
     availableFetchers.addAll(parentDataFetchers);
-    this.pendingFetchers = new LinkedList<>();
+    this.pendingFetchers = new ArrayList<>();
+
+    this.allFetchers = new ArrayList<>(availableFetchers);
 
     this.offloader = getOffloader();
 
@@ -531,6 +534,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public String getId() {
     return taskId;
   }
+
   @Override
   public boolean isStateless() {
     return isStateless;
@@ -1039,6 +1043,27 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
   }
 
+  private boolean hasEventInFetchers() {
+    for (final DataFetcher fetcher : allFetchers) {
+      if (fetcher.isAvailable()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * task가 inactive한 상태일때 부르는 함수!!
+   * @return
+   */
+  @Override
+  public boolean hasData() {
+    return
+        !offloadingEventQueue.isEmpty() ||
+        (offloader.isPresent() && offloader.get().hasPendingStraemingWorkers()) ||
+          hasEventInFetchers();
+  }
+
   /**
    * This method is non-blocking call and only process one event.
    * Executor should call this function.
@@ -1050,6 +1075,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     int processedCnt = 0;
 
     boolean dataProcessed = false;
+
+    /*
     if (!controlEventQueue.isEmpty()) {
       final ControlEvent event = controlEventQueue.poll();
       final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
@@ -1057,6 +1084,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       oc.handleControlMessage(event);
       dataProcessed = true;
     }
+    */
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
 
@@ -1237,12 +1265,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || offloader.isPresent()) {
 
       // handling control event
+      /*
       while (!controlEventQueue.isEmpty()) {
         final ControlEvent event = controlEventQueue.poll();
         final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
           vertexIdAndCollectorMap.get(event.getDstVertexId()).right();
         oc.handleControlMessage(event);
       }
+      */
 
       if (evalConf.enableOffloading || evalConf.offloadingdebug) {
 

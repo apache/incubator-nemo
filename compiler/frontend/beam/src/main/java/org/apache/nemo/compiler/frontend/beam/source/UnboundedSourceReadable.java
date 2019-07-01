@@ -75,6 +75,23 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
+  public boolean isAvailable() {
+    if (isCurrentAvailable) {
+      return true;
+    } else {
+      try {
+        isCurrentAvailable =  reader.advance();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      return isCurrentAvailable;
+    }
+  }
+
+
+  @Override
   public Object readCurrent() {
 
     if (isCurrentAvailable) {

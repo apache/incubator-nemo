@@ -106,6 +106,17 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
+  public boolean isAvailable() {
+    for (final IteratorWithNumBytes iterator : iterators) {
+      if (iterator.hasNext()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  @Override
   public Object fetchDataElement() throws IOException, NoSuchElementException {
     if (firstFetch) {
       //fetchDataLazily();

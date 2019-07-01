@@ -210,17 +210,18 @@ public class SourceVertexDataFetcher extends DataFetcher {
   }
 
   private boolean isWatermarkTriggerTime() {
-    if (watermarkTriggered) {
-      watermarkTriggered = false;
-      return true;
-    } else {
-      return false;
-    }
+    return watermarkTriggered;
+  }
+
+  @Override
+  public boolean isAvailable() {
+    return readable.isAvailable() || isWatermarkTriggerTime();
   }
 
   private Object retrieveElement() {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
+      watermarkTriggered = false;
       // index=0 as there is only 1 input stream
       final long watermarkTimestamp = readable.readWatermark();
       if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {

@@ -59,12 +59,14 @@ public final class ExecutorThread {
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       loggingTime = true;
 
+      /*
       int totalProcessedCnt = 0;
       for (final String taskId : taskCounterMap.keySet()) {
         totalProcessedCnt += taskCounterMap.remove(taskId);
       }
 
       LOG.info("{} total processed cnt: {}", executorThreadName, totalProcessedCnt);
+      */
 
     }, 5, 5, TimeUnit.SECONDS);
 
@@ -110,8 +112,8 @@ public final class ExecutorThread {
               pendingTasks.add(availableTask);
             }
 
-            final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
-            taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
+            //final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
+            //taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
 
               /*
               int processedCnt = 0;
@@ -149,15 +151,19 @@ public final class ExecutorThread {
             isPollingTime = false;
             boolean pendingSet = false;
             // how to check whether the task is ready or not?
-            for (final TaskExecutor pendingTask : pendingTasks) {
-              if (!pendingTask.isFinished()) {
+            final Iterator<TaskExecutor> pendingIterator = pendingTasks.iterator();
+            while (pendingIterator.hasNext()) {
+              final TaskExecutor pendingTask = pendingIterator.next();
+              if (pendingTask.hasData()) {
                 availableTasks.add(pendingTask);
-              } else {
+                pendingIterator.remove();
+              } else if (pendingTask.isFinished()) {
                 pendingTask.finish();
                 pendingSet = true;
+                pendingIterator.remove();
               }
             }
-            pendingTasks.clear();
+
             if (pendingSet) {
               LOG.info("After finishign task: availables: {}, pending: {}", availableTasks, pendingTasks);
             }

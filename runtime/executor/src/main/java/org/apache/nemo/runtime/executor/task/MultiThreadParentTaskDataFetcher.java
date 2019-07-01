@@ -106,6 +106,17 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
+  public boolean isAvailable() {
+    for (final IteratorWithNumBytes iteratorWithNumBytes : iterators) {
+      if (iteratorWithNumBytes.hasNext()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  @Override
   public Object fetchDataElement() throws IOException, NoSuchElementException {
     if (firstFetch) {
       //fetchDataLazily();
