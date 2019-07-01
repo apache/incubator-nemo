@@ -39,54 +39,77 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
-  public static final int DEFAULT_PAGE_SIZE = 32 * 1024;
-  public static final int MIN_PAGE_SIZE = 4 * 1024;
+  public static final int DEFAULT_CHUNK_SIZE = 32 * 1024; // 32KB
+  public static final int MIN_CHUNK_SIZE = 4 * 1024; // 4KB
   private final MemoryPool memoryPool;
-  private final int pageSize;
+  private final int chunkSize;
   private final long memorySize;
 
 
 
   public MemoryPoolAssigner(final long memorySize) {
-    this(memorySize, DEFAULT_PAGE_SIZE);
+    this(memorySize, DEFAULT_CHUNK_SIZE);
   }
 
-  public MemoryPoolAssigner(final long memorySize, final int pageSize) {
+  public MemoryPoolAssigner(final long memorySize, final int chunkSize) {
     this.memorySize = memorySize;
-    this.pageSize = pageSize;
-    final long numPages = memorySize / pageSize;
-    if (numPages > Integer.MAX_VALUE) {
+    this.chunkSize = chunkSize;
+    final long numChunks = memorySize / chunkSize;
+    if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("The given number of memory bytes (" + memorySize
         + ") corresponds to more than MAX_INT pages.");
     }
 
-    final int totalNumPages = (int) numPages;
+    final int totalNumPages = (int) numChunks;
     if (totalNumPages < 1) {
       throw new IllegalArgumentException("The given amount of memory amounted to less than one page.");
     }
 
-    this.memoryPool = new MemoryPool(totalNumPages, pageSize);
+    this.memoryPool = new MemoryPool(totalNumPages, chunkSize);
   }
 
-  public List<MemoryChunk> allocatePages(int numPages) throws MemoryAllocationException {
-    final ArrayList<MemoryChunk> segs = new ArrayList<MemoryChunk>(numPages);
-    allocatePages(segs, numPages);
-    return segs;
+  /**
+   * Returns list of {@link MemoryChunk}s to be used by consumers.
+   *
+   * @param numPages indicates the number of MemoryChunks
+   * @return list of {@link MemoryChunk}s
+   * @throws MemoryAllocationException
+   */
+  public List<MemoryChunk> allocateChunks(final int numPages) throws MemoryAllocationException {
+    final ArrayList<MemoryChunk> chunks = new ArrayList<MemoryChunk>(numPages);
+    allocateChunks(chunks, numPages);
+    return chunks;
   }
 
-  public void allocatePages(final List<MemoryChunk> target, final int numPages)
+  /**
+   * Allocates list of {@link MemoryChunk}s to target list.
+   *
+   * @param target    where the MemoryChunks are allocated
+   * @param numChunks indicates the number of MemoryChunks
+   * @throws MemoryAllocationException
+   */
+  public void allocateChunks(final List<MemoryChunk> target, final int numChunks)
     throws MemoryAllocationException {
 
-    if (numPages > (memoryPool.getNumOfAvailableMemoryChunks())) {
-      throw new MemoryAllocationException("Could not allocate " + numPages + " pages. Only " +
-        (memoryPool.getNumOfAvailableMemoryChunks())
+    if (numChunks > (memoryPool.getNumOfAvailableMemoryChunks())) {
+      throw new MemoryAllocationException("Could not allocate " + numChunks + " pages. Only "
+        + (memoryPool.getNumOfAvailableMemoryChunks())
         + " pages are remaining.");
     }
 
-    for (int i = numPages; i > 0; i--) {
+    for (int i = numChunks; i > 0; i--) {
       MemoryChunk chunk = memoryPool.requestChunkFromPool();
       target.add(chunk);
     }
+  }
+
+  /**
+   * Returns a single {@link MemoryChunk} from {@link MemoryPool}.
+   *
+   * @return a MemoryChunk
+   */
+  public MemoryChunk allocateChunk() {
+    return memoryPool.requestChunkFromPool();
   }
 
 
@@ -131,11 +154,11 @@ public class MemoryPoolAssigner {
 
   /**
    *
-   * Supports both on-heap and off-heap memory pool.
+   * Supports off-heap memory pool.
    * off-heap is pre-allocated and managed. on-heap memory is used when off-heap memory runs out.
    *
    */
-  static final class MemoryPool {
+  private class MemoryPool {
 
     private final ConcurrentLinkedQueue<ByteBuffer> available;
     private final int chunkSize;
@@ -150,17 +173,8 @@ public class MemoryPoolAssigner {
       }
     }
 
-    MemoryChunk allocateNewOffHeapChunk() {
+    MemoryChunk allocateNewChunk() {
       ByteBuffer memory = ByteBuffer.allocateDirect(chunkSize);
-      return new MemoryChunk(memory);
-    }
-
-    /**
-     * Used when there is no available buffer in the pool.
-     * @return
-     */
-    MemoryChunk allocateNewOnHeapChunk() {
-      ByteBuffer memory = ByteBuffer.allocate(chunkSize);
       return new MemoryChunk(memory);
     }
 
@@ -171,7 +185,7 @@ public class MemoryPoolAssigner {
 
     /**
      * Only off-heap chunk is returned to the pool.
-     * On-heap chunk is not managed as a pool actually.
+     *
      * @param chunk
      */
     void returnChunkToPool(final MemoryChunk chunk) {
