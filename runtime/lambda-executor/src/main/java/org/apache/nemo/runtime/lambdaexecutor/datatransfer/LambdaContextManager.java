@@ -268,8 +268,9 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
               inputContext.sendMessage(ackMessage, (m) -> {});
 
-              LOG.info("Setting input channel to SF {}",
-                message.getTaskId());
+              LOG.info("Setting input channel to SF {}, transferIndex: {}",
+                message.getTaskId(), contextId.getTransferIndex());
+
               inputContext.receiveFromSF(relayServerChannel);
             });
 
@@ -302,9 +303,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   message.getTaskId());
               inputContext.sendMessage(ackMessage, (m) -> {});
 
-              LOG.info("Setting input channel to VM {}",
-                message.getTaskId());
-              inputContext.receiveFromSF(vmContextManager.getChannel());
+
+              LOG.info("Setting input channel to VM {}, transferIndex: {}",
+                message.getTaskId(), contextId.getTransferIndex());
+
+              inputContext.receiveFromVM(vmContextManager.getChannel());
             });
             break;
           }
