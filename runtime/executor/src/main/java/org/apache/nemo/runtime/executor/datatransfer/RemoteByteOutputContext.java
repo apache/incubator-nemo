@@ -73,6 +73,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   private String taskId;
 
+  private final Object writeLock = new Object();
+
   /**
    * Creates a output context.
    *
@@ -137,10 +139,25 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void pending(final TaskLocationMap.LOC sdt, final String tid) {
-    LOG.info("Setting pending in {}, {}", this, getContextId().getTransferIndex());
-    sendDataTo = sdt;
-    currStatus = Status.PENDING_INIT;
-    taskId = tid;
+
+    synchronized (writeLock) {
+      sendDataTo = sdt;
+      currStatus = Status.PENDING;
+      taskId = tid;
+
+      final ByteTransferContextSetupMessage message =
+        new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+          getContextId().getTransferIndex(),
+          getContextId().getDataDirection(),
+          getContextDescriptor(),
+          getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+          VM,
+          taskId);
+
+      LOG.info("Ack pending to {} {}",sendDataTo, message);
+      currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+    }
   }
 
   @Override
@@ -373,44 +390,31 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         throw new RuntimeException(e);
       }
 
-      try {
-        switch (currStatus) {
-          case PENDING_INIT: {
-            final ByteTransferContextSetupMessage message =
-              new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-                getContextId().getTransferIndex(),
-                getContextId().getDataDirection(),
-                getContextDescriptor(),
-                getContextId().isPipe(),
-                ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                VM,
-                taskId);
-
-            LOG.info("Ack pending to {} {}",sendDataTo, message);
-            currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
-            currStatus = PENDING;
-          }
-          case PENDING: {
-            pendingByteBufs.add(byteBuf);
-            break;
-          }
-          case NO_PENDING: {
-            if (!pendingByteBufs.isEmpty()) {
-              //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
-              for (final ByteBuf pendingByteBuf : pendingByteBufs) {
-                writeByteBuf(pendingByteBuf);
-              }
-              pendingByteBufs.clear();
+      synchronized (writeLock) {
+        try {
+          switch (currStatus) {
+            case PENDING: {
+              pendingByteBufs.add(byteBuf);
+              break;
             }
-            writeByteBuf(byteBuf);
-            break;
+            case NO_PENDING: {
+              if (!pendingByteBufs.isEmpty()) {
+                //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+                for (final ByteBuf pendingByteBuf : pendingByteBufs) {
+                  writeByteBuf(pendingByteBuf);
+                }
+                pendingByteBufs.clear();
+              }
+              writeByteBuf(byteBuf);
+              break;
+            }
+            default: {
+              throw new RuntimeException("Unsupported status " + currStatus);
+            }
           }
-          default: {
-            throw new RuntimeException("Unsupported status " + currStatus);
-          }
+        } catch (final IOException e) {
+          throw new RuntimeException(e);
         }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
       }
     }
 

@@ -73,6 +73,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   // if it is null, send to vm
   private String relayDst;
 
+  private final Object writeLock = new Object();
+
   /**
    * Creates a output context.
    *
@@ -136,9 +138,30 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void pending(final TaskLocationMap.LOC sdt, final String tid) {
-    sendDataTo = sdt;
-    currStatus = Status.PENDING_INIT;
-    taskId = tid;
+
+    synchronized (writeLock) {
+      sendDataTo = sdt;
+      taskId = tid;
+      currStatus = PENDING;
+
+      final ByteTransferContextSetupMessage message =
+        new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+          getContextId().getTransferIndex(),
+          getContextId().getDataDirection(),
+          getContextDescriptor(),
+          getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+          SF,
+          taskId);
+
+      if (sendDataTo.equals(VM)) {
+        LOG.info("Ack pending to relay {}", message);
+        relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+      } else if (sendDataTo.equals(SF)) {
+        LOG.info("Ack pending to vm {}", message);
+        vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+      }
+    }
   }
 
   @Override
@@ -364,46 +387,28 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
         throw new RuntimeException(e);
       }
 
-      try {
-        switch (currStatus) {
-          case PENDING_INIT: {
-            final ByteTransferContextSetupMessage message =
-              new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-                getContextId().getTransferIndex(),
-                getContextId().getDataDirection(),
-                getContextDescriptor(),
-                getContextId().isPipe(),
-                ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                SF,
-                taskId);
-
-            if (sendDataTo.equals(VM)) {
-              LOG.info("Ack pending to relay {}", message);
-              relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
-            } else if (sendDataTo.equals(SF)) {
-              LOG.info("Ack pending to vm {}", message);
-              vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+      synchronized (writeLock) {
+        try {
+          switch (currStatus) {
+            case PENDING: {
+              pendingByteBufs.add(byteBuf);
+              break;
             }
-            currStatus = PENDING;
-          }
-          case PENDING: {
-            pendingByteBufs.add(byteBuf);
-            break;
-          }
-          case NO_PENDING: {
-            if (!pendingByteBufs.isEmpty()) {
-              //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
-              for (final ByteBuf pendingByteBuf : pendingByteBufs) {
-                writeByteBuf(pendingByteBuf);
+            case NO_PENDING: {
+              if (!pendingByteBufs.isEmpty()) {
+                //LOG.info("[Send pending events: {}]", pendingByteBufs.size());
+                for (final ByteBuf pendingByteBuf : pendingByteBufs) {
+                  writeByteBuf(pendingByteBuf);
+                }
+                pendingByteBufs.clear();
               }
-              pendingByteBufs.clear();
+              writeByteBuf(byteBuf);
+              break;
             }
-            writeByteBuf(byteBuf);
-            break;
           }
+        } catch (final IOException e) {
+          throw new RuntimeException(e);
         }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
       }
     }
 
