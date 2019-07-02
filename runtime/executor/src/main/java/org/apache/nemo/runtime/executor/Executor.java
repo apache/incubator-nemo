@@ -241,7 +241,13 @@ public final class Executor {
       started = true;
     }
 
-    executorService.execute(() -> launchTask(task, irDag));
+    executorService.execute(() -> {
+    try {
+      launchTask(task, irDag);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException();
+    }});
   }
 
 

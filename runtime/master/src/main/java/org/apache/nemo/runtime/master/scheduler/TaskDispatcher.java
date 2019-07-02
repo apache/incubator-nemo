@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
@@ -98,6 +99,32 @@ final class TaskDispatcher {
     }
   }
 
+  private List<List<Task>> getStageTasks(final Collection<Task> tasks) {
+    final List<Task> tl = new ArrayList<>(tasks);
+    tl.sort(new Comparator<Task>() {
+      @Override
+      public int compare(Task o1, Task o2) {
+        return -RuntimeIdManager.getStageIdFromTaskId(o1.getTaskId())
+          .compareTo(RuntimeIdManager.getStageIdFromTaskId(o2.getTaskId()));
+      }
+    });
+
+    final List<List<Task>> stageTasks = new ArrayList<>();
+
+    String prevStageId = "";
+    for (final Task task : tl) {
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
+      if (!stageId.equals(prevStageId)) {
+        stageTasks.add(new ArrayList<>());
+      }
+
+      final List<Task> st = stageTasks.get(stageTasks.size()-1);
+      st.add(task);
+    }
+
+    return stageTasks;
+  }
+
   private void doScheduleTaskList() {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
@@ -107,38 +134,53 @@ final class TaskDispatcher {
     }
 
     final Collection<Task> taskList = taskListOptional.get();
+    final List<List<Task>> stageTasks = getStageTasks(taskList);
+
+
     final List<Task> couldNotSchedule = new ArrayList<>();
-    for (final Task task : taskList) {
-      if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
-        // Guard against race conditions causing duplicate task launches
-        LOG.debug("Skipping {} as it is not READY", task.getTaskId());
-        continue;
+
+    for (final List<Task> stageTask : stageTasks) {
+
+      try {
+        Thread.sleep(8000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
 
-      executorRegistry.viewExecutors(executors -> {
-        final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
-        task.getExecutionProperties().forEachProperties(property -> {
-          final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
-          if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
-            candidateExecutors.setValue(candidateExecutors.getValue().stream()
+      for (final Task task : stageTask) {
+        if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
+          // Guard against race conditions causing duplicate task launches
+          LOG.debug("Skipping {} as it is not READY", task.getTaskId());
+          continue;
+        }
+
+        executorRegistry.viewExecutors(executors -> {
+          final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+          task.getExecutionProperties().forEachProperties(property -> {
+            final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
+            if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
+              candidateExecutors.setValue(candidateExecutors.getValue().stream()
                 .filter(e -> constraint.get().testSchedulability(e, task))
                 .collect(Collectors.toSet()));
+            }
+          });
+          if (!candidateExecutors.getValue().isEmpty()) {
+            // Select executor
+            final ExecutorRepresenter selectedExecutor
+              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+            // update metadata first
+            planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+            LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+            // send the task
+            selectedExecutor.onTaskScheduled(task);
+          } else {
+            couldNotSchedule.add(task);
           }
         });
-        if (!candidateExecutors.getValue().isEmpty()) {
-          // Select executor
-          final ExecutorRepresenter selectedExecutor
-              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
-          // update metadata first
-          planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+      }
 
-          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
-          // send the task
-          selectedExecutor.onTaskScheduled(task);
-        } else {
-          couldNotSchedule.add(task);
-        }
-      });
+
     }
 
     LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});

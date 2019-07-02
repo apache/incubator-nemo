@@ -107,13 +107,20 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public boolean isAvailable() {
+    boolean ret = false;
     for (final IteratorWithNumBytes iteratorWithNumBytes : iterators) {
       if (iteratorWithNumBytes.hasNext()) {
-        return true;
+        ret = true;
+        break;
       }
     }
 
-    return false;
+    if (!taskAddPairQueue.isEmpty()) {
+      return true;
+    }
+
+    //LOG.info("{} available {}", taskId, ret);
+    return ret;
   }
 
   @Override

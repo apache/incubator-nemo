@@ -106,6 +106,8 @@ public final class StreamingScheduler implements Scheduler {
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
 
+      LOG.info("Task schedule {}", stageToSchedule.getId());
+
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
         taskIndexMaster.onTaskScheduled(taskId);
@@ -126,14 +128,17 @@ public final class StreamingScheduler implements Scheduler {
           vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))))
           .collect(Collectors.toList()));
 
+    }
+
+    // Schedule everything at once
+    LOG.info("All tasks: {}", allTasks);
+
       try {
         Thread.sleep(6000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-    }
 
-    // Schedule everything at once
     pendingTaskCollectionPointer.setToOverwrite(allTasks);
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }

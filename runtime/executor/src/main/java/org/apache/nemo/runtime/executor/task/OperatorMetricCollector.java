@@ -215,7 +215,6 @@ public final class OperatorMetricCollector {
 
   public void processDone(final long startTimestamp) {
 
-    /*
     proceseedCnt += 1;
 
     if (isMonitor) {
@@ -234,7 +233,6 @@ public final class OperatorMetricCollector {
           taskId);
       }
     }
-    */
   }
 
   /*
