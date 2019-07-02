@@ -215,7 +215,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public boolean isAvailable() {
-    return readable.isAvailable() || isWatermarkTriggerTime();
+    return !isFinishd && (readable.isAvailable() || isWatermarkTriggerTime());
   }
 
   private Object retrieveElement() {

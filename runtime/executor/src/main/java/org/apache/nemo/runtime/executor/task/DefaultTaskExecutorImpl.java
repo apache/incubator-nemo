@@ -187,7 +187,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private long offloadedExecutionTime = 0;
   private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
 
-
   private final List<StageEdge> copyOutgoingEdges;
   private final List<StageEdge> copyIncomingEdges;
 
@@ -1059,9 +1058,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public boolean hasData() {
     return
-        !offloadingEventQueue.isEmpty() ||
+      !offloadingEventQueue.isEmpty() ||
         (offloader.isPresent() && offloader.get().hasPendingStraemingWorkers()) ||
-          hasEventInFetchers();
+        hasEventInFetchers();
   }
 
   /**
