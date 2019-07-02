@@ -120,6 +120,8 @@ final class TaskDispatcher {
 
       final List<Task> st = stageTasks.get(stageTasks.size()-1);
       st.add(task);
+
+      prevStageId = stageId;
     }
 
     return stageTasks;
