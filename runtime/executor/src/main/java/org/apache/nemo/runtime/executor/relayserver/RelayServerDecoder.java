@@ -93,7 +93,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               switch (controlMsgType) {
                 case REGISTER: {
                   LOG.info("Registering {} / {}", dst, ctx.channel());
-                  taskChannelMap.putIfAbsent(dst, ctx.channel());
+                  if (taskChannelMap.containsKey(dst)) {
+                    LOG.info("Duplicate dst channel in relayServer.. just overwrite {}", dst);
+                  }
+
+                  taskChannelMap.put(dst, ctx.channel());
+
                   synchronized (pendingBytes) {
                     if (pendingBytes.get(dst) != null) {
                       LOG.info("Flushing pending byte {} / {}", dst, ctx.channel());
@@ -156,6 +161,13 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     LOG.info("Removing channel inactive {}", ctx.channel().remoteAddress().toString());
+    for (final Map.Entry<String, Channel> entry : taskChannelMap.entrySet()) {
+      if (entry.getValue().equals(ctx.channel())) {
+        LOG.info("Removing dst {}", entry.getKey());
+        taskChannelMap.remove(entry.getKey());
+      }
+    }
+
   }
 
   @Override

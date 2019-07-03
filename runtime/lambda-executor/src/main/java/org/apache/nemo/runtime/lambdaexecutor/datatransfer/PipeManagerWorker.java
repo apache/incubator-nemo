@@ -205,7 +205,7 @@ public final class PipeManagerWorker {
     final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), (int) srcTaskIndex, false));
 
 
-    LOG.info("Call read {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex);
+    LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
       new PipeTransferContextDescriptor(
