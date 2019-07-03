@@ -391,7 +391,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
         try {
           switch (currStatus) {
             case PENDING: {
-              LOG.info("Pending data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
+              //LOG.info("Pending data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
               pendingByteBufs.add(byteBuf);
               break;
             }
@@ -404,7 +404,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                 pendingByteBufs.clear();
               }
 
-              LOG.info("Write data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
+              //LOG.info("Write data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
               writeByteBuf(byteBuf);
               break;
             }
