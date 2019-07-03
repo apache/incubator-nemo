@@ -103,7 +103,7 @@ public final class PipeManagerWorker {
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
       .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
         ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
+          .setId(messageId)
           .setListenerId(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID)
           .setType(ControlMessage.MessageType.RequestPipeLoc)
           .setRequestPipeLocMsg(
