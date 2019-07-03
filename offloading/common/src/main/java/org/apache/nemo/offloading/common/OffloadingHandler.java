@@ -130,7 +130,7 @@ public final class OffloadingHandler {
       }
     }
 
-    System.out.println("Write result " + data.left().toString());
+    //System.out.println("Write result " + data.left().toString());
 
     opendChannel.writeAndFlush(
       new OffloadingEvent(OffloadingEvent.Type.RESULT, byteBuf));
