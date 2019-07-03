@@ -172,7 +172,9 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
         processedCnt = 0;
         prevLogtime = System.currentTimeMillis();
       }
+    }
 
+    if (irVertex.isSink) {
       if (random.nextDouble() < samplingRate) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();

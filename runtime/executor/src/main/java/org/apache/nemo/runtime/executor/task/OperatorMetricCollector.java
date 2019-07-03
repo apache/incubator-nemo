@@ -215,18 +215,10 @@ public final class OperatorMetricCollector {
 
   public void processDone(final long startTimestamp) {
 
-    /*
     proceseedCnt += 1;
 
     if (isMonitor) {
       final long currTime = System.currentTimeMillis();
-
-      if (currTime - prevLogTime >= 1000) {
-        LOG.info("Thp: {} at {}/{}", (1000* proceseedCnt / (currTime - prevLogTime)),
-          irVertex.getId(), taskId);
-        proceseedCnt = 0;
-        prevLogTime = currTime;
-      }
 
       if (random.nextDouble() < samplingRate) {
         final int latency = (int)((currTime - startTimestamp) - adjustTime);
@@ -234,7 +226,6 @@ public final class OperatorMetricCollector {
           taskId);
       }
     }
-    */
   }
 
   /*

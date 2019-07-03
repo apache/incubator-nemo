@@ -683,7 +683,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    LOG.info("Isfinished: {}, pendingDone: {} for {}", finished, allPendingDone(), offloadingTask.taskId);
+    //LOG.info("Isfinished: {}, pendingDone: {} for {}", finished, allPendingDone(), offloadingTask.taskId);
     return finished && allPendingDone();
   }
 
