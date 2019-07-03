@@ -193,7 +193,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void scaleoutToVm(Channel channel) {
-    LOG.info("Scale out to relay channel {}", channel);
+    LOG.info("Scale out to relay channel {}, {}", channel, getContextId());
     relayChannel = channel;
     currChannel = relayChannel;
     currStatus = Status.NO_PENDING;
@@ -391,6 +391,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
         try {
           switch (currStatus) {
             case PENDING: {
+              LOG.info("Pending data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
               pendingByteBufs.add(byteBuf);
               break;
             }
@@ -403,7 +404,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                 pendingByteBufs.clear();
               }
 
-              LOG.info("Write data to {}/{}, {}", edgeId, opId, sendDataTo);
+              LOG.info("Write data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
               writeByteBuf(byteBuf);
               break;
             }
