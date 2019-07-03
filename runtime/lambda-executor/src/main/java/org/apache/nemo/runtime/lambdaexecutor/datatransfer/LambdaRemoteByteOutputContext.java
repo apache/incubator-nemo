@@ -402,6 +402,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                 }
                 pendingByteBufs.clear();
               }
+
+              LOG.info("Write data to {}/{}, {}", edgeId, opId, sendDataTo);
               writeByteBuf(byteBuf);
               break;
             }
