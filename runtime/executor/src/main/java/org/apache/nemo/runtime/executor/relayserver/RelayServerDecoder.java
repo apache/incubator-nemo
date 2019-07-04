@@ -15,11 +15,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
 
 public final class RelayServerDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RelayServerDecoder.class);
 
   private final ConcurrentMap<String, Channel> taskChannelMap;
+  private final ConcurrentMap<String, List<ByteBuf>> pendingByteMap;
 
   private int remainingBytes = 0;
   private String dst;
@@ -36,10 +41,42 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   private int idLength;
   private boolean waitingStr = false;
 
-  private final Map<String, List<ByteBuf>> pendingBytes = new HashMap<>();
+  private final ScheduledExecutorService pendingFlusher;
 
-  public RelayServerDecoder(final ConcurrentMap<String, Channel> taskChannelMap) {
+
+  public RelayServerDecoder(final ConcurrentMap<String, Channel> taskChannelMap,
+                            final ConcurrentMap<String, List<ByteBuf>> pendingByteMap) {
     this.taskChannelMap = taskChannelMap;
+    this.pendingByteMap = pendingByteMap;
+    this.pendingFlusher = Executors.newSingleThreadScheduledExecutor();
+
+    pendingFlusher.scheduleAtFixedRate(() -> {
+      try {
+
+        for (final String dstKey : taskChannelMap.keySet()) {
+          if (pendingByteMap.containsKey(dstKey)) {
+            final List<ByteBuf> pendingBytes = pendingByteMap.remove(dstKey);
+            final Channel channel = taskChannelMap.get(dstKey);
+
+            if (pendingBytes != null) {
+              synchronized (pendingBytes) {
+                LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), channel);
+                for (final ByteBuf pendingByte : pendingBytes) {
+                  channel.write(pendingByte);
+                }
+                channel.flush();
+                pendingBytes.clear();
+              }
+            }
+          }
+        }
+
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+    }, 1, 1, TimeUnit.SECONDS);
   }
 
   private void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
@@ -94,22 +131,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               switch (controlMsgType) {
                 case REGISTER: {
                   LOG.info("Registering {} / {}", dst, ctx.channel());
+
                   if (taskChannelMap.containsKey(dst)) {
                     LOG.info("Duplicate dst channel in relayServer.. just overwrite {}", dst);
                   }
 
                   taskChannelMap.put(dst, ctx.channel());
-
-                  synchronized (pendingBytes) {
-                    if (pendingBytes.get(dst) != null) {
-                      LOG.info("Flushing pending byte {} / {}", dst, ctx.channel());
-                      for (final ByteBuf pendingByte : pendingBytes.get(dst)) {
-                        ctx.channel().write(pendingByte);
-                      }
-                      ctx.channel().flush();
-                      pendingBytes.remove(dst);
-                    }
-                  }
                   break;
                 }
                 case DEREGISTER: {
@@ -129,19 +156,50 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         case WAITING_DATA: {
           if (byteBuf.readableBytes() >= remainingBytes) {
 
-
             final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
             final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
             if (!taskChannelMap.containsKey(dst)) {
-              LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
-              synchronized (pendingBytes) {
-                pendingBytes.putIfAbsent(dst, new ArrayList<>());
-                pendingBytes.get(dst).add(bb);
+              LOG.info("Pending for dst {}... readable: {}", dst, bb.readableBytes());
+              pendingByteMap.putIfAbsent(dst, new ArrayList<>());
+              final List<ByteBuf> pendingBytes = pendingByteMap.get(dst);
+
+              if (pendingBytes != null) {
+
+                synchronized (pendingBytes) {
+                  pendingBytes.add(bb);
+                  LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
+                  pendingByteMap.put(dst, pendingBytes);
+                }
+              } else {
+
+                final Channel dstChannel = taskChannelMap.get(dst);
+
+                if (type == 1) {
+                  LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
+                    dstChannel, dstChannel.isActive(), dstChannel.isOpen());
+                }
+
+                dstChannel.writeAndFlush(bb);
               }
             } else {
 
               final Channel dstChannel = taskChannelMap.get(dst);
+
+              if (pendingByteMap.containsKey(dst)) {
+                final List<ByteBuf> pendingBytes = pendingByteMap.remove(dst);
+
+                if (pendingBytes != null) {
+                  synchronized (pendingBytes) {
+                    LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), dstChannel);
+                    for (final ByteBuf pendingByte : pendingBytes) {
+                      dstChannel.write(pendingByte);
+                    }
+                    dstChannel.flush();
+                    pendingBytes.clear();
+                  }
+                }
+              }
 
               if (type == 1) {
                 LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
