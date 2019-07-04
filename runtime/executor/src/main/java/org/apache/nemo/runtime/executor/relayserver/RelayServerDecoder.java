@@ -57,6 +57,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
             idLength = byteBuf.readInt();
             status = Status.WAITING_HEADER2;
           }
+          break;
         }
         case WAITING_HEADER2: {
           if (byteBuf.readableBytes() < idLength + 4) {
@@ -123,9 +124,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               throw new RuntimeException("Unsupported type " + type);
             }
           }
+          break;
         }
         case WAITING_DATA: {
-          if (remainingBytes > 0) {
+          if (byteBuf.readableBytes() >= remainingBytes) {
+
             final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
             final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
@@ -137,19 +140,15 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
-              LOG.info("Sending data to {}", dst);
-
+              LOG.info("Sending data to {}, readBytes: {}", dst, remainingBytes);
               dstChannel.writeAndFlush(bb);
-
-              LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
-                byteBuf.readableBytes(), remainingBytes);
             }
 
-            remainingBytes -= maxRead;
-
-            if (remainingBytes == 0) {
-              status = Status.WAITING_HEADER1;
-            }
+            remainingBytes = 0;
+            status = Status.WAITING_HEADER1;
+          } else {
+            LOG.info("Remaining byte of {}... {} / {}", dst, remainingBytes, byteBuf.readableBytes());
+            return;
           }
           break;
         }
