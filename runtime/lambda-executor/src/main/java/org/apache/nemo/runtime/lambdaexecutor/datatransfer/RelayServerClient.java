@@ -86,7 +86,7 @@ public final class RelayServerClient {
                             final boolean src) {
     // todo
 
-    final String key = String.format("%s#%d#%d", edgeId, taskIndex, src);
+    final String key = String.format("%s#%d#%s", edgeId, taskIndex, String.valueOf(src));
 
     if (registerTaskMap.putIfAbsent(key, relayServerChannel) == null) {
       LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
