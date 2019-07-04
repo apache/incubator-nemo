@@ -175,10 +175,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
                 final Channel dstChannel = taskChannelMap.get(dst);
 
+                /*
                 if (type == 1) {
                   LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
                     dstChannel, dstChannel.isActive(), dstChannel.isOpen());
                 }
+                */
 
                 dstChannel.writeAndFlush(bb);
               }
@@ -201,10 +203,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                 }
               }
 
+              /*
               if (type == 1) {
                 LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
                   dstChannel, dstChannel.isActive(), dstChannel.isOpen());
               }
+              */
 
               dstChannel.writeAndFlush(bb);
             }
