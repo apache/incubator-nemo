@@ -129,6 +129,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         case WAITING_DATA: {
           if (byteBuf.readableBytes() >= remainingBytes) {
 
+
             final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
             final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
@@ -139,15 +140,23 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                 pendingBytes.get(dst).add(bb);
               }
             } else {
+
               final Channel dstChannel = taskChannelMap.get(dst);
-              LOG.info("Sending data to {}, readBytes: {}", dst, remainingBytes);
+
+              if (type == 1) {
+                LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
+                  dstChannel, dstChannel.isActive(), dstChannel.isOpen());
+              }
+
               dstChannel.writeAndFlush(bb);
             }
 
             remainingBytes = 0;
             status = Status.WAITING_HEADER1;
           } else {
-            LOG.info("Remaining byte of {}... {} / {}", dst, remainingBytes, byteBuf.readableBytes());
+            if (type == 1) {
+              LOG.info("Remaining byte of {}... {} / {}", dst, remainingBytes, byteBuf.readableBytes());
+            }
             return;
           }
           break;
