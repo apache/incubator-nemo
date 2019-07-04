@@ -452,7 +452,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         "??");
 
     if (isRelayServerChannel) {
-      LOG.info("No Skip... because the remote is already connected with relayServer");
+      LOG.info("No Skip... because the remote is already connected with relayServer, " +
+        "send control to {}, transferIndex: {}, msg: {}", relayDst, transferIndex, message);
       channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
     } else {
       channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
