@@ -50,6 +50,7 @@ public final class RelayServerClient {
 
   private final Map<Pair<String, Integer>, ChannelFuture> channelMap;
   private final Map<Pair<String, Integer>, Boolean> channelExistingMap;
+  private final Map<String, Channel> registerTaskMap;
 
   private final String myRelayServerAddress;
   private final int myRelayServerPort;
@@ -63,6 +64,7 @@ public final class RelayServerClient {
     this.clientBootstrap = clientBootstrap;
     this.channelMap = new ConcurrentHashMap<>();
     this.channelExistingMap = new ConcurrentHashMap<>();
+    this.registerTaskMap = new ConcurrentHashMap<>();
     this.myRelayServerAddress = myRelayServerAddress;
     this.myRelayServerPort = myRelayServerPort;
 
@@ -83,10 +85,15 @@ public final class RelayServerClient {
                             final int taskIndex,
                             final boolean src) {
     // todo
-    LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
-    final RelayControlMessage message = new RelayControlMessage(
-      edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
-    relayServerChannel.writeAndFlush(message);
+
+    final String key = String.format("%s#%d#%d", edgeId, taskIndex, src);
+
+    if (registerTaskMap.putIfAbsent(key, relayServerChannel) == null) {
+      LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
+      final RelayControlMessage message = new RelayControlMessage(
+        edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
+      relayServerChannel.writeAndFlush(message);
+    }
   }
 
   public void close() {

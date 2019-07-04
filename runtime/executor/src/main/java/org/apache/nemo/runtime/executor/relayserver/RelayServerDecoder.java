@@ -137,12 +137,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
-              //LOG.info("Sending data to {}", dst);
+              LOG.info("Sending data to {}", dst);
 
               dstChannel.writeAndFlush(bb);
 
-              //LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
-              //  byteBuf.readableBytes(), remainingBytes);
+              LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
+                byteBuf.readableBytes(), remainingBytes);
             }
 
             remainingBytes -= maxRead;

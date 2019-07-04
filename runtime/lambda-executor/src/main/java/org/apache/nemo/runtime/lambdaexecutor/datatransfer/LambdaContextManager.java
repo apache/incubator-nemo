@@ -431,7 +431,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                                                final boolean isPipe,
                                                final String relayDst) {
     setRemoteExecutorId(executorId);
-    LOG.info("Output context: srcExecutor: {}, remoteExecutor: {}, transferIndex: {}",
+    LOG.info("Context: srcExecutor: {}, remoteExecutor: {}, transferIndex: {}",
       localExecutorId, executorId, transferIndex);
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
