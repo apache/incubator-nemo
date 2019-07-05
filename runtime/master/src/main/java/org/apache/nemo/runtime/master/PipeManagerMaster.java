@@ -137,7 +137,8 @@ public final class PipeManagerMaster {
           // Use the executor service to avoid blocking the networking thread.
           waitForPipe.submit(() -> {
             final Pair<String, Long> keyPair = getPair(pipeLocRequest);
-            LOG.info("Receive pipeLocRequest: {}, key: {}", pipeLocRequest, keyPair);
+            LOG.info("Receive pipeLocRequest: {}, key: {}, message id: {}", pipeLocRequest, keyPair,
+              message.getId());
 
             final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
             lock.lock();

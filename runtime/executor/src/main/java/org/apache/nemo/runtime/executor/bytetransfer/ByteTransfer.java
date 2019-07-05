@@ -104,7 +104,9 @@ public final class ByteTransfer {
                                                                final boolean isPipe,
                                                                final boolean isLocal) {
 
-    //LOG.info("New remote output context: {}", executorId);
+    LOG.info("New remote output context: {}, {}, {}->{}",
+      executorId, contextDescriptor.getRuntimeEdgeId(), contextDescriptor.getSrcTaskIndex(),
+      contextDescriptor.getDstTaskIndex());
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
 
     /*
