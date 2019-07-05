@@ -141,7 +141,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void pending(final TaskLocationMap.LOC sdt, final String tid) {
 
     synchronized (writeLock) {
-      sendDataTo = sdt;
+      //sendDataTo = sdt;
+
       currStatus = Status.PENDING;
       taskId = tid;
 
@@ -155,7 +156,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           VM,
           taskId);
 
-      LOG.info("Ack pending to {} {}",sendDataTo, message);
+      LOG.info("Ack pending to {}, change to {}, {}",sendDataTo,  sdt, message);
       currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
     }
   }

@@ -23,6 +23,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.RemainingOffloadTasks;
 import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
@@ -105,6 +106,7 @@ public final class TinyTaskOffloader implements Offloader {
   private TaskExecutor.PendingState pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
   private TinyTaskWorker tinyTaskWorker;
 
+  private final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -374,8 +376,18 @@ public final class TinyTaskOffloader implements Offloader {
         if (checkIsAllOutputPendingReady()) {
           LOG.info("Output stop done for {}", taskId);
           outputStopPendingFutures.clear();
+          pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
+          remainingOffloadTasks.decrementAndGet();
           return true;
         } else {
+          break;
+        }
+      }
+      case OTHER_TASK_WAITING: {
+        if (remainingOffloadTasks.getRemainingCnt() == 0) {
+          return true;
+        } else {
+          LOG.info("Waiting other offload tasks... {}", remainingOffloadTasks.getRemainingCnt());
           break;
         }
       }

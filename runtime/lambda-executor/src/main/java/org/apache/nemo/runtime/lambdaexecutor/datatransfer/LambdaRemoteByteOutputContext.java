@@ -140,7 +140,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   public void pending(final TaskLocationMap.LOC sdt, final String tid) {
 
     synchronized (writeLock) {
-      sendDataTo = sdt;
+      //sendDataTo = sdt;
+
       taskId = tid;
       currStatus = PENDING;
 
@@ -154,10 +155,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
           SF,
           taskId);
 
-      if (sendDataTo.equals(VM)) {
+      if (sdt.equals(VM)) {
         LOG.info("Ack pending to relay {}", message);
         relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
-      } else if (sendDataTo.equals(SF)) {
+      } else if (sdt.equals(SF)) {
         LOG.info("Ack pending to vm {}", message);
         vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
       }
@@ -194,6 +195,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void scaleoutToVm(Channel channel) {
     LOG.info("Scale out to relay channel {}, {}", channel, getContextId());
+    sendDataTo = SF;
     relayChannel = channel;
     currChannel = relayChannel;
     currStatus = Status.NO_PENDING;
@@ -212,6 +214,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void scaleInToVm(Channel channel) {
     LOG.info("Scale in to channel {}", channel);
+    sendDataTo = VM;
     vmChannel = channel;
     currChannel = vmChannel;
     currStatus = Status.NO_PENDING;

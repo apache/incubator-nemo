@@ -223,6 +223,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
 
         if (sendDataTo.equals(VM)) {
+          // sf -> vm
           // send ack to the vm channel
           //LOG.info("Sending ack from parent stop output to ");
           final ByteTransferContextSetupMessage ackMessage =

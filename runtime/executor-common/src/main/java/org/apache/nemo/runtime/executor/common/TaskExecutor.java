@@ -37,6 +37,8 @@ public interface TaskExecutor extends AutoCloseable {
     WORKER_PENDING,
     INPUT_PENDING,
     OUTPUT_PENDING,
+    OTHER_TASK_WAITING,
+    DONE,
   }
 
   public enum Status {
