@@ -336,18 +336,46 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        ByteOutputContext outputContext = outputContexts.get(transferIndex);
 
-        LOG.info("Signal from child for restart output {} / {}", sendDataTo, transferIndex);
+        if (outputContext == null) {
+          channelExecutorService.execute(() -> {
+            ByteOutputContext byteOutputContext = outputContexts.get(transferIndex);
+            while (byteOutputContext == null) {
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              LOG.info("Waiting output context {}", transferIndex);
+              byteOutputContext = outputContexts.get(transferIndex);
+            }
 
-        switch (sendDataTo) {
-          case SF: {
-            outputContext.scaleoutToVm(channel);
-            break;
-          }
-          case VM: {
-            outputContext.scaleInToVm(channel);
-            break;
+            LOG.info("Signal from child for restart output {} / {}, context {}", sendDataTo, transferIndex, byteOutputContext);
+            switch (sendDataTo) {
+              case SF: {
+                byteOutputContext.scaleoutToVm(channel);
+                break;
+              }
+              case VM: {
+                byteOutputContext.scaleInToVm(channel);
+                break;
+              }
+            }
+          });
+
+        } else {
+          LOG.info("Signal from child for restart output {} / {}, context {}", sendDataTo, transferIndex, outputContext);
+
+          switch (sendDataTo) {
+            case SF: {
+              outputContext.scaleoutToVm(channel);
+              break;
+            }
+            case VM: {
+              outputContext.scaleInToVm(channel);
+              break;
+            }
           }
         }
         break;
