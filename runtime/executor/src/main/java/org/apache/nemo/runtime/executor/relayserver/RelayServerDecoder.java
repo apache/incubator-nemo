@@ -1,24 +1,20 @@
 package org.apache.nemo.runtime.executor.relayserver;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReadWriteLock;
 
 public final class RelayServerDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RelayServerDecoder.class);
@@ -39,7 +35,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
   private char type;
   private int idLength;
-  private boolean waitingStr = false;
 
   private final ScheduledExecutorService pendingFlusher;
 
@@ -60,7 +55,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
             if (pendingBytes != null) {
               synchronized (pendingBytes) {
-                LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), channel);
+                LOG.info("Flushing pending byte {} size: {} / {}", dstKey, pendingBytes.size(), channel);
                 for (final ByteBuf pendingByte : pendingBytes) {
                   channel.write(pendingByte);
                 }
@@ -99,7 +94,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         case WAITING_HEADER2: {
           if (byteBuf.readableBytes() < idLength + 4) {
             //LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
-            waitingStr = true;
             return;
           } else {
             final byte[] idBytes = new byte[idLength];
