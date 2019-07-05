@@ -160,7 +160,8 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
                 final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
                 offloadCnt += 1;
-                LOG.info("Offloading {}, cnt: {}", runningTask.getId(), offloadCnt);
+                LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", runningTask.getId(), offloadCnt,
+                  remainingOffloadTasks.getRemainingCnt());
 
                 //offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
 
