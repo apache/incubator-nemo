@@ -79,6 +79,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.ackService = ackService;
 
+
+    LOG.info("Context is sf {}, {}", isSfChannel, contextId);
     if (isSfChannel) {
       this.sfChannel = contextManager.getChannel();
       this.currChannel = sfChannel;
@@ -134,12 +136,14 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     //currChannel.writeAndFlush(message);
 
     if (currChannel == sfChannel) {
-      LOG.info("Send message to relay: {}", message);
+      LOG.info("Send message to relay: {}, currChannel: {}, sfChannel: {}", message,
+        currChannel, sfChannel);
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
       final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
       currChannel.writeAndFlush(new RelayControlFrame(dst, message));
     } else {
-      LOG.info("Send message to remote: {}", message);
+      LOG.info("Send message to remote: {}, currChannel: {}, sfChannel: {}", message,
+        currChannel, sfChannel);
       currChannel.writeAndFlush(message);
     }
   }

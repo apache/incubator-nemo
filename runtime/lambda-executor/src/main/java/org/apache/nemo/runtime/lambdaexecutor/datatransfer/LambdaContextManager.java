@@ -112,7 +112,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), false);
 
     final int transferIndex = taskTransferIndexMap.get(key);
-    LOG.info("Input context for {}/{}, index: {}", contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), transferIndex);
+    LOG.info("Input context for {}/{}, index: {}, isRelayServerChannel: {}",
+      contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), transferIndex, isRelayServerChannel);
 
     return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
@@ -301,6 +302,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
                   SF,
                   message.getTaskId());
+
               inputContext.sendMessage(ackMessage, (m) -> {});
 
 
@@ -316,7 +318,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       }
       case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
         final ByteOutputContext context = outputContexts.get(transferIndex);
-        LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
+        LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context,
+          message);
         context.receivePendingAck();
         break;
       }
