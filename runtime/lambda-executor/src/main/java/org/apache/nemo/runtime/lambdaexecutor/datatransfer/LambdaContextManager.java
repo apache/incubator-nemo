@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
@@ -59,6 +60,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final ExecutorService channelExecutorService;
   private final RelayServerClient relayServerClient;
   private final ByteTransfer byteTransfer;
+  private final OutputWriterFlusher outputWriterFlusher;
 
   public LambdaContextManager(
     final ExecutorService channelExecutorService,
@@ -71,7 +73,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final Map<TransferKey, Integer> taskTransferIndexMap,
     final boolean isRelayServerChannel,
     final RelayServerClient relayServerClient,
-    final ByteTransfer byteTransfer) {
+    final ByteTransfer byteTransfer,
+    final OutputWriterFlusher outputWriterFlusher) {
     LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
     this.inputContexts = inputContexts;
@@ -84,6 +87,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.isRelayServerChannel = isRelayServerChannel;
     this.relayServerClient = relayServerClient;
     this.byteTransfer = byteTransfer;
+    this.outputWriterFlusher = outputWriterFlusher;
 
     //LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
@@ -531,12 +535,15 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   @Override
   public void channelActive(final ChannelHandlerContext ctx) {
     channelGroup.add(ctx.channel());
+    outputWriterFlusher.registerChannel(ctx.channel());
   }
 
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) {
     channelGroup.remove(ctx.channel());
     LOG.info("Channel closed !! {}", ctx.channel());
+
+    outputWriterFlusher.removeChannel(ctx.channel());
 
     /*
     final Throwable cause = new Exception("Channel closed");

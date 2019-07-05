@@ -230,8 +230,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final RelayServer relayServer,
                                  final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService,
-                                 final ExecutorGlobalInstances executorGlobalInstances,
-                                 final OutputWriterFlusher outputWriterFlusher) {
+                                 final ExecutorGlobalInstances executorGlobalInstances) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
@@ -294,11 +293,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // Prepare data structures
     this.sortedHarnesses = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.availableFetchers = new ArrayList<>(sourceVertexDataFetchers);
-
-    // Flush!!
-    outputWriterMap.forEach(outputWriter -> {
-      outputWriterFlusher.registerFlushable(outputWriter);
-    });
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 

@@ -351,8 +351,7 @@ public final class Executor {
         relayServer,
         taskLocationMap,
         prepareService,
-        executorGlobalInstances,
-        outputWriterFlusher);
+        executorGlobalInstances);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
 

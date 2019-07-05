@@ -138,7 +138,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
                   taskChannelMap.put(dst, ctx.channel());
 
-                  outputWriterFlusher.registerFlushable(new ChannelFlush(ctx.channel()));
+                  outputWriterFlusher.registerChannel(ctx.channel());
 
                   break;
                 }
@@ -238,7 +238,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
       if (entry.getValue().equals(ctx.channel())) {
         LOG.info("Removing dst {}", entry.getKey());
         taskChannelMap.remove(entry.getKey());
-        outputWriterFlusher.removeFlushable(new ChannelFlush(ctx.channel()));
+        outputWriterFlusher.removeChannel(ctx.channel());
       }
     }
   }

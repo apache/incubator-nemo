@@ -22,6 +22,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import java.util.Map;
@@ -72,6 +73,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;
   private ByteTransfer byteTransfer;
+  private final OutputWriterFlusher outputWriterFlusher;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -81,7 +83,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final AckScheduledService ackScheduledService,
                                                final Map<TransferKey, Integer> taskTransferIndexMap,
                                                final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
-                                               final ConcurrentMap<Integer, ByteOutputContext> outputContextMap) {
+                                               final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
+                                               final OutputWriterFlusher outputWriterFlusher) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -92,6 +95,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.channelExecutorService = Executors.newCachedThreadPool();
     this.inputContextMap = inputContextMap;
     this.outputContextMap = outputContextMap;
+    this.outputWriterFlusher = outputWriterFlusher;
   }
 
   public void setByteTransfer(final ByteTransfer bt) {
@@ -110,7 +114,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
-      false, relayServerClient, byteTransfer);
+      false, relayServerClient, byteTransfer, outputWriterFlusher);
 
     System.out.println("Init channel " + ch);
 

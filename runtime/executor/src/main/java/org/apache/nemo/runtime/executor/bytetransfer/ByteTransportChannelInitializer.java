@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -91,6 +93,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final ExecutorService channelServiceExecutor;
   private final PersistentConnectionToMasterMap toMaster;
 
+  private final OutputWriterFlusher outputWriterFlusher;
 
   /**
    * Creates a netty channel initializer.
@@ -115,7 +118,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final TaskTransferIndexMap taskTransferIndexMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                           final TaskLocationMap taskLocationMap,
-                                          final PersistentConnectionToMasterMap toMaster) {
+                                          final PersistentConnectionToMasterMap toMaster,
+                                          final EvalConf evalConf) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -129,6 +133,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.taskLocationMap = taskLocationMap;
     this.channelServiceExecutor = Executors.newCachedThreadPool();
     this.toMaster = toMaster;
+    this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
   }
 
   @Override
@@ -149,7 +154,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       nextInputTransferIndex,
       nextOutputTransferIndex,
       taskLocationMap,
-      toMaster);
+      toMaster,
+      outputWriterFlusher);
 
     ch.pipeline()
         // inbound

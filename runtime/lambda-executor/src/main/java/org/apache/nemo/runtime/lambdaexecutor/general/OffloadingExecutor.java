@@ -158,13 +158,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
 
     // Relay server channel initializer
     final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
       new RelayServerClientChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap, inputContexts, outputContexts);
+        taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher);
 
     final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
     final Bootstrap clientBootstrap = new Bootstrap()
@@ -220,8 +220,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         oc,
         scheduledExecutorService,
         prepareService,
-        executorGlobalInstances,
-        outputWriterFlusher);
+        executorGlobalInstances);
 
       // Emit offloading done
       oc.emit(new OffloadingDoneEvent(

@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayClientDecoder;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrameEncoder;
@@ -31,6 +32,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
   final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;;
   private ByteTransfer byteTransfer;
+  private final OutputWriterFlusher outputWriterFlusher;
 
   public RelayServerClientChannelInitializer(final ChannelGroup channelGroup,
                                              final ControlFrameEncoder controlFrameEncoder,
@@ -40,7 +42,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
                                              final AckScheduledService ackScheduledService,
                                              final Map<TransferKey, Integer> taskTransferIndexMap,
                                              final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
-                                             final ConcurrentMap<Integer, ByteOutputContext> outputContextMap) {
+                                             final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
+                                             final OutputWriterFlusher outputWriterFlusher) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -51,6 +54,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
     this.channelExecutorService = Executors.newCachedThreadPool();
     this.inputContextMap = inputContextMap;
     this.outputContextMap = outputContextMap;
+    this.outputWriterFlusher = outputWriterFlusher;
   }
 
   public void setRelayServerClient(final RelayServerClient client) {
@@ -70,7 +74,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap, true,
-      relayServerClient, byteTransfer);
+      relayServerClient, byteTransfer, outputWriterFlusher);
 
     ch.pipeline()
       // outbound

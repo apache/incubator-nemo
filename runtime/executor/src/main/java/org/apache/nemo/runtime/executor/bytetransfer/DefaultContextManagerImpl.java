@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -81,6 +82,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
   private final ExecutorService channelExecutorService;
   private final PersistentConnectionToMasterMap toMaster;
+  private final OutputWriterFlusher outputWriterFlusher;
 
   /**
    * Creates context manager for this channel.
@@ -108,7 +110,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             final AtomicInteger nextInputTransferIndex,
                             final AtomicInteger nextOutputTransferIndex,
                             final TaskLocationMap taskLocationMap,
-                            final PersistentConnectionToMasterMap toMaster) {
+                            final PersistentConnectionToMasterMap toMaster,
+                            final OutputWriterFlusher outputWriterFlusher) {
     this.channelExecutorService = channelExecutorService;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
@@ -118,6 +121,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
+    this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;
     this.flusher = Executors.newSingleThreadScheduledExecutor();
     this.inputContexts = inputContexts;
@@ -671,12 +675,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public void channelActive(final ChannelHandlerContext ctx) {
     channelGroup.add(ctx.channel());
+
+    outputWriterFlusher.registerChannel(ctx.channel());
   }
 
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) {
     channelGroup.remove(ctx.channel());
 
+    outputWriterFlusher.removeChannel(ctx.channel());
     LOG.info("Channel closed !! {}", ctx.channel());
 
     /*
