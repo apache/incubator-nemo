@@ -99,6 +99,11 @@ public final class BlockOutputWriter implements OutputWriter {
     // do nothing
   }
 
+  @Override
+  public void flush() {
+
+  }
+
   /**
    * Notifies that all writes for a block is end.
    * Further write about a committed block will throw an exception.

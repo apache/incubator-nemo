@@ -134,6 +134,8 @@ public final class Executor {
 
   private final ExecutorGlobalInstances executorGlobalInstances;
 
+  private final OutputWriterFlusher outputWriterFlusher;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -191,6 +193,8 @@ public final class Executor {
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
     this.stageExecutorThreadMap = new ConcurrentHashMap<>();
+
+    this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
     /*
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
@@ -347,7 +351,8 @@ public final class Executor {
         relayServer,
         taskLocationMap,
         prepareService,
-        executorGlobalInstances);
+        executorGlobalInstances,
+        outputWriterFlusher);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
 

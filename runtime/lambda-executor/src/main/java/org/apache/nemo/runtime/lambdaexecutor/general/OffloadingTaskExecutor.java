@@ -79,6 +79,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ExecutorGlobalInstances executorGlobalInstances;
   final List<DataFetcher> allFetchers;
 
+  private final OutputWriterFlusher outputWriterFlusher;
+
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
@@ -89,7 +91,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final OffloadingOutputCollector oc,
                                 final ScheduledExecutorService pollingTrigger,
                                 final ExecutorService prepareService,
-                                final ExecutorGlobalInstances executorGlobalInstances) {
+                                final ExecutorGlobalInstances executorGlobalInstances,
+                                final OutputWriterFlusher outputWriterFlusher) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
     this.executorAddressMap = executorAddressMap;
@@ -106,6 +109,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.pollingTrigger = pollingTrigger;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
+    this.outputWriterFlusher = outputWriterFlusher;
 
 
     /*
@@ -117,6 +121,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     prepare();
 
     allFetchers = new ArrayList<>(availableFetchers);
+
+    pipeOutputWriters.forEach(pipeOutputWriter -> {
+      outputWriterFlusher.registerFlushable(pipeOutputWriter);
+    });
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -477,6 +485,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         // TODO: fix
         for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
           outputWriter.close(offloadingTask.taskId);
+          outputWriterFlusher.removeFlushable(outputWriter);
         }
 
         LOG.info("Closing output writer {}", offloadingTask.taskId);

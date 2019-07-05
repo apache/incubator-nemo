@@ -67,6 +67,8 @@ public final class PipeOutputWriter implements OutputWriter {
   private final StageEdge stageEdge;
   private final RelayServer relayServer;
 
+  private volatile boolean stopped = false;
+
   /**
    * Constructor.
    *
@@ -111,6 +113,7 @@ public final class PipeOutputWriter implements OutputWriter {
         runtimeEdge.getId(),
         stageEdge.getDstIRVertex().getId());
 
+      /*
       if (flush) {
         try {
           stream.flush();
@@ -119,6 +122,7 @@ public final class PipeOutputWriter implements OutputWriter {
           throw new RuntimeException(e);
         }
       }
+      */
     });
   }
 
@@ -204,6 +208,20 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
+  public void flush() {
+    if (!stopped) {
+      pipes.forEach(pipe -> {
+        try {
+          pipeAndStreamMap.get(pipe).flush();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    }
+  }
+
+  @Override
   public Optional<Long> getWrittenBytes() {
     return Optional.empty();
   }
@@ -231,6 +249,7 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public Future<Boolean> stop(final String taskId) {
     // send stop message!
+    stopped = true;
 
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
@@ -298,6 +317,8 @@ public final class PipeOutputWriter implements OutputWriter {
     pipes.forEach(pipe -> {
       pipe.restart(taskId);
     });
+
+    stopped = false;
   }
 
   private List<ByteOutputContext> doInitialize() {

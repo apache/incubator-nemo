@@ -4,13 +4,17 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Flushable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -37,13 +41,15 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   private int idLength;
 
   private final ScheduledExecutorService pendingFlusher;
-
+  private final OutputWriterFlusher outputWriterFlusher;
 
   public RelayServerDecoder(final ConcurrentMap<String, Channel> taskChannelMap,
-                            final ConcurrentMap<String, List<ByteBuf>> pendingByteMap) {
+                            final ConcurrentMap<String, List<ByteBuf>> pendingByteMap,
+                            final OutputWriterFlusher outputWriterFlusher) {
     this.taskChannelMap = taskChannelMap;
     this.pendingByteMap = pendingByteMap;
     this.pendingFlusher = Executors.newSingleThreadScheduledExecutor();
+    this.outputWriterFlusher = outputWriterFlusher;
 
     pendingFlusher.scheduleAtFixedRate(() -> {
       try {
@@ -131,6 +137,9 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                   }
 
                   taskChannelMap.put(dst, ctx.channel());
+
+                  outputWriterFlusher.registerFlushable(new ChannelFlush(ctx.channel()));
+
                   break;
                 }
                 case DEREGISTER: {
@@ -229,13 +238,41 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
       if (entry.getValue().equals(ctx.channel())) {
         LOG.info("Removing dst {}", entry.getKey());
         taskChannelMap.remove(entry.getKey());
+        outputWriterFlusher.removeFlushable(new ChannelFlush(ctx.channel()));
       }
     }
-
   }
 
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
     startToRelay(in, ctx);
+  }
+
+  final class ChannelFlush implements Flushable {
+
+    private final Channel channel;
+
+    public ChannelFlush(final Channel channel) {
+      this.channel = channel;
+    }
+
+    @Override
+    public void flush() throws IOException {
+      channel.flush();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ChannelFlush that = (ChannelFlush) o;
+      return Objects.equals(channel, that.channel);
+    }
+
+    @Override
+    public int hashCode() {
+
+      return Objects.hash(channel);
+    }
   }
 }

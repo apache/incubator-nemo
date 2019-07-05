@@ -20,13 +20,14 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
+import java.io.Flushable;
 import java.util.*;
 import java.util.concurrent.Future;
 
 /**
  * Represents the output data transfer from a task.
  */
-public interface OutputWriter {
+public interface OutputWriter extends Flushable {
   /**
    * Writes output element depending on the communication pattern of the edge.
    *

@@ -34,6 +34,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextS
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Flushable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -44,7 +45,7 @@ import java.util.stream.Collectors;
 /**
  * Represents the output data transfer from a task.
  */
-public final class PipeOutputWriter {
+public final class PipeOutputWriter implements Flushable {
   private static final Logger LOG = LoggerFactory.getLogger(PipeOutputWriter.class.getName());
 
   private final int srcTaskIndex;
@@ -60,6 +61,7 @@ public final class PipeOutputWriter {
   private final StageEdge stageEdge;
   private final int originTaskIndex;
 
+  private volatile boolean closed = false;
 
   PipeOutputWriter(final int srcTaskIndex,
                    final int originTaskIndex,
@@ -114,6 +116,7 @@ public final class PipeOutputWriter {
 
   public void close(final String taskId) {
     // send stop message!
+    closed =  true;
 
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
@@ -215,6 +218,20 @@ public final class PipeOutputWriter {
       return pipes;
     } else {
       return Collections.singletonList(pipes.get((int) partitioner.partition(element.value)));
+    }
+  }
+
+  @Override
+  public void flush() throws IOException {
+    if (!closed) {
+      pipes.forEach(pipe -> {
+        try {
+          pipeAndStreamMap.get(pipe).flush();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
     }
   }
 }

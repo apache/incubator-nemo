@@ -71,6 +71,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient ExecutorGlobalInstances executorGlobalInstances;
 
+  private transient OutputWriterFlusher outputWriterFlusher;
+
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
@@ -107,6 +109,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.ackScheduledService = new AckScheduledService();
     this.prepareService = Executors.newCachedThreadPool();
     this.executorGlobalInstances = new ExecutorGlobalInstances();
+    this.outputWriterFlusher = new OutputWriterFlusher(200);
 
     executorThreads = new ArrayList<>();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -217,7 +220,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         oc,
         scheduledExecutorService,
         prepareService,
-        executorGlobalInstances);
+        executorGlobalInstances,
+        outputWriterFlusher);
 
       // Emit offloading done
       oc.emit(new OffloadingDoneEvent(

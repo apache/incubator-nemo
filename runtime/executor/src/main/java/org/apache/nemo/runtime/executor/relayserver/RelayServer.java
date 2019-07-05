@@ -11,6 +11,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.datatransfer.NioChannelImplementationSelector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -37,6 +38,7 @@ public final class RelayServer {
   private int bindingPort;
 
   private final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
+  private final OutputWriterFlusher outputWriterFlusher;
 
   @Inject
   private RelayServer(final TcpPortProvider tcpPortProvider,
@@ -56,6 +58,8 @@ public final class RelayServer {
       throw new RuntimeException(e);
     }
 
+    this.outputWriterFlusher = new OutputWriterFlusher(200);
+
     serverListeningGroup = channelImplSelector.newEventLoopGroup(2,
         new DefaultThreadFactory(SERVER_LISTENING));
     serverWorkingGroup = channelImplSelector.newEventLoopGroup(5,
@@ -64,7 +68,7 @@ public final class RelayServer {
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RelayServerChannelInitializer(channelMap))
+      .childHandler(new RelayServerChannelInitializer(channelMap, outputWriterFlusher))
       .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;
