@@ -2,7 +2,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import org.apache.beam.runners.core.StateInternals;
 import org.apache.beam.runners.core.StateNamespace;
 import org.apache.beam.runners.core.StateTable;
@@ -455,7 +454,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
 
     @Override
     public Iterable<T> read() {
-      return Iterables.limit(contents, contents.size());
+      return contents;
     }
 
     @Override
