@@ -71,7 +71,8 @@ public final class GBKFinalTransform<K, InputT>
   /**
    * GroupByKey constructor.
    */
-  public GBKFinalTransform(final Coder<K> keyCoder,
+  public GBKFinalTransform(final Coder inputcoder,
+                           final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
                            final WindowingStrategy<?, ?> windowingStrategy,
@@ -79,7 +80,7 @@ public final class GBKFinalTransform<K, InputT>
                            final SystemReduceFn reduceFn,
                            final DisplayData displayData) {
     super(null, /* doFn */
-      null, /* inputCoder */
+      inputcoder, /* inputCoder */
       outputCoders,
       mainOutputTag,
       Collections.emptyList(),  /*  GBK does not have additional outputs */

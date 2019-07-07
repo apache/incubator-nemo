@@ -273,7 +273,9 @@ final class PipelineTranslator {
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
     final IRVertex vertex = new OperatorVertex(
-      createGBKTransform(pTransform, mainInput, ctx, beamNode, SystemReduceFn.buffering(mainInput.getCoder())));
+      createGBKTransform(pTransform, mainInput, ctx, beamNode,
+        SystemReduceFn.buffering(mainInput.getCoder())));
+
     vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
@@ -387,6 +389,7 @@ final class PipelineTranslator {
 
       final GBKFinalTransform gbkFinal =
         new GBKFinalTransform(
+          mainInput.getCoder(),
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
@@ -665,6 +668,7 @@ final class PipelineTranslator {
 
       final GBKFinalTransform gbkFinal =
         new GBKFinalTransform(
+          mainInput.getCoder(),
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
