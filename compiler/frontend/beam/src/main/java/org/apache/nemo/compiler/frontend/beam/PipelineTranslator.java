@@ -659,14 +659,21 @@ final class PipelineTranslator {
     if (isGlobalWindow(beamNode, ctx.getPipeline())) {
       return new GroupByKeyTransform();
     } else {
-      return new GroupByKeyAndWindowDoFnTransform(
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        mainInput.getWindowingStrategy(),
-        ctx.getPipelineOptions(),
-        systemReduceFn,
-        //SystemReduceFn.buffering(mainInput.getCoder()),
-        DisplayData.from(beamNode.getTransform()));
+      final PCollection inputs = (PCollection) Iterables.getOnlyElement(
+        TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+      final KvCoder inputCoder = (KvCoder) inputs.getCoder();
+
+      final GBKFinalTransform gbkFinal =
+        new GBKFinalTransform(
+          inputCoder.getKeyCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          mainInput.getWindowingStrategy(),
+          ctx.getPipelineOptions(),
+          systemReduceFn,
+          DisplayData.from(beamNode.getTransform()));
+
+      return gbkFinal;
     }
   }
 
