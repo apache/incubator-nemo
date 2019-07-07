@@ -2,6 +2,7 @@ package org.apache.nemo.compiler.frontend.beam.transform.coders;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
 
@@ -29,7 +30,11 @@ public final class BagStateCoder<T> extends Coder<BagState<T>> {
   }
 
   public BagStateCoder(final Coder<T> coder) {
-    this.coder = coder;
+    if (coder instanceof KvCoder) {
+      this.coder = ((KvCoder) coder).getValueCoder();
+    } else {
+      this.coder = coder;
+    }
   }
 
   @Override
