@@ -11,10 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +58,9 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
     LOG.info("Start StaticOffloadingPolicy");
 
     try {
+      BufferedWriter writer = new BufferedWriter(new FileWriter("/home/ubuntu/incubator-nemo/scaling.txt"));
+      writer.close();
+
       final BufferedReader br =
         new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/scaling.txt"));
 
@@ -135,9 +135,16 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
 
       br.close();
 
+
       if (cnt > prevFileReadCnt) {
         prevFileReadCnt = cnt;
-        if (lastLine.equals("o")) {
+
+        String[] split = lastLine.split(" ");
+        final String decision = split[0];
+
+        if (decision.equals("o")) {
+          final int offloadDivide = Integer.valueOf(split[1]);
+
           // scale out
           final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
@@ -150,16 +157,18 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
           // Set total offload task cnt
           int totalOffloadTasks = 0;
           for (final List<TaskExecutor> tasks : stageTasks) {
-            final int offcnt = tasks.size() / 2;
+            final int offcnt = tasks.size() / offloadDivide;
             totalOffloadTasks += offcnt;
           }
           remainingOffloadTasks.set(totalOffloadTasks);
+
+          LOG.info("# of offloading tasks: {}", totalOffloadTasks);
 
           for (final List<TaskExecutor> tasks : stageTasks) {
             int offloadCnt = 0;
 
             for (final TaskExecutor runningTask : tasks) {
-              if (offloadCnt < tasks.size() / 2) {
+              if (offloadCnt < tasks.size() / offloadDivide) {
                 offloaded.add(runningTask);
                 final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
@@ -177,7 +186,7 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
             }
           }
 
-        } else if (lastLine.equals("i")) {
+        } else if (decision.equals("i")) {
           // scale in
           for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
             int offcnt = offloadedTasks.size();
