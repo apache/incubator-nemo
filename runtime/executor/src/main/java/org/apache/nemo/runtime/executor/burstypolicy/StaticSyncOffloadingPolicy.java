@@ -157,7 +157,8 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
           // Set total offload task cnt
           int totalOffloadTasks = 0;
           for (final List<TaskExecutor> tasks : stageTasks) {
-            final int offcnt = tasks.size() / offloadDivide;
+            final int remain = tasks.size() / offloadDivide;
+            final int offcnt = tasks.size()  - remain;
             LOG.info("Tasks: {}, offcnt: {}, totalTAsks: {}", tasks.size(), offcnt, totalOffloadTasks);
             totalOffloadTasks += offcnt;
           }
@@ -169,8 +170,12 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
           for (final List<TaskExecutor> tasks : stageTasks) {
             int offloadCnt = 0;
 
+            final int remain = tasks.size() / offloadDivide;
+            final int offcnt = tasks.size()  - remain;
+
             for (final TaskExecutor runningTask : tasks) {
-              if (offloadCnt < tasks.size() / offloadDivide) {
+              if (offloadCnt < offcnt) {
+
                 offloaded.add(runningTask);
                 final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
