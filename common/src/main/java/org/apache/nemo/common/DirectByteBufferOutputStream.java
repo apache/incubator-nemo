@@ -42,7 +42,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   private final int pageSize;
   //private ByteBuffer currentBuf;
   private MemoryChunk currentBuf;
-  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 400, DEFAULT_PAGE_SIZE);
+  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 400, DEFAULT_PAGE_SIZE); //memory temporarily hard-coded
 
   /**
    * Default constructor.
