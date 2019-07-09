@@ -20,6 +20,7 @@ package org.apache.nemo.common;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -36,10 +37,12 @@ import java.util.List;
  */
 public final class DirectByteBufferOutputStream extends OutputStream {
 
-  private LinkedList<ByteBuffer> dataList = new LinkedList<>();
+  private LinkedList<MemoryChunk> dataList = new LinkedList<>();
   private static final int DEFAULT_PAGE_SIZE = 32768; //32KB
   private final int pageSize;
-  private ByteBuffer currentBuf;
+  //private ByteBuffer currentBuf;
+  private MemoryChunk currentBuf;
+  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 400, DEFAULT_PAGE_SIZE);
 
   /**
    * Default constructor.
@@ -70,7 +73,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   // TODO #388: Off-heap memory management (reuse ByteBuffer)
   private void newLastBuffer() {
-    dataList.addLast(ByteBuffer.allocateDirect(pageSize));
+    dataList.addLast(MEMORY_POOL_ASSIGNER.allocateChunk(true));
   }
 
   /**
@@ -79,12 +82,18 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @param   b   the byte to be written.
    */
   @Override
-  public void write(final int b) {
-    if (currentBuf.remaining() <= 0) {
-      newLastBuffer();
-      currentBuf = dataList.getLast();
+  public void write(final int b) throws IOException {
+    try {
+      if (currentBuf.remaining() <= 0) {
+        newLastBuffer();
+        currentBuf = dataList.getLast();
+      }
+      currentBuf.put((byte) b);
+    } catch (IllegalStateException e) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } catch (IllegalAccessException e) {
+      throw new IOException("Not allowed for non-sequential MemoryChunk");
     }
-    currentBuf.put((byte) b);
   }
 
   /**
@@ -93,7 +102,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @param b the byte to be written.
    */
   @Override
-  public void write(final byte[] b) {
+  public void write(final byte[] b) throws IOException {
     write(b, 0, b.length);
   }
 
@@ -106,24 +115,28 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @param   len   the number of bytes to write.
    */
   @Override
-  public void write(final byte[] b, final int off, final int len) {
+  public void write(final byte[] b, final int off, final int len) throws IOException {
     int byteToWrite = len;
     int offset = off;
-    while (byteToWrite > 0) {
-      if (currentBuf.remaining() <= 0) {
-        newLastBuffer();
-        currentBuf = dataList.getLast();
+    try {
+      while (byteToWrite > 0) {
+        if (currentBuf.remaining() <= 0) {
+          newLastBuffer();
+          currentBuf = dataList.getLast();
+        }
+        final int bufRemaining = currentBuf.remaining();
+        if (bufRemaining < byteToWrite) {
+          currentBuf.put(b, offset, bufRemaining);
+          offset += bufRemaining;
+          byteToWrite -= bufRemaining;
+        } else {
+          currentBuf.put(b, offset, byteToWrite);
+          offset += byteToWrite;
+          byteToWrite = 0;
+        }
       }
-      final int bufRemaining = currentBuf.remaining();
-      if (bufRemaining < byteToWrite) {
-        currentBuf.put(b, offset, bufRemaining);
-        offset += bufRemaining;
-        byteToWrite -= bufRemaining;
-      } else {
-        currentBuf.put(b, offset, byteToWrite);
-        offset += byteToWrite;
-        byteToWrite = 0;
-      }
+    } catch (IllegalAccessException e) {
+      throw new IOException("Not allowed for non-sequential MemoryChunk");
     }
   }
 
@@ -135,13 +148,14 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @return the current contents of this output stream, as byte array.
    */
   @VisibleForTesting
-  byte[] toByteArray() {
+  byte[] toByteArray() throws IllegalAccessException {
     if (dataList.isEmpty()) {
       final byte[] byteArray = new byte[0];
       return byteArray;
     }
 
-    ByteBuffer lastBuf = dataList.getLast();
+    //ByteBuffer lastBuf = dataList.getLast();
+    MemoryChunk lastBuf = dataList.getLast();
     // pageSize equals the size of the data filled in the ByteBuffers
     // except for the last ByteBuffer. The size of the data in the
     // ByteBuffer can be obtained by calling ByteBuffer.position().
@@ -149,10 +163,11 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     final byte[] byteArray = new byte[arraySize];
     int start = 0;
 
-    for (final ByteBuffer buffer : dataList) {
+    for (final MemoryChunk buffer : dataList) {
       // We use duplicated buffer to read the data so that there is no complicated
       // alteration of position and limit when switching between read and write mode.
-      final ByteBuffer dupBuffer = buffer.duplicate();
+      final MemoryChunk dupChunk = buffer.duplicate();
+      final ByteBuffer dupBuffer = dupChunk.getBuffer();
       dupBuffer.flip();
       final int byteToWrite = dupBuffer.remaining();
       dupBuffer.get(byteArray, start, byteToWrite);
@@ -173,8 +188,9 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   public List<ByteBuffer> getDirectByteBufferList() {
     List<ByteBuffer> result = new ArrayList<>(dataList.size());
-    for (final ByteBuffer buffer : dataList) {
-      final ByteBuffer dupBuffer = buffer.duplicate();
+    for (final MemoryChunk chunk : dataList) {
+      final MemoryChunk dupChunk = chunk.duplicate();
+      final ByteBuffer dupBuffer = dupChunk.getBuffer();
       dupBuffer.flip();
       result.add(dupBuffer);
     }
@@ -186,7 +202,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    *
    * @return the size of the data
    */
-  public int size() {
+  public int size() throws IllegalAccessException {
     return pageSize * (dataList.size() - 1) + dataList.getLast().position();
   }
 
