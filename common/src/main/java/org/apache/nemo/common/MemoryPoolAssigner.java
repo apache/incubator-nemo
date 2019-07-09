@@ -75,9 +75,9 @@ public class MemoryPoolAssigner {
    * @return list of {@link MemoryChunk}s
    * @throws MemoryAllocationException
    */
-  public List<MemoryChunk> allocateChunks(final int numPages) throws MemoryAllocationException {
+  public List<MemoryChunk> allocateChunks(final int numPages, final boolean sequential) throws MemoryAllocationException {
     final ArrayList<MemoryChunk> chunks = new ArrayList<MemoryChunk>(numPages);
-    allocateChunks(chunks, numPages);
+    allocateChunks(chunks, numPages, sequential);
     return chunks;
   }
 
@@ -88,7 +88,7 @@ public class MemoryPoolAssigner {
    * @param numChunks indicates the number of MemoryChunks
    * @throws MemoryAllocationException
    */
-  public void allocateChunks(final List<MemoryChunk> target, final int numChunks)
+  public void allocateChunks(final List<MemoryChunk> target, final int numChunks, final boolean sequential)
     throws MemoryAllocationException {
 
     if (numChunks > (memoryPool.getNumOfAvailableMemoryChunks())) {
@@ -98,7 +98,7 @@ public class MemoryPoolAssigner {
     }
 
     for (int i = numChunks; i > 0; i--) {
-      MemoryChunk chunk = memoryPool.requestChunkFromPool();
+      MemoryChunk chunk = memoryPool.requestChunkFromPool(sequential);
       target.add(chunk);
     }
   }
@@ -108,8 +108,8 @@ public class MemoryPoolAssigner {
    *
    * @return a MemoryChunk
    */
-  public MemoryChunk allocateChunk() {
-    return memoryPool.requestChunkFromPool();
+  public MemoryChunk allocateChunk(final boolean sequential) {
+    return memoryPool.requestChunkFromPool(sequential);
   }
 
 
@@ -173,14 +173,14 @@ public class MemoryPoolAssigner {
       }
     }
 
-    MemoryChunk allocateNewChunk() {
+    MemoryChunk allocateNewChunk(final boolean sequential) {
       ByteBuffer memory = ByteBuffer.allocateDirect(chunkSize);
-      return new MemoryChunk(memory);
+      return new MemoryChunk(memory, sequential);
     }
 
-    MemoryChunk requestChunkFromPool() {
+    MemoryChunk requestChunkFromPool(final boolean sequential) {
       ByteBuffer buf = available.remove();
-      return new MemoryChunk(buf);
+      return new MemoryChunk(buf, sequential);
     }
 
     /**
