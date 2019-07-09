@@ -106,6 +106,8 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
+      } catch (final IllegalAccessException e) {
+        throw new BlockWriteException(e);
       }
     } else {
       throw new BlockWriteException(new Throwable("Cannot append partitions to the committed block"));
@@ -233,5 +235,12 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   @Override
   public synchronized boolean isCommitted() {
     return committed;
+  }
+
+  @Override
+  public void release() {
+    for (SerializedPartition partition: serializedPartitions) {
+      partition.release();
+    }
   }
 }

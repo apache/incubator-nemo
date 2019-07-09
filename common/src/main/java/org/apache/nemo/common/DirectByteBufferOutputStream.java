@@ -42,7 +42,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   private final int pageSize;
   //private ByteBuffer currentBuf;
   private MemoryChunk currentBuf;
-  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 400, DEFAULT_PAGE_SIZE); //memory temporarily hard-coded
+  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 3000, DEFAULT_PAGE_SIZE); //memory temporarily hard-coded
 
   /**
    * Default constructor.
@@ -204,6 +204,10 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   public int size() throws IllegalAccessException {
     return pageSize * (dataList.size() - 1) + dataList.getLast().position();
+  }
+
+  public void release() {
+    MEMORY_POOL_ASSIGNER.returnChunks(dataList);
   }
 
   /**

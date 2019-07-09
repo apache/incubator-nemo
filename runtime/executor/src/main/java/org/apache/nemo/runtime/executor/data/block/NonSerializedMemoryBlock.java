@@ -169,6 +169,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
       return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange));
     } catch (final IOException e) {
       throw new BlockFetchException(e);
+    } catch (final IllegalAccessException e) {
+      throw new BlockFetchException(e);
     }
   }
 
@@ -216,5 +218,9 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   @Override
   public synchronized boolean isCommitted() {
     return committed;
+  }
+
+  @Override
+  public void release() { //do nothing
   }
 }

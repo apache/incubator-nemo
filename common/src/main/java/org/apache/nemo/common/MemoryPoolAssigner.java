@@ -112,6 +112,26 @@ public class MemoryPoolAssigner {
     return memoryPool.requestChunkFromPool(sequential);
   }
 
+  /**
+   * Returns all the MemoryChunks in the given List of MemoryChunks.
+   *
+   * @param target
+   */
+  public void returnChunks(final List<MemoryChunk> target) {
+    for (final MemoryChunk chunk: target) {
+      memoryPool.returnChunkToPool(chunk);
+    }
+  }
+
+//  /**
+//   * Returns the number of available MemoryChunks.
+//   *
+//   * @return
+//   */
+//  public int available() {
+//    return memoryPool.getNumOfAvailableMemoryChunks();
+//  }
+
 
 //  abstract static class MemoryPool {
 //    abstract int getNumOfAvailableMemoryChunks();
@@ -191,6 +211,7 @@ public class MemoryPoolAssigner {
     void returnChunkToPool(final MemoryChunk chunk) {
       MemoryChunk offHeapChunk = chunk;
       ByteBuffer buf = offHeapChunk.getBuffer();
+      buf.clear();
       available.add(buf);
       chunk.free();
     }

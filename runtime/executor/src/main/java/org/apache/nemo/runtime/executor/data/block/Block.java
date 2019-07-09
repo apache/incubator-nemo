@@ -136,4 +136,9 @@ public interface Block<K extends Serializable> {
    * @return whether this block is committed or not.
    */
   boolean isCommitted();
+
+  /**
+   * Releases the resource that the block holds (i.e. off-heap memory).
+   */
+  void release();
 }

@@ -110,7 +110,7 @@ public final class DataUtil {
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
     final Serializer serializer,
-    final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
+    final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException, IllegalAccessException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (

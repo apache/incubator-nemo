@@ -151,7 +151,11 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
       this.dataList = bytesOutputStream.getDirectByteBufferList();
-      this.length = bytesOutputStream.size();
+      try {
+        this.length = bytesOutputStream.size();
+      } catch (IllegalAccessException e) {
+        throw new IOException();
+      }
       this.committed = true;
     }
   }
@@ -225,5 +229,12 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    */
   public boolean isOffheap() {
     return offheap;
+  }
+
+  /**
+   * Releases the off-heap memory that this SerializedPartition holds.
+   */
+  public void release() {
+    bytesOutputStream.release();
   }
 }

@@ -45,6 +45,7 @@ public class DirectByteBufferOutputStreamTest {
     int value = 1;
     outputStream.write(value);
     assertEquals(value, outputStream.toByteArray()[0]);
+    outputStream.release();
   }
 
   @Test
@@ -52,6 +53,7 @@ public class DirectByteBufferOutputStreamTest {
     String value = "value";
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -62,6 +64,7 @@ public class DirectByteBufferOutputStreamTest {
     assertEquals(value1, new String(outputStream.toByteArray()));
     outputStream.write(value2.getBytes());
     assertEquals(value1+value2, new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -70,6 +73,7 @@ public class DirectByteBufferOutputStreamTest {
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
     assertEquals(value, new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -77,6 +81,7 @@ public class DirectByteBufferOutputStreamTest {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     assertEquals(value,new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -87,6 +92,7 @@ public class DirectByteBufferOutputStreamTest {
     assertEquals(value1, new String(outputStream.toByteArray()));
     outputStream.write(value2.getBytes());
     assertEquals(value1+value2, new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -95,6 +101,7 @@ public class DirectByteBufferOutputStreamTest {
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
     assertEquals(value, new String(outputStream.toByteArray()));
+    outputStream.release();
   }
 
   @Test
@@ -113,5 +120,6 @@ public class DirectByteBufferOutputStreamTest {
       assertEquals(new String(expected), new String(output));
       offset += byteToRead;
     }
+    outputStream.release();
   }
 }
