@@ -37,7 +37,7 @@ public class MemoryChunkTest {
 
   @Before
   public void setup() {
-    chunk = new MemoryChunk(buffer);
+    chunk = new MemoryChunk(buffer, false);
   }
 
   @Test
@@ -56,7 +56,7 @@ public class MemoryChunkTest {
   }
 
   @Test
-  public void testSeqPutAndGetByArray() {
+  public void testBulkPutAndGet() {
     byte[] input1 = new byte[1000]; new Random().nextBytes(input1);
     byte[] input2 = new byte[24]; new Random().nextBytes(input2);
     chunk.put(0, input1);
