@@ -32,6 +32,7 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
+import org.apache.nemo.runtime.master.JobScaler;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -96,6 +97,7 @@ public final class NemoDriver {
   private final JVMProcessFactory jvmProcessFactory;
 
   private final EvalConf evalConf;
+  private final JobScaler jobScaler;
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
@@ -110,7 +112,8 @@ public final class NemoDriver {
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
-                     final JVMProcessFactory jvmProcessFactory) {
+                     final JVMProcessFactory jvmProcessFactory,
+                     final JobScaler jobScaler) {
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
@@ -119,6 +122,7 @@ public final class NemoDriver {
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
+    this.jobScaler = jobScaler;
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
@@ -126,6 +130,21 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
+
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Scaling, message -> {
+      final String decision = message.getScalingMsg().getDecision();
+      LOG.info("Receive scaling decision {}", decision);
+
+      if (decision.equals("o")) {
+        jobScaler.scalingOut(message.getScalingMsg().getDivide());
+      } else if (decision.equals("i")) {
+        jobScaler.scalingIn();
+      } else {
+        throw new RuntimeException("Invalid scaling decision " + decision);
+      }
+
+    });
+
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =

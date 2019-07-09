@@ -43,6 +43,8 @@ public interface MessageEnvironment {
   String TRANSFER_INDEX_LISTENER_ID = "TRANSFER_INDEX_LISTENER_ID";
   String STAGE_OFFLOADING_LISTENER_ID = "STAGE_OFFLOADING_LISTENER_ID";
 
+  String SCALE_DECISION_MESSAGE_LISTENER_ID = "SCALE_DEC_ID";
+
   /**
    * Set up a {@link MessageListener} with a listener id.
    *

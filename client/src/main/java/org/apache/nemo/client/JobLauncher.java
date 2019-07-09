@@ -50,17 +50,15 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.Serializable;
-import java.io.StringWriter;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -236,6 +234,8 @@ public final class JobLauncher {
     launchDAG(dag, Collections.emptyMap(), jobId);
   }
 
+  private static final ScheduledExecutorService scalingService = Executors.newSingleThreadScheduledExecutor();
+
   /**
    * @param dag the application DAG.
    * @param broadcastVariables broadcast variables (can be empty).
@@ -273,6 +273,69 @@ public final class JobLauncher {
             .setBroadcastVars(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariables)))
             .build())
         .build());
+
+
+    try {
+      BufferedWriter writer = new BufferedWriter(new FileWriter("/home/ubuntu/incubator-nemo/scaling.txt"));
+      writer.close();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    final AtomicInteger prevFileReadCnt = new AtomicInteger(0);
+
+    scalingService.scheduleAtFixedRate(() -> {
+      LOG.info("Scaling service invoked...");
+        try {
+          final BufferedReader br =
+            new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/scaling.txt"));
+
+          String s;
+          String lastLine = null;
+          int cnt = 0;
+          while ((s = br.readLine()) != null) {
+            lastLine = s;
+            cnt += 1;
+          }
+
+          if (cnt > prevFileReadCnt.get()) {
+
+            LOG.info("Read line {} ... send Scaling", lastLine);
+
+            prevFileReadCnt.set(cnt);
+
+
+            String[] split = lastLine.split(" ");
+            final String decision = split[0];
+
+            if (decision.equals("o")) {
+              final int offloadDivide = Integer.valueOf(split[1]);
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .setDivide(offloadDivide)
+                  .build())
+                .build());
+            } else if (decision.equals("i")) {
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .build())
+                .build());
+            } else {
+              throw new RuntimeException("Invalid line: " + lastLine);
+            }
+          }
+
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+    }, 1, 1, TimeUnit.SECONDS);
+
 
     // Wait for the ExecutionDone message from the driver
     try {

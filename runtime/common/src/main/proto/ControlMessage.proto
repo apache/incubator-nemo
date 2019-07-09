@@ -25,16 +25,23 @@ option java_outer_classname = "ControlMessage";
 enum ClientToDriverMessageType {
     LaunchDAG = 0;
     DriverShutdown = 1;
+    Scaling = 2;
 }
 
 message ClientToDriverMessage {
     required ClientToDriverMessageType type = 1;
     optional LaunchDAGMessage launchDAG = 2;
+    optional ScalingMessage scalingMsg = 3;
 }
 
 message LaunchDAGMessage {
     required string dag = 1;
     optional bytes broadcastVars = 2;
+}
+
+message ScalingMessage {
+  required string decision = 1;
+  optional int32 divide = 2;
 }
 
 message DataCollectMessage {
@@ -77,6 +84,12 @@ enum MessageType {
     RequestStageOffloading = 20;
     RequestStageOffloadingDone = 21;
     StageOffloadingInfo = 22;
+
+    // master - worker scaling
+    RequestScalingOut = 23; // master -> worker
+    LocalScalingReadyDone = 24; // worker -> master
+    GlobalScalingReadyDone = 25; // master -> worker
+    RequestScalingIn = 26; // master -> worker
 }
 
 message Message {
@@ -105,6 +118,9 @@ message Message {
     optional RequestStageOffloadingMessage requestStageOffloadingMsg = 23;
     optional RequestStageOffloadingDoneMessage requestStageOffloadingDoneMsg = 24;
     optional StageOffloadingInfoMessage stageOffloadingInfoMsg = 25;
+    optional RequestScalingOutMessage requestScalingOutMsg = 26;
+    optional LocalScalingDoneMessage localScalingDoneMsg = 27;
+    optional GlobalScalingDoneMessage globalScalingDoneMsg = 28;
 }
 
 // Messages from Master to Executors
@@ -151,6 +167,7 @@ message RunTimePassMessageEntry {
     required string key = 1;
     required int64 value = 2;
 }
+
 
 message RequestBlockLocationMsg {
     required string executorId = 1;
@@ -296,4 +313,28 @@ message RequestStageOffloadingDoneMessage {
 message StageOffloadingInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required bool canOffloading = 2;
+}
+
+message RequestScalingOutMessage {
+  required int64 requestId = 1;
+  repeated RequestScalingEntryMessage entry = 2;
+}
+
+message RequestScalingEntryMessage {
+  required string stageId = 1;
+  required int32 offloadNum = 2;
+}
+
+
+message ScalingDoneEntryMessage {
+  required string stageId = 1;
+  required int32 doneNum = 2;
+}
+
+message LocalScalingDoneMessage {
+  required string executorId = 1;
+}
+
+message GlobalScalingDoneMessage {
+  required int64 requestId = 1;
 }

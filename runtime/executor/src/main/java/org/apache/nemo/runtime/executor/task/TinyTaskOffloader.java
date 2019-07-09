@@ -23,6 +23,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.GlobalOffloadDone;
 import org.apache.nemo.runtime.executor.RemainingOffloadTasks;
 import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
@@ -107,6 +108,7 @@ public final class TinyTaskOffloader implements Offloader {
   private TinyTaskWorker tinyTaskWorker;
 
   private final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
+  private final GlobalOffloadDone globalOffloadDone = GlobalOffloadDone.getInstance();
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -384,10 +386,11 @@ public final class TinyTaskOffloader implements Offloader {
         }
       }
       case OTHER_TASK_WAITING: {
-        if (remainingOffloadTasks.getRemainingCnt() == 0) {
+        if (globalOffloadDone.getBoolean().get()) {
           return true;
         } else {
-          LOG.info("Waiting other offload tasks... {}", remainingOffloadTasks.getRemainingCnt());
+          LOG.info("Waiting other offload tasks... {}/{}", remainingOffloadTasks.getRemainingCnt(),
+            globalOffloadDone.getBoolean());
           break;
         }
       }

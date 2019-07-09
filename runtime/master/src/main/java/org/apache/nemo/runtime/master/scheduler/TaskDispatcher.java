@@ -22,6 +22,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.TaskScheduledMap;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -60,13 +61,15 @@ final class TaskDispatcher {
   private final ExecutorRegistry executorRegistry;
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
+  private final TaskScheduledMap taskScheduledMap;
 
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
-                         final PlanStateManager planStateManager) {
+                         final PlanStateManager planStateManager,
+                         final TaskScheduledMap taskScheduledMap) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
@@ -76,6 +79,7 @@ final class TaskDispatcher {
     this.executorRegistry = executorRegistry;
     this.schedulingPolicy = schedulingPolicy;
     this.schedulingConstraintRegistry = schedulingConstraintRegistry;
+    this.taskScheduledMap = taskScheduledMap;
   }
 
   /**
@@ -176,6 +180,7 @@ final class TaskDispatcher {
             LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
             // send the task
             selectedExecutor.onTaskScheduled(task);
+            taskScheduledMap.addTask(selectedExecutor, task);
           } else {
             couldNotSchedule.add(task);
           }

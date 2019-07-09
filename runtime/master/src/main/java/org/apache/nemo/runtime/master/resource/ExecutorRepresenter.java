@@ -118,7 +118,6 @@ public final class ExecutorRepresenter {
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
 
-
     serializationExecutorService.execute(() -> {
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(
@@ -252,6 +251,20 @@ public final class ExecutorRepresenter {
       throw new RuntimeException(String.format("Task %s not found in its ExecutorRepresenter", taskId));
     }
     return task;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ExecutorRepresenter that = (ExecutorRepresenter) o;
+    return Objects.equals(executorId, that.executorId);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(executorId);
   }
 }
 
