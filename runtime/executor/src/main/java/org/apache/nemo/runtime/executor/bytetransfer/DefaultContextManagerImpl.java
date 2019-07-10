@@ -610,7 +610,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
     final int transferIndex = requestTransferIndex(false);
-    LOG.info("Requesting output transferIndex: {}", transferIndex);
+    LOG.info("Requesting output transferIndex: {}, local: {}->{}, " +
+      "{}", transferIndex, localExecutorId, executorId, descriptor);
     taskTransferIndexMap.put(key, transferIndex);
 
     // FIRST initiation should be in VM
