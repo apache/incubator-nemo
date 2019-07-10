@@ -406,14 +406,6 @@ public final class RuntimeMaster {
                 .build())
               .build());
           break;
-        case LocalRelayServerInfo:
-          final ControlMessage.LocalRelayServerInfoMessage msg = message.getLocalRelayServerInfoMsg();
-
-          LOG.info("Receive local relay server info for {}", msg.getExecutorId());
-          taskScheduledMap.setRelayServerInfo(msg.getExecutorId(),
-            msg.getAddress(), msg.getPort());
-
-          break;
         default:
           throw new IllegalMessageException(
               new Exception("This message should not be requested to Master :" + message.getType()));
@@ -462,6 +454,13 @@ public final class RuntimeMaster {
         break;
       case MetricFlushed:
         metricCountDownLatch.countDown();
+        break;
+      case LocalRelayServerInfo:
+        final ControlMessage.LocalRelayServerInfoMessage msg = message.getLocalRelayServerInfoMsg();
+
+        LOG.info("Receive local relay server info for {}", msg.getExecutorId());
+        taskScheduledMap.setRelayServerInfo(msg.getExecutorId(),
+          msg.getAddress(), msg.getPort());
         break;
       default:
         throw new IllegalMessageException(
