@@ -82,7 +82,7 @@ public final class JobScaler {
         .stream()
         .collect(Collectors.toMap(
           e -> e.getKey(),
-          e -> e.getValue().size() / divide
+          e -> (e.getValue().size() - (e.getValue().size() / divide))
         ));
 
       prevScalingCountMap.put(representer, countMap);
