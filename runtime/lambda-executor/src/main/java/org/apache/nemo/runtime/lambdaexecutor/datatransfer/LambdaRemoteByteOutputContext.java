@@ -104,7 +104,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
-    LOG.info("Send message to remote: {}", message);
+    LOG.info("Send message to {}: {}", sendDataTo, message);
+
     ackHandler = handler;
     // send message to the upstream task!
 
