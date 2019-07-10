@@ -143,13 +143,16 @@ public final class JobScaler {
           final String executorId = localScalingDoneMessage.getExecutorId();
 
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
-          final Map<String, Integer> countMap = prevScalingCountMap.remove(executorRepresenter);
-          LOG.info("Receive LocalScalingDone for {}, countMap {}", executorId,
-            countMap);
 
-          if (sumCount() == 0) {
-            if (isScaling.compareAndSet(true, false)) {
-              sendScalingOutDoneToAllWorkers();
+          synchronized (prevScalingCountMap) {
+            final Map<String, Integer> countMap = prevScalingCountMap.remove(executorRepresenter);
+            LOG.info("Receive LocalScalingDone for {}, countMap {}", executorId,
+              countMap);
+
+            if (sumCount() == 0) {
+              if (isScaling.compareAndSet(true, false)) {
+                sendScalingOutDoneToAllWorkers();
+              }
             }
           }
 
