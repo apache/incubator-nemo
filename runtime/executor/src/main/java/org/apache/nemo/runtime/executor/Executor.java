@@ -193,10 +193,10 @@ public final class Executor {
       executorId, relayServer.getPublicAddress(), relayServer.getPort());
 
     persistentConnectionToMasterMap
-      .getMessageSender(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID).send(
+      .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
         .setType(ControlMessage.MessageType.LocalRelayServerInfo)
         .setLocalRelayServerInfoMsg(ControlMessage.LocalRelayServerInfoMessage.newBuilder()
           .setExecutorId(executorId)
