@@ -147,6 +147,45 @@ final class TaskDispatcher {
 
     final List<Task> couldNotSchedule = new ArrayList<>();
 
+    // send global message
+    while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
+      LOG.info("Waiting relay server info...");
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    final List<ControlMessage.LocalRelayServerInfoMessage> entries =
+      taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
+        .stream().map(entry -> {
+        return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
+          .setExecutorId(entry.getKey())
+          .setAddress(entry.getValue().left())
+          .setPort(entry.getValue().right())
+          .build();
+      }).collect(Collectors.toList());
+
+
+    // send global info
+    executorRegistry.viewExecutors(executors -> {
+      for (final ExecutorRepresenter executor : executors) {
+        LOG.info("Send global relay info to executor {}", executor.getExecutorId());
+
+        final long id = RuntimeIdManager.generateMessageId();
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(id)
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
+          .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
+            .addAllInfos(entries)
+            .build())
+          .build());
+      }
+    });
+
+
     for (final List<Task> stageTask : stageTasks) {
 
       try {
@@ -162,6 +201,7 @@ final class TaskDispatcher {
           continue;
         }
 
+
         executorRegistry.viewExecutors(executors -> {
           final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
           task.getExecutionProperties().forEachProperties(property -> {
@@ -172,43 +212,14 @@ final class TaskDispatcher {
                 .collect(Collectors.toSet()));
             }
           });
+
           if (!candidateExecutors.getValue().isEmpty()) {
 
-            while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
-              LOG.info("Waiting relay server info...");
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-            }
 
             // Select executor
             final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
 
-            // send global info
-            LOG.info("Send global relay info to executor {}", selectedExecutor.getExecutorId());
-
-            final List<ControlMessage.LocalRelayServerInfoMessage> entries =
-              taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
-                .stream().map(entry -> {
-                return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
-                  .setExecutorId(entry.getKey())
-                  .setAddress(entry.getValue().left())
-                  .setPort(entry.getValue().right())
-                  .build();
-              }).collect(Collectors.toList());
-
-            final long id = RuntimeIdManager.generateMessageId();
-            selectedExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
-              .setId(id)
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
-              .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
-                .addAllInfos(entries)
-                .build())
-              .build());
 
             // update metadata first
             planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);

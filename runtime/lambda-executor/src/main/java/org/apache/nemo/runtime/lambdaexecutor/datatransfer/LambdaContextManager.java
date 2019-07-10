@@ -528,7 +528,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     if (remoteExecutorId == null) {
       remoteExecutorId = executorId;
     } else if (!executorId.equals(remoteExecutorId)) {
-      LOG.warn(String.format("Wrong ContextManager: (%s != %s)", executorId, remoteExecutorId));
+      LOG.warn(String.format("Wrong ContextManager: (%s != %s), local {}", executorId, remoteExecutorId, localExecutorId));
     }
   }
 
