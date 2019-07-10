@@ -174,7 +174,9 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   protected void channelRead0(final ChannelHandlerContext ctx, final ByteTransferContextSetupMessage message)
       throws Exception {
     // TODO: handle scaleout messages!
-    setRemoteExecutorId(message.getInitiatorExecutorId(), message);
+    setRemoteExecutorId(message.getInitiatorExecutorId());
+    LOG.info("Message {}", message);
+
     final ByteTransferContextSetupMessage.ByteTransferDataDirection
       dataDirection = message.getDataDirection();
     final int transferIndex = message.getTransferIndex();
@@ -524,12 +526,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     }
   }
 
-  private void setRemoteExecutorId(final String executorId,
-                                   final ByteTransferContextSetupMessage message) {
+  private void setRemoteExecutorId(final String executorId) {
     if (remoteExecutorId == null) {
       remoteExecutorId = executorId;
     } else if (!executorId.equals(remoteExecutorId)) {
-      LOG.warn("Wrong ContextManager: ({} != {}), local {}, message: {}", executorId, remoteExecutorId, localExecutorId, message);
+      LOG.warn("Wrong ContextManager: ({} != {}), local {}", executorId, remoteExecutorId, localExecutorId);
     }
   }
 
