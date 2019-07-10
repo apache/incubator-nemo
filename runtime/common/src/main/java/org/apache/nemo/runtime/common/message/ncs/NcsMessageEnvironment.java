@@ -212,6 +212,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case RequestScalingIn:
       case GlobalScalingReadyDone:
       case LocalScalingReadyDone:
+      case LocalRelayServerInfo:
+      case GlobalRelayServerInfo:
         return MessageType.Send;
       case RequestBlockLocation:
       case RequestBroadcastVariable:
