@@ -175,7 +175,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       throws Exception {
     // TODO: handle scaleout messages!
     setRemoteExecutorId(message.getInitiatorExecutorId());
-    LOG.info("Message {}", message);
+    LOG.info("At {} Message {}", localExecutorId,  message);
 
     final ByteTransferContextSetupMessage.ByteTransferDataDirection
       dataDirection = message.getDataDirection();

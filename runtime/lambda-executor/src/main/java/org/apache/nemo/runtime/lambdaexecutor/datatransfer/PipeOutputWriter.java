@@ -37,9 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Flushable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -114,7 +112,7 @@ public final class PipeOutputWriter implements Flushable {
     writeData(watermarkWithIndex, pipes, true);
   }
 
-  public void close(final String taskId) {
+  public Future<Integer> close(final String taskId) {
     // send stop message!
     closed =  true;
 
@@ -139,13 +137,40 @@ public final class PipeOutputWriter implements Flushable {
       });
     }
 
-    try {
-      LOG.info("Waiting for ack {}...", taskId);
-      count.await();
-      LOG.info("End of Waiting for ack {}...", taskId);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    return new Future<Integer>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return false;
+      }
+
+      @Override
+      public Integer get() throws InterruptedException, ExecutionException {
+        try {
+           LOG.info("Waiting for ack {}...", taskId);
+           count.await();
+           LOG.info("End of Waiting for ack {}...", taskId);
+         } catch (InterruptedException e) {
+           e.printStackTrace();
+         }
+        return 1;
+      }
+
+      @Override
+      public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return null;
+      }
+    };
+
 
     /*
     pipes.forEach(pipe -> {

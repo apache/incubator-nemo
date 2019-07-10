@@ -474,11 +474,18 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     prepareService.execute(() -> {
       try {
         // TODO: fix
-        for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-          outputWriter.close(offloadingTask.taskId);
-        }
+        final List<Future> outputfutures = pipeOutputWriters.stream()
+          .map(outputWriter -> {
+            return outputWriter.close(offloadingTask.taskId);
+          }).collect(Collectors.toList());
 
         LOG.info("Closing output writer {}", offloadingTask.taskId);
+
+        for (final Future future : outputfutures) {
+          future.get();
+        }
+
+        LOG.info("All Clossed output writer {}", offloadingTask.taskId);
 
         //Thread.sleep(3000);
 
