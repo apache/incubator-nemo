@@ -45,6 +45,7 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
 
   @Override
   public void send(final ControlMessage.Message message) {
+    LOG.info("Write ncs message {}", message);
     connection.write(message);
   }
 

@@ -143,6 +143,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     private void processSendMessage(final ControlMessage.Message controlMessage) {
       final String listenerId = controlMessage.getListenerId();
+      LOG.info("Process end message {} / {}", listenerId, controlMessage);
       listenerConcurrentMap.get(listenerId).onMessage(controlMessage);
     }
 
