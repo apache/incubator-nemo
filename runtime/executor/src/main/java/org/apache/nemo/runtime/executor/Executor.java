@@ -57,12 +57,10 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -73,6 +71,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +125,7 @@ public final class Executor {
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final TaskInputContextMap taskInputContextMap;
 
-  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
+  private TinyTaskOffloadingWorkerManager tinyWorkerManager;
   private final RelayServer relayServer;
   private final TaskLocationMap taskLocationMap;
 
@@ -135,6 +134,8 @@ public final class Executor {
   private final ExecutorGlobalInstances executorGlobalInstances;
 
   private final OutputWriterFlusher outputWriterFlusher;
+
+  final TaskTransferIndexMap taskTransferIndexMap;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -169,6 +170,7 @@ public final class Executor {
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskInputContextMap = taskInputContextMap;
+    this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newFixedThreadPool(50);
     //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
@@ -184,6 +186,24 @@ public final class Executor {
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
     }, 1, 1, TimeUnit.SECONDS);
+
+
+    // relayServer address/port 보내기!!
+    LOG.info("Sending local relay server info: {}/{}/{}",
+      executorId, relayServer.getPublicAddress(), relayServer.getPort());
+
+    persistentConnectionToMasterMap
+      .getMessageSender(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.LocalRelayServerInfo)
+        .setLocalRelayServerInfoMsg(ControlMessage.LocalRelayServerInfoMessage.newBuilder()
+          .setExecutorId(executorId)
+          .setAddress(relayServer.getPublicAddress())
+          .setPort(relayServer.getPort())
+          .build())
+        .build());
 
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
@@ -203,19 +223,7 @@ public final class Executor {
     }
     */
 
-    final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
-      byteTransport.getExecutorAddressMap(),
-      serializerManager.runtimeEdgeIdToSerializer,
-      pipeManagerWorker.getTaskExecutorIdMap(),
-      taskTransferIndexMap.getMap(),
-      relayServer.getPublicAddress(),
-      relayServer.getPort(),
-      executorId);
 
-    this.tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
-      offloadingWorkerFactory,
-      lambdaExecutor,
-      evalConf);
   }
 
   public String getExecutorId() {
@@ -296,7 +304,7 @@ public final class Executor {
       taskLocationMap.locationMap.put(new NemoTriple<>(edgeId, taskIndex, true), VM);
     }
 
-    LOG.info("Launch task: {}", task.getTaskId());
+    LOG.info("{} Launch task: {}", executorId, task.getTaskId());
 
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
@@ -456,8 +464,39 @@ public final class Executor {
   private final class ExecutorMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override
-    public void onMessage(final ControlMessage.Message message) {
+    public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case GlobalRelayServerInfo:
+
+          final ControlMessage.GlobalRelayServerInfoMessage msg = message.getGlobalRelayServerInfoMsg();
+
+          final Map<String, Pair<String, Integer>> m =
+            msg.getInfosList()
+              .stream()
+              .collect(Collectors.toMap(ControlMessage.LocalRelayServerInfoMessage::getExecutorId,
+                entry -> {
+                  return Pair.of(entry.getAddress(), entry.getPort());
+                }));
+
+
+          LOG.info("{} Setting global relay server info {}", executorId, m);
+
+          final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
+            byteTransport.getExecutorAddressMap(),
+            serializerManager.runtimeEdgeIdToSerializer,
+            pipeManagerWorker.getTaskExecutorIdMap(),
+            taskTransferIndexMap.getMap(),
+            relayServer.getPublicAddress(),
+            relayServer.getPort(),
+            executorId,
+            m);
+
+          tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
+            offloadingWorkerFactory,
+            lambdaExecutor,
+            evalConf);
+
+          break;
         case ScheduleTask:
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
           final Task task =

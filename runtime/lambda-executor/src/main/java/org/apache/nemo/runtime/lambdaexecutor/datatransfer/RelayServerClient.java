@@ -54,11 +54,13 @@ public final class RelayServerClient {
 
   private final String myRelayServerAddress;
   private final int myRelayServerPort;
+  private final Map<String, Pair<String, Integer>> relayServerInfo;
 
   public RelayServerClient(final EventLoopGroup clientGroup,
                            final Bootstrap clientBootstrap,
                            final String myRelayServerAddress,
-                           final int myRelayServerPort) {
+                           final int myRelayServerPort,
+                           final Map<String, Pair<String, Integer>> relayServerInfo) {
 
     this.clientGroup = clientGroup;
     this.clientBootstrap = clientBootstrap;
@@ -67,6 +69,7 @@ public final class RelayServerClient {
     this.registerTaskMap = new ConcurrentHashMap<>();
     this.myRelayServerAddress = myRelayServerAddress;
     this.myRelayServerPort = myRelayServerPort;
+    this.relayServerInfo = relayServerInfo;
 
     //final ChannelFuture channelFuture = connectToRelayServer(relayServerAddress, relayServerPort);
     //this.relayServerChannel = channelFuture.channel();
@@ -105,16 +108,22 @@ public final class RelayServerClient {
     final String executorId,
     final PipeTransferContextDescriptor descriptor) {
 
-      final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
+    // 여기서 executor의 relaySErverAddress와 port가져와야함.
 
-      final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
-      while (!channelFuture.isSuccess()) {
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+    final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
+    final Pair<String, Integer> info = relayServerInfo.get(executorId);
+
+    LOG.info("Get relay server info for {} / {}", executorId, info);
+
+    final ChannelFuture channelFuture = connectToRelayServer(info.left(), info.right());
+
+    while (!channelFuture.isSuccess()) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
+    }
 
     LOG.info("Getting relay server channel for output context {}!!", descriptor);
 

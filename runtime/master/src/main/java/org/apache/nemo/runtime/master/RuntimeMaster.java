@@ -115,8 +115,11 @@ public final class RuntimeMaster {
 
   private final ServerlessContainerWarmer warmer;
 
+  private final TaskScheduledMap taskScheduledMap;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
+                        final TaskScheduledMap taskScheduledMap,
                         final ContainerManager containerManager,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
@@ -136,6 +139,8 @@ public final class RuntimeMaster {
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+
+    this.taskScheduledMap = taskScheduledMap;
 
     // Check for speculative execution every second.
     this.speculativeTaskCloningThread = Executors
@@ -400,6 +405,14 @@ public final class RuntimeMaster {
                 .setVariable(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
                 .build())
               .build());
+          break;
+        case LocalRelayServerInfo:
+          final ControlMessage.LocalRelayServerInfoMessage msg = message.getLocalRelayServerInfoMsg();
+
+          LOG.info("Receive local relay server info for {}", msg.getExecutorId());
+          taskScheduledMap.setRelayServerInfo(msg.getExecutorId(),
+            msg.getAddress(), msg.getPort());
+
           break;
         default:
           throw new IllegalMessageException(

@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
@@ -54,6 +56,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   private final ExecutorService scalingService = Executors.newCachedThreadPool();
 
   private final String executorId;
+
 
   @Inject
   private JobScalingHandlerWorker(
@@ -241,7 +244,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           scalingService.execute(() -> {
             while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {
               // waiting...
-              LOG.info("Waiting until finish input stop...");
+              LOG.info("Waiting until finish input stop... cnt: {}",
+                RemainingOffloadTasks.getInstance().getRemainingCnt());
 
               try {
                 Thread.sleep(1000);

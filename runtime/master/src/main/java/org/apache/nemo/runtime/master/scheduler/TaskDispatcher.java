@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
@@ -171,9 +173,43 @@ final class TaskDispatcher {
             }
           });
           if (!candidateExecutors.getValue().isEmpty()) {
+
+            while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
+              LOG.info("Waiting relay server info...");
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
+
             // Select executor
             final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+
+            // send global info
+            LOG.info("Send global relay info to executor {}", selectedExecutor.getExecutorId());
+
+            final List<ControlMessage.LocalRelayServerInfoMessage> entries =
+              taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
+                .stream().map(entry -> {
+                return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
+                  .setExecutorId(entry.getKey())
+                  .setAddress(entry.getValue().left())
+                  .setPort(entry.getValue().right())
+                  .build();
+              }).collect(Collectors.toList());
+
+            final long id = RuntimeIdManager.generateMessageId();
+            selectedExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
+              .setId(id)
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
+              .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
+                .addAllInfos(entries)
+                .build())
+              .build());
+
             // update metadata first
             planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 

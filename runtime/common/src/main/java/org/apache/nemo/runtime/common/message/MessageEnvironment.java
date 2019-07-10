@@ -45,6 +45,8 @@ public interface MessageEnvironment {
 
   String SCALE_DECISION_MESSAGE_LISTENER_ID = "SCALE_DEC_ID";
 
+  String RELAY_SERVER_ID = "RELAY_ID";
+
   /**
    * Set up a {@link MessageListener} with a listener id.
    *

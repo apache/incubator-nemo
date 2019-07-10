@@ -73,13 +73,16 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient OutputWriterFlusher outputWriterFlusher;
 
+  private final Map<String, Pair<String, Integer>> relayServerInfo;
+
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                             final Map<TransferKey, Integer> taskTransferIndexMap,
                             final String relayServerAddress,
                             final int relayServerPort,
-                            final String executorId) {
+                            final String executorId,
+                            final Map<String, Pair<String, Integer>> relayServerInfo) {
     this.channels = new ConcurrentHashMap<>();
     this.executorId = executorId;
     this.executorAddressMap = executorAddressMap;
@@ -91,6 +94,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.relayServerAddress = relayServerAddress;
     this.relayServerPort = relayServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
+    this.relayServerInfo = relayServerInfo;
 
   }
   /**
@@ -173,7 +177,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       .handler(relayServerClientChannelInitializer)
       .option(ChannelOption.SO_REUSEADDR, true);
 
-    this.relayServerClient = new RelayServerClient(clientGroup, clientBootstrap, relayServerAddress, relayServerPort);
+    this.relayServerClient = new RelayServerClient(
+      clientGroup, clientBootstrap, relayServerAddress, relayServerPort, relayServerInfo);
 
     initializer.setRelayServerClient(relayServerClient);
     relayServerClientChannelInitializer.setRelayServerClient(relayServerClient);

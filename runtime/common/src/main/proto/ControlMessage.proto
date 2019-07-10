@@ -90,6 +90,8 @@ enum MessageType {
     LocalScalingReadyDone = 24; // worker -> master
     GlobalScalingReadyDone = 25; // master -> worker
     RequestScalingIn = 26; // master -> worker
+    LocalRelayServerInfo = 27; // worker -> master
+    GlobalRelayServerInfo = 28; // master -> worker
 }
 
 message Message {
@@ -121,6 +123,8 @@ message Message {
     optional RequestScalingOutMessage requestScalingOutMsg = 26;
     optional LocalScalingDoneMessage localScalingDoneMsg = 27;
     optional GlobalScalingDoneMessage globalScalingDoneMsg = 28;
+    optional LocalRelayServerInfoMessage localRelayServerInfoMsg = 29;
+    optional GlobalRelayServerInfoMessage globalRelayServerInfoMsg = 30;
 }
 
 // Messages from Master to Executors
@@ -337,4 +341,14 @@ message LocalScalingDoneMessage {
 
 message GlobalScalingDoneMessage {
   required int64 requestId = 1;
+}
+
+message LocalRelayServerInfoMessage {
+  required string executorId = 1;
+  required string address = 2;
+  required int32 port = 3;
+}
+
+message GlobalRelayServerInfoMessage {
+  repeated LocalRelayServerInfoMessage infos = 1;
 }

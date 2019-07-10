@@ -10,7 +10,9 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.datatransfer.NioChannelImplementationSelector;
 import org.apache.reef.tang.annotations.Parameter;
@@ -41,7 +43,8 @@ public final class RelayServer {
   private final OutputWriterFlusher outputWriterFlusher;
 
   @Inject
-  private RelayServer(final TcpPortProvider tcpPortProvider,
+  private RelayServer(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                      final TcpPortProvider tcpPortProvider,
                       @Parameter(EvalConf.Ec2.class) final boolean ec2,
                       final NioChannelImplementationSelector channelImplSelector) {
 
