@@ -33,7 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,7 +52,7 @@ public final class RelayServerClient {
 
   private final Map<Pair<String, Integer>, ChannelFuture> channelMap;
   private final Map<Pair<String, Integer>, Boolean> channelExistingMap;
-  private final Map<String, Channel> registerTaskMap;
+  private final Map<Channel, Set<String>> registerTaskMap;
 
   private final String myRelayServerAddress;
   private final int myRelayServerPort;
@@ -88,14 +90,21 @@ public final class RelayServerClient {
                             final int taskIndex,
                             final boolean src) {
     // todo
-
     final String key = String.format("%s#%d#%s", edgeId, taskIndex, String.valueOf(src));
 
-    if (registerTaskMap.putIfAbsent(key, relayServerChannel) == null) {
-      LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
-      final RelayControlMessage message = new RelayControlMessage(
-        edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
-      relayServerChannel.writeAndFlush(message);
+    registerTaskMap.putIfAbsent(relayServerChannel, new HashSet<>());
+
+    final Set<String> registeredTasks = registerTaskMap.get(relayServerChannel);
+
+    synchronized (registeredTasks) {
+      if (!registeredTasks.contains(key)) {
+        registeredTasks.add(key);
+
+        LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
+        final RelayControlMessage message = new RelayControlMessage(
+          edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
+        relayServerChannel.writeAndFlush(message);
+      }
     }
   }
 
