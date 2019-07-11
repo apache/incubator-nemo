@@ -20,8 +20,6 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
 import org.apache.nemo.common.ByteBufferInputStream;
-import org.apache.nemo.common.DirectByteBufferOutputStream;
-import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
