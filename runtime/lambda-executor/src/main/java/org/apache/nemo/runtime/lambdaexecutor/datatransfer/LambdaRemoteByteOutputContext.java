@@ -104,15 +104,21 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
-    LOG.info("Send message to {}: {}", sendDataTo, message);
+
 
     ackHandler = handler;
     // send message to the upstream task!
 
     if (sendDataTo.equals(SF)) {
+      LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
+        relayDst, relayChannel, message);
       relayChannel.writeAndFlush(
         new RelayControlFrame(relayDst, message));
     } else {
+
+      LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
+        relayDst, vmChannel, message);
+
       vmChannel.writeAndFlush(message);
     }
   }

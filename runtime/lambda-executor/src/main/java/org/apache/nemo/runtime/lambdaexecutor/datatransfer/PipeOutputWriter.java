@@ -133,7 +133,7 @@ public final class PipeOutputWriter implements Flushable {
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
         count.countDown();
-        LOG.info("receive ack from downstream at {}!!", taskId, count.getCount());
+        LOG.info("receive ack from downstream at {}, {}!!", taskId, count.getCount());
       });
     }
 
