@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.executor.data;
 import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
@@ -109,7 +108,7 @@ public final class BlockStoreTest {
   private List<List<NonSerializedPartition<Integer>>> hashedBlockPartitionList;
   private List<KeyRange> readKeyRangeList;
   private List<List<Iterable>> expectedDataInRange;
-  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(3000 * 1024);
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(3000 * 1024, 32 * 1024);
 
   private String getTaskId(final int index) {
     return RuntimeIdManager.generateTaskId("STAGE", index, 0);

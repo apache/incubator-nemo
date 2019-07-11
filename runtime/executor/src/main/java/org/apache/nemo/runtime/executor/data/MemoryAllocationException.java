@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.executor.data;
 
 /**
  * An exception to be thrown when a memory allocation operation is not successful.

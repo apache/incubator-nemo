@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data.partition;
 
-import org.apache.nemo.common.DirectByteBufferOutputStream;
-import org.apache.nemo.common.MemoryPoolAssigner;
+import org.apache.nemo.runtime.executor.data.DirectByteBufferOutputStream;
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;

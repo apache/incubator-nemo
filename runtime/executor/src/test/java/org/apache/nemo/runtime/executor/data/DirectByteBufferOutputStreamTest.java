@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.executor.data;
 
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Before;
@@ -34,7 +34,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class DirectByteBufferOutputStreamTest {
   private DirectByteBufferOutputStream outputStream;
-  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5);
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5, 32 * 1024);
 
   @Before
   public void setup(){

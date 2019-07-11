@@ -288,6 +288,22 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
+  /**
+   * Off-heap memory pool size of the executor.
+   */
+  @NamedParameter(doc = "The size of off-heap memory pool of the executor",
+    short_name = "memory_pool_size", default_value = "1073741824")
+  public final class MemoryPoolSize implements Name<Integer> {
+  }
+
+  /**
+   * MemoryChunk size in the memory pool.
+   */
+  @NamedParameter(doc = "The memory chunk size in the meemory pool of the executor",
+    short_name = "chunk_size", default_value = "32768")
+  public final class ChunkSize implements Name<Long> {
+  }
+
   //////////////////////////////// Intermediate Configurations
 
   /**

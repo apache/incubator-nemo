@@ -16,11 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.executor.data;
 
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.nemo.conf.JobConf;
 
+import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,25 +42,30 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
-  public static final int DEFAULT_CHUNK_SIZE = 32 * 1024; // 32KB
-  public static final int MIN_CHUNK_SIZE = 4 * 1024; // 4KB
+
+  //private static final int DEFAULT_MEMORY_POOL_SIZE = 1 * 1024 * 1024 * 1024; //1GB
+
+  //private static final int DEFAULT_CHUNK_SIZE = 32 * 1024; // 32KB
+
+  private static final int MIN_CHUNK_SIZE = 4 * 1024; // 4KB
+
   private final MemoryPool memoryPool;
+
   private final int chunkSize;
+
   private final long memorySize;
 
-
-
-  public MemoryPoolAssigner(final long memorySize) {
-    this(memorySize, DEFAULT_CHUNK_SIZE);
-  }
-
-  public MemoryPoolAssigner(final long memorySize, final int chunkSize) {
+  @Inject
+  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSize.class) final long memorySize,
+                            @Parameter(JobConf.ChunkSize.class) final int chunkSize) {
+    if (chunkSize < MIN_CHUNK_SIZE) {
+      throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
+    }
     this.memorySize = memorySize;
     this.chunkSize = chunkSize;
     final long numChunks = memorySize / chunkSize;
     if (numChunks > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("The given number of memory bytes (" + memorySize
-        + ") corresponds to more than MAX_INT pages.");
+      throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
 
     final int totalNumPages = (int) numChunks;
@@ -75,7 +83,8 @@ public class MemoryPoolAssigner {
    * @return list of {@link MemoryChunk}s
    * @throws MemoryAllocationException
    */
-  public List<MemoryChunk> allocateChunks(final int numPages, final boolean sequential) throws MemoryAllocationException {
+  public List<MemoryChunk> allocateChunks(final int numPages,
+                                          final boolean sequential) throws MemoryAllocationException {
     final ArrayList<MemoryChunk> chunks = new ArrayList<MemoryChunk>(numPages);
     allocateChunks(chunks, numPages, sequential);
     return chunks;
