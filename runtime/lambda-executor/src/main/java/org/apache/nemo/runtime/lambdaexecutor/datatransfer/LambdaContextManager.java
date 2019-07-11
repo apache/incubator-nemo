@@ -124,7 +124,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
       contextId -> {
         final LambdaRemoteByteInputContext ic = new LambdaRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this,
-          ackScheduledService.ackService, isRelayServerChannel);
+          ackScheduledService.ackService, isRelayServerChannel, relayServerClient);
         return ic;
       },
       executorId, isPipe, relayDst);
@@ -202,6 +202,17 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               relayServerAddress, relayServerPort, transferIndex);
 
             connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
+              /*
+              // 내 채널에도 등록!!
+              final Channel myRelayServer = relayServerClient.getRelayServerChannel(localExecutorId);
+              LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
+
+              relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+              */
+
+              LOG.info("Register task to the remote relay server! {}, {}#{}#{}",
+                relayServerChannel, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), false);
+
               relayServerClient.registerTask(relayServerChannel,
                 cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
 
@@ -253,6 +264,34 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         switch (sendDataTo) {
           case SF: {
             // connect to relay server
+            channelExecutorService.execute(() -> {
+              final Channel relayServerChannel = relayServerClient.getRelayServerChannel(localExecutorId);
+              LOG.info("Connect to my relay server {}/{}", localExecutorId, relayServerChannel);
+
+              relayServerClient.registerTask(relayServerChannel, cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
+
+              LOG.info("Sending ack to the input context");
+              // ACK to the original channel
+              final ByteTransferContextSetupMessage ackMessage =
+                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+                  contextId.getTransferIndex(),
+                  contextId.getDataDirection(),
+                  contextDescriptor,
+                  contextId.isPipe(),
+                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
+                  SF,
+                  message.getTaskId());
+
+              inputContext.sendMessage(ackMessage, (m) -> {
+              });
+
+              LOG.info("Setting input channel to SF {}, transferIndex: {}",
+                message.getTaskId(), contextId.getTransferIndex());
+
+              inputContext.receiveFromSF(relayServerChannel);
+            });
+
+            /*
             final String relayServerAddress = message.getRelayServerAddress();
             final int relayServerPort = message.getRelayServerPort();
             LOG.info("Connecting to relay server for input {}/{}", relayServerAddress, relayServerPort);
@@ -280,7 +319,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
               inputContext.receiveFromSF(relayServerChannel);
             });
-
+            */
             break;
           }
           case VM: {

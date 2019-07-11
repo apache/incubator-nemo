@@ -113,19 +113,12 @@ public final class RelayServerClient {
     clientGroupCloseFuture.awaitUninterruptibly();
   }
 
-  public CompletableFuture<ByteOutputContext> newOutputContext(
-    final String srcExecutorId,
-    final String dstExecutorId,
-    final PipeTransferContextDescriptor descriptor) {
+  public Channel getRelayServerChannel(final String dstExecutorId) {
 
-    // 여기서 executor의 relaySErverAddress와 port가져와야함.
-
-    final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
     final Pair<String, Integer> info = relayServerInfo.get(dstExecutorId);
-
-    LOG.info("Get relay server info for {} / {}", dstExecutorId, info);
-
     final ChannelFuture channelFuture = connectToRelayServer(info.left(), info.right());
+
+    LOG.info("Get relay server channel {} / {}", dstExecutorId, info);
 
     while (!channelFuture.isSuccess()) {
       try {
@@ -135,16 +128,24 @@ public final class RelayServerClient {
       }
     }
 
+    return channelFuture.channel();
+  }
 
-    final Channel channel = channelFuture.channel();
+  public CompletableFuture<ByteOutputContext> newOutputContext(
+    final String srcExecutorId,
+    final String dstExecutorId,
+    final PipeTransferContextDescriptor descriptor) {
 
+    final Channel channel = getRelayServerChannel(dstExecutorId);
+    final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
 
     LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}, channel {}!!",
       srcExecutorId, dstExecutorId,
       descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
       channel);
 
-    registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
+    registerTask(channel,
+      descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     LOG.info("Getting context manager!!!");

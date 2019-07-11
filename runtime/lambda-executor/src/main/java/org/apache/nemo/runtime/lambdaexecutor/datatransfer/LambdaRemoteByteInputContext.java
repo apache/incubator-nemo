@@ -63,6 +63,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
   private Channel vmChannel;
   private Channel sfChannel;
 
+  private final RelayServerClient relayServerClient;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -75,9 +77,11 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
                                       final byte[] contextDescriptor,
                                       final ContextManager contextManager,
                                       final ScheduledExecutorService ackService,
-                                      final boolean isSfChannel) {
+                                      final boolean isSfChannel,
+                                      final RelayServerClient relayServerClient) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.ackService = ackService;
+    this.relayServerClient = relayServerClient;
 
 
     LOG.info("Context is sf {}, {}", isSfChannel, contextId);
@@ -138,9 +142,15 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     if (currChannel == sfChannel) {
       LOG.info("Send message to relay: {}, currChannel: {}, sfChannel: {}", message,
         currChannel, sfChannel);
+
+      // Connect to the serverless channel
+      final Channel schannel = relayServerClient.getRelayServerChannel(getRemoteExecutorId());
+
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
       final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-      currChannel.writeAndFlush(new RelayControlFrame(dst, message));
+      schannel.writeAndFlush(new RelayControlFrame(dst, message));
+
+      //currChannel.writeAndFlush(new RelayControlFrame(dst, message));
     } else {
       LOG.info("Send message to remote: {}, currChannel: {}, sfChannel: {}", message,
         currChannel, sfChannel);
