@@ -143,14 +143,9 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
       LOG.info("Send message to relay: {}, currChannel: {}, sfChannel: {}", message,
         currChannel, sfChannel);
 
-      // Connect to the serverless channel
-      final Channel schannel = relayServerClient.getRelayServerChannel(getRemoteExecutorId());
-
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
       final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-      schannel.writeAndFlush(new RelayControlFrame(dst, message));
-
-      //currChannel.writeAndFlush(new RelayControlFrame(dst, message));
+      currChannel.writeAndFlush(new RelayControlFrame(dst, message));
     } else {
       LOG.info("Send message to remote: {}, currChannel: {}, sfChannel: {}", message,
         currChannel, sfChannel);
