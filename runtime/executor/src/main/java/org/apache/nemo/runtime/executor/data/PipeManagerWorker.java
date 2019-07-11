@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -68,7 +69,8 @@ public final class PipeManagerWorker {
 
   private final PersistentConnectionToMasterMap toMaster;
 
-  private final ConcurrentMap<Pair<String, Integer>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
+  // boolean: output context?
+  private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -82,7 +84,7 @@ public final class PipeManagerWorker {
     this.toMaster = toMaster;
   }
 
-  public Map<Pair<String, Integer>, String> getTaskExecutorIdMap() {
+  public Map<NemoTriple<String, Integer, Boolean>, String> getTaskExecutorIdMap() {
     return taskExecutorIdMap;
   }
 
@@ -132,7 +134,7 @@ public final class PipeManagerWorker {
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
-      taskExecutorIdMap.put(Pair.of(runtimeEdge.getId(), dstTaskIndex), targetExecutorId);
+      taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), targetExecutorId);
 
       //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
       //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
@@ -251,7 +253,7 @@ public final class PipeManagerWorker {
           PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
 
         // ADD source task-executor id
-        taskExecutorIdMap.put(Pair.of(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex()),
+        taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex(), false),
           byteInputContext.getRemoteExecutorId());
 
         eventHandler.onNext(value);

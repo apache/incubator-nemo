@@ -49,7 +49,7 @@ public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
   private final String executorId;
-  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
+  private final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap;
 
   // To-Executor connections
   private final ByteTransfer byteTransfer;
@@ -64,7 +64,7 @@ public final class PipeManagerWorker {
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
-                           final Map<Pair<String, Integer>, String> taskExecutorIdMap,
+                           final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                            final Map<String, Serializer> serializerMap,
                            final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap,
                            final RelayServerClient relayServerClient) {
@@ -163,7 +163,9 @@ public final class PipeManagerWorker {
                                                     final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // TODO: check whether it is in SF or not
-    final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), dstTaskIndex));
+    final String targetExecutorId = taskExecutorIdMap.get(
+      new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
+
     final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
 
     LOG.info("Locatoin of {}: {}", new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), loc);
@@ -200,7 +202,8 @@ public final class PipeManagerWorker {
                                                       final RuntimeEdge runtimeEdge,
                                                       final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
-    final String srcExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), srcTaskIndex));
+    final String srcExecutorId = taskExecutorIdMap.get(
+      new NemoTriple(runtimeEdge.getId(), srcTaskIndex, false));
 
     final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), (int) srcTaskIndex, false));
 

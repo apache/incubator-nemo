@@ -5,6 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -74,7 +75,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final AtomicLong prevOffloadEndTime;
 
   private final Map<String, InetSocketAddress> executorAddressMap;
-  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
+  private final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap;
   private final String executorId;
   private final Task task;
 
@@ -115,7 +116,7 @@ public final class TinyTaskOffloader implements Offloader {
                            final TaskExecutor taskExecutor,
                            final EvalConf evalConf,
                            final Map<String, InetSocketAddress> executorAddressMap,
-                           final Map<Pair<String, Integer>, String> taskExecutorIdMap,
+                           final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                            final byte[] serializedDag,
                            final List<StageEdge> copyOutgoingEdges,
                            final List<StageEdge> copyIncomingEdges,

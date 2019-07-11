@@ -47,7 +47,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<String, Serializer> serializerMap;
-  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
+  private final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap;
 
 
   private transient LambdaByteTransport byteTransport;
@@ -77,7 +77,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
-                            final Map<Pair<String, Integer>, String> taskExecutorIdMap,
+                            final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                             final Map<TransferKey, Integer> taskTransferIndexMap,
                             final String relayServerAddress,
                             final int relayServerPort,
