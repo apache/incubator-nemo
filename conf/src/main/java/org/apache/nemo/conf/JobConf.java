@@ -300,7 +300,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * MemoryChunk size in the memory pool.
    */
-  @NamedParameter(doc = "The memory chunk size in the meemory pool of the executor",
+  @NamedParameter(doc = "The memory chunk size in the memory pool of the executor",
     short_name = "chunk_size", default_value = "32768")
   public final class ChunkSize implements Name<Long> {
   }
