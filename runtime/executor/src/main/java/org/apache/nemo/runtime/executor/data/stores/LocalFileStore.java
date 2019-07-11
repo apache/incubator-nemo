@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
@@ -56,13 +57,13 @@ public final class LocalFileStore extends LocalBlockStore {
   }
 
   @Override
-  public Block createBlock(final String blockId) {
+  public Block createBlock(final String blockId, final MemoryPoolAssigner memoryPoolAssigner) {
     deleteBlock(blockId);
 
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
-    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata, memoryPoolAssigner);
   }
 
   /**

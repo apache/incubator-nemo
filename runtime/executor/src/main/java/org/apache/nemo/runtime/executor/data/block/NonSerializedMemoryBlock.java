@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -45,6 +46,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   private final Map<K, NonSerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;
   private volatile boolean committed;
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Constructor.
@@ -53,12 +55,14 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    * @param serializer the {@link Serializer}.
    */
   public NonSerializedMemoryBlock(final String blockId,
-                                  final Serializer serializer) {
+                                  final Serializer serializer,
+                                  final MemoryPoolAssigner memoryPoolAssigner) {
     this.id = blockId;
     this.nonSerializedPartitions = new ArrayList<>();
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
     this.committed = false;
+    this.memoryPoolAssigner = memoryPoolAssigner;
   }
 
   /**
@@ -166,7 +170,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   @Override
   public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
     try {
-      return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange));
+      return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange), memoryPoolAssigner);
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch (final IllegalAccessException e) {

@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.data;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -42,6 +43,7 @@ import java.util.*;
 public final class BlockTest {
   private Serializer serializer;
   private Map<Integer, List<Integer>> testData;
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(100 * 1024);
 
   /**
    * Generates the test data and serializer.
@@ -69,7 +71,7 @@ public final class BlockTest {
    */
   @Test(timeout = 10000)
   public void testNonSerializedMemoryBlock() throws Exception {
-    final Block<Integer> block = new NonSerializedMemoryBlock<>("testBlock", serializer);
+    final Block<Integer> block = new NonSerializedMemoryBlock<>("testBlock", serializer, memoryPoolAssigner);
     testBlock(block);
   }
 
@@ -80,7 +82,7 @@ public final class BlockTest {
    */
   @Test(timeout = 10000)
   public void testSerializedMemoryBlock() throws Exception {
-    final Block<Integer> block = new SerializedMemoryBlock<>("testBlock", serializer);
+    final Block<Integer> block = new SerializedMemoryBlock<>("testBlock", serializer, memoryPoolAssigner);
     testBlock(block);
   }
 

@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
@@ -33,6 +34,7 @@ import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.ByteArrayInputStream;
@@ -66,6 +68,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
+  @Nullable
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Constructor.
@@ -78,12 +82,26 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public FileBlock(final String blockId,
                    final Serializer serializer,
                    final String filePath,
+                   final FileMetadata<K> metadata,
+                   final MemoryPoolAssigner memoryPoolAssigner) {
+    this.id = blockId;
+    this.nonCommittedPartitionsMap = new HashMap<>();
+    this.serializer = serializer;
+    this.filePath = filePath;
+    this.metadata = metadata;
+    this.memoryPoolAssigner = memoryPoolAssigner;
+  }
+
+  public FileBlock(final String blockId,
+                   final Serializer serializer,
+                   final String filePath,
                    final FileMetadata<K> metadata) {
     this.id = blockId;
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
+    this.memoryPoolAssigner = null;
   }
 
   /**
@@ -125,7 +143,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       try {
         SerializedPartition<K> partition = nonCommittedPartitionsMap.get(key);
         if (partition == null) {
-          partition = new SerializedPartition<>(key, serializer);
+          partition = new SerializedPartition<>(key, serializer, memoryPoolAssigner);
           nonCommittedPartitionsMap.put(key, partition);
         }
         partition.write(element);
@@ -150,7 +168,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
-          DataUtil.convertToSerPartitions(serializer, partitions);
+          DataUtil.convertToSerPartitions(serializer, partitions, memoryPoolAssigner);
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);

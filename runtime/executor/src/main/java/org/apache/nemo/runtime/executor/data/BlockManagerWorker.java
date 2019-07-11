@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
@@ -85,6 +86,9 @@ public final class BlockManagerWorker {
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final BlockTransferThrottler blockTransferThrottler;
 
+  // For tests
+  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(100 * 1024);
+
   /**
    * Constructor.
    *
@@ -137,7 +141,7 @@ public final class BlockManagerWorker {
   public Block createBlock(final String blockId,
                            final DataStoreProperty.Value blockStore) throws BlockWriteException {
     final BlockStore store = getBlockStore(blockStore);
-    return store.createBlock(blockId);
+    return store.createBlock(blockId, MEMORY_POOL_ASSIGNER);
   }
 
   /**

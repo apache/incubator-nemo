@@ -42,14 +42,14 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   private final int pageSize;
   //private ByteBuffer currentBuf;
   private MemoryChunk currentBuf;
-  private static final MemoryPoolAssigner MEMORY_POOL_ASSIGNER = new MemoryPoolAssigner(1024 * 3000, DEFAULT_PAGE_SIZE); //memory temporarily hard-coded
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Default constructor.
    * Sets the {@code pageSize} as default size of 4096 bytes.
    */
-  public DirectByteBufferOutputStream() {
-    this(DEFAULT_PAGE_SIZE);
+  public DirectByteBufferOutputStream(final MemoryPoolAssigner memoryPoolAssigner) {
+    this(DEFAULT_PAGE_SIZE, memoryPoolAssigner);
   }
 
   /**
@@ -59,11 +59,12 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    *
    * @param size should be a power of 2 and greater than or equal to 4096.
    */
-  public DirectByteBufferOutputStream(final int size) {
+  public DirectByteBufferOutputStream(final int size, final MemoryPoolAssigner memoryPoolAssigner) {
     if (size < DEFAULT_PAGE_SIZE || (size & (size - 1)) != 0) {
       throw new IllegalArgumentException("Invalid pageSize");
     }
     this.pageSize = size;
+    this.memoryPoolAssigner = memoryPoolAssigner;
     newLastBuffer();
     currentBuf = dataList.getLast();
   }
@@ -73,7 +74,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   // TODO #388: Off-heap memory management (reuse ByteBuffer)
   private void newLastBuffer() {
-    dataList.addLast(MEMORY_POOL_ASSIGNER.allocateChunk(true));
+    dataList.addLast(memoryPoolAssigner.allocateChunk(true));
   }
 
   /**
@@ -207,7 +208,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   }
 
   public void release() {
-    MEMORY_POOL_ASSIGNER.returnChunks(dataList);
+    memoryPoolAssigner.returnChunks(dataList);
   }
 
   /**

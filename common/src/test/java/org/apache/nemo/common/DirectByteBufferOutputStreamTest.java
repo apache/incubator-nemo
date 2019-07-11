@@ -34,10 +34,11 @@ import static org.junit.Assert.assertEquals;
  */
 public class DirectByteBufferOutputStreamTest {
   private DirectByteBufferOutputStream outputStream;
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5);
 
   @Before
   public void setup(){
-    outputStream = new DirectByteBufferOutputStream();
+    outputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
   }
 
   @Test

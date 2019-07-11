@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.partition;
 
 import org.apache.nemo.common.DirectByteBufferOutputStream;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -67,12 +68,13 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * @throws IOException if fail to chain the output stream.
    */
   public SerializedPartition(final K key,
-                             final Serializer serializer) throws IOException {
+                             final Serializer serializer,
+                             final MemoryPoolAssigner memoryPoolAssigner) throws IOException {
     this.key = key;
     this.serializedData = new byte[0];
     this.length = 0;
     this.committed = false;
-    this.bytesOutputStream = new DirectByteBufferOutputStream();
+    this.bytesOutputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
     this.wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
     this.encoder = serializer.getEncoderFactory().create(wrappedStream);
     this.offheap = true;

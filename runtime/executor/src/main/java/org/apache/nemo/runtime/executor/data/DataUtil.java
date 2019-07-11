@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.data;
 import com.google.common.io.CountingInputStream;
 import org.apache.nemo.common.ByteBufferInputStream;
 import org.apache.nemo.common.DirectByteBufferOutputStream;
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
@@ -110,11 +111,12 @@ public final class DataUtil {
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
     final Serializer serializer,
-    final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException, IllegalAccessException {
+    final Iterable<NonSerializedPartition<K>> partitionsToConvert,
+    final MemoryPoolAssigner memoryPoolAssigner) throws IOException, IllegalAccessException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream();
+        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
         OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers())
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);

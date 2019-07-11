@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
@@ -64,13 +65,13 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   @Override
-  public Block createBlock(final String blockId) {
+  public Block createBlock(final String blockId, final MemoryPoolAssigner memoryPoolAssigner) {
     deleteBlock(blockId);
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
       RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, memoryPoolAssigner);
   }
 
   /**

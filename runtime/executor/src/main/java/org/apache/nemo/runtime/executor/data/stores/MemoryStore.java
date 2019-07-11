@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.common.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -45,12 +46,12 @@ public final class MemoryStore extends LocalBlockStore {
   }
 
   /**
-   * @see BlockStore#createBlock(String)
+   * @see BlockStore#createBlock(String, MemoryPoolAssigner)
    */
   @Override
-  public NonSerializedMemoryBlock createBlock(final String blockId) {
+  public NonSerializedMemoryBlock createBlock(final String blockId, final MemoryPoolAssigner memoryPoolAssigner) {
     final Serializer serializer = getSerializerFromWorker(blockId);
-    return new NonSerializedMemoryBlock(blockId, serializer);
+    return new NonSerializedMemoryBlock(blockId, serializer, memoryPoolAssigner);
   }
 
   /**
