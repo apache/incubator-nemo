@@ -472,6 +472,7 @@ public final class JobLauncher {
     return DriverConfiguration.CONF
         .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars()
         .stream().filter(path -> {
+          LOG.info("Library path: {}", path);
           for (final String excludeJar : excludeJarList) {
             if (path.contains(excludeJar)) {
               return false;
