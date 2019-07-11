@@ -127,11 +127,14 @@ public final class RelayServerClient {
     }
 
 
-    LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}!!",
-      srcExecutorId, dstExecutorId,
-      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
-
     final Channel channel = channelFuture.channel();
+
+
+    LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}, channel {}!!",
+      srcExecutorId, dstExecutorId,
+      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
+      channel);
+
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
@@ -158,11 +161,15 @@ public final class RelayServerClient {
         }
       }
 
-    LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!",
-      srcExecutorId, dstExecutorId,
-      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     final Channel channel = channelFuture.channel();
+
+    LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!, " +
+        "channel: {}",
+      srcExecutorId, dstExecutorId,
+      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
+      channel);
+
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
