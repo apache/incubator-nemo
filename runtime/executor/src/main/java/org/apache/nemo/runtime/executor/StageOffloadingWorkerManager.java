@@ -115,8 +115,8 @@ public final class StageOffloadingWorkerManager {
 
   private void sendOffloadingDoneEvent(final String stageId) {
     LOG.info("Send offloading done for {}", stageId);
-    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID).request(
+    toMaster
+      .getMessageSender(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID)
