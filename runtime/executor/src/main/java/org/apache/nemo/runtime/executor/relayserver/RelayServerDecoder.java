@@ -56,7 +56,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
         for (final String dstKey : taskChannelMap.keySet()) {
           if (pendingByteMap.containsKey(dstKey)) {
-            final List<ByteBuf> pendingBytes = pendingByteMap.remove(dstKey);
+            final List<ByteBuf> pendingBytes = pendingByteMap.get(dstKey);
             final Channel channel = taskChannelMap.get(dstKey);
 
             if (pendingBytes != null) {
@@ -67,6 +67,8 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                 }
                 channel.flush();
                 pendingBytes.clear();
+
+                pendingByteMap.remove(dstKey);
               }
             }
           }
@@ -192,6 +194,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
             } else {
 
               final Channel dstChannel = taskChannelMap.get(dst);
+
+              if (type == 1) {
+                LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
+                  dstChannel, dstChannel.isActive(), dstChannel.isOpen());
+              }
 
               if (pendingByteMap.containsKey(dst)) {
                 final List<ByteBuf> pendingBytes = pendingByteMap.remove(dst);
