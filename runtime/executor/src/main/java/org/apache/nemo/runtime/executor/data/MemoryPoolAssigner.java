@@ -43,10 +43,6 @@ public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
 
-  //private static final int DEFAULT_MEMORY_POOL_SIZE = 1 * 1024 * 1024 * 1024; //1GB
-
-  //private static final int DEFAULT_CHUNK_SIZE = 32 * 1024; // 32KB
-
   private static final int MIN_CHUNK_SIZE = 4 * 1024; // 4KB
 
   private final MemoryPool memoryPool;
