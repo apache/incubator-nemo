@@ -56,6 +56,8 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
         for (final String dstKey : taskChannelMap.keySet()) {
           if (pendingByteMap.containsKey(dstKey)) {
+            // 여기서 remove를 안해주는 이유
+            // 근데 remove를 하면 순서가 꼬일수가 있음!!
             final List<ByteBuf> pendingBytes = pendingByteMap.get(dstKey);
             final Channel channel = taskChannelMap.get(dstKey);
 
@@ -68,6 +70,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                 channel.flush();
                 pendingBytes.clear();
 
+                // 여기서 remove
                 pendingByteMap.remove(dstKey);
               }
             }
@@ -176,10 +179,18 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               if (pendingBytes != null) {
 
                 synchronized (pendingBytes) {
-                  pendingBytes.add(bb);
-                  LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
-                  pendingByteMap.put(dst, pendingBytes);
+                  // 한번더 check
+                  // remove 되었을 수도 잇음 (모두 flush 되었을수도)
+                  if (pendingByteMap.containsKey(dst)) {
+                    pendingBytes.add(bb);
+                    LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
+                    pendingByteMap.put(dst, pendingBytes);
+                  } else {
+                    final Channel dstChannel = taskChannelMap.get(dst);
+                    dstChannel.write(bb);
+                  }
                 }
+
               } else {
 
                 final Channel dstChannel = taskChannelMap.get(dst);
@@ -201,17 +212,23 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
 
               if (pendingByteMap.containsKey(dst)) {
-                final List<ByteBuf> pendingBytes = pendingByteMap.remove(dst);
+                final List<ByteBuf> pendingBytes = pendingByteMap.get(dst);
 
                 if (pendingBytes != null) {
+
                   synchronized (pendingBytes) {
-                    LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), dstChannel);
-                    for (final ByteBuf pendingByte : pendingBytes) {
-                      dstChannel.write(pendingByte);
+                    if (pendingByteMap.containsKey(dst)) {
+                      LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), dstChannel);
+                      for (final ByteBuf pendingByte : pendingBytes) {
+                        dstChannel.write(pendingByte);
+                      }
+                      dstChannel.flush();
+                      pendingBytes.clear();
+
+                      pendingByteMap.remove(dst);
                     }
-                    dstChannel.flush();
-                    pendingBytes.clear();
                   }
+
                 }
               }
 
