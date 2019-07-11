@@ -105,15 +105,16 @@ public final class RelayServerClient {
   }
 
   public CompletableFuture<ByteOutputContext> newOutputContext(
-    final String executorId,
+    final String srcExecutorId,
+    final String dstExecutorId,
     final PipeTransferContextDescriptor descriptor) {
 
     // 여기서 executor의 relaySErverAddress와 port가져와야함.
 
     final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
-    final Pair<String, Integer> info = relayServerInfo.get(executorId);
+    final Pair<String, Integer> info = relayServerInfo.get(dstExecutorId);
 
-    LOG.info("Get relay server info for {} / {}", executorId, info);
+    LOG.info("Get relay server info for {} / {}", dstExecutorId, info);
 
     final ChannelFuture channelFuture = connectToRelayServer(info.left(), info.right());
 
@@ -125,19 +126,23 @@ public final class RelayServerClient {
       }
     }
 
-    LOG.info("Getting relay server channel for output context {}!!", descriptor);
+
+    LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}!!",
+      srcExecutorId, dstExecutorId,
+      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     final Channel channel = channelFuture.channel();
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     LOG.info("Getting context manager!!!");
-    completableFuture.complete(manager.newOutputContext(executorId, descriptor, true));
+    completableFuture.complete(manager.newOutputContext(dstExecutorId, descriptor, true));
     return completableFuture;
   }
 
   public CompletableFuture<ByteInputContext> newInputContext(
-    final String executorId,
+    final String srcExecutorId,
+    final String dstExecutorId,
     final PipeTransferContextDescriptor descriptor) {
 
       final CompletableFuture<ByteInputContext> completableFuture = new CompletableFuture<>();
@@ -153,14 +158,16 @@ public final class RelayServerClient {
         }
       }
 
-    LOG.info("Getting relay server channel for input context {}!!", descriptor);
+    LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!",
+      srcExecutorId, dstExecutorId,
+      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     final Channel channel = channelFuture.channel();
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     LOG.info("Getting context manager!!!");
-    completableFuture.complete(manager.newInputContext(executorId, descriptor, true));
+    completableFuture.complete(manager.newInputContext(srcExecutorId, descriptor, true));
     return completableFuture;
   }
 

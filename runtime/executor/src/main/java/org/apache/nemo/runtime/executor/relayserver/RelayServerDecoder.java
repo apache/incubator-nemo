@@ -72,6 +72,10 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
           }
         }
 
+        if (pendingByteMap.size() > 0) {
+          LOG.info("Pending dst ... {}", pendingByteMap.keySet());
+        }
+
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);

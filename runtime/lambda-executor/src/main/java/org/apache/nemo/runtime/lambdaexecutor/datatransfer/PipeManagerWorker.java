@@ -179,7 +179,7 @@ public final class PipeManagerWorker {
     switch (loc) {
       case SF: {
         // Connect to the relay server!
-        return relayServerClient.newOutputContext(targetExecutorId, descriptor)
+        return relayServerClient.newOutputContext(executorId, targetExecutorId, descriptor)
           .thenApply(context -> context);
       }
       case VM: {
@@ -218,7 +218,7 @@ public final class PipeManagerWorker {
     switch (loc) {
       case SF: {
         // Connect to the relay server!
-        return relayServerClient.newInputContext(srcExecutorId, descriptor)
+        return relayServerClient.newInputContext(srcExecutorId, executorId, descriptor)
           .thenApply(context -> {
             final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
             byteInputContextMap.putIfAbsent(key, new HashSet<>());
