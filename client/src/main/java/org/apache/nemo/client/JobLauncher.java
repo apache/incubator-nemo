@@ -475,6 +475,7 @@ public final class JobLauncher {
           LOG.info("Library path: {}", path);
           for (final String excludeJar : excludeJarList) {
             if (path.contains(excludeJar)) {
+              LOG.info("Excplude path: {}", path);
               return false;
             }
           }
