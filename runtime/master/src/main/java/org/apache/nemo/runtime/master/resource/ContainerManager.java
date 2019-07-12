@@ -79,11 +79,13 @@ public final class ContainerManager {
    */
   private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
 
+  private final JVMProcessFactory jvmProcessFactory;
 
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
-                           final MessageEnvironment messageEnvironment) {
+                           final MessageEnvironment messageEnvironment,
+                           final JVMProcessFactory jvmProcessFactory) {
     this.isTerminated = false;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
@@ -92,6 +94,7 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
+    this.jvmProcessFactory = jvmProcessFactory;
   }
 
   /**
@@ -154,11 +157,18 @@ public final class ContainerManager {
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
+    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+      .addOption("-verbose:class");
+
+
+    LOG.info("Add jvm process for verbose:class");
+
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
         .build();
 
+    allocatedContainer.setProcess(jvmProcess);
     allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
   }
 
