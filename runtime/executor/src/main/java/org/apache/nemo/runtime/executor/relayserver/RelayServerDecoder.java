@@ -146,7 +146,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                   }
 
                   taskChannelMap.put(dst, ctx.channel());
-
                   outputWriterFlusher.registerChannel(ctx.channel());
 
                   break;
@@ -184,7 +183,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                   if (pendingByteMap.containsKey(dst)) {
                     pendingBytes.add(bb);
                     LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
-                    pendingByteMap.put(dst, pendingBytes);
                   } else {
                     final Channel dstChannel = taskChannelMap.get(dst);
                     dstChannel.write(bb);
@@ -200,7 +198,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                     dstChannel, dstChannel.isActive(), dstChannel.isOpen());
                 }
 
-                dstChannel.writeAndFlush(bb);
+                dstChannel.write(bb);
               }
             } else {
 
@@ -239,7 +237,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               }
               */
 
-              dstChannel.writeAndFlush(bb);
+              dstChannel.write(bb);
             }
 
             remainingBytes = 0;
