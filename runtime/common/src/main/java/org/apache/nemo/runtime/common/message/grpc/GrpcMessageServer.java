@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.common.message.grpc;
 
+import io.grpc.MethodDescriptor;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.comm.GrpcMessageService;
 import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
@@ -108,6 +109,9 @@ final class GrpcMessageServer {
    * @throws Exception when any network exception occur during starting procedure
    */
   void start() throws Exception {
+
+    LOG.info("Grpc methodDescriptor from {}", MethodDescriptor.class.getProtectionDomain().getCodeSource().getLocation());
+
     // 1. Bind to random port
     this.server = ServerBuilder.forPort(0)
         .addService(new MessageService())
