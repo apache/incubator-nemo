@@ -294,7 +294,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "The size of off-heap memory pool of the executor",
     short_name = "memory_pool_size", default_value = "1073741824")
-  public final class MemoryPoolSize implements Name<Integer> {
+  public final class MemoryPoolSize implements Name<Long> {
   }
 
   /**
@@ -302,7 +302,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "The memory chunk size in the memory pool of the executor",
     short_name = "chunk_size", default_value = "32768")
-  public final class ChunkSize implements Name<Long> {
+  public final class ChunkSize implements Name<Integer> {
   }
 
   //////////////////////////////// Intermediate Configurations
