@@ -95,10 +95,22 @@ under the License.
                                 -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
                             </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+
+                            <filters>
+
+                              <filter>
+                                <artifact>*:*</artifact>
+                                <excludes>
+                                  <exclude>io/grpc/**</exclude>
+                                  <exclude>io/netty/**</exclude>
+                                </excludes>
+                              </filter>
+                            </filters>
+
+                          </configuration>
+                        </execution>
+                      </executions>
+                    </plugin>
+                  </plugins>
+                </build>
 </project>

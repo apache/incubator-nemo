@@ -96,6 +96,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskLocMap = new ConcurrentHashMap<>();
     this.relayServerInfo = relayServerInfo;
 
+    LOG.info("ExecutorAddressMap: {}", executorAddressMap);
   }
   /**
    * Extracts task index from a task ID.

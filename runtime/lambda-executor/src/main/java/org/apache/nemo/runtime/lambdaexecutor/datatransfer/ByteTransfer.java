@@ -101,8 +101,10 @@ public final class ByteTransfer {
         }
       });
     } catch (final RuntimeException e) {
-      completableFuture.completeExceptionally(e);
-      return completableFuture;
+      e.printStackTrace();
+      throw new RuntimeException(e);
+      //completableFuture.completeExceptionally(e);
+      //return completableFuture;
     }
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {

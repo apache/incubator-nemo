@@ -109,6 +109,8 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   ChannelFuture connectTo(final String remoteExecutorId) {
 
     final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
+    LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
+
     final ChannelFuture connectFuture = clientBootstrap.connect(address);
     connectFuture.addListener(future -> {
       if (future.isSuccess()) {
