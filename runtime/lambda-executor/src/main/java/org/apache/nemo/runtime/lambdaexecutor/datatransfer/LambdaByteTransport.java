@@ -62,7 +62,7 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     this.executorAddressMap = executorAddressMap;
     this.channelGroup = channelGroup;
 
-    clientGroup = channelImplSelector.newEventLoopGroup(2, new DefaultThreadFactory(CLIENT));
+    clientGroup = channelImplSelector.newEventLoopGroup(10, new DefaultThreadFactory(CLIENT));
 
     clientBootstrap = new Bootstrap()
         .group(clientGroup)

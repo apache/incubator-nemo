@@ -152,9 +152,16 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                            final EventHandler<ContextManager> eventHandler) {
     channelExecutorService.execute(() -> {
       final CompletableFuture<ContextManager> future = byteTransfer.connectTo(targetExecutorId);
+      long st = System.currentTimeMillis();
       while (!future.isDone()) {
         try {
           Thread.sleep(200);
+
+          if (System.currentTimeMillis() - st >= 1000) {
+            LOG.info("Waiting for connection to {}", targetExecutorId);
+            st = System.currentTimeMillis();
+          }
+
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -349,7 +356,6 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   message.getTaskId());
 
               inputContext.sendMessage(ackMessage, (m) -> {});
-
 
               LOG.info("Setting input channel to VM {}, transferIndex: {}",
                 message.getTaskId(), contextId.getTransferIndex());
