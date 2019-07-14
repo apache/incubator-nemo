@@ -46,6 +46,40 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   public DataFrameEncoder() {
   }
 
+  public void encode(final ByteBuf byteBuf, final DataFrame in) {
+    // encode header
+    final ByteBuf header = byteBuf;
+    byte flags = (byte) 0;
+
+    if (in.stopContext) {
+      flags |= (byte) (1 << 4);
+    }
+
+    flags |= (byte) (1 << 3);
+    if (in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
+      flags |= (byte) (1 << 2);
+    }
+    if (in.opensSubStream) {
+      flags |= (byte) (1 << 1);
+    }
+    if (in.closesContext) {
+      flags |= (byte) (1 << 0);
+    }
+
+    header.writeByte(flags);
+    header.writeInt(in.contextId.getTransferIndex());
+
+    // in.length should not exceed the range of unsigned int
+    assert (in.length <= LENGTH_MAX);
+    header.writeInt((int) in.length);
+
+    // encode body
+    header.writeBytes((ByteBuf) in.body);
+
+    // recycle DataFrame object
+    in.recycle();
+  }
+
   @Override
   public void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
     // encode header

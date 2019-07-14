@@ -58,15 +58,21 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
     //header.getBytes(header.readableBytes(), loggingBytes);
     //LOG.info("Loging bytes in controlFrameEncoder {}", loggingBytes);
 
+    header
+      .writeBytes(ZEROS.retain())
+      .writeBytes(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
+      .writeInt(data.readableBytes()))
+      .writeBytes(data);
+
     out.add(header);
 
+    /*
     out.add(ZEROS.retain());
-    //out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
-    //  .writeInt(frameBody.length));
 
     out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
       .writeInt(data.readableBytes()));
 
     out.add(data);
+    */
   }
 }

@@ -41,8 +41,8 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
       throw new RuntimeException(e);
     }
 
-    final byte[] loggingBytes = new byte[header.readableBytes()];
-    header.getBytes(header.readableBytes(), loggingBytes);
+    //final byte[] loggingBytes = new byte[header.readableBytes()];
+    //header.getBytes(header.readableBytes(), loggingBytes);
 
     //LOG.info("Loging bytes in controlMessageEncoder {}", loggingBytes);
 

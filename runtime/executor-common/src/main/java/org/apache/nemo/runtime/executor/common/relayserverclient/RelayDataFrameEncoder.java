@@ -49,13 +49,11 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
       throw new RuntimeException(e);
     }
 
-    final byte[] loggingBytes = new byte[header.readableBytes()];
-    header.getBytes(header.readableBytes(), loggingBytes);
-
+    //final byte[] loggingBytes = new byte[header.readableBytes()];
+    //header.getBytes(header.readableBytes(), loggingBytes);
     //LOG.info("Loging bytes in dataFrameEncoder {}", loggingBytes);
 
-
+    dataFrameEncoder.encode(header, in.dataFrame);
     out.add(header);
-    dataFrameEncoder.encode(ctx, in.dataFrame, out);
   }
 }
