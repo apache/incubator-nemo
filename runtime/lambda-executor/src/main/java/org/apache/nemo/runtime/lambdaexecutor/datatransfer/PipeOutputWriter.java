@@ -85,6 +85,7 @@ public final class PipeOutputWriter implements Flushable {
     pipeList.forEach(pipe -> {
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
       stream.writeElement(element, serializer, runtimeEdge.getId(), stageEdge.getDstIRVertex().getId());
+      /*
       if (flush) {
         try {
           stream.flush();
@@ -93,6 +94,7 @@ public final class PipeOutputWriter implements Flushable {
           throw new RuntimeException(e);
         }
       }
+      */
     });
   }
 
