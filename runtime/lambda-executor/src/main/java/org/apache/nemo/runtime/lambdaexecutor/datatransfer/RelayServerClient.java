@@ -131,6 +131,20 @@ public final class RelayServerClient {
     return channelFuture.channel();
   }
 
+  private Channel getMyRelayServerChannel() {
+    final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
+    while (!channelFuture.isSuccess()) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    final Channel channel = channelFuture.channel();
+    return channel;
+  }
+
   public CompletableFuture<ByteOutputContext> newOutputContext(
     final String srcExecutorId,
     final String dstExecutorId,
@@ -144,7 +158,9 @@ public final class RelayServerClient {
       descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
       channel);
 
-    registerTask(channel,
+    // ㄴㅐ꺼에다 register 하기
+    final Channel myChannel = getMyRelayServerChannel();
+    registerTask(myChannel,
       descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
@@ -162,18 +178,7 @@ public final class RelayServerClient {
 
       // 누구 relay server로 접근해야 하는지?
       // 내껄로 접근해야함
-      final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
-      while (!channelFuture.isSuccess()) {
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-
-    final Channel channel = channelFuture.channel();
-
+    final Channel channel = getMyRelayServerChannel();
     LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!, " +
         "channel: {}",
       srcExecutorId, dstExecutorId,
@@ -181,6 +186,7 @@ public final class RelayServerClient {
       channel);
 
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     LOG.info("Getting context manager!!!");

@@ -65,7 +65,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               synchronized (pendingBytes) {
                 LOG.info("Flushing pending byte {} size: {} / {}", dstKey, pendingBytes.size(), channel);
                 for (final ByteBuf pendingByte : pendingBytes) {
-                  channel.write(pendingByte);
+                  if (channel.isOpen()) {
+                    channel.write(pendingByte);
+                  } else {
+                    throw new RuntimeException("Channel closed ");
+                  }
                 }
                 channel.flush();
                 pendingBytes.clear();
@@ -184,7 +188,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                     LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
                   } else {
                     final Channel dstChannel = taskChannelMap.get(dst);
-                    dstChannel.write(bb);
+                    if (dstChannel.isOpen()) {
+                      dstChannel.write(bb);
+                    } else {
+                      throw new RuntimeException("Channel closed");
+                    }
                   }
                 }
 
@@ -197,7 +205,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                     dstChannel, dstChannel.isActive(), dstChannel.isOpen());
                 }
 
-                dstChannel.write(bb);
+                if (dstChannel.isOpen()) {
+                  dstChannel.write(bb);
+                } else {
+                  throw new RuntimeException("Channel closed");
+                }
               }
             } else {
 
@@ -217,7 +229,11 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                     if (pendingByteMap.containsKey(dst)) {
                       LOG.info("Flushing pending byte {} size: {} / {}", dst, pendingBytes.size(), dstChannel);
                       for (final ByteBuf pendingByte : pendingBytes) {
-                        dstChannel.write(pendingByte);
+                        if (dstChannel.isOpen()) {
+                          dstChannel.write(pendingByte);
+                        } else {
+                          throw new RuntimeException("Channel closed");
+                        }
                       }
                       dstChannel.flush();
                       pendingBytes.clear();

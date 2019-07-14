@@ -209,19 +209,17 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               relayServerAddress, relayServerPort, transferIndex);
 
             connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
-              /*
-              // 내 채널에도 등록!!
+
+              // 내 채널에  destination 등록!!
               final Channel myRelayServer = relayServerClient.getRelayServerChannel(localExecutorId);
               LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
-
               relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-              */
 
               LOG.info("Register task to the remote relay server! {}, {}#{}#{}",
                 relayServerChannel, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), false);
 
-              relayServerClient.registerTask(relayServerChannel,
-                cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+              //relayServerClient.registerTask(relayServerChannel,
+              //  cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
 
               outputContext.pending(sendDataTo, message.getTaskId());
             });
