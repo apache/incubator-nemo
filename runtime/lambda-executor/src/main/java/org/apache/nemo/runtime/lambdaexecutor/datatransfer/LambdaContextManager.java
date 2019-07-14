@@ -112,6 +112,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   public ByteInputContext newInputContext(String executorId, final PipeTransferContextDescriptor contextDescriptor, boolean isPipe) {
     final TransferKey key =  new TransferKey(contextDescriptor.getRuntimeEdgeId(),
       (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), false);
+
     final String relayDst = RelayUtils.createId(
       contextDescriptor.getRuntimeEdgeId(), (int) contextDescriptor.getSrcTaskIndex(), false);
 
@@ -127,7 +128,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
           ackScheduledService.ackService, isRelayServerChannel, relayServerClient);
         return ic;
       },
-      executorId, isPipe, relayDst);
+      executorId, isPipe, relayDst, true);
   }
 
   private void connectToRelay(final String relayServerAddress,
@@ -509,7 +510,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
                                                final boolean isPipe,
-                                               final String relayDst) {
+                                               final String relayDst,
+                                               final boolean inputContext) {
     setRemoteExecutorId(executorId);
     LOG.info("Context: srcExecutor: {}, remoteExecutor: {}, transferIndex: {}",
       localExecutorId, executorId, transferIndex);
@@ -532,9 +534,16 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         "??");
 
     if (isRelayServerChannel) {
-      LOG.info("No Skip... because the remote is already connected with relayServer, " +
-        "send control to {}, transferIndex: {}, msg: {}", relayDst, transferIndex, message);
-      channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+      if (inputContext) {
+        // send to remote relay server
+        LOG.info("Send message to remote relay server {} / {}", executorId, message);
+        final Channel remoteRelayChannel = relayServerClient.getRelayServerChannel(executorId);
+        remoteRelayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+      } else {
+        LOG.info("No Skip... because the remote is already connected with relayServer, " +
+          "send control to {}, transferIndex: {}, msg: {}", relayDst, transferIndex, message);
+        channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+      }
     } else {
       channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     }
@@ -559,13 +568,13 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, SF),
-        executorId, isPipe, relayDst);
+        executorId, isPipe, relayDst, false);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, VM),
-        executorId, isPipe, relayDst);
+        executorId, isPipe, relayDst, false);
     }
   }
 
