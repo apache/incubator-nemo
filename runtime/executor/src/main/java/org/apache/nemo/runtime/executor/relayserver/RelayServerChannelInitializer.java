@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,9 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
 
     outputWriterFlusher.registerChannel(ch);
 
-    ch.pipeline().addLast(new RelayServerDecoder(taskChannelMap, pendingBytes, outputWriterFlusher));
+    ch.pipeline()
+      .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
+        Integer.MAX_VALUE, 0, 4, 0, 4))
+      .addLast(new RelayServerMessageToMessageDecoder(taskChannelMap, pendingBytes, outputWriterFlusher));
   }
 }

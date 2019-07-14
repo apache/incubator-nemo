@@ -3,6 +3,8 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayClientDecoder;
@@ -78,6 +80,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
 
     ch.pipeline()
       // outbound
+      .addLast("frameEncoder", new LengthFieldPrepender(4))
+
       .addLast(new RelayControlFrameEncoder())
       .addLast(new RelayDataFrameEncoder())
       .addLast(new RelayControlMessageEncoder())
