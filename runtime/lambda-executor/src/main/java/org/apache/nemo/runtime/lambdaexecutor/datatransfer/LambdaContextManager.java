@@ -407,7 +407,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
             LOG.info("Signal from child for restart output {} / {}, context {}", sendDataTo, transferIndex, byteOutputContext);
             switch (sendDataTo) {
               case SF: {
-                byteOutputContext.scaleoutToVm(channel);
+                final Channel remoteChannel = relayServerClient.getRelayServerChannel(message.getInitiatorExecutorId());
+                byteOutputContext.scaleoutToVm(remoteChannel);
                 break;
               }
               case VM: {
@@ -422,7 +423,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
           switch (sendDataTo) {
             case SF: {
-              outputContext.scaleoutToVm(channel);
+              final Channel remoteChannel = relayServerClient.getRelayServerChannel(message.getInitiatorExecutorId());
+              outputContext.scaleoutToVm(remoteChannel);
               break;
             }
             case VM: {
