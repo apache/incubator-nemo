@@ -57,7 +57,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         for (final String dstKey : taskChannelMap.keySet()) {
           if (pendingByteMap.containsKey(dstKey)) {
             // 여기서 remove를 안해주는 이유
-            // 근데 remove를 하면 순서가 꼬일수가 있음!!
+            // remove를 하면 순서가 꼬일수가 있음!!
             final List<ByteBuf> pendingBytes = pendingByteMap.get(dstKey);
             final Channel channel = taskChannelMap.get(dstKey);
 
@@ -146,7 +146,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                   }
 
                   taskChannelMap.put(dst, ctx.channel());
-                  outputWriterFlusher.registerChannel(ctx.channel());
 
                   break;
                 }
@@ -258,11 +257,16 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     LOG.info("Removing channel inactive {}", ctx.channel().remoteAddress().toString());
+    outputWriterFlusher.removeChannel(ctx.channel());
     for (final Map.Entry<String, Channel> entry : taskChannelMap.entrySet()) {
       if (entry.getValue().equals(ctx.channel())) {
         LOG.info("Removing dst {}", entry.getKey());
+
+        if (pendingByteMap.containsKey(entry.getKey())) {
+          throw new RuntimeException("Channel inactive.. but there are still pending bytes");
+        }
+
         taskChannelMap.remove(entry.getKey());
-        outputWriterFlusher.removeChannel(ctx.channel());
       }
     }
   }
@@ -271,32 +275,5 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
     startToRelay(in, ctx);
   }
-
-  final class ChannelFlush implements Flushable {
-
-    private final Channel channel;
-
-    public ChannelFlush(final Channel channel) {
-      this.channel = channel;
-    }
-
-    @Override
-    public void flush() throws IOException {
-      channel.flush();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      ChannelFlush that = (ChannelFlush) o;
-      return Objects.equals(channel, that.channel);
-    }
-
-    @Override
-    public int hashCode() {
-
-      return Objects.hash(channel);
-    }
-  }
 }
+

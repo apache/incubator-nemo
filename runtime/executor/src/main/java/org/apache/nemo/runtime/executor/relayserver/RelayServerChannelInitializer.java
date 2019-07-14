@@ -37,6 +37,8 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
     LOG.info("Registering channel {}", ch.remoteAddress());
     // DO nothing!!
 
+    outputWriterFlusher.registerChannel(ch);
+
     ch.pipeline().addLast(new RelayServerDecoder(taskChannelMap, pendingBytes, outputWriterFlusher));
   }
 }

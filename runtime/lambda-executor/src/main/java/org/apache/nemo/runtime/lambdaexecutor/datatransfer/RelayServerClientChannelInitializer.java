@@ -67,7 +67,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
 
   @Override
   protected void initChannel(SocketChannel ch) throws Exception {
-    LOG.info("Registering channel {}", ch.remoteAddress());
+    LOG.info("Registering channel {}", ch);
 
     final ContextManager contextManager = new LambdaContextManager(
       channelExecutorService,
