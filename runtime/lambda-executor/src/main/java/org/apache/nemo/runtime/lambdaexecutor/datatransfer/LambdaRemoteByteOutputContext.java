@@ -99,6 +99,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
       this.currChannel = relayChannel;
     }
     this.relayDst = relayDst;
+    LOG.info("RelayDst {} for remoteExecutor: {}, channel {}", relayDst, remoteExecutorId,
+      relayChannel);
   }
 
   @Override
