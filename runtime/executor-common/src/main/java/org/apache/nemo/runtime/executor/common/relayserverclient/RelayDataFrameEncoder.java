@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.common.relayserverclient;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
@@ -49,11 +50,15 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
       throw new RuntimeException(e);
     }
 
+    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+
     //final byte[] loggingBytes = new byte[header.readableBytes()];
     //header.getBytes(header.readableBytes(), loggingBytes);
     //LOG.info("Loging bytes in dataFrameEncoder {}", loggingBytes);
 
-    dataFrameEncoder.encode(header, in.dataFrame);
-    out.add(header);
+    final ByteBuf dataBuf = dataFrameEncoder.encode(ctx, in.dataFrame);
+
+    cbb.addComponents(true, header, dataBuf);
+    out.add(cbb);
   }
 }

@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
@@ -46,9 +48,9 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   public DataFrameEncoder() {
   }
 
-  public void encode(final ByteBuf byteBuf, final DataFrame in) {
+  public ByteBuf encode(final ChannelHandlerContext ctx, final DataFrame in) {
     // encode header
-    final ByteBuf header = byteBuf;
+    final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     byte flags = (byte) 0;
 
     if (in.stopContext) {
@@ -74,10 +76,13 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     header.writeInt((int) in.length);
 
     // encode body
-    header.writeBytes((ByteBuf) in.body);
+    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+    cbb.addComponents(true, header, (ByteBuf) in.body);
 
     // recycle DataFrame object
     in.recycle();
+
+    return cbb;
   }
 
   @Override

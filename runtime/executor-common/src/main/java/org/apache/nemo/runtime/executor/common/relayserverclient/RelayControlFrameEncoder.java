@@ -1,8 +1,6 @@
 package org.apache.nemo.runtime.executor.common.relayserverclient;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
@@ -33,6 +31,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
 
     final String id = in.dstId;
 
+    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(4);
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
 
@@ -58,13 +57,12 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
     //header.getBytes(header.readableBytes(), loggingBytes);
     //LOG.info("Loging bytes in controlFrameEncoder {}", loggingBytes);
 
-    header
-      .writeBytes(ZEROS.retain())
-      .writeBytes(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
-      .writeInt(data.readableBytes()))
-      .writeBytes(data);
+    cbb.addComponents(true, header, ZEROS.retain(),
+      ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
+      .writeInt(data.readableBytes()),
+      data);
 
-    out.add(header);
+    out.add(cbb);
 
     /*
     out.add(ZEROS.retain());
