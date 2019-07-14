@@ -147,6 +147,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
       final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
 
+      LOG.info("Sending message {} to {}, {}", dst, getRemoteExecutorId(), message);
+
       remoteRelayServer.writeAndFlush(new RelayControlFrame(dst, message));
       //currChannel.writeAndFlush(new RelayControlFrame(dst, message));
     } else {
