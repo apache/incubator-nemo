@@ -99,6 +99,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "executor_threads", default_value = "1")
   public static final class ExecutorThreadNum implements Name<Integer> {}
 
+  @NamedParameter(short_name = "off_executor_threads", default_value = "2")
+  public static final class OffExecutorThreadNum implements Name<Integer> {}
+
   @NamedParameter(short_name = "task_slot", default_value = "2")
   public static final class TaskSlot implements Name<Integer> {}
 
@@ -124,6 +127,7 @@ public final class EvalConf {
   public final String offloadingType;
   public final int middleParallelism;
   public final int executorThreadNum;
+  public final int offExecutorThreadNum;
   public final int taskSlot;
 
   @Inject
@@ -147,11 +151,13 @@ public final class EvalConf {
                    @Parameter(OffloadingType.class) final String offloadingType,
                    @Parameter(MiddleParallelism.class) final int middleParallelism,
                    @Parameter(ExecutorThreadNum.class) final int executorThreadNum,
+                   @Parameter(OffExecutorThreadNum.class) final int offExecutorThreadNum,
                    @Parameter(TaskSlot.class) final int taskSlot) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
+    this.offExecutorThreadNum = offExecutorThreadNum;
     this.deoffloadingThreshold = deoffloadingThreshold;
     this.ec2 = ec2;
     this.flushCount = flushCount;
@@ -201,6 +207,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(MiddleParallelism.class, Integer.toString(middleParallelism));
     jcb.bindNamedParameter(ExecutorThreadNum.class, Integer.toString(executorThreadNum));
     jcb.bindNamedParameter(TaskSlot.class, Integer.toString(taskSlot));
+    jcb.bindNamedParameter(OffExecutorThreadNum.class, Integer.toString(offExecutorThreadNum));
     return jcb.build();
   }
 
@@ -227,6 +234,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(MiddleParallelism.class);
     cl.registerShortNameOfClass(ExecutorThreadNum.class);
     cl.registerShortNameOfClass(TaskSlot.class);
+    cl.registerShortNameOfClass(OffExecutorThreadNum.class);
   }
 
   @Override
@@ -255,6 +263,7 @@ public final class EvalConf {
     sb.append("middleParallelism: "); sb.append(middleParallelism); sb.append("\n");
     sb.append("executorThreadNum: "); sb.append(executorThreadNum); sb.append("\n");
     sb.append("taskSlotNum: "); sb.append(taskSlot); sb.append("\n");
+    sb.append("offExecutorThreadNum: "); sb.append(offExecutorThreadNum); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

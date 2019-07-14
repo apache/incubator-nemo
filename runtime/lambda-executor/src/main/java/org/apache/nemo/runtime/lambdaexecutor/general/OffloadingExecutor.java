@@ -36,7 +36,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutor.class.getName());
 
-  private final int executorThreadNum = 2;
+  private final int executorThreadNum;
   private List<ExecutorThread> executorThreads;
   private ScheduledExecutorService scheduledExecutorService;
 
@@ -75,7 +75,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final Map<String, Pair<String, Integer>> relayServerInfo;
 
-  public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
+  public OffloadingExecutor(final int executorThreadNum,
+                            final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                             final Map<TransferKey, Integer> taskTransferIndexMap,
@@ -83,6 +84,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final int relayServerPort,
                             final String executorId,
                             final Map<String, Pair<String, Integer>> relayServerInfo) {
+    this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
     this.executorId = executorId;
     this.executorAddressMap = executorAddressMap;

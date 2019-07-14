@@ -482,6 +482,7 @@ public final class Executor {
           LOG.info("{} Setting global relay server info {}", executorId, m);
 
           final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
+            evalConf.offExecutorThreadNum,
             byteTransport.getExecutorAddressMap(),
             serializerManager.runtimeEdgeIdToSerializer,
             pipeManagerWorker.getTaskExecutorIdMap(),
