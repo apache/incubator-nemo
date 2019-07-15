@@ -149,9 +149,10 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
             int offloadCnt = 0;
 
             for (final TaskExecutor runningTask : tasks) {
-              if (offloadCnt < tasks.size() / 2) {
+              //if (offloadCnt < tasks.size() / 2) {
+              final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
+              if (offloadCnt < 4) {
                 offloaded.add(runningTask);
-                final String stageId = RuntimeIdManager.getStageIdFromTaskId(runningTask.getId());
 
                 while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
                   // waiting for stage offloading
