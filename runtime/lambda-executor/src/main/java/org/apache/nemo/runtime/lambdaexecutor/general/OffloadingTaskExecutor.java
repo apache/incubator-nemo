@@ -783,7 +783,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void startOffloading(long baseTime, EventHandler<Integer> doneHandler) {
+  public void startOffloading(long baseTime, Object worker, EventHandler<Integer> doneHandler) {
     throw new UnsupportedOperationException();
   }
 
