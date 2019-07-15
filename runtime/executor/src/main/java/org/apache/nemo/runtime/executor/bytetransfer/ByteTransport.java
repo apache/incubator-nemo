@@ -214,7 +214,7 @@ public final class ByteTransport implements AutoCloseable {
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
       nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
-      executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
+      //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
 
     } catch (final Exception e) {
       LOG.error("Cannot register ByteTransport listening address to the naming registry", e);
@@ -264,7 +264,7 @@ public final class ByteTransport implements AutoCloseable {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
       address = nameResolver.lookup(identifier);
       LOG.info("Address of {}: {}", remoteExecutorId, address);
-      executorAddressMap.put(remoteExecutorId, address);
+      //executorAddressMap.put(remoteExecutorId, address);
       return address;
     } catch (final Exception e) {
       LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
