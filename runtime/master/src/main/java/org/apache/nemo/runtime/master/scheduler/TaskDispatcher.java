@@ -148,6 +148,43 @@ final class TaskDispatcher {
     final List<Task> couldNotSchedule = new ArrayList<>();
 
     // send global message
+    while (!taskScheduledMap.isAllExecutorAddressReceived()) {
+      LOG.info("Waiting executor address info...");
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    final List<ControlMessage.LocalExecutorAddressInfoMessage> entries1 =
+      taskScheduledMap.getExecutorAddressMap().entrySet()
+        .stream().map(entry -> {
+        return ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
+          .setExecutorId(entry.getKey())
+          .setAddress(entry.getValue().left())
+          .setPort(entry.getValue().right())
+          .build();
+      }).collect(Collectors.toList());
+
+    // send global executor address map
+    executorRegistry.viewExecutors(executors -> {
+      for (final ExecutorRepresenter executor : executors) {
+        LOG.info("Send global executor address to executor {}", executor.getExecutorId());
+
+        final long id = RuntimeIdManager.generateMessageId();
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(id)
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
+          .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
+            .addAllInfos(entries1)
+            .build())
+          .build());
+      }
+    });
+
+    // send global message
     while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
       LOG.info("Waiting relay server info...");
       try {
@@ -166,7 +203,6 @@ final class TaskDispatcher {
           .setPort(entry.getValue().right())
           .build();
       }).collect(Collectors.toList());
-
 
     // send global info
     executorRegistry.viewExecutors(executors -> {

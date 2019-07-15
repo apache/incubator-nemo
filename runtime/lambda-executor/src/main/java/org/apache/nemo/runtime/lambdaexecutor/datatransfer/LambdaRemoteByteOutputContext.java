@@ -112,14 +112,14 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     // send message to the upstream task!
 
     if (sendDataTo.equals(SF)) {
-      LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
-        relayDst, relayChannel, message);
+      //LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
+      //  relayDst, relayChannel, message);
       relayChannel.writeAndFlush(
         new RelayControlFrame(relayDst, message));
     } else {
 
-      LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
-        relayDst, vmChannel, message);
+      //LOG.info("Send message to {}/{}, channel: {} {}", sendDataTo,
+      //  relayDst, vmChannel, message);
 
       vmChannel.writeAndFlush(message);
     }
@@ -165,10 +165,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
           taskId);
 
       if (sdt.equals(VM)) {
-        LOG.info("Ack pending to relay {}", message);
+        //LOG.info("Ack pending to relay {}", message);
         relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
       } else if (sdt.equals(SF)) {
-        LOG.info("Ack pending to vm {}", message);
+        //LOG.info("Ack pending to vm {}", message);
         vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
       }
     }
@@ -432,8 +432,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
       currChannel.flush();
     }
 
-    /**
-     * Writes a data frame.
+    /** * Writes a data frame.
      * @param body        the body or {@code null}
      * @param length      the length of the body, in bytes
      * @throws IOException when an exception has been set or this stream was closed

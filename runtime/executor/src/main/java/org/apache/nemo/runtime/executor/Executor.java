@@ -471,6 +471,22 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case GlobalExecutorAddressInfo: {
+          final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
+
+          final Map<String, Pair<String, Integer>> m =
+            msg.getInfosList()
+              .stream()
+              .collect(Collectors.toMap(ControlMessage.LocalExecutorAddressInfoMessage::getExecutorId,
+                entry -> {
+                  return Pair.of(entry.getAddress(), entry.getPort());
+                }));
+
+          LOG.info("{} Setting global executor address server info {}", executorId, m);
+
+          byteTransport.setExecutorAddressMap(m);
+          break;
+        }
         case GlobalRelayServerInfo:
 
           final ControlMessage.GlobalRelayServerInfoMessage msg = message.getGlobalRelayServerInfoMsg();

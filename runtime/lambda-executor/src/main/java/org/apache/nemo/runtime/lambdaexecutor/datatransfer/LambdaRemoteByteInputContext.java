@@ -140,33 +140,33 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     //currChannel.writeAndFlush(message);
 
     if (currChannel == sfChannel) {
-      LOG.info("Send message to relay: {}, currChannel: {}, sfChannel: {}", message,
-        currChannel, sfChannel);
+      //LOG.info("Send message to relay: {}, currChannel: {}, sfChannel: {}", message,
+      //  currChannel, sfChannel);
 
       final Channel remoteRelayServer = relayServerClient.getRelayServerChannel(getRemoteExecutorId());
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
       final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
 
-      LOG.info("Sending message {} to {}, {}, {}", dst, getRemoteExecutorId(), message,
-        remoteRelayServer);
+      //LOG.info("Sending message {} to {}, {}, {}", dst, getRemoteExecutorId(), message,
+      //  remoteRelayServer);
 
       remoteRelayServer.writeAndFlush(new RelayControlFrame(dst, message));
       //currChannel.writeAndFlush(new RelayControlFrame(dst, message));
     } else {
-      LOG.info("Send message to remote: {}, currChannel: {}, sfChannel: {}", message,
-        currChannel, sfChannel);
+      //LOG.info("Send message to remote: {}, currChannel: {}, sfChannel: {}", message,
+      //  currChannel, sfChannel);
       currChannel.writeAndFlush(message);
     }
   }
 
   @Override
   public void receivePendingAck() {
-    LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
+    //LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
     if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
-      LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
+      //LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
       ackHandler.onNext(1);
     } else {
-      LOG.info("ackHandler.schedule {}", getContextId().getTransferIndex());
+      //LOG.info("ackHandler.schedule {}", getContextId().getTransferIndex());
       // check ack
       ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
     }
@@ -402,8 +402,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public void run() {
-      LOG.info("input context {} Bytebuf: {}",
-        getContextId().getTransferIndex(), currentByteBufInputStream.byteBufQueue.isEmpty());
+      //LOG.info("input context {} Bytebuf: {}",
+      //  getContextId().getTransferIndex(), currentByteBufInputStream.byteBufQueue.isEmpty());
       if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
         ackHandler.onNext(1);
       } else {

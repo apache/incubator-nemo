@@ -90,14 +90,14 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
 
   @Override
   public void receiveFromSF(Channel channel) {
-    LOG.info("Receive from SF!!");
+    //LOG.info("Receive from SF!!");
     sfChannel = channel;
     currChannel = sfChannel;
   }
 
   @Override
   public void receiveFromVM(Channel channel) {
-    LOG.info("Receive from VM!!");
+    //LOG.info("Receive from VM!!");
     vmChannel = channel;
     currChannel = vmChannel;
   }
@@ -147,12 +147,12 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
 
   @Override
   public void receivePendingAck() {
-    LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
+    //LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
     if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
-      LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
+      //LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
       ackHandler.onNext(1);
     } else {
-      LOG.info("ackHandler.schedule {}", getContextId().getTransferIndex());
+      //LOG.info("ackHandler.schedule {}", getContextId().getTransferIndex());
       // check ack
       ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
     }
@@ -381,7 +381,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public void run() {
-      LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
+      //LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
       if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
         ackHandler.onNext(1);
       } else {

@@ -24,6 +24,8 @@ public final class TaskScheduledMap {
 
   private final Map<String, Pair<String, Integer>> executorRelayServerInfoMap;
 
+  private final Map<String, Pair<String, Integer>> executorAddressMap;
+
   private final ExecutorRegistry executorRegistry;
 
   @Inject
@@ -31,6 +33,7 @@ public final class TaskScheduledMap {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorIdRepresentorMap = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
+    this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
   }
 
@@ -49,6 +52,20 @@ public final class TaskScheduledMap {
     }
   }
 
+  public synchronized void setExecutorAddressInfo(final String executorId,
+                                                  final String address, final int port) {
+    executorAddressMap.put(executorId, Pair.of(address, port));
+  }
+
+  public synchronized boolean isAllExecutorAddressReceived() {
+    final AtomicBoolean b = new AtomicBoolean(false);
+    executorRegistry.viewExecutors(c -> {
+      b.set(c.size() == executorAddressMap.size());
+    });
+
+    return b.get();
+  }
+
   public synchronized void setRelayServerInfo(final String executorId,
                                          final String address, final int port) {
     executorRelayServerInfoMap.put(executorId, Pair.of(address, port));
@@ -61,6 +78,10 @@ public final class TaskScheduledMap {
     });
 
     return b.get();
+  }
+
+  public synchronized Map<String, Pair<String, Integer>> getExecutorAddressMap() {
+    return executorAddressMap;
   }
 
   public synchronized Map<String, Pair<String, Integer>> getExecutorRelayServerInfoMap() {

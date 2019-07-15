@@ -18,9 +18,14 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -43,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -66,7 +72,7 @@ public final class ByteTransport implements AutoCloseable {
   private final Channel serverListeningChannel;
   private final String publicAddress;
   private int bindingPort;
-  private final ConcurrentMap<String, InetSocketAddress> executorAddressMap;
+  private ConcurrentMap<String, InetSocketAddress> executorAddressMap;
 
   private final String localExecutorId;
 
@@ -92,6 +98,7 @@ public final class ByteTransport implements AutoCloseable {
       final ByteTransportChannelInitializer channelInitializer,
       final TcpPortProvider tcpPortProvider,
       final LocalAddressProvider localAddressProvider,
+      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
       @Parameter(EvalConf.Ec2.class) final boolean ec2,
       @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
       @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
@@ -101,7 +108,6 @@ public final class ByteTransport implements AutoCloseable {
 
     this.localExecutorId = localExecutorId;
     this.nameResolver = nameResolver;
-    this.executorAddressMap = new ConcurrentHashMap<>();
 
     if (port < 0) {
       throw new IllegalArgumentException(String.format("Invalid ByteTransportPort: %d", port));
@@ -191,6 +197,20 @@ public final class ByteTransport implements AutoCloseable {
 
     LOG.info("public address: {}, port: {}, executorId: {}", publicAddress, bindingPort, localExecutorId);
 
+    persistentConnectionToMasterMap
+      .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
+        .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
+          .setExecutorId(localExecutorId)
+          .setAddress(publicAddress)
+          .setPort(bindingPort)
+          .build())
+      .build());
+
+
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
       nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
@@ -204,7 +224,17 @@ public final class ByteTransport implements AutoCloseable {
     LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
   }
 
+  public void setExecutorAddressMap(final Map<String, Pair<String, Integer>> map) {
+    LOG.info("Setting executor address map");
+    for (final Map.Entry<String, Pair<String, Integer>> entry : map.entrySet()) {
+      executorAddressMap.put(entry.getKey(), new InetSocketAddress(entry.getValue().left(), entry.getValue().right()));
+    }
+  }
+
   public ConcurrentMap<String, InetSocketAddress> getExecutorAddressMap() {
+    if (executorAddressMap == null) {
+      throw new RuntimeException("Executor address map is null");
+    }
     return executorAddressMap;
   }
 
