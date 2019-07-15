@@ -331,6 +331,8 @@ public final class TinyTaskOffloader implements Offloader {
     //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
     //tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 
+    tinyTaskWorker = worker;
+
     LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 
     // Source stop!!

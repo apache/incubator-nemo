@@ -176,6 +176,9 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
           final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
           if (offloadNum < scalingNum.get(stageId)) {
+
+            offloadedTasksPerStage.get(j).add(task);
+
             offloadNumMap.put(stageId, offloadNum + 1);
 
             final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask(serializer);
