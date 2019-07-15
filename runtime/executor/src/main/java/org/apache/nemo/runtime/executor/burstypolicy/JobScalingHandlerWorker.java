@@ -150,8 +150,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
     final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
-    final List<TaskExecutor> offloaded = new ArrayList<>();
-    offloadedTasksPerStage.add(offloaded);
+
+    for (final List<TaskExecutor> e : stageTasks) {
+      final List<TaskExecutor> offloaded = new ArrayList<>();
+      offloadedTasksPerStage.add(offloaded);
+    }
 
     final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
     final int totalOffloadTasks = scalingNum.values().stream().reduce(0, (x,y) -> x+y);
