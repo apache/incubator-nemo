@@ -16,6 +16,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
@@ -320,7 +321,7 @@ public final class DownstreamTaskOffloader implements Offloader {
   }
 
   @Override
-  public synchronized void handleStartOffloadingEvent() {
+  public synchronized void handleStartOffloadingEvent(final TinyTaskWorker w) {
 
 
     prevOffloadStartTime.set(System.currentTimeMillis());

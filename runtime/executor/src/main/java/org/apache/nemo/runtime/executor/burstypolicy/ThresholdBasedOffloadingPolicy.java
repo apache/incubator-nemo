@@ -262,7 +262,8 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
               LOG.info("Offloading task {}", runningTask.getId());
               offloadingPendingCnt.getAndIncrement();
 
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+              // todo: add worker
+              runningTask.startOffloading(System.currentTimeMillis(), null, (m) -> {
                 stageOffloadingWorkerManager.endOffloading(stageId);
                 offloadingPendingCnt.decrementAndGet();
 

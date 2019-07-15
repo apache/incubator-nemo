@@ -96,7 +96,7 @@ public final class TaskOffloader {
           //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           LOG.info("Offloading task {}", taskExecutor.getId());
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+          taskExecutor.startOffloading(System.currentTimeMillis(), null, (m) -> {
             stageOffloadingWorkerManager.endOffloading(stageId);
           });
           offloadCnt += 1;

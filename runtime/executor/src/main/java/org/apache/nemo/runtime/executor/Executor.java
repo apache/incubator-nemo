@@ -50,6 +50,7 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.executor.burstypolicy.JobScalingHandlerWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -137,6 +138,8 @@ public final class Executor {
 
   final TaskTransferIndexMap taskTransferIndexMap;
 
+  private final JobScalingHandlerWorker jobScalingHandlerWorker;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -157,12 +160,14 @@ public final class Executor {
                    final TaskInputContextMap taskInputContextMap,
                    final TaskTransferIndexMap taskTransferIndexMap,
                    final RelayServer relayServer,
-                   final TaskLocationMap taskLocationMap) {
+                   final TaskLocationMap taskLocationMap,
+                   final JobScalingHandlerWorker jobScalingHandlerWorker) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.jobScalingHandlerWorker = jobScalingHandlerWorker;
     this.executorGlobalInstances = new ExecutorGlobalInstances();
     this.relayServer = relayServer;
     this.executorId = executorId;
@@ -496,6 +501,8 @@ public final class Executor {
             offloadingWorkerFactory,
             lambdaExecutor,
             evalConf);
+
+          jobScalingHandlerWorker.setTinyWorkerManager(tinyWorkerManager);
 
           break;
         case ScheduleTask:

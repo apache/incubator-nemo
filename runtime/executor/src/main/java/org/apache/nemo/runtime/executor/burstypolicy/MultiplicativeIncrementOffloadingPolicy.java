@@ -224,7 +224,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
               //LOG.info("Offloading task {}, cnt: {}, multiple: {}, percentage: {}",
               //  runningTask.getId(), cnt, multiple, multiplicativeOffloading);
 
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+              runningTask.startOffloading(System.currentTimeMillis(), null, (m) -> {
                 stageOffloadingWorkerManager.endOffloading(stageId);
               });
 

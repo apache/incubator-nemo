@@ -86,7 +86,9 @@ public interface TaskExecutor extends AutoCloseable {
 
   AtomicLong getPrevOffloadEndTime();
 
-  void startOffloading(final long baseTime, EventHandler<Integer> offloadingDoneHandler);
+  void startOffloading(final long baseTime,
+                       final Object worker,
+                       EventHandler<Integer> offloadingDoneHandler);
 
   void endOffloading(final EventHandler<Integer> endOffloadingHandler);
 

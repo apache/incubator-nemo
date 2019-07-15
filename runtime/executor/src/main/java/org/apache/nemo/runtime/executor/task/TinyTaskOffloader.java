@@ -322,14 +322,14 @@ public final class TinyTaskOffloader implements Offloader {
   }
 
   @Override
-  public synchronized void handleStartOffloadingEvent() {
+  public synchronized void handleStartOffloadingEvent(final TinyTaskWorker worker) {
 
     // TODO: 1) Remove available and pending fetchers!!
     // Stop sources and output emission!!
 
     // Prepare task offloading
-    final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
-    tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
+    //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
+    //tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 
     LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 

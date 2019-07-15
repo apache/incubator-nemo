@@ -22,6 +22,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
@@ -293,7 +294,7 @@ public final class MiddleOffloader implements Offloader {
   }
 
   @Override
-  public synchronized void handleStartOffloadingEvent() {
+  public synchronized void handleStartOffloadingEvent(TinyTaskWorker w) {
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 

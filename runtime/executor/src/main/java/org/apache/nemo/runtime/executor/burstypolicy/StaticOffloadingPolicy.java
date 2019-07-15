@@ -170,7 +170,7 @@ public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
 
                 //offloadedExecutors.add(Pair.of(runningTask, System.currentTimeMillis()));
 
-                runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                runningTask.startOffloading(System.currentTimeMillis(), null, (m) -> {
                   LOG.info("Offloading done for {}", runningTask.getId());
                   stageOffloadingWorkerManager.endOffloading(stageId);
                 });

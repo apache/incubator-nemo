@@ -5,6 +5,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -13,6 +14,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +59,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final String executorId;
 
+  private TinyTaskOffloadingWorkerManager tinyWorkerManager;
+
 
   @Inject
   private JobScalingHandlerWorker(
@@ -85,6 +89,10 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScalingDecisionHandler());
+  }
+
+  public void setTinyWorkerManager(final TinyTaskOffloadingWorkerManager m) {
+    tinyWorkerManager = m;
   }
 
   private void updateTaskExecutionTime(final Map<TaskExecutor, Long> deltaMap) {
@@ -126,6 +134,17 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     return results;
   }
 
+  private int largestLength(final List<List<TaskExecutor>> stageTasks) {
+    int l = 0;
+    for (final List<TaskExecutor> e : stageTasks) {
+      if (e.size() > l) {
+        l = e.size();
+      }
+    }
+
+    return l;
+  }
+
   private void scaleOut(final Map<String, Integer> scalingNum) {
     // scale out
     final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
@@ -137,10 +156,44 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
     final int totalOffloadTasks = scalingNum.values().stream().reduce(0, (x,y) -> x+y);
 
-    remainingOffloadTasks.set(totalOffloadTasks);
+    // 1. 여기서 먼저 worker 준비! 몇개 offloading할지 알고 있으니까 가능함.
+    final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 
+    remainingOffloadTasks.set(totalOffloadTasks);
     LOG.info("# of offloading tasks: {}", totalOffloadTasks);
 
+    final int len = largestLength(stageTasks);
+
+    final Map<String, Integer> offloadNumMap = new HashMap<>();
+
+    for (int i = 0; i < len; i++) {
+      for (int j = 0; j < stageTasks.size(); j++) {
+        final List<TaskExecutor> te = stageTasks.get(j);
+
+        if (te.size() > i) {
+          final TaskExecutor task = te.get(i);
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getId());
+
+          final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
+          if (offloadNum < scalingNum.get(stageId)) {
+            offloadNumMap.put(stageId, offloadNum + 1);
+
+            final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask(serializer);
+
+            LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
+            remainingOffloadTasks.getRemainingCnt());
+
+            task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
+              LOG.info("Offloading done for {}", task.getId());
+              //stageOffloadingWorkerManager.endOffloading(stageId);
+            });
+          }
+
+        }
+      }
+    }
+
+    /*
     for (final List<TaskExecutor> tasks : stageTasks) {
 
       String stageId = "";
@@ -172,6 +225,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         }
       }
     }
+    */
 
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }

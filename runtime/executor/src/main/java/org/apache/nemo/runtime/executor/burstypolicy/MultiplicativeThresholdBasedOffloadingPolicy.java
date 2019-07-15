@@ -260,7 +260,7 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
               LOG.info("Offloading task {}", runningTask.getId());
               offloadingPendingCnt.getAndIncrement();
 
-              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+              runningTask.startOffloading(System.currentTimeMillis(), null, (m) -> {
                 stageOffloadingWorkerManager.endOffloading(stageId);
                 offloadingPendingCnt.decrementAndGet();
 
