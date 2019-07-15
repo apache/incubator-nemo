@@ -72,7 +72,7 @@ public final class ByteTransport implements AutoCloseable {
   private final Channel serverListeningChannel;
   private final String publicAddress;
   private int bindingPort;
-  private ConcurrentMap<String, InetSocketAddress> executorAddressMap;
+  private final ConcurrentMap<String, InetSocketAddress> executorAddressMap = new ConcurrentHashMap<>();
 
   private final String localExecutorId;
 
