@@ -76,8 +76,9 @@ public class MemoryPoolAssigner {
    * Returns list of {@link MemoryChunk}s to be used by consumers.
    *
    * @param numPages indicates the number of MemoryChunks
+   * @param sequential whether the requested chunks are sequential.
    * @return list of {@link MemoryChunk}s
-   * @throws MemoryAllocationException
+   * @throws MemoryAllocationException  if fail to allocate MemoryChunks.
    */
   public List<MemoryChunk> allocateChunks(final int numPages,
                                           final boolean sequential) throws MemoryAllocationException {
@@ -91,7 +92,8 @@ public class MemoryPoolAssigner {
    *
    * @param target    where the MemoryChunks are allocated
    * @param numChunks indicates the number of MemoryChunks
-   * @throws MemoryAllocationException
+   * @param sequential  whether the requested chunks are sequential.
+   * @throws MemoryAllocationException if fail to allocate MemoryChunks.
    */
   public void allocateChunks(final List<MemoryChunk> target, final int numChunks, final boolean sequential)
     throws MemoryAllocationException {
@@ -111,7 +113,9 @@ public class MemoryPoolAssigner {
   /**
    * Returns a single {@link MemoryChunk} from {@link MemoryPool}.
    *
+   * @param sequential whether the requested chunk is sequential.
    * @return a MemoryChunk
+   * @throws MemoryAllocationException if fails to allocate MemoryChunk.
    */
   public MemoryChunk allocateChunk(final boolean sequential) throws MemoryAllocationException {
     return memoryPool.requestChunkFromPool(sequential);
@@ -120,7 +124,7 @@ public class MemoryPoolAssigner {
   /**
    * Returns all the MemoryChunks in the given List of MemoryChunks.
    *
-   * @param target
+   * @param target  the list of MemoryChunks to be returned to the memory pool.
    */
   public void returnChunks(final List<MemoryChunk> target) {
     for (final MemoryChunk chunk: target) {
@@ -165,7 +169,7 @@ public class MemoryPoolAssigner {
     /**
      * Only off-heap chunk is returned to the pool.
      *
-     * @param chunk
+     * @param chunk the target MemoryChunk to be returned to the pool.
      */
     void returnChunkToPool(final MemoryChunk chunk) {
       MemoryChunk offHeapChunk = chunk;

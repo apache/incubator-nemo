@@ -43,11 +43,14 @@ public class MemoryChunk {
 
   /**
    * Creates a new memory chunk that represents the off-heap memory at the absolute address.
-   * Note that this class uses UNSAFE to directly manipulate the data in the {@link ByteBuffer} by the address,
-   * which means that the position, limit, capacity, etc of {@link ByteBuffer} is not tracked automatically.
+   * This class can be created in two modes: sequential access mode or random access mode.
+   * Sequential access mode supports convenient sequential access of {@link ByteBuffer}.
+   * Random access mode supports random access and manipulation of the data in the {@code ByteBuffer} using UNSAFE.
+   * No automatic tracking of position, limit, capacity, etc. of {@code ByteBuffer} for random access mode.
    *
    * @param offHeapAddress the address of the off-heap memory, {@link ByteBuffer}, of this MemoryChunk
    * @param buffer         the off-heap memory of this MemoryChunk
+   * @param sequential     whether this MemoryChunk is in sequential mode or not.
    */
   MemoryChunk(final long offHeapAddress, final ByteBuffer buffer, final boolean sequential) {
     if (offHeapAddress <= 0) {
@@ -68,6 +71,7 @@ public class MemoryChunk {
    * Creates a new memory chunk that represents the off-heap memory at the absolute address.
    *
    * @param buffer  the off-heap memory of this MemoryChunk
+   * @param sequential  whether this MemoryChunk is in sequential mode or not.
    */
   MemoryChunk(final ByteBuffer buffer, final boolean sequential) {
     this(getAddress(buffer), buffer, sequential);
@@ -96,7 +100,7 @@ public class MemoryChunk {
    * This is supported for sequential MemoryChunk.
    *
    * @return  the number of remaining bytes
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if remaining() not supported by this MemoryChunk.
    */
   public int remaining() throws IllegalAccessException {
     if (sequential) {
@@ -110,7 +114,7 @@ public class MemoryChunk {
    * Gets the current position of the {@link ByteBuffer} of this MemoryChunk.
    *
    * @return the position
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if position() not supported by this MemoryChunk.
    */
   public int position() throws IllegalAccessException {
     if (sequential) {
@@ -166,8 +170,8 @@ public class MemoryChunk {
   /**
    * Reads the byte at the current position of the {@link ByteBuffer}.
    *
-   * @return
-   * @throws IllegalAccessException
+   * @return the byte value
+   * @throws IllegalAccessException if called by random access mode MemoryChunk.
    */
   public final byte get() throws IllegalAccessException {
     if (!sequential) {
@@ -199,8 +203,8 @@ public class MemoryChunk {
   /**
    * Writes the given byte into the current position of the {@link ByteBuffer}.
    *
-   * @param b
-   * @throws IllegalAccessException
+   * @param b the byte value to be written.
+   * @throws IllegalAccessException if called by random access mode MemoryChunk.
    */
   public final void put(final byte b) throws IllegalAccessException {
     if (!sequential) {
@@ -224,8 +228,8 @@ public class MemoryChunk {
   /**
    * Copies the data of the MemoryChunk from the current position of the {@link ByteBuffer} to target byte array.
    *
-   * @param dst
-   * @throws IllegalAccessException
+   * @param dst the target byte array to copy the data from MemoryChunk.
+   * @throws IllegalAccessException if called by random access mode MemoryChunk.
    */
   public final void get(final byte[] dst) throws IllegalAccessException {
     if (!sequential) {
@@ -240,8 +244,8 @@ public class MemoryChunk {
    * Copies all the data from the source byte array into the MemoryChunk
    * beginning at the specified position.
    *
-   * @param index
-   * @param src
+   * @param index the position in MemoryChunk to start copying the data.
+   * @param src the source byte array that holds the data to copy.
    */
   public final void put(final int index, final byte[] src) {
     put(index, src, 0, src.length);
@@ -251,8 +255,8 @@ public class MemoryChunk {
    * Copies all the data from the source byte array into the MemoryChunk
    * beginning at the current position of the {@link ByteBuffer}.
    *
-   * @param src
-   * @throws IllegalAccessException
+   * @param src the source byte array that holds the data to copy.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void put(final byte[] src) throws IllegalAccessException {
     if (!sequential) {
@@ -263,8 +267,15 @@ public class MemoryChunk {
     buffer.put(src);
   }
 
+  /**
+   * Bulk get method using nk.the specified index in the MemoryChunk.
+   *
+   * @param index the index in the MemoryChunk to start copying the data.
+   * @param dst the target byte array to copy the data from MemoryChunk.
+   * @param offset the offset in the destination byte array.
+   * @param length the number of bytes to be copied.
+   */
   @SuppressWarnings("restriction")
-
   public final void get(final int index, final byte[] dst, final int offset, final int length) {
     if ((offset | length | (offset + length) | (dst.length - (offset + length))) < 0) {
       throw new IndexOutOfBoundsException();
@@ -283,10 +294,10 @@ public class MemoryChunk {
   /**
    * Bulk get method using the current position of the {@link ByteBuffer}.
    *
-   * @param dst
-   * @param offset
-   * @param length
-   * @throws IllegalAccessException
+   * @param dst the target byte array to copy the data from MemoryChunk.
+   * @param offset the offset in the destination byte array.
+   * @param length the number of bytes to be copied.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void get(final byte[] dst, final int offset, final int length) throws IllegalAccessException {
     if (!sequential) {
@@ -297,6 +308,14 @@ public class MemoryChunk {
     buffer.get(dst, offset, length);
   }
 
+  /**
+   * Bulk put method using the specified index in the MemoryChunk.
+   *
+   * @param index the index in the MemoryChunk to start copying the data.
+   * @param src the source byte array that holds the data to be copied to MemoryChunk.
+   * @param offset the offset in the source byte array.
+   * @param length the number of bytes to be copied.
+   */
   @SuppressWarnings("restriction")
   public final void put(final int index, final byte[] src, final int offset, final int length) {
     if ((offset | length | (offset + length) | (src.length - (offset + length))) < 0) {
@@ -316,10 +335,10 @@ public class MemoryChunk {
   /**
    * Bulk put method using the current position of the {@link ByteBuffer}.
    *
-   * @param src
-   * @param offset
-   * @param length
-   * @throws IllegalAccessException
+   * @param src the source byte array that holds the data to be copied to MemoryChunk.
+   * @param offset  the offset in the source byte array.
+   * @param length  the number of bytes to be copied.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void put(final byte[] src, final int offset, final int length) throws IllegalAccessException {
     if (!sequential) {
@@ -359,7 +378,7 @@ public class MemoryChunk {
    * Reads a char value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final char getChar() throws IllegalAccessException {
     if (!sequential) {
@@ -398,8 +417,8 @@ public class MemoryChunk {
   /**
    * Writes a char value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putChar(final char value) throws IllegalAccessException {
     if (!sequential) {
@@ -439,7 +458,7 @@ public class MemoryChunk {
    * Reads a short integer value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final short getShort() throws IllegalAccessException {
     if (!sequential) {
@@ -478,8 +497,8 @@ public class MemoryChunk {
   /**
    * Writes a char value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putShort(final short value) throws IllegalAccessException {
     if (!sequential) {
@@ -518,7 +537,7 @@ public class MemoryChunk {
    * Reads an int value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final int getInt() throws IllegalAccessException {
     if (!sequential) {
@@ -556,8 +575,8 @@ public class MemoryChunk {
   /**
    * Writes an int value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putInt(final int value) throws IllegalAccessException {
     if (!sequential) {
@@ -596,7 +615,7 @@ public class MemoryChunk {
    * Reads a long value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final long getLong() throws IllegalAccessException {
     if (!sequential) {
@@ -634,8 +653,8 @@ public class MemoryChunk {
   /**
    * Writes a long value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putLong(final long value) throws IllegalAccessException {
     if (!sequential) {
@@ -662,7 +681,7 @@ public class MemoryChunk {
    * Reads a float value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final float getFloat() throws IllegalAccessException {
     if (!sequential) {
@@ -688,8 +707,8 @@ public class MemoryChunk {
   /**
    * Writes a float value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putFloat(final float value) throws IllegalAccessException {
     if (!sequential) {
@@ -716,7 +735,7 @@ public class MemoryChunk {
    * Reads a double value from the current position of the {@link ByteBuffer}.
    *
    * @return The char value at the current position.
-   * @throws IllegalAccessException
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final double getDouble() throws IllegalAccessException {
     if (!sequential) {
@@ -742,8 +761,8 @@ public class MemoryChunk {
   /**
    * Writes a double value to the current position of the {@link ByteBuffer}.
    *
-   * @param value
-   * @throws IllegalAccessException
+   * @param value to be copied to the MemoryChunk.
+   * @throws IllegalAccessException if called by non-sequential MemoryChunk.
    */
   public final void putDouble(final double value) throws IllegalAccessException {
     if (!sequential) {

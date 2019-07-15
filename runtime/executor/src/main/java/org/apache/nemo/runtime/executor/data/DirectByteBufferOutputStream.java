@@ -47,8 +47,11 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Default constructor.
    * Sets the {@code pageSize} as default size of 4096 bytes.
+   *
+   * @param memoryPoolAssigner  for memory allocation.
+   * @throws MemoryAllocationException  if fails to allocate new memory.
    */
-  public DirectByteBufferOutputStream(final MemoryPoolAssigner memoryPoolAssigner) {
+  public DirectByteBufferOutputStream(final MemoryPoolAssigner memoryPoolAssigner) throws MemoryAllocationException {
     this(DEFAULT_PAGE_SIZE, memoryPoolAssigner);
   }
 
@@ -58,8 +61,11 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * native memory (de)allocation overhead.
    *
    * @param size should be a power of 2 and greater than or equal to 4096.
+   * @param memoryPoolAssigner  allocates memory chunk for this output stream.
+   * @throws MemoryAllocationException  if fails to allocate memory.
    */
-  public DirectByteBufferOutputStream(final int size, final MemoryPoolAssigner memoryPoolAssigner) {
+  public DirectByteBufferOutputStream(final int size,
+                                      final MemoryPoolAssigner memoryPoolAssigner) throws MemoryAllocationException {
     if (size < DEFAULT_PAGE_SIZE || (size & (size - 1)) != 0) {
       throw new IllegalArgumentException("Invalid pageSize");
     }
@@ -71,9 +77,11 @@ public final class DirectByteBufferOutputStream extends OutputStream {
 
   /**
    * Allocates new {@link ByteBuffer} with the capacity equal to {@code pageSize}.
+   *
+   * @throws MemoryAllocationException  if fail to allocate memory chunk.
    */
   // TODO #388: Off-heap memory management (reuse ByteBuffer)
-  private void newLastBuffer() {
+  private void newLastBuffer() throws MemoryAllocationException {
     dataList.addLast(memoryPoolAssigner.allocateChunk(true));
   }
 
@@ -94,6 +102,8 @@ public final class DirectByteBufferOutputStream extends OutputStream {
       throw new IllegalStateException("MemoryChunk has been freed");
     } catch (IllegalAccessException e) {
       throw new IOException("Not allowed for non-sequential MemoryChunk");
+    } catch (MemoryAllocationException e) {
+      throw new IOException("Failed to allocate memory");
     }
   }
 
@@ -138,6 +148,8 @@ public final class DirectByteBufferOutputStream extends OutputStream {
       }
     } catch (IllegalAccessException e) {
       throw new IOException("Not allowed for non-sequential MemoryChunk");
+    } catch (MemoryAllocationException e) {
+      throw new IOException("Failed to allocate memory");
     }
   }
 
@@ -147,6 +159,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    *
    * USED BY TESTS ONLY.
    * @return the current contents of this output stream, as byte array.
+   * @throws IllegalAccessException if MemoryChunk is used in an inappropriate way.
    */
   @VisibleForTesting
   byte[] toByteArray() throws IllegalAccessException {
@@ -202,6 +215,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * Returns the size of the data written in this output stream.
    *
    * @return the size of the data
+   * @throws IllegalAccessException if position is not allowed to be accessed.
    */
   public int size() throws IllegalAccessException {
     return pageSize * (dataList.size() - 1) + dataList.getLast().position();

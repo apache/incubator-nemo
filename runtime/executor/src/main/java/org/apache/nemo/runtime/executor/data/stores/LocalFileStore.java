@@ -63,7 +63,8 @@ public final class LocalFileStore extends LocalBlockStore {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
-    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata, memoryPoolAssigner);
+    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory),
+                                                                  metadata, memoryPoolAssigner);
   }
 
   /**

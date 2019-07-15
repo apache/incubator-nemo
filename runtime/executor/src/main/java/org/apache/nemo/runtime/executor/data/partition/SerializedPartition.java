@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.partition;
 
 import org.apache.nemo.runtime.executor.data.DirectByteBufferOutputStream;
+import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
@@ -65,11 +66,14 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    *
    * @param key        the key of this partition.
    * @param serializer the serializer to be used to serialize data.
+   * @param memoryPoolAssigner  the memory pool assigner for memory allocation.
    * @throws IOException if fail to chain the output stream.
+   * @throws MemoryAllocationException  if fail to allocate memory.
    */
   public SerializedPartition(final K key,
                              final Serializer serializer,
-                             final MemoryPoolAssigner memoryPoolAssigner) throws IOException {
+                             final MemoryPoolAssigner memoryPoolAssigner) throws IOException,
+                                                                          MemoryAllocationException {
     this.key = key;
     this.serializedData = new byte[0];
     this.length = 0;
@@ -155,7 +159,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       this.dataList = bytesOutputStream.getDirectByteBufferList();
       try {
         this.length = bytesOutputStream.size();
-      } catch (IllegalAccessException e) {
+      } catch (final IllegalAccessException e) {
         throw new IOException();
       }
       this.committed = true;

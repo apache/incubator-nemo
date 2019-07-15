@@ -34,6 +34,7 @@ public interface BlockStore {
    * A stale data created by previous failed task should be handled during the creation of new block.
    *
    * @param blockId the ID of the block to create.
+   * @param memoryPoolAssigner  the MemoryPoolAssigner for memory allocation.
    * @return the created block.
    * @throws BlockWriteException for any error occurred while trying to create a block.
    *                             (This exception will be thrown to the scheduler

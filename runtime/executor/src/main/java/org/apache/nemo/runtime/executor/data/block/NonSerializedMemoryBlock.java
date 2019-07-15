@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
@@ -53,6 +54,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    *
    * @param blockId    the ID of this block.
    * @param serializer the {@link Serializer}.
+   * @param memoryPoolAssigner  the MemoryPoolAssigner for memory allocation.
    */
   public NonSerializedMemoryBlock(final String blockId,
                                   final Serializer serializer,
@@ -174,6 +176,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch (final IllegalAccessException e) {
+      throw new BlockFetchException(e);
+    } catch (final MemoryAllocationException e) {
       throw new BlockFetchException(e);
     }
   }

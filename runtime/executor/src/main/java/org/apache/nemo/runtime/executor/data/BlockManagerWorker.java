@@ -101,6 +101,7 @@ public final class BlockManagerWorker {
    * @param byteTransfer                    the byte transfer.
    * @param serializerManager               the serializer manager.
    * @param blockTransferThrottler          restricts parallel connections
+   * @param memoryPoolAssigner              the memory pool assigner for block creation.
    */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
