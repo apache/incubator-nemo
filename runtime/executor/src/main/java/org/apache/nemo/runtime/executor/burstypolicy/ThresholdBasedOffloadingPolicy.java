@@ -190,7 +190,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
 
       final long currTime = System.currentTimeMillis();
 
-      LOG.info("CPU Load: {}, Elapsed Time: {}", cpuLoad, elapsedCpuTimeSum);
+      LOG.info("WTF CPU Load: {}, Elapsed Time: {}", cpuLoad, elapsedCpuTimeSum);
 
       final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
       LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
@@ -216,7 +216,7 @@ public final class ThresholdBasedOffloadingPolicy implements TaskOffloadingPolic
       if (cpuHighMean > threshold && observedCnt >= observeWindow &&
         System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
-        final double targetCPuLoad = ((threshold + evalConf.deoffloadingThreshold) / 2.0) - 0.05;
+        final double targetCPuLoad = ((threshold + evalConf.deoffloadingThreshold) / 2.0) - 0.2;
         final long targetCpuTime = cpuTimeModel
           .desirableMetricForLoad(targetCPuLoad);
 
