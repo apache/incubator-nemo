@@ -24,6 +24,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -72,16 +73,20 @@ public final class PipeManagerWorker {
   // boolean: output context?
   private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
+  private final EvalConf evalConf;
+
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
                             final SerializerManager serializerManager,
-                            final PersistentConnectionToMasterMap toMaster) {
+                            final PersistentConnectionToMasterMap toMaster,
+                            final EvalConf evalConf) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.serializerManager = serializerManager;
     this.pipeContainer = new PipeContainer();
     this.toMaster = toMaster;
+    this.evalConf = evalConf;
   }
 
   public Map<NemoTriple<String, Integer, Boolean>, String> getTaskExecutorIdMap() {
@@ -100,7 +105,9 @@ public final class PipeManagerWorker {
 
     final long messageId = RuntimeIdManager.generateMessageId();
 
-    LOG.info("Send message id {}", messageId);
+    if (evalConf.controlLogging) {
+      LOG.info("Send message id {}", messageId);
+    }
 
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
       .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(

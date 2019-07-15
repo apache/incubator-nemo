@@ -185,7 +185,7 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
                   // remove 되었을 수도 잇음 (모두 flush 되었을수도)
                   if (pendingByteMap.containsKey(dst)) {
                     pendingBytes.add(bb);
-                    LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
+                    //LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
                   } else {
                     final Channel dstChannel = taskChannelMap.get(dst);
                     if (dstChannel.isOpen()) {
@@ -200,10 +200,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
                 final Channel dstChannel = taskChannelMap.get(dst);
 
+                /*
                 if (type == 1) {
                   LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
                     dstChannel, dstChannel.isActive(), dstChannel.isOpen());
                 }
+                */
 
                 if (dstChannel.isOpen()) {
                   dstChannel.write(bb);
@@ -215,10 +217,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
               final Channel dstChannel = taskChannelMap.get(dst);
 
+              /*
               if (type == 1) {
                 LOG.info("Sending data to {}, readBytes: {}, channel: {}, active: {}, open: {}", dst, remainingBytes,
                   dstChannel, dstChannel.isActive(), dstChannel.isOpen());
               }
+              */
 
               if (pendingByteMap.containsKey(dst)) {
                 final List<ByteBuf> pendingBytes = pendingByteMap.get(dst);
@@ -258,9 +262,6 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
             remainingBytes = 0;
             status = Status.WAITING_HEADER1;
           } else {
-            if (type == 1) {
-              LOG.info("Remaining byte of {}... {} / {}", dst, remainingBytes, byteBuf.readableBytes());
-            }
             return;
           }
           break;

@@ -120,7 +120,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
                               final EventHandler<Integer> handler) {
     ackHandler = handler;
     // send message to the upstream task!
-    LOG.info("Send message to remote: {}", message);
+    //LOG.info("Send message to remote: {}", message);
     vmChannel.writeAndFlush(message);
   }
 
@@ -129,7 +129,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
                           final EventHandler<Integer> handler) {
     ackHandler = handler;
     // send message to the upstream task!
-    LOG.info("Send message to remote: {}", message);
+    //LOG.info("Send message to remote: {}", message);
     currChannel.writeAndFlush(message);
 
     /*

@@ -95,7 +95,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
-    LOG.info("Send message from {}/{} to remote: {}", getContextId().getTransferIndex(), sendDataTo, message);
+
+    //LOG.info("Send message from {}/{} to remote: {}", getContextId().getTransferIndex(), sendDataTo, message);
     ackHandler = handler;
     // send message to the upstream task!
     switch (sendDataTo) {
@@ -112,7 +113,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   public void sendMessageToVM(final ByteTransferContextSetupMessage message,
                               final EventHandler<Integer> handler) {
-    LOG.info("Send message to VM channel {} / {}", getContextId().getTransferIndex(), message);
+    //LOG.info("Send message to VM channel {} / {}", getContextId().getTransferIndex(), message);
     ackHandler = handler;
     channel.writeAndFlush(message);
   }

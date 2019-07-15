@@ -267,7 +267,7 @@ public final class PipeOutputWriter implements OutputWriter {
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
-      LOG.info("Send message {}", pendingMsg);
+      //LOG.info("Send message {}", pendingMsg);
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
         LOG.info("receive ack from downstream!! {}/{}", runtimeEdge.getId(), runtimeEdge.getSrc());

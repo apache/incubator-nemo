@@ -136,7 +136,7 @@ public final class PipeInputReader implements InputReader {
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
-      LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
+      //LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
