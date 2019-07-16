@@ -354,7 +354,7 @@ public final class PipeOutputWriter implements OutputWriter {
         try {
           final ByteOutputContext context = byteOutputContext.get();
           pipeAndStreamMap.put(context, context.newOutputStream());
-          LOG.info("Context {}, at {}", context, srcTaskId);
+          //LOG.info("Context {}, at {}", context, srcTaskId);
           return context;
         } catch (InterruptedException e) {
           e.printStackTrace();

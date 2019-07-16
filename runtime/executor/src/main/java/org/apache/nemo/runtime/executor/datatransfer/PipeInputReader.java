@@ -139,8 +139,9 @@ public final class PipeInputReader implements InputReader {
       //LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
+        atomicInteger.decrementAndGet();
 
-        LOG.info("receive ack at {}, {}!!", taskId, atomicInteger.decrementAndGet());
+        //LOG.info("receive ack at {}, {}!!", taskId, );
 
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");

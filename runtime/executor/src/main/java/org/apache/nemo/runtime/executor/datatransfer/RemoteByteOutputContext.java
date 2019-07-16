@@ -157,7 +157,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           VM,
           taskId);
 
-      LOG.info("Ack pending to {}, change to {}, {}",sendDataTo,  sdt, message);
+      //LOG.info("Ack pending to {}, change to {}, {}",sendDataTo,  sdt, message);
       currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
     }
   }
@@ -191,7 +191,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public synchronized void scaleoutToVm(Channel channel) {
-    LOG.info("Scale out to SF: {}, channel: {}", getContextId().getTransferIndex(), channel);
+    //LOG.info("Scale out to SF: {}, channel: {}", getContextId().getTransferIndex(), channel);
     settingContext = true;
     vmChannel = channel;
     currChannel = vmChannel;
@@ -245,7 +245,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
     settingContext = false;
 
-    LOG.info("Stop context {} to {}", getContextId(), sendDataTo);
+    //LOG.info("Stop context {} to {}", getContextId(), sendDataTo);
 
     currChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
           .addListener(getChannelWriteListener());
@@ -263,7 +263,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           VM,
           taskId);
 
-      LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
+      //LOG.info("Restart context {} to {} {}, chanel: {}", getContextId().getTransferIndex(), sendDataTo, message, currChannel);
 
       currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
       restarted = false;

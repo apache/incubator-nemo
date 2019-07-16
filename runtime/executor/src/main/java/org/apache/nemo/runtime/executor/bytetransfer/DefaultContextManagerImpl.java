@@ -242,8 +242,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           outputContext.sendMessageToVM(ackMessage, (m) -> {});
         }
 
-        LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, pending to {}", message.getTaskId(), transferIndex,
-          sendDataTo);
+        //LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, pending to {}", message.getTaskId(), transferIndex,
+        //  sendDataTo);
         outputContext.pending(sendDataTo, message.getTaskId());
         break;
       }
@@ -587,7 +587,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), false);
 
     final int transferIndex = requestTransferIndex(true);
-    LOG.info("Requesting input transferIndex: {}", transferIndex);
+    //LOG.info("Requesting input transferIndex: {}", transferIndex);
     taskTransferIndexMap.put(key, transferIndex);
 
     return newContext(inputContexts, transferIndex,
@@ -610,9 +610,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
     final int transferIndex = requestTransferIndex(false);
-    LOG.info("Requesting output transferIndex: {}, local: {}->{}, " +
-      "{}, {}->{}", transferIndex, localExecutorId, executorId,
-      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
+    //LOG.info("Requesting output transferIndex: {}, local: {}->{}, " +
+    //  "{}, {}->{}", transferIndex, localExecutorId, executorId,
+    //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     taskTransferIndexMap.put(key, transferIndex);
 

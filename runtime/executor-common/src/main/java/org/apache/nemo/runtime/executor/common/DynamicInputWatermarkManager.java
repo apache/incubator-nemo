@@ -72,19 +72,19 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   public synchronized void addEdge(final int index) {
     minWatermarkIndex = index;
     taskWatermarkMap.put(index, currMinWatermark);
-    LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
-      taskWatermarkMap.size());
+    //LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
+    //  taskWatermarkMap.size());
   }
 
   public synchronized void removeEdge(final int index) {
-    LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
-      taskId, taskWatermarkMap.size());
+    //LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
+    //  taskId, taskWatermarkMap.size());
 
     taskWatermarkMap.remove(index);
 
     if (minWatermarkIndex == index) {
       minWatermarkIndex = findNextMinWatermarkIndex();
-      LOG.info("{} min index changed from {} to {}, watermark {}", vertex.getId(), index, minWatermarkIndex, currMinWatermark);
+      //LOG.info("{} min index changed from {} to {}, watermark {}", vertex.getId(), index, minWatermarkIndex, currMinWatermark);
     }
     // do not change min watermark!
   }

@@ -108,7 +108,7 @@ public final class PipeOutputWriter implements Flushable {
   }
 
   public void writeWatermark(final Watermark watermark) {
-    LOG.info("Watermark emit from taskIndex {}/{}, {}", srcTaskIndex, stageEdge.getSrcIRVertex().getId(), watermark);
+    //LOG.info("Watermark emit from taskIndex {}/{}, {}", srcTaskIndex, stageEdge.getSrcIRVertex().getId(), watermark);
     final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
     // flush data whenever receiving watermarks
     writeData(watermarkWithIndex, pipes, true);
@@ -158,9 +158,9 @@ public final class PipeOutputWriter implements Flushable {
       @Override
       public Integer get() throws InterruptedException, ExecutionException {
         try {
-           LOG.info("Waiting for ack {}...", taskId);
+           //LOG.info("Waiting for ack {}...", taskId);
            count.await();
-           LOG.info("End of Waiting for ack {}...", taskId);
+           //LOG.info("End of Waiting for ack {}...", taskId);
          } catch (InterruptedException e) {
            e.printStackTrace();
          }
@@ -210,7 +210,7 @@ public final class PipeOutputWriter implements Flushable {
           .map(dstTaskIndex ->
             pipeManagerWorker.write(srcTaskIndex, runtimeEdge, dstTaskIndex))
           .collect(Collectors.toList());
-      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, dstIndices);
+      //LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, dstIndices);
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -220,7 +220,7 @@ public final class PipeOutputWriter implements Flushable {
         try {
           final ByteOutputContext context = byteOutputContext.get();
           pipeAndStreamMap.put(context, context.newOutputStream());
-          LOG.info("Context {}", context);
+          //LOG.info("Context {}", context);
           return context;
         } catch (InterruptedException e) {
           e.printStackTrace();

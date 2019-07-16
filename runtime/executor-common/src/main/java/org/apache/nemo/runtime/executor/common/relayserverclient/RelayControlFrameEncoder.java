@@ -51,7 +51,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
     }
 
 
-    LOG.info("Encoding relay control frame message {}", in.controlMsg);
+    //LOG.info("Encoding relay control frame message {}", in.controlMsg);
 
     //final byte[] loggingBytes = new byte[header.readableBytes()];
     //header.getBytes(header.readableBytes(), loggingBytes);

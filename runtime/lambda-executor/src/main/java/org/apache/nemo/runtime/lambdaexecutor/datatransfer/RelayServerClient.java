@@ -100,7 +100,7 @@ public final class RelayServerClient {
       if (!registeredTasks.contains(key)) {
         registeredTasks.add(key);
 
-        LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
+        //LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
         final RelayControlMessage message = new RelayControlMessage(
           edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
         relayServerChannel.writeAndFlush(message);
@@ -118,7 +118,7 @@ public final class RelayServerClient {
     final Pair<String, Integer> info = relayServerInfo.get(dstExecutorId);
     final ChannelFuture channelFuture = connectToRelayServer(info.left(), info.right());
 
-    LOG.info("Get relay server channel {} / {}", dstExecutorId, info);
+    //LOG.info("Get relay server channel {} / {}", dstExecutorId, info);
 
     while (!channelFuture.isSuccess()) {
       try {
@@ -153,10 +153,10 @@ public final class RelayServerClient {
     final Channel channel = getRelayServerChannel(dstExecutorId);
     final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
 
-    LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}, channel {}!!",
-      srcExecutorId, dstExecutorId,
-      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
-      channel);
+    //LOG.info("Getting relay output server channel for remote executor {}->{}, {}/{}->{}, channel {}!!",
+    //  srcExecutorId, dstExecutorId,
+    //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
+    //  channel);
 
     // ㄴㅐ꺼에다 register 하기
     final Channel myChannel = getMyRelayServerChannel();
@@ -164,7 +164,7 @@ public final class RelayServerClient {
       descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
-    LOG.info("Getting context manager!!!");
+    //LOG.info("Getting context manager!!!");
     completableFuture.complete(manager.newOutputContext(dstExecutorId, descriptor, true));
     return completableFuture;
   }
@@ -179,17 +179,17 @@ public final class RelayServerClient {
       // 누구 relay server로 접근해야 하는지?
       // 내껄로 접근해야함
     final Channel channel = getMyRelayServerChannel();
-    LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!, " +
-        "channel: {}",
-      srcExecutorId, dstExecutorId,
-      descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
-      channel);
+    //LOG.info("Getting relay input server channel for remote executor {}->{}, {}/{}->{}!!, " +
+    //    "channel: {}",
+    //  srcExecutorId, dstExecutorId,
+    //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex(),
+    //  channel);
 
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
 
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
-    LOG.info("Getting context manager!!!");
+    //LOG.info("Getting context manager!!!");
     completableFuture.complete(manager.newInputContext(srcExecutorId, descriptor, true));
     return completableFuture;
   }
@@ -206,7 +206,7 @@ public final class RelayServerClient {
       connectFuture.addListener(future -> {
         if (future.isSuccess()) {
           // Succeed to connect
-          LOG.info("Connected to relay server {}:{}, {}", address, port, connectFuture.channel());
+          //LOG.info("Connected to relay server {}:{}, {}", address, port, connectFuture.channel());
           return;
         }
         // Failed to connect (Not logging the cause here, which is not very useful)
