@@ -134,152 +134,158 @@ final class TaskDispatcher {
   }
 
   private void doScheduleTaskList() {
-    final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
-    if (!taskListOptional.isPresent()) {
-      // Task list is empty
-      LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
-      return;
-    }
 
-    final Collection<Task> taskList = taskListOptional.get();
+    while (true) {
 
-    LOG.info("Size of tasks: {}", taskList.size());
-    final List<List<Task>> stageTasks = getStageTasks(taskList);
-
-
-    final List<Task> couldNotSchedule = new ArrayList<>();
-
-    // send global message
-    while (!taskScheduledMap.isAllExecutorAddressReceived()) {
-      LOG.info("Waiting executor address info...");
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-
-    final List<ControlMessage.LocalExecutorAddressInfoMessage> entries1 =
-      taskScheduledMap.getExecutorAddressMap().entrySet()
-        .stream().map(entry -> {
-        return ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-          .setExecutorId(entry.getKey())
-          .setAddress(entry.getValue().left())
-          .setPort(entry.getValue().right())
-          .build();
-      }).collect(Collectors.toList());
-
-    // send global executor address map
-    executorRegistry.viewExecutors(executors -> {
-      for (final ExecutorRepresenter executor : executors) {
-        LOG.info("Send global executor address to executor {}", executor.getExecutorId());
-
-        final long id = RuntimeIdManager.generateMessageId();
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(id)
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
-          .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
-            .addAllInfos(entries1)
-            .build())
-          .build());
-      }
-    });
-
-    // send global message
-    while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
-      LOG.info("Waiting relay server info...");
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-
-    final List<ControlMessage.LocalRelayServerInfoMessage> entries =
-      taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
-        .stream().map(entry -> {
-        return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
-          .setExecutorId(entry.getKey())
-          .setAddress(entry.getValue().left())
-          .setPort(entry.getValue().right())
-          .build();
-      }).collect(Collectors.toList());
-
-    // send global info
-    executorRegistry.viewExecutors(executors -> {
-      for (final ExecutorRepresenter executor : executors) {
-        LOG.info("Send global relay info to executor {}", executor.getExecutorId());
-
-        final long id = RuntimeIdManager.generateMessageId();
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(id)
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
-          .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
-            .addAllInfos(entries)
-            .build())
-          .build());
-      }
-    });
-
-
-    for (final List<Task> stageTask : stageTasks) {
-
-      try {
-        Thread.sleep(8000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
+      if (!taskListOptional.isPresent()) {
+        // Task list is empty
+        LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
+        return;
       }
 
-      for (final Task task : stageTask) {
-        if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
-          // Guard against race conditions causing duplicate task launches
-          LOG.debug("Skipping {} as it is not READY", task.getTaskId());
-          continue;
+      final Collection<Task> taskList = taskListOptional.get();
+
+      LOG.info("Size of tasks: {}", taskList.size());
+      final List<List<Task>> stageTasks = getStageTasks(taskList);
+
+
+      final List<Task> couldNotSchedule = new ArrayList<>();
+
+      // send global message
+      while (!taskScheduledMap.isAllExecutorAddressReceived()) {
+        LOG.info("Waiting executor address info...");
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      final List<ControlMessage.LocalExecutorAddressInfoMessage> entries1 =
+        taskScheduledMap.getExecutorAddressMap().entrySet()
+          .stream().map(entry -> {
+          return ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
+            .setExecutorId(entry.getKey())
+            .setAddress(entry.getValue().left())
+            .setPort(entry.getValue().right())
+            .build();
+        }).collect(Collectors.toList());
+
+      // send global executor address map
+      executorRegistry.viewExecutors(executors -> {
+        for (final ExecutorRepresenter executor : executors) {
+          LOG.info("Send global executor address to executor {}", executor.getExecutorId());
+
+          final long id = RuntimeIdManager.generateMessageId();
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(id)
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
+            .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
+              .addAllInfos(entries1)
+              .build())
+            .build());
+        }
+      });
+
+      // send global message
+      while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
+        LOG.info("Waiting relay server info...");
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      final List<ControlMessage.LocalRelayServerInfoMessage> entries =
+        taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
+          .stream().map(entry -> {
+          return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
+            .setExecutorId(entry.getKey())
+            .setAddress(entry.getValue().left())
+            .setPort(entry.getValue().right())
+            .build();
+        }).collect(Collectors.toList());
+
+      // send global info
+      executorRegistry.viewExecutors(executors -> {
+        for (final ExecutorRepresenter executor : executors) {
+          LOG.info("Send global relay info to executor {}", executor.getExecutorId());
+
+          final long id = RuntimeIdManager.generateMessageId();
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(id)
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
+            .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
+              .addAllInfos(entries)
+              .build())
+            .build());
+        }
+      });
+
+
+      for (final List<Task> stageTask : stageTasks) {
+
+        try {
+          Thread.sleep(8000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
 
-        LOG.info("Start to scheduling task {}", task);
+        for (final Task task : stageTask) {
+          if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
+            // Guard against race conditions causing duplicate task launches
+            LOG.debug("Skipping {} as it is not READY", task.getTaskId());
+            continue;
+          }
 
-        executorRegistry.viewExecutors(executors -> {
-          final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
-          task.getExecutionProperties().forEachProperties(property -> {
-            final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
-            if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
-              candidateExecutors.setValue(candidateExecutors.getValue().stream()
-                .filter(e -> constraint.get().testSchedulability(e, task))
-                .collect(Collectors.toSet()));
+          LOG.info("Start to scheduling task {}", task);
+
+          executorRegistry.viewExecutors(executors -> {
+            final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+            task.getExecutionProperties().forEachProperties(property -> {
+              final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
+              if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
+                candidateExecutors.setValue(candidateExecutors.getValue().stream()
+                  .filter(e -> constraint.get().testSchedulability(e, task))
+                  .collect(Collectors.toSet()));
+              }
+            });
+
+            if (!candidateExecutors.getValue().isEmpty()) {
+
+
+              // Select executor
+              final ExecutorRepresenter selectedExecutor
+                = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+
+
+              // update metadata first
+              planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+              LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+              // send the task
+              selectedExecutor.onTaskScheduled(task);
+              taskScheduledMap.addTask(selectedExecutor, task);
+            } else {
+              couldNotSchedule.add(task);
             }
           });
-
-          if (!candidateExecutors.getValue().isEmpty()) {
-
-
-            // Select executor
-            final ExecutorRepresenter selectedExecutor
-              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+        }
 
 
-            // update metadata first
-            planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-
-            LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
-            // send the task
-            selectedExecutor.onTaskScheduled(task);
-            taskScheduledMap.addTask(selectedExecutor, task);
-          } else {
-            couldNotSchedule.add(task);
-          }
-        });
       }
 
-
-    }
-
-    LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
-    if (couldNotSchedule.size() > 0) {
-      // Try these again, if no new task list has been set
-      pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
+      LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
+      if (couldNotSchedule.size() > 0) {
+        // Try these again, if no new task list has been set
+        pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
+      } else {
+        return;
+      }
     }
   }
 
