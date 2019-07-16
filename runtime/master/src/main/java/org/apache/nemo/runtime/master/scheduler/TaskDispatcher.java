@@ -246,7 +246,6 @@ final class TaskDispatcher {
 
           executorRegistry.viewExecutors(executors -> {
             final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
-            LOG.info("Candidate executor for {}: {}", task.getTaskId(), candidateExecutors);
             task.getExecutionProperties().forEachProperties(property -> {
               final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
               if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
@@ -255,6 +254,8 @@ final class TaskDispatcher {
                   .collect(Collectors.toSet()));
               }
             });
+
+            LOG.info("Candidate executor for {}: {}", task.getTaskId(), candidateExecutors.getValue().isEmpty());
 
             if (!candidateExecutors.getValue().isEmpty()) {
 
