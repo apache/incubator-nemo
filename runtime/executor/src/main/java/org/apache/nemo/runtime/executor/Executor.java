@@ -177,7 +177,7 @@ public final class Executor {
     this.taskInputContextMap = taskInputContextMap;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskLocationMap = taskLocationMap;
-    this.executorService = Executors.newFixedThreadPool(50);
+    this.executorService = Executors.newCachedThreadPool();
     //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
     //          .namingPattern("TaskExecutor thread-%d")
     //          .build());
