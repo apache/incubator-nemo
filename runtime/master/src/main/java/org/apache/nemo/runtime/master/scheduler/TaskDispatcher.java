@@ -283,6 +283,11 @@ final class TaskDispatcher {
       if (couldNotSchedule.size() > 0) {
         // Try these again, if no new task list has been set
         pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       } else {
         return;
       }
