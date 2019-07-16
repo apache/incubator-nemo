@@ -142,6 +142,8 @@ final class TaskDispatcher {
     }
 
     final Collection<Task> taskList = taskListOptional.get();
+
+    LOG.info("Size of tasks: {}", taskList.size());
     final List<List<Task>> stageTasks = getStageTasks(taskList);
 
 
@@ -237,6 +239,7 @@ final class TaskDispatcher {
           continue;
         }
 
+        LOG.info("Start to scheduling task {}", task);
 
         executorRegistry.viewExecutors(executors -> {
           final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
