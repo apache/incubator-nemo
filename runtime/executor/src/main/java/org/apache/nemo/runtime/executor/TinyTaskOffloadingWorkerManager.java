@@ -12,10 +12,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
-import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.ThpEvent;
+import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -223,6 +220,12 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       newWorker.prepareTaskIfPossible();
       return newWorker;
     }
+  }
+
+  public synchronized void sendReadyTask(final ReadyTask readyTask,
+                                         final TinyTaskWorker worker) {
+    LOG.info("Send ready task {}", readyTask.taskId);
+    worker.addReadyTask(readyTask);
   }
 
   public synchronized void sendTask(final OffloadingTask offloadingTask,

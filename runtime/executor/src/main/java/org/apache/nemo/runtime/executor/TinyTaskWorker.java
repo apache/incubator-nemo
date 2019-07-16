@@ -9,6 +9,7 @@ import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,8 @@ public final class TinyTaskWorker {
 
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
+  private final List<ReadyTask> readyTasks = new ArrayList<>();
+
   private final OffloadingWorker offloadingWorker;
   private final AtomicInteger deletePending = new AtomicInteger(0);
   private final AtomicInteger prepareRequest = new AtomicInteger(0);
@@ -62,6 +66,10 @@ public final class TinyTaskWorker {
     }
 
     pendingTasks.add(task);
+  }
+
+  public synchronized void addReadyTask(final ReadyTask readyTask) {
+    readyTasks.add(readyTask);
   }
 
   public boolean isReady() {
@@ -149,16 +157,23 @@ public final class TinyTaskWorker {
 
   public synchronized void executePending() {
 
-    if (pendingTasks.isEmpty()) {
+    if (pendingTasks.isEmpty() || readyTasks.isEmpty()) {
       return;
     }
 
     for (final OffloadingTask pending : pendingTasks) {
+      LOG.info("OffloadingTask execute {}", pending.taskId);
       offloadingWorker.execute(pending.encode(), 1, false);
+    }
+
+    for (final ReadyTask readyTask : readyTasks) {
+      LOG.info("Ready task execute {}", readyTask.taskId);
+      offloadingWorker.execute(readyTask.encode(), 1, false);
     }
 
     offloadedTasks.addAll(pendingTasks);
     pendingTasks.clear();
+    readyTasks.clear();
   }
 
   public void close() {

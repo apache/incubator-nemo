@@ -18,6 +18,7 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -75,6 +77,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final Map<String, Pair<String, Integer>> relayServerInfo;
 
+  private final List<OffloadingTask> pendingTask;
+  private final List<ReadyTask> readyTasks;
+
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
@@ -97,8 +102,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.relayServerPort = relayServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
     this.relayServerInfo = relayServerInfo;
-
-
+    this.pendingTask = new ArrayList<>();
+    this.readyTasks = new ArrayList<>();
   }
   /**
    * Extracts task index from a task ID.
@@ -203,43 +208,106 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       new IntermediateDataIOFactory(pipeManagerWorker);
   }
 
+  private OffloadingTask findAndRemoveOffloadingTask(final String taskId) {
+    synchronized (pendingTask) {
+      final Iterator<OffloadingTask> iterator = pendingTask.iterator();
+      while (iterator.hasNext()) {
+        final OffloadingTask task = iterator.next();
+        if (task.taskId.equals(taskId)) {
+          iterator.remove();
+          return task;
+        }
+      }
+    }
+    return null;
+  }
+
+  private ReadyTask findAndRemoveReadyTask(final String taskId) {
+    synchronized (readyTasks) {
+      final Iterator<ReadyTask> iterator = readyTasks.iterator();
+      while (iterator.hasNext()) {
+        final ReadyTask task = iterator.next();
+        if (task.taskId.equals(taskId)) {
+          iterator.remove();
+          return task;
+        }
+      }
+    }
+    return null;
+  }
+
+  private void startTask(final ReadyTask readyTask,
+                         final OffloadingTask task) {
+
+    LOG.info("Start task {}", task.taskId);
+
+    final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
+    final ExecutorThread executorThread = executorThreads.get(executorIndex);
+
+    LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
+
+
+    for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
+      : readyTask.taskLocationMap.entrySet()) {
+      taskLocMap.put(entry.getKey(), entry.getValue());
+    }
+
+    final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
+      task,
+      executorAddressMap,
+      serializerMap,
+      byteTransport,
+      pipeManagerWorker,
+      intermediateDataIOFactory,
+      oc,
+      scheduledExecutorService,
+      prepareService,
+      executorGlobalInstances);
+
+
+    executorThread.addNewTask(taskExecutor);
+
+    taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
+    taskAssignedMap.put(taskExecutor, executorThread);
+
+    // Emit offloading done
+    oc.emit(new OffloadingDoneEvent(
+      task.taskId));
+  }
+
   @Override
   public void onData(Object event) {
 
     if (event instanceof OffloadingTask) {
 
-      final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
-      final ExecutorThread executorThread = executorThreads.get(executorIndex);
-
       final OffloadingTask task = (OffloadingTask) event;
 
-      LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
+      final ReadyTask readyTask = findAndRemoveReadyTask(task.taskId);
 
-      for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
-        : task.taskLocationMap.entrySet()) {
-        taskLocMap.put(entry.getKey(), entry.getValue());
+      if (readyTask != null) {
+        // just start
+        startTask(readyTask, task);
+      } else {
+        LOG.info("Pending task {}", task.taskId);
+        synchronized (pendingTask) {
+          pendingTask.add(task);
+        }
       }
 
-      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
-        task,
-        executorAddressMap,
-        serializerMap,
-        byteTransport,
-        pipeManagerWorker,
-        intermediateDataIOFactory,
-        oc,
-        scheduledExecutorService,
-        prepareService,
-        executorGlobalInstances);
+    } else if (event instanceof ReadyTask) {
 
-      // Emit offloading done
-      oc.emit(new OffloadingDoneEvent(
-        taskExecutor.getId()));
+      final ReadyTask readyTask = (ReadyTask) event;
+      final OffloadingTask task = findAndRemoveOffloadingTask(readyTask.taskId);
 
-      executorThread.addNewTask(taskExecutor);
-
-      taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
-      taskAssignedMap.put(taskExecutor, executorThread);
+      if (task != null) {
+        startTask(readyTask, task);
+      } else {
+        // the task is not submitted yet
+        LOG.info("Task is not submitted yet {}", readyTask.taskId);
+        synchronized (readyTasks) {
+          readyTasks.add(readyTask);
+        }
+      }
 
     } else if (event instanceof TaskEndEvent) {
       // TODO

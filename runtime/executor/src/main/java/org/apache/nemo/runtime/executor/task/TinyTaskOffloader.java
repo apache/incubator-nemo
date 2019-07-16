@@ -35,6 +35,7 @@ import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
@@ -84,7 +85,6 @@ public final class TinyTaskOffloader implements Offloader {
   private final Collection<OutputWriter> outputWriters;
   final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
-
   private final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
   private final TaskExecutor taskExecutor;
 
@@ -103,7 +103,6 @@ public final class TinyTaskOffloader implements Offloader {
   private final Set<DataFetcher> allFetchers = new HashSet<>();
 
   private final TaskLocationMap taskLocationMap;
-
 
   private TaskExecutor.PendingState pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
   private TinyTaskWorker tinyTaskWorker;
@@ -383,6 +382,10 @@ public final class TinyTaskOffloader implements Offloader {
           outputStopPendingFutures.clear();
           pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
           remainingOffloadTasks.decrementAndGet();
+
+
+          // TODO: send it to the lambda!!
+          sendTask();
           return true;
         } else {
           break;
@@ -400,6 +403,76 @@ public final class TinyTaskOffloader implements Offloader {
     }
 
     return false;
+  }
+
+  private void sendTask() {
+    availableFetchers.clear();
+    pendingFetchers.clear();
+
+    final OffloadingTask offloadingTask;
+    final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+      stateAndCoderMap = getStateAndCoderMap();
+
+    final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+    final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
+
+
+    if (sourceVertexDataFetcher != null) {
+      final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
+      final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+      final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
+
+      final long prevWatermarkTimestamp = sourceVertexDataFetcher.getPrevWatermarkTimestamp();
+
+      LOG.info("Get unbounded source: {}", unboundedSource);
+
+      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
+
+      //LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
+      //LOG.info("Sending location map at {}: {}", taskId, taskLocationMap.locationMap);
+
+      taskExecutor.setOffloadedTaskTime(0);
+
+      offloadingTask = new OffloadingTask(
+        executorId,
+        taskId,
+        RuntimeIdManager.getIndexFromTaskId(taskId),
+        evalConf.samplingJson,
+        copyDag,
+        taskOutgoingEdges,
+        copyOutgoingEdges,
+        copyIncomingEdges,
+        checkpointMark,
+        checkpointMarkCoder,
+        prevWatermarkTimestamp,
+        unboundedSource,
+        stateMap,
+        coderMap);
+
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
+
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
+    } else {
+      offloadingTask = new OffloadingTask(
+        executorId,
+        taskId,
+        RuntimeIdManager.getIndexFromTaskId(taskId),
+        evalConf.samplingJson,
+        copyDag,
+        taskOutgoingEdges,
+        copyOutgoingEdges,
+        copyIncomingEdges,
+        null,
+        null,
+        -1,
+        null,
+        stateMap,
+        coderMap);
+
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
+    }
+
+    LOG.info("Send actual task {}", taskId);
   }
 
   private boolean checkIsAllInputPendingReady() {
@@ -456,79 +529,8 @@ public final class TinyTaskOffloader implements Offloader {
 
   @Override
   public synchronized void handlePendingStreamingWorkers() {
-
-    //LOG.info("Available: {}, Pending: {}, task {}", availableFetchers, pendingFetchers, taskId);
-
-    availableFetchers.clear();
-    pendingFetchers.clear();
-
-    final OffloadingTask offloadingTask;
-    final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
-      stateAndCoderMap = getStateAndCoderMap();
-
-    final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-    final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
-
-
-    if (sourceVertexDataFetcher != null) {
-      final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
-      final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
-      final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
-
-      final long prevWatermarkTimestamp = sourceVertexDataFetcher.getPrevWatermarkTimestamp();
-
-      LOG.info("Get unbounded source: {}", unboundedSource);
-
-      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
-
-      //LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
-      //LOG.info("Sending location map at {}: {}", taskId, taskLocationMap.locationMap);
-
-      taskExecutor.setOffloadedTaskTime(0);
-
-      offloadingTask = new OffloadingTask(
-        executorId,
-        taskId,
-        RuntimeIdManager.getIndexFromTaskId(taskId),
-        evalConf.samplingJson,
-        copyDag,
-        taskOutgoingEdges,
-        copyOutgoingEdges,
-        copyIncomingEdges,
-        checkpointMark,
-        checkpointMarkCoder,
-        prevWatermarkTimestamp,
-        unboundedSource,
-        stateMap,
-        coderMap,
-        taskLocationMap.locationMap);
-
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
-
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
-    } else {
-      offloadingTask = new OffloadingTask(
-        executorId,
-        taskId,
-        RuntimeIdManager.getIndexFromTaskId(taskId),
-        evalConf.samplingJson,
-        copyDag,
-        taskOutgoingEdges,
-        copyOutgoingEdges,
-        copyIncomingEdges,
-        null,
-        null,
-        -1,
-        null,
-        stateMap,
-        coderMap,
-        taskLocationMap.locationMap);
-
-
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
-    }
-
-    LOG.info("Send actual task {}", taskId);
+    // Send ready signal and other data
+    tinyWorkerManager.sendReadyTask(new ReadyTask(taskId, taskLocationMap.locationMap), tinyTaskWorker);
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 

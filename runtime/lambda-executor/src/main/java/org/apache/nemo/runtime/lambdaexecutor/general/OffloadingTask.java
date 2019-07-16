@@ -46,7 +46,6 @@ public final class OffloadingTask {
   public final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
   public final UnboundedSource unboundedSource;
   public final Map<String, GBKFinalState> stateMap;
-  final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
   public final Map<String, Coder<GBKFinalState>> stateCoderMap;
   public final long prevWatermarkTimestamp;
 
@@ -64,8 +63,7 @@ public final class OffloadingTask {
                         final long prevWatermarkTimestamp,
                         final UnboundedSource unboundedSource,
                         final Map<String, GBKFinalState>  stateMap,
-                        final Map<String, Coder<GBKFinalState>> stateCoderMap,
-                        final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap) {
+                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.executorId = executorId;
     this.taskId = taskId;
     this.taskIndex = taskIndex;
@@ -80,7 +78,6 @@ public final class OffloadingTask {
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
     this.stateCoderMap = stateCoderMap;
-    this.taskLocationMap = taskLocationMap;
   }
 
   public ByteBuf encode() {
@@ -147,8 +144,6 @@ public final class OffloadingTask {
       } else {
         dos.writeInt(0);
       }
-
-      conf.encodeToStream(bos, taskLocationMap);
 
       dos.close();
       //oos.close();
@@ -221,9 +216,6 @@ public final class OffloadingTask {
 
       LOG.info("Decoding state {}", taskId);
 
-      final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
-        (Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC>) conf.decodeFromStream(inputStream);
-
       return new OffloadingTask(executorId,
         taskId,
         taskIndex,
@@ -237,8 +229,7 @@ public final class OffloadingTask {
         prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
-        stateCoderMap,
-        taskLocationMap);
+        stateCoderMap);
 
     } catch (Exception e) {
       e.printStackTrace();

@@ -6,6 +6,7 @@ import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCoder;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,9 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
     switch (et) {
       case TASK_START: {
         return OffloadingTask.decode(inputStream);
+      }
+      case TASK_READY: {
+        return ReadyTask.decode(inputStream);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();
