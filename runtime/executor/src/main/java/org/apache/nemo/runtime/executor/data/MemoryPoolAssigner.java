@@ -160,7 +160,7 @@ public class MemoryPoolAssigner {
 
     MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
       if (available.isEmpty()) {
-        allocateNewChunk(true);
+        available.add(ByteBuffer.allocateDirect(chunkSize));
       }
       ByteBuffer buf = available.remove();
       return new MemoryChunk(buf, sequential);
