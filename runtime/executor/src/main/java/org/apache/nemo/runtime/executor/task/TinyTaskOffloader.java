@@ -342,7 +342,7 @@ public final class TinyTaskOffloader implements Offloader {
     LOG.info("Waiting for source stop futures in {}", taskId);
 
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
-    pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
+    pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
   }
 
   @Override
@@ -352,15 +352,6 @@ public final class TinyTaskOffloader implements Offloader {
     }
 
     switch (pendingStatus) {
-      case WORKER_PENDING: {
-        if (tinyTaskWorker.isReady()) {
-          LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
-          pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
-        } else {
-          //LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
-          break;
-        }
-      }
       case INPUT_PENDING: {
         if (checkIsAllInputPendingReady()) {
           inputStopPendingFutures.clear();
@@ -380,14 +371,19 @@ public final class TinyTaskOffloader implements Offloader {
         if (checkIsAllOutputPendingReady()) {
           LOG.info("Output stop done for {}", taskId);
           outputStopPendingFutures.clear();
-          pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
+          pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
           remainingOffloadTasks.decrementAndGet();
-
-
-          // TODO: send it to the lambda!!
-          sendTask();
-          return true;
         } else {
+          break;
+        }
+      }
+      case WORKER_PENDING: {
+        if (tinyTaskWorker.isReady()) {
+          LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
+          sendTask();
+          pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
+        } else {
+          //LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
           break;
         }
       }
