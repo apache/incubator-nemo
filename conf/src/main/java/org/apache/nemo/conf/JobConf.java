@@ -290,7 +290,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   /**
    * Off-heap memory pool size of the executor.
-   * TODO: Configuration option for pre-allocation and max off-heap memory.
    */
   @NamedParameter(doc = "The size of off-heap memory pool of the executor",
     short_name = "memory_pool_size", default_value = "1073741824")
