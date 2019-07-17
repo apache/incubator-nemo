@@ -361,6 +361,8 @@ public final class TinyTaskOffloader implements Offloader {
             LOG.info("Close current output contexts in {}", taskId);
             startOutputPending();
             pendingStatus = TaskExecutor.PendingState.OUTPUT_PENDING;
+          } else {
+            break;
           }
         } else {
           //LOG.info("Input pending not done {}", taskId);
