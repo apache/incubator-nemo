@@ -37,7 +37,7 @@ public class DirectByteBufferOutputStreamTest {
   private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5, 32 * 1024);
 
   @Before
-  public void setup(){
+  public void setup() throws MemoryAllocationException {
     outputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
   }
 
