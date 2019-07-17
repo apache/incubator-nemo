@@ -160,7 +160,7 @@ public class MemoryPoolAssigner {
 
     MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
       if (available.isEmpty()) {
-        throw new MemoryAllocationException("Ran out of available off-heap memory");
+        allocateNewChunk(true);
       }
       ByteBuffer buf = available.remove();
       return new MemoryChunk(buf, sequential);
