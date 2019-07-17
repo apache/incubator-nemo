@@ -34,7 +34,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class DirectByteBufferOutputStreamTest {
   private DirectByteBufferOutputStream outputStream;
-  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5, 32 * 1024);
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1024 * 5, 5 * 1024);
 
   @Before
   public void setup() throws MemoryAllocationException {
