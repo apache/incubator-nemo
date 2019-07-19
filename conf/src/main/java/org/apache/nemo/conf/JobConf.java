@@ -292,7 +292,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Off-heap memory pool size of the executor.
    */
   @NamedParameter(doc = "The size of off-heap memory pool of the executor",
-    short_name = "memory_pool_size", default_value = "536870912")
+    short_name = "memory_pool_size", default_value = "268435456")
   public final class MemoryPoolSize implements Name<Long> {
   }
 
