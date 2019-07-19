@@ -80,7 +80,6 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    *
    * @throws MemoryAllocationException  if fail to allocate memory chunk.
    */
-  // TODO #388: Off-heap memory management (reuse ByteBuffer)
   private void newLastBuffer() throws MemoryAllocationException {
     dataList.addLast(memoryPoolAssigner.allocateChunk(true));
   }
@@ -167,8 +166,6 @@ public final class DirectByteBufferOutputStream extends OutputStream {
       final byte[] byteArray = new byte[0];
       return byteArray;
     }
-
-    //ByteBuffer lastBuf = dataList.getLast();
     MemoryChunk lastBuf = dataList.getLast();
     // pageSize equals the size of the data filled in the ByteBuffers
     // except for the last ByteBuffer. The size of the data in the

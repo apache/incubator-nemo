@@ -97,7 +97,7 @@ public final class BlockTest {
     try {
       new File(tmpDir).mkdirs();
       final LocalFileMetadata<Integer> metadata = new LocalFileMetadata<>();
-      final Block<Integer> block = new FileBlock<>("testBlock", serializer, filePath, metadata);
+      final Block<Integer> block = new FileBlock<>("testBlock", serializer, filePath, metadata, memoryPoolAssigner);
       testBlock(block);
     } finally {
       FileUtils.deleteDirectory(new File(tmpDir));
