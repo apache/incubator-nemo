@@ -25,7 +25,6 @@ import org.apache.nemo.conf.JobConf;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -47,18 +46,12 @@ public class MemoryPoolAssigner {
 
   private final MemoryPool memoryPool;
 
-  private final int chunkSize;
-
-  private final long memorySize;
-
   @Inject
   public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSize.class) final long memorySize,
                             @Parameter(JobConf.ChunkSize.class) final int chunkSize) {
     if (chunkSize < MIN_CHUNK_SIZE) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
-    this.memorySize = memorySize;
-    this.chunkSize = chunkSize;
     final long numChunks = memorySize / chunkSize;
     if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
@@ -70,45 +63,6 @@ public class MemoryPoolAssigner {
     }
 
     this.memoryPool = new MemoryPool(totalNumPages, chunkSize);
-  }
-
-  /**
-   * Returns list of {@link MemoryChunk}s to be used by consumers.
-   *
-   * @param numPages indicates the number of MemoryChunks
-   * @param sequential whether the requested chunks are sequential.
-   * @return list of {@link MemoryChunk}s
-   * @throws MemoryAllocationException  if fail to allocate MemoryChunks.
-   */
-  public List<MemoryChunk> allocateChunks(final int numPages,
-                                          final boolean sequential) throws MemoryAllocationException {
-    final ArrayList<MemoryChunk> chunks = new ArrayList<MemoryChunk>(numPages);
-    allocateChunks(chunks, numPages, sequential);
-    return chunks;
-  }
-
-  /**
-   * Allocates list of {@link MemoryChunk}s to target list.
-   *
-   * @param target    where the MemoryChunks are allocated
-   * @param numChunks indicates the number of MemoryChunks
-   * @param sequential  whether the requested chunks are sequential.
-   * @throws MemoryAllocationException if fail to allocate MemoryChunks.
-   */
-  public void allocateChunks(final List<MemoryChunk> target, final int numChunks, final boolean sequential)
-    throws MemoryAllocationException {
-
-    // This function may cause significant overhead when the pool size is big.
-    if (numChunks > (memoryPool.getNumOfAvailableMemoryChunks())) {
-      throw new MemoryAllocationException("Could not allocate " + numChunks + " pages. Only "
-        + (memoryPool.getNumOfAvailableMemoryChunks())
-        + " pages are remaining.");
-    }
-
-    for (int i = numChunks; i > 0; i--) {
-      MemoryChunk chunk = memoryPool.requestChunkFromPool(sequential);
-      target.add(chunk);
-    }
   }
 
   /**
@@ -182,7 +136,7 @@ public class MemoryPoolAssigner {
     /**
      * This function returns the currently available number of chunks in this memory pool.
      * Note that this function is not recommended to be used since the pool is implemented with
-     * {@code ConcurrentLinkedQueue} that has complexity of O(n) hence it is hard to know the exact size.
+     * {@code ConcurrentLinkedQueue} that has complexity of O(n) for size().
      *
      * @return the remaining number of chunks the memory pool.
      */
