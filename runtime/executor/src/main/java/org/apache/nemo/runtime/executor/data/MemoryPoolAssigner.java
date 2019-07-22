@@ -173,8 +173,7 @@ public class MemoryPoolAssigner {
      * @param chunk the target MemoryChunk to be returned to the pool.
      */
     void returnChunkToPool(final MemoryChunk chunk) {
-      MemoryChunk offHeapChunk = chunk;
-      ByteBuffer buf = offHeapChunk.getBuffer();
+      ByteBuffer buf = chunk.getBuffer();
       buf.clear();
       pool.add(buf);
       chunk.free();
