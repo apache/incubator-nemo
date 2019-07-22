@@ -88,10 +88,8 @@ public class MemoryPoolAssigner {
   }
 
   /**
-   *
-   * Supports off-heap memory pool.
-   * off-heap is pre-allocated and managed. on-heap memory is used when off-heap memory runs out.
-   *
+   * Memory pool that utilizes off-heap memory.
+   * Supports pre-allocation of memory according to user specification.
    */
   private class MemoryPool {
 
@@ -122,7 +120,7 @@ public class MemoryPoolAssigner {
     }
 
     /**
-     * Only off-heap chunk is returned to the pool.
+     * Returns MemoryChunk back to memory pool.
      *
      * @param chunk the target MemoryChunk to be returned to the pool.
      */
