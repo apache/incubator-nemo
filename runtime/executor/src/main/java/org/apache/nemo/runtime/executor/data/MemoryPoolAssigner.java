@@ -100,7 +100,7 @@ public class MemoryPoolAssigner {
       this.chunkSize = chunkSize;
       this.pool = new ConcurrentLinkedQueue<>();
 
-      /** Pre-allocation of off-heap memory*/
+      // pre-allocation
       for (int i = 0; i < numInitialChunks; i++) {
         pool.add(ByteBuffer.allocateDirect(chunkSize));
       }
