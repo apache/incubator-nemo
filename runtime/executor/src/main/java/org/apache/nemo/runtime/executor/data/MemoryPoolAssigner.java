@@ -98,6 +98,7 @@ public class MemoryPoolAssigner {
   public void allocateChunks(final List<MemoryChunk> target, final int numChunks, final boolean sequential)
     throws MemoryAllocationException {
 
+    // This function may cause significant overhead when the pool size is big.
     if (numChunks > (memoryPool.getNumOfAvailableMemoryChunks())) {
       throw new MemoryAllocationException("Could not allocate " + numChunks + " pages. Only "
         + (memoryPool.getNumOfAvailableMemoryChunks())
@@ -140,29 +141,29 @@ public class MemoryPoolAssigner {
    */
   private class MemoryPool {
 
-    private final ConcurrentLinkedQueue<ByteBuffer> available;
+    private final ConcurrentLinkedQueue<ByteBuffer> pool;
     private final int chunkSize;
 
     MemoryPool(final int numInitialChunks, final int chunkSize) {
       this.chunkSize = chunkSize;
-      this.available = new ConcurrentLinkedQueue<>();
+      this.pool = new ConcurrentLinkedQueue<>();
 
       /** Pre-allocation of off-heap memory*/
       for (int i = 0; i < numInitialChunks; i++) {
-        this.available.add(ByteBuffer.allocateDirect(chunkSize));
+        pool.add(ByteBuffer.allocateDirect(chunkSize));
       }
     }
 
     void allocateNewChunk() {
       ByteBuffer memory = ByteBuffer.allocateDirect(chunkSize);
-      available.add(memory);
+      pool.add(memory);
     }
 
     MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
-      if (available.isEmpty()) {
+      if (pool.isEmpty()) {
         allocateNewChunk();
       }
-      ByteBuffer buf = available.remove();
+      ByteBuffer buf = pool.remove();
       return new MemoryChunk(buf, sequential);
     }
 
@@ -175,16 +176,19 @@ public class MemoryPoolAssigner {
       MemoryChunk offHeapChunk = chunk;
       ByteBuffer buf = offHeapChunk.getBuffer();
       buf.clear();
-      available.add(buf);
+      pool.add(buf);
       chunk.free();
     }
 
+    /**
+     * This function returns the currently available number of chunks in this memory pool.
+     * Note that this function is not recommended to be used since the pool is implemented with
+     * {@code ConcurrentLinkedQueue} that has complexity of O(n) hence it is hard to know the exact size.
+     *
+     * @return the remaining number of chunks the memory pool.
+     */
     protected int getNumOfAvailableMemoryChunks() {
-      return available.size();
-    }
-
-    void clear() {
-      available.clear();
+      return pool.size();
     }
   }
 }
