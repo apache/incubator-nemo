@@ -96,7 +96,7 @@ public class MemoryPoolAssigner {
     private final int chunkSize;
 
     MemoryPool(final int numInitialChunks, final int chunkSize) {
-      this.chunkSize = chunkSize;
+      this.chunkSize = chunkSize * 1024;
       this.pool = new ConcurrentLinkedQueue<>();
 
       // pre-allocation
