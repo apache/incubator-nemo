@@ -87,15 +87,6 @@ public class MemoryChunk {
   }
 
   /**
-   * Returns the off-heap memory address of this MemoryChunk.
-   *
-   * @return absolute memory address outside the heap
-   */
-  public long getAddress() {
-    return address;
-  }
-
-  /**
    * Gets the remaining number of bytes in the {@link ByteBuffer} of this MemoryChunk.
    * This is supported for sequential MemoryChunk.
    *
@@ -138,15 +129,6 @@ public class MemoryChunk {
    */
   public void free() {
     isFree = true;
-  }
-
-  /**
-   * Checks whether the MemoryChunk was freed.
-   *
-   * @return true, if the MemoryChunk has been freed, false otherwise.
-   */
-  public boolean isFree() {
-    return isFree;
   }
 
   /**
