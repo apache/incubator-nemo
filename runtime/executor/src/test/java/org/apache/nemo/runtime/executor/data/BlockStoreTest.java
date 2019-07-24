@@ -325,7 +325,7 @@ public final class BlockStoreTest {
         public Boolean call() {
           try {
             final String blockId = blockIdList.get(writeTaskIdx);
-            final Block block = writerSideStore.createBlock(blockId, memoryPoolAssigner);
+            final Block block = writerSideStore.createBlock(blockId);
             for (final NonSerializedPartition<Integer> partition : partitionsPerBlock.get(writeTaskIdx)) {
               final Iterable data = partition.getData();
               data.forEach(element -> block.write(partition.getKey(), element));
@@ -422,7 +422,7 @@ public final class BlockStoreTest {
       @Override
       public Boolean call() {
         try {
-          final Block block = writerSideStore.createBlock(concBlockId, memoryPoolAssigner);
+          final Block block = writerSideStore.createBlock(concBlockId);
           final Iterable data = concBlockPartition.getData();
           data.forEach(element -> block.write(concBlockPartition.getKey(), element));
           block.commit();
@@ -510,7 +510,7 @@ public final class BlockStoreTest {
         public Boolean call() {
           try {
             final String blockId = hashedBlockIdList.get(writeTaskIdx);
-            final Block block = writerSideStore.createBlock(blockId, memoryPoolAssigner);
+            final Block block = writerSideStore.createBlock(blockId);
             for (final NonSerializedPartition<Integer> partition : hashedBlockPartitionList.get(writeTaskIdx)) {
               final Iterable data = partition.getData();
               data.forEach(element -> block.write(partition.getKey(), element));

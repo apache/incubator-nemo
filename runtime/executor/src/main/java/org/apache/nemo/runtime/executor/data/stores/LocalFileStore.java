@@ -47,21 +47,24 @@ public final class LocalFileStore extends LocalBlockStore {
    *
    * @param fileDirectory     the directory which will contain the files.
    * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final SerializerManager serializerManager) {
-    super(serializerManager);
+                         final SerializerManager serializerManager,
+                         final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }
 
   @Override
-  public Block createBlock(final String blockId, final MemoryPoolAssigner memoryPoolAssigner) {
+  public Block createBlock(final String blockId) {
     deleteBlock(blockId);
 
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
+    final MemoryPoolAssigner memoryPoolAssigner = getMemoryPoolAssigner();
 
     return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory),
                                                                   metadata, memoryPoolAssigner);

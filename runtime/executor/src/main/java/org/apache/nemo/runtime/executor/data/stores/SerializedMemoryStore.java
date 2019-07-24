@@ -38,18 +38,21 @@ public final class SerializedMemoryStore extends LocalBlockStore {
    * Constructor.
    *
    * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
-  private SerializedMemoryStore(final SerializerManager serializerManager) {
-    super(serializerManager);
+  private SerializedMemoryStore(final SerializerManager serializerManager,
+                                final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
   }
 
   /**
-   * @see BlockStore#createBlock(String, MemoryPoolAssigner)
+   * @see BlockStore#createBlock(String)
    */
   @Override
-  public Block createBlock(final String blockId, final MemoryPoolAssigner memoryPoolAssigner) {
+  public Block createBlock(final String blockId) {
     final Serializer serializer = getSerializerFromWorker(blockId);
+    final MemoryPoolAssigner memoryPoolAssigner = getMemoryPoolAssigner();
     return new SerializedMemoryBlock(blockId, serializer, memoryPoolAssigner);
   }
 

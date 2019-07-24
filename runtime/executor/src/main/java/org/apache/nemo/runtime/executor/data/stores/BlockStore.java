@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
-import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -34,14 +33,13 @@ public interface BlockStore {
    * A stale data created by previous failed task should be handled during the creation of new block.
    *
    * @param blockId the ID of the block to create.
-   * @param memoryPoolAssigner  the MemoryPoolAssigner for memory allocation.
    * @return the created block.
    * @throws BlockWriteException for any error occurred while trying to create a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Block createBlock(String blockId, MemoryPoolAssigner memoryPoolAssigner) throws BlockWriteException;
+  Block createBlock(String blockId) throws BlockWriteException;
 
   /**
    * Writes a committed block to this store.
