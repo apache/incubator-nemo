@@ -48,6 +48,7 @@ public final class WordIO {
    *
    * @param args arguments.
    */
+
   public static void main(final String[] args) {
     final List<String> LINES = Arrays.asList(
       "To be, or not to be: that is the question: ",
@@ -55,8 +56,6 @@ public final class WordIO {
       "The slings and arrows of outrageous fortune, ",
       "Or to take arms against a sea of troubles, ");
 
-    //final String inputFilePath = args[0];
-    //final String outputFilePath = args[1];
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("WordCount");
 
@@ -67,31 +66,6 @@ public final class WordIO {
       MapElements.into(TypeDescriptors.integers())
         .via((String word) -> word.length()));
 
-/*      result.apply(MapElements.via(new SimpleFunction<String, KV<String, Long>>() {
-        @Override
-        public KV<String, Long> apply(final String line) {
-          System.out.println(""+line);
-        }
-  /*                                                           }));
-    /*
-    final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
-      .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
-        @Override
-        public KV<String, Long> apply(final String line) {
-          final String[] words = line.split(" +");
-          final String documentId = words[0] + "#" + words[1];
-          final Long count = Long.parseLong(words[2]);
-          return KV.of(documentId, count);//java.lang.Long.parseLong("1"));
-         }
-      }))
-      .apply(Sum.longsPerKey())
-      .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
-        @Override
-        public String apply(final KV<String, Long> kv) {
-          return kv.getKey() + ": " + kv.getValue();
-        }
-      }));*/
-    //GenericSourceSink.write(result, outputFilePath);
     p.run();
   }
 }
