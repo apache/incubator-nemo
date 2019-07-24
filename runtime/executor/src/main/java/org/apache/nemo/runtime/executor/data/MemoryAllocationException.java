@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.executor.data;
 
 /**
  * An exception to be thrown when a memory allocation operation is not successful.
+ * Cases where allocation is not successful are when the allocated memory exceeds the
+ * amount specified by the job configuration or
  */
 public class MemoryAllocationException extends Exception {
 

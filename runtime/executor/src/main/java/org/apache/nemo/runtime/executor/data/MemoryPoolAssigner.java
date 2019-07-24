@@ -122,7 +122,11 @@ public class MemoryPoolAssigner {
 
     MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
       if (pool.isEmpty()) {
-        allocateNewChunk();
+        try {
+          allocateNewChunk();
+        } catch (final OutOfMemoryError e) {
+          throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
+        }
       }
       ByteBuffer buf = pool.remove();
       return new MemoryChunk(buf, sequential);
