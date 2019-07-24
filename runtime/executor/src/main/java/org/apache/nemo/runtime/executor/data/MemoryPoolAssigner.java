@@ -42,17 +42,19 @@ public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
 
+  private final int chunkSize;
+
   private static final int MIN_CHUNK_SIZE_KB = 4;
 
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final long memorySizeMb,
+  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final int memorySizeMb,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
-    final long numChunks = memorySizeMb * 1024 / chunkSizeKb;
+    final long numChunks = (long) memorySizeMb * 1024 / chunkSizeKb;
     if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
@@ -60,8 +62,8 @@ public class MemoryPoolAssigner {
     if (totalNumPages < 1) {
       throw new IllegalArgumentException("The given amount of memory amounted to less than one page.");
     }
-
-    this.memoryPool = new MemoryPool(totalNumPages, chunkSizeKb);
+    this.chunkSize = chunkSizeKb * 1024;
+    this.memoryPool = new MemoryPool(totalNumPages, this.chunkSize);
   }
 
   /**
@@ -87,6 +89,15 @@ public class MemoryPoolAssigner {
   }
 
   /**
+   * Returns the chunk size of the memory pool.
+   *
+   * @return the chunk size in bytes.
+   */
+  public int getChunkSize() {
+    return chunkSize;
+  }
+
+  /**
    * Memory pool that utilizes off-heap memory.
    * Supports pre-allocation of memory according to user specification.
    */
@@ -96,7 +107,7 @@ public class MemoryPoolAssigner {
     private final int chunkSize;
 
     MemoryPool(final int numInitialChunks, final int chunkSize) {
-      this.chunkSize = chunkSize * 1024;
+      this.chunkSize = chunkSize;
       this.pool = new ConcurrentLinkedQueue<>();
       // pre-allocation
       for (int i = 0; i < numInitialChunks; i++) {

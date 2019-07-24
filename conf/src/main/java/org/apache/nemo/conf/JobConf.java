@@ -293,8 +293,8 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   // TODO #397: Separation of JVM heap region and off-heap memory region
   @NamedParameter(doc = "The size of off-heap memory pool of the executor",
-    short_name = "memory_pool_size_mb", default_value = "128")
-  public final class MemoryPoolSizeMb implements Name<Long> {
+    short_name = "memory_pool_size_mb", default_value = "256")
+  public final class MemoryPoolSizeMb implements Name<Integer> {
   }
 
   /**
