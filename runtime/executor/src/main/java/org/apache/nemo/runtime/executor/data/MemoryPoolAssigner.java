@@ -128,16 +128,5 @@ public class MemoryPoolAssigner {
       pool.add(buf);
       chunk.free();
     }
-
-    /**
-     * This function returns the currently available number of chunks in this memory pool.
-     * Note that this function is not recommended to be used since the pool is implemented with
-     * {@code ConcurrentLinkedQueue} that has complexity of O(n) for size().
-     *
-     * @return the remaining number of chunks the memory pool.
-     */
-    protected int getNumOfAvailableMemoryChunks() {
-      return pool.size();
-    }
   }
 }
