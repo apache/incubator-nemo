@@ -42,7 +42,7 @@ import java.util.*;
 public final class BlockTest {
   private Serializer serializer;
   private Map<Integer, List<Integer>> testData;
-  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(100 * 1024, 32 * 1024);
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
 
   /**
    * Generates the test data and serializer.

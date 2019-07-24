@@ -47,12 +47,12 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final long memorySize,
-                            @Parameter(JobConf.ChunkSizeKb.class) final int chunkSize) {
-    if (chunkSize < MIN_CHUNK_SIZE_KB) {
+  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final long memorySizeMb,
+                            @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
+    if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
-    final long numChunks = memorySize * 1024 / chunkSize;
+    final long numChunks = memorySizeMb * 1024 / chunkSizeKb;
     if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
@@ -61,7 +61,7 @@ public class MemoryPoolAssigner {
       throw new IllegalArgumentException("The given amount of memory amounted to less than one page.");
     }
 
-    this.memoryPool = new MemoryPool(totalNumPages, chunkSize);
+    this.memoryPool = new MemoryPool(totalNumPages, chunkSizeKb);
   }
 
   /**
@@ -98,7 +98,6 @@ public class MemoryPoolAssigner {
     MemoryPool(final int numInitialChunks, final int chunkSize) {
       this.chunkSize = chunkSize * 1024;
       this.pool = new ConcurrentLinkedQueue<>();
-      LOG.info("Number of initial chunks: {}", numInitialChunks);
       // pre-allocation
       for (int i = 0; i < numInitialChunks; i++) {
         pool.add(ByteBuffer.allocateDirect(chunkSize));
