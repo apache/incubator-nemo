@@ -47,16 +47,15 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSize.class) final long memorySize,
-                            @Parameter(JobConf.ChunkSize.class) final int chunkSize) {
+  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final long memorySize,
+                            @Parameter(JobConf.ChunkSizeKb.class) final int chunkSize) {
     if (chunkSize < MIN_CHUNK_SIZE) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
-    final long numChunks = memorySize / chunkSize;
+    final long numChunks = memorySize * 1024 / chunkSize;
     if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
-
     final int totalNumPages = (int) numChunks;
     if (totalNumPages < 1) {
       throw new IllegalArgumentException("The given amount of memory amounted to less than one page.");
