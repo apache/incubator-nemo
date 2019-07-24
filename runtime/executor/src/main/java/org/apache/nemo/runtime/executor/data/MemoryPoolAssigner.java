@@ -42,14 +42,14 @@ public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
 
-  private static final int MIN_CHUNK_SIZE = 4 * 1024; // 4KB
+  private static final int MIN_CHUNK_SIZE_KB = 4;
 
   private final MemoryPool memoryPool;
 
   @Inject
   public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final long memorySize,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSize) {
-    if (chunkSize < MIN_CHUNK_SIZE) {
+    if (chunkSize < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
     final long numChunks = memorySize * 1024 / chunkSize;
