@@ -241,6 +241,8 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * Releases the off-heap memory that this SerializedPartition holds.
    */
   public void release() {
-    bytesOutputStream.release();
+    if (offheap) {
+      bytesOutputStream.release();
+    }
   }
 }

@@ -108,7 +108,6 @@ public final class BlockStoreTest {
   private List<List<NonSerializedPartition<Integer>>> hashedBlockPartitionList;
   private List<KeyRange> readKeyRangeList;
   private List<List<Iterable>> expectedDataInRange;
-  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(3, 32);
 
   private String getTaskId(final int index) {
     return RuntimeIdManager.generateTaskId("STAGE", index, 0);

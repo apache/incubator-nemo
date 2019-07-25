@@ -73,8 +73,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
       RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    final MemoryPoolAssigner memoryPoolAssigner = getMemoryPoolAssigner();
-    return new FileBlock<>(blockId, serializer, filePath, metadata, memoryPoolAssigner);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, getMemoryPoolAssigner());
   }
 
   /**

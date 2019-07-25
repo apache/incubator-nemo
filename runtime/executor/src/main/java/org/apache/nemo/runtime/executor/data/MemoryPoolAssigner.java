@@ -35,8 +35,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * MemoryPoolAssigner currently supports allocation of off-heap memory only.
  *
- * The MemoryPoolAssigner pre-allocates all memory at the start. Memory will be occupied and reserved from start on,
- * which means that no OutOfMemoryError comes while requesting memory. Released memory will return to the MemoryPool.
+ * The MemoryPoolAssigner pre-allocates user-defined amount of memory at the start.
+ * More memory can be allocated on-demand, but if there is no more memory to allocate, MemoryAllocationException
+ * is thrown and the job fails. // TODO #397: Separation of JVM heap region and off-heap memory region
  */
 public class MemoryPoolAssigner {
 
@@ -82,7 +83,7 @@ public class MemoryPoolAssigner {
    *
    * @param target  the list of MemoryChunks to be returned to the memory pool.
    */
-  public void returnChunks(final List<MemoryChunk> target) {
+  public void returnChunksToPool(final List<MemoryChunk> target) {
     for (final MemoryChunk chunk: target) {
       memoryPool.returnChunkToPool(chunk);
     }

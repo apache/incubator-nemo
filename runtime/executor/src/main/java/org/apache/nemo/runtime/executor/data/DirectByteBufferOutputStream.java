@@ -197,7 +197,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   }
 
   public void release() {
-    memoryPoolAssigner.returnChunks(dataList);
+    memoryPoolAssigner.returnChunksToPool(dataList);
   }
 
   /**

@@ -52,8 +52,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
   @Override
   public Block createBlock(final String blockId) {
     final Serializer serializer = getSerializerFromWorker(blockId);
-    final MemoryPoolAssigner memoryPoolAssigner = getMemoryPoolAssigner();
-    return new SerializedMemoryBlock(blockId, serializer, memoryPoolAssigner);
+    return new SerializedMemoryBlock(blockId, serializer, getMemoryPoolAssigner());
   }
 
   /**
