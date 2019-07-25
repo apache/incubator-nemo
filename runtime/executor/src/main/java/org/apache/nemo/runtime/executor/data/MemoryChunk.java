@@ -29,12 +29,15 @@ import java.nio.ByteOrder;
  */
 public class MemoryChunk {
 
+  // UNSAFE is used for random access and manipulation of the ByteBuffer.
   @SuppressWarnings("restriction")
   protected static final sun.misc.Unsafe UNSAFE = getUnsafe();
   @SuppressWarnings("restriction")
   protected static final long BYTE_ARRAY_BASE_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
   private static final boolean LITTLE_ENDIAN = (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
   private final ByteBuffer buffer;
+  // Since using UNSAFE does not automatically track the address and limit, it should be accessed
+  // through address for data write and get, and addressLimit for sanity checks on the buffer use.
   private long address;
   private final long addressLimit;
   private boolean isFree;
