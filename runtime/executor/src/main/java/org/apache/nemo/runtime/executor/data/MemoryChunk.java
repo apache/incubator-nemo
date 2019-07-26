@@ -35,6 +35,10 @@ public class MemoryChunk {
   @SuppressWarnings("restriction")
   protected static final long BYTE_ARRAY_BASE_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
   private static final boolean LITTLE_ENDIAN = (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN);
+  private static final int SHORT_SIZE = 2;
+  private static final int CHAR_SIZE = 2;
+  private static final int INT_SIZE = 4;
+  private static final int LONG_SIZE = 8;
   private final ByteBuffer buffer;
   // Since using UNSAFE does not automatically track the address and limit, it should be accessed
   // through address for data write and get, and addressLimit for sanity checks on the buffer use.
@@ -143,12 +147,11 @@ public class MemoryChunk {
   @SuppressWarnings("restriction")
   public final byte get(final int index) {
     final long pos = address + index;
-    if (index >= 0 && pos < addressLimit) {
-      return UNSAFE.getByte(pos);
-    } else if (released) {
+    if (released) {
       throw new IllegalStateException("MemoryChunk has been freed");
     } else {
-      throw new IndexOutOfBoundsException();
+      checkIndex(index, pos, 0);
+      return UNSAFE.getByte(pos);
     }
   }
 
@@ -176,12 +179,11 @@ public class MemoryChunk {
   @SuppressWarnings("restriction")
   public final void put(final int index, final byte b) {
     final long pos = address + index;
-    if (index >= 0 && pos < addressLimit) {
-      UNSAFE.putByte(pos, b);
-    } else if (released) {
+    if (released) {
       throw new IllegalStateException("MemoryChunk has been freed");
     } else {
-      throw new IndexOutOfBoundsException();
+      checkIndex(index, pos, 0);
+      UNSAFE.putByte(pos, b);
     }
   }
 
@@ -264,15 +266,13 @@ public class MemoryChunk {
   public final void get(final int index, final byte[] dst, final int offset, final int length) {
     if ((offset | length | (offset + length) | (dst.length - (offset + length))) < 0) {
       throw new IndexOutOfBoundsException();
-    }
-    final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - length) {
-      final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
-      UNSAFE.copyMemory(null, pos, dst, arrayAddress, length);
     } else if (released) {
       throw new IllegalStateException("MemoryChunk has been freed");
     } else {
-      throw new IndexOutOfBoundsException();
+      final long pos = address + index;
+      checkIndex(index, pos, length);
+      final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
+      UNSAFE.copyMemory(null, pos, dst, arrayAddress, length);
     }
   }
 
@@ -305,15 +305,13 @@ public class MemoryChunk {
   public final void put(final int index, final byte[] src, final int offset, final int length) {
     if ((offset | length | (offset + length) | (src.length - (offset + length))) < 0) {
       throw new IndexOutOfBoundsException();
-    }
-    final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - length) {
-      final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
-      UNSAFE.copyMemory(src, arrayAddress, null, pos, length);
     } else if (released) {
       throw new IllegalStateException("MemoryChunk has been freed");
     } else {
-      throw new IndexOutOfBoundsException();
+      final long pos = address + index;
+      checkIndex(index, pos, length);
+      final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
+      UNSAFE.copyMemory(src, arrayAddress, null, pos, length);
     }
   }
 
@@ -340,22 +338,19 @@ public class MemoryChunk {
    * @param index The position from which the memory will be read.
    * @return The char value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 2.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus CHAR_SIZE.
    */
   @SuppressWarnings("restriction")
   public final char getChar(final int index) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 2) {
-      if (LITTLE_ENDIAN) {
-        return UNSAFE.getChar(pos);
-      } else {
-        return Character.reverseBytes(UNSAFE.getChar(pos));
-      }
-    } else if (released) {
+    if (released) {
       throw new IllegalStateException("This MemoryChunk has been freed.");
+    }
+    checkIndex(index, pos, CHAR_SIZE);
+    if (LITTLE_ENDIAN) {
+      return UNSAFE.getChar(pos);
     } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
+      return Character.reverseBytes(UNSAFE.getChar(pos));
     }
   }
 
@@ -380,22 +375,20 @@ public class MemoryChunk {
    * @param index The position at which the memory will be written.
    * @param value The char value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 2.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus CHAR_SIZE.
    */
   @SuppressWarnings("restriction")
   public final void putChar(final int index, final char value) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 2) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, CHAR_SIZE);
       if (LITTLE_ENDIAN) {
         UNSAFE.putChar(pos, value);
       } else {
         UNSAFE.putChar(pos, Character.reverseBytes(value));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -421,21 +414,19 @@ public class MemoryChunk {
    * @param index The position from which the memory will be read.
    * @return The short value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 2.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus SHORT_SIZE.
    */
   public final short getShort(final int index) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 2) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, SHORT_SIZE);
       if (LITTLE_ENDIAN) {
         return UNSAFE.getShort(pos);
       } else {
         return Short.reverseBytes(UNSAFE.getShort(pos));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -461,21 +452,19 @@ public class MemoryChunk {
    * @param index The position at which the value will be written.
    * @param value The short value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 2.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus SHORT_SIZE.
    */
   public final void putShort(final int index, final short value) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 2) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, SHORT_SIZE);
       if (LITTLE_ENDIAN) {
         UNSAFE.putShort(pos, value);
       } else {
         UNSAFE.putShort(pos, Short.reverseBytes(value));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -500,21 +489,19 @@ public class MemoryChunk {
    * @param index The position from which the value will be read.
    * @return The int value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 4.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus INT_SIZE.
    */
   public final int getInt(final int index) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 4) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, INT_SIZE);
       if (LITTLE_ENDIAN) {
         return UNSAFE.getInt(pos);
       } else {
         return Integer.reverseBytes(UNSAFE.getInt(pos));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -539,21 +526,19 @@ public class MemoryChunk {
    * @param index The position at which the value will be written.
    * @param value The int value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 4.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus INT_SIZE.
    */
   public final void putInt(final int index, final int value) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 4) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, INT_SIZE);
       if (LITTLE_ENDIAN) {
         UNSAFE.putInt(pos, value);
       } else {
         UNSAFE.putInt(pos, Integer.reverseBytes(value));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -578,21 +563,19 @@ public class MemoryChunk {
    * @param index The position from which the value will be read.
    * @return The long value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 8.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus LONG_SIZE.
    */
   public final long getLong(final int index) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 8) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, LONG_SIZE);
       if (LITTLE_ENDIAN) {
         return UNSAFE.getLong(pos);
       } else {
         return Long.reverseBytes(UNSAFE.getLong(pos));
       }
-    } else if (released) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -617,21 +600,19 @@ public class MemoryChunk {
    * @param index The position at which the value will be written.
    * @param value The long value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 8.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus LONG_SIZE.
    */
   public final void putLong(final int index, final long value) {
     final long pos = address + index;
-    if (index >= 0 && pos <= addressLimit - 8) {
+    if (released) {
+      throw new IllegalStateException("MemoryChunk has been freed");
+    } else {
+      checkIndex(index, pos, LONG_SIZE);
       if (LITTLE_ENDIAN) {
         UNSAFE.putLong(pos, value);
       } else {
         UNSAFE.putLong(pos, Long.reverseBytes(value));
       }
-    } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
-    } else {
-      // index is in fact invalid
-      throw new IndexOutOfBoundsException();
     }
   }
 
@@ -656,7 +637,7 @@ public class MemoryChunk {
    * @param index The position from which the value will be read.
    * @return The float value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 4.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus size of float.
    */
   public final float getFloat(final int index) {
     return Float.intBitsToFloat(getInt(index));
@@ -683,7 +664,7 @@ public class MemoryChunk {
    * @param index The position at which the value will be written.
    * @param value The float value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 4.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus size of float.
    */
   public final void putFloat(final int index, final float value) {
     putInt(index, Float.floatToRawIntBits(value));
@@ -710,7 +691,7 @@ public class MemoryChunk {
    * @param index The position from which the value will be read.
    * @return The double value at the given position.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 8.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus size of double.
    */
   public final double getDouble(final int index) {
     return Double.longBitsToDouble(getLong(index));
@@ -737,7 +718,7 @@ public class MemoryChunk {
    * @param index The position at which the memory will be written.
    * @param value The double value to be written.
    *
-   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus 8.
+   * @throws IndexOutOfBoundsException If the index is negative, or larger then the chunk size minus size of double.
    */
   public final void putDouble(final int index, final double value) {
     putLong(index, Double.doubleToRawLongBits(value));
@@ -756,6 +737,12 @@ public class MemoryChunk {
       throw new IllegalStateException("This MemoryChunk has been freed");
     }
     buffer.putDouble(value);
+  }
+
+  private void checkIndex(final int index, final long pos, final int typeSize) throws IndexOutOfBoundsException {
+    if (!(index >= 0 && pos <= addressLimit - typeSize)) {
+      throw new IndexOutOfBoundsException();
+    }
   }
 
   @SuppressWarnings("restriction")
