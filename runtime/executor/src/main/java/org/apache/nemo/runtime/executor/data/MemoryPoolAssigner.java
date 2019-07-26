@@ -59,12 +59,11 @@ public class MemoryPoolAssigner {
     if (numChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
-    final int totalNumPages = (int) numChunks;
-    if (totalNumPages < 1) {
-      throw new IllegalArgumentException("The given amount of memory amounted to less than one page.");
+    if (numChunks < 1) {
+      throw new IllegalArgumentException("The given amount of memory amounted to less than one chunk.");
     }
     this.chunkSize = chunkSizeKb * 1024;
-    this.memoryPool = new MemoryPool(totalNumPages, this.chunkSize);
+    this.memoryPool = new MemoryPool((int) numChunks, this.chunkSize);
   }
 
   /**
