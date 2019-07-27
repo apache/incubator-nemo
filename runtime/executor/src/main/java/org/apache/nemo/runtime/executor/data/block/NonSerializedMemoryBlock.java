@@ -223,8 +223,4 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   public synchronized boolean isCommitted() {
     return committed;
   }
-
-  @Override
-  public void release() { //do nothing
-  }
 }

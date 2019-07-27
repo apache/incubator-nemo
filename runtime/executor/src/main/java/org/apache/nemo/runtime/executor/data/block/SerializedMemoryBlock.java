@@ -241,7 +241,9 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
     return committed;
   }
 
-  @Override
+  /**
+   * Releases the resource (i.e., off-heap memory) that the block holds.
+   */
   public void release() {
     for (SerializedPartition partition: serializedPartitions) {
       partition.release();

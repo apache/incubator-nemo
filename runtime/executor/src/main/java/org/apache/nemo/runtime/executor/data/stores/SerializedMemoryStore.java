@@ -79,7 +79,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
   @Override
   public boolean deleteBlock(final String blockId) {
     for (Block block: getBlockMap().values()) {
-      block.release();
+        ((SerializedMemoryBlock) block).release();
     }
     return getBlockMap().remove(blockId) != null;
   }

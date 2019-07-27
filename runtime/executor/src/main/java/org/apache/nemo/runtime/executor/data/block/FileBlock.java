@@ -390,8 +390,4 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public boolean isCommitted() {
     return metadata.isCommitted();
   }
-
-  @Override
-  public void release() { //do nothing
-  }
 }
