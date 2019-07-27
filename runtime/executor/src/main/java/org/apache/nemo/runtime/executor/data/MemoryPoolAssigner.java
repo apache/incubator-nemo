@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * More memory can be allocated on-demand, but if there is no more memory to allocate, MemoryAllocationException
  * is thrown and the job fails. // TODO #397: Separation of JVM heap region and off-heap memory region
  */
+@ThreadSafe
 public class MemoryPoolAssigner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
@@ -102,6 +104,7 @@ public class MemoryPoolAssigner {
    * Memory pool that utilizes off-heap memory.
    * Supports pre-allocation of memory according to user specification.
    */
+  @ThreadSafe
   private class MemoryPool {
 
     private final ConcurrentLinkedQueue<ByteBuffer> pool;

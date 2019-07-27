@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import net.jcip.annotations.NotThreadSafe;
+
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -27,6 +29,7 @@ import java.nio.ByteOrder;
  * This class represents chunk of memory residing in off-heap region
  * managed by {@link MemoryPoolAssigner}, which is backed by {@link ByteBuffer}.
  */
+@NotThreadSafe
 public class MemoryChunk {
 
   // UNSAFE is used for random access and manipulation of the ByteBuffer.
