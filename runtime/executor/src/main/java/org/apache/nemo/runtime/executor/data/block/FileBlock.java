@@ -69,7 +69,6 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
-  @Nullable
   private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
@@ -92,18 +91,6 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     this.filePath = filePath;
     this.metadata = metadata;
     this.memoryPoolAssigner = memoryPoolAssigner;
-  }
-
-  public FileBlock(final String blockId,
-                   final Serializer serializer,
-                   final String filePath,
-                   final FileMetadata<K> metadata) {
-    this.id = blockId;
-    this.nonCommittedPartitionsMap = new HashMap<>();
-    this.serializer = serializer;
-    this.filePath = filePath;
-    this.metadata = metadata;
-    this.memoryPoolAssigner = null;
   }
 
   /**
@@ -149,9 +136,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
           nonCommittedPartitionsMap.put(key, partition);
         }
         partition.write(element);
-      } catch (final IOException e) {
-        throw new BlockWriteException(e);
-      } catch (final MemoryAllocationException e) {
+      } catch (final IOException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     }
@@ -174,11 +159,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final Iterable<SerializedPartition<K>> convertedPartitions =
           DataUtil.convertToSerPartitions(serializer, partitions, memoryPoolAssigner);
         writeSerializedPartitions(convertedPartitions);
-      } catch (final IOException e) {
-        throw new BlockWriteException(e);
-      } catch (final IllegalAccessException e) {
-        throw new BlockWriteException(e);
-      } catch (final MemoryAllocationException e) {
+      } catch (final IOException | IllegalAccessException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     }

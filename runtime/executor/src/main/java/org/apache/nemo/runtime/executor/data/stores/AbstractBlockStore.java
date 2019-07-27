@@ -37,7 +37,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    * @param serializerManager the coder manager.
    * @param memoryPoolAssigner the memory pool assigner.
    */
-  protected AbstractBlockStore(final SerializerManager serializerManager,
+  AbstractBlockStore(final SerializerManager serializerManager,
                                final MemoryPoolAssigner memoryPoolAssigner) {
     this.serializerManager = serializerManager;
     this.memoryPoolAssigner = memoryPoolAssigner;
@@ -49,7 +49,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    * @param blockId the ID of the block to get the coder.
    * @return the coder.
    */
-  protected final Serializer getSerializerFromWorker(final String blockId) {
+  final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(blockId);
     return serializerManager.getSerializer(runtimeEdgeId);
   }
@@ -59,7 +59,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    *
    * @return the memory pool assigner.
    */
-  protected final MemoryPoolAssigner getMemoryPoolAssigner() {
+  final MemoryPoolAssigner getMemoryPoolAssigner() {
     return memoryPoolAssigner;
   }
 }

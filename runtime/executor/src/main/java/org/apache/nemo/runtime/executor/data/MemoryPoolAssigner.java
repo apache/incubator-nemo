@@ -26,6 +26,7 @@ import org.apache.nemo.conf.JobConf;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -121,15 +122,17 @@ public class MemoryPoolAssigner {
     }
 
     MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
-      if (pool.isEmpty()) {
-        try {
+      try {
+        if (pool.isEmpty()) {
           allocateNewChunk();
-        } catch (final OutOfMemoryError e) {
-          throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
         }
+        ByteBuffer buf = pool.remove();
+        return new MemoryChunk(buf, sequential);
+      } catch (OutOfMemoryError e) {
+        throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
+      } catch (NoSuchElementException e) {
+        throw new MemoryAllocationException("Pool empty: Failed to retrieve memory chunk.");
       }
-      ByteBuffer buf = pool.remove();
-      return new MemoryChunk(buf, sequential);
     }
 
     /**
