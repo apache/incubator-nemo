@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -38,9 +37,8 @@ import java.util.Optional;
 @DriverSide
 @AssociatedProperty(ResourceAntiAffinityProperty.class)
 public final class AntiAffinitySchedulingConstraint implements SchedulingConstraint {
-  @VisibleForTesting
   @Inject
-  public AntiAffinitySchedulingConstraint() {
+  AntiAffinitySchedulingConstraint() {
   }
 
   @Override

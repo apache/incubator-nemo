@@ -34,10 +34,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.*;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * This class represents a block which is stored in (local or remote) file.
@@ -83,11 +96,13 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions)
     throws IOException {
-    try (FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
+    try (FileChannel fileOutputChannel = new FileOutputStream(filePath, true).getChannel()) {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
+        for (final ByteBuffer buffer: serializedPartition.getDirectBufferList()) {
+          fileOutputChannel.write(buffer);
+        }
       }
     }
   }

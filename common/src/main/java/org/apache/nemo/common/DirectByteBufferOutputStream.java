@@ -18,8 +18,11 @@
  */
 package org.apache.nemo.common;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -27,14 +30,16 @@ import java.util.List;
  * This class is a customized output stream implementation backed by
  * {@link ByteBuffer}, which utilizes off heap memory when writing the data.
  * Memory is allocated when needed by the specified {@code pageSize}.
+ * Deletion of {@code dataList}, which is the memory this outputstream holds, occurs
+ * when the corresponding block is deleted.
+ * TODO #388: Off-heap memory management (reuse ByteBuffer) - implement reuse.
  */
 public final class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private static final int DEFAULT_PAGE_SIZE = 4096;
+  private static final int DEFAULT_PAGE_SIZE = 32768; //32KB
   private final int pageSize;
   private ByteBuffer currentBuf;
-
 
   /**
    * Default constructor.
@@ -45,8 +50,9 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
-   * Constructor specifying the {@code size}.
-   * Sets the {@code pageSize} as {@code size}.
+   * Constructor which sets {@code pageSize} as specified {@code size}.
+   * Note that the {@code pageSize} has trade-off between memory fragmentation and
+   * native memory (de)allocation overhead.
    *
    * @param size should be a power of 2 and greater than or equal to 4096.
    */
@@ -62,6 +68,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Allocates new {@link ByteBuffer} with the capacity equal to {@code pageSize}.
    */
+  // TODO #388: Off-heap memory management (reuse ByteBuffer)
   private void newLastBuffer() {
     dataList.addLast(ByteBuffer.allocateDirect(pageSize));
   }
@@ -120,14 +127,15 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     }
   }
 
+
   /**
    * Creates a byte array that contains the whole content currently written in this output stream.
-   * Note that this method causes array copy which could degrade performance.
-   * TODO #384: For performance issue, implement an input stream so that we do not have to use this method.
    *
+   * USED BY TESTS ONLY.
    * @return the current contents of this output stream, as byte array.
    */
-  public byte[] toByteArray() {
+  @VisibleForTesting
+  byte[] toByteArray() {
     if (dataList.isEmpty()) {
       final byte[] byteArray = new byte[0];
       return byteArray;
@@ -140,36 +148,46 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     final int arraySize = pageSize * (dataList.size() - 1) + lastBuf.position();
     final byte[] byteArray = new byte[arraySize];
     int start = 0;
-    int byteToWrite;
 
-    for (final ByteBuffer temp : dataList) {
-      // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
-      // which sets limit to the current position and sets the position to 0.
-      // Note that capacity remains unchanged.
-      temp.flip();
-      byteToWrite = temp.remaining();
-      temp.get(byteArray, start, byteToWrite);
+    for (final ByteBuffer buffer : dataList) {
+      // We use duplicated buffer to read the data so that there is no complicated
+      // alteration of position and limit when switching between read and write mode.
+      final ByteBuffer dupBuffer = buffer.duplicate();
+      dupBuffer.flip();
+      final int byteToWrite = dupBuffer.remaining();
+      dupBuffer.get(byteArray, start, byteToWrite);
       start += byteToWrite;
     }
-    // The limit of the last buffer has to be set to the capacity for additional write.
-    lastBuf.limit(lastBuf.capacity());
 
     return byteArray;
   }
 
   /**
    * Returns the list of {@code ByteBuffer}s that contains the written data.
-   * Note that by calling this method, the existing list of {@code ByteBuffer}s is cleared.
+   * List of flipped and duplicated {@link ByteBuffer}s are returned which has independent
+   * position and limit, to reduce erroneous data read/write.
+   * This function has to be called when intended to read from the start of the list of
+   * {@link ByteBuffer}s, not for additional write.
    *
    * @return the {@code LinkedList} of {@code ByteBuffer}s.
    */
-  public List<ByteBuffer> getBufferListAndClear() {
-    List<ByteBuffer> result = dataList;
-    dataList = new LinkedList<>();
-    for (final ByteBuffer buffer : result) {
-      buffer.flip();
+  public List<ByteBuffer> getDirectByteBufferList() {
+    List<ByteBuffer> result = new ArrayList<>(dataList.size());
+    for (final ByteBuffer buffer : dataList) {
+      final ByteBuffer dupBuffer = buffer.duplicate();
+      dupBuffer.flip();
+      result.add(dupBuffer);
     }
     return result;
+  }
+
+  /**
+   * Returns the size of the data written in this output stream.
+   *
+   * @return the size of the data
+   */
+  public int size() {
+    return pageSize * (dataList.size() - 1) + dataList.getLast().position();
   }
 
   /**
