@@ -37,7 +37,7 @@ public class MemoryChunkTest {
 
   @Before
   public void setup() {
-    chunk = new MemoryChunk(buffer, false);
+    chunk = new MemoryChunk(buffer);
   }
 
   @Test

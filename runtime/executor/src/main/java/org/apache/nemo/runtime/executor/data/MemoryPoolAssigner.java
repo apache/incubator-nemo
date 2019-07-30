@@ -72,12 +72,11 @@ public class MemoryPoolAssigner {
   /**
    * Returns a single {@link MemoryChunk} from {@link MemoryPool}.
    *
-   * @param sequential whether the requested chunk is sequential.
    * @return a MemoryChunk
    * @throws MemoryAllocationException if fails to allocate MemoryChunk.
    */
-  public MemoryChunk allocateChunk(final boolean sequential) throws MemoryAllocationException {
-    return memoryPool.requestChunkFromPool(sequential);
+  public MemoryChunk allocateChunk() throws MemoryAllocationException {
+    return memoryPool.requestChunkFromPool();
   }
 
   /**
@@ -119,18 +118,18 @@ public class MemoryPoolAssigner {
       }
     }
 
-    MemoryChunk allocateNewChunk(final boolean sequential) {
+    MemoryChunk allocateNewChunk() {
       ByteBuffer memory = ByteBuffer.allocateDirect(chunkSize);
-      return new MemoryChunk(memory, sequential);
+      return new MemoryChunk(memory);
     }
 
-    MemoryChunk requestChunkFromPool(final boolean sequential) throws MemoryAllocationException {
+    MemoryChunk requestChunkFromPool() throws MemoryAllocationException {
       try {
         if (pool.isEmpty()) {
-          return allocateNewChunk(true);
+          return allocateNewChunk();
         }
         ByteBuffer buf = pool.remove();
-        return new MemoryChunk(buf, sequential);
+        return new MemoryChunk(buf);
       } catch (final OutOfMemoryError e) {
         throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
       } catch (final NoSuchElementException e) {
@@ -147,7 +146,7 @@ public class MemoryPoolAssigner {
       ByteBuffer buf = chunk.getBuffer();
       buf.clear();
       pool.add(buf);
-      chunk.free();
+      chunk.release();
     }
   }
 }

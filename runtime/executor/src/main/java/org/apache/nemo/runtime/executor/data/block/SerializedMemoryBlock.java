@@ -110,7 +110,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
         final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
           serializer, partitions, memoryPoolAssigner);
         writeSerializedPartitions(convertedPartitions);
-      } catch (final IOException | IllegalAccessException | MemoryAllocationException e) {
+      } catch (final IOException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     } else {

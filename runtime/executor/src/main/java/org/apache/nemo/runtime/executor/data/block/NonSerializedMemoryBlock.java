@@ -173,7 +173,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
     try {
       return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange), memoryPoolAssigner);
-    } catch (final IOException | IllegalAccessException | MemoryAllocationException e) {
+    } catch (final IOException | MemoryAllocationException e) {
       throw new BlockFetchException(e);
     }
   }

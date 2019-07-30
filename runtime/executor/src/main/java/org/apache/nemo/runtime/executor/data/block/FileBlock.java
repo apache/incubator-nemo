@@ -158,7 +158,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final Iterable<SerializedPartition<K>> convertedPartitions =
           DataUtil.convertToSerPartitions(serializer, partitions, memoryPoolAssigner);
         writeSerializedPartitions(convertedPartitions);
-      } catch (final IOException | IllegalAccessException | MemoryAllocationException e) {
+      } catch (final IOException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     }

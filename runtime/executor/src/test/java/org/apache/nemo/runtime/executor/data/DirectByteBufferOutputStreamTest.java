@@ -42,21 +42,21 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testSingleWrite() throws IOException, IllegalAccessException {
+  public void testSingleWrite() throws IOException {
     int value = 1;
     outputStream.write(value);
     assertEquals(value, outputStream.toByteArray()[0]);
   }
 
   @Test
-  public void testWrite() throws IOException, IllegalAccessException {
+  public void testWrite() throws IOException {
     String value = "value";
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
   }
 
   @Test
-  public void testReWrite() throws IOException, IllegalAccessException {
+  public void testReWrite() throws IOException {
     String value1 = "value1";
     String value2 = "value2";
     outputStream.write(value1.getBytes());
@@ -66,7 +66,7 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testReRead() throws IOException, IllegalAccessException {
+  public void testReRead() throws IOException {
     String value = "value";
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
@@ -74,14 +74,14 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testLongWrite() throws IOException, IllegalAccessException {
+  public void testLongWrite() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     assertEquals(value,new String(outputStream.toByteArray()));
   }
 
   @Test
-  public void testLongReWrite() throws IOException, IllegalAccessException {
+  public void testLongReWrite() throws IOException {
     String value1 = RandomStringUtils.randomAlphanumeric(10000);
     String value2 = RandomStringUtils.randomAlphanumeric(5000);
     outputStream.write(value1.getBytes());
@@ -91,7 +91,7 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testLongReRead() throws IOException, IllegalAccessException {
+  public void testLongReRead() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
@@ -99,7 +99,7 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testGetMemoryChunkList() throws IOException, IllegalAccessException {
+  public void testGetMemoryChunkList() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     byte[] totalOutput = outputStream.toByteArray();
@@ -107,9 +107,9 @@ public class DirectByteBufferOutputStreamTest {
     int offset = 0;
     int byteToRead;
     for (final MemoryChunk temp : chunkList) {
-      byteToRead = temp.remaining();
+      byteToRead = temp.getBuffer().remaining();
       byte[] output = new byte[byteToRead];
-      temp.get(output, 0, byteToRead);
+      temp.getBuffer().get(output, 0, byteToRead);
       byte[] expected = Arrays.copyOfRange(totalOutput, offset, offset+byteToRead);
       assertEquals(new String(expected), new String(output));
       offset += byteToRead;
