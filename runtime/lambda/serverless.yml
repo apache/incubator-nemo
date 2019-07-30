@@ -11,7 +11,7 @@
 #
 # Happy Coding!
 
-service: gao-test # NOTE: update this with your service name
+service: lambda # NOTE: update this with your service name
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
@@ -47,12 +47,11 @@ provider:
 
 # you can add packaging information here
 package:
-  artifact: target/test-1.0.jar
-  #artifact: test
+  artifact: target/lambda-0.2-SNAPSHOT.jar
 
 functions:
-  HelloLambda:
-    handler: com.example.lambda.Handler
+  executor:
+    handler: org.apache.nemo.runtime.lambda.LambdaExecutor
 #      - stream:
 #        arn: arn:aws:kinesis:ap-northeast-1:835596193924:stream/nemo
 #        type: kinesis

@@ -57,7 +57,7 @@ public final class WordIO {
       "Or to take arms against a sea of troubles, ");
 
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
-    options.setJobName("WordCount");
+    options.setJobName("WordIO");
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = p.apply(Create.of(LINES)).setCoder(StringUtf8Coder.of());

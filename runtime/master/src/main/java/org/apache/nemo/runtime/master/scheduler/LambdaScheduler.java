@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+import java.io.UnsupportedEncodingException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +70,7 @@ public final class LambdaScheduler implements Scheduler {
     this.taskDispatcher = taskDispatcher;
     this.executorRegistry = executorRegistry;
 
-    LOG.info("Using Lambda Scheduler");
+    LOG.info("##### Using Lambda Scheduler #####");
   }
 
   @Override
@@ -103,18 +105,23 @@ public final class LambdaScheduler implements Scheduler {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
         stageOutgoingEdges.forEach(outEdge -> {
           LOG.info("###### Create request ######");
-          String json = "{\"d\":\"" + outEdge.toString() + "\"}";
-          InvokeRequest request = new InvokeRequest()
-            // hard coded for now, need receiving user info
-            .withFunctionName("LambdaExecutor")
-            .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + taskId)
-            .withPayload(json);
-          InvokeResult response = client.invoke(request);
-          LOG.info("###### Request invoked! #####");
+          try {
+            byte [] byteEncoded = outEdge.toString().getBytes();
+            String json = "{\"d\":\"" + Base64.getEncoder().encodeToString(byteEncoded) + "\"}";
+            InvokeRequest request = new InvokeRequest()
+              // hard coded for now, need receiving user info
+              .withFunctionName("lambda-dev-executor")
+              .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + taskId)
+              .withPayload(json);
+            InvokeResult response = client.invoke(request);
+            LOG.info("###### Request invoked! #####");
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
         });
       });
     });
-
+    LOG.info("##### One scheduled plan dispatched! #####");
   }
 
   @Override
@@ -150,7 +157,6 @@ public final class LambdaScheduler implements Scheduler {
 
   @Override
   public void onExecutorRemoved(final String executorId) {
-    // TODO #226: StreamingScheduler Fault Tolerance
     throw new UnsupportedOperationException();
   }
 
