@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.data.partition;
 
 import org.apache.nemo.runtime.executor.data.DirectByteBufferOutputStream;
 import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
+import org.apache.nemo.runtime.executor.data.MemoryChunk;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
@@ -30,7 +31,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
@@ -57,7 +58,8 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   private final OutputStream wrappedStream;
   @Nullable
   private final EncoderFactory.Encoder encoder;
-  private volatile List<ByteBuffer> dataList;
+  private final MemoryPoolAssigner memoryPoolAssigner;
+  private volatile List<MemoryChunk> dataList;
   private final boolean offheap;
 
   /**
@@ -81,6 +83,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.bytesOutputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
     this.wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
     this.encoder = serializer.getEncoderFactory().create(wrappedStream);
+    this.memoryPoolAssigner = memoryPoolAssigner;
     this.offheap = true;
   }
 
@@ -94,7 +97,8 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    */
   public SerializedPartition(final K key,
                              final byte[] serializedData,
-                             final int length) {
+                             final int length,
+                             final MemoryPoolAssigner memoryPoolAssigner) {
     this.key = key;
     this.serializedData = serializedData;
     this.length = length;
@@ -102,6 +106,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.bytesOutputStream = null;
     this.wrappedStream = null;
     this.encoder = null;
+    this.memoryPoolAssigner = memoryPoolAssigner;
     this.offheap = false;
   }
 
@@ -110,19 +115,21 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * Data cannot be written to this partition after the construction.
    *
    * @param key               the key.
-   * @param serializedBufList the serialized data in list list of {@link ByteBuffer}s.
+   * @param serializedChunkList the serialized data in list list of {@link MemoryChunk}s.
    * @param length            the length of the actual serialized data. (It can be different with serializedData.length)
    */
   public SerializedPartition(final K key,
-                             final List<ByteBuffer> serializedBufList,
-                             final int length) {
+                             final List<MemoryChunk> serializedChunkList,
+                             final int length,
+                             final MemoryPoolAssigner memoryPoolAssigner) {
     this.key = key;
-    this.dataList = serializedBufList;
+    this.dataList = serializedChunkList;
     this.length = length;
     this.committed = true;
     this.bytesOutputStream = null;
     this.wrappedStream = null;
     this.encoder = null;
+    this.memoryPoolAssigner = memoryPoolAssigner;
     this.offheap = true;
   }
 
@@ -156,7 +163,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      this.dataList = bytesOutputStream.getDirectByteBufferList();
+      this.dataList = bytesOutputStream.getMemoryChunkList();
       try {
         this.length = bytesOutputStream.size();
       } catch (final IllegalAccessException e) {
@@ -209,9 +216,9 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     if (!committed) {
       throw new IOException("The partition is not committed yet!");
     } else {
-      List<ByteBuffer> result = new ArrayList<>(dataList.size());
-      for (final ByteBuffer buffer : dataList) {
-        final ByteBuffer dupBuffer = buffer.duplicate();
+      List<ByteBuffer> result = new LinkedList<>();
+      for (final MemoryChunk chunk : dataList) {
+        final ByteBuffer dupBuffer = chunk.duplicate().getBuffer();
         result.add(dupBuffer);
       }
       return result;
@@ -241,8 +248,9 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * Releases the off-heap memory that this SerializedPartition holds.
    */
   public void release() {
-    if (offheap) {
-      bytesOutputStream.release();
+    if (!committed) {
+      throw new IllegalStateException("The partition is not committed yet!");
     }
+    memoryPoolAssigner.returnChunksToPool(dataList);
   }
 }

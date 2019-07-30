@@ -131,9 +131,9 @@ public class MemoryPoolAssigner {
         }
         ByteBuffer buf = pool.remove();
         return new MemoryChunk(buf, sequential);
-      } catch (OutOfMemoryError e) {
+      } catch (final OutOfMemoryError e) {
         throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
-      } catch (NoSuchElementException e) {
+      } catch (final NoSuchElementException e) {
         throw new MemoryAllocationException("Pool empty: Failed to retrieve memory chunk.");
       }
     }

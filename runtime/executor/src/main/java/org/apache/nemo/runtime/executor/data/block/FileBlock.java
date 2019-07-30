@@ -257,7 +257,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                 throw new IOException("The read data size does not match with the partition size.");
               }
               partitionsInRange.add(new SerializedPartition<>(
-                key, serializedData, serializedData.length));
+                key, serializedData, serializedData.length, memoryPoolAssigner));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
