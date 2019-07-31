@@ -416,7 +416,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
-    cl.registerShortNameOfClass(JobConf.MemoryPoolSizeMb.class);
+    cl.registerShortNameOfClass(JobConf.MaxOffheapMb.class);
     cl.registerShortNameOfClass(JobConf.ChunkSizeKb.class);
     cl.processCommandLine(args);
     return confBuilder.build();

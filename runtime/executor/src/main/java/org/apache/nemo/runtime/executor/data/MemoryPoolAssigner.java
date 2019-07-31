@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import com.google.common.annotations.VisibleForTesting;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -53,20 +54,20 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MemoryPoolSizeMb.class) final int memorySizeMb,
+  public MemoryPoolAssigner(@Parameter(JobConf.MaxOffheapMb.class) final int maxOffheapMb,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
-    final long numChunks = (long) memorySizeMb * 1024 / chunkSizeKb;
-    if (numChunks > Integer.MAX_VALUE) {
+    final long maxNumChunks = (long) maxOffheapMb * 1024 / chunkSizeKb;
+    if (maxNumChunks > Integer.MAX_VALUE) {
       throw new IllegalArgumentException("Too many pages to allocate (exceeds MAX_INT)");
     }
-    if (numChunks < 1) {
+    if (maxNumChunks < 1) {
       throw new IllegalArgumentException("The given amount of memory amounted to less than one chunk.");
     }
     this.chunkSize = chunkSizeKb * 1024;
-    this.memoryPool = new MemoryPool((int) numChunks, this.chunkSize);
+    this.memoryPool = new MemoryPool((int) maxNumChunks, this.chunkSize);
   }
 
   /**
@@ -99,6 +100,14 @@ public class MemoryPoolAssigner {
     return chunkSize;
   }
 
+  @VisibleForTesting
+  /**
+   * Returns the number of chunks in the pool.
+   */
+  public int returnPoolSize() {
+    return memoryPool.returnPoolSize();
+  }
+
   /**
    * Memory pool that utilizes off-heap memory.
    * Supports pre-allocation of memory according to user specification.
@@ -108,18 +117,21 @@ public class MemoryPoolAssigner {
 
     private final ConcurrentLinkedQueue<ByteBuffer> pool;
     private final int chunkSize;
+    private long maxNumChunks;
+    private long numChunks;
 
-    MemoryPool(final int numInitialChunks, final int chunkSize) {
+    MemoryPool(final long maxNumChunks, final int chunkSize) {
       this.chunkSize = chunkSize;
       this.pool = new ConcurrentLinkedQueue<>();
-      // pre-allocation
-      for (int i = 0; i < numInitialChunks; i++) {
-        pool.add(ByteBuffer.allocateDirect(chunkSize));
-      }
+      this.maxNumChunks = maxNumChunks;
     }
 
-    MemoryChunk allocateNewChunk() {
+    MemoryChunk allocateNewChunk() throws MemoryAllocationException {
+      if (maxNumChunks <= numChunks) {
+        throw new MemoryAllocationException("Exceeded maximum off-heap memory");
+      }
       ByteBuffer memory = ByteBuffer.allocateDirect(chunkSize);
+      numChunks += 1;
       return new MemoryChunk(memory);
     }
 
@@ -147,6 +159,11 @@ public class MemoryPoolAssigner {
       buf.clear();
       pool.add(buf);
       chunk.release();
+    }
+
+    @VisibleForTesting
+    int returnPoolSize() {
+      return pool.size();
     }
   }
 }
