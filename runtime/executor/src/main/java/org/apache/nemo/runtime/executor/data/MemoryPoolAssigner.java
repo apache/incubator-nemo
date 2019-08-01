@@ -126,7 +126,7 @@ public class MemoryPoolAssigner {
       this.maxNumChunks = maxNumChunks;
     }
 
-    MemoryChunk allocateNewChunk() throws MemoryAllocationException {
+    synchronized MemoryChunk allocateNewChunk() throws MemoryAllocationException {
       if (maxNumChunks <= numChunks) {
         throw new MemoryAllocationException("Exceeded maximum off-heap memory");
       }

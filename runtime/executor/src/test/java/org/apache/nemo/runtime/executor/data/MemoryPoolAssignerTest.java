@@ -45,7 +45,7 @@ public class MemoryPoolAssignerTest {
   }
 
 
-  @Test(expected=MemoryAllocationException.class)
+  @Test(expected = MemoryAllocationException.class)
   public void TestTooMuchRequest() throws MemoryAllocationException {
     List<MemoryChunk> chunkList = new LinkedList<>();
     for (int i = 0; i < MAX_NUM_CHUNKS; i++) {
@@ -65,8 +65,8 @@ public class MemoryPoolAssignerTest {
     assertEquals(MAX_NUM_CHUNKS, memoryPoolAssigner.returnPoolSize());
   }
 
-  @Test
-  public void TestConcurrentAllocation() {
+  @Test(expected = MemoryAllocationException.class)
+  public void TestConcurrentAllocation() throws MemoryAllocationException {
     memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
     final Thread chunkThread1 = new Thread(() -> {
       try{
@@ -82,10 +82,17 @@ public class MemoryPoolAssignerTest {
         e.printStackTrace();
       }
     });
-    for (int i = 0; i < MAX_NUM_CHUNKS / 2; i++) {
-      chunkThread1.run();
-      chunkThread2.run();
-      Assert.assertFalse(chunk1.equals(chunk2));
+    try {
+      for (int i = 0; i < MAX_NUM_CHUNKS / 2; i++) {
+        chunkThread1.run();
+        chunkThread2.run();
+        chunkThread1.join();
+        chunkThread2.join();
+        Assert.assertFalse(chunk1.equals(chunk2));
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
+    memoryPoolAssigner.allocateChunk();
   }
 }
