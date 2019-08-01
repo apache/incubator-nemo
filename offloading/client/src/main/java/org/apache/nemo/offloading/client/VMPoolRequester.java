@@ -15,21 +15,26 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.offloading.common.NettyChannelInitializer;
+import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
+import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
 
-public final class VMOffloadingRequester {
+public final class VMPoolRequester {
 
-  private static final Logger LOG = LoggerFactory.getLogger(VMOffloadingRequester.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(VMPoolRequester.class.getName());
 
   private final OffloadingEventHandler nemoEventHandler;
 
@@ -83,9 +88,9 @@ public final class VMOffloadingRequester {
   private final Map<String, String> vmChannelMap = new ConcurrentHashMap<>();
 
 
-  public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
-                               final String serverAddress,
-                               final int port) {
+  public VMPoolRequester(final OffloadingEventHandler nemoEventHandler,
+                         final String serverAddress,
+                         final int port) {
     this.nemoEventHandler = nemoEventHandler;
     this.serverAddress = serverAddress;
     this.serverPort = port;
@@ -132,7 +137,6 @@ public final class VMOffloadingRequester {
 
 
     // vm pool 쓸때 approach
-    /*
     LOG.info("Create request at VMOffloadingREquestor");
 
     final int index = vmChannelMap.size();
@@ -146,7 +150,6 @@ public final class VMOffloadingRequester {
         throw new RuntimeException(e);
       }
     });
-    */
   }
 
   public void start() {
@@ -158,7 +161,7 @@ public final class VMOffloadingRequester {
     final String addr = channel.remoteAddress().toString().split(":")[0];
     final String instanceId = vmChannelMap.remove(addr);
     LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
-    stopVM(instanceId);
+    //stopVM(instanceId);
   }
 
   public synchronized void createChannelRequest() {
