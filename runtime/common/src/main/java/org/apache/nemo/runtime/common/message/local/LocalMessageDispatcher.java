@@ -44,14 +44,14 @@ public final class LocalMessageDispatcher {
   }
 
   <T> MessageSender<T> setupListener(
-      final String currentNodeId, final String messageTypeId, final MessageListener<T> listener) {
+    final String currentNodeId, final String messageTypeId, final MessageListener<T> listener) {
 
     ConcurrentMap<String, MessageListener> messageTypeToListenerMap = nodeIdToMessageListenersMap.get(currentNodeId);
 
     if (messageTypeToListenerMap == null) {
       messageTypeToListenerMap = new ConcurrentHashMap<>();
       final ConcurrentMap<String, MessageListener> map = nodeIdToMessageListenersMap.putIfAbsent(
-          currentNodeId, messageTypeToListenerMap);
+        currentNodeId, messageTypeToListenerMap);
       if (map != null) {
         messageTypeToListenerMap = map;
       }
@@ -59,7 +59,7 @@ public final class LocalMessageDispatcher {
 
     if (messageTypeToListenerMap.putIfAbsent(messageTypeId, listener) != null) {
       throw new LocalDispatcherException(
-          messageTypeId + " was already used in " + currentNodeId);
+        messageTypeId + " was already used in " + currentNodeId);
     }
 
     return new LocalMessageSender<>(currentNodeId, currentNodeId, messageTypeId, this);
@@ -71,7 +71,7 @@ public final class LocalMessageDispatcher {
   }
 
   <T> void dispatchSendMessage(
-      final String targetId, final String messageTypeId, final T message) {
+    final String targetId, final String messageTypeId, final T message) {
     final MessageListener listener = nodeIdToMessageListenersMap.get(targetId).get(messageTypeId);
     if (listener == null) {
       throw new LocalDispatcherException("There was no set up listener for " + messageTypeId + " in " + targetId);
@@ -80,7 +80,7 @@ public final class LocalMessageDispatcher {
   }
 
   <T, U> CompletableFuture<U> dispatchRequestMessage(
-      final String senderId, final String targetId, final String messageTypeId, final T message) {
+    final String senderId, final String targetId, final String messageTypeId, final T message) {
 
     final MessageListener listener = nodeIdToMessageListenersMap.get(targetId).get(messageTypeId);
     if (listener == null) {
@@ -119,7 +119,7 @@ public final class LocalMessageDispatcher {
    */
   public static Injector forkInjector(final Injector baseInjector) throws InjectionException {
     final Injector injector = baseInjector
-        .forkInjector(LocalMessageEnvironment.LOCAL_MESSAGE_ENVIRONMENT_CONFIGURATION);
+      .forkInjector(LocalMessageEnvironment.LOCAL_MESSAGE_ENVIRONMENT_CONFIGURATION);
     injector.getInstance(LocalMessageDispatcher.class);
     return injector;
   }

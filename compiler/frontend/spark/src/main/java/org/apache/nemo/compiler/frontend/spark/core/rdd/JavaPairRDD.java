@@ -39,6 +39,7 @@ import java.util.Map;
 
 /**
  * Java RDD for pairs.
+ *
  * @param <K> key type.
  * @param <V> value type.
  */
@@ -95,7 +96,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   public JavaPairRDD<K, V> reduceByKey(final Function2<V, V, V> func) {
     // Explicit conversion
     final PairRDDFunctions<K, V> pairRdd = RDD.rddToPairRDDFunctions(
-        rdd, ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class), null);
+      rdd, ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class), null);
     final RDD<Tuple2<K, V>> reducedRdd = pairRdd.reduceByKey(func);
     return JavaPairRDD.fromRDD(reducedRdd);
   }

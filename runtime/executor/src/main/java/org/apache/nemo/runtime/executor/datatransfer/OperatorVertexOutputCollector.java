@@ -25,7 +25,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * OutputCollector implementation.
@@ -48,10 +49,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   /**
    * Constructor of the output collector.
-   * @param irVertex the ir vertex that emits the output
-   * @param internalMainOutputs internal main outputs
+   *
+   * @param irVertex                  the ir vertex that emits the output
+   * @param internalMainOutputs       internal main outputs
    * @param internalAdditionalOutputs internal additional outputs
-   * @param externalMainOutputs external main outputs
+   * @param externalMainOutputs       external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
   public OperatorVertexOutputCollector(
@@ -77,7 +79,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }
@@ -89,7 +90,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
         emit(internalVertex.getNextOperator(), (O) output);
@@ -105,7 +105,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }

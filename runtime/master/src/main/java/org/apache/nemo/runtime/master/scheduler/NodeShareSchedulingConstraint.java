@@ -37,7 +37,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
   private NodeShareSchedulingConstraint() {
   }
 
-  private String getNodeName(final Map<String, Integer> propertyValue, final int taskIndex) {
+  private Optional<String> getNodeName(final Map<String, Integer> propertyValue, final int taskIndex) {
     final List<String> nodeNames = new ArrayList<>(propertyValue.keySet());
     Collections.sort(nodeNames, Comparator.naturalOrder());
     int index = taskIndex;
@@ -45,24 +45,31 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
-        return nodeName;
+        return Optional.of(nodeName);
       }
     }
-    throw new IllegalStateException("Detected excessive parallelism which ResourceSiteProperty does not cover");
+
+    return Optional.empty();
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     final Map<String, Integer> propertyValue = task.getPropertyValue(ResourceSiteProperty.class)
-        .orElseThrow(() -> new RuntimeException("ResourceSiteProperty expected"));
+      .orElseThrow(() -> new RuntimeException("ResourceSiteProperty expected"));
     if (propertyValue.isEmpty()) {
       return true;
     }
-    try {
-      return executor.getNodeName().equals(
-          getNodeName(propertyValue, RuntimeIdManager.getIndexFromTaskId(task.getTaskId())));
-    } catch (final IllegalStateException e) {
-      throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
+
+    final String executorNodeName = executor.getNodeName();
+    final Optional<String> taskNodeName =
+      getNodeName(propertyValue, RuntimeIdManager.getIndexFromTaskId(task.getTaskId()));
+
+    if (!taskNodeName.isPresent()) {
+      throw new IllegalStateException(
+        String.format("Detected excessive parallelism which ResourceSiteProperty does not cover: %s",
+          task.getTaskId()));
+    } else {
+      return executorNodeName.equals(taskNodeName.get());
     }
   }
 }

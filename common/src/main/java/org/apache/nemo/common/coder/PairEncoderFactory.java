@@ -19,11 +19,13 @@
 package org.apache.nemo.common.coder;
 
 import org.apache.nemo.common.Pair;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
 /**
  * An EncoderFactory for {@link Pair}. Reference: KvCoder in BEAM.
+ *
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
@@ -48,8 +50,8 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
    *
    * @param leftEncoderFactory  left coder.
    * @param rightEncoderFactory right coder.
-   * @param <A>          type of the left element.
-   * @param <B>          type of the right element.
+   * @param <A>                 type of the left element.
+   * @param <B>                 type of the right element.
    * @return the new PairEncoderFactory.
    */
   public static <A, B> PairEncoderFactory<A, B> of(final EncoderFactory<A> leftEncoderFactory,
@@ -62,8 +64,20 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
     return new PairEncoder<>(outputStream, leftEncoderFactory, rightEncoderFactory);
   }
 
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("Pair(");
+    sb.append(leftEncoderFactory.toString());
+    sb.append(", ");
+    sb.append(rightEncoderFactory.toString());
+    sb.append(")");
+    return sb.toString();
+  }
+
   /**
    * PairEncoder.
+   *
    * @param <T1> type for the left coder.
    * @param <T2> type for the right coder.
    */
@@ -75,7 +89,7 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
     /**
      * Constructor.
      *
-     * @param outputStream the output stream to store the encoded bytes.
+     * @param outputStream        the output stream to store the encoded bytes.
      * @param leftEncoderFactory  the actual encoder to use for left elements.
      * @param rightEncoderFactory the actual encoder to use for right elements.
      * @throws IOException if fail to instantiate coders.

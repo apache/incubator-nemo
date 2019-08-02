@@ -1,0 +1,54 @@
+{
+  "name": "nemo-visualizer",
+  "version": "1.0.0",
+  "description": "Nemo Web Visualizer",
+  "author": "Won Wook SONG <wsong0512@gmail.com>, Jae Hyeon Park <usezmap@gmail.com>",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "generate": "nuxt generate",
+    "lint": "eslint --ext .js,.vue --ignore-path .gitignore .",
+    "precommit": "npm run lint",
+    "test": "ava --serial --color --verbose"
+  },
+  "ava": {
+    "require": [
+      "babel-register",
+      "./test/setup.js"
+    ],
+    "files": [
+      "./test/**/*.test.js"
+    ]
+  },
+  "babel": {
+    "presets": [
+      "env"
+    ]
+  },
+  "dependencies": {
+    "@dagrejs/graphlib": "^2.1.4",
+    "dagre": "^0.8.2",
+    "element-ui": "^2.4.9",
+    "fabric": "^2.4.3",
+    "npm": "^6.4.1",
+    "nuxt": "^1.4.4",
+    "uuid": "^3.3.2",
+    "vue-affix": "^0.2.4",
+    "vue2vis": "0.0.15"
+  },
+  "devDependencies": {
+    "@vue/test-utils": "^1.0.0-beta.25",
+    "ava": "^0.25.0",
+    "babel-eslint": "^8.2.6",
+    "babel-polyfill": "^6.26.0",
+    "eslint": "^4.15.0",
+    "eslint-friendly-formatter": "^3.0.0",
+    "eslint-loader": "^1.7.1",
+    "eslint-plugin-vue": "^4.7.1",
+    "require-extension-hooks": "^0.3.3",
+    "require-extension-hooks-babel": "^0.1.1",
+    "require-extension-hooks-vue": "^1.1.0"
+  }
+}

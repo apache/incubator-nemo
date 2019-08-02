@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.examples.spark;
 
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 
 import java.util.ArrayList;
@@ -39,14 +39,15 @@ public final class JavaSparkPi {
 
   /**
    * Main method.
+   *
    * @param args arguments.
    * @throws Exception exceptions.
    */
   public static void main(final String[] args) throws Exception {
     SparkSession spark = SparkSession
-        .builder()
-        .appName("JavaSparkPi")
-        .getOrCreate();
+      .builder()
+      .appName("JavaSparkPi")
+      .getOrCreate();
 
     final JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
 

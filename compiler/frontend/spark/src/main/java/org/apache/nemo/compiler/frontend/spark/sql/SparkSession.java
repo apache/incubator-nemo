@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler.frontend.spark.sql;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.compiler.frontend.spark.core.SparkContext;
 import org.apache.nemo.conf.JobConf;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -115,7 +115,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    */
   public static <T> Dataset<T> initializeDataset(final SparkSession spark,
                                                  final LinkedHashMap<String, Object[]> commandList)
-      throws OperationNotSupportedException {
+    throws OperationNotSupportedException {
     Object result = spark;
 
     for (Map.Entry<String, Object[]> command : commandList.entrySet()) {
@@ -126,8 +126,8 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       final Class<?>[] argTypes = Stream.of(args).map(Object::getClass).toArray(Class[]::new);
 
       if (!className.contains("SparkSession")
-          && !className.contains("DataFrameReader")
-          && !className.contains("Dataset")) {
+        && !className.contains("DataFrameReader")
+        && !className.contains("Dataset")) {
         throw new OperationNotSupportedException(command + " is not yet supported.");
       }
 

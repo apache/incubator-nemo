@@ -25,6 +25,7 @@ import java.util.List;
 
 /**
  * class that contains {@link EncoderFactory}, {@link DecoderFactory} and {@link List} of {@link EncodeStreamChainer}.
+ *
  * @param <E> encoderFactory element type.
  * @param <D> decoderFactory element type.
  */
@@ -37,8 +38,8 @@ public final class Serializer<E, D> {
   /**
    * Constructor.
    *
-   * @param encoderFactory              {@link EncoderFactory}.
-   * @param decoderFactory              {@link DecoderFactory}.
+   * @param encoderFactory       {@link EncoderFactory}.
+   * @param decoderFactory       {@link DecoderFactory}.
    * @param encodeStreamChainers the list of {@link EncodeStreamChainer} to use for encoding.
    * @param decodeStreamChainers the list of {@link DecodeStreamChainer} to use for decoding.
    */

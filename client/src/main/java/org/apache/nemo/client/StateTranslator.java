@@ -31,5 +31,5 @@ public interface StateTranslator {
    * @param planState to translate.
    * @return the translated state.
    */
-  Enum translateState(final PlanState.State planState);
+  Enum translateState(PlanState.State planState);
 }

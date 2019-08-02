@@ -27,10 +27,17 @@ import java.util.Objects;
 public final class Watermark implements Serializable, Comparable<Watermark> {
 
   private final long timestamp;
+
+  /**
+   * @param timestamp the watermark timestamp
+   */
   public Watermark(final long timestamp) {
     this.timestamp = timestamp;
   }
 
+  /**
+   * @return the watermark timestamp
+   */
   public long getTimestamp() {
     return timestamp;
   }
@@ -49,7 +56,7 @@ public final class Watermark implements Serializable, Comparable<Watermark> {
 
   @Override
   public String toString() {
-    return String.valueOf(timestamp);
+    return String.valueOf("Watermark(" + timestamp + ")");
   }
 
   @Override

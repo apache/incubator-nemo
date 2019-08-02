@@ -27,6 +27,7 @@ public final class AdditionalOutputTagProperty extends EdgeExecutionProperty<Str
 
   /**
    * Constructor.
+   *
    * @param value tag id of additional input.
    */
   private AdditionalOutputTagProperty(final String value) {
@@ -35,10 +36,19 @@ public final class AdditionalOutputTagProperty extends EdgeExecutionProperty<Str
 
   /**
    * Static method exposing constructor.
+   *
    * @param value tag id of additional input.
    * @return the newly created execution property.
    */
   public static AdditionalOutputTagProperty of(final String value) {
     return new AdditionalOutputTagProperty(value);
   }
+
+  // TODO #348: Consider OutputTagProperty
+  private static String mainOutputTag = "main";
+
+  public static String getMainOutputTag() {
+    return mainOutputTag;
+  }
+
 }

@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.runtime.common.message.grpc;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
@@ -55,9 +55,10 @@ final class GrpcMessageClient {
 
   /**
    * Constructor.
+   *
    * @param nameResolver name resolver.
-   * @param idFactory identifier factory.
-   * @param receiverId id of the receiver.
+   * @param idFactory    identifier factory.
+   * @param receiverId   id of the receiver.
    */
   GrpcMessageClient(final NameResolver nameResolver,
                     final IdentifierFactory idFactory,
@@ -83,15 +84,16 @@ final class GrpcMessageClient {
 
   /**
    * Method for setting up a channel.
+   *
    * @param ipAddress ipAddress of the socket.
    * @throws Exception exception while setting up.
    */
   private void setupChannel(final InetSocketAddress ipAddress) throws Exception {
-      this.managedChannel = ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
-          .usePlaintext(true)
-          .build();
-      this.blockingStub = MessageServiceGrpc.newBlockingStub(managedChannel);
-      this.asyncStub = MessageServiceGrpc.newStub(managedChannel);
+    this.managedChannel = ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
+      .usePlaintext(true)
+      .build();
+    this.blockingStub = MessageServiceGrpc.newBlockingStub(managedChannel);
+    this.asyncStub = MessageServiceGrpc.newStub(managedChannel);
   }
 
   /**
@@ -101,12 +103,12 @@ final class GrpcMessageClient {
    */
   void send(final ControlMessage.Message message) {
     LOG.debug("[SEND] request msg.id={}, msg.listenerId={}, msg.type={}",
-        message.getId(), message.getListenerId(), message.getType());
+      message.getId(), message.getListenerId(), message.getType());
     try {
       blockingStub.send(message);
     } catch (final StatusRuntimeException e) {
       LOG.warn("RPC send call failed with msg.id={}, msg.listenerId={}, msg.type={}, e.cause={}, e.message={}",
-          message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
+        message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
     }
   }
 
@@ -118,28 +120,28 @@ final class GrpcMessageClient {
    */
   CompletableFuture<ControlMessage.Message> request(final ControlMessage.Message message) {
     LOG.debug("[REQUEST] request msg.id={}, msg.listenerId={}, msg.type={}",
-        message.getId(), message.getListenerId(), message.getType());
+      message.getId(), message.getListenerId(), message.getType());
 
     final CompletableFuture<ControlMessage.Message> completableFuture = new CompletableFuture<>();
     asyncStub.request(message, new StreamObserver<ControlMessage.Message>() {
       @Override
       public void onNext(final ControlMessage.Message responseMessage) {
         LOG.debug("[REQUEST] response msg.id={}, msg.listenerId={}, msg.type={}",
-            responseMessage.getId(), responseMessage.getListenerId(), responseMessage.getType());
+          responseMessage.getId(), responseMessage.getListenerId(), responseMessage.getType());
         completableFuture.complete(responseMessage);
       }
 
       @Override
       public void onError(final Throwable e) {
         LOG.warn("RPC request call failed with msg.id={}, msg.listenerId={}, msg.type={}, e.cause={}, e.message={}",
-            message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
+          message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
         completableFuture.completeExceptionally(e);
       }
 
       @Override
       public void onCompleted() {
         LOG.debug("[REQUEST] completed. msg.id={}, msg.listenerId={}, msg.type={}",
-            message.getId(), message.getListenerId(), message.getType());
+          message.getId(), message.getListenerId(), message.getType());
       }
     });
 
@@ -148,6 +150,7 @@ final class GrpcMessageClient {
 
   /**
    * Closes the channel.
+   *
    * @throws Exception exception while closing.
    */
   void close() throws Exception {

@@ -18,17 +18,18 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
-import org.apache.nemo.common.dag.DAG;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import net.jcip.annotations.ThreadSafe;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.inject.Inject;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -37,26 +38,23 @@ import java.util.stream.Collectors;
  * A function that is responsible for stage partitioning on IR DAG.
  * Each stage becomes maximal set of {@link IRVertex} such that
  * <ul>
- *   <li>branches and non-OneToOne edges are not allowed within a stage, and</li>
- *   <li>all vertices in a stage should have same {@link VertexExecutionProperty} map,
- *   except for the ignored properties.</li>
+ * <li>branches and non-OneToOne edges are not allowed within a stage, and</li>
+ * <li>all vertices in a stage should have same {@link VertexExecutionProperty} map,
+ * except for the ignored properties.</li>
  * </ul>
  */
 @DriverSide
 @ThreadSafe
-public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, Map<IRVertex, Integer>> {
+public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
-
-  @Inject
-  private StagePartitioner() {
-  }
 
   /**
    * By default, the stage partitioner merges two vertices into one stage if and only if the two vertices have
    * same set of {@link VertexExecutionProperty}.
    * Invoking this method will make the stage partitioner ignore a specific property during comparing
    * the execution property maps.
+   *
    * @param ignoredPropertyKey a property that will be ignored during the stage partitioning.
    */
   public void addIgnoredPropertyKey(final Class<? extends VertexExecutionProperty> ignoredPropertyKey) {
@@ -68,7 +66,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    * @return a map between IR vertex and the corresponding stage id
    */
   @Override
-  public Map<IRVertex, Integer> apply(final DAG<IRVertex, IREdge> irDAG) {
+  public Map<IRVertex, Integer> apply(final IRDAG irDAG) {
     final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // Base case: for root vertices
@@ -99,17 +97,17 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
 
   /**
    * @param edge an {@link IREdge}.
-   * @param dag IR DAG which contains {@code edge}
+   * @param dag  IR DAG which contains {@code edge}
    * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
-  private boolean testMergeability(final IREdge edge, final DAG<IRVertex, IREdge> dag) {
+  private boolean testMergeability(final IREdge edge, final IRDAG dag) {
     // If the destination vertex has multiple inEdges, return false
     if (dag.getIncomingEdgesOf(edge.getDst()).size() > 1) {
       return false;
     }
     // If the edge is not OneToOne, return false
     if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
-        != CommunicationPatternProperty.Value.OneToOne) {
+      != CommunicationPatternProperty.Value.OneToOne) {
       return false;
     }
     // Return true if and only if the execution properties of the two vertices are compatible
@@ -122,7 +120,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    */
   public Set<VertexExecutionProperty> getStageProperties(final IRVertex vertex) {
     return vertex.getExecutionProperties().stream()
-        .filter(p -> !ignoredPropertyKeys.contains(p.getClass()))
-        .collect(Collectors.toSet());
+      .filter(p -> !ignoredPropertyKeys.contains(p.getClass()))
+      .collect(Collectors.toSet());
   }
 }

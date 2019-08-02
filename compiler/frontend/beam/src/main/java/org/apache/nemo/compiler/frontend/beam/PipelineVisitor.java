@@ -20,9 +20,7 @@ package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.TransformHierarchy;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 
 /**
  * Uses the translator and the context to build a Nemo IR DAG.
@@ -33,7 +31,11 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
   private final PipelineTranslationContext context;
 
-  PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
+  /**
+   * @param pipeline        to visit.
+   * @param pipelineOptions pipeline options.
+   */
+  public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
     this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
 
@@ -56,7 +58,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     context.leaveCompositeTransform(node);
   }
 
-  DAG<IRVertex, IREdge> getConvertedPipeline() {
-    return context.getBuilder().build();
+  /**
+   * @return the converted pipeline.
+   */
+  public IRDAG getConvertedPipeline() {
+    return new IRDAG(context.getBuilder().build());
   }
 }

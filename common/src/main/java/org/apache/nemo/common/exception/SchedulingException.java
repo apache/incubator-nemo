@@ -26,6 +26,7 @@ package org.apache.nemo.common.exception;
 public final class SchedulingException extends RuntimeException {
   /**
    * SchedulingException.
+   *
    * @param exception exception
    */
   public SchedulingException(final Throwable exception) {

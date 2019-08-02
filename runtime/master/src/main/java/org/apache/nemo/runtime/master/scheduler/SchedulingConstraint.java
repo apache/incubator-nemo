@@ -31,5 +31,5 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 @FunctionalInterface
 public interface SchedulingConstraint {
-  boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
+  boolean testSchedulability(ExecutorRepresenter executor, Task task);
 }

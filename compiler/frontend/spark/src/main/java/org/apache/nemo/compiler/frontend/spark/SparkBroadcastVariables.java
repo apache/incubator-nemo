@@ -34,6 +34,9 @@ public final class SparkBroadcastVariables {
   private static final AtomicLong ID_GENERATOR = new AtomicLong(0);
   private static final Map<Serializable, Object> ID_TO_VARIABLE = new HashMap<>();
 
+  /**
+   * Private constructor.
+   */
   private SparkBroadcastVariables() {
   }
 

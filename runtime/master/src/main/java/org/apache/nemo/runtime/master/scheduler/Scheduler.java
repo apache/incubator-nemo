@@ -70,7 +70,7 @@ public interface Scheduler {
    * @param taskId        of the Task whose state must be updated.
    * @param newState      for the Task.
    * @param attemptIdx    the number of times this Task has executed.
-   *************** the below parameters are only valid for failures *****************
+   *                      ************** the below parameters are only valid for failures *****************
    * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    * @param failureCause  for which the Task failed in the case of a recoverable failure.
    */

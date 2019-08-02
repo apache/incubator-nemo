@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import org.apache.beam.sdk.transforms.Materializations;
+import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.beam.sdk.transforms.Materializations;
-import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 
@@ -34,24 +34,24 @@ import java.util.*;
 
 /**
  * This transforms emits materialized data for each window.
+ *
  * @param <I> input type
  * @param <O> materialized output type
  */
-public final class CreateViewTransform<I, O> implements
-  Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private OutputCollector<WindowedValue<O>> outputCollector;
+public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
-  // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
-  private boolean isEmitted = false;
+  private OutputCollector<WindowedValue<O>> outputCollector;
+
   private long currentOutputWatermark;
 
   /**
    * Constructor of CreateViewTransform.
+   *
    * @param viewFn the viewFn that materializes data.
    */
-  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
+  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn) {
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
@@ -75,7 +75,6 @@ public final class CreateViewTransform<I, O> implements
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-
     // If no data, just forwards the watermark
     if (windowListMap.size() == 0 && currentOutputWatermark < inputWatermark.getTimestamp()) {
       currentOutputWatermark = inputWatermark.getTimestamp();
@@ -90,11 +89,10 @@ public final class CreateViewTransform<I, O> implements
       final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
-        final O view = viewFn.apply(new MultiView<>(entry.getValue()));
+        final O output = viewFn.apply(new MultiView<>(entry.getValue()));
         outputCollector.emit(WindowedValue.of(
-          view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
+          output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();
-        isEmitted = true;
 
         minOutputTimestampOfEmittedWindows =
           Math.min(minOutputTimestampOfEmittedWindows, entry.getKey().maxTimestamp().getMillis());
@@ -112,34 +110,29 @@ public final class CreateViewTransform<I, O> implements
   @Override
   public void close() {
     onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
-
-    if (!isEmitted) {
-      // TODO #259: This is an ad-hoc code to resolve the view that has no data
-      // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
-      // We should use watermark value to track whether the materialized data in a view is available or not.
-      final O view = viewFn.apply(new MultiView<>(Collections.emptyList()));
-      outputCollector.emit(WindowedValue.valueInGlobalWindow(view));
-    }
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + viewFn);
+    sb.append("CreateViewTransform  " + viewFn.getClass().getName());
     return sb.toString();
   }
 
   /**
    * Represents {@code PrimitiveViewT} supplied to the {@link ViewFn}.
+   *
    * @param <T> primitive view type
    */
-  public final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
+  public static final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
     private final Iterable<T> iterable;
 
     /**
      * Constructor.
+     *
+     * @param iterable placeholder for side input data.
      */
-    MultiView(final Iterable<T> iterable) {
+    public MultiView(final Iterable<T> iterable) {
       // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.
       this.iterable = iterable;
     }

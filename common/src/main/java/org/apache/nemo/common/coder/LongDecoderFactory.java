@@ -38,6 +38,8 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
 
   /**
    * Static initializer of the coder.
+   *
+   * @return the initializer.
    */
   public static LongDecoderFactory of() {
     return LONG_DECODER_FACTORY;
@@ -46,6 +48,11 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
   @Override
   public Decoder<Long> create(final InputStream inputStream) {
     return new LongDecoder(inputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "LongDecoderFactory{}";
   }
 
   /**
@@ -57,7 +64,7 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
     /**
      * Constructor.
      *
-     * @param inputStream  the input stream to decode.
+     * @param inputStream the input stream to decode.
      */
     private LongDecoder(final InputStream inputStream) {
       // If the inputStream is closed well in upper level, it is okay to not close this stream

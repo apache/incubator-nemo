@@ -18,14 +18,13 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
@@ -37,6 +36,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private long encodedReadBytes = -1;
   private long writtenBytes = -1;
   private long boundedSourceReadTime = -1;
+  private long taskDeserializationTime = -1;
   private int scheduleAttempt = -1;
   private String containerId = "";
 
@@ -68,6 +68,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   private void setBoundedSourceReadTime(final long boundedSourceReadTime) {
     this.boundedSourceReadTime = boundedSourceReadTime;
+  }
+
+  public final long getTaskDeserializationTime() {
+    return taskDeserializationTime;
+  }
+
+  private void setTaskDeserializationTime(final long taskDeserializationTime) {
+    this.taskDeserializationTime = taskDeserializationTime;
   }
 
   public final long getWrittenBytes() {
@@ -129,9 +137,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
       case "writtenBytes":
         setWrittenBytes(SerializationUtils.deserialize(metricValue));
         break;
+      case "taskDeserializationTime":
+        setTaskDeserializationTime(SerializationUtils.deserialize(metricValue));
+        break;
       case "stateTransitionEvent":
         final StateTransitionEvent<TaskState.State> newStateTransitionEvent =
-            SerializationUtils.deserialize(metricValue);
+          SerializationUtils.deserialize(metricValue);
         addEvent(newStateTransitionEvent);
         break;
       case "scheduleAttempt":

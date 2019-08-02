@@ -21,8 +21,8 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +65,7 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   /**
    * This is non-blocking operation.
+   *
    * @return current data
    * @throws NoSuchElementException if the current data is not available
    */

@@ -25,6 +25,7 @@ import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
+ *
  * @param <O> output type.
  */
 public interface Readable<O> extends Serializable {
@@ -38,14 +39,17 @@ public interface Readable<O> extends Serializable {
    * Method to read current data from the source.
    * The caller should check whether the Readable is finished or not by using isFinished() method
    * before calling this method.
-   *
+   * <p>
    * It can throw NoSuchElementException although it is not finished in Unbounded source.
+   *
    * @return a data read by the readable.
+   * @throws NoSuchElementException when no element exists
    */
   O readCurrent() throws NoSuchElementException;
 
   /**
    * Read watermark.
+   *
    * @return watermark
    */
   long readWatermark();
@@ -67,6 +71,8 @@ public interface Readable<O> extends Serializable {
 
   /**
    * Close.
+   *
+   * @throws IOException if file-based reader throws any.
    */
   void close() throws IOException;
 }

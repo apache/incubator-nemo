@@ -33,7 +33,7 @@ import java.util.List;
 
 /**
  * Java SparkSQL example: User-defined Untyped Aggregation.
- *
+ * <p>
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaUserDefinedUntypedAggregation {
@@ -119,7 +119,7 @@ public final class JavaUserDefinedUntypedAggregation {
      * Updates the given aggregation buffer `buffer` with new input data from `input`.
      *
      * @param buffer buffer to update.
-     * @param input input to update with.
+     * @param input  input to update with.
      */
     public void update(final MutableAggregationBuffer buffer, final Row input) {
       if (!input.isNullAt(0)) {
@@ -156,13 +156,14 @@ public final class JavaUserDefinedUntypedAggregation {
 
   /**
    * Main function.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
     SparkSession spark = SparkSession
-        .builder()
-        .appName("Java Spark SQL user-defined DataFrames aggregation example")
-        .getOrCreate();
+      .builder()
+      .appName("Java Spark SQL user-defined DataFrames aggregation example")
+      .getOrCreate();
 
     // Register the function to access it
     spark.udf().register("myAverage", new MyAverage());

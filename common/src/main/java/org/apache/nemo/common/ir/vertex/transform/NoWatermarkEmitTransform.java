@@ -23,11 +23,15 @@ import org.apache.nemo.common.punctuation.Watermark;
 /**
  * This transform does not emit watermarks.
  * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ *
  * @param <I> input type
  * @param <O> output type
  */
 public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
 
+  /**
+   * @param watermark watermark
+   */
   @Override
   public final void onWatermark(final Watermark watermark) {
     // do nothing

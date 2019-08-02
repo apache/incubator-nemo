@@ -29,21 +29,24 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
 import static org.junit.Assert.assertFalse;
 
 public final class BlockTransferThrottlerTest {
   private static final String THREAD_NAME = BlockTransferThrottler.class.getSimpleName() + "-TestThread";
   private static final String RUNTIME_EDGE_0 = "RuntimeEdge0";
   private static final int WAIT_TIME = 1000;
+
   /**
    * Creates {@link BlockTransferThrottler} for testing.
+   *
    * @param maxNum value for {@link JobConf.MaxNumDownloadsForARuntimeEdge} parameter.
    * @return {@link BlockTransferThrottler} object created.
    */
   private final BlockTransferThrottler getQueue(final int maxNum) {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.MaxNumDownloadsForARuntimeEdge.class, String.valueOf(maxNum))
-        .build();
+      .bindNamedParameter(JobConf.MaxNumDownloadsForARuntimeEdge.class, String.valueOf(maxNum))
+      .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     try {
       return injector.getInstance(BlockTransferThrottler.class);
@@ -55,7 +58,7 @@ public final class BlockTransferThrottlerTest {
   @Test(timeout = WAIT_TIME * 2)
   public void test() throws InterruptedException, ExecutionException {
     final ExecutorService executorService = Executors.newSingleThreadExecutor(
-        runnable -> new Thread(runnable, THREAD_NAME));
+      runnable -> new Thread(runnable, THREAD_NAME));
     final BlockTransferThrottler queue = getQueue(3);
     final Future executorServiceFuture = executorService.submit(() -> {
       try {

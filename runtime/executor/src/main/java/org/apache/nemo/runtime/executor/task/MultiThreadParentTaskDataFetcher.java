@@ -31,14 +31,17 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Task thread -> fetchDataElement() -> (((QUEUE))) <- List of iterators <- queueInsertionThreads
- *
+ * <p>
  * Unlike {@link ParentTaskDataFetcher}, where the task thread directly consumes (and blocks on) iterators one by one,
  * this class spawns threads that each forwards elements from an iterator to a global queue.
- *
+ * <p>
  * This class should be used when dealing with unbounded data streams, as we do not want to be blocked on a
  * single unbounded iterator forever.
  */
@@ -62,6 +65,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   // A watermark manager
   private InputWatermarkManager inputWatermarkManager;
+
 
   MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
                                    final InputReader readerForParentTask,
@@ -113,8 +117,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
-
-
             if (element instanceof WatermarkWithIndex) {
               // watermark element
               // the input watermark manager is accessed by multiple threads
@@ -177,7 +179,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
    * It receives the watermark from InputWatermarkManager.
    */
   private final class WatermarkCollector implements OutputCollector {
-
     @Override
     public void emit(final Object output) {
       throw new IllegalStateException("Should not be called");

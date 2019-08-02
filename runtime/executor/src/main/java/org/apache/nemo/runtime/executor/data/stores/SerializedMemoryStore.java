@@ -35,6 +35,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
 
   /**
    * Constructor.
+   *
    * @param serializerManager the serializer manager.
    */
   @Inject
@@ -61,7 +62,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
   public void writeBlock(final Block block) throws BlockWriteException {
     if (!(block instanceof SerializedMemoryBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + "only accept " + SerializedMemoryBlock.class.getName()));
+        this.toString() + "only accept " + SerializedMemoryBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     } else {

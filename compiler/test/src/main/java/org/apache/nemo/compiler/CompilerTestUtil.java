@@ -18,12 +18,10 @@
  */
 package org.apache.nemo.compiler;
 
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -47,6 +45,7 @@ public final class CompilerTestUtil {
   /**
    * Find the root directory of Nemo project, ascending directory hierarchy one by one starting from {@code curDir}.
    * This method distinguishes the root with "LICENSE" file.
+   *
    * @param curDir the current directory
    * @return the absolute path of the root directory
    */
@@ -68,7 +67,7 @@ public final class CompilerTestUtil {
     return folder.getAbsolutePath();
   }
 
-  private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
+  private static IRDAG compileDAG(final String[] args) throws Exception {
     final String userMainClassName;
     final String[] userMainMethodArgs;
 
@@ -79,68 +78,69 @@ public final class CompilerTestUtil {
       userMainMethodArgs = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
     } catch (final Exception e) {
       throw new RuntimeException("An exception occurred while processing configuration for invoking user main. "
-          + "Note: Using compileDAG for multiple times will fail, as compileDAG method enables static method mocking "
-          + "on JobLauncher and because of this Tang may misbehave afterwards.", e);
+        + "Note: Using compileDAG for multiple times will fail, as compileDAG method enables static method mocking "
+        + "on JobLauncher and because of this Tang may misbehave afterwards.", e);
     }
     final Class userMainClass = Class.forName(userMainClassName);
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
 
-    final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    final ArgumentCaptor<IRDAG> captor = ArgumentCaptor.forClass(IRDAG.class);
+    final ArgumentCaptor<String> stringArg = ArgumentCaptor.forClass(String.class);
     PowerMockito.mockStatic(JobLauncher.class);
-    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture());
+    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
     return captor.getValue();
   }
 
-  public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_wordcount";
-    final String output = ROOT_DIR + "/examples/resources/test_output";
+  public static IRDAG compileWordCountDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_wordcount";
+    final String output = ROOT_DIR + "/examples/resources/inputs/test_output";
     final String main = "org.apache.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
-        .addJobId("WordCount")
-        .addUserMain(main)
-        .addUserArgs(input, output);
+      .addJobId("WordCount")
+      .addUserMain(main)
+      .addUserArgs(input, output);
     return compileDAG(mrArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_als";
+  public static IRDAG compileALSDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquare";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
-        .addJobId("AlternatingLeastSquare")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numIteration);
+      .addJobId("AlternatingLeastSquare")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_als";
+  public static IRDAG compileALSInefficientDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquareInefficient";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
-        .addJobId("AlternatingLeastSquareInefficient")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numIteration);
+      .addJobId("AlternatingLeastSquareInefficient")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_mlr";
+  public static IRDAG compileMLRDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";
     final String main = "org.apache.nemo.examples.beam.MultinomialLogisticRegression";
 
     final ArgBuilder mlrArgBuilder = new ArgBuilder()
-        .addJobId("MultinomialLogisticRegression")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numClasses, numIteration);
+      .addJobId("MultinomialLogisticRegression")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numClasses, numIteration);
     return compileDAG(mlrArgBuilder.build());
   }
 }

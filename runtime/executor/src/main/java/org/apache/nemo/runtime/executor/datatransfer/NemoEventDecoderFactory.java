@@ -44,6 +44,13 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
     return new NemoEventDecoder(valueDecoderFactory.create(inputStream), inputStream);
   }
 
+  @Override
+  public String toString() {
+    return "NemoEventDecoderFactory{"
+      + "valueDecoderFactory=" + valueDecoderFactory
+      + '}';
+  }
+
   /**
    * This class decodes receive data into two types.
    * - normal data

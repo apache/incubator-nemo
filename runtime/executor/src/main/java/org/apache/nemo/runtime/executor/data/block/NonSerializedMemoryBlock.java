@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data.block;
 
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -78,7 +78,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     } else {
       try {
         final NonSerializedPartition<K> partition =
-            nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
+          nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
         partition.write(element);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -118,7 +118,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     if (!committed) {
       try {
         final Iterable<NonSerializedPartition<K>> convertedPartitions =
-            DataUtil.convertToNonSerPartitions(serializer, partitions);
+          DataUtil.convertToNonSerPartitions(serializer, partitions);
         writePartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);

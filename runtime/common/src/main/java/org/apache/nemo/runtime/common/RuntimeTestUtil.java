@@ -20,7 +20,8 @@ package org.apache.nemo.runtime.common;
 
 import org.apache.nemo.common.Pair;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -37,12 +38,13 @@ public final class RuntimeTestUtil {
 
   /**
    * Gets a list of integer pair elements in range.
+   *
    * @param start value of the range (inclusive).
    * @param end   value of the range (exclusive).
    * @return the list of elements.
    */
   public static List getRangedNumList(final int start,
-                                               final int end) {
+                                      final int end) {
     final List numList = new ArrayList<>(end - start);
     IntStream.range(start, end).forEach(number -> numList.add(Pair.of(number, number)));
     return numList;

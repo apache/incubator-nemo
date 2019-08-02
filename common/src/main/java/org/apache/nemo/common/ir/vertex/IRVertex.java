@@ -20,11 +20,11 @@ package org.apache.nemo.common.ir.vertex;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.Cloneable;
+import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.Cloneable;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -35,7 +35,6 @@ import java.util.Optional;
  */
 public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
-  private boolean stagePartitioned;
 
   /**
    * Constructor of IRVertex.
@@ -43,7 +42,6 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   public IRVertex() {
     super(IdManager.newVertexId());
     this.executionProperties = ExecutionPropertyMap.of(this);
-    this.stagePartitioned = false;
   }
 
   /**
@@ -52,14 +50,14 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param that the source object for copying
    */
   public IRVertex(final IRVertex that) {
-    super(IdManager.newVertexId());
+    super(IdManager.getVertexId(that));
     this.executionProperties = ExecutionPropertyMap.of(this);
-    that.getExecutionProperties().forEachProperties(this::setProperty);
-    this.stagePartitioned = that.stagePartitioned;
+    that.copyExecutionPropertiesTo(this);
   }
 
   /**
    * Static function to copy executionProperties from a vertex to the other.
+   *
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
@@ -88,14 +86,19 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     return this;
   }
 
+  public final Boolean isUtilityVertex() {
+    return this.getClass().getPackage().getName().startsWith("org.apache.nemo.common.ir.vertex.utility.");
+  }
+
   /**
    * Get the executionProperty of the IRVertex.
-   * @param <T> Type of the return value.
+   *
+   * @param <T>                  Type of the return value.
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
   public final <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
@@ -104,13 +107,6 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    */
   public final ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
-  }
-
-  public final void setStagePartitioned() {
-    stagePartitioned = true;
-  }
-  public final boolean getStagePartitioned() {
-    return stagePartitioned;
   }
 
   /**

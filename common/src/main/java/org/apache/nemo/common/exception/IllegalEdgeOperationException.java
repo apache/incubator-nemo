@@ -27,9 +27,19 @@ package org.apache.nemo.common.exception;
 public final class IllegalEdgeOperationException extends RuntimeException {
   /**
    * IllegalEdgeOperationException.
+   *
    * @param cause cause
    */
   public IllegalEdgeOperationException(final Throwable cause) {
     super(cause);
+  }
+
+  /**
+   * IllegalEdgeOperationException.
+   *
+   * @param message message.
+   */
+  public IllegalEdgeOperationException(final String message) {
+    super(message);
   }
 }

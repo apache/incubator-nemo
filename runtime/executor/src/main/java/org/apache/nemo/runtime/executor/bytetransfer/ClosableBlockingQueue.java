@@ -56,7 +56,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    *
    * @param element the element to add
    * @throws IllegalStateException if the input end of this queue has been closed
-   * @throws NullPointerException if {@code element} is {@code null}
+   * @throws NullPointerException  if {@code element} is {@code null}
    */
   public synchronized void put(final T element) {
     if (element == null) {
@@ -80,6 +80,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
   /**
    * Mark the input end of this queue as closed.
+   *
    * @param throwableToSet a throwable to set as the cause
    */
   public synchronized void closeExceptionally(final Throwable throwableToSet) {

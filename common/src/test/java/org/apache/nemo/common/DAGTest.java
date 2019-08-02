@@ -19,8 +19,8 @@
 package org.apache.nemo.common;
 
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
 import org.junit.Before;
 import org.junit.Test;
@@ -144,6 +144,7 @@ public final class DAGTest {
 
   final class IntegerVertex extends Vertex {
     private final int value;
+
     public IntegerVertex(final int value) {
       super(String.valueOf(value));
       this.value = value;
@@ -158,7 +159,7 @@ public final class DAGTest {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()){
+      if (o == null || getClass() != o.getClass()) {
         return false;
       }
       final IntegerVertex that = (IntegerVertex) o;

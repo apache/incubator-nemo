@@ -18,28 +18,30 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.coder.*;
+import org.apache.nemo.common.coder.IntDecoderFactory;
+import org.apache.nemo.common.coder.IntEncoderFactory;
+import org.apache.nemo.common.coder.PairDecoderFactory;
+import org.apache.nemo.common.coder.PairEncoderFactory;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.HashRange;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
-import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.nemo.runtime.executor.data.stores.*;
+import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
-import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -55,8 +57,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -77,10 +81,10 @@ import static org.mockito.Mockito.when;
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Serializer SERIALIZER = new Serializer(
-      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
-      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of()),
-      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)),
-      Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
+    PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
+    PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of()),
+    Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)),
+    Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private Injector baseInjector;
@@ -111,12 +115,14 @@ public final class BlockStoreTest {
 
   /**
    * Generates the ids and the data which will be used for the block store tests.
+   *
+   * @throws Exception exception on the way.
    */
   @Before
   public void setUp() throws Exception {
     baseInjector = LocalMessageDispatcher.getInjector();
     final Injector injector = LocalMessageEnvironment
-        .forkInjector(baseInjector, MessageEnvironment.MASTER_COMMUNICATION_ID);
+      .forkInjector(baseInjector, MessageEnvironment.MASTER_COMMUNICATION_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
     when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 
@@ -144,7 +150,7 @@ public final class BlockStoreTest {
       IntStream.range(0, NUM_READ_VERTICES).forEach(readTaskIdx -> {
         final int partitionsCount = writeTaskIdx * NUM_READ_VERTICES + readTaskIdx;
         partitionsForBlock.add(new NonSerializedPartition(
-            readTaskIdx, getRangedNumList(partitionsCount * DATA_SIZE, (partitionsCount + 1) * DATA_SIZE), -1, -1));
+          readTaskIdx, getRangedNumList(partitionsCount * DATA_SIZE, (partitionsCount + 1) * DATA_SIZE), -1, -1));
       });
     });
 
@@ -179,20 +185,19 @@ public final class BlockStoreTest {
       final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
-          hashedBlock.add(new NonSerializedPartition(hashValue, getFixedKeyRangedNumList(
-              hashValue,
-              writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
-              writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE), -1, -1)));
+        hashedBlock.add(new NonSerializedPartition(hashValue, getFixedKeyRangedNumList(
+          hashValue,
+          writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
+          writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE), -1, -1)));
       hashedBlockPartitionList.add(hashedBlock);
     });
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd, false));
+    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
       readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx,
-          smallDataRangeEnd + readTaskIdx + 1,
-          false));
+        smallDataRangeEnd + readTaskIdx + 1));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
@@ -217,6 +222,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link MemoryStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testMemoryStore() throws Exception {
@@ -230,6 +237,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link SerializedMemoryStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testSerMemoryStore() throws Exception {
@@ -243,6 +252,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link LocalFileStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testLocalFileStore() throws Exception {
@@ -262,14 +273,16 @@ public final class BlockStoreTest {
    * Test {@link GlusterFileStore}.
    * Actually, we cannot create a virtual GFS volume in here.
    * Instead, this test mimics the GFS circumstances by doing the read and write on separate file stores.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testGlusterFileStore() throws Exception {
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
     final RemoteFileStore writerSideRemoteFileStore =
-        createGlusterFileStore("writer");
+      createGlusterFileStore("writer");
     final RemoteFileStore readerSideRemoteFileStore =
-        createGlusterFileStore("reader");
+      createGlusterFileStore("reader");
 
     shuffle(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
@@ -278,7 +291,7 @@ public final class BlockStoreTest {
   }
 
   private GlusterFileStore createGlusterFileStore(final String executorId)
-      throws InjectionException {
+    throws InjectionException {
     final Injector injector = LocalMessageEnvironment.forkInjector(baseInjector, executorId);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
@@ -306,28 +319,28 @@ public final class BlockStoreTest {
 
     // Write concurrently
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx ->
-        writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              final String blockId = blockIdList.get(writeTaskIdx);
-              final Block block = writerSideStore.createBlock(blockId);
-              for (final NonSerializedPartition<Integer> partition : partitionsPerBlock.get(writeTaskIdx)) {
-                final Iterable data = partition.getData();
-                data.forEach(element -> block.write(partition.getKey(), element));
-              }
-              block.commit();
-              writerSideStore.writeBlock(block);
-              blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
-                  "Writer side of the shuffle edge");
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
+      writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            final String blockId = blockIdList.get(writeTaskIdx);
+            final Block block = writerSideStore.createBlock(blockId);
+            for (final NonSerializedPartition<Integer> partition : partitionsPerBlock.get(writeTaskIdx)) {
+              final Iterable data = partition.getData();
+              data.forEach(element -> block.write(partition.getKey(), element));
             }
+            block.commit();
+            writerSideStore.writeBlock(block);
+            blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
+            blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
+              "Writer side of the shuffle edge");
+            return true;
+          } catch (final Exception e) {
+            e.printStackTrace();
+            return false;
           }
-        })));
+        }
+      })));
 
     // Wait each writer to success
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writer -> {
@@ -341,22 +354,22 @@ public final class BlockStoreTest {
 
     // Read concurrently and check whether the result is equal to the input
     IntStream.range(0, NUM_READ_VERTICES).forEach(readTaskIdx ->
-        readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
-                readResultCheck(blockIdList.get(writeTaskIdx),
-                    HashRange.of(readTaskIdx, readTaskIdx + 1, false),
-                    readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
-              }
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
+      readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
+              readResultCheck(blockIdList.get(writeTaskIdx),
+                HashRange.of(readTaskIdx, readTaskIdx + 1),
+                readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
             }
+            return true;
+          } catch (final Exception e) {
+            e.printStackTrace();
+            return false;
           }
-        })));
+        }
+      })));
 
     // Wait each reader to success
     IntStream.range(0, NUM_READ_VERTICES).forEach(reader -> {
@@ -381,9 +394,9 @@ public final class BlockStoreTest {
     readExecutor.shutdown();
 
     System.out.println(
-        "Shuffle - write time in millis: " + (writeEndNano - startNano) / 1000000 +
-            ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            writerSideStore.getClass().toString());
+      "Shuffle - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+        ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
+        writerSideStore.getClass().toString());
   }
 
   /**
@@ -415,7 +428,7 @@ public final class BlockStoreTest {
           writerSideStore.writeBlock(block);
           blockManagerMaster.onProducerTaskScheduled(getTaskId(0), Collections.singleton(block.getId()));
           blockManagerMaster.onBlockStateChanged(
-              concBlockId, BlockState.State.AVAILABLE, "Writer side of the concurrent read edge");
+            concBlockId, BlockState.State.AVAILABLE, "Writer side of the concurrent read edge");
           return true;
         } catch (final Exception e) {
           e.printStackTrace();
@@ -434,18 +447,18 @@ public final class BlockStoreTest {
 
     // Read the single block concurrently and check whether the result is equal to the input
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(readTaskIdx ->
-        readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              readResultCheck(concBlockId, HashRange.all(), readerSideStore, concBlockPartition.getData());
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
-            }
+      readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            readResultCheck(concBlockId, HashRange.all(), readerSideStore, concBlockPartition.getData());
+            return true;
+          } catch (final Exception e) {
+            e.printStackTrace();
+            return false;
           }
-        })));
+        }
+      })));
 
     // Wait each reader to success
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(reader -> {
@@ -467,9 +480,9 @@ public final class BlockStoreTest {
     readExecutor.shutdown();
 
     System.out.println(
-        "Concurrent read - write time in millis: " + (writeEndNano - startNano) / 1000000 +
-            ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            writerSideStore.getClass().toString());
+      "Concurrent read - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+        ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
+        writerSideStore.getClass().toString());
   }
 
   /**
@@ -477,7 +490,7 @@ public final class BlockStoreTest {
    * Assumes following circumstances:
    * Task 1 (write (hash 0~3))->         (read (hash 0~1))-> Task 3
    * Task 2 (write (hash 0~3))-> shuffle (read (hash 2))-> Task 4
-   *                                     (read (hash 3))-> Task 5
+   * (read (hash 3))-> Task 5
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
@@ -491,28 +504,28 @@ public final class BlockStoreTest {
 
     // Write concurrently
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx ->
-        writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              final String blockId = hashedBlockIdList.get(writeTaskIdx);
-              final Block block = writerSideStore.createBlock(blockId);
-              for (final NonSerializedPartition<Integer> partition : hashedBlockPartitionList.get(writeTaskIdx)) {
-                final Iterable data = partition.getData();
-                data.forEach(element -> block.write(partition.getKey(), element));
-              }
-              block.commit();
-              writerSideStore.writeBlock(block);
-              blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
-                  "Writer side of the shuffle in hash range edge");
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
+      writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            final String blockId = hashedBlockIdList.get(writeTaskIdx);
+            final Block block = writerSideStore.createBlock(blockId);
+            for (final NonSerializedPartition<Integer> partition : hashedBlockPartitionList.get(writeTaskIdx)) {
+              final Iterable data = partition.getData();
+              data.forEach(element -> block.write(partition.getKey(), element));
             }
+            block.commit();
+            writerSideStore.writeBlock(block);
+            blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
+            blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
+              "Writer side of the shuffle in hash range edge");
+            return true;
+          } catch (final Exception e) {
+            e.printStackTrace();
+            return false;
           }
-        })));
+        }
+      })));
 
     // Wait each writer to success
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writer -> {
@@ -526,22 +539,22 @@ public final class BlockStoreTest {
 
     // Read concurrently and check whether the result is equal to the expected data
     IntStream.range(0, NUM_READ_HASH_TASKS).forEach(readTaskIdx ->
-        readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_HASH_TASKS; writeTaskIdx++) {
-                final KeyRange<Integer> hashRangeToRetrieve = readKeyRangeList.get(readTaskIdx);
-                readResultCheck(hashedBlockIdList.get(writeTaskIdx), hashRangeToRetrieve,
-                    readerSideStore, expectedDataInRange.get(readTaskIdx).get(writeTaskIdx));
-              }
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
+      readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_HASH_TASKS; writeTaskIdx++) {
+              final KeyRange<Integer> hashRangeToRetrieve = readKeyRangeList.get(readTaskIdx);
+              readResultCheck(hashedBlockIdList.get(writeTaskIdx), hashRangeToRetrieve,
+                readerSideStore, expectedDataInRange.get(readTaskIdx).get(writeTaskIdx));
             }
+            return true;
+          } catch (final Exception e) {
+            e.printStackTrace();
+            return false;
           }
-        })));
+        }
+      })));
 
     // Wait each reader to success
     IntStream.range(0, NUM_READ_HASH_TASKS).forEach(reader -> {
@@ -559,7 +572,7 @@ public final class BlockStoreTest {
       final boolean exist = writerSideStore.deleteBlock(hashedBlockIdList.get(writer));
       if (!exist) {
         throw new RuntimeException("The result of deleteBlock(" +
-            hashedBlockIdList.get(writer) + ") is false");
+          hashedBlockIdList.get(writer) + ") is false");
       }
     });
 
@@ -567,9 +580,9 @@ public final class BlockStoreTest {
     readExecutor.shutdown();
 
     System.out.println(
-        "Shuffle in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
-            ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            writerSideStore.getClass().toString());
+      "Shuffle in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+        ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
+        writerSideStore.getClass().toString());
   }
 
   private List getFixedKeyRangedNumList(final int key,
@@ -593,7 +606,7 @@ public final class BlockStoreTest {
     }
     final Iterable<NonSerializedPartition> nonSerializedResult = optionalBlock.get().readPartitions(hashRange);
     final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(
-        SERIALIZER, optionalBlock.get().readSerializedPartitions(hashRange));
+      SERIALIZER, optionalBlock.get().readSerializedPartitions(hashRange));
 
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(nonSerializedResult));
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(serToNonSerialized));

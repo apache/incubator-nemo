@@ -19,15 +19,16 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.*;
+import org.apache.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
-import org.apache.nemo.runtime.master.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
-import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,7 +70,7 @@ public final class MetricFlushTest {
     final MessageEnvironment workerMessageEnvironment = workerInjector.getInstance(MessageEnvironment.class);
 
     final MessageSender masterToWorkerSender = masterMessageEnvironment
-        .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+      .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
 
     final Set<ExecutorRepresenter> executorRepresenterSet = new HashSet<>();
 
@@ -90,7 +91,7 @@ public final class MetricFlushTest {
     final MetricManagerWorker metricManagerWorker = workerInjector.getInstance(MetricManagerWorker.class);
 
     masterMessageEnvironment.setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
-        new MessageListener<Object>() {
+      new MessageListener<Object>() {
         @Override
         public void onMessage(Object message) {
           latch.countDown();
@@ -99,19 +100,19 @@ public final class MetricFlushTest {
         @Override
         public void onMessageWithContext(Object message, MessageContext messageContext) {
         }
-    });
+      });
 
     workerMessageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID,
-        new MessageListener<Object>() {
-          @Override
-          public void onMessage(Object message) {
-            metricManagerWorker.flush();
-          }
+      new MessageListener<Object>() {
+        @Override
+        public void onMessage(Object message) {
+          metricManagerWorker.flush();
+        }
 
-          @Override
-          public void onMessageWithContext(Object message, MessageContext messageContext) {
-          }
-        });
+        @Override
+        public void onMessageWithContext(Object message, MessageContext messageContext) {
+        }
+      });
 
     metricManagerMaster.sendMetricFlushRequest();
 

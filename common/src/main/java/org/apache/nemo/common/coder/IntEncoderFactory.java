@@ -18,7 +18,9 @@
  */
 package org.apache.nemo.common.coder;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * A {@link EncoderFactory} which is used for an integer.
@@ -36,6 +38,8 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
 
   /**
    * Static initializer of the coder.
+   *
+   * @return the initializer.
    */
   public static IntEncoderFactory of() {
     return INT_ENCODER_FACTORY;
@@ -44,6 +48,11 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
   @Override
   public Encoder<Integer> create(final OutputStream outputStream) {
     return new IntEncoder(outputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "IntEncoderFactory{}";
   }
 
   /**

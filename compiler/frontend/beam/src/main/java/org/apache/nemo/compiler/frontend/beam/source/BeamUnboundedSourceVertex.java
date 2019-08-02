@@ -20,11 +20,13 @@ package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +38,7 @@ import java.util.NoSuchElementException;
 
 /**
  * SourceVertex implementation for UnboundedSource.
+ *
  * @param <O> output type.
  * @param <M> checkpoint mark type.
  */
@@ -44,22 +47,29 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   private static final Logger LOG = LoggerFactory.getLogger(BeamUnboundedSourceVertex.class.getName());
   private UnboundedSource<O, M> source;
-  private final String sourceDescription;
+  private final DisplayData displayData;
 
   /**
    * The default constructor for beam unbounded source.
-   * @param source unbounded source.
+   *
+   * @param source      unbounded source.
+   * @param displayData static display data associated with a pipeline component.
    */
-  public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source) {
-    super();
+  public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
+                                   final DisplayData displayData) {
     this.source = source;
-    this.sourceDescription = source.toString();
+    this.displayData = displayData;
   }
 
+  /**
+   * Copy constructor.
+   *
+   * @param that the original vertex.
+   */
   private BeamUnboundedSourceVertex(final BeamUnboundedSourceVertex<O, M> that) {
     super(that);
     this.source = that.source;
-    this.sourceDescription = that.source.toString();
+    this.displayData = that.displayData;
   }
 
   @Override
@@ -74,10 +84,22 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   @Override
   public List<Readable<Object>> getReadables(final int desiredNumOfSplits) throws Exception {
+
     final List<Readable<Object>> readables = new ArrayList<>();
-    source.split(desiredNumOfSplits, null)
-      .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
-    return readables;
+    if (source != null) {
+      source.split(desiredNumOfSplits, null)
+        .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
+      return readables;
+    } else {
+      // TODO #333: Remove SourceVertex#clearInternalStates
+      final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
+      return emptySourceVertex.getReadables(desiredNumOfSplits);
+    }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return 0L;
   }
 
   @Override
@@ -88,23 +110,29 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
-    node.put("source", sourceDescription);
+    node.put("source", displayData.toString());
     return node;
   }
 
   /**
    * UnboundedSourceReadable class.
+   *
    * @param <O> output type.
    * @param <M> checkpoint mark type.
    */
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-      implements Readable<Object> {
+    implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
     private boolean isCurrentAvailable = false;
     private boolean isFinished = false;
 
+    /**
+     * Constructor.
+     *
+     * @param unboundedSource unbounded source.
+     */
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
     }

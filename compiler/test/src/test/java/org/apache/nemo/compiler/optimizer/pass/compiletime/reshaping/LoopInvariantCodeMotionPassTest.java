@@ -19,8 +19,8 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -48,9 +48,9 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LoopInvariantCodeMotionPassTest {
-  private DAG<IRVertex, IREdge> originalALSDAG;
-  private DAG<IRVertex, IREdge> groupedDAG;
-  private DAG<IRVertex, IREdge> dagToBeRefactored;
+  private IRDAG originalALSDAG;
+  private IRDAG groupedDAG;
+  private IRDAG dagToBeRefactored;
 
   @Before
   public void setUp() throws Exception {
@@ -58,12 +58,12 @@ public class LoopInvariantCodeMotionPassTest {
     groupedDAG = new LoopExtractionPass().apply(originalALSDAG);
 
     final Optional<LoopVertex> alsLoopOpt = groupedDAG.getTopologicalSort().stream()
-        .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
+      .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
     assertTrue(alsLoopOpt.isPresent());
     final LoopVertex alsLoop = alsLoopOpt.get();
 
     final IRVertex vertex7 = groupedDAG.getTopologicalSort().get(3);
-    final IRVertex vertex15 = alsLoop.getDAG().getTopologicalSort().get(4);
+    final IRVertex vertex15 = alsLoop.getDAG().getTopologicalSort().get(5);
 
     final Set<IREdge> oldDAGIncomingEdges = alsLoop.getDagIncomingEdges().get(vertex15);
     final List<IREdge> newDAGIncomingEdge = groupedDAG.getIncomingEdgesOf(vertex7);
@@ -93,7 +93,7 @@ public class LoopInvariantCodeMotionPassTest {
             final Optional<IREdge> incomingEdge = newDAGIncomingEdge.stream().findFirst();
             assertTrue(incomingEdge.isPresent());
             final IREdge newIREdge = new IREdge(incomingEdge.get().getPropertyValue(
-                CommunicationPatternProperty.class).get(), incomingEdge.get().getSrc(), alsLoop);
+              CommunicationPatternProperty.class).get(), incomingEdge.get().getSrc(), alsLoop);
             newIREdge.setProperty(EncoderProperty.of(incomingEdge.get().getPropertyValue(EncoderProperty.class).get()));
             newIREdge.setProperty(DecoderProperty.of(incomingEdge.get().getPropertyValue(DecoderProperty.class).get()));
             builder.connectVertices(newIREdge);
@@ -102,19 +102,19 @@ public class LoopInvariantCodeMotionPassTest {
       }
     });
 
-    dagToBeRefactored = builder.build();
+    dagToBeRefactored = new IRDAG(builder.build());
   }
 
   @Test
   public void testLoopInvariantCodeMotionPass() throws Exception {
     final long numberOfGroupedVertices = groupedDAG.getVertices().size();
 
-    final DAG<IRVertex, IREdge> processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .apply(dagToBeRefactored);
+    final IRDAG processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
+      .apply(dagToBeRefactored);
     assertEquals(numberOfGroupedVertices, processedDAG.getVertices().size());
 
-    final DAG<IRVertex, IREdge> notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .apply(groupedDAG);
+    final IRDAG notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
+      .apply(groupedDAG);
     assertEquals(numberOfGroupedVertices, notProcessedDAG.getVertices().size());
   }
 

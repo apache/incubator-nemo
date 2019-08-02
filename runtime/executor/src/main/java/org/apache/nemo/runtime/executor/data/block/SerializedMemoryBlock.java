@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data.block;
 
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -102,7 +102,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
     if (!committed) {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
-            serializer, partitions);
+          serializer, partitions);
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -192,7 +192,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
         final long partitionSize = serializedPartition.getLength();
         if (partitionSizes.containsKey(key)) {
           partitionSizes.compute(key,
-              (existingKey, existingValue) -> existingValue + partitionSize);
+            (existingKey, existingValue) -> existingValue + partitionSize);
         } else {
           partitionSizes.put(key, partitionSize);
         }

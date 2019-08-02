@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Orchestrate message sender and receiver using {@link CompletableFuture} for asynchronous request-reply communication.
+ *
  * @param <T> the type of successful reply
  */
 public final class ReplyFutureMap<T> {
@@ -37,6 +38,7 @@ public final class ReplyFutureMap<T> {
    * Called by message sender, just before a new request is sent.
    * Note that this method should be used *before* actual message sending.
    * Otherwise {@code onSuccessMessage} can be called before putting new future to {@code requestIdToFuture}.
+   *
    * @param id the request id
    * @return a {@link CompletableFuture} for the reply
    */
@@ -48,7 +50,8 @@ public final class ReplyFutureMap<T> {
 
   /**
    * Called by message receiver, for a successful reply message.
-   * @param id the request id
+   *
+   * @param id             the request id
    * @param successMessage the reply message
    */
   public void onSuccessMessage(final long id, final T successMessage) {
@@ -57,6 +60,7 @@ public final class ReplyFutureMap<T> {
 
   /**
    * Called for a failure in request-reply communication.
+   *
    * @param id the request id
    * @param ex throwable exception
    */

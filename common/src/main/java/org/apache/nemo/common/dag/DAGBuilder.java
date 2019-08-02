@@ -19,12 +19,14 @@
 package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -35,6 +37,7 @@ import java.util.stream.Stream;
 
 /**
  * DAG Builder.
+ *
  * @param <V> the vertex type.
  * @param <E> the edge type.
  */
@@ -158,10 +161,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     } else {
       this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
       throw new IllegalVertexOperationException("The DAG does not contain"
-          + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
-          + " of the edge: [" + (src == null ? null : src.getId())
-          + "]->[" + (dst == null ? null : dst.getId()) + "] in "
-          + vertices.stream().map(V::getId).collect(Collectors.toSet()));
+        + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
+        + " of the edge: [" + (src == null ? null : src.getId())
+        + "]->[" + (dst == null ? null : dst.getId()) + "] in "
+        + vertices.stream().map(V::getId).collect(Collectors.toSet()));
     }
     return this;
   }
@@ -210,11 +213,11 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     stack.push(vertex);
     // When we encounter a vertex that we've already gone through, then there is a cycle.
     if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
-      throw new CompileTimeOptimizationException("DAG contains a cycle");
+      throw getException("DAG contains a cycle", vertex.toString());
     } else {
       outgoingEdges.get(vertex).stream().map(Edge::getDst)
-          .filter(v -> !visited.contains(v))
-          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+        .filter(v -> !visited.contains(v))
+        .forEachOrdered(v -> cycleCheck(stack, visited, v));
     }
     stack.pop();
   }
@@ -225,14 +228,15 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void sourceCheck() {
     // We observe IRVertex that do not have any incoming edges.
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
-        .filter(v -> v instanceof IRVertex);
+      .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
-    if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
+    if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
-          .filter(v -> !(v instanceof SourceVertex))
-          .map(V::getId)
-          .collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG source check failed while building DAG. " + problematicVertices);
+        .filter(v -> !(v instanceof SourceVertex))
+        .map(V::getId)
+        .collect(Collectors.toList()).toString();
+      throw getException("DAG source check failed while building DAG", problematicVertices);
     }
   }
 
@@ -242,15 +246,15 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void sinkCheck() {
     // We observe IRVertex that do not have any outgoing edges.
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream()
-        .filter(v -> outgoingEdges.get(v).isEmpty())
-        .filter(v -> v instanceof IRVertex);
+      .filter(v -> outgoingEdges.get(v).isEmpty())
+      .filter(v -> v instanceof IRVertex);
     // They should either be OperatorVertex or LoopVertex
     if (verticesToObserve.get().anyMatch(v ->
       !(v instanceof OperatorVertex || v instanceof LoopVertex))) {
       final String problematicVertices = verticesToObserve.get().filter(v ->
-          !(v instanceof OperatorVertex || v instanceof LoopVertex))
-          .map(V::getId).collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
+        !(v instanceof OperatorVertex || v instanceof LoopVertex))
+        .map(V::getId).collect(Collectors.toList()).toString();
+      throw getException("DAG sink check failed while building DAG", problematicVertices);
     }
   }
 
@@ -258,23 +262,15 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * Helper method to check that all execution properties are correct and makes sense.
    */
   private void executionPropertyCheck() {
-    // SideInput is not compatible with Push
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
-        .forEach(e -> {
-          throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "Broadcast edge is not compatible with push" + e.getId());
-        }));
-    // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-            .equals(e.getPropertyValue(MetricCollectionProperty.class)))
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
-        .forEach(e -> {
-          throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
-        }));
+    final long numOfMAV = vertices.stream().filter(v -> v instanceof MessageAggregatorVertex).count();
+    final long numOfDistinctMessageIds = vertices.stream()
+      .filter(v -> v instanceof MessageAggregatorVertex)
+      .map(v -> ((MessageAggregatorVertex) v).getPropertyValue(MessageIdVertexProperty.class).get())
+      .distinct()
+      .count();
+    if (numOfMAV != numOfDistinctMessageIds) {
+      throw getException("A unique message id must exist for each MessageAggregator", "");
+    }
   }
 
   /**
@@ -293,7 +289,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       final Stack<V> stack = new Stack<>();
       final Set<V> visited = new HashSet<>();
       vertices.stream().filter(v -> incomingEdges.get(v).isEmpty()) // source operators
-          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+        .forEachOrdered(v -> cycleCheck(stack, visited, v));
     }
     if (source) {
       sourceCheck();
@@ -336,5 +332,19 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   public DAG<V, E> build() {
     integrityCheck(true, true, true, true);
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
+  /**
+   * Generates a user-friendly exception message.
+   *
+   * @param reason             of the exception.
+   * @param problematicObjects that caused the exception.
+   * @return exception object.
+   */
+  private CompileTimeOptimizationException getException(final String reason, final String problematicObjects) {
+    final DAG erroredDAG = new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+    erroredDAG.storeJSON("debug", "errored_ir", "Errored IR");
+    return new CompileTimeOptimizationException(reason + " /// Problematic objects are: "
+      + problematicObjects + " /// see the debug directory for the errored_ir");
   }
 }

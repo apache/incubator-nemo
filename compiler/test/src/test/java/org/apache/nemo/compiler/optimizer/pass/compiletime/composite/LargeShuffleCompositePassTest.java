@@ -21,10 +21,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LargeShuffleCompositePassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -49,53 +47,48 @@ public class LargeShuffleCompositePassTest {
 
   @Test
   public void testLargeShuffle() {
-    final DAG<IRVertex, IREdge> processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
+    final IRDAG processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-              CommunicationPatternProperty.Value.Shuffle
+        CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
         // Relay vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
           if (CommunicationPatternProperty.Value.Shuffle
-          .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
             assertEquals(DataFlowProperty.Value.Push,
-                edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
+              edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
             assertEquals(DataPersistenceProperty.Value.Discard,
-                edgeToMerger.getPropertyValue(DataPersistenceProperty.class).get());
+              edgeToMerger.getPropertyValue(DataPersistenceProperty.class).get());
             assertEquals(DataStoreProperty.Value.SerializedMemoryStore,
-                edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
+              edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
             assertEquals(BytesDecoderFactory.of(),
-                edgeToMerger.getPropertyValue(DecoderProperty.class).get());
+              edgeToMerger.getPropertyValue(DecoderProperty.class).get());
             assertEquals(CompressionProperty.Value.LZ4,
-                edgeToMerger.getPropertyValue(CompressionProperty.class).get());
+              edgeToMerger.getPropertyValue(CompressionProperty.class).get());
             assertEquals(CompressionProperty.Value.None,
-                edgeToMerger.getPropertyValue(DecompressionProperty.class).get());
+              edgeToMerger.getPropertyValue(DecompressionProperty.class).get());
           } else {
             assertEquals(DataFlowProperty.Value.Pull,
-                edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
+              edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
           }
         });
         processedDAG.getOutgoingEdgesOf(irVertex).forEach(edgeFromMerger -> {
           assertEquals(DataFlowProperty.Value.Pull,
-              edgeFromMerger.getPropertyValue(DataFlowProperty.class).get());
+            edgeFromMerger.getPropertyValue(DataFlowProperty.class).get());
           assertEquals(CommunicationPatternProperty.Value.OneToOne,
-              edgeFromMerger.getPropertyValue(CommunicationPatternProperty.class).get());
+            edgeFromMerger.getPropertyValue(CommunicationPatternProperty.class).get());
           assertEquals(DataStoreProperty.Value.LocalFileStore,
-              edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
+            edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
-              edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
-          assertEquals(PartitionerProperty.Value.DedicatedKeyPerElementPartitioner,
-              edgeFromMerger.getPropertyValue(PartitionerProperty.class).get());
+            edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
+          assertEquals(PartitionerProperty.Type.DedicatedKeyPerElement,
+            edgeFromMerger.getPropertyValue(PartitionerProperty.class).get().left());
           assertEquals(CompressionProperty.Value.None,
-              edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
+            edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
           assertEquals(CompressionProperty.Value.LZ4,
-              edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
-        });
-      } else {
-        // Non merger vertex.
-        processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
+            edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
         });
       }
     });

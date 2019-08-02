@@ -19,37 +19,38 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.BoundedIteratorReadable;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.datatransfer.*;
+import org.apache.nemo.runtime.executor.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,12 +67,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
@@ -87,7 +86,7 @@ public final class TaskExecutorTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
-      = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
+    = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
   private static final int SOURCE_PARALLELISM = 5;
   private static final int FIRST_ATTEMPT = 0;
 
@@ -102,7 +101,7 @@ public final class TaskExecutorTest {
 
   private String generateTaskId() {
     return RuntimeIdManager.generateTaskId(
-        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
+      RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
   }
 
   @Before
@@ -136,6 +135,8 @@ public final class TaskExecutorTest {
 
   /**
    * Test source vertex data fetching.
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testSourceVertexDataFetching() throws Exception {
@@ -167,20 +168,20 @@ public final class TaskExecutorTest {
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
-        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-            .addVertex(sourceIRVertex)
-            .buildWithoutSourceSinkCheck();
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(sourceIRVertex)
+        .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
     final Task task =
-        new Task(
-            "testSourceVertexDataFetching",
-            generateTaskId(),
-            TASK_EXECUTION_PROPERTY_MAP,
-            new byte[0],
-            Collections.emptyList(),
-            Collections.singletonList(taskOutEdge),
-            vertexIdToReadable);
+      new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.emptyList(),
+        Collections.singletonList(taskOutEdge),
+        vertexIdToReadable);
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -191,7 +192,28 @@ public final class TaskExecutorTest {
   }
 
   /**
+   * Test invalid parameter failure.
+   *
+   * @throws Exception exception on the way.
+   */
+  @Test()
+  public void testInvalidInputData() throws Exception {
+    try {
+      // Execute the task.
+      final TaskExecutor taskExecutor = getTaskExecutor(null, null);
+      taskExecutor.execute();
+
+      // This should not be reached.
+      fail();
+    } catch (NullPointerException e) {
+      assertEquals(true, true);
+    }
+  }
+
+  /**
    * This test emits data and watermark by emulating an unbounded source readable.
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testUnboundedSourceVertexDataFetching() throws Exception {
@@ -205,7 +227,7 @@ public final class TaskExecutorTest {
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     final List<Watermark> emittedWatermarks = new LinkedList<>();
 
-    final Transform transform = new RelayTransformNoWatermarkEmit(emittedWatermarks);
+    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks);
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
@@ -239,24 +261,26 @@ public final class TaskExecutorTest {
 
   /**
    * Test parent task data fetching.
+   *
+   * @throws Exception exception on the way.
    */
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testParentTaskDataFetching() throws Exception {
-    final IRVertex vertex = new OperatorVertex(new RelayTransform());
+    final IRVertex vertex = new OperatorVertex(new StreamTransform());
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-        .addVertex(vertex)
-        .buildWithoutSourceSinkCheck();
+      .addVertex(vertex)
+      .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(vertex);
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(vertex)),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+      "testSourceVertexDataFetching",
+      generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      new byte[0],
+      Collections.singletonList(mockStageEdgeTo(vertex)),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -278,23 +302,25 @@ public final class TaskExecutorTest {
 
   /**
    * The DAG of the task to test will looks like:
-   * source1 -> vertex1 -> vertex2
-   * source2 -> vertex3 ->
-   *
+   * source1 - vertex1 - vertex2
+   * source2 - vertex3 -
+   * <p>
    * The vertex2 has two incoming edges (from vertex1 and vertex3)
    * and we test if TaskExecutor handles data and watermarks correctly in this situation.
-   *
+   * <p>
    * source1 emits watermarks:     500 (ts)  600 (ts)   1400 (ts)  1800 (ts)        2500 (ts)
    * source2 emits watermarks:  1000(ts)                                     2200 (ts)
-   *
+   * <p>
    * The vertex2 should receive and emits watermarks 500, 600, 1000, 1800, and 2200
+   *
+   * @throws Exception exception on the way.
    */
   @Test()
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransformNoWatermarkEmit(emittedWatermarks));
-    final IRVertex operatorIRVertex3 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks));
+    final IRVertex operatorIRVertex3 = new OperatorVertex(new StreamTransform());
 
     final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
     final IRVertex sourceIRVertex2 = new TestUnboundedSourceVertex();
@@ -362,7 +388,7 @@ public final class TaskExecutorTest {
       new Watermark(1800), new Watermark(2200)), emittedWatermarks);
 
     // Check the output.
-    final List<Integer> doubledElements = new ArrayList<>(elements.size()*2);
+    final List<Integer> doubledElements = new ArrayList<>(elements.size() * 2);
     doubledElements.addAll(elements);
     doubledElements.addAll(elements);
     assertTrue(checkEqualElements(doubledElements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
@@ -370,33 +396,35 @@ public final class TaskExecutorTest {
 
   /**
    * The DAG of the task to test will looks like:
-   * parent task -> task (vertex 1 -> task 2) -> child task
-   *
+   * parent task - task (vertex 1 - task 2) - child task
+   * <p>
    * The output data from task 1 will be split according to source parallelism through {@link ParentTaskReaderAnswer}.
    * Because of this, task 1 will process multiple partitions and emit data in multiple times also.
    * On the other hand, task 2 will receive the output data once and produce a single output.
+   *
+   * @throws Exception exception on the way.
    */
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testTwoOperators() throws Exception {
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransform());
 
     final String edgeId = "edge";
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-        .addVertex(operatorIRVertex1)
-        .addVertex(operatorIRVertex2)
-        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
-        .buildWithoutSourceSinkCheck();
+      .addVertex(operatorIRVertex1)
+      .addVertex(operatorIRVertex2)
+      .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
+      .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+      "testSourceVertexDataFetching",
+      generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      new byte[0],
+      Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -406,34 +434,34 @@ public final class TaskExecutorTest {
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testTwoOperatorsWithBroadcastVariable() {
     final Transform singleListTransform = new CreateSingleListTransform();
 
     final long broadcastId = 0;
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new BroadcastVariablePairingTransform(broadcastId));
 
     final String edgeId = "edge";
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-        .addVertex(operatorIRVertex1)
-        .addVertex(operatorIRVertex2)
-        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
-        .buildWithoutSourceSinkCheck();
+      .addVertex(operatorIRVertex1)
+      .addVertex(operatorIRVertex2)
+      .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
+      .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
+    final StageEdge taskInEdge = mockStageEdgeTo(operatorIRVertex1);
 
-    final StageEdge broadcastInEdge = mockBroadcastVariableStageEdgeTo(
-      new OperatorVertex(singleListTransform), operatorIRVertex2, broadcastId, elements);
+    when(broadcastManagerWorker.get(broadcastId)).thenReturn(new ArrayList<>(elements));
 
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Arrays.asList(mockStageEdgeTo(operatorIRVertex1), broadcastInEdge),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+      "testSourceVertexDataFetching",
+      generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      new byte[0],
+      Collections.singletonList(taskInEdge),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -449,22 +477,24 @@ public final class TaskExecutorTest {
   /**
    * The DAG of the task to test looks like:
    * parent vertex 1 --+-- vertex 2 (main tag)
-   *                   +-- vertex 3 (additional tag 1)
-   *                   +-- vertex 4 (additional tag 2)
-   *
+   * +-- vertex 3 (additional tag 1)
+   * +-- vertex 4 (additional tag 2)
+   * <p>
    * emit(element) and emit(dstVertexId, element) used together. emit(element) routes results to main output children,
    * and emit(dstVertexId, element) routes results to corresponding additional output children.
+   *
+   * @throws Exception exception on the way.
    */
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testAdditionalOutputs() throws Exception {
     final String additionalTag1 = "bonus1";
     final String additionalTag2 = "bonus2";
 
     final IRVertex routerVertex = new OperatorVertex(
       new RoutingTransform(Arrays.asList(additionalTag1, additionalTag2)));
-    final IRVertex mainVertex= new OperatorVertex(new RelayTransform());
-    final IRVertex bonusVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex bonusVertex2 = new OperatorVertex(new RelayTransform());
+    final IRVertex mainVertex = new OperatorVertex(new StreamTransform());
+    final IRVertex bonusVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex bonusVertex2 = new OperatorVertex(new StreamTransform());
 
     final RuntimeEdge<IRVertex> edge1 = createEdge(routerVertex, mainVertex, "edge-1");
     final RuntimeEdge<IRVertex> edge2 = createEdge(routerVertex, bonusVertex1, "edge-2");
@@ -474,27 +504,27 @@ public final class TaskExecutorTest {
     edge3.getExecutionProperties().put(AdditionalOutputTagProperty.of(additionalTag2));
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-        .addVertex(routerVertex)
-        .addVertex(mainVertex)
-        .addVertex(bonusVertex1)
-        .addVertex(bonusVertex2)
-        .connectVertices(edge1)
-        .connectVertices(edge2)
-        .connectVertices(edge3)
-        .buildWithoutSourceSinkCheck();
+      .addVertex(routerVertex)
+      .addVertex(mainVertex)
+      .addVertex(bonusVertex1)
+      .addVertex(bonusVertex2)
+      .connectVertices(edge1)
+      .connectVertices(edge2)
+      .connectVertices(edge3)
+      .buildWithoutSourceSinkCheck();
 
     final StageEdge outEdge1 = mockStageEdgeFrom(mainVertex);
     final StageEdge outEdge2 = mockStageEdgeFrom(bonusVertex1);
     final StageEdge outEdge3 = mockStageEdgeFrom(bonusVertex2);
 
     final Task task = new Task(
-        "testAdditionalOutputs",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(routerVertex)),
-        Arrays.asList(outEdge1, outEdge2, outEdge3),
-        Collections.emptyMap());
+      "testAdditionalOutputs",
+      generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      new byte[0],
+      Collections.singletonList(mockStageEdgeTo(routerVertex)),
+      Arrays.asList(outEdge1, outEdge2, outEdge3),
+      Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -523,11 +553,11 @@ public final class TaskExecutorTest {
 
   private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
     return new StageEdge("SEdge" + RUNTIME_EDGE_ID.getAndIncrement(),
-        ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
-        irVertex,
-        new OperatorVertex(new RelayTransform()),
-        mock(Stage.class),
-        mock(Stage.class));
+      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
+      irVertex,
+      new OperatorVertex(new StreamTransform()),
+      mock(Stage.class),
+      mock(Stage.class));
   }
 
   private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
@@ -535,25 +565,8 @@ public final class TaskExecutorTest {
       ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
     return new StageEdge("runtime outgoing edge id",
       executionPropertyMap,
-      new OperatorVertex(new RelayTransform()),
+      new OperatorVertex(new StreamTransform()),
       irVertex,
-      mock(Stage.class),
-      mock(Stage.class));
-  }
-
-  private StageEdge mockBroadcastVariableStageEdgeTo(final IRVertex srcVertex,
-                                                     final IRVertex dstVertex,
-                                                     final Serializable broadcastVariableId,
-                                                     final Object broadcastVariable) {
-    when(broadcastManagerWorker.get(broadcastVariableId)).thenReturn(broadcastVariable);
-
-    final ExecutionPropertyMap executionPropertyMap =
-      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
-    executionPropertyMap.put(BroadcastVariableIdProperty.of(broadcastVariableId));
-    return new StageEdge("runtime outgoing edge id",
-      executionPropertyMap,
-      srcVertex,
-      dstVertex,
       mock(Stage.class),
       mock(Stage.class));
   }
@@ -569,8 +582,8 @@ public final class TaskExecutorTest {
       final int elementsPerSource = DATA_SIZE / SOURCE_PARALLELISM;
       for (int i = 0; i < SOURCE_PARALLELISM; i++) {
         inputFutures.add(CompletableFuture.completedFuture(
-            DataUtil.IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
-                .iterator())));
+          DataUtil.IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
+            .iterator())));
       }
       final InputReader inputReader = mock(InputReader.class);
       final IRVertex srcVertex = (IRVertex) invocationOnMock.getArgument(1);
@@ -608,13 +621,14 @@ public final class TaskExecutorTest {
   /**
    * This transform does not emit watermark to OutputWriter
    * because OutputWriter currently does not support watermarks (TODO #245)
+   *
    * @param <T> type
    */
-  private class RelayTransformNoWatermarkEmit<T> implements Transform<T, T> {
+  private class StreamTransformNoWatermarkEmit<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
     private final List<Watermark> emittedWatermarks;
 
-    RelayTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
       this.emittedWatermarks = emittedWatermarks;
     }
 
@@ -643,7 +657,6 @@ public final class TaskExecutorTest {
    * Source vertex for unbounded source test.
    */
   private final class TestUnboundedSourceVertex extends SourceVertex {
-
     @Override
     public boolean isBounded() {
       return false;
@@ -655,8 +668,12 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void clearInternalStates() {
+    public long getEstimatedSizeBytes() {
+      return 0L;
+    }
 
+    @Override
+    public void clearInternalStates() {
     }
 
     @Override
@@ -731,9 +748,10 @@ public final class TaskExecutorTest {
 
   /**
    * Simple identity function for testing.
+   *
    * @param <T> input/output type.
    */
-  private class RelayTransform<T> implements Transform<T, T> {
+  private class StreamTransform<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
 
     @Override
@@ -759,6 +777,7 @@ public final class TaskExecutorTest {
 
   /**
    * Creates a view.
+   *
    * @param <T> input type.
    */
   private class CreateSingleListTransform<T> implements Transform<T, List<T>> {
@@ -789,6 +808,7 @@ public final class TaskExecutorTest {
 
   /**
    * Pairs data element with a broadcast variable.
+   *
    * @param <T> input/output type.
    */
   private class BroadcastVariablePairingTransform<T> implements Transform<T, T> {
@@ -864,6 +884,7 @@ public final class TaskExecutorTest {
 
   /**
    * Gets a list of integer pair elements in range.
+   *
    * @param start value of the range (inclusive).
    * @param end   value of the range (exclusive).
    * @return the list of elements.
