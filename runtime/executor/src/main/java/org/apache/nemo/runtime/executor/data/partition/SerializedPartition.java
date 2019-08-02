@@ -94,6 +94,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * @param key            the key.
    * @param serializedData the serialized data.
    * @param length         the length of the actual serialized data. (It can be different with serializedData.length)
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   public SerializedPartition(final K key,
                              final byte[] serializedData,
@@ -114,9 +115,10 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * Creates a serialized {@link Partition} with actual data residing in off-heap region.
    * Data cannot be written to this partition after the construction.
    *
-   * @param key               the key.
+   * @param key                the key.
    * @param serializedChunkList the serialized data in list list of {@link MemoryChunk}s.
-   * @param length            the length of the actual serialized data. (It can be different with serializedData.length)
+   * @param length             the length of the actual serialized data.(It can be different with serializedData.length)
+   * @param memoryPoolAssigner  the memory pool assigner.
    */
   public SerializedPartition(final K key,
                              final List<MemoryChunk> serializedChunkList,
