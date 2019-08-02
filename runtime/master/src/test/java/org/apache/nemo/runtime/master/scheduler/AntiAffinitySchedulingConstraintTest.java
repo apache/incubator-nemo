@@ -24,7 +24,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityPr
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,7 +42,7 @@ import static org.mockito.Mockito.when;
  * Test cases for {@link AntiAffinitySchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({DefaultExecutorRepresenter.class, Task.class, Stage.class, IRVertex.class})
+@PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, IRVertex.class})
 public final class AntiAffinitySchedulingConstraintTest {
   private final static int FIRST_ATTEMPT = 0;
   private final static String EXEc_MAP_ID = "ID";

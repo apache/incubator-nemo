@@ -20,14 +20,12 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Set;
 
 /**
  * Interface for DefaultExecutorRepresenter and LambdaExecutorRepresenter.
  */
-@DefaultImplementation(DefaultExecutorRepresenter.class)
 public interface ExecutorRepresenter {
 
   /**

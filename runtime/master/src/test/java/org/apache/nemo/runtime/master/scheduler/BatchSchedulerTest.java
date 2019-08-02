@@ -101,7 +101,7 @@ public final class BatchSchedulerTest {
 
     final ResourceSpecification storageSpec =
       new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
-    final Function<String, DefaultExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
+    final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
       new DefaultExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
         executorId);
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");

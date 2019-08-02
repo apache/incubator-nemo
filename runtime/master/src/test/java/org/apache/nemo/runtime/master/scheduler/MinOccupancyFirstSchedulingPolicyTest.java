@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -42,7 +41,7 @@ import static org.mockito.Mockito.when;
  * Tests {@link MinOccupancyFirstSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({DefaultExecutorRepresenter.class, Task.class})
+@PrepareForTest({ExecutorRepresenter.class, Task.class})
 public final class MinOccupancyFirstSchedulingPolicyTest {
 
   private static Task mockTask(final String taskId) {
@@ -51,12 +50,12 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
     return task;
   }
 
-  private static DefaultExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
-    final DefaultExecutorRepresenter defaultExecutorRepresenter = mock(DefaultExecutorRepresenter.class);
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
+    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     final Set<Task> runningTasks = new HashSet<>();
     IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(mockTask(String.valueOf(i))));
-    when(defaultExecutorRepresenter.getRunningTasks()).thenReturn(runningTasks);
-    return defaultExecutorRepresenter;
+    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    return executorRepresenter;
   }
 
   @Test
@@ -69,9 +68,9 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
 
     final Task task = mock(Task.class);
 
-    final List<ExecutorRepresenter> ExecutorRepresenterList = Arrays.asList(a0, a1, a2);
+    final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1, a2);
 
-    assertEquals(a0, schedulingPolicy.selectExecutor(ExecutorRepresenterList, task));
+    assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task));
   }
 }
 
