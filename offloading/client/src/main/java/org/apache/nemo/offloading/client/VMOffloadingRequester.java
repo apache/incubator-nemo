@@ -84,6 +84,8 @@ public final class VMOffloadingRequester {
   private List<String> vmAddresses;
   private List<String> instanceIds;
 
+  private final AtomicInteger numVMs = new AtomicInteger(0);
+
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
                                final int port) {
@@ -165,6 +167,7 @@ public final class VMOffloadingRequester {
   public synchronized void destroyChannel(final Channel channel) {
     final String addr = channel.remoteAddress().toString().split(":")[0];
     final String instanceId = vmChannelMap.remove(addr);
+    numVMs.getAndDecrement();
     LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
     stopVM(instanceId);
   }
@@ -172,7 +175,7 @@ public final class VMOffloadingRequester {
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
 
-    final int index = vmChannelMap.size();
+    final int index = numVMs.getAndIncrement();
      LOG.info("Request VM!! {}", index);
 
     executorService.execute(() -> {
