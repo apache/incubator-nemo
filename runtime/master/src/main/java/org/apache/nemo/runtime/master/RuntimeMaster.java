@@ -266,6 +266,7 @@ public final class RuntimeMaster {
    * Terminates the RuntimeMaster.
    */
   public void terminate() {
+    LOG.info("##### RuntimeMaster terminates #####");
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
 

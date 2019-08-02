@@ -164,6 +164,7 @@ public final class StreamingScheduler implements Scheduler {
 
   @Override
   public void terminate() {
+    LOG.info("##### StreamingScheduler Terminates #####");
     this.taskDispatcher.terminate();
     this.executorRegistry.terminate();
   }
