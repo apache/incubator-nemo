@@ -150,11 +150,11 @@ public final class StreamingScheduler implements Scheduler {
   }
 
   @Override
-  public void onExecutorAdded(final ExecutorRepresenter defaultExecutorRepresenter) {
-    LOG.info("{} added (node: {})", defaultExecutorRepresenter.getExecutorId(),
-      defaultExecutorRepresenter.getNodeName());
+  public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
+    LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(),
+      executorRepresenter.getNodeName());
     taskDispatcher.onExecutorSlotAvailable();
-    executorRegistry.registerExecutor(defaultExecutorRepresenter);
+    executorRegistry.registerExecutor(executorRepresenter);
   }
 
   @Override
