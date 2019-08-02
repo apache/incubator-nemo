@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
@@ -109,11 +109,11 @@ public final class ContainerManagerTest {
           executorId,
           createMockEvaluator(evaluatorId, descriptor),
           createMockConfiguration());
-        final ExecutorRepresenter executorRepresenter =
+        final DefaultExecutorRepresenter defaultExecutorRepresenter =
           containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
-        assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
-        assertEquals(spec.getCapacity(), executorRepresenter.getExecutorCapacity());
-        assertEquals(descriptor.getNodeDescriptor().getName(), executorRepresenter.getNodeName());
+        assertEquals(spec.getContainerType(), defaultExecutorRepresenter.getContainerType());
+        assertEquals(spec.getCapacity(), defaultExecutorRepresenter.getExecutorCapacity());
+        assertEquals(descriptor.getNodeDescriptor().getName(), defaultExecutorRepresenter.getNodeName());
       }
     }
   }

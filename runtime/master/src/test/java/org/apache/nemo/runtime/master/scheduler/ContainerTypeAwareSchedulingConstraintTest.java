@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
@@ -39,48 +39,48 @@ import static org.mockito.Mockito.when;
  * Tests {@link ContainerTypeAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class})
+@PrepareForTest({DefaultExecutorRepresenter.class, Task.class})
 public final class ContainerTypeAwareSchedulingConstraintTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final String containerType) {
-    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    when(executorRepresenter.getContainerType()).thenReturn(containerType);
-    return executorRepresenter;
+  private static DefaultExecutorRepresenter mockExecutorRepresenter(final String containerType) {
+    final DefaultExecutorRepresenter defaultExecutorRepresenter = mock(DefaultExecutorRepresenter.class);
+    when(defaultExecutorRepresenter.getContainerType()).thenReturn(containerType);
+    return defaultExecutorRepresenter;
   }
 
   @Test
   public void testContainerTypeAware() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
       .getInstance(ContainerTypeAwareSchedulingConstraint.class);
-    final ExecutorRepresenter a0 = mockExecutorRepresenter(ResourcePriorityProperty.TRANSIENT);
-    final ExecutorRepresenter a1 = mockExecutorRepresenter(ResourcePriorityProperty.RESERVED);
-    final ExecutorRepresenter a2 = mockExecutorRepresenter(ResourcePriorityProperty.NONE);
+    final DefaultExecutorRepresenter a0 = mockExecutorRepresenter(ResourcePriorityProperty.TRANSIENT);
+    final DefaultExecutorRepresenter a1 = mockExecutorRepresenter(ResourcePriorityProperty.RESERVED);
+    final DefaultExecutorRepresenter a2 = mockExecutorRepresenter(ResourcePriorityProperty.NONE);
 
     final Task task1 = mock(Task.class);
     when(task1.getPropertyValue(ResourcePriorityProperty.class))
       .thenReturn(Optional.of(ResourcePriorityProperty.RESERVED));
 
-    final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenter> defaultExecutorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors1 = executorRepresenterList1.stream()
+    final Set<DefaultExecutorRepresenter> candidateExecutors1 = defaultExecutorRepresenterList1.stream()
       .filter(e -> schedulingConstraint.testSchedulability(e, task1))
       .collect(Collectors.toSet());
     ;
 
-    final Set<ExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
+    final Set<DefaultExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final Task task2 = mock(Task.class);
     when(task2.getPropertyValue(ResourcePriorityProperty.class))
       .thenReturn(Optional.of(ResourcePriorityProperty.NONE));
 
-    final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenter> defaultExecutorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors2 = executorRepresenterList2.stream()
+    final Set<DefaultExecutorRepresenter> candidateExecutors2 = defaultExecutorRepresenterList2.stream()
       .filter(e -> schedulingConstraint.testSchedulability(e, task2))
       .collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);
   }
 }

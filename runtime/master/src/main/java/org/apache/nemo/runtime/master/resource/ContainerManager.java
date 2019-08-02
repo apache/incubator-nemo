@@ -170,7 +170,7 @@ public final class ContainerManager {
    * @param activeContext for the launched container.
    * @return a representation of the executor. (return an empty Optional if terminated)
    */
-  public Optional<ExecutorRepresenter> onContainerLaunched(final ActiveContext activeContext) {
+  public Optional<DefaultExecutorRepresenter> onContainerLaunched(final ActiveContext activeContext) {
     if (isTerminated) {
       LOG.info("ContainerManager is terminated, closing {}", activeContext.getId());
       activeContext.close();
@@ -192,13 +192,14 @@ public final class ContainerManager {
     }
 
     // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter =
-      new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
+    final DefaultExecutorRepresenter defaultExecutorRepresenter =
+      new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
+        activeContext, serializationExecutorService,
         activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
-    return Optional.of(executorRepresenter);
+    return Optional.of(defaultExecutorRepresenter);
   }
 
   /**

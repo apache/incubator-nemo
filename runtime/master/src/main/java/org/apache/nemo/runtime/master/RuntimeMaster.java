@@ -40,7 +40,7 @@ import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
@@ -357,7 +357,7 @@ public final class RuntimeMaster {
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-      final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
+      final Optional<DefaultExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
       if (executor.isPresent()) {
         scheduler.onExecutorAdded(executor.get());
         return (resourceRequestCount.decrementAndGet() == 0);

@@ -28,7 +28,7 @@ import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
@@ -91,20 +91,20 @@ public final class BatchSchedulerTest {
     final ExecutorService serializationExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec =
       new ResourceSpecification(ResourcePriorityProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
-    final Function<String, ExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
-      new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
+    final Function<String, DefaultExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
+      new DefaultExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
         executorId);
-    final ExecutorRepresenter a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
-    final ExecutorRepresenter a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
-    final ExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
+    final DefaultExecutorRepresenter a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
+    final DefaultExecutorRepresenter a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
+    final DefaultExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
 
     final ResourceSpecification storageSpec =
       new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
-    final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
-      new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
+    final Function<String, DefaultExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
+      new DefaultExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
         executorId);
-    final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
-    final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
+    final DefaultExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
+    final DefaultExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
     // Add compute nodes
     scheduler.onExecutorAdded(a1);

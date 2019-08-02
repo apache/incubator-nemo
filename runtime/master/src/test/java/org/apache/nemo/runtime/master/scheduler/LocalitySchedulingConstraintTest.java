@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -45,17 +45,17 @@ import static org.mockito.Mockito.when;
  * Test cases for {@link LocalitySchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class, BlockManagerMaster.class})
+@PrepareForTest({DefaultExecutorRepresenter.class, Task.class, Readable.class, BlockManagerMaster.class})
 public final class LocalitySchedulingConstraintTest {
   private Injector injector;
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
   private static final String SITE_2 = "BUSAN";
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final String executorId) {
-    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    when(executorRepresenter.getNodeName()).thenReturn(executorId);
-    return executorRepresenter;
+  private static DefaultExecutorRepresenter mockExecutorRepresenter(final String executorId) {
+    final DefaultExecutorRepresenter defaultExecutorRepresenter = mock(DefaultExecutorRepresenter.class);
+    when(defaultExecutorRepresenter.getNodeName()).thenReturn(executorId);
+    return defaultExecutorRepresenter;
   }
 
   @Before
@@ -78,8 +78,8 @@ public final class LocalitySchedulingConstraintTest {
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
       Collections.singletonList(Collections.singletonList(SITE_0)));
-    final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
-    final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
+    final DefaultExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
+    final DefaultExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
     assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
       .filter(e -> schedulingConstraint.testSchedulability(e, task))
@@ -108,7 +108,7 @@ public final class LocalitySchedulingConstraintTest {
       Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
         Arrays.asList(SITE_0, SITE_2)));
 
-    final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
+    final DefaultExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
     for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
       assertTrue(schedulingConstraint.testSchedulability(e, task));
     }

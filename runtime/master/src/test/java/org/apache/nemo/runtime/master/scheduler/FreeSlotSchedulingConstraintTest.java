@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,11 +39,11 @@ import static org.mockito.Mockito.when;
  * Tests {@link FreeSlotSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class})
+@PrepareForTest({DefaultExecutorRepresenter.class, Task.class})
 public final class FreeSlotSchedulingConstraintTest {
   private SchedulingConstraint schedulingConstraint;
-  private ExecutorRepresenter a0;
-  private ExecutorRepresenter a1;
+  private DefaultExecutorRepresenter a0;
+  private DefaultExecutorRepresenter a1;
 
   @Before
   public void setUp() throws Exception {
@@ -59,12 +59,12 @@ public final class FreeSlotSchedulingConstraintTest {
    * @param capacity          the capacity of the executor.
    * @return the mocked executor.
    */
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numComplyingTasks,
-                                                             final int capacity) {
-    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    when(executorRepresenter.getNumOfComplyingRunningTasks()).thenReturn(numComplyingTasks);
-    when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
-    return executorRepresenter;
+  private static DefaultExecutorRepresenter mockExecutorRepresenter(final int numComplyingTasks,
+                                                                    final int capacity) {
+    final DefaultExecutorRepresenter defaultExecutorRepresenter = mock(DefaultExecutorRepresenter.class);
+    when(defaultExecutorRepresenter.getNumOfComplyingRunningTasks()).thenReturn(numComplyingTasks);
+    when(defaultExecutorRepresenter.getExecutorCapacity()).thenReturn(capacity);
+    return defaultExecutorRepresenter;
   }
 
   /**
@@ -76,13 +76,13 @@ public final class FreeSlotSchedulingConstraintTest {
     final Task task = mock(Task.class);
     when(task.getPropertyValue(ResourceSlotProperty.class)).thenReturn(Optional.of(true));
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
+    final Set<DefaultExecutorRepresenter> defaultExecutorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
-    final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
+    final Set<DefaultExecutorRepresenter> candidateExecutors = defaultExecutorRepresenterList.stream()
       .filter(e -> schedulingConstraint.testSchedulability(e, task))
       .collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
+    final Set<DefaultExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
     assertEquals(expectedExecutors, candidateExecutors);
   }
 
@@ -95,13 +95,13 @@ public final class FreeSlotSchedulingConstraintTest {
     final Task task = mock(Task.class);
     when(task.getPropertyValue(ResourceSlotProperty.class)).thenReturn(Optional.of(false));
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
+    final Set<DefaultExecutorRepresenter> defaultExecutorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
-    final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
+    final Set<DefaultExecutorRepresenter> candidateExecutors = defaultExecutorRepresenterList.stream()
       .filter(e -> schedulingConstraint.testSchedulability(e, task))
       .collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a0, a1));
+    final Set<DefaultExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a0, a1));
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }

@@ -20,13 +20,9 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.transforms.Sum;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
@@ -50,7 +46,7 @@ public final class WordIO {
    */
 
   public static void main(final String[] args) {
-    final List<String> LINES = Arrays.asList(
+    final List<String> testLINES = Arrays.asList(
       "To be, or not to be: that is the question: ",
       "Whether 'tis nobler in the mind to suffer ",
       "The slings and arrows of outrageous fortune, ",
@@ -60,8 +56,7 @@ public final class WordIO {
     options.setJobName("WordIO");
 
     final Pipeline p = Pipeline.create(options);
-    final PCollection<String> result = p.apply(Create.of(LINES)).setCoder(StringUtf8Coder.of());
-    //final PCollection<String> result = p.apply("readFile", TextIO.read().from(inputFilePath));
+    final PCollection<String> result = p.apply(Create.of(testLINES)).setCoder(StringUtf8Coder.of());
     PCollection<Integer> wordLengths = result.apply(
       MapElements.into(TypeDescriptors.integers())
         .via((String word) -> word.length()));
