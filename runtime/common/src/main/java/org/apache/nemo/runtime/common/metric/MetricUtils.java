@@ -65,7 +65,6 @@ public final class MetricUtils {
     } catch (ClassNotFoundException e) {
       throw new MetricException("PostgreSQL Driver not found: " + e);
     }
-    loadMetaData();
   }
 
   public static final String SQLITE_DB_NAME =
@@ -85,7 +84,7 @@ public final class MetricUtils {
    *
    * @return the loaded BiMaps, or initialized ones.
    */
-  private static void loadMetaData() {
+  public static void loadMetaData() {
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (Statement statement = c.createStatement()) {
