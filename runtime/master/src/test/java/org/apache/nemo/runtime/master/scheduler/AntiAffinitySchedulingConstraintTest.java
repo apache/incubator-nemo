@@ -25,6 +25,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -54,12 +55,12 @@ public final class AntiAffinitySchedulingConstraintTest {
     return task;
   }
 
-  private static DefaultExecutorRepresenter mockExecutorRepresenter(final Task task) {
-    final DefaultExecutorRepresenter defaultExecutorRepresenter = mock(DefaultExecutorRepresenter.class);
+  private static ExecutorRepresenter mockExecutorRepresenter(final Task task) {
+    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     final Set<Task> runningTasks = new HashSet<>();
     runningTasks.add(task);
-    when(defaultExecutorRepresenter.getRunningTasks()).thenReturn(runningTasks);
-    return defaultExecutorRepresenter;
+    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    return executorRepresenter;
   }
 
   /**
@@ -78,7 +79,7 @@ public final class AntiAffinitySchedulingConstraintTest {
     final Task task0 = mockTask(0, emap);  // anti-affinity task
     final Task task1 = mockTask(1, emap);  // anti-affinity task
     final Task task2 = mockTask(2, emap);  // normal task
-    final DefaultExecutorRepresenter e0 = mockExecutorRepresenter(task0);  // schedule task0 to e0
+    final ExecutorRepresenter e0 = mockExecutorRepresenter(task0);  // schedule task0 to e0
 
     assertEquals(false, schedulingConstraint.testSchedulability(e0, task1));
     assertEquals(true, schedulingConstraint.testSchedulability(e0, task2));

@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -78,6 +79,7 @@ public final class DefaultExecutorRepresenter implements ExecutorRepresenter {
    * @param serializationExecutorService provides threads for message serialization
    * @param nodeName                     physical name of the node where this executor resides
    */
+  @Inject
   public DefaultExecutorRepresenter(final String executorId,
                                     final ResourceSpecification resourceSpecification,
                                     final MessageSender<ControlMessage.Message> messageSender,

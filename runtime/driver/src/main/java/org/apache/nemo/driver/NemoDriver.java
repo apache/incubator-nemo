@@ -111,7 +111,6 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
-    LOG.info("##### Nemo driver instantiated #####");
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
@@ -187,7 +186,6 @@ public final class NemoDriver {
    * @param dagString the serialized DAG to schedule.
    */
   private void startSchedulingUserDAG(final String dagString) {
-    LOG.info("##### startSchedulingUserDAG #####");
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.

@@ -336,7 +336,6 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
-    LOG.info("##### Batch Scheduler Terminates! #####");
     this.taskDispatcher.terminate();
     this.executorRegistry.terminate();
   }

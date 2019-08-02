@@ -26,7 +26,7 @@ import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -51,7 +51,7 @@ import static org.mockito.Mockito.mock;
  * before the job finishes.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({DefaultExecutorRepresenter.class, ExecutorRegistry.class})
+@PrepareForTest({ExecutorRepresenter.class, ExecutorRegistry.class})
 public final class MetricFlushTest {
   private static final String MASTER = "MASTER";
   private static final String WORKER = "WORKER";
@@ -72,16 +72,16 @@ public final class MetricFlushTest {
     final MessageSender masterToWorkerSender = masterMessageEnvironment
       .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
 
-    final Set<DefaultExecutorRepresenter> defaultExecutorRepresenterSet = new HashSet<>();
+    final Set<ExecutorRepresenter> executorRepresenterSet = new HashSet<>();
 
     for (int i = 0; i < EXECUTOR_NUM; i++) {
-      defaultExecutorRepresenterSet.add(newWorker(masterToWorkerSender));
+      executorRepresenterSet.add(newWorker(masterToWorkerSender));
     }
 
     final ExecutorRegistry executorRegistry = mock(ExecutorRegistry.class);
     doAnswer((Answer<Void>) invocationOnMock -> {
-      final Consumer<Set<DefaultExecutorRepresenter>> consumer = (Consumer) invocationOnMock.getArguments()[0];
-      consumer.accept(defaultExecutorRepresenterSet);
+      final Consumer<Set<ExecutorRepresenter>> consumer = (Consumer) invocationOnMock.getArguments()[0];
+      consumer.accept(executorRepresenterSet);
       return null;
     }).when(executorRegistry).viewExecutors(any());
 
@@ -119,8 +119,8 @@ public final class MetricFlushTest {
     latch.await();
   }
 
-  private static DefaultExecutorRepresenter newWorker(final MessageSender masterToWorkerSender) {
-    final DefaultExecutorRepresenter workerRepresenter = mock(DefaultExecutorRepresenter.class);
+  private static ExecutorRepresenter newWorker(final MessageSender masterToWorkerSender) {
+    final ExecutorRepresenter workerRepresenter = mock(ExecutorRepresenter.class);
     doAnswer((Answer<Void>) invocationOnMock -> {
       final ControlMessage.Message msg = (ControlMessage.Message) invocationOnMock.getArguments()[0];
       masterToWorkerSender.send(msg);
