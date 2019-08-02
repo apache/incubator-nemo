@@ -53,8 +53,6 @@ public final class VMOffloadingRequester {
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
-  private final List<String> vmAddresses = Arrays.asList("172.31.16.202", "172.31.17.96", "172.31.18.133", "172.31.25.250", "172.31.21.223");
-  private final List<String> instanceIds = Arrays.asList("i-0707e910d42ab99fb", "i-081f578c165a41a7a", "i-0d346bd15aed1a33f", "i-0756c588bf6b60a71", "i-09355b96aac481c5d");
 
   private final AtomicInteger requestId = new AtomicInteger(0);
 
@@ -82,6 +80,9 @@ public final class VMOffloadingRequester {
   // key: remoteAddress, value: instanceId
   private final Map<String, String> vmChannelMap = new ConcurrentHashMap<>();
 
+
+  private List<String> vmAddresses;
+  private List<String> instanceIds;
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
@@ -152,6 +153,13 @@ public final class VMOffloadingRequester {
   public void start() {
     // ping pong
 
+  }
+
+  public void setVmAddessesAndIds(final List<String> addr,
+                                  final List<String> ids) {
+    LOG.info("Set vm addresses and ids: {}, {}", addr, ids);
+    vmAddresses = addr;
+    instanceIds = ids;
   }
 
   public synchronized void destroyChannel(final Channel channel) {

@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,6 +40,7 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   private final AtomicInteger extraRequest = new AtomicInteger(0);
   */
 
+
   private final VMOffloadingRequester requestor;
 
   @Inject
@@ -59,6 +61,12 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
     //pendingRequest.getAndIncrement();
 
     requestor.createChannelRequest();
+  }
+
+  public void setVMAddressAndIds(final List<String> addr,
+                                 final List<String> ids) {
+    LOG.info("Set vm address and id in worker factory");
+    requestor.setVmAddessesAndIds(addr, ids);
   }
 
   @Override

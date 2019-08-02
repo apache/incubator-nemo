@@ -366,4 +366,6 @@ message LocalExecutorAddressInfoMessage {
 
 message GlobalExecutorAddressInfoMessage {
   repeated LocalExecutorAddressInfoMessage infos = 1;
+  repeated string vmAddresses = 2;
+  repeated string vmIds = 3;
 }

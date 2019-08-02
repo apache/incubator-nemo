@@ -25,6 +25,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.TaskScheduledMap;
+import org.apache.nemo.runtime.master.VMScalingAddresses;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -174,8 +175,24 @@ final class TaskDispatcher {
 
       // send global executor address map
       executorRegistry.viewExecutors(executors -> {
+
+        int index = 0;
+        final List<String> vmAddresses = VMScalingAddresses.VM_ADDRESSES;
+        final List<String> vmIds = VMScalingAddresses.INSTANCE_IDS;
+
+        final int hop = vmAddresses.size() / executors.size();
+
         for (final ExecutorRepresenter executor : executors) {
           LOG.info("Send global executor address to executor {}", executor.getExecutorId());
+          // TODO: send vm scaling addresses
+          final int startindex = index * hop;
+          final int endindex = (index + 1) == executors.size()
+            ? vmAddresses.size() : (index + 1) * hop ;
+
+          final List<String> addr = vmAddresses.subList(startindex, endindex);
+          final List<String> ids = vmIds.subList(startindex, endindex);
+
+          LOG.info("index {}, Vm addr: {}, ids: {}", index, addr, ids);
 
           final long id = RuntimeIdManager.generateMessageId();
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
@@ -184,8 +201,12 @@ final class TaskDispatcher {
             .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
             .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
               .addAllInfos(entries1)
+              .addAllVmAddresses(addr)
+              .addAllVmIds(ids)
               .build())
             .build());
+
+          index += 1;
         }
       });
 

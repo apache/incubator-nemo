@@ -25,6 +25,7 @@ import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -485,6 +486,13 @@ public final class Executor {
           LOG.info("{} Setting global executor address server info {}", executorId, m);
 
           byteTransport.setExecutorAddressMap(m);
+
+          if (offloadingWorkerFactory instanceof VMOffloadingWorkerFactory) {
+            LOG.info("Set vm addresses");
+            final VMOffloadingWorkerFactory vmOffloadingWorkerFactory = (VMOffloadingWorkerFactory) offloadingWorkerFactory;
+            vmOffloadingWorkerFactory.setVMAddressAndIds(msg.getVmAddressesList(), msg.getVmIdsList());
+          }
+
           break;
         }
         case GlobalRelayServerInfo:
