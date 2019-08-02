@@ -283,9 +283,9 @@ under the License.
             <phase>site</phase>
           </execution>
           <execution>
-            <id>test-javadoc</id>
+            <id>test-aggregate</id>
             <goals>
-              <goal>test-javadoc</goal>
+              <goal>test-aggregate</goal>
             </goals>
             <phase>validate</phase>
           </execution>
