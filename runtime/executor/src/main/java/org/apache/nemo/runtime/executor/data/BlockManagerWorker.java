@@ -38,6 +38,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.stores.*;
@@ -357,6 +358,12 @@ public final class BlockManagerWorker {
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
                   os.writeSerializedPartitionBuffer(partition);
+                  if (optionalBlock.get().getClass() == NonSerializedMemoryBlock.class) {
+                    // For NonSerializedMemoryBlock, the serialized partition to be sent is transient and needs
+                    // to be released right after the data transfer. Thus the partitions are registered so that
+                    // they can be released on completion of data transfer.
+                    os.registerPartitionToRelease(partition);
+                  }
                 }
               }
             }

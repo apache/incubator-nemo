@@ -139,13 +139,14 @@ public class MemoryPoolAssigner {
       try {
         if (pool.isEmpty()) {
           return allocateNewChunk();
+        } else {
+          ByteBuffer buf = pool.remove();
+          return new MemoryChunk(buf);
         }
-        ByteBuffer buf = pool.remove();
-        return new MemoryChunk(buf);
+      } catch (final NoSuchElementException e) {
+        throw new MemoryAllocationException("Pool empty: Failed to retrieve MemoryChunk");
       } catch (final OutOfMemoryError e) {
         throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
-      } catch (final NoSuchElementException e) {
-        throw new MemoryAllocationException("Pool empty: Failed to retrieve memory chunk.");
       }
     }
 

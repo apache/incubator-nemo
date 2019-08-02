@@ -109,6 +109,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         for (final ByteBuffer buffer: serializedPartition.getDirectBufferList()) {
           fileOutputChannel.write(buffer);
         }
+        // after the writing to disk, data in memory is released.
+        serializedPartition.release();
       }
     }
   }

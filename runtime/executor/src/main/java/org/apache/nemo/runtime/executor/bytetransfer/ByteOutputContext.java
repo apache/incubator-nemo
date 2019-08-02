@@ -20,9 +20,7 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.channel.Channel;
-import io.netty.channel.DefaultFileRegion;
-import io.netty.channel.FileRegion;
+import io.netty.channel.*;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.FileArea;
@@ -139,6 +137,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
+    private SerializedPartition partitionToRelease = null;
 
     /**
      * Writes {@link SerializedPartition}.
@@ -247,8 +246,24 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
         throw new IOException("Stream already closed.");
       }
       channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
+        .addListener((ChannelFutureListener) future -> {
+          if (future.isSuccess()) {
+            if (partitionToRelease != null) {
+              partitionToRelease.release();
+            }
+          }
+        })
         .addListener(getChannelWriteListener());
       newSubStream = false;
+    }
+
+    /**
+     * Register the partition that should be released on completion of data transfer.
+     *
+     * @param partition to release on data transfer.
+     */
+    public void registerPartitionToRelease(final SerializedPartition partition) {
+      partitionToRelease = partition;
     }
   }
 }
