@@ -157,7 +157,7 @@ public final class TinyTaskWorker {
 
   public synchronized void executePending() {
 
-    if (pendingTasks.isEmpty() || readyTasks.isEmpty()) {
+    if (pendingTasks.isEmpty() && readyTasks.isEmpty()) {
       return;
     }
 
