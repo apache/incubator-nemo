@@ -25,6 +25,13 @@ import java.util.Set;
 
 /**
  * Interface for DefaultExecutorRepresenter and LambdaExecutorRepresenter.
+ * Contains information/state regarding ann executor
+ * Such information may include:
+ * a) The executor's resource type.
+ * b) The executor's capacity (ex. number of cores).
+ * c) Tasks scheduled/launched for the executor.
+ * d) Name of the physical node which hosts this executor.
+ * e) (Please add other information as we implement more features).
  */
 public interface ExecutorRepresenter {
 
