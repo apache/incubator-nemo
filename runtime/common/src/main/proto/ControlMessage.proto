@@ -86,10 +86,10 @@ enum MessageType {
     StageOffloadingInfo = 22;
 
     // master - worker scaling
-    RequestScalingOut = 23; // master -> worker
+    RequestScaling = 23; // master -> worker
     LocalScalingReadyDone = 24; // worker -> master
     GlobalScalingReadyDone = 25; // master -> worker
-    RequestScalingIn = 26; // master -> worker
+    //RequestScalingIn = 26; // master -> worker
     LocalRelayServerInfo = 27; // worker -> master
     GlobalRelayServerInfo = 28; // master -> worker
 
@@ -123,7 +123,7 @@ message Message {
     optional RequestStageOffloadingMessage requestStageOffloadingMsg = 23;
     optional RequestStageOffloadingDoneMessage requestStageOffloadingDoneMsg = 24;
     optional StageOffloadingInfoMessage stageOffloadingInfoMsg = 25;
-    optional RequestScalingOutMessage requestScalingOutMsg = 26;
+    optional RequestScalingMessage requestScalingMsg = 26;
     optional LocalScalingDoneMessage localScalingDoneMsg = 27;
     optional GlobalScalingDoneMessage globalScalingDoneMsg = 28;
     optional LocalRelayServerInfoMessage localRelayServerInfoMsg = 29;
@@ -324,10 +324,11 @@ message StageOffloadingInfoMessage {
   required bool canOffloading = 2;
 }
 
-message RequestScalingOutMessage {
+message RequestScalingMessage {
   required int64 requestId = 1;
-  repeated RequestScalingEntryMessage entry = 2;
-  repeated TaskLocation taskLocation = 3;
+  required bool isScaleOut = 2;
+  repeated RequestScalingEntryMessage entry = 3;
+  repeated TaskLocation taskLocation = 4;
 }
 
 message TaskLocation {

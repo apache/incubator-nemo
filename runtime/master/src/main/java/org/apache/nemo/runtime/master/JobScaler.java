@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
+
 public final class JobScaler {
 
   private static final Logger LOG = LoggerFactory.getLogger(JobScaler.class.getName());
@@ -59,21 +62,17 @@ public final class JobScaler {
     scalingOutToWorkers(divide);
   }
 
-  private ControlMessage.RequestScalingOutMessage buildRequestScalingoutMessage(
-    final Map<String, List<String>> offloadTaskMap) {
+  private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
+    final Map<String, List<String>> offloadTaskMap,
+    final List<ControlMessage.TaskLocation> locations,
+    final boolean isScaleOut) {
 
-    final ControlMessage.RequestScalingOutMessage.Builder builder =
-    ControlMessage.RequestScalingOutMessage.newBuilder();
+    final ControlMessage.RequestScalingMessage.Builder builder =
+    ControlMessage.RequestScalingMessage.newBuilder();
 
     builder.setRequestId(RuntimeIdManager.generateMessageId());
-
-    // add task location!!
-    for (final Map.Entry<String, TaskLoc> taskLoc : taskLocationMap.locationMap.entrySet()) {
-      builder.addTaskLocation(ControlMessage.TaskLocation.newBuilder()
-        .setTaskId(taskLoc.getKey())
-        .setIsVm(taskLoc.getValue() == TaskLoc.VM)
-        .build());
-    }
+    builder.setIsScaleOut(isScaleOut);
+    builder.addAllTaskLocation(locations);
 
     for (final Map.Entry<String, List<String>> entry : offloadTaskMap.entrySet()) {
       builder.addEntry(ControlMessage.RequestScalingEntryMessage
@@ -86,6 +85,18 @@ public final class JobScaler {
     return builder.build();
   }
 
+
+  private List<ControlMessage.TaskLocation> encodeTaskLocationMap() {
+    final List<ControlMessage.TaskLocation> list = new ArrayList<>(taskLocationMap.locationMap.size());
+    for (final Map.Entry<String, TaskLoc> entry : taskLocationMap.locationMap.entrySet()) {
+      list.add(ControlMessage.TaskLocation.newBuilder()
+        .setTaskId(entry.getKey())
+        .setIsVm(entry.getValue() == VM)
+        .build());
+    }
+    return list;
+  }
+
   private void scalingOutToWorkers(final int divide) {
 
     // 1. update all task location
@@ -95,7 +106,6 @@ public final class JobScaler {
       taskScheduledMap.getScheduledStageTasks().keySet()) {
 
       workerOffloadTaskMap.put(representer, new HashMap<>());
-
 
       final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
       final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
@@ -110,15 +120,17 @@ public final class JobScaler {
           if (offloadedCnt < countToOffload) {
             final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
 
-            if (loc == TaskLoc.VM) {
+            if (loc == VM) {
               offloadTask.add(task.getTaskId());
-              taskLocationMap.locationMap.put(task.getTaskId(), TaskLoc.SF);
+              taskLocationMap.locationMap.put(task.getTaskId(), SF);
               offloadedCnt += 1;
             }
           }
         }
       }
     }
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
 
     for (final Map.Entry<ExecutorRepresenter,
       Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
@@ -134,8 +146,8 @@ public final class JobScaler {
         ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestScalingOut)
-          .setRequestScalingOutMsg(buildRequestScalingoutMessage(offloadTaskMap))
+          .setType(ControlMessage.MessageType.RequestScaling)
+          .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
           .build());
     }
   }
@@ -146,13 +158,29 @@ public final class JobScaler {
   }
 
   public void scalingIn() {
+
+    final Map<String, List<String>> unloadTaskMap = new HashMap<>();
+
+    for (final String key : taskLocationMap.locationMap.keySet()) {
+      if (taskLocationMap.locationMap.get(key) == SF) {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(key);
+        unloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
+        final List<String> unloadTasks = unloadTaskMap.get(stageId);
+        unloadTasks.add(key);
+        taskLocationMap.locationMap.put(key, VM);
+      }
+    }
+
+    final List<ControlMessage.TaskLocation> locations = encodeTaskLocationMap();
+
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
       representer.sendControlMessage(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestScalingIn)
+          .setType(ControlMessage.MessageType.RequestScaling)
+          .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false))
           .build());
     }
   }

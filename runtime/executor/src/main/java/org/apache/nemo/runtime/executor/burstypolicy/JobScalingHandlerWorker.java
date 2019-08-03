@@ -282,62 +282,68 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case RequestScalingOut:
+        case RequestScaling:
+          final ControlMessage.RequestScalingMessage scalingMsg = message.getRequestScalingMsg();
 
-          final List<ControlMessage.TaskLocation> taskLocations =
-            message.getRequestScalingOutMsg().getTaskLocationList();
+          if (scalingMsg.getIsScaleOut()) {
 
-          // update task location
-          LOG.info("Updating task location...");
-          taskLocationMap.locationMap.clear();
-          for (final ControlMessage.TaskLocation taskLocation : taskLocations) {
-            taskLocationMap.locationMap.put(taskLocation.getTaskId(),
-              taskLocation.getIsVm() ? TaskLoc.VM : TaskLoc.SF);
-          }
+            final List<ControlMessage.TaskLocation> taskLocations = scalingMsg.getTaskLocationList();
 
-          final List<ControlMessage.RequestScalingEntryMessage> entries =
-          message.getRequestScalingOutMsg().getEntryList();
-
-          final Map<String, List<String>> scalingTaskMap = new HashMap<>();
-          for (final ControlMessage.RequestScalingEntryMessage entry : entries) {
-            scalingTaskMap.put(entry.getStageId(), entry.getOffloadTasksList());
-          }
-
-          LOG.info("Receive RequestScalingOut... {}", scalingTaskMap);
-
-          if (!GlobalOffloadDone.getInstance().getBoolean().compareAndSet(true, false)) {
-            throw new RuntimeException("GlobalOffloadDone should be true... but false TT");
-          }
-
-          scaleOut(scalingTaskMap);
-
-          scalingService.execute(() -> {
-            while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {
-              // waiting...
-              LOG.info("Waiting until finish input stop... cnt: {}",
-                RemainingOffloadTasks.getInstance().getRemainingCnt());
-
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
+            // update task location
+            LOG.info("Updating task location...");
+            taskLocationMap.locationMap.clear();
+            for (final ControlMessage.TaskLocation taskLocation : taskLocations) {
+              taskLocationMap.locationMap.put(taskLocation.getTaskId(),
+                taskLocation.getIsVm() ? TaskLoc.VM : TaskLoc.SF);
             }
 
-            LOG.info("Send LocalScalingDone {}", executorId);
+            final List<ControlMessage.RequestScalingEntryMessage> entries = scalingMsg.getEntryList();
 
-            // Send local offloading done
-            toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
-              .send(ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.LocalScalingReadyDone)
-                .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
-                  .setExecutorId(executorId)
-                  .build())
-                .build());
+            final Map<String, List<String>> scalingTaskMap = new HashMap<>();
+            for (final ControlMessage.RequestScalingEntryMessage entry : entries) {
+              scalingTaskMap.put(entry.getStageId(), entry.getOffloadTasksList());
+            }
 
-          });
+            LOG.info("Receive RequestScalingOut... {}", scalingTaskMap);
+
+            if (!GlobalOffloadDone.getInstance().getBoolean().compareAndSet(true, false)) {
+              throw new RuntimeException("GlobalOffloadDone should be true... but false TT");
+            }
+
+            scaleOut(scalingTaskMap);
+
+            scalingService.execute(() -> {
+              while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {
+                // waiting...
+                LOG.info("Waiting until finish input stop... cnt: {}",
+                  RemainingOffloadTasks.getInstance().getRemainingCnt());
+
+                try {
+                  Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+
+              LOG.info("Send LocalScalingDone {}", executorId);
+
+              // Send local offloading done
+              toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
+                .send(ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.LocalScalingReadyDone)
+                  .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
+                    .setExecutorId(executorId)
+                    .build())
+                  .build());
+
+            });
+          } else {
+            // Scaling in
+            LOG.info("Receive ScalingIn");
+            scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
+          }
           break;
         case GlobalScalingReadyDone:
           LOG.info("Receive GlobalScalingReadyDone");
@@ -345,10 +351,6 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             throw new RuntimeException("Something wrong... offloadDone should be false,, but true");
           }
 
-          break;
-        case RequestScalingIn:
-          LOG.info("Receive ScalingIn");
-          scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
           break;
         default:
           throw new IllegalMessageException(

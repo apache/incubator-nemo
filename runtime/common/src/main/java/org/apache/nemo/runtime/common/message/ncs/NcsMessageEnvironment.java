@@ -211,8 +211,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case MetricFlushed:
       case PipeInit:
       case RequestStageOffloadingDone:
-      case RequestScalingOut:
-      case RequestScalingIn:
       case GlobalScalingReadyDone:
       case LocalScalingReadyDone:
       case LocalRelayServerInfo:
