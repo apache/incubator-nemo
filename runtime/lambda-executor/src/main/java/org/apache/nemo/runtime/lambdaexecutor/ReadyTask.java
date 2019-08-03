@@ -3,9 +3,8 @@ package org.apache.nemo.runtime.lambdaexecutor;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
-import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.FSTSingleton;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.nustaq.serialization.FSTConfiguration;
 
 import java.io.DataInputStream;
@@ -19,10 +18,10 @@ import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventTyp
 public final class ReadyTask {
 
   public final String taskId;
-  public final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
+  public final Map<String, TaskLoc> taskLocationMap;
 
   public ReadyTask(final String taskId,
-                   final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap) {
+                   final Map<String, TaskLoc> taskLocationMap) {
     this.taskId = taskId;
     this.taskLocationMap = taskLocationMap;
   }
@@ -55,8 +54,8 @@ public final class ReadyTask {
     final DataInputStream dis = new DataInputStream(inputStream);
     try {
       final String taskId = dis.readUTF();
-      final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
-        (Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC>) conf.decodeFromStream(inputStream);
+      final Map<String, TaskLoc> taskLocationMap =
+        (Map<String, TaskLoc>) conf.decodeFromStream(inputStream);
 
       return new ReadyTask(taskId, taskLocationMap);
     } catch (Exception e) {

@@ -22,7 +22,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;

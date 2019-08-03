@@ -11,7 +11,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.common.TaskLoc.SF;
 
 // It receives data from upstream parents
 // and emits results to downstream tasks

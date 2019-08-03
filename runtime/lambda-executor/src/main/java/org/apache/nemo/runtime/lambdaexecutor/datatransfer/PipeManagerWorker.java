@@ -20,13 +20,14 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,14 +60,14 @@ public final class PipeManagerWorker {
   // key: edgeid, dstIndex
   private final ConcurrentMap<Pair<String, Integer>, Set<ByteInputContext>> byteInputContextMap = new ConcurrentHashMap<>();
 
-  private final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
+  private final Map<String, TaskLoc> taskLocationMap;
   private final RelayServerClient relayServerClient;
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
                            final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                            final Map<String, Serializer> serializerMap,
-                           final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap,
+                           final Map<String, TaskLoc> taskLocationMap,
                            final RelayServerClient relayServerClient) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
@@ -98,7 +99,7 @@ public final class PipeManagerWorker {
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
-          TaskLocationMap.LOC.VM,
+          TaskLoc.VM,
           taskId);
 
       LOG.info("Send message for input context {}, {} {} from {}",
@@ -166,9 +167,12 @@ public final class PipeManagerWorker {
     final String targetExecutorId = taskExecutorIdMap.get(
       new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
 
-    final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
 
-    LOG.info("Locatoin of {}: {}", new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), loc);
+    final String dstStage = ((StageEdge) runtimeEdge).getDst().getId();
+    final String dstTaskId = RuntimeIdManager.generateTaskId(dstStage, dstTaskIndex, 0);
+    final TaskLoc loc = taskLocationMap.get(dstTaskId);
+
+    LOG.info("Locatoin of {}: {}", dstTaskId, loc);
 
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
@@ -205,8 +209,10 @@ public final class PipeManagerWorker {
     final String srcExecutorId = taskExecutorIdMap.get(
       new NemoTriple(runtimeEdge.getId(), srcTaskIndex, false));
 
-    final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), (int) srcTaskIndex, false));
 
+    final String srcStage = ((StageEdge) runtimeEdge).getSrc().getId();
+    final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
+    final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
     LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
     // Descriptor

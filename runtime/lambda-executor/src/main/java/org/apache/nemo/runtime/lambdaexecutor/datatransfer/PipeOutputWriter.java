@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -27,7 +26,6 @@ import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
@@ -39,6 +37,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
+
+import static org.apache.nemo.common.TaskLoc.VM;
 
 /**
  * Represents the output data transfer from a task.
@@ -128,7 +128,7 @@ public final class PipeOutputWriter implements Flushable {
           byteOutputContext.getContextDescriptor(),
           byteOutputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-          TaskLocationMap.LOC.VM,
+          VM,
           taskId);
 
       LOG.info("Send finish message at {} {}", taskId, pendingMsg);

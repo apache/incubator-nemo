@@ -5,9 +5,6 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.NemoTriple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -15,14 +12,12 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 

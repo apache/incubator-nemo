@@ -42,7 +42,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -78,7 +79,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.VM;
+
 
 /**
  * Executor.
@@ -299,7 +301,6 @@ public final class Executor {
       final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
       final String edgeId = runtimeEdge.getId();
       final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-      taskLocationMap.locationMap.put(new NemoTriple<>(edgeId, taskIndex, false), VM);
     }
 
 
@@ -307,7 +308,6 @@ public final class Executor {
       final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
       final String edgeId = runtimeEdge.getId();
       final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-      taskLocationMap.locationMap.put(new NemoTriple<>(edgeId, taskIndex, true), VM);
     }
 
     LOG.info("{} Launch task: {}", executorId, task.getTaskId());

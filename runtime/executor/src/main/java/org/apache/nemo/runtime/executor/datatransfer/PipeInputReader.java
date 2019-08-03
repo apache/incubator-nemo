@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
@@ -40,8 +40,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 
 /**
  * Represents the input data transfer to a task.
@@ -247,9 +247,6 @@ public final class PipeInputReader implements InputReader {
         byteInputContexts.add(context);
 
         final int srcTaskIndex = pair.right();
-
-        taskLocationMap.locationMap
-          .put(new NemoTriple<>(runtimeEdge.getId(), srcTaskIndex, false), VM);
 
         if (context instanceof LocalByteInputContext) {
           final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;

@@ -4,9 +4,6 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.burstypolicy.TaskOffloadingPolicy;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -17,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public final class TaskOffloader {
   private static final Logger LOG = LoggerFactory.getLogger(TaskOffloader.class.getName());

@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.burstypolicy;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;

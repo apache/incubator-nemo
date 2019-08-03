@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -41,7 +40,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;

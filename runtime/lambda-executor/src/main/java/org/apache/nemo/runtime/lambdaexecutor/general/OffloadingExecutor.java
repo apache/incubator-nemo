@@ -12,8 +12,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
@@ -67,7 +66,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final int relayServerPort;
 
   private transient RelayServerClient relayServerClient;
-  private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocMap;
+  private final ConcurrentMap<String, TaskLoc> taskLocMap;
 
   private transient ExecutorService prepareService;
 
@@ -247,7 +246,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
 
-    for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
+    for (final Map.Entry<String, TaskLoc> entry
       : readyTask.taskLocationMap.entrySet()) {
       taskLocMap.put(entry.getKey(), entry.getValue());
     }

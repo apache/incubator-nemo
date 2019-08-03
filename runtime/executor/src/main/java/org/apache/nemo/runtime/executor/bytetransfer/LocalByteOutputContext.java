@@ -26,12 +26,13 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
@@ -45,7 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.VM;
 
 
 /**
@@ -65,7 +66,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
     private volatile boolean isPending = false;
 
-  private TaskLocationMap.LOC sendDataTo = VM;
+  private TaskLoc sendDataTo = VM;
   private final VMScalingClientTransport vmScalingClientTransport;
   private Channel vmChannel;
   private String vmTaskId;
@@ -114,7 +115,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC dt, String tid) {
+  public void pending(final TaskLoc dt, String tid) {
     LOG.info("LocalByteOutputContext pending: {}", getContextId().getTransferIndex());
     sendDataTo = dt;
     isPending = true;

@@ -22,7 +22,7 @@ import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.exception.AbsentBlockException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;

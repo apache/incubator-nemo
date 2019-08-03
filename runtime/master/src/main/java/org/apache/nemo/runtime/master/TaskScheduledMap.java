@@ -1,7 +1,9 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
@@ -28,18 +30,25 @@ public final class TaskScheduledMap {
 
   private final ExecutorRegistry executorRegistry;
 
+  private final TaskLocationMap taskLocationMap;
+
   @Inject
-  private TaskScheduledMap(final ExecutorRegistry executorRegistry) {
+  private TaskScheduledMap(final ExecutorRegistry executorRegistry,
+                           final TaskLocationMap taskLocationMap) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorIdRepresentorMap = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
+    this.taskLocationMap = taskLocationMap;
   }
 
   public void addTask(final ExecutorRepresenter representer, final Task task) {
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
     executorIdRepresentorMap.putIfAbsent(representer.getExecutorId(), representer);
+
+    // Add task location to VM
+    taskLocationMap.locationMap.put(task.getTaskId(), TaskLoc.VM);
 
     final Map<String, List<Task>> stageTaskMap = scheduledStageTasks.get(representer);
 

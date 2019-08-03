@@ -21,10 +21,11 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +36,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
-import static org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext.Status.PENDING;
-
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -64,7 +63,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   private Status currStatus = Status.NO_PENDING;
 
-  private TaskLocationMap.LOC sendDataTo = VM;
+  private TaskLoc sendDataTo = VM;
 
   private EventHandler<Integer> ackHandler;
 
@@ -139,7 +138,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC sdt, final String tid) {
+  public void pending(final TaskLoc sdt, final String tid) {
 
     synchronized (writeLock) {
       //sendDataTo = sdt;

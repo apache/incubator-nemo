@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**

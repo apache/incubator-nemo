@@ -24,7 +24,7 @@ import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;

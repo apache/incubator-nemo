@@ -1,7 +1,6 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.common;
 
-import org.apache.nemo.common.NemoTriple;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskLoc;
 
 import javax.inject.Inject;
 import java.io.Serializable;
@@ -10,13 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class TaskLocationMap implements Serializable {
 
-  public enum LOC {
-    VM,
-    SF
-  }
-
   // edgeId, taskIndex, src
-  public final Map<NemoTriple<String, Integer, Boolean>, LOC> locationMap;
+  public final Map<String, TaskLoc> locationMap;
 
   @Inject
   private TaskLocationMap() {

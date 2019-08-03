@@ -37,7 +37,7 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.exception.PhysicalPlanGenerationException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

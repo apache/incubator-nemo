@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.master.BlockManagerMaster;

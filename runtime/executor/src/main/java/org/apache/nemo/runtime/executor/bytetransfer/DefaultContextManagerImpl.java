@@ -23,14 +23,13 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
-import org.apache.nemo.common.NemoTriple;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -46,7 +45,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.VM;
+
 
 /**
  * Manages multiple transport contexts for one channel.
@@ -212,16 +212,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final ByteTransferContext.ContextId contextId =
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor();
-    final TaskLocationMap.LOC sendDataTo = message.getLocation();
+    final TaskLoc sendDataTo = message.getLocation();
 
     switch (message.getMessageType()) {
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        // It means that the remote dst task is moved to SF (or VM)
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
         //LOG.info("STOP_OUTPUT for moving {} pending {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
@@ -262,8 +259,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         } else {
           context.receiveFromSF(channel);
         }
-
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
         break;
       }
       case ACK_FROM_PARENT_STOP_OUTPUT: {
@@ -275,8 +270,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       }
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        //LOG.info("Scaling out input context {} to {}", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()), sendDataTo);
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
 
         final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
 
@@ -316,7 +309,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         //LOG.info("SETTING OUTPUT CONTEXT: {}, {}", transferIndex, context);
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
         switch (sendDataTo) {
           case SF: {
@@ -342,7 +334,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
         //LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
 
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
         final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
 
         // reset the channel!
@@ -384,7 +375,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             /*
             // THIS always should be in SF
             taskLocationMap.locationMap.put(
-              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.LOC.SF);
+              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.TaskLoc.SF);
 
             final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
             // reset the channel!
@@ -405,11 +396,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               final TransferKey key =
                 new TransferKey(cd.getRuntimeEdgeId(),
                   (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
-
-              // This always should be VM
-              taskLocationMap.locationMap.put(
-                new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), VM);
-
 
               taskTransferIndexMap.put(key, transferIndex);
 
@@ -615,10 +601,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     taskTransferIndexMap.put(key, transferIndex);
-
-    // FIRST initiation should be in VM
-    taskLocationMap.locationMap.put(new NemoTriple<>(descriptor.getRuntimeEdgeId(),
-      (int) descriptor.getDstTaskIndex(), true), VM);
 
      return newContext(outputContexts, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,

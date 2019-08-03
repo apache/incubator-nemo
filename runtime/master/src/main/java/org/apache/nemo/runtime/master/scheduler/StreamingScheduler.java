@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.master.scheduler;
 import com.google.common.collect.Lists;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;

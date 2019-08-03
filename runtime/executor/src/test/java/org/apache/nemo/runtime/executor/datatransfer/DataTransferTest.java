@@ -34,7 +34,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;

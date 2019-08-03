@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.master.resource;
 
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 
 /**
  * Represents the specifications of a resource.

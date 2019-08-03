@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;

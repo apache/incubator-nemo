@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 
 import javax.inject.Inject;

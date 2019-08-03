@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;

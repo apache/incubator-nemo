@@ -23,9 +23,9 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
@@ -36,8 +36,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA;
 
 /**
@@ -192,7 +192,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final ByteTransferContext.ContextId contextId =
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor();
-    final TaskLocationMap.LOC sendDataTo = message.getLocation();
+    final TaskLoc sendDataTo = message.getLocation();
 
     switch (message.getMessageType()) {
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {

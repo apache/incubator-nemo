@@ -1,9 +1,8 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -18,7 +17,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class StaticOffloadingPolicy implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(StaticOffloadingPolicy.class.getName());

@@ -26,7 +26,7 @@ import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;

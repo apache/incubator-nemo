@@ -1,12 +1,13 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -20,10 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
@@ -61,6 +57,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private TinyTaskOffloadingWorkerManager tinyWorkerManager;
 
+  private final TaskLocationMap taskLocationMap;
 
   @Inject
   private JobScalingHandlerWorker(
@@ -76,8 +73,9 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final EvalConf evalConf,
     final PersistentConnectionToMasterMap toMaster,
     final MessageEnvironment messageEnvironment,
-    final StageOffloadingWorkerManager stageOffloadingWorkerManager) {
-
+    final StageOffloadingWorkerManager stageOffloadingWorkerManager,
+    final TaskLocationMap taskLocationMap) {
+    this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
@@ -145,7 +143,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     return l;
   }
 
-  private void scaleOut(final Map<String, Integer> scalingNum) {
+  private void scaleOut(final Map<String, List<String>> offloadTasks) {
     // scale out
     final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
@@ -157,7 +155,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     }
 
     final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
-    final int totalOffloadTasks = scalingNum.values().stream().reduce(0, (x,y) -> x+y);
+    final int totalOffloadTasks = offloadTasks.values().stream()
+      .map(x -> x.size()).reduce(0, (x,y) -> x+y);
 
     // 1. 여기서 먼저 worker 준비! 몇개 offloading할지 알고 있으니까 가능함.
     final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
@@ -177,24 +176,24 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           final TaskExecutor task = te.get(i);
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getId());
 
-          final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
-          if (offloadNum < scalingNum.get(stageId)) {
+          final List<String> stageOffloadTask = offloadTasks.get(stageId);
 
+          if (stageOffloadTask.contains(task.getId())) {
             offloadedTasksPerStage.get(j).add(task);
 
+            final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
             offloadNumMap.put(stageId, offloadNum + 1);
 
             final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask(serializer);
 
             LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
-            remainingOffloadTasks.getRemainingCnt());
+              remainingOffloadTasks.getRemainingCnt());
 
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
               //stageOffloadingWorkerManager.endOffloading(stageId);
             });
           }
-
         }
       }
     }
@@ -285,21 +284,32 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       switch (message.getType()) {
         case RequestScalingOut:
 
+          final List<ControlMessage.TaskLocation> taskLocations =
+            message.getRequestScalingOutMsg().getTaskLocationList();
+
+          // update task location
+          LOG.info("Updating task location...");
+          taskLocationMap.locationMap.clear();
+          for (final ControlMessage.TaskLocation taskLocation : taskLocations) {
+            taskLocationMap.locationMap.put(taskLocation.getTaskId(),
+              taskLocation.getIsVm() ? TaskLoc.VM : TaskLoc.SF);
+          }
+
           final List<ControlMessage.RequestScalingEntryMessage> entries =
           message.getRequestScalingOutMsg().getEntryList();
 
-          final Map<String, Integer> scalingNumMap = new HashMap<>();
+          final Map<String, List<String>> scalingTaskMap = new HashMap<>();
           for (final ControlMessage.RequestScalingEntryMessage entry : entries) {
-            scalingNumMap.put(entry.getStageId(), entry.getOffloadNum());
+            scalingTaskMap.put(entry.getStageId(), entry.getOffloadTasksList());
           }
 
-          LOG.info("Receive RequestScalingOut... {}", scalingNumMap);
+          LOG.info("Receive RequestScalingOut... {}", scalingTaskMap);
 
           if (!GlobalOffloadDone.getInstance().getBoolean().compareAndSet(true, false)) {
             throw new RuntimeException("GlobalOffloadDone should be true... but false TT");
           }
 
-          scaleOut(scalingNumMap);
+          scaleOut(scalingTaskMap);
 
           scalingService.execute(() -> {
             while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {

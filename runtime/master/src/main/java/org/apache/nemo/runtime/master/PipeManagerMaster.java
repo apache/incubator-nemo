@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;

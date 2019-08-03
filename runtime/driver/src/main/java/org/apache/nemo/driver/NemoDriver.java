@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.ServerlessExecutorProviderImpl;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;

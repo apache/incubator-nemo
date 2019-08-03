@@ -20,9 +20,9 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 
 import javax.annotation.Nullable;
 import java.io.Flushable;
@@ -42,7 +42,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   ByteOutputStream newOutputStream() throws IOException;
 
   // pending for moving downstream tasks
-  void pending(TaskLocationMap.LOC sendDataTo, String tId);
+  void pending(TaskLoc sendDataTo, String tId);
 
   // resume after moving downstream tasks
   // This should be initiated when the byteOutputContext is in SF

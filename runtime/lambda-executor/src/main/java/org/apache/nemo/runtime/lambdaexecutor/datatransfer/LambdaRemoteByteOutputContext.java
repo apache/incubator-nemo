@@ -21,10 +21,10 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayDataFrame;
@@ -37,8 +37,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteOutputContext.Status.PENDING;
 
 /**
@@ -65,7 +65,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   private Status currStatus = Status.NO_PENDING;
 
-  private TaskLocationMap.LOC sendDataTo;
+  private TaskLoc sendDataTo;
 
   private String remoteAddress;
   private EventHandler<Integer> ackHandler;
@@ -88,7 +88,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
                                        final byte[] contextDescriptor,
                                        final ContextManager contextManager,
                                        final String relayDst,
-                                       final TaskLocationMap.LOC sendDataTo) {
+                                       final TaskLoc sendDataTo) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.sendDataTo = sendDataTo;
     if (sendDataTo.equals(VM)) {
@@ -146,7 +146,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
-  public void pending(final TaskLocationMap.LOC sdt, final String tid) {
+  public void pending(final TaskLoc sdt, final String tid) {
 
     synchronized (writeLock) {
       //sendDataTo = sdt;

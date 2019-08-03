@@ -24,7 +24,7 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
@@ -42,7 +42,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.common.TaskLoc.SF;
 
 /**
  * Represents the output data transfer from a task.

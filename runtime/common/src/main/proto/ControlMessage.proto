@@ -327,11 +327,17 @@ message StageOffloadingInfoMessage {
 message RequestScalingOutMessage {
   required int64 requestId = 1;
   repeated RequestScalingEntryMessage entry = 2;
+  repeated TaskLocation taskLocation = 3;
+}
+
+message TaskLocation {
+  required string taskId = 1;
+  required bool isVm = 2;
 }
 
 message RequestScalingEntryMessage {
   required string stageId = 1;
-  required int32 offloadNum = 2;
+  repeated string offloadTasks = 2;
 }
 
 

@@ -24,7 +24,7 @@ import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.StateMachine;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.PlanState;
