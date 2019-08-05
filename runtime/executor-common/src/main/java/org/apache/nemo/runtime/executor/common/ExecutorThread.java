@@ -26,6 +26,8 @@ public final class ExecutorThread {
 
   private volatile boolean closed = false;
 
+  private final AtomicBoolean throttle;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -35,6 +37,7 @@ public final class ExecutorThread {
     this.pendingTasks = new ArrayList<>();
     this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
+    this.throttle = new AtomicBoolean(false);
   }
 
   public void deleteTask(final TaskExecutor task) {
@@ -46,6 +49,11 @@ public final class ExecutorThread {
   }
 
   private volatile boolean loggingTime = false;
+
+
+  public AtomicBoolean getThrottle() {
+    return throttle;
+  }
 
   public void start() {
 
@@ -99,6 +107,11 @@ public final class ExecutorThread {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
+          }
+
+          while (throttle.get()) {
+            LOG.info("Throttling thread {} ...", executorThreadName);
+            Thread.sleep(200);
           }
 
           final Iterator<TaskExecutor> iterator = availableTasks.iterator();

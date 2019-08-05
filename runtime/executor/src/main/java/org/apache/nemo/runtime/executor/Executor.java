@@ -124,7 +124,7 @@ public final class Executor {
   private ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService taskEventExecutorService;
 
-  private final Map<String, Pair<AtomicInteger, List<ExecutorThread>>> stageExecutorThreadMap;
+  private final StageExecutorThreadMap stageExecutorThreadMap;
 
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final TaskInputContextMap taskInputContextMap;
@@ -164,6 +164,7 @@ public final class Executor {
                    final TaskTransferIndexMap taskTransferIndexMap,
                    final RelayServer relayServer,
                    final TaskLocationMap taskLocationMap,
+                   final StageExecutorThreadMap stageExecutorThreadMap,
                    final JobScalingHandlerWorker jobScalingHandlerWorker) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
@@ -220,7 +221,7 @@ public final class Executor {
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
-    this.stageExecutorThreadMap = new ConcurrentHashMap<>();
+    this.stageExecutorThreadMap = stageExecutorThreadMap;
 
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
     /*
@@ -371,12 +372,13 @@ public final class Executor {
 
 
       final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
-      final Pair<AtomicInteger, List<ExecutorThread>> pair = stageExecutorThreadMap.getOrDefault(stageId,
+      final Pair<AtomicInteger, List<ExecutorThread>> pair =
+        stageExecutorThreadMap.getStageExecutorThreadMap().getOrDefault(stageId,
         Pair.of(new AtomicInteger(0), new ArrayList<>(evalConf.executorThreadNum)));
 
       final List<ExecutorThread> executorThreads = pair.right();
 
-      if (stageExecutorThreadMap.putIfAbsent(stageId, pair) == null) {
+      if (stageExecutorThreadMap.getStageExecutorThreadMap().putIfAbsent(stageId, pair) == null) {
         // initialize threads
         synchronized (executorThreads) {
           for (int i = 0; i < evalConf.executorThreadNum; i++) {
@@ -454,7 +456,8 @@ public final class Executor {
 
   public void terminate() {
     try {
-      for (final Pair<AtomicInteger, List<ExecutorThread>> pair : stageExecutorThreadMap.values()) {
+      for (final Pair<AtomicInteger, List<ExecutorThread>> pair :
+        stageExecutorThreadMap.getStageExecutorThreadMap().values()) {
         pair.right().forEach(ExecutorThread::close);
       }
       metricMessageSender.close();

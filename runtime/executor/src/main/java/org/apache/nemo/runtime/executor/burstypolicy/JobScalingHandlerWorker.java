@@ -59,6 +59,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final TaskLocationMap taskLocationMap;
 
+  private final StageExecutorThreadMap stageExecutorThreadMap;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -74,13 +76,15 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final PersistentConnectionToMasterMap toMaster,
     final MessageEnvironment messageEnvironment,
     final StageOffloadingWorkerManager stageOffloadingWorkerManager,
-    final TaskLocationMap taskLocationMap) {
+    final TaskLocationMap taskLocationMap,
+    final StageExecutorThreadMap stageExecutorThreadMap) {
     this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
     this.offloadedTasksPerStage = new ArrayList<>();
     this.messageEnvironment = messageEnvironment;
+    this.stageExecutorThreadMap = stageExecutorThreadMap;
 
     this.toMaster = toMaster;
     LOG.info("Start JobScalingHandlerWorker");
@@ -168,6 +172,15 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
     final Map<String, Integer> offloadNumMap = new HashMap<>();
 
+    // !!! Throttle start
+    LOG.info("Start throttleling");
+    stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
+      .map(pair -> pair.right())
+      .flatMap(l -> l.stream())
+      .forEach(executorThread -> {
+        executorThread.getThrottle().set(true);
+      });
+
     for (int i = 0; i < len; i++) {
       for (int j = 0; j < stageTasks.size(); j++) {
         final List<TaskExecutor> te = stageTasks.get(j);
@@ -197,6 +210,15 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         }
       }
     }
+
+    LOG.info("End throttleling");
+    // !!! Throttle end
+    stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
+      .map(pair -> pair.right())
+      .flatMap(l -> l.stream())
+      .forEach(executorThread -> {
+        executorThread.getThrottle().set(false);
+      });
 
     /*
     for (final List<TaskExecutor> tasks : stageTasks) {
