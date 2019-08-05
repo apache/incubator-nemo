@@ -283,9 +283,9 @@ under the License.
             <phase>site</phase>
           </execution>
           <execution>
-            <id>test-aggregate</id>
+            <id>aggregate-jar</id>
             <goals>
-              <goal>test-aggregate</goal>
+              <goal>aggregate-jar</goal>
             </goals>
             <phase>validate</phase>
           </execution>
