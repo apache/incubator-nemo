@@ -46,8 +46,9 @@ public final class JobScaler {
     this.taskLocationMap = taskLocationMap;
   }
 
-  public void scalingOut(final int divide) {
+  public void scalingOut(final ControlMessage.ScalingMessage msg) {
 
+    final int divide = msg.getDivide();
     final int prevScalingCount = sumCount();
 
     if (prevScalingCount > 0) {
@@ -59,7 +60,8 @@ public final class JobScaler {
       throw new RuntimeException("Scaling false..." + isScaling.get());
     }
 
-    scalingOutToWorkers(divide);
+    final int query = msg.hasQuery() ? msg.getQuery() : 0;
+    scalingOutToWorkers(divide, query);
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
@@ -97,7 +99,8 @@ public final class JobScaler {
     return list;
   }
 
-  private void scalingOutToWorkers(final int divide) {
+  private void scalingOutToWorkers(final int divide,
+                                   final int queryNum) {
 
     // 1. update all task location
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
@@ -111,6 +114,14 @@ public final class JobScaler {
       final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
 
       for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+        // if query 5, do not move stage2 tasks
+        if (queryNum == 5) {
+          if (entry.getKey().equals("Stage2")) {
+            LOG.info("Skip stage 2 offloading");
+            continue;
+          }
+        }
+
         final int countToOffload = entry.getValue().size() - (entry.getValue().size() / divide);
         final List<String> offloadTask = new ArrayList<>();
         offloadTaskMap.put(entry.getKey(), offloadTask);

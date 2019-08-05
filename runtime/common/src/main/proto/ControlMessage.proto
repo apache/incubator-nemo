@@ -42,6 +42,7 @@ message LaunchDAGMessage {
 message ScalingMessage {
   required string decision = 1;
   optional int32 divide = 2;
+  optional int32 query = 3;
 }
 
 message DataCollectMessage {

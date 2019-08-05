@@ -311,13 +311,27 @@ public final class JobLauncher {
 
             if (decision.equals("o")) {
               final int offloadDivide = Integer.valueOf(split[1]);
-              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
-                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
-                  .setDecision(decision)
-                  .setDivide(offloadDivide)
-                  .build())
-                .build());
+
+              if (split.length == 3) {
+                final int queryNum = Integer.valueOf(split[2]);
+                driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                  .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                  .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                    .setDecision(decision)
+                    .setDivide(offloadDivide)
+                    .setQuery(queryNum)
+                    .build())
+                  .build());
+              } else {
+                // length 2
+                driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                  .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                  .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                    .setDecision(decision)
+                    .setDivide(offloadDivide)
+                    .build())
+                  .build());
+              }
             } else if (decision.equals("i")) {
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)
