@@ -219,6 +219,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
   }
 
   private Object retrieveElement() {
+
+    if (Throttled.getInstance().getThrottled()) {
+      return EmptyElement.getInstance();
+    }
+
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       watermarkTriggered = false;
@@ -229,6 +234,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
         return new Watermark(watermarkTimestamp);
       }
     }
+
 
     // Data
     final Object element = readable.readCurrent();

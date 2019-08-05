@@ -193,7 +193,19 @@ public final class Executor {
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
+      final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
+
+      if (load > 0.95) {
+        LOG.info("Set throttled true");
+        Throttled.getInstance().setThrottle(true);
+      }
+
+      if (load < 0.8) {
+         LOG.info("Set throttled false");
+        Throttled.getInstance().setThrottle(false);
+      }
+
     }, 1, 1, TimeUnit.SECONDS);
 
 
