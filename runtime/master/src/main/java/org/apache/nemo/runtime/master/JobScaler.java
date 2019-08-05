@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.nemo.common.TaskLoc.SF;
@@ -34,6 +36,7 @@ public final class JobScaler {
   private final AtomicBoolean isScaling = new AtomicBoolean(false);
 
   private final TaskLocationMap taskLocationMap;
+  private final ExecutorService executorService;
 
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
@@ -44,6 +47,7 @@ public final class JobScaler {
     this.taskScheduledMap = taskScheduledMap;
     this.prevScalingCountMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
+    this.executorService = Executors.newCachedThreadPool();
   }
 
   public void scalingOut(final ControlMessage.ScalingMessage msg) {
@@ -153,13 +157,15 @@ public final class JobScaler {
       LOG.info("Send scaling out message {} to {}", entry.getValue(),
         representer.getExecutorId());
 
-      representer.sendControlMessage(
-        ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestScaling)
-          .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
-          .build());
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .build());
+      });
     }
   }
 
@@ -186,13 +192,15 @@ public final class JobScaler {
 
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
-      representer.sendControlMessage(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestScaling)
-          .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false))
-          .build());
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false))
+            .build());
+      });
     }
   }
 
@@ -201,6 +209,7 @@ public final class JobScaler {
 
     for (final ExecutorRepresenter representer : taskScheduledMap.getScheduledStageTasks().keySet()) {
       final long id = RuntimeIdManager.generateMessageId();
+      executorService.execute(() -> {
       representer.sendControlMessage(ControlMessage.Message.newBuilder()
         .setId(id)
         .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
@@ -209,6 +218,8 @@ public final class JobScaler {
           .setRequestId(id)
           .build())
         .build());
+      });
+
     }
   }
 

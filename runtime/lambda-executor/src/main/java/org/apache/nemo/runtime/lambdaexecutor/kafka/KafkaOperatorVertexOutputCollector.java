@@ -264,13 +264,13 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
     // Emit watermarks to output writer
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      LOG.info("Emit watermark to output writer at {}", irVertex.getId());
+      //LOG.info("Emit watermark to output writer at {}", irVertex.getId());
       outputWriter.writeWatermark(watermark);
     }
 
     for (final List<PipeOutputWriter> externalVertices : externalAdditionalOutputs.values()) {
       for (final PipeOutputWriter externalVertex : externalVertices) {
-        LOG.info("Emit watermark to output writer22 at {}", irVertex.getId());
+        //LOG.info("Emit watermark to output writer22 at {}", irVertex.getId());
         externalVertex.writeWatermark(watermark);
       }
     }
