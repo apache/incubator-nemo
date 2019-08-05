@@ -220,9 +220,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private Object retrieveElement() {
 
-    if (Throttled.getInstance().getThrottled()) {
-      return EmptyElement.getInstance();
-    }
 
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
@@ -235,6 +232,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
       }
     }
 
+    if (Throttled.getInstance().getThrottled()) {
+      return EmptyElement.getInstance();
+    }
 
     // Data
     final Object element = readable.readCurrent();
