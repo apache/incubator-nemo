@@ -196,14 +196,18 @@ public final class Executor {
       final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
 
-      if (load > 0.95) {
-        LOG.info("Set throttled true");
-        Throttled.getInstance().setThrottle(true);
+      if (load > 0.97) {
+        if (!Throttled.getInstance().getThrottled()) {
+          LOG.info("Set throttled true");
+          Throttled.getInstance().setThrottle(true);
+        }
       }
 
       if (load < 0.8) {
-         LOG.info("Set throttled false");
-        Throttled.getInstance().setThrottle(false);
+        if (Throttled.getInstance().getThrottled()) {
+          LOG.info("Set throttled false");
+          Throttled.getInstance().setThrottle(false);
+        }
       }
 
     }, 1, 1, TimeUnit.SECONDS);
