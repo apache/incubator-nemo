@@ -176,7 +176,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           final TaskExecutor task = te.get(i);
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getId());
 
-          final List<String> stageOffloadTask = offloadTasks.get(stageId);
+          final List<String> stageOffloadTask = offloadTasks.getOrDefault(stageId, new ArrayList<>());
 
           if (stageOffloadTask.contains(task.getId())) {
             offloadedTasksPerStage.get(j).add(task);
