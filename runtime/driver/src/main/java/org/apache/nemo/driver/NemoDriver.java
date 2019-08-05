@@ -136,7 +136,7 @@ public final class NemoDriver {
       LOG.info("Receive scaling decision {}", decision);
 
       if (decision.equals("o")) {
-        jobScaler.scalingOut(message.getScalingMsg().getDivide());
+        jobScaler.scalingOut(message.getScalingMsg());
       } else if (decision.equals("i")) {
         jobScaler.scalingIn();
       } else {
