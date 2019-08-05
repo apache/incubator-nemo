@@ -192,18 +192,25 @@ public final class Executor {
     this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
+    final AtomicInteger bursty = new AtomicInteger(0);
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
 
       if (load > 0.97) {
-        if (!Throttled.getInstance().getThrottled()) {
-          LOG.info("Set throttled true");
-          Throttled.getInstance().setThrottle(true);
+        bursty.getAndIncrement();
+        if (bursty.get() >= 4) {
+          if (!Throttled.getInstance().getThrottled()) {
+            LOG.info("Set throttled true");
+            Throttled.getInstance().setThrottle(true);
+          }
+          bursty.set(0);
         }
       }
 
       if (load < 0.8) {
+        bursty.set(0);
         if (Throttled.getInstance().getThrottled()) {
           LOG.info("Set throttled false");
           Throttled.getInstance().setThrottle(false);
