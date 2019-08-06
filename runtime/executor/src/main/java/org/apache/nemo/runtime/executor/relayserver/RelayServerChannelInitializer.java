@@ -26,12 +26,15 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
   private final ConcurrentMap<String, List<ByteBuf>> pendingBytes = new ConcurrentHashMap<>();
 
   private final OutputWriterFlusher outputWriterFlusher;
+  private final ScheduledExecutorService scheduledExecutorService;
 
   public RelayServerChannelInitializer(
     final ConcurrentMap<String, Channel> taskChannelMap,
-    final OutputWriterFlusher outputWriterFlusher) {
+    final OutputWriterFlusher outputWriterFlusher,
+    final ScheduledExecutorService scheduledExecutorService) {
     this.taskChannelMap = taskChannelMap;
     this.outputWriterFlusher = outputWriterFlusher;
+    this.scheduledExecutorService = scheduledExecutorService;
   }
 
   @Override
@@ -44,6 +47,7 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
     ch.pipeline()
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
         Integer.MAX_VALUE, 0, 4, 0, 4))
-      .addLast(new RelayServerMessageToMessageDecoder(taskChannelMap, pendingBytes, outputWriterFlusher));
+      .addLast(new RelayServerMessageToMessageDecoder(
+        taskChannelMap, pendingBytes, outputWriterFlusher, scheduledExecutorService));
   }
 }

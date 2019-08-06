@@ -24,6 +24,8 @@ import javax.inject.Inject;
 import java.net.UnknownHostException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 public final class RelayServer {
   private static final Logger LOG = LoggerFactory.getLogger(RelayServer.class);
@@ -41,6 +43,7 @@ public final class RelayServer {
 
   public final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
   private final OutputWriterFlusher outputWriterFlusher;
+  private final ScheduledExecutorService scheduledExecutorService;
 
   @Inject
   private RelayServer(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -61,17 +64,19 @@ public final class RelayServer {
       throw new RuntimeException(e);
     }
 
+    this.scheduledExecutorService = Executors.newScheduledThreadPool(10);
+
     this.outputWriterFlusher = new OutputWriterFlusher(200);
 
-    serverListeningGroup = channelImplSelector.newEventLoopGroup(2,
+    serverListeningGroup = channelImplSelector.newEventLoopGroup(3,
         new DefaultThreadFactory(SERVER_LISTENING));
-    serverWorkingGroup = channelImplSelector.newEventLoopGroup(5,
+    serverWorkingGroup = channelImplSelector.newEventLoopGroup(16,
         new DefaultThreadFactory(SERVER_WORKING));
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RelayServerChannelInitializer(channelMap, outputWriterFlusher))
+      .childHandler(new RelayServerChannelInitializer(channelMap, outputWriterFlusher, scheduledExecutorService))
       .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;

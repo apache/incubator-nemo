@@ -27,10 +27,11 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
 
   public RelayServerMessageToMessageDecoder(final ConcurrentMap<String, Channel> taskChannelMap,
                                             final ConcurrentMap<String, List<ByteBuf>> pendingByteMap,
-                                            final OutputWriterFlusher outputWriterFlusher) {
+                                            final OutputWriterFlusher outputWriterFlusher,
+                                            final ScheduledExecutorService scheduledExecutorService) {
     this.taskChannelMap = taskChannelMap;
     this.pendingByteMap = pendingByteMap;
-    this.pendingFlusher = Executors.newSingleThreadScheduledExecutor();
+    this.pendingFlusher = scheduledExecutorService;
     this.outputWriterFlusher = outputWriterFlusher;
 
     pendingFlusher.scheduleAtFixedRate(() -> {
