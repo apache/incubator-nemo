@@ -6,11 +6,14 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.nemo.common.RendevousResponse;
 import org.apache.nemo.common.RendevousMessageEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
 public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBuf> {
+  private static final Logger LOG = LoggerFactory.getLogger(RendevousClientDecoder.class);
 
   private final RendevousServerClient client;
 
@@ -25,6 +28,8 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
 
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) throws IOException {
+
+    LOG.info("Rendevous client decoder called");
 
     final RendevousMessageEncoder.Type type = RendevousMessageEncoder.Type.values()[byteBuf.readInt()];
     final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
