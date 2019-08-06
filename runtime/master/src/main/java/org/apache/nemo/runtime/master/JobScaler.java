@@ -120,8 +120,8 @@ public final class JobScaler {
       for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
         // if query 5, do not move stage2 tasks
         if (queryNum == 5) {
-          if (entry.getKey().equals("Stage2")) {
-            LOG.info("Skip stage 2 offloading");
+          if (entry.getKey().equals("Stage3")) {
+            LOG.info("Skip stage 3 offloading");
             continue;
           }
         }
