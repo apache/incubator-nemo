@@ -111,11 +111,11 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   }
 
   public void registerTask(final String dst) {
-    LOG.info("Registering address {}", dst);
 
     synchronized (registerTasks) {
       if (!registerTasks.contains(dst)) {
         registerTasks.add(dst);
+        LOG.info("Registering address {}", dst);
         channel.writeAndFlush(new RendevousRegister(dst));
       }
     }

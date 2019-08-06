@@ -83,6 +83,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final String rendevousServerAddress;
 
+  private transient ExecutorService executorStartService;
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
@@ -126,6 +127,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
     LOG.info("ExecutorAddressMap: {}", executorAddressMap);
+
+    this.executorStartService = Executors.newCachedThreadPool();
 
     this.oc = outputCollector;
     this.ackScheduledService = new AckScheduledService();
@@ -263,27 +266,30 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       taskLocMap.put(entry.getKey(), entry.getValue());
     }
 
-    final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
-      task,
-      executorAddressMap,
-      serializerMap,
-      byteTransport,
-      pipeManagerWorker,
-      intermediateDataIOFactory,
-      oc,
-      scheduledExecutorService,
-      prepareService,
-      executorGlobalInstances);
+    executorStartService.execute(() -> {
+      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
+        task,
+        executorAddressMap,
+        serializerMap,
+        byteTransport,
+        pipeManagerWorker,
+        intermediateDataIOFactory,
+        oc,
+        scheduledExecutorService,
+        prepareService,
+        executorGlobalInstances);
 
+      executorThread.addNewTask(taskExecutor);
 
-    executorThread.addNewTask(taskExecutor);
+      taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
+      taskAssignedMap.put(taskExecutor, executorThread);
 
-    taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
-    taskAssignedMap.put(taskExecutor, executorThread);
-
-    // Emit offloading done
-    oc.emit(new OffloadingDoneEvent(
-      task.taskId));
+      // Emit offloading done
+      synchronized (oc) {
+        oc.emit(new OffloadingDoneEvent(
+          task.taskId));
+      }
+    });
   }
 
   @Override
