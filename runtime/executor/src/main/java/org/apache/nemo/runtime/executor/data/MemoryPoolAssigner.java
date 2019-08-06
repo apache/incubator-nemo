@@ -26,7 +26,6 @@ import org.apache.nemo.conf.JobConf;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
