@@ -561,6 +561,8 @@ public final class Executor {
             taskTransferIndexMap.getMap(),
             relayServer.getPublicAddress(),
             relayServer.getPort(),
+            msg.getRendevousAddress(),
+            msg.getRendevousPort(),
             executorId,
             m);
 

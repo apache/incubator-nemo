@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,11 +59,14 @@ public final class RelayServerClient {
   private final int myRelayServerPort;
   private final Map<String, Pair<String, Integer>> relayServerInfo;
 
+  private final RendevousServerClient rendevousServerClient;
+
   public RelayServerClient(final EventLoopGroup clientGroup,
                            final Bootstrap clientBootstrap,
                            final String myRelayServerAddress,
                            final int myRelayServerPort,
-                           final Map<String, Pair<String, Integer>> relayServerInfo) {
+                           final Map<String, Pair<String, Integer>> relayServerInfo,
+                           final RendevousServerClient rendevousServerClient) {
 
     this.clientGroup = clientGroup;
     this.clientBootstrap = clientBootstrap;
@@ -72,6 +76,7 @@ public final class RelayServerClient {
     this.myRelayServerAddress = myRelayServerAddress;
     this.myRelayServerPort = myRelayServerPort;
     this.relayServerInfo = relayServerInfo;
+    this.rendevousServerClient = rendevousServerClient;
 
     //final ChannelFuture channelFuture = connectToRelayServer(relayServerAddress, relayServerPort);
     //this.relayServerChannel = channelFuture.channel();
@@ -163,6 +168,10 @@ public final class RelayServerClient {
     registerTask(myChannel,
       descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
+    // 여기서 rendevous server에 등록하기
+    final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+    final String response = rendevousServerClient.requestAddress(relayDst);
+
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     //LOG.info("Getting context manager!!!");
     completableFuture.complete(manager.newOutputContext(dstExecutorId, descriptor, true));
@@ -186,6 +195,11 @@ public final class RelayServerClient {
     //  channel);
 
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+
+
+    // rendevous server에 등록
+    final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+    rendevousServerClient.registerTask(relayDst);
 
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);

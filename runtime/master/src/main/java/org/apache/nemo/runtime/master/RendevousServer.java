@@ -1,20 +1,16 @@
-package org.apache.nemo.runtime.executor.relayserver;
+package org.apache.nemo.runtime.master;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NetworkUtils;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.executor.datatransfer.NioChannelImplementationSelector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -24,9 +20,10 @@ import javax.inject.Inject;
 import java.net.UnknownHostException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ThreadFactory;
 
-public final class RelayServer {
-  private static final Logger LOG = LoggerFactory.getLogger(RelayServer.class);
+public final class RendevousServer {
+  private static final Logger LOG = LoggerFactory.getLogger(RendevousServer.class);
 
   private static final String SERVER_LISTENING = "relay:server:listening";
   private static final String SERVER_WORKING = "relay:server:working";
@@ -39,14 +36,11 @@ public final class RelayServer {
   private final String publicAddress;
   private int bindingPort;
 
-  public final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
-  private final OutputWriterFlusher outputWriterFlusher;
+  private final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
 
   @Inject
-  private RelayServer(@Parameter(JobConf.ExecutorId.class) final String executorId,
-                      final TcpPortProvider tcpPortProvider,
-                      @Parameter(EvalConf.Ec2.class) final boolean ec2,
-                      final NioChannelImplementationSelector channelImplSelector) {
+  private RendevousServer(final TcpPortProvider tcpPortProvider,
+                          @Parameter(EvalConf.Ec2.class) final boolean ec2) {
 
     final String host;
     try {
@@ -61,17 +55,17 @@ public final class RelayServer {
       throw new RuntimeException(e);
     }
 
-    this.outputWriterFlusher = new OutputWriterFlusher(200);
+    final NioChannelImplementationSelector channelImplSelector = new NioChannelImplementationSelector();
 
     serverListeningGroup = channelImplSelector.newEventLoopGroup(2,
         new DefaultThreadFactory(SERVER_LISTENING));
-    serverWorkingGroup = channelImplSelector.newEventLoopGroup(5,
+    serverWorkingGroup = channelImplSelector.newEventLoopGroup(2,
         new DefaultThreadFactory(SERVER_WORKING));
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RelayServerChannelInitializer(channelMap, outputWriterFlusher))
+      .childHandler(new RendevousServerChannelInitializer(channelMap))
       .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;
@@ -103,7 +97,7 @@ public final class RelayServer {
 
     serverListeningChannel = listeningChannel;
 
-    LOG.info("Relay server public address: {}, port: {}", publicAddress, bindingPort);
+    LOG.info("Rendevous server public address: {}, port: {}", publicAddress, bindingPort);
   }
 
   public String getPublicAddress() {
@@ -112,5 +106,21 @@ public final class RelayServer {
 
   public int getPort() {
     return bindingPort;
+  }
+
+  public final class NioChannelImplementationSelector {
+
+
+    public EventLoopGroup newEventLoopGroup(final int numThreads, final ThreadFactory threadFactory) {
+      return new NioEventLoopGroup(numThreads, threadFactory);
+    }
+
+    public Class<? extends ServerChannel> getServerChannelClass() {
+      return NioServerSocketChannel.class;
+    }
+
+    public Class<? extends Channel> getChannelClass() {
+      return NioSocketChannel.class;
+    }
   }
 }

@@ -64,8 +64,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final String relayServerAddress;
   private final int relayServerPort;
+  private final int rendevousServerPort;
 
   private transient RelayServerClient relayServerClient;
+  private transient RendevousServerClient rendevousServerClient;
   private final ConcurrentMap<String, TaskLoc> taskLocMap;
 
   private transient ExecutorService prepareService;
@@ -79,6 +81,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final List<OffloadingTask> pendingTask;
   private final List<ReadyTask> readyTasks;
 
+  private final String rendevousServerAddress;
+
+
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
@@ -86,6 +91,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final Map<TransferKey, Integer> taskTransferIndexMap,
                             final String relayServerAddress,
                             final int relayServerPort,
+                            final String rendevousServerAddress,
+                            final int rendevousServerPort,
                             final String executorId,
                             final Map<String, Pair<String, Integer>> relayServerInfo) {
     this.executorThreadNum = executorThreadNum;
@@ -99,6 +106,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskExecutorStartTimeMap = new ConcurrentHashMap<>();
     this.relayServerAddress = relayServerAddress;
     this.relayServerPort = relayServerPort;
+    this.rendevousServerAddress = rendevousServerAddress;
+    this.rendevousServerPort = rendevousServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
     this.relayServerInfo = relayServerInfo;
     this.pendingTask = new ArrayList<>();
@@ -186,8 +195,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       .handler(relayServerClientChannelInitializer)
       .option(ChannelOption.SO_REUSEADDR, true);
 
+
+    this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
+
     this.relayServerClient = new RelayServerClient(
-      clientGroup, clientBootstrap, relayServerAddress, relayServerPort, relayServerInfo);
+      clientGroup, clientBootstrap, relayServerAddress, relayServerPort, relayServerInfo, rendevousServerClient);
 
     initializer.setRelayServerClient(relayServerClient);
     relayServerClientChannelInitializer.setRelayServerClient(relayServerClient);
@@ -373,6 +385,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
 
     byteTransport.close();
+
+    relayServerClient.close();
+    rendevousServerClient.close();
     LOG.info("End of byte transport");
   }
 }

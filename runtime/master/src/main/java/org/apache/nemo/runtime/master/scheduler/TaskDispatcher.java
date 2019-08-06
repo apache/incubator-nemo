@@ -24,6 +24,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.RendevousServer;
 import org.apache.nemo.runtime.master.TaskScheduledMap;
 import org.apache.nemo.runtime.master.VMScalingAddresses;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -65,6 +66,7 @@ final class TaskDispatcher {
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
   private final TaskScheduledMap taskScheduledMap;
+  private final RendevousServer rendevousServer;
 
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
@@ -72,7 +74,8 @@ final class TaskDispatcher {
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager,
-                         final TaskScheduledMap taskScheduledMap) {
+                         final TaskScheduledMap taskScheduledMap,
+                         final RendevousServer rendevousServer) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
@@ -83,6 +86,7 @@ final class TaskDispatcher {
     this.schedulingPolicy = schedulingPolicy;
     this.schedulingConstraintRegistry = schedulingConstraintRegistry;
     this.taskScheduledMap = taskScheduledMap;
+    this.rendevousServer = rendevousServer;
   }
 
   /**
@@ -242,6 +246,8 @@ final class TaskDispatcher {
             .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
             .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
               .addAllInfos(entries)
+              .setRendevousAddress(rendevousServer.getPublicAddress())
+              .setRendevousPort(rendevousServer.getPort())
               .build())
             .build());
         }

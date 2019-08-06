@@ -364,6 +364,8 @@ message LocalRelayServerInfoMessage {
 
 message GlobalRelayServerInfoMessage {
   repeated LocalRelayServerInfoMessage infos = 1;
+  required string rendevousAddress = 2;
+  required int32 rendevousPort = 3;
 }
 
 message LocalExecutorAddressInfoMessage {
