@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static io.netty.buffer.Unpooled.wrappedBuffer;
@@ -137,7 +139,6 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
-    private SerializedPartition partitionToRelease = null;
 
     /**
      * Writes {@link SerializedPartition}.
@@ -146,9 +147,15 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @return {@code this}
      * @throws IOException when an exception has been set or this stream was closed
      */
-    public ByteOutputStream writeSerializedPartitionBuffer(final SerializedPartition serializedPartition)
+    public ByteOutputStream writeSerializedPartitionBuffer(final SerializedPartition serializedPartition,
+                                                           final boolean releaseOnComplete)
       throws IOException {
-      writeBuffer(serializedPartition.getDirectBufferList());
+      if (releaseOnComplete) {
+        ChannelFutureListener listener = future -> serializedPartition.release();
+        writeBuffer(serializedPartition.getDirectBufferList(), Arrays.asList(listener));
+      } else {
+        writeBuffer(serializedPartition.getDirectBufferList(), Collections.emptyList());
+      }
       return this;
     }
 
@@ -159,11 +166,11 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @param bufList       list of {@link ByteBuffer}s to wrap.
      * @throws IOException  when fails to write the data.
      */
-    public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
+    public void writeBuffer(final List<ByteBuffer> bufList,
+                            final List<ChannelFutureListener> listener) throws IOException {
       final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
-      writeByteBuf(byteBuf);
+      writeByteBuf(byteBuf, listener);
     }
-
 
     /**
      * Writes a data frame, from {@link ByteBuf}.
@@ -171,9 +178,9 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @param byteBuf       {@link ByteBuf} to write.
      * @throws IOException  when fails to write data.
      */
-    private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
+    private void writeByteBuf(final ByteBuf byteBuf, final List<ChannelFutureListener> listener) throws IOException {
       if (byteBuf.readableBytes() > 0) {
-        writeDataFrame(byteBuf, byteBuf.readableBytes());
+        writeDataFrame(byteBuf, byteBuf.readableBytes(), listener);
       }
     }
 
@@ -191,7 +198,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       while (bytesToSend > 0) {
         final long size = Math.min(bytesToSend, DataFrameEncoder.LENGTH_MAX);
         final FileRegion fileRegion = new DefaultFileRegion(FileChannel.open(path), cursor, size);
-        writeDataFrame(fileRegion, size);
+        writeDataFrame(fileRegion, size, Collections.emptyList());
         cursor += size;
         bytesToSend -= size;
       }
@@ -205,7 +212,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       }
       if (newSubStream) {
         // to emit a frame with new sub-stream flag
-        writeDataFrame(null, 0);
+        writeDataFrame(null, 0, Collections.emptyList());
       }
       closed = true;
     }
@@ -227,7 +234,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
         encoder.encode(element);
         wrapped.close();
 
-        writeByteBuf(byteBuf);
+        writeByteBuf(byteBuf, Collections.emptyList());
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
@@ -240,30 +247,21 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @param length the length of the body, in bytes
      * @throws IOException when an exception has been set or this stream was closed
      */
-    private void writeDataFrame(final Object body, final long length) throws IOException {
+    private void writeDataFrame(final Object body, final long length,
+                                final List<ChannelFutureListener> listener) throws IOException {
       ensureNoException();
       if (closed) {
         throw new IOException("Stream already closed.");
       }
-      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
-        .addListener((ChannelFutureListener) future -> {
-          if (future.isSuccess()) {
-            if (partitionToRelease != null) {
-              partitionToRelease.release();
-            }
-          }
-        })
-        .addListener(getChannelWriteListener());
+      if (listener.isEmpty()) {
+        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
+          .addListener(getChannelWriteListener());
+      } else {
+        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
+          .addListener(getChannelWriteListener())
+          .addListener(listener.get(0));
+      }
       newSubStream = false;
-    }
-
-    /**
-     * Register the partition that should be released on completion of data transfer.
-     *
-     * @param partition to release on data transfer.
-     */
-    public void registerPartitionToRelease(final SerializedPartition partition) {
-      partitionToRelease = partition;
     }
   }
 }
