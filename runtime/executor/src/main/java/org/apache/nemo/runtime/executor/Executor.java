@@ -143,6 +143,8 @@ public final class Executor {
 
   private final JobScalingHandlerWorker jobScalingHandlerWorker;
 
+  final AtomicInteger bursty = new AtomicInteger(0);
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -193,24 +195,19 @@ public final class Executor {
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    final AtomicInteger bursty = new AtomicInteger(0);
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
 
-      if (load > 0.97) {
-        bursty.getAndIncrement();
-        if (bursty.get() >= 4) {
-          if (!Throttled.getInstance().getThrottled()) {
-            LOG.info("Set throttled true");
-            Throttled.getInstance().setThrottle(true);
-          }
-          bursty.set(0);
+      if (isThrottleTime(load)) {
+        // Send input
+        if (!Throttled.getInstance().getThrottled()) {
+          LOG.info("Set throttled true");
+          Throttled.getInstance().setThrottle(true);
         }
       }
 
-      if (load < 0.8) {
-        bursty.set(0);
+      if (isUnthrottleTime(load)) {
         if (Throttled.getInstance().getThrottled()) {
           LOG.info("Set throttled false");
           Throttled.getInstance().setThrottle(false);
@@ -254,8 +251,28 @@ public final class Executor {
       executorThreads.get(i).start();
     }
     */
+  }
 
+  private boolean isThrottleTime(final double cpuLoad) {
 
+    if (cpuLoad > 0.97) {
+      bursty.getAndIncrement();
+      if (bursty.get() >= 4) {
+        bursty.set(0);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private boolean isUnthrottleTime(final double cpuLoad) {
+    if (cpuLoad < 0.8) {
+      bursty.set(0);
+      return true;
+    }
+
+    return false;
   }
 
   public String getExecutorId() {
