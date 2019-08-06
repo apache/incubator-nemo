@@ -5,10 +5,13 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.common.RendevousRequest;
 import org.apache.nemo.common.RendevousResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public final class RendevousMessageEncoder extends MessageToMessageEncoder<Object> {
+  private static final Logger LOG = LoggerFactory.getLogger(RendevousMessageEncoder.class);
 
   public enum Type {
     REQUEST,
@@ -34,6 +37,9 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       out.add(bos.buffer());
 
     } else if (msg instanceof RendevousResponse) {
+
+      LOG.info("Encoding response");
+
       bos.writeInt(Type.RESPONSE.ordinal());
 
       final RendevousResponse res = (RendevousResponse) msg;
