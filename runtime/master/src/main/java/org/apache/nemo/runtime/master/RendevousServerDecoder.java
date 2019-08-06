@@ -60,6 +60,8 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
 
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    LOG.info("Channel inactive {}", ctx.channel());
+
     final Iterator<Map.Entry<String, Channel>> iterator = rendevousChannelMap.entrySet().iterator();
 
     while (iterator.hasNext()) {
