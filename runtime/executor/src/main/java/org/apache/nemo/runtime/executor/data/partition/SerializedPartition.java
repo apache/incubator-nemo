@@ -244,6 +244,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
 
   /**
    * Releases the off-heap memory that this SerializedPartition holds.
+   * TODO #403: Remove 'transient' uses of SerializedPartition.
    */
   public void release() {
     if (!committed) {

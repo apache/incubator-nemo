@@ -16,18 +16,19 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class MemoryPoolAssignerTest {
-
   private MemoryPoolAssigner memoryPoolAssigner;
   private static final int MAX_MEM_MB = 1;
   private static final int CHUNK_SIZE_KB = 32;
@@ -39,14 +40,8 @@ public class MemoryPoolAssignerTest {
     this.memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
   }
 
-  @After
-  public void cleanUp() {
-    this.memoryPoolAssigner = null;
-  }
-
-
   @Test(expected = MemoryAllocationException.class)
-  public void TestTooMuchRequest() throws MemoryAllocationException {
+  public void testTooMuchRequest() throws MemoryAllocationException {
     List<MemoryChunk> chunkList = new LinkedList<>();
     for (int i = 0; i < MAX_NUM_CHUNKS; i++) {
       chunkList.add(memoryPoolAssigner.allocateChunk());
@@ -55,43 +50,59 @@ public class MemoryPoolAssignerTest {
   }
 
   @Test
-  public void TestReturnChunksToPool() throws MemoryAllocationException {
-    List<MemoryChunk> chunkList = new LinkedList<>();
+  public void testReturnChunksToPool() {
+    ConcurrentLinkedQueue<MemoryChunk> chunkList = new ConcurrentLinkedQueue();
+    ExecutorService executor = Executors.newFixedThreadPool(5);
+    CountDownLatch latch = new CountDownLatch(MAX_NUM_CHUNKS);
     for (int i = 0; i < MAX_NUM_CHUNKS; i++) {
-      chunkList.add(memoryPoolAssigner.allocateChunk());
+      executor.submit(() -> {
+        try {
+          chunkList.add(memoryPoolAssigner.allocateChunk());
+        } catch (MemoryAllocationException e) {
+          throw new RuntimeException();
+        }
+        latch.countDown();
+      });
     }
-    assertEquals(0, memoryPoolAssigner.returnPoolSize());
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      throw new RuntimeException();
+    }
+    assertEquals(0, memoryPoolAssigner.poolSize());
     memoryPoolAssigner.returnChunksToPool(chunkList);
-    assertEquals(MAX_NUM_CHUNKS, memoryPoolAssigner.returnPoolSize());
+    assertEquals(MAX_NUM_CHUNKS, memoryPoolAssigner.poolSize());
   }
 
   @Test(expected = MemoryAllocationException.class)
-  public void TestConcurrentAllocation() throws MemoryAllocationException {
+  public void testConcurrentAllocation() throws MemoryAllocationException {
     memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
-    final Thread chunkThread1 = new Thread(() -> {
-      try{
-        chunk1 = memoryPoolAssigner.allocateChunk();
-      } catch (MemoryAllocationException e) {
-        e.printStackTrace();
+    final ExecutorService e1 = Executors.newSingleThreadExecutor();
+    final ExecutorService e2 = Executors.newSingleThreadExecutor();
+    for (int i = 0; i < MAX_NUM_CHUNKS / 2; i++) {
+      CountDownLatch latch = new CountDownLatch(2);
+      e1.submit(()->{
+        try {
+          chunk1 = memoryPoolAssigner.allocateChunk();
+          latch.countDown();
+        } catch (MemoryAllocationException e) {
+          throw new RuntimeException();
+        }
+      });
+      e2.submit(() -> {
+        try{
+          chunk2 = memoryPoolAssigner.allocateChunk();
+          latch.countDown();
+        } catch (MemoryAllocationException e) {
+          throw new RuntimeException();
+        }
+      });
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException();
       }
-    });
-    final Thread chunkThread2 = new Thread(() -> {
-      try{
-        chunk2 = memoryPoolAssigner.allocateChunk();
-      } catch (MemoryAllocationException e) {
-        e.printStackTrace();
-      }
-    });
-    try {
-      for (int i = 0; i < MAX_NUM_CHUNKS / 2; i++) {
-        chunkThread1.run();
-        chunkThread2.run();
-        chunkThread1.join();
-        chunkThread2.join();
-        Assert.assertFalse(chunk1.equals(chunk2));
-      }
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+      assertFalse(chunk1.equals(chunk2));
     }
     memoryPoolAssigner.allocateChunk();
   }

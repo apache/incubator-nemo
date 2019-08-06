@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import com.google.common.annotations.VisibleForTesting;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -85,7 +84,7 @@ public class MemoryPoolAssigner {
    *
    * @param target  the list of MemoryChunks to be returned to the memory pool.
    */
-  public void returnChunksToPool(final List<MemoryChunk> target) {
+  public void returnChunksToPool(final Iterable<MemoryChunk> target) {
     for (final MemoryChunk chunk: target) {
       memoryPool.returnChunkToPool(chunk);
     }
@@ -100,12 +99,12 @@ public class MemoryPoolAssigner {
     return chunkSize;
   }
 
-  @VisibleForTesting
   /**
-   * Returns the number of chunks in the pool.
+   * Returns the number of chunks in the pool. This is unrecommended since it is very complex to
+   * check the size of {@link ConcurrentLinkedQueue}.
    */
-  public int returnPoolSize() {
-    return memoryPool.returnPoolSize();
+  int poolSize() {
+    return memoryPool.size();
   }
 
   /**
@@ -159,13 +158,11 @@ public class MemoryPoolAssigner {
      */
     void returnChunkToPool(final MemoryChunk chunk) {
       ByteBuffer buf = chunk.getBuffer();
-      buf.clear();
-      pool.add(buf);
       chunk.release();
+      pool.add(buf);
     }
 
-    @VisibleForTesting
-    int returnPoolSize() {
+    int size() {
       return pool.size();
     }
   }

@@ -26,19 +26,8 @@ package org.apache.nemo.runtime.executor.data;
  */
 public class MemoryAllocationException extends Exception {
 
-  public MemoryAllocationException() {
-    super();
-  }
-
-  public MemoryAllocationException(final String message, final Throwable cause) {
-    super(message, cause);
-  }
-
   public MemoryAllocationException(final String message) {
     super(message);
   }
 
-  public MemoryAllocationException(final Throwable cause) {
-    super(cause);
-  }
 }

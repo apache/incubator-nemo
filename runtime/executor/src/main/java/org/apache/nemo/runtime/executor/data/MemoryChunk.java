@@ -104,6 +104,7 @@ public class MemoryChunk {
    * Frees this MemoryChunk. No further operation possible after calling this method.
    */
   public void release() {
+    buffer.clear();
     address = addressLimit + 1;
   }
 
