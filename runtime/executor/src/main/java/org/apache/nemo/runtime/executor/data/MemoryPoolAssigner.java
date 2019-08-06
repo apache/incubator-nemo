@@ -119,6 +119,7 @@ public class MemoryPoolAssigner {
     private final int chunkSize;
     private long maxNumChunks;
     private long numChunks;
+    private final Object lock = new Object();
 
     MemoryPool(final long maxNumChunks, final int chunkSize) {
       this.chunkSize = chunkSize;
@@ -137,11 +138,12 @@ public class MemoryPoolAssigner {
 
     MemoryChunk requestChunkFromPool() throws MemoryAllocationException {
       try {
-        if (pool.isEmpty()) {
-          return allocateNewChunk();
-        } else {
-          ByteBuffer buf = pool.remove();
-          return new MemoryChunk(buf);
+        synchronized (lock) {
+          if (pool.isEmpty()) {
+            return allocateNewChunk();
+          } else {
+            return new MemoryChunk(pool.remove());
+          }
         }
       } catch (final NoSuchElementException e) {
         throw new MemoryAllocationException("Pool empty: Failed to retrieve MemoryChunk");
