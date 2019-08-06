@@ -58,6 +58,8 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
   private final Channel channel;
 
+  private final Set<String> registerTasks;
+
   public RendevousServerClient(final String myRendevousServerAddress,
                                final int myRendevousServerPort) {
 
@@ -76,6 +78,8 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
     this.registerTaskMap = new ConcurrentHashMap<>();
     this.myRendevousServerAddress = myRendevousServerAddress;
     this.myRendevousServerPort = myRendevousServerPort;
+
+    this.registerTasks = new HashSet<>();
 
     //final ChannelFuture channelFuture = connectToRelayServer(relayServerAddress, relayServerPort);
     //this.relayServerChannel = channelFuture.channel();
@@ -109,7 +113,12 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   public void registerTask(final String dst) {
     LOG.info("Registering address {}", dst);
 
-    channel.writeAndFlush(new RendevousRegister(dst));
+    synchronized (registerTasks) {
+      if (!registerTasks.contains(dst)) {
+        registerTasks.add(dst);
+        channel.writeAndFlush(new RendevousRegister(dst));
+      }
+    }
   }
 
   public void close() {

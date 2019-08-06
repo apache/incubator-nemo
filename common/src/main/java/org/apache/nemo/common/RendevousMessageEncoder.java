@@ -31,17 +31,24 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       final RendevousRequest req = (RendevousRequest) msg;
       bos.writeUTF(req.dst);
 
+      out.add(bos.buffer());
+
     } else if (msg instanceof RendevousResponse) {
       bos.writeInt(Type.RESPONSE.ordinal());
 
       final RendevousResponse res = (RendevousResponse) msg;
       bos.writeUTF(res.dst);
       bos.writeUTF(res.address);
+
+      out.add(bos.buffer());
+
     } else if (msg instanceof  RendevousRegister) {
       bos.writeInt(Type.REGISTER.ordinal());
 
       final RendevousRegister req = (RendevousRegister) msg;
       bos.writeUTF(req.dst);
+
+      out.add(bos.buffer());
     } else {
       throw new RuntimeException("Unsupported type " + msg);
     }
