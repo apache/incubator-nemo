@@ -12,13 +12,10 @@ import org.slf4j.LoggerFactory;
 public final class RendevousClientChannelInitializer extends ChannelInitializer<SocketChannel> {
   private static final Logger LOG = LoggerFactory.getLogger(RendevousClientChannelInitializer.class);
 
-  private RendevousServerClient client;
+  private final RendevousServerClient client;
 
-  public RendevousClientChannelInitializer() {
-  }
-
-  public void setRendevousClient(final RendevousServerClient c) {
-    client = c;
+  public RendevousClientChannelInitializer(final RendevousServerClient client) {
+    this.client = client;
   }
 
   @Override

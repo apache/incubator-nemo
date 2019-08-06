@@ -64,7 +64,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
                                final int myRendevousServerPort) {
 
     final RendevousClientChannelInitializer initializer =
-      new RendevousClientChannelInitializer();
+      new RendevousClientChannelInitializer(this);
 
     final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
     final Bootstrap clientBootstrap = new Bootstrap()
