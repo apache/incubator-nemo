@@ -4,6 +4,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.common.RendevousMessageEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
     ch.pipeline()
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
         Integer.MAX_VALUE, 0, 4, 0, 4))
+      .addLast("frameEncoder", new LengthFieldPrepender(4))
       .addLast(new RendevousMessageEncoder())
       .addLast(new RendevousServerDecoder(channelListMap, rendevousChannelMap, scheduledExecutorService));
   }

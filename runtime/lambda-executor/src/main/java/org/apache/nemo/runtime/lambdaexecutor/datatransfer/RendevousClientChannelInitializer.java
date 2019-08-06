@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 
 import org.apache.nemo.common.RendevousMessageEncoder;
@@ -26,6 +27,8 @@ public final class RendevousClientChannelInitializer extends ChannelInitializer<
 
     ch.pipeline()
       // outbound
+      .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
+        Integer.MAX_VALUE, 0, 4, 0, 4))
       .addLast("frameEncoder", new LengthFieldPrepender(4))
       .addLast(new RendevousMessageEncoder())
 

@@ -46,7 +46,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
             // write
 
             channels.stream().forEach(channel -> {
-              LOG.info("Flush response {} to {}", dstRequestKey, dst.remoteAddress());
+              LOG.info("Flush response {} to {}", dstRequestKey, channel);
               channel.writeAndFlush(new RendevousResponse(dstRequestKey,
                 dst.remoteAddress().toString()));
             });
