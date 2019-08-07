@@ -132,6 +132,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
+    /*
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final OperatingSystemMXBean bean =
         (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -152,6 +153,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         }
       }
     }, 1, 1, TimeUnit.SECONDS);
+    */
 
 
 
