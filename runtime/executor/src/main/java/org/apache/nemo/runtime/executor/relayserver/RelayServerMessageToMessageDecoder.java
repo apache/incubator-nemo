@@ -98,6 +98,8 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) throws Exception {
     //startToRelay(in, ctx);
+
+    byteBuf.retain();
     final char type = byteBuf.readChar();
 
     final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
@@ -121,7 +123,6 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
             // 한번더 check
             // remove 되었을 수도 잇음 (모두 flush 되었을수도)
             if (pendingByteMap.containsKey(dst)) {
-              byteBuf.retain();
               pendingBytes.add(byteBuf);
               //LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
             } else {
