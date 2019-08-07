@@ -172,10 +172,8 @@ public final class PipeManagerWorker {
     final String dstTaskId = RuntimeIdManager.generateTaskId(dstStage, dstTaskIndex, 0);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
-    LOG.info("Locatoin of {}: {}", dstTaskId, loc);
+    //LOG.info("Locatoin of {}: {}", dstTaskId, loc);
 
-    LOG.info("Start to write data: edge: {}, Task {}, Dest {} loc: {}, dst{} ",
-      runtimeEdge.getId(), srcTaskIndex, dstTaskIndex, loc, dstTaskId);
 
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
@@ -217,7 +215,7 @@ public final class PipeManagerWorker {
     final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, srcTaskIndex, 0);
     final TaskLoc loc = taskLocationMap.get(dstTaskId);
 
-    LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
+    //LOG.info("Call read {}, {}, {}, {}", srcTaskIndex, runtimeEdge.getId(), dstTaskIndex, loc);
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
       new PipeTransferContextDescriptor(

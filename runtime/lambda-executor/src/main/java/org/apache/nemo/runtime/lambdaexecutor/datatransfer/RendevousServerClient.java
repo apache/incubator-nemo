@@ -97,10 +97,10 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   public String requestAddress(final String dst) {
 
 
-    LOG.info("Requesting address {} ", dst);
+    //LOG.info("Requesting address {} ", dst);
 
     if (dstAddressMap.containsKey(dst)) {
-      LOG.info("End of Requesting address {} ", dst);
+      //LOG.info("End of Requesting address {} ", dst);
       return dstAddressMap.get(dst);
     }
 
