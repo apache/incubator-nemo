@@ -23,7 +23,11 @@ public class VMScalingAddresses {
       "172.31.25.243",
       "172.31.23.66",
       "172.31.31.168",
-      "172.31.29.140");
+      "172.31.29.140",
+      "172.31.28.86",
+      "172.31.22.90",
+      "172.31.20.192",
+      "172.31.24.109");
 
   public static final List<String> INSTANCE_IDS =
     Arrays.asList(
@@ -44,5 +48,9 @@ public class VMScalingAddresses {
       "i-0ff0dcc1a2e5fed4e",
       "i-0af9fc4d951abcce0",
       "i-0e4d18164fd428e67",
-      "i-0e769647960c94036");
+      "i-0e769647960c94036",
+      "i-03203eb727c3508ab",
+      "i-06376c4e4c42bfde8",
+      "i-0877e3782718a93c2",
+      "i-08b140dfa6f06d74b");
 }
