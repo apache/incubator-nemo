@@ -92,5 +92,10 @@ under the License.
       <version>1.6.2</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-lambda</artifactId>
+      <version>1.11.429</version>
+    </dependency>
   </dependencies>
 </project>

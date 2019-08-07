@@ -98,6 +98,7 @@ public final class UserApplicationRunner {
       final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
       try {
+        LOG.info("##### UserApplication Runner Waits #####");
         planStateManager.waitUntilFinish();
         dagLoggingExecutor.shutdown();
       } finally {

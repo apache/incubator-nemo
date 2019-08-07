@@ -63,6 +63,7 @@ public final class ContainerManager {
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
+  private final String executorType;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -82,6 +83,7 @@ public final class ContainerManager {
 
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                           @Parameter(JobConf.ExecutorType.class) final String executorType,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment) {
     this.isTerminated = false;
@@ -92,6 +94,7 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
+    this.executorType = executorType;
   }
 
   /**
@@ -191,12 +194,23 @@ public final class ContainerManager {
       messageSender = new FailedMessageSender();
     }
 
+    final ExecutorRepresenter executorRepresenter;
     // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter =
-      new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
-        activeContext, serializationExecutorService,
-        activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
-
+    if(this.executorType.equals("default")) {
+      executorRepresenter =
+        new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
+          activeContext, serializationExecutorService,
+          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+    } else if(this.executorType.equals("lambda")){
+      LOG.info("##### Use Lambda Executor #####"+this.executorType);
+      executorRepresenter =
+        new LambdaExecutorRepresenter(executorId, resourceSpec, messageSender,
+          activeContext, serializationExecutorService,
+          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+    } else {
+      LOG.info("Unknown executor type :" + this.executorType);
+      throw new UnsupportedOperationException();
+    }
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
     return Optional.of(executorRepresenter);
