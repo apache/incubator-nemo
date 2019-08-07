@@ -29,12 +29,13 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
 
-    final byte[] idBytes = id.getBytes();
+    //final byte[] idBytes = id.getBytes();
     //LOG.info("ID bytes: {}", idBytes);
     try {
       bos.writeChar(2); // 2 means control message
-      bos.writeInt(idBytes.length);
-      bos.write(idBytes);
+      bos.writeUTF(id);
+      //bos.writeInt(idBytes.length);
+      //bos.write(idBytes);
       bos.writeInt(in.type.ordinal());
     } catch (IOException e) {
       e.printStackTrace();

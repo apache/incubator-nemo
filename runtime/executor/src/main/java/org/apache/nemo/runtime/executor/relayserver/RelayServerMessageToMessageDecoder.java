@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.relayserver;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
@@ -98,24 +99,19 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
   protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) throws Exception {
     //startToRelay(in, ctx);
     final char type = byteBuf.readChar();
-    final int idLength = byteBuf.readInt();
 
-    final byte[] idBytes = new byte[idLength];
-    byteBuf.readBytes(idBytes);
-
-    final String dst = new String(idBytes);
+    final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+    final String dst = bis.readUTF();
 
     //LOG.info("Dst: {}, readable: {}", dst, byteBuf.readableBytes());
 
     if (type == 0 || type == 1) {
       // data frame and control frame
-      final int remainingBytes = byteBuf.readInt();
-
-      final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
-      final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
+      //final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
+      //final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
       if (!taskChannelMap.containsKey(dst)) {
-        LOG.info("Pending for dst {}... readable: {}", dst, bb.readableBytes());
+        LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
         pendingByteMap.putIfAbsent(dst, new ArrayList<>());
         final List<ByteBuf> pendingBytes = pendingByteMap.get(dst);
 
@@ -125,12 +121,12 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
             // 한번더 check
             // remove 되었을 수도 잇음 (모두 flush 되었을수도)
             if (pendingByteMap.containsKey(dst)) {
-              pendingBytes.add(bb);
+              pendingBytes.add(byteBuf);
               //LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
               if (dstChannel.isOpen()) {
-                dstChannel.write(bb);
+                dstChannel.write(byteBuf);
               } else {
                 throw new RuntimeException("Channel closed");
               }
@@ -142,7 +138,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
           final Channel dstChannel = taskChannelMap.get(dst);
 
           if (dstChannel.isOpen()) {
-            dstChannel.write(bb);
+            dstChannel.write(byteBuf);
           } else {
             throw new RuntimeException("Channel closed");
           }
@@ -176,7 +172,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
           }
         }
 
-        dstChannel.write(bb);
+        dstChannel.write(byteBuf);
       }
 
     } else if (type == 2) {

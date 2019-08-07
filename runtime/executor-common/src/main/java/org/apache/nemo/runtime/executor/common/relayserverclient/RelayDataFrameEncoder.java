@@ -34,16 +34,17 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
     //LOG.info("Encoding relayDataFrame {}", in.dataFrame);
 
     final String id = in.dstId;
-    final byte[] idBytes = id.getBytes();
+    //final byte[] idBytes = id.getBytes();
     //LOG.info("ID bytes: {}", idBytes);
 
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
     try {
       bos.writeChar(0); // 0 means data frame
-      bos.writeInt(idBytes.length);
-      bos.write(idBytes);
-      bos.writeInt(DataFrameEncoder.HEADER_LENGTH + (int) in.dataFrame.length);
+      bos.writeUTF(id);
+      //bos.writeInt(idBytes.length);
+      //bos.write(idBytes);
+      //bos.writeInt(DataFrameEncoder.HEADER_LENGTH + (int) in.dataFrame.length);
       bos.close();
     } catch (IOException e) {
       e.printStackTrace();
