@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -181,7 +182,7 @@ public final class RelayServerClient {
       LOG.info("Rendevous request address for {}", relayDst);
       final String response = rendevousServerClient.requestAddress(relayDst);
       return manager.newOutputContext(dstExecutorId, descriptor, true);
-    });
+    }, Executors.newCachedThreadPool());
   }
 
   public CompletableFuture<ByteInputContext> newInputContext(
