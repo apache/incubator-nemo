@@ -121,6 +121,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
             // 한번더 check
             // remove 되었을 수도 잇음 (모두 flush 되었을수도)
             if (pendingByteMap.containsKey(dst)) {
+              byteBuf.retain();
               pendingBytes.add(byteBuf);
               //LOG.info("Add {} byte to pendingBytes... size: {}", pendingBytes.size());
             } else {
