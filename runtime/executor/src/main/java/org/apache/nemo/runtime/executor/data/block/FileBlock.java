@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
@@ -66,6 +68,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Constructor.
@@ -74,16 +77,19 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @param serializer the {@link Serializer}.
    * @param filePath   the path of the file that this block will be stored.
    * @param metadata   the metadata for this block.
+   * @param memoryPoolAssigner  the MemoryPoolAssigner for memory allocation.
    */
   public FileBlock(final String blockId,
                    final Serializer serializer,
                    final String filePath,
-                   final FileMetadata<K> metadata) {
+                   final FileMetadata<K> metadata,
+                   final MemoryPoolAssigner memoryPoolAssigner) {
     this.id = blockId;
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
+    this.memoryPoolAssigner = memoryPoolAssigner;
   }
 
   /**
@@ -103,6 +109,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         for (final ByteBuffer buffer: serializedPartition.getDirectBufferList()) {
           fileOutputChannel.write(buffer);
         }
+        // after the writing to disk, data in memory is released.
+        serializedPartition.release();
       }
     }
   }
@@ -125,11 +133,11 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       try {
         SerializedPartition<K> partition = nonCommittedPartitionsMap.get(key);
         if (partition == null) {
-          partition = new SerializedPartition<>(key, serializer);
+          partition = new SerializedPartition<>(key, serializer, memoryPoolAssigner);
           nonCommittedPartitionsMap.put(key, partition);
         }
         partition.write(element);
-      } catch (final IOException e) {
+      } catch (final IOException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     }
@@ -150,9 +158,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
-          DataUtil.convertToSerPartitions(serializer, partitions);
+          DataUtil.convertToSerPartitions(serializer, partitions, memoryPoolAssigner);
         writeSerializedPartitions(convertedPartitions);
-      } catch (final IOException e) {
+      } catch (final IOException | MemoryAllocationException e) {
         throw new BlockWriteException(e);
       }
     }
@@ -251,7 +259,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                 throw new IOException("The read data size does not match with the partition size.");
               }
               partitionsInRange.add(new SerializedPartition<>(
-                key, serializedData, serializedData.length));
+                key, serializedData, serializedData.length, memoryPoolAssigner));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
