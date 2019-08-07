@@ -195,19 +195,19 @@ public final class Executor {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final double load = profiler.getCpuLoad();
-      LOG.info("Cpu load: {}", profiler.getCpuLoad());
+      LOG.info("Cpu load: {}", load);
 
       if (isThrottleTime(load)) {
         // Send input
         if (!Throttled.getInstance().getThrottled()) {
-          LOG.info("Set throttled true");
+          LOG.info("Set throttled true : load {}", load);
           Throttled.getInstance().setThrottle(true);
         }
       }
 
       if (isUnthrottleTime(load)) {
         if (Throttled.getInstance().getThrottled()) {
-          LOG.info("Set throttled false");
+          LOG.info("Set throttled false: load {}", load);
           Throttled.getInstance().setThrottle(false);
         }
       }
