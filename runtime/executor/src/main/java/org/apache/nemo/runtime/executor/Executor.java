@@ -21,8 +21,8 @@ package org.apache.nemo.runtime.executor;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
-import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Throttled;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
@@ -78,8 +78,6 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.nemo.common.TaskLoc.VM;
 
 
 /**

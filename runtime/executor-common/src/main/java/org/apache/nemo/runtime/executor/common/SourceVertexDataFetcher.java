@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.common.Throttled;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;

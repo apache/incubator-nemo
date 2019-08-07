@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.common;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 

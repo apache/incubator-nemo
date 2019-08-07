@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -13,6 +14,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.Throttled;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
@@ -25,6 +27,7 @@ import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -126,6 +129,32 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   @Override
   public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
+
+    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      final OperatingSystemMXBean bean =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+      final double cpuLoad = bean.getProcessCpuLoad();
+
+      if (cpuLoad > 0.78) {
+        if (!Throttled.getInstance().getThrottled()) {
+          System.out.println("throttle true");
+          Throttled.getInstance().setThrottle(true);
+        }
+      }
+
+      if (cpuLoad < 0.65) {
+        if (Throttled.getInstance().getThrottled()) {
+          System.out.println("throttle false");
+          Throttled.getInstance().setThrottle(false);
+        }
+      }
+    }, 1, 1, TimeUnit.SECONDS);
+
+
+
     LOG.info("ExecutorAddressMap: {}", executorAddressMap);
 
     this.executorStartService = Executors.newCachedThreadPool();
@@ -137,7 +166,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.outputWriterFlusher = new OutputWriterFlusher(200);
 
     executorThreads = new ArrayList<>();
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
         new ExecutorThread(1, "lambda"));
