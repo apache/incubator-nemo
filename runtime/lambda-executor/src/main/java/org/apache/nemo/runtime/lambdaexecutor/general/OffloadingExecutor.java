@@ -297,6 +297,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
 
     executorStartService.execute(() -> {
+
       final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
         task,
         executorAddressMap,
@@ -308,6 +309,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         scheduledExecutorService,
         prepareService,
         executorGlobalInstances);
+
+      LOG.info("End of creating offloading task {}", task.taskId);
 
       executorThread.addNewTask(taskExecutor);
 

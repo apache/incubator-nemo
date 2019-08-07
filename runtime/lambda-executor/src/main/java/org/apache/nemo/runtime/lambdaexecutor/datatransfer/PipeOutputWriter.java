@@ -210,7 +210,7 @@ public final class PipeOutputWriter implements Flushable {
           .map(dstTaskIndex ->
             pipeManagerWorker.write(srcTaskIndex, runtimeEdge, dstTaskIndex))
           .collect(Collectors.toList());
-      //LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, dstIndices);
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, dstIndices);
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
