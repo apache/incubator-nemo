@@ -174,6 +174,9 @@ public final class PipeManagerWorker {
 
     LOG.info("Locatoin of {}: {}", dstTaskId, loc);
 
+    LOG.info("Start to write data: edge: {}, Task {}, Dest {} loc: {}, dst{} ",
+      runtimeEdge.getId(), srcTaskIndex, dstTaskIndex, loc, dstTaskId);
+
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
       new PipeTransferContextDescriptor(
