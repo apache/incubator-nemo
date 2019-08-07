@@ -36,9 +36,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * MemoryPoolAssigner currently supports allocation of off-heap memory only.
  *
- * The MemoryPoolAssigner pre-allocates user-defined amount of memory at the start.
- * More memory can be allocated on-demand, but if there is no more memory to allocate, MemoryAllocationException
- * is thrown and the job fails. // TODO #397: Separation of JVM heap region and off-heap memory region
+ * MemoryChunks are allocated on-demand, but if the total allocated memory exceeds the maxOffheapMb,
+ * MemoryAllocationException is thrown and the job fails.
+ * TODO #397: Separation of JVM heap region and off-heap memory region
  */
 @ThreadSafe
 public class MemoryPoolAssigner {
@@ -101,6 +101,8 @@ public class MemoryPoolAssigner {
   /**
    * Returns the number of chunks in the pool. This is unrecommended since it is very complex to
    * check the size of {@link ConcurrentLinkedQueue}.
+   *
+   * @return the pool size.
    */
   int poolSize() {
     return memoryPool.size();
@@ -117,7 +119,6 @@ public class MemoryPoolAssigner {
     private final int chunkSize;
     private long maxNumChunks;
     private long numChunks;
-    private final Object lock = new Object();
 
     MemoryPool(final long maxNumChunks, final int chunkSize) {
       this.chunkSize = chunkSize;
@@ -136,15 +137,15 @@ public class MemoryPoolAssigner {
 
     MemoryChunk requestChunkFromPool() throws MemoryAllocationException {
       try {
-        synchronized (lock) {
-          if (pool.isEmpty()) {
-            return allocateNewChunk();
-          } else {
-            return new MemoryChunk(pool.remove());
-          }
-        }
+        // Try to reuse a byte buffer in the current pool
+        // Return the byte buffer if there's one that we can reuse
+        final ByteBuffer byteBufferThatWeCanReuse = pool.remove(); // this can throw NoSuchElementException
+        return new MemoryChunk(byteBufferThatWeCanReuse);
       } catch (final NoSuchElementException e) {
-        throw new MemoryAllocationException("Pool empty: Failed to retrieve MemoryChunk");
+        // No more byte buffer to reuse in the current pool
+        // So we try to allocate a new chunk
+        // This method is synchronized :)
+        return allocateNewChunk();
       } catch (final OutOfMemoryError e) {
         throw new MemoryAllocationException("Memory allocation failed due to lack of memory");
       }

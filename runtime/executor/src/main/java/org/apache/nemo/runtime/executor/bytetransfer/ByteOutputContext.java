@@ -144,6 +144,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * Writes {@link SerializedPartition}.
      *
      * @param serializedPartition {@link SerializedPartition} to write.
+     * @param releaseOnComplete   wheter to release the partition upon completion.
      * @return {@code this}
      * @throws IOException when an exception has been set or this stream was closed
      */
@@ -164,23 +165,25 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * to write a data frame.
      *
      * @param bufList       list of {@link ByteBuffer}s to wrap.
+     * @param listeners     to add.
      * @throws IOException  when fails to write the data.
      */
-    public void writeBuffer(final List<ByteBuffer> bufList,
-                            final List<ChannelFutureListener> listener) throws IOException {
+    void writeBuffer(final List<ByteBuffer> bufList,
+                            final List<ChannelFutureListener> listeners) throws IOException {
       final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
-      writeByteBuf(byteBuf, listener);
+      writeByteBuf(byteBuf, listeners);
     }
 
     /**
      * Writes a data frame, from {@link ByteBuf}.
      *
      * @param byteBuf       {@link ByteBuf} to write.
+     * @param listeners     to add.
      * @throws IOException  when fails to write data.
      */
-    private void writeByteBuf(final ByteBuf byteBuf, final List<ChannelFutureListener> listener) throws IOException {
+    private void writeByteBuf(final ByteBuf byteBuf, final List<ChannelFutureListener> listeners) throws IOException {
       if (byteBuf.readableBytes() > 0) {
-        writeDataFrame(byteBuf, byteBuf.readableBytes(), listener);
+        writeDataFrame(byteBuf, byteBuf.readableBytes(), listeners);
       }
     }
 
@@ -245,22 +248,20 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      *
      * @param body   the body or {@code null}
      * @param length the length of the body, in bytes
+     * @param listeners to add.
      * @throws IOException when an exception has been set or this stream was closed
      */
     private void writeDataFrame(final Object body, final long length,
-                                final List<ChannelFutureListener> listener) throws IOException {
+                                final List<ChannelFutureListener> listeners) throws IOException {
       ensureNoException();
       if (closed) {
         throw new IOException("Stream already closed.");
       }
-      if (listener.isEmpty()) {
-        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
-          .addListener(getChannelWriteListener());
-      } else {
-        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
-          .addListener(getChannelWriteListener())
-          .addListener(listener.get(0));
-      }
+      final ChannelFuture beforeAddingGivenListener = channel
+        .writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
+        .addListener(getChannelWriteListener());
+      listeners.forEach(beforeAddingGivenListener::addListener);
+
       newSubStream = false;
     }
   }

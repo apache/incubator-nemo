@@ -21,19 +21,24 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class MemoryPoolAssignerTest {
   private MemoryPoolAssigner memoryPoolAssigner;
+
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssignerTest.class.getName());
+
+  private static final int NUM_CONCURRENT_THREADS = 5;
+
   private static final int MAX_MEM_MB = 1;
   private static final int CHUNK_SIZE_KB = 32;
   private static final int MAX_NUM_CHUNKS = MAX_MEM_MB * 1024 / CHUNK_SIZE_KB;
-  private MemoryChunk chunk1, chunk2;
 
   @Before
   public void setUp() {
@@ -50,60 +55,46 @@ public class MemoryPoolAssignerTest {
   }
 
   @Test
-  public void testReturnChunksToPool() {
-    ConcurrentLinkedQueue<MemoryChunk> chunkList = new ConcurrentLinkedQueue();
-    ExecutorService executor = Executors.newFixedThreadPool(5);
-    CountDownLatch latch = new CountDownLatch(MAX_NUM_CHUNKS);
+  public void testConcurrentAllocReturnAlloc() throws InterruptedException {
+    final ExecutorService executor = Executors.newFixedThreadPool(NUM_CONCURRENT_THREADS);
     for (int i = 0; i < MAX_NUM_CHUNKS; i++) {
       executor.submit(() -> {
         try {
-          chunkList.add(memoryPoolAssigner.allocateChunk());
+          // We return this one immediately
+          final MemoryChunk toReturnImmediately = memoryPoolAssigner.allocateChunk();
+          memoryPoolAssigner.returnChunksToPool(Arrays.asList(toReturnImmediately));
+
+          // We don't return this one
+          memoryPoolAssigner.allocateChunk();
         } catch (MemoryAllocationException e) {
           throw new RuntimeException();
         }
-        latch.countDown();
       });
     }
-    try {
-      latch.await();
-    } catch (InterruptedException e) {
-      throw new RuntimeException();
-    }
+    executor.shutdown();
+    executor.awaitTermination(30, TimeUnit.SECONDS);
     assertEquals(0, memoryPoolAssigner.poolSize());
-    memoryPoolAssigner.returnChunksToPool(chunkList);
-    assertEquals(MAX_NUM_CHUNKS, memoryPoolAssigner.poolSize());
   }
 
-  @Test(expected = MemoryAllocationException.class)
-  public void testConcurrentAllocation() throws MemoryAllocationException {
-    memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
-    final ExecutorService e1 = Executors.newSingleThreadExecutor();
-    final ExecutorService e2 = Executors.newSingleThreadExecutor();
-    for (int i = 0; i < MAX_NUM_CHUNKS / 2; i++) {
-      CountDownLatch latch = new CountDownLatch(2);
-      e1.submit(()->{
+  @Test
+  public void testConcurrentUniqueAllocations() throws InterruptedException {
+    final ExecutorService executorService = Executors.newFixedThreadPool(NUM_CONCURRENT_THREADS);
+    final ConcurrentLinkedQueue<MemoryChunk> allocatedChunks = new ConcurrentLinkedQueue<>();
+
+    for (int i = 0; i < MAX_NUM_CHUNKS; i++) {
+      executorService.submit(()->{
         try {
-          chunk1 = memoryPoolAssigner.allocateChunk();
-          latch.countDown();
+          allocatedChunks.add(memoryPoolAssigner.allocateChunk());
         } catch (MemoryAllocationException e) {
           throw new RuntimeException();
         }
       });
-      e2.submit(() -> {
-        try{
-          chunk2 = memoryPoolAssigner.allocateChunk();
-          latch.countDown();
-        } catch (MemoryAllocationException e) {
-          throw new RuntimeException();
-        }
-      });
-      try {
-        latch.await();
-      } catch (InterruptedException e) {
-        throw new RuntimeException();
-      }
-      assertFalse(chunk1.equals(chunk2));
     }
-    memoryPoolAssigner.allocateChunk();
+    executorService.shutdown();
+    executorService.awaitTermination(30, TimeUnit.SECONDS);
+    assertEquals(0, memoryPoolAssigner.poolSize());
+
+    // All chunks should be unique
+    assertEquals(allocatedChunks.size(), new HashSet<>(allocatedChunks).size());
   }
 }
