@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
@@ -37,6 +38,8 @@ public final class JobScaler {
 
   private final TaskLocationMap taskLocationMap;
   private final ExecutorService executorService;
+
+  private final AtomicInteger scalingExecutorCnt = new AtomicInteger(0);
 
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
@@ -112,6 +115,7 @@ public final class JobScaler {
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
 
+
       workerOffloadTaskMap.put(representer, new HashMap<>());
 
       final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
@@ -152,6 +156,7 @@ public final class JobScaler {
 
     for (final Map.Entry<ExecutorRepresenter,
       Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
+      scalingExecutorCnt.getAndIncrement();
 
       final ExecutorRepresenter representer = entry.getKey();
       final Map<String, List<String>> offloadTaskMap = entry.getValue();
@@ -235,19 +240,14 @@ public final class JobScaler {
           final String executorId = localScalingDoneMessage.getExecutorId();
 
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+          LOG.info("Receive LocalScalingDone for {}", executorId);
 
-          synchronized (prevScalingCountMap) {
-            final Map<String, Integer> countMap = prevScalingCountMap.remove(executorRepresenter);
-            LOG.info("Receive LocalScalingDone for {}, countMap {}", executorId,
-              countMap);
-
-            if (sumCount() == 0) {
-              if (isScaling.compareAndSet(true, false)) {
-                sendScalingOutDoneToAllWorkers();
-              }
+          final int cnt = scalingExecutorCnt.decrementAndGet();
+          if (cnt == 0) {
+            if (isScaling.compareAndSet(true, false)) {
+              sendScalingOutDoneToAllWorkers();
             }
           }
-
           break;
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
