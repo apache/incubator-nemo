@@ -297,6 +297,23 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
+  /**
+   * Maximum off-heap memory size in the executor.
+   */
+  // TODO #397: Separation of JVM heap region and off-heap memory region
+  @NamedParameter(doc = "The maximum off-heap memory that can be allocated",
+    short_name = "max_offheap_mb", default_value = "8192")
+  public final class MaxOffheapMb implements Name<Integer> {
+  }
+
+  /**
+   * MemoryChunk size in the memory pool.
+   */
+  @NamedParameter(doc = "The memory chunk size in the memory pool of the executor",
+    short_name = "chunk_size_kb", default_value = "32")
+  public final class ChunkSizeKb implements Name<Integer> {
+  }
+
   //////////////////////////////// Intermediate Configurations
 
   /**

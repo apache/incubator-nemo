@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 
@@ -28,14 +29,18 @@ import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
  */
 public abstract class AbstractBlockStore implements BlockStore {
   private final SerializerManager serializerManager;
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Constructor.
    *
    * @param serializerManager the coder manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
-  protected AbstractBlockStore(final SerializerManager serializerManager) {
+  AbstractBlockStore(final SerializerManager serializerManager,
+                               final MemoryPoolAssigner memoryPoolAssigner) {
     this.serializerManager = serializerManager;
+    this.memoryPoolAssigner = memoryPoolAssigner;
   }
 
   /**
@@ -44,8 +49,17 @@ public abstract class AbstractBlockStore implements BlockStore {
    * @param blockId the ID of the block to get the coder.
    * @return the coder.
    */
-  protected final Serializer getSerializerFromWorker(final String blockId) {
+  final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(blockId);
     return serializerManager.getSerializer(runtimeEdgeId);
+  }
+
+  /**
+   * Gets the memory pool assigner for this executor.
+   *
+   * @return the memory pool assigner.
+   */
+  final MemoryPoolAssigner getMemoryPoolAssigner() {
+    return memoryPoolAssigner;
   }
 }
