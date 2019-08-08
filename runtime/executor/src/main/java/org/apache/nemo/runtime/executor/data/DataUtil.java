@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
 import org.apache.nemo.common.ByteBufferInputStream;
-import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
@@ -32,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -105,16 +103,19 @@ public final class DataUtil {
    * @param serializer          the serializer for serialization.
    * @param partitionsToConvert the partitions to convert.
    * @param <K>                 the key type of the partitions.
+   * @param memoryPoolAssigner  the memory pool assigner for DirectByteBufferOutputStream.
    * @return the converted {@link SerializedPartition}s.
    * @throws IOException if fail to convert.
+   * @throws MemoryAllocationException  if fail to allocate memory.
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
     final Serializer serializer,
-    final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
+    final Iterable<NonSerializedPartition<K>> partitionsToConvert,
+    final MemoryPoolAssigner memoryPoolAssigner) throws IOException, MemoryAllocationException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream();
+        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
         OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers())
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
@@ -123,10 +124,10 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        final List<ByteBuffer> serializedBufList = bytesOutputStream.getDirectByteBufferList();
+        final List<MemoryChunk> serializedBufList = bytesOutputStream.getMemoryChunkList();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
-          new SerializedPartition<>(partitionToConvert.getKey(), serializedBufList, actualLength));
+          new SerializedPartition<>(partitionToConvert.getKey(), serializedBufList, actualLength, memoryPoolAssigner));
       }
     }
     return serializedPartitions;
