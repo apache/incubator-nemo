@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.common;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
