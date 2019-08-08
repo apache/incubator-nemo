@@ -38,6 +38,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.common.MetricMessageSender;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.TaskStateManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;

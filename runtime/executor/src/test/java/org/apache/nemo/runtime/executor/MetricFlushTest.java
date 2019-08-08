@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.runtime.common.MetricManagerWorker;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
