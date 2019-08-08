@@ -24,8 +24,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import java.util.Set;
 
 /**
- * Interface for DefaultExecutorRepresenter and LambdaExecutorRepresenter.
- * Contains information/state regarding ann executor
+ * Contains information/state regarding an executor
  * Such information may include:
  * a) The executor's resource type.
  * b) The executor's capacity (ex. number of cores).

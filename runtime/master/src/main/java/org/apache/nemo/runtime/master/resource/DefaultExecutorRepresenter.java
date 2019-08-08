@@ -44,13 +44,7 @@ import java.util.stream.Stream;
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  * <p>
- * Contains information/state regarding an executor.
- * Such information may include:
- * a) The executor's resource type.
- * b) The executor's capacity (ex. number of cores).
- * c) Tasks scheduled/launched for the executor.
- * d) Name of the physical node which hosts this executor.
- * e) (Please add other information as we implement more features).
+ * Implements ExecutorRepresenter along with LambdaExecutorRepresenter.
  */
 @NotThreadSafe
 public final class DefaultExecutorRepresenter implements ExecutorRepresenter {
