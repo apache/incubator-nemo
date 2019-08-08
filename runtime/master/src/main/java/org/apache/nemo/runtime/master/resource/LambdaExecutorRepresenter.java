@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.nemo.runtime.master.resource;
 
 import com.amazonaws.regions.Regions;
@@ -24,6 +42,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * LambdaExecutorRepresenter.
+ */
 public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultExecutorRepresenter.class.getName());
 
@@ -40,7 +61,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private final String nodeName;
 
   private final AWSLambda client;
-  private final String LambdaFunctionName;
+  private final String lambdaFunctionName;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final MetricManagerWorker metricMessageSender;
 
@@ -79,7 +100,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     // Need a function reading user parameters such as lambda function name etc.
     Regions region = Regions.fromName("ap-northeast-1");
     this.client = AWSLambdaClientBuilder.standard().withRegion(region).build();
-    this.LambdaFunctionName = "lambda-dev-executor";
+    this.lambdaFunctionName = "lambda-dev-executor";
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
   }
@@ -117,12 +138,12 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
 
     serializationExecutorService.submit(() -> {
       InvokeRequest request = new InvokeRequest()
-        .withFunctionName(this.LambdaFunctionName)
+        .withFunctionName(this.lambdaFunctionName)
         .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + task.getTaskId())
         .withPayload(json);
 //    InvokeResult response = client.invoke(request);
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
-      LOG.info("###### Request invoked! " + task.getTaskId());// + "\n" + response.toString());
+      LOG.info("###### Request invoked! " + task.getTaskId());
     });
   }
 
@@ -133,12 +154,12 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public void sendControlMessage(final ControlMessage.Message message) {
-    if(message.getType() == ControlMessage.MessageType.RequestMetricFlush) {
+    if (message.getType() == ControlMessage.MessageType.RequestMetricFlush) {
       messageSender.send(message);
-      return ;
+    } else {
+      LOG.info("##### Lambda Executor control msg not supported " + message.getType());
+      throw new UnsupportedOperationException();
     }
-    LOG.info("##### Lambda Executor control msg not supported " + message.getType());
-    throw new UnsupportedOperationException();
   }
 
   /**
@@ -237,6 +258,9 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     activeContext.close();
   }
 
+  /**
+   * toString.
+   */
   @Override
   public String toString() {
     final ObjectMapper mapper = new ObjectMapper();

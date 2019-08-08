@@ -37,7 +37,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
@@ -205,17 +204,18 @@ public final class ContainerManager {
 
     final ExecutorRepresenter executorRepresenter;
     // Create the executor representation.
-    if(this.executorType.equals("default")) {
+    if (this.executorType.equals("default")) {
       executorRepresenter =
         new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
           activeContext, serializationExecutorService,
           activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
-    } else if(this.executorType.equals("lambda")){
-      LOG.info("##### Use Lambda Executor #####"+this.executorType);
+    } else if (this.executorType.equals("lambda")) {
+      LOG.info("##### Use Lambda Executor #####" + this.executorType);
       executorRepresenter =
         new LambdaExecutorRepresenter(executorId, resourceSpec, messageSender,
           activeContext, serializationExecutorService,
-          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(), this.persistentConnectionToMasterMap, this.metricMessageSender);
+          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(),
+          this.persistentConnectionToMasterMap, this.metricMessageSender);
     } else {
       LOG.info("Unknown executor type :" + this.executorType);
       throw new UnsupportedOperationException();
