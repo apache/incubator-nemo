@@ -25,7 +25,7 @@ import java.util.Set;
 
 /**
  * Contains information/state regarding an executor
- * Such information may include:
+ * Such information may include
  * a) The executor's resource type.
  * b) The executor's capacity (ex. number of cores).
  * c) Tasks scheduled/launched for the executor.
