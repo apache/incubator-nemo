@@ -401,7 +401,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorType.class); 
+    cl.registerShortNameOfClass(JobConf.ExecutorType.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
     cl.registerShortNameOfClass(JobConf.BandwidthJSONPath.class);
