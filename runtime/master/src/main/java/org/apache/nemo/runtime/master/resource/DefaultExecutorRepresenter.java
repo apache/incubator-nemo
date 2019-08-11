@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  * <p>
- * Implements ExecutorRepresenter that communicates with Executors running on traditional resources 
+ * Implements ExecutorRepresenter that communicates with Executors running on traditional resources
  * (e.g., virtual machines or cluster resources).
  */
 @NotThreadSafe
