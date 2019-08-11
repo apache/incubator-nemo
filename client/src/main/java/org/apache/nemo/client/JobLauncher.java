@@ -309,7 +309,7 @@ public final class JobLauncher {
             String[] split = lastLine.split(" ");
             final String decision = split[0];
 
-            if (decision.equals("o")) {
+            if (decision.equals("o") || decision.equals("no")) {
               final int offloadDivide = Integer.valueOf(split[1]);
 
               if (split.length == 3) {

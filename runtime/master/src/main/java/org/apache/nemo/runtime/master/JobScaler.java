@@ -53,7 +53,7 @@ public final class JobScaler {
     this.executorService = Executors.newCachedThreadPool();
   }
 
-  public void scalingOut(final ControlMessage.ScalingMessage msg) {
+  public void scalingOut(final ControlMessage.ScalingMessage msg, final boolean isNumber) {
 
     final int divide = msg.getDivide();
     final int prevScalingCount = sumCount();
@@ -68,7 +68,12 @@ public final class JobScaler {
     }
 
     final int query = msg.hasQuery() ? msg.getQuery() : 0;
-    scalingOutToWorkers(divide, query);
+
+    if (isNumber) {
+      scalingOutNumTasksToWorkers(divide);
+    } else {
+      scalingOutToWorkers(divide, query);
+    }
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
@@ -105,6 +110,88 @@ public final class JobScaler {
     }
     return list;
   }
+
+
+  private void scalingOutNumTasksToWorkers(final int num) {
+
+    // 1. update all task location
+    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
+
+    final int offloadPerExecutor = num / taskScheduledMap.getScheduledStageTasks().keySet().size();
+
+    int totalOffloading = 0;
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+
+
+      workerOffloadTaskMap.put(representer, new HashMap<>());
+
+      final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
+      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+
+      final int numStages = tasks.size();
+
+
+      for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+        // if query 5, do not move stage2 tasks
+
+        /*
+        if (queryNum == 5) {
+          if (entry.getKey().equals("Stage3")) {
+            LOG.info("Skip stage 3 offloading");
+            continue;
+          }
+        }
+        */
+
+        final int countToOffload = offloadPerExecutor / numStages;
+        final List<String> offloadTask = new ArrayList<>();
+        offloadTaskMap.put(entry.getKey(), offloadTask);
+
+        int offloadedCnt = 0;
+        for (final Task task : entry.getValue()) {
+          if (offloadedCnt < countToOffload) {
+            final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+
+            if (loc == VM) {
+              offloadTask.add(task.getTaskId());
+              taskLocationMap.locationMap.put(task.getTaskId(), SF);
+              offloadedCnt += 1;
+              totalOffloading += 1;
+            }
+          }
+        }
+      }
+    }
+
+    LOG.info("Total offloading cnt: {}", totalOffloading);
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
+    for (final Map.Entry<ExecutorRepresenter,
+      Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
+      scalingExecutorCnt.getAndIncrement();
+
+      final ExecutorRepresenter representer = entry.getKey();
+      final Map<String, List<String>> offloadTaskMap = entry.getValue();
+
+      // scaling out message
+      LOG.info("Send scaling out message {} to {}", entry.getValue(),
+        representer.getExecutorId());
+
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .build());
+      });
+    }
+  }
+
 
   private void scalingOutToWorkers(final int divide,
                                    final int queryNum) {
