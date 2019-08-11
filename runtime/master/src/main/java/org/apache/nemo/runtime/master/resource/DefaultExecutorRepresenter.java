@@ -44,7 +44,8 @@ import java.util.stream.Stream;
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  * <p>
- * Implements ExecutorRepresenter along with LambdaExecutorRepresenter.
+ * Implements ExecutorRepresenter that communicates with Executors running on traditional resources 
+ * (e.g., virtual machines or cluster resources).
  */
 @NotThreadSafe
 public final class DefaultExecutorRepresenter implements ExecutorRepresenter {
