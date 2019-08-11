@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -333,6 +334,16 @@ public final class RuntimeMaster {
   }
 
   /**
+   * Requests a lambda executor.
+   */
+  public void requestLambdaExecutor() {
+    String lambdaFunctionName = "";
+    InvokeRequest request = new InvokeRequest()
+      .withFunctionName(lambdaFunctionName)
+      .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor");
+  }
+
+  /**
    * Called when a container is allocated for this runtime.
    * A wrapper function for {@link ContainerManager}.
    *
@@ -354,6 +365,7 @@ public final class RuntimeMaster {
    * @return true if all requested executors have been launched, false otherwise.
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
+    LOG.info("##### onExecutorLaunched #####");
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
       final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
       if (executor.isPresent()) {

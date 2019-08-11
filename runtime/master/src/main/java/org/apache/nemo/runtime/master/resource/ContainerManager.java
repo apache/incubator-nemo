@@ -20,9 +20,11 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.MetricManagerWorker;
 import org.apache.nemo.runtime.common.message.FailedMessageSender;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -63,6 +65,7 @@ public final class ContainerManager {
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
+  private final String executorType;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -79,9 +82,14 @@ public final class ContainerManager {
    * Remember the resource spec for each evaluator.
    */
   private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final MetricManagerWorker metricMessageSender;
 
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                           @Parameter(JobConf.ExecutorType.class) final String executorType,
+                           final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                           final MetricManagerWorker metricManagerWorker,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment) {
     this.isTerminated = false;
@@ -92,6 +100,9 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
+    this.executorType = executorType;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.metricMessageSender = metricManagerWorker;
   }
 
   /**
@@ -191,12 +202,24 @@ public final class ContainerManager {
       messageSender = new FailedMessageSender();
     }
 
+    final ExecutorRepresenter executorRepresenter;
     // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter =
-      new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
-        activeContext, serializationExecutorService,
-        activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
-
+    if (this.executorType.equals("default")) {
+      executorRepresenter =
+        new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
+          activeContext, serializationExecutorService,
+          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+    } else if (this.executorType.equals("lambda")) {
+      LOG.info("##### Use Lambda Executor #####" + this.executorType);
+      executorRepresenter =
+        new LambdaExecutorRepresenter(executorId, resourceSpec, messageSender,
+          activeContext, serializationExecutorService,
+          activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(),
+          this.persistentConnectionToMasterMap, this.metricMessageSender);
+    } else {
+      LOG.info("Unknown executor type: " + this.executorType);
+      throw new UnsupportedOperationException();
+    }
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
     return Optional.of(executorRepresenter);

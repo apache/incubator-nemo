@@ -61,6 +61,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 /**
  * REEF Driver for Nemo.
  */
@@ -80,6 +83,7 @@ public final class NemoDriver {
   private final String localDirectory;
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
+  private final String executorType;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
     new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
@@ -98,7 +102,9 @@ public final class NemoDriver {
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
-                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
+                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
+                     @Parameter(JobConf.ExecutorType.class) final String executorType) {
+
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
@@ -110,6 +116,7 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    this.executorType = executorType;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
@@ -149,7 +156,23 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      runtimeMaster.requestContainer(resourceSpecificationString);
+      if(executorType.equals("lambda")) {
+        LOG.info("##### lambda executor #####");
+        final String executorId = RuntimeIdManager.generateExecutorId();
+        runtimeMaster.requestLambdaExecutor();
+        final ActiveContext mockedContext = mock(ActiveContext.class);
+        when(mockedContext.getId()).thenReturn(executorId);
+        runtimeMaster.onExecutorLaunched(mockedContext);
+
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
+      } else if(executorType.equals("default")) {
+        LOG.info("##### default executor #####");
+        runtimeMaster.requestContainer(resourceSpecificationString);
+      } else {
+        LOG.info("Unrecognized executor type: " + executorType);
+        throw new UnsupportedOperationException();
+      }
     }
   }
 
@@ -159,6 +182,7 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      LOG.info("##### allocated evaluator #####");
       final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
         getExecutorConfiguration(executorId));
@@ -171,6 +195,7 @@ public final class NemoDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
+      LOG.info("##### context active #####");
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
@@ -186,6 +211,7 @@ public final class NemoDriver {
    * @param dagString the serialized DAG to schedule.
    */
   private void startSchedulingUserDAG(final String dagString) {
+    LOG.info("##### start scheduling user dag #####");
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
