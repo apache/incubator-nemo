@@ -156,6 +156,15 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class JVMHeapSlack implements Name<Double> {
   }
 
+  /**
+   * Executor type:
+   * Choose lambda executor or default executor.
+   */
+  @NamedParameter(doc = "Executor Type",
+    short_name = "executor_type", default_value = "default")
+  public final class ExecutorType implements Name<String> {
+  }
+
   //////////////////////////////// Runtime Master Configurations
 
   /**
