@@ -21,24 +21,17 @@ package org.apache.nemo.runtime.master.resource;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
-import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
-import org.apache.nemo.runtime.common.MetricManagerWorker;
-import org.apache.nemo.runtime.common.TaskStateManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageSender;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.reef.driver.context.ActiveContext;
+import org.apache.nemo.runtime.master.LambdaMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,60 +42,43 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultExecutorRepresenter.class.getName());
 
   private final String executorId;
-  private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
   private final Map<String, Task> runningNonComplyingTasks;
   private final Map<Task, Integer> runningTaskToAttempt;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
-  private final MessageSender<ControlMessage.Message> messageSender;
-  private final ActiveContext activeContext;
-  private final ExecutorService serializationExecutorService;
+//  private final ExecutorService serializationExecutorService;
   private final String nodeName;
 
   private final AWSLambda client;
   private final String lambdaFunctionName;
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-  private final MetricManagerWorker metricMessageSender;
+  private final LambdaMaster lambdaMaster;
 
   /**
    * Creates a reference to the specified executor.
    *
    * @param executorId                   the executor id
-   * @param resourceSpecification        specification for the executor
-   * @param messageSender                provides communication context for this executor
-   * @param activeContext                context on the corresponding REEF evaluator
-   * @param serializationExecutorService provides threads for message serialization
    * @param nodeName                     physical name of the node where this executor resides
    */
   public LambdaExecutorRepresenter(final String executorId,
-                                   final ResourceSpecification resourceSpecification,
-                                   final MessageSender<ControlMessage.Message> messageSender,
-                                   final ActiveContext activeContext,
-                                   final ExecutorService serializationExecutorService,
-                                   final String nodeName,
-                                   final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                                   final MetricManagerWorker metricMessageSender) {
+  //                                 final ExecutorService serializationExecutorService,
+                                   final LambdaMaster lambdaMaster,
+                                   final String nodeName) {
     this.executorId = executorId;
-    // Add Lambda Resource type?
-    this.resourceSpecification = resourceSpecification;
 
-    this.messageSender = messageSender;
     this.runningComplyingTasks = new HashMap<>();
     this.runningNonComplyingTasks = new HashMap<>();
     this.runningTaskToAttempt = new HashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
-    this.activeContext = activeContext;
-    this.serializationExecutorService = serializationExecutorService;
+ //   this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
+    this.lambdaMaster = lambdaMaster;
 
     // Need a function reading user parameters such as lambda function name etc.
     Regions region = Regions.fromName("ap-northeast-1");
     this.client = AWSLambdaClientBuilder.standard().withRegion(region).build();
     this.lambdaFunctionName = "lambda-dev-executor";
-    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.metricMessageSender = metricMessageSender;
   }
 
   /**
@@ -133,18 +109,16 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     final byte[] serialized = SerializationUtils.serialize(task);
     String json = "{\"d\":\"" + Base64.getEncoder().encodeToString(serialized) + "\"}";
 
-    final TaskStateManager taskStateManager =
-      new TaskStateManager(task, executorId, this.persistentConnectionToMasterMap, this.metricMessageSender);
-
-    serializationExecutorService.submit(() -> {
-      InvokeRequest request = new InvokeRequest()
-        .withFunctionName(this.lambdaFunctionName)
-        .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + task.getTaskId())
-        .withPayload(json);
+//    serializationExecutorService.submit(() -> {
+//      InvokeRequest request = new InvokeRequest()
+//      //      .withFunctionName(this.lambdaFunctionName)
+        //.withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + task.getTaskId())
+        //.withPayload(json);
 //    InvokeResult response = client.invoke(request);
-      taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
-      LOG.info("###### Request invoked! " + task.getTaskId());
-    });
+      LOG.info("###### Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
+//    });
+//    xxx.onMessage(COMPLETE);
+
   }
 
   /**
@@ -155,7 +129,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   @Override
   public void sendControlMessage(final ControlMessage.Message message) {
     if (message.getType() == ControlMessage.MessageType.RequestMetricFlush) {
-      messageSender.send(message);
+      throw new UnsupportedOperationException();
     } else {
       LOG.info("##### Lambda Executor control msg not supported " + message.getType());
       throw new UnsupportedOperationException();
@@ -191,7 +165,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public int getExecutorCapacity() {
-    return resourceSpecification.getCapacity();
+    return 1;
   }
 
   /**
@@ -239,7 +213,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public String getContainerType() {
-    return resourceSpecification.getContainerType();
+    return "";
   }
 
   /**
@@ -255,7 +229,6 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public void shutDown() {
-    activeContext.close();
   }
 
   /**

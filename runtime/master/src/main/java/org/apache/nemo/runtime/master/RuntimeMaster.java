@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.master;
 
-import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -30,19 +29,14 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.ClientRPC;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.message.*;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.nemo.runtime.master.resource.ContainerManager;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.master.resource.*;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.servlet.*;
@@ -116,6 +110,8 @@ public final class RuntimeMaster {
   private final Server metricServer;
   private final MetricStore metricStore;
 
+  private static LambdaMaster lambdaMaster;
+
   /**
    * Constructor.
    *
@@ -183,6 +179,8 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
+
+    //this.xxx =new MasterControlMessageReceiver()
   }
 
   /**
@@ -337,10 +335,22 @@ public final class RuntimeMaster {
    * Requests a lambda executor.
    */
   public void requestLambdaExecutor() {
-    String lambdaFunctionName = "";
-    InvokeRequest request = new InvokeRequest()
-      .withFunctionName(lambdaFunctionName)
-      .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor");
+    final ExecutorRepresenter executorRepresenter;
+    final String executorId = RuntimeIdManager.generateExecutorId();
+    final String nodeName = "192.168.0.100";
+
+    // LambdaRuntimeMaster manages Netty Server for LambdaExecutor to connect to
+    // Set up netty server at port 9999, and registers handler
+    this.lambdaMaster = new LambdaMaster();
+
+    // Initiate one LambdaExecutor
+    this.lambdaMaster.invokeExecutor();
+    // NettyChannelinitializer.initChannel will be called if LambdaExecutor connects successfully
+
+    executorRepresenter =
+      new LambdaExecutorRepresenter(executorId, this.lambdaMaster, nodeName);
+    // make a new representer
+    scheduler.onExecutorAdded(executorRepresenter);
   }
 
   /**

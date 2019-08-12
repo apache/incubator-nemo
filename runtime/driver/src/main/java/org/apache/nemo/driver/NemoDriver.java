@@ -61,9 +61,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 /**
  * REEF Driver for Nemo.
  */
@@ -156,17 +153,13 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      if(executorType.equals("lambda")) {
+      if (executorType.equals("lambda")) {
         LOG.info("##### lambda executor #####");
-        final String executorId = RuntimeIdManager.generateExecutorId();
         runtimeMaster.requestLambdaExecutor();
-        final ActiveContext mockedContext = mock(ActiveContext.class);
-        when(mockedContext.getId()).thenReturn(executorId);
-        runtimeMaster.onExecutorLaunched(mockedContext);
 
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
-      } else if(executorType.equals("default")) {
+      } else if (executorType.equals("default")) {
         LOG.info("##### default executor #####");
         runtimeMaster.requestContainer(resourceSpecificationString);
       } else {
