@@ -64,7 +64,7 @@ under the License.
     <commons-math.version>3.6.1</commons-math.version>
     <sqlite-jdbc.version>3.25.2</sqlite-jdbc.version>
     <postgresql.version>42.2.5</postgresql.version>
-    <slf4j.version>1.7.20</slf4j.version>
+    <slf4j.version>1.7.25</slf4j.version>
     <!-- Tests -->
     <mockito.version>2.13.0</mockito.version>
     <powermock.version>2.0.0-beta.5</powermock.version>
@@ -161,7 +161,7 @@ under the License.
         -->
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-simple</artifactId>
-        <version>1.6.2</version>
+        <version>${slf4j.version}</version>
         <scope>test</scope>
       </dependency>
     </dependencies>
