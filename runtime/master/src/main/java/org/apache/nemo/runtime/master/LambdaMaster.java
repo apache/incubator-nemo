@@ -91,6 +91,7 @@ public class LambdaMaster {
   }
 
   private void setNetty() {
+    LOG.info("##### Set up netty server #####");
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
     this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
@@ -105,6 +106,7 @@ public class LambdaMaster {
       .option(ChannelOption.SO_BACKLOG, 128)
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.SO_KEEPALIVE, true);
+    System.out.println("##### Server Bootstrap set #####");
 
     this.publicAddress = this.getPublicIP();
     try {
@@ -114,9 +116,6 @@ public class LambdaMaster {
       throw new RuntimeException(e);
     }
 
-    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
-    LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
-
     try {
       this.acceptor = serverBootstrap.bind(
         new InetSocketAddress(localAddress, this.port)).sync().channel();
@@ -124,6 +123,9 @@ public class LambdaMaster {
     } catch (Exception e) {
       e.printStackTrace();
     }
+
+    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
+    LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
   }
 
   private String getPublicIP() {
