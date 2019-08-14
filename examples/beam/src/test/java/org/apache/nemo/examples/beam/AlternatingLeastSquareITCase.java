@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -41,6 +42,7 @@ public final class AlternatingLeastSquareITCase {
   private static final String outputFileName = "test_output_als";
   private static final String output = ExampleTestArgs.getFileBasePath() + outputFileName;
   private static final String expectedOutputFileName = "outputs/expected_output_als";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.xml";
   private static final String noPoisonResources = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
   private static final String poisonedResource = ExampleTestArgs.getFileBasePath() + "executors/beam_test_poisoned_executor_resources.json";
   private static final String numFeatures = "10";
@@ -69,6 +71,15 @@ public final class AlternatingLeastSquareITCase {
       .addResourceJson(noPoisonResources)
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  public void testTransient() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_transient")
+      .addOptimizationPolicy(TransientResourcePolicy.class.getCanonicalName())
       .build());
   }
 

@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -349,7 +350,7 @@ public final class IRDAGChecker {
 
   void addLoopVertexCheckers() {
     final NeighborChecker duplicateEdgeGroupId = ((v, inEdges, outEdges) -> {
-      final Map<Optional<String>, List<IREdge>> tagToOutEdges = groupOutEdgesByAdditionalOutputTag(outEdges);
+      final Map<String, List<IREdge>> tagToOutEdges = groupOutEdgesByAdditionalOutputTag(outEdges);
       for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
         if (sameTagOutEdges.stream()
           .map(e -> e.getPropertyValue(DuplicateEdgeGroupProperty.class)
@@ -471,9 +472,11 @@ public final class IRDAGChecker {
     return irEdge.getDst() instanceof RelayVertex || irEdge.getSrc() instanceof RelayVertex;
   }
 
-  private Map<Optional<String>, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
+  private final AtomicInteger distinctIntegerForEmptyOutputTag = new AtomicInteger(0);
+  private Map<String, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
     return outEdges.stream().collect(Collectors.groupingBy(
-      (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)),
+      (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)
+        .orElse(String.valueOf(distinctIntegerForEmptyOutputTag.getAndIncrement()))),
       Collectors.toList()));
   }
 
