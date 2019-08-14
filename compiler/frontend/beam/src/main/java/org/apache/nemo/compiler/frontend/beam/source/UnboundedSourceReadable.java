@@ -1,6 +1,7 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.io.kafka.KafkaUnboundedReader;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -35,6 +36,9 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   private static final Logger LOG = LoggerFactory.getLogger(UnboundedSourceReadable.class.getName());
 
+  private KafkaUnboundedReader kafkaReader;
+
+
   private ExecutorService readableService;
   /**
    * Constructor.
@@ -66,6 +70,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     try {
       readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
+      kafkaReader = (KafkaUnboundedReader) reader;
+
       isCurrentAvailable = reader.start();
       isFetchTime = !isCurrentAvailable;
 
@@ -113,13 +119,15 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
-       try {
-        isCurrentAvailable =  reader.advance();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
+      readableService.execute(() -> {
+        try {
+          kafkaReader.pollRecord(5);
+          isCurrentAvailable = reader.advance();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
       return EmptyElement.getInstance();
     }
 
