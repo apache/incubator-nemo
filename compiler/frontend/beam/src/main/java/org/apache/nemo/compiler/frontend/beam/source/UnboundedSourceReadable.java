@@ -28,7 +28,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   private UnboundedSource.UnboundedReader<O> reader;
   private boolean isStarted = false;
   private volatile boolean isCurrentAvailable = false;
-  private volatile boolean isFetchTime = false;
+  private volatile boolean isKafkaPolled = false;
+  private volatile boolean isKafkaPolling = false;
   private boolean isFinished = false;
 
   private final PipelineOptions pipelineOptions;
@@ -73,7 +74,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       kafkaReader = (KafkaUnboundedReader) reader;
 
       isCurrentAvailable = reader.start();
-      isFetchTime = !isCurrentAvailable;
 
     } catch (final Exception e) {
       throw new RuntimeException(e);
@@ -119,15 +119,25 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
-      readableService.execute(() -> {
-        try {
+      if (!isKafkaPolling) {
+        isKafkaPolling = true;
+        readableService.execute(() -> {
+
+          // poll kafka
           kafkaReader.pollRecord(5);
-          isCurrentAvailable = reader.advance();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      });
+
+          // set current available
+          try{
+            isCurrentAvailable = reader.advance();
+          } catch (final IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          isKafkaPolling = false;
+        });
+      }
+
       return EmptyElement.getInstance();
     }
 
