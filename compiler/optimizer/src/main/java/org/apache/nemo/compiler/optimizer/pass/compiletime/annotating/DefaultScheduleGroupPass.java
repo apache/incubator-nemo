@@ -164,15 +164,6 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         vertex.setPropertyPermanently(ScheduleGroupProperty.of(actualScheduleGroup.intValue())));
       actualScheduleGroup.increment();
     });
-    final List<ScheduleGroup> sorted = sgDAG.getTopologicalSort();
-    sorted.stream()
-      .map(sg -> groupIdToVertices.get(sg.getScheduleGroupId()))
-      .forEach(vertices -> {
-        vertices.forEach(vertex -> {
-          vertex.setPropertyPermanently(ScheduleGroupProperty.of(actualScheduleGroup.intValue()));
-        });
-        actualScheduleGroup.increment();
-      });
 
     return dag;
   }
