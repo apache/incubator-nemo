@@ -131,6 +131,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
         final TaskExecutor te = offloadedTaskMap.get(pair.left());
 
+        if (te == null) {
+          LOG.info("TaskExecutor is null: {}, [}", pair.left(), pair.right());
+          throw new RuntimeException("null");
+        }
+
         if (msg instanceof OffloadingHeartbeatEvent) {
           final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
           //LOG.info("Set heartbeat for task {} / time {}", heartbeatEvent.taskId, heartbeatEvent.time);
