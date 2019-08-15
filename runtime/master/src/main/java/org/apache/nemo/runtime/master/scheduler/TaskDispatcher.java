@@ -96,6 +96,9 @@ final class TaskDispatcher {
   private final class TaskDispatcherThread implements Runnable {
     @Override
     public void run() {
+
+      initialSetup();
+
       while (!isTerminated) {
         doScheduleTaskList();
         schedulingIteration.await();
@@ -138,25 +141,8 @@ final class TaskDispatcher {
     return stageTasks;
   }
 
-  private void doScheduleTaskList() {
 
-    while (true) {
-
-      final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
-      if (!taskListOptional.isPresent()) {
-        // Task list is empty
-        LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
-        return;
-      }
-
-      final Collection<Task> taskList = taskListOptional.get();
-
-      LOG.info("Size of tasks: {}", taskList.size());
-      final List<List<Task>> stageTasks = getStageTasks(taskList);
-
-
-      final List<Task> couldNotSchedule = new ArrayList<>();
-
+  private void initialSetup() {
       // send global message
       while (!taskScheduledMap.isAllExecutorAddressReceived()) {
         LOG.info("Waiting executor address info...");
@@ -252,7 +238,25 @@ final class TaskDispatcher {
             .build());
         }
       });
+  }
 
+  private void doScheduleTaskList() {
+
+    while (true) {
+
+      final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
+      if (!taskListOptional.isPresent()) {
+        // Task list is empty
+        LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
+        return;
+      }
+
+      final Collection<Task> taskList = taskListOptional.get();
+
+      LOG.info("Size of tasks: {}", taskList.size());
+      final List<List<Task>> stageTasks = getStageTasks(taskList);
+
+      final List<Task> couldNotSchedule = new ArrayList<>();
 
       for (final List<Task> stageTask : stageTasks) {
 
