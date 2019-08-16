@@ -196,6 +196,7 @@ public final class ContainerManager {
         new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
           activeContext, serializationExecutorService,
           activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
     return Optional.of(executorRepresenter);
