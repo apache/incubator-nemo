@@ -375,7 +375,6 @@ public final class RuntimeMaster {
    * @return true if all requested executors have been launched, false otherwise.
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
-    LOG.info("##### onExecutorLaunched #####");
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
       final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
       if (executor.isPresent()) {
