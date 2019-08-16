@@ -160,7 +160,6 @@ public final class NemoDriver {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
       } else if (executorType.equals("default")) {
-        LOG.info("##### default executor #####");
         runtimeMaster.requestContainer(resourceSpecificationString);
       } else {
         LOG.info("Unrecognized executor type: " + executorType);
@@ -175,7 +174,6 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      LOG.info("##### allocated evaluator #####");
       final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
         getExecutorConfiguration(executorId));
@@ -188,7 +186,6 @@ public final class NemoDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      LOG.info("##### context active #####");
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
@@ -204,7 +201,6 @@ public final class NemoDriver {
    * @param dagString the serialized DAG to schedule.
    */
   private void startSchedulingUserDAG(final String dagString) {
-    LOG.info("##### start scheduling user dag #####");
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
