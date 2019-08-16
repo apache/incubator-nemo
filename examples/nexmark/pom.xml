@@ -35,23 +35,6 @@ under the License.
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-nexmark</artifactId>
       <version>${beam.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-runners-direct-java</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-runners-direct-java</artifactId>
-      <version>${beam.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-jdk14</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-google-cloud-platform -->
@@ -59,7 +42,7 @@ under the License.
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
       <version>${beam.version}</version>
-   </dependency>
+    </dependency>
   </dependencies>
 
   <build>

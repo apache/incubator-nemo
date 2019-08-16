@@ -89,7 +89,7 @@ under the License.
       -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
-      <version>${slf4j.version}</version>
+      <version>1.6.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
