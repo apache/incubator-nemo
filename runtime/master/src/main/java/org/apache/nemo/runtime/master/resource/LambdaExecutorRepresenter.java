@@ -109,16 +109,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     final byte[] serialized = SerializationUtils.serialize(task);
     String json = "{\"d\":\"" + Base64.getEncoder().encodeToString(serialized) + "\"}";
 
-//    serializationExecutorService.submit(() -> {
-//      InvokeRequest request = new InvokeRequest()
-//      //      .withFunctionName(this.lambdaFunctionName)
-        //.withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + task.getTaskId())
-        //.withPayload(json);
-//    InvokeResult response = client.invoke(request);
-      LOG.info("###### Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
-//    });
-//    xxx.onMessage(COMPLETE);
-
+    LOG.info("Operation not supported: Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
   }
 
   /**
