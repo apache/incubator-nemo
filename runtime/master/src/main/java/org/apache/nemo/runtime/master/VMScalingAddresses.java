@@ -120,7 +120,6 @@ public class VMScalingAddresses {
       "i-0e72cc4fea275918a",
       "i-0f0e52706b93442b4", // 35
       "i-0feb7bd46286dcad1",
-      "i-0feb7bd46286dcad1",
       "i-01f910168d0778d95",
       "i-024cb99390579b98a",
       "i-02921d8a251252a32",
