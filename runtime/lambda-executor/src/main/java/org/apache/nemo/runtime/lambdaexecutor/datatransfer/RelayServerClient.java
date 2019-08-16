@@ -169,11 +169,8 @@ public final class RelayServerClient {
     registerTask(myChannel,
       descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
-
     // 여기서 rendevous server에 등록하기
     final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
-
-    LOG.info("Register task for {}", relayDst);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     //LOG.info("Getting context manager!!!");
@@ -181,6 +178,7 @@ public final class RelayServerClient {
     return completableFuture.supplyAsync(() -> {
       LOG.info("Rendevous request address for {}", relayDst);
       final String response = rendevousServerClient.requestAddress(relayDst);
+      LOG.info("Rendevous response address for {}", relayDst);
       return manager.newOutputContext(dstExecutorId, descriptor, true);
     }, Executors.newCachedThreadPool());
   }

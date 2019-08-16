@@ -11,10 +11,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.common.NemoTriple;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.common.Throttled;
+import org.apache.nemo.common.*;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
@@ -294,6 +291,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     for (final Map.Entry<String, TaskLoc> entry
       : readyTask.taskLocationMap.entrySet()) {
       taskLocMap.put(entry.getKey(), entry.getValue());
+    }
+
+    if (RuntimeIdManager.getStageIdFromTaskId(task.taskId).equals("Stage1")) {
+      LOG.info("TaskLocMap of {}: {}", task.taskId, taskLocMap);
     }
 
     executorStartService.execute(() -> {

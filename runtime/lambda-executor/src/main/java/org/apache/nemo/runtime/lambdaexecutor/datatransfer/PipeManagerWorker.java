@@ -224,6 +224,10 @@ public final class PipeManagerWorker {
         dstTaskIndex,
         getNumOfOutputPipeToWait(runtimeEdge));
 
+    if (loc == null) {
+      throw new RuntimeException("Loc is null for " + dstTaskId + ", " + taskLocationMap);
+    }
+
 
     switch (loc) {
       case SF: {
