@@ -319,7 +319,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             }
 
 
-            LOG.info("Updating task location... {}", taskLocationMap.locationMap);
+            //LOG.info("Updating task location... {}", taskLocationMap.locationMap);
 
             final List<ControlMessage.RequestScalingEntryMessage> entries = scalingMsg.getEntryList();
 

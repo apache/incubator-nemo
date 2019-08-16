@@ -293,10 +293,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       taskLocMap.put(entry.getKey(), entry.getValue());
     }
 
-    if (RuntimeIdManager.getStageIdFromTaskId(task.taskId).equals("Stage1")) {
-      LOG.info("TaskLocMap of {}: {}", task.taskId, taskLocMap);
-    }
-
     executorStartService.execute(() -> {
 
       final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
