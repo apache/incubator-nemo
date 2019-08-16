@@ -82,7 +82,7 @@ public class LambdaExecutor implements RequestHandler<Map<String, Object>, Conte
   private Channel channelOpen(final Map<String, Object> input) {
     // Connect to the LambdaMaster
     final ChannelFuture channelFuture;
-    channelFuture = this.clientBootstrap.connect(new InetSocketAddress(this.serverAddress, this.serverPort));
+    channelFuture = this.clientBootstrap.connect(new InetSocketAddress(this.serverAddr, this.serverPort));
     channelFuture.awaitUninterruptibly();
     assert channelFuture.isDone();
     if (!channelFuture.isSuccess()) {
