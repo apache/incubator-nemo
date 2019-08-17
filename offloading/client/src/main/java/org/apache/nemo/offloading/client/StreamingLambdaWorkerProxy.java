@@ -4,7 +4,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
@@ -37,13 +36,13 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   //private ObjectOutputStream objectOutputStream;
   //private ByteBufOutputStream byteBufOutputStream;
 
-  final ExecutorService channelThread = SharedCachedPool.POOL;
+  final ExecutorService channelThread = Executors.newSingleThreadExecutor();
 
   private final String workerId;
 
   private final EventHandler<O> eventHandler;
 
-  private final ExecutorService closeThread = SharedCachedPool.POOL;
+  private final ExecutorService closeThread = Executors.newSingleThreadExecutor();
 
   private final DescriptiveStatistics cpuAverage;
 

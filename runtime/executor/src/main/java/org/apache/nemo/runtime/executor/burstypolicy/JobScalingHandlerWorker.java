@@ -163,7 +163,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       .map(x -> x.size()).reduce(0, (x,y) -> x+y);
 
     // 1. 여기서 먼저 worker 준비! 몇개 offloading할지 알고 있으니까 가능함.
-    //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
+    final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 
     remainingOffloadTasks.set(totalOffloadTasks);
     LOG.info("# of offloading tasks: {}", totalOffloadTasks);
@@ -197,7 +197,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
             offloadNumMap.put(stageId, offloadNum + 1);
 
-            final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask();
+            final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask(serializer);
 
             LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
               remainingOffloadTasks.getRemainingCnt());
