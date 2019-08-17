@@ -13,6 +13,7 @@ import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.*;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -58,6 +59,12 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final EvalConf evalConf;
 
+  private final OffloadingSerializer offloadingSerializer = new OffloadingExecutorSerializer();
+
+
+  final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+
+
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
@@ -72,6 +79,20 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     this.workerFactory = workerFactory;
     this.workers = new LinkedList<>();
+
+    final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
+    ObjectOutputStream oos = null;
+    try {
+      oos = new ObjectOutputStream(bos);
+      oos.writeObject(offloadingTransform);
+      oos.writeObject(offloadingSerializer.getInputDecoder());
+      oos.writeObject(offloadingSerializer.getOutputEncoder());
+      oos.close();
+      bos.close();
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     scheduler.scheduleAtFixedRate(() -> {
       schedulingWorkers();
@@ -100,29 +121,14 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       }
   }
 
-  private StreamingLambdaWorkerProxy createNewWorker(
-    final OffloadingSerializer<I, O> offloadingSerializer) {
+  private StreamingLambdaWorkerProxy createNewWorker() {
 
-    final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-    final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
-    ObjectOutputStream oos = null;
-    try {
-      oos = new ObjectOutputStream(bos);
-      oos.writeObject(offloadingTransform);
-      oos.writeObject(offloadingSerializer.getInputDecoder());
-      oos.writeObject(offloadingSerializer.getOutputEncoder());
-      oos.close();
-      bos.close();
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
 
     // create new worker
     LOG.info("Creating new worker... current num: {}", workers.size());
 
     final StreamingLambdaWorkerProxy worker = (StreamingLambdaWorkerProxy)
-      workerFactory.createStreamingWorker(workerInitBuffer, offloadingSerializer, (event) -> {
+      workerFactory.createStreamingWorker(workerInitBuffer.retain(), offloadingSerializer, (event) -> {
         // TODO: We should retrieve states (checkpointmark, operator states, and so on)
 
         final Pair<String, Object> pair = (Pair<String, Object>) event;
@@ -201,8 +207,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     throw new RuntimeException("No executable worker");
   }
 
-  public synchronized TinyTaskWorker prepareSendTask(
-    final OffloadingSerializer<I, O> offloadingSerializer) {
+  public synchronized TinyTaskWorker prepareSendTask() {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
 
     synchronized (workers) {
@@ -214,9 +219,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         }
       }
 
-
       final TinyTaskWorker newWorker = new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), evalConf);
+        createNewWorker(), evalConf);
 
       LOG.info("No preparable worker.. create new one {}", newWorker);
 
