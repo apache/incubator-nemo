@@ -131,7 +131,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskLocationMap = taskLocationMap;
-    this.channelServiceExecutor = Executors.newFixedThreadPool(30);
+    this.channelServiceExecutor = Executors.newCachedThreadPool();
     this.toMaster = toMaster;
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
   }
