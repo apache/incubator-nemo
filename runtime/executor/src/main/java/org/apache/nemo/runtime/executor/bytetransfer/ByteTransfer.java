@@ -180,8 +180,8 @@ public final class ByteTransfer {
       } else if (channel == cachedChannelFuture.channel()) {
         return cachedChannelFuture;
       } else {
-        LOG.warn("Duplicate channel for remote {}({}) and this executor",
-            new Object[]{executorId, channel.remoteAddress()});
+        LOG.warn("Duplicate channel for remote {}({}) and this executor channel {}",
+            new Object[]{executorId, channel.remoteAddress(), cachedChannelFuture.channel()});
         return channel.newSucceededFuture();
       }
     });

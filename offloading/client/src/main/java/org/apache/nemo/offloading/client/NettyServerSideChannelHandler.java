@@ -53,12 +53,15 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
    */
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
+    LOG.info("Channel inactive {}", ctx.channel());
+
     channelGroup.remove(ctx);
     ctx.close();
   }
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
+    LOG.info("Exception caught {}", cause);
     cause.printStackTrace();
     channelGroup.remove(ctx);
     ctx.close();

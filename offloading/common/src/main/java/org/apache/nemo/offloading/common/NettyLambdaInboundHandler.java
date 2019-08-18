@@ -12,7 +12,6 @@ import java.util.concurrent.Executors;
 
 @ChannelHandler.Sharable
 public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapter {
-
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap;
   private final ExecutorService executorService;
 
@@ -44,6 +43,11 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
       Thread.sleep(100);
     }
 
+  }
+
+  @Override
+  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    System.out.print("Channel inactive... " + ctx.channel());
   }
 
   @Override
