@@ -30,6 +30,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
+import org.apache.nemo.runtime.lambdaexecutor.SharedCachedPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,7 +181,7 @@ public final class RelayServerClient {
       final String response = rendevousServerClient.requestAddress(relayDst);
       LOG.info("Rendevous response address for {}", relayDst);
       return manager.newOutputContext(dstExecutorId, descriptor, true);
-    }, Executors.newCachedThreadPool());
+    }, SharedCachedPool.POOL);
   }
 
   public CompletableFuture<ByteInputContext> newInputContext(
