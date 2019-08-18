@@ -62,8 +62,9 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   private final OffloadingSerializer offloadingSerializer = new OffloadingExecutorSerializer();
 
 
-  final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+  private final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
 
+  private boolean offloadingTransformSerialized = false;
 
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
@@ -80,19 +81,6 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     this.workerFactory = workerFactory;
     this.workers = new LinkedList<>();
 
-    final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
-    ObjectOutputStream oos = null;
-    try {
-      oos = new ObjectOutputStream(bos);
-      oos.writeObject(offloadingTransform);
-      oos.writeObject(offloadingSerializer.getInputDecoder());
-      oos.writeObject(offloadingSerializer.getOutputEncoder());
-      oos.close();
-      bos.close();
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
 
     scheduler.scheduleAtFixedRate(() -> {
       schedulingWorkers();
@@ -209,6 +197,25 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   public synchronized TinyTaskWorker prepareSendTask() {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
+
+    if (!offloadingTransformSerialized) {
+
+      offloadingTransformSerialized = true;
+
+      final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
+      ObjectOutputStream oos = null;
+      try {
+        oos = new ObjectOutputStream(bos);
+        oos.writeObject(offloadingTransform);
+        oos.writeObject(offloadingSerializer.getInputDecoder());
+        oos.writeObject(offloadingSerializer.getOutputEncoder());
+        oos.close();
+        bos.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
 
     synchronized (workers) {
       for (final Pair<Long, TinyTaskWorker> pair : workers) {
