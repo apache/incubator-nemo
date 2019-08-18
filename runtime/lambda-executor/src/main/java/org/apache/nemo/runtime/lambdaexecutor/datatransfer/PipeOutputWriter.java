@@ -217,9 +217,10 @@ public final class PipeOutputWriter implements Flushable {
 
 
     final List<ByteOutputContext> boc = new ArrayList<>(byteOutputContexts.size());
+    final List<CompletableFuture<ByteOutputContext>> byteOutputContextList = new ArrayList<>(byteOutputContexts);
 
-    while (!byteOutputContexts.isEmpty()) {
-      final Iterator<CompletableFuture<ByteOutputContext>> iterator = byteOutputContexts.iterator();
+    while (!byteOutputContextList.isEmpty()) {
+      final Iterator<CompletableFuture<ByteOutputContext>> iterator = byteOutputContextList.iterator();
       while (iterator.hasNext()) {
          final CompletableFuture<ByteOutputContext> context = iterator.next();
 
@@ -238,7 +239,7 @@ public final class PipeOutputWriter implements Flushable {
       }
 
       try {
-        Thread.sleep(200);
+        Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
