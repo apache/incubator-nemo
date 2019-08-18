@@ -291,8 +291,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
-    setChannelError(cause);
-    channel.close();
+    cause.printStackTrace();
+    throw new RuntimeException("Channel closed erorr " + channel + " execption " + cause.getMessage());
+    //setChannelError(cause);
+    //channel.close();
   }
 
   /**
