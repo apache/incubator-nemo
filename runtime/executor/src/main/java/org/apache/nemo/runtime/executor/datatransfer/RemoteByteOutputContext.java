@@ -414,7 +414,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             }
           }
         } catch (final IOException e) {
-          throw new RuntimeException(e);
+          throw new RuntimeException("curr status: " + currStatus + ", to " + sendDataTo + " restart? " + restarted + " channel " + currChannel + " " + e);
         }
       }
     }

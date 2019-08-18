@@ -511,7 +511,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
   @Override
   public void onContextStop(final ByteInputContext context) {
-    LOG.info("context stop!! {}", context.getContextId());
+    //LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContexts.remove(contextId.getTransferIndex(), context);
     final ByteInputContext restartContext = new StreamRemoteByteInputContext(

@@ -29,7 +29,7 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) throws IOException {
 
-    LOG.info("Rendevous client decoder called");
+    //LOG.info("Rendevous client decoder called");
 
     final RendevousMessageEncoder.Type type = RendevousMessageEncoder.Type.values()[byteBuf.readInt()];
     final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);

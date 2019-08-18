@@ -84,7 +84,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     this.relayServerClient = relayServerClient;
 
 
-    LOG.info("Context is sf {}, {}", isSfChannel, contextId);
+    //LOG.info("Context is sf {}, {}", isSfChannel, contextId);
     if (isSfChannel) {
       this.sfChannel = contextManager.getChannel();
       this.currChannel = sfChannel;

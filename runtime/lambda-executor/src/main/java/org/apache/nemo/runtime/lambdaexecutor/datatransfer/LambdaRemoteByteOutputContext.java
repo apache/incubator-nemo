@@ -203,7 +203,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void scaleoutToVm(Channel channel) {
-    LOG.info("Scale out to relay channel {}, {}", channel, getContextId());
+    //LOG.info("Scale out to relay channel {}, {}", channel, getContextId());
     sendDataTo = SF;
     relayChannel = channel;
     currChannel = relayChannel;
@@ -222,7 +222,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void scaleInToVm(Channel channel) {
-    LOG.info("Scale in to channel {}", channel);
+    //LOG.info("Scale in to channel {}", channel);
     sendDataTo = VM;
     vmChannel = channel;
     currChannel = vmChannel;

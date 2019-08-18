@@ -102,18 +102,18 @@ public final class PipeManagerWorker {
           TaskLoc.VM,
           taskId);
 
-      LOG.info("Send message for input context {}, {} {} from {}",
-        byteInputContext.getContextId().getTransferIndex(), key, pendingMsg, taskId);
+      //LOG.info("Send message for input context {}, {} {} from {}",
+      //  byteInputContext.getContextId().getTransferIndex(), key, pendingMsg, taskId);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
         final int cnt = atomicInteger.decrementAndGet();
-        LOG.info("receive ack at {}, {}!!", taskId, cnt);
+        //LOG.info("receive ack at {}, {}!!", taskId, cnt);
 
         if (cnt == 0) {
           // delete it from map
           synchronized (byteInputContexts) {
-            LOG.info("Clear byte input contexts for {}", taskId);
+            //LOG.info("Clear byte input contexts for {}", taskId);
             byteInputContexts.clear();
           }
         }
@@ -191,8 +191,8 @@ public final class PipeManagerWorker {
       }
       case VM: {
         // The executor is in VM, just connects to the VM server
-        LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
-          runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+        //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
+        //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
         // Connect to the executor
         return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
           .thenApply(context -> context);

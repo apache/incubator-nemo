@@ -248,9 +248,9 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
                                     final TaskExecutor taskExecutor,
                                     final TinyTaskWorker worker) {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
-    LOG.info("Put task {} to offloadedTaskMap {}", offloadingTask.taskId, taskExecutor);
+    //LOG.info("Put task {} to offloadedTaskMap {}", offloadingTask.taskId, taskExecutor);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
-    LOG.info("Offloaded task map when put {}", offloadedTaskMap);
+    //LOG.info("Offloaded task map when put {}", offloadedTaskMap);
     worker.addTask(offloadingTask);
   }
 

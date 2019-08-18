@@ -64,7 +64,7 @@ public final class ByteTransfer {
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
                                                              final PipeTransferContextDescriptor contextDescriptor,
                                                              final boolean isPipe) {
-    LOG.info("New remote input context: {}", executorId);
+    //LOG.info("New remote input context: {}", executorId);
     return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -78,7 +78,7 @@ public final class ByteTransfer {
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final PipeTransferContextDescriptor contextDescriptor,
                                                                final boolean isPipe) {
-    LOG.info("New output context: {}", executorId);
+    //LOG.info("New output context: {}", executorId);
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -92,7 +92,7 @@ public final class ByteTransfer {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
         if (cachedChannelFuture != null
             && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
-          LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
+          //LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
           return cachedChannelFuture;
         } else {
           final ChannelFuture future = byteTransport.connectTo(executorId);

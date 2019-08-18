@@ -90,7 +90,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   }
 
   public void registerResponse(final RendevousResponse response) {
-    LOG.info("Registering RedevousResponse {}/{}", response.dst, response.address);
+    //LOG.info("Registering RedevousResponse {}/{}", response.dst, response.address);
     dstAddressMap.put(response.dst, response.address);
   }
 
@@ -114,7 +114,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
       }
     }
 
-    LOG.info("End of Requesting address {} ", dst);
+    //LOG.info("End of Requesting address {} ", dst);
     return dstAddressMap.get(dst);
   }
 
@@ -123,7 +123,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
     synchronized (registerTasks) {
       if (!registerTasks.contains(dst)) {
         registerTasks.add(dst);
-        LOG.info("Registering address {}", dst);
+        //LOG.info("Registering address {}", dst);
         channel.writeAndFlush(new RendevousRegister(dst));
       }
     }
@@ -148,6 +148,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
       }
       // Failed to connect (Not logging the cause here, which is not very useful)
       LOG.error("Failed to connect to relay server {}:{}", address, port);
+      throw new RuntimeException("Failed to connect to relay server ");
     });
 
     return connectFuture;

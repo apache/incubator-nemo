@@ -106,7 +106,7 @@ public final class PipeManagerWorker {
     final long messageId = RuntimeIdManager.generateMessageId();
 
     if (evalConf.controlLogging) {
-      LOG.info("Send message id {}", messageId);
+      //LOG.info("Send message id {}", messageId);
     }
 
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
@@ -201,7 +201,7 @@ public final class PipeManagerWorker {
 
 
   public void notifyMaster(final String runtimeEdgeId, final long dstTaskIndex) {
-    LOG.info("Notify to master {}/{}", runtimeEdgeId, dstTaskIndex);
+   // LOG.info("Notify to master {}/{}", runtimeEdgeId, dstTaskIndex);
     // Notify the master that we're using this pipe.
     toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
@@ -241,7 +241,7 @@ public final class PipeManagerWorker {
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), dstTaskIndex);
     final int parallelism = getNumOfInputPipeToWait(runtimeEdge);
-    LOG.info("Edge parallelism: {}, {}, pairKey: {}", runtimeEdge.getId(), parallelism, pairKey);
+    //LOG.info("Edge parallelism: {}, {}, pairKey: {}", runtimeEdge.getId(), parallelism, pairKey);
     pipeContainer.putPipeListIfAbsent(pairKey, getNumOfInputPipeToWait(runtimeEdge));
 
     // Then, do stuff
@@ -298,7 +298,7 @@ public final class PipeManagerWorker {
    * @throws InvalidProtocolBufferException protobuf exception
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
-    LOG.info("On output context: {}", outputContext);
+    //LOG.info("On output context: {}", outputContext);
 
     final PipeTransferContextDescriptor descriptor =
       PipeTransferContextDescriptor.decode(outputContext.getContextDescriptor());

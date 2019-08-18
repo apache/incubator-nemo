@@ -40,13 +40,13 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         synchronized (channels) {
           if (!channels.isEmpty() && rendevousChannelMap.containsKey(dstRequestKey) ) {
 
-            LOG.info("Sending response of {}", dstRequestKey);
+            //LOG.info("Sending response of {}", dstRequestKey);
 
             final Channel dst = rendevousChannelMap.get(dstRequestKey);
             // write
 
             channels.stream().forEach(channel -> {
-              LOG.info("Flush response {} to {}", dstRequestKey, channel);
+              //LOG.info("Flush response {} to {}", dstRequestKey, channel);
               channel.writeAndFlush(new RendevousResponse(dstRequestKey,
                 dst.remoteAddress().toString()));
             });
@@ -82,7 +82,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
     switch (type) {
       case REQUEST: {
         final String dst = bis.readUTF();
-        LOG.info("Request dst {} from {}", dst, ctx.channel());
+        //LOG.info("Request dst {} from {}", dst, ctx.channel());
 
         dstRequestChannelMap.putIfAbsent(dst, new ArrayList<>());
         final List<Channel> channels = dstRequestChannelMap.get(dst);
@@ -97,7 +97,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         // send request
         final String dst = bis.readUTF();
 
-        LOG.info("Registering dst {} address {}", dst, ctx.channel());
+        //LOG.info("Registering dst {} address {}", dst, ctx.channel());
 
         rendevousChannelMap.put(dst, ctx.channel());
         break;
