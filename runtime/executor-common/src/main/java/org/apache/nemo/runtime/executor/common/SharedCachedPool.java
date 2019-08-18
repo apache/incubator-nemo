@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambdaexecutor;
+package org.apache.nemo.runtime.executor.common;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

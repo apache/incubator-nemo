@@ -30,7 +30,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
-import org.apache.nemo.runtime.lambdaexecutor.SharedCachedPool;
+import org.apache.nemo.runtime.executor.common.SharedCachedPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
