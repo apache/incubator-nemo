@@ -37,9 +37,8 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
       for (final String dstRequestKey : dstRequestChannelMap.keySet()) {
         final List<Channel> channels = dstRequestChannelMap.get(dstRequestKey);
 
-        synchronized (channels) {
-          if (!channels.isEmpty() && rendevousChannelMap.containsKey(dstRequestKey) ) {
-
+        if (!channels.isEmpty() && rendevousChannelMap.containsKey(dstRequestKey) ) {
+          synchronized (channels) {
             //LOG.info("Sending response of {}", dstRequestKey);
 
             final Channel dst = rendevousChannelMap.get(dstRequestKey);
@@ -55,7 +54,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
           }
         }
       }
-    }, 1, 1, TimeUnit.SECONDS);
+    }, 200, 200, TimeUnit.MILLISECONDS);
   }
 
   @Override

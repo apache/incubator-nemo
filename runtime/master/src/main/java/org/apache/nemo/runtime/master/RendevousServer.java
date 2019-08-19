@@ -57,9 +57,9 @@ public final class RendevousServer {
 
     final NioChannelImplementationSelector channelImplSelector = new NioChannelImplementationSelector();
 
-    serverListeningGroup = channelImplSelector.newEventLoopGroup(2,
+    serverListeningGroup = channelImplSelector.newEventLoopGroup(20,
         new DefaultThreadFactory(SERVER_LISTENING));
-    serverWorkingGroup = channelImplSelector.newEventLoopGroup(2,
+    serverWorkingGroup = channelImplSelector.newEventLoopGroup(20,
         new DefaultThreadFactory(SERVER_WORKING));
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
