@@ -143,6 +143,8 @@ public final class Executor {
 
   final AtomicInteger bursty = new AtomicInteger(0);
 
+  private final List<ExecutorThread> executorThreads;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -242,13 +244,12 @@ public final class Executor {
     this.stageExecutorThreadMap = stageExecutorThreadMap;
 
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
-    /*
+
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
       executorThreads.add(new ExecutorThread(i, executorId));
       executorThreads.get(i).start();
     }
-    */
   }
 
   private boolean isThrottleTime(final double cpuLoad) {
@@ -414,6 +415,8 @@ public final class Executor {
         stageExecutorThreadMap.getStageExecutorThreadMap().getOrDefault(stageId,
         Pair.of(new AtomicInteger(0), new ArrayList<>(evalConf.executorThreadNum)));
 
+
+      /*
       final List<ExecutorThread> executorThreads = pair.right();
 
       if (stageExecutorThreadMap.getStageExecutorThreadMap().putIfAbsent(stageId, pair) == null) {
@@ -441,6 +444,12 @@ public final class Executor {
           }
         }
       }
+      */
+
+      final int numTask = numReceivedTasks.getAndIncrement();
+      final int index = numTask % evalConf.executorThreadNum;
+      LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
+      executorThreads.get(index).addNewTask(taskExecutor);
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
