@@ -17,7 +17,7 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
 
   public NettyLambdaInboundHandler(final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap) {
     this.channelMap = channelMap;
-    this.executorService = Executors.newFixedThreadPool(10);
+    this.executorService = Executors.newCachedThreadPool();
   }
 
   /**
