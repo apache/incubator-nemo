@@ -199,6 +199,7 @@ public final class Executor {
       final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", load);
 
+      /*
       if (isThrottleTime(load)) {
         // Send input
         if (!Throttled.getInstance().getThrottled()) {
@@ -213,6 +214,7 @@ public final class Executor {
           Throttled.getInstance().setThrottle(false);
         }
       }
+      */
 
     }, 1, 1, TimeUnit.SECONDS);
 
