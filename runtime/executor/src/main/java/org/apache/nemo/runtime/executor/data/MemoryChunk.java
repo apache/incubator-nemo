@@ -117,7 +117,7 @@ public class MemoryChunk {
   @SuppressWarnings("restriction")
   public final byte get(final int index) {
     final long pos = address + index;
-    if (checkIndex(index, pos, 1)) {
+    if (checkIndex(index, pos, 0)) {
       return UNSAFE.getByte(pos);
     } else if (address > addressLimit) {
       throw new IllegalStateException("MemoryChunk has been freed");
@@ -135,7 +135,7 @@ public class MemoryChunk {
   @SuppressWarnings("restriction")
   public final void put(final int index, final byte b) {
     final long pos = address + index;
-    if (checkIndex(index, pos, 1)) {
+    if (checkIndex(index, pos, 0)) {
       UNSAFE.putByte(pos, b);
     } else if (address > addressLimit) {
       throw new IllegalStateException("MemoryChunk has been freed");
