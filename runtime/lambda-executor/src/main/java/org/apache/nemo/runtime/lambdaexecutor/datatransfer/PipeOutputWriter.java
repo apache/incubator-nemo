@@ -215,7 +215,27 @@ public final class PipeOutputWriter implements Flushable {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
 
+    return byteOutputContexts.stream()
+      .map(byteOutputContext -> {
+        try {
+          final ByteOutputContext context = byteOutputContext.get();
+          pipeAndStreamMap.put(context, context.newOutputStream());
+          //LOG.info("Context {}", context);
+          return context;
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }).collect(Collectors.toList());
 
+
+    /*
     final List<ByteOutputContext> boc = new ArrayList<>(byteOutputContexts.size());
     final List<CompletableFuture<ByteOutputContext>> byteOutputContextList = new ArrayList<>(byteOutputContexts);
 
@@ -246,6 +266,7 @@ public final class PipeOutputWriter implements Flushable {
     }
 
     return boc;
+    */
   }
 
   private List<ByteOutputContext> getPipeToWrite(final TimestampAndValue element) {
