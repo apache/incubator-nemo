@@ -158,7 +158,9 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   /**
    * Executor type:
-   * Choose lambda executor or default executor.
+   * lambda: Nemo will use lambda executor.
+   * default: default executor will be used.
+   * other strings: throw UnsupportedExecption.
    */
   @NamedParameter(doc = "Executor Type",
     short_name = "executor_type", default_value = "default")
