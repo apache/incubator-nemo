@@ -49,7 +49,7 @@ import java.net.*;
  * Set up netty server for LambdaExecutors to connect to.
  * Invoke LambdaExecutor with public addr and port.
  */
-public class LambdaMaster {
+public final class LambdaMaster {
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaMaster.class.getName());
   private static final int SERVER_BOSS_NUM_THREADS = 3;
@@ -62,19 +62,19 @@ public class LambdaMaster {
   // A container object keeping track of all existing channels
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-  private int port = 9999;
+  private final static int port = 9999;
   private String localAddress;
   private String publicAddress;
 
+  private final Regions region;
   private final AWSLambda client;
-  private final String lambdaFunctionName;
+  private final static String lambdaFunctionName = "lambda-dev-executor";
 
   public LambdaMaster() {
     this.setNetty();
 
-    Regions region = Regions.fromName("ap-northeast-1");
-    this.client = AWSLambdaClientBuilder.standard().withRegion(region).build();
-    this.lambdaFunctionName = "lambda-dev-executor";
+    this.region = Regions.fromName("ap-northeast-1");
+    this.client = AWSLambdaClientBuilder.standard().withRegion(this.region).build();
   }
 
   /**

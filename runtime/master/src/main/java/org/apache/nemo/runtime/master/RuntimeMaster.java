@@ -179,8 +179,6 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
-
-    //this.xxx =new MasterControlMessageReceiver()
   }
 
   /**

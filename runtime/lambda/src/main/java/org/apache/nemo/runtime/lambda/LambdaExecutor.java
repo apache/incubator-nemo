@@ -37,7 +37,7 @@ import java.util.Map;
 /**
  * LambdaExecutor deployed on AWS Lambda.
  */
-public class LambdaExecutor implements RequestHandler<Map<String, Object>, Context> {
+public final class LambdaExecutor implements RequestHandler<Map<String, Object>, Context> {
   private Channel openChannel;
   private Bootstrap clientBootstrap;
   private EventLoopGroup clientWorkerGroup;
@@ -69,8 +69,13 @@ public class LambdaExecutor implements RequestHandler<Map<String, Object>, Conte
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
 
+    /**
+     * TODO #407: LambdaHandler for single-stage execution
+     * Currently LambdaExecutor only sets up connection with Nemo LambdaMaster.
+     * LambdaExecutor is expected to receive tasks from the opened channel, process the tasks,
+     * and send the processed results back to LambdaMaster.
+     */
     this.openChannel = channelOpen(input);
-
     return null;
   }
 

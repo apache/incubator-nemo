@@ -28,7 +28,9 @@ import java.io.Serializable;
 public final class LambdaEvent implements Serializable {
 
   /**
-   * Types supported in LambdaEvent.
+   * Types supported in LambdaEvent, explaining what events will be transmitted to and from LambdaExecutor.
+   * TODO #407: LambdaHandler for single-stage execution
+   * Currently not all of those types are used.
    */
   public enum Type {
     VM_RUN,

@@ -153,6 +153,12 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
+
+      /**
+       * TODO #415: Multiple LambdaExecutor dispatching
+       * Nemo will request multiple LambdaExecutor in the future.
+       * LambdaExecutor will communicate through Netty channel.
+       */
       if (executorType.equals("lambda")) {
         LOG.info("##### lambda executor #####");
         runtimeMaster.requestLambdaExecutor();
