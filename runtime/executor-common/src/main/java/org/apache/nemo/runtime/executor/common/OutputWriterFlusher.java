@@ -6,9 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Flushable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,12 +18,12 @@ public final class OutputWriterFlusher {
   private final long intervalMs;
   private final ScheduledExecutorService scheduledExecutorService;
 
-  private final List<Channel> channelList;
+  private final Set<Channel> channelList;
 
   public OutputWriterFlusher(final long intervalMs) {
     this.intervalMs = intervalMs;
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
-    this.channelList = new ArrayList<>();
+    this.channelList = new HashSet<>();
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
@@ -49,9 +47,13 @@ public final class OutputWriterFlusher {
 
   public void registerChannel(final Channel channel) {
 
-    LOG.info("Registering channel {}", channel);
+    LOG.info("Registering channel {}, # of channel {}", channel, channelList.size());
     synchronized (channelList) {
-      channelList.add(channel);
+      if (channelList.contains(channel)) {
+        LOG.info("Channel is  already registered {}", channel);
+      } else {
+        channelList.add(channel);
+      }
     }
   }
 
