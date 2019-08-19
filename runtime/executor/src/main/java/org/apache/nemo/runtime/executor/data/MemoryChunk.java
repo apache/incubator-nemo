@@ -452,12 +452,8 @@ public class MemoryChunk {
     putLong(index, Double.doubleToRawLongBits(value));
   }
 
-  private boolean checkIndex(final int index, final long pos, final int typeSize) throws IndexOutOfBoundsException {
-    if (!(index >= 0 && pos <= addressLimit - typeSize)) {
-      throw new IndexOutOfBoundsException();
-    } else {
-      return true;
-    }
+  private boolean checkIndex(final int index, final long pos, final int typeSize) {
+    return (index >= 0 && pos <= (addressLimit - typeSize));
   }
 
   @SuppressWarnings("restriction")
