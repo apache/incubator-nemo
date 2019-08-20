@@ -36,7 +36,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Fetches data from parent tasks.
  */
 @NotThreadSafe
-class ParentTaskDataFetcher extends DataFetcher {
+public class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;

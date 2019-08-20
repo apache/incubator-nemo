@@ -90,7 +90,6 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
      * Register open channel to LambdaEventHandler, so that
      * LambdaEvent from Nemo will be processed and results will be returned.
      */
-
     while (this.workerComplete.getCount() > 0) {
       try {
         Thread.sleep(1000);

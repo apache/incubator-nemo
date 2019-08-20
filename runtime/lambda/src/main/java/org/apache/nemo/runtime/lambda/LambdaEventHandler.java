@@ -1,12 +1,10 @@
 package org.apache.nemo.runtime.lambda;
 
-import com.google.gson.Gson;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.lambda.common.Executor;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +15,7 @@ public final class LambdaEventHandler {
   private transient CountDownLatch workerComplete;
 
   public static Task task;
+  public static Executor executor = new Executor();
 
   public LambdaEventHandler(final CountDownLatch workerComplete) {
     this.workerComplete = workerComplete;
@@ -41,14 +40,15 @@ public final class LambdaEventHandler {
           inBuffer.getBytes(readerIndex, bytes);
           this.task = SerializationUtils.deserialize(bytes);
         }
-
         try {
           System.out.println("Decode task successfully" + task.toString());
+          executor.onTaskReceived(task);
         } catch (Exception e) {
           e.printStackTrace();
           System.out.println("Read LambdaEvent bytebuf error");
         }
         break;
+
       case DATA:
         throw new UnsupportedOperationException("DATA not supported");
       case END:

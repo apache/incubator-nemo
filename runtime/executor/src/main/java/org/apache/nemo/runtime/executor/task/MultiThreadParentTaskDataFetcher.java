@@ -46,7 +46,7 @@ import java.util.concurrent.Executors;
  * single unbounded iterator forever.
  */
 @NotThreadSafe
-class MultiThreadParentTaskDataFetcher extends DataFetcher {
+public class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(MultiThreadParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
