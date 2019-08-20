@@ -156,6 +156,17 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class JVMHeapSlack implements Name<Double> {
   }
 
+  /**
+   * Executor type:
+   * lambda: Nemo will use lambda executor.
+   * default: default executor will be used.
+   * other strings: throw UnsupportedExecption.
+   */
+  @NamedParameter(doc = "Executor Type",
+    short_name = "executor_type", default_value = "default")
+  public final class ExecutorType implements Name<String> {
+  }
+
   //////////////////////////////// Runtime Master Configurations
 
   /**
