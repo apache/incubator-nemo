@@ -39,6 +39,7 @@ import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -62,17 +63,16 @@ public final class LambdaMaster {
   // A container object keeping track of all existing channels
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-  private final static int port = 9999;
+  private static final int PORT = 9999;
   private String localAddress;
   private String publicAddress;
 
   private final Regions region;
   private final AWSLambda client;
-  private final static String lambdaFunctionName = "lambda-dev-executor";
+  private static final String LAMBDA_FUNTIONNAME = "lambda-dev-executor";
 
+  @Inject
   public LambdaMaster() {
-    this.setNetty();
-
     this.region = Regions.fromName("ap-northeast-1");
     this.client = AWSLambdaClientBuilder.standard().withRegion(this.region).build();
   }
@@ -82,15 +82,25 @@ public final class LambdaMaster {
    */
   public void invokeExecutor() {
      InvokeRequest request = new InvokeRequest()
-       .withFunctionName(this.lambdaFunctionName)
+       .withFunctionName(this.LAMBDA_FUNTIONNAME)
        .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor")
        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-         this.publicAddress, this.port));
+         this.publicAddress, this.PORT));
 
      InvokeResult response = client.invoke(request);
   }
 
-  private void setNetty() {
+  /**
+   * Reef calls this function periodically to see if our job has finished.
+   * Stub function now waiting for execution result from LambdaExecutor
+   * TODO #407: LambdaHandler for single-stage execution
+   * @return true then NemoDriver will be shutdown.
+   */
+  public boolean isCompleted() {
+  return false;
+  }
+
+  public void setNetty() {
     LOG.info("##### Set up netty server #####");
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
@@ -118,13 +128,13 @@ public final class LambdaMaster {
 
     try {
       this.acceptor = serverBootstrap.bind(
-        new InetSocketAddress(localAddress, this.port)).sync().channel();
-      LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
+        new InetSocketAddress(localAddress, this.PORT)).sync().channel();
+      LOG.info("Server address: {}, Assigned server port = {}", localAddress, this.PORT);
     } catch (Exception e) {
       e.printStackTrace();
     }
 
-    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
+    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, this.PORT);
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
   }
 

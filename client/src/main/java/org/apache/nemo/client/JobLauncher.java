@@ -30,13 +30,17 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.master.LambdaMaster;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.parameters.JobMessageHandler;
+import org.apache.reef.driver.parameters.DriverIdleSources;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.runtime.common.driver.idle.DriverIdlenessSource;
+import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -49,6 +53,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -371,7 +376,7 @@ public final class JobLauncher {
     final Injector injector = TANG.newInjector(jobConf);
     final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
-    return DriverConfiguration.CONF
+    Configuration configuration = DriverConfiguration.CONF
       .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars())
       .set(DriverConfiguration.ON_DRIVER_STARTED, NemoDriver.StartHandler.class)
       .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NemoDriver.AllocatedEvaluatorHandler.class)
@@ -382,6 +387,39 @@ public final class JobLauncher {
       .set(DriverConfiguration.DRIVER_IDENTIFIER, jobId)
       .set(DriverConfiguration.DRIVER_MEMORY, driverMemory)
       .build();
+
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    jcb.bindSetEntry(DriverIdleSources.class, LambdaIdlenessSource.class);
+
+    return Configurations.merge(configuration, jcb.build());
+  }
+
+  /**
+   * LambdaIdlenessSource is only used when we choose LambdaExecutor.
+   * Without this class, meaning having no Idle source, will cause reef to shut down the driver directly.
+   * This class makes sure reef shutdown the driver at the correct time specified by lambdaMaster.
+   */
+  public static final class LambdaIdlenessSource implements DriverIdlenessSource {
+    private static final String COMPONENT_NAME = "LambdaExecutor";
+    private final IdleMessage idleMessage = new IdleMessage(COMPONENT_NAME, "Executing lambda function", true);
+    private static final String NOT_IDLE_REASON = "Waiting for LambdaExecutor to finish";
+    private final IdleMessage notIdleMessage = new IdleMessage(COMPONENT_NAME, NOT_IDLE_REASON, false);
+
+    private final LambdaMaster lambdaMaster;
+
+    @Inject
+    private LambdaIdlenessSource(final LambdaMaster lambdaMaster) {
+      this.lambdaMaster = lambdaMaster;
+    }
+
+    @Override
+    public IdleMessage getIdleStatus() {
+      if (lambdaMaster.isCompleted()) {
+        return idleMessage;
+      } else {
+        return notIdleMessage;
+      }
+    }
   }
 
   /**

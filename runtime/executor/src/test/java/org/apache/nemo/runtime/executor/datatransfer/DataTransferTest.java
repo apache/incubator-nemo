@@ -70,6 +70,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -96,10 +97,12 @@ import static org.mockito.Mockito.mock;
  * <p>
  * Execute {@code mvn test -Dtest=DataTransferTest -Dio.netty.leakDetectionLevel=paranoid}
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
+ * javax.net.ssl.* conflicts with Amazon sdk ssl classes, hence we ignore them here.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({PubSubEventHandlerWrapper.class, MetricMessageHandler.class,
   SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
+@PowerMockIgnore({ "javax.net.ssl.*" })
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =

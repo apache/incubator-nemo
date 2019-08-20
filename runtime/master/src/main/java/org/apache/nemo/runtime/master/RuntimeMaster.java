@@ -122,6 +122,7 @@ public final class RuntimeMaster {
    * @param metricManagerMaster      metric manager master.
    * @param clientRPC                the RPC channel to communicate with the client.
    * @param planStateManager         the manager that keeps track of the plan state.
+   * @param lambdaMaster             dispatches LambdaExecutor and allows Netty connection from it
    * @param jobId                    the Job ID, provided by the user.
    * @param dbEnabled                whether or not the DB is enabled, provided by the user.
    * @param dbAddress                the DB Address, provided by the user.
@@ -137,6 +138,7 @@ public final class RuntimeMaster {
                         final MetricManagerMaster metricManagerMaster,
                         final ClientRPC clientRPC,
                         final PlanStateManager planStateManager,
+                        final LambdaMaster lambdaMaster,
                         @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DBEnabled.class) final Boolean dbEnabled,
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
@@ -179,6 +181,7 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
+    this.lambdaMaster = lambdaMaster;
   }
 
   /**
@@ -339,10 +342,8 @@ public final class RuntimeMaster {
     final String nodeName = "192.168.0.100";
 
     // LambdaRuntimeMaster manages Netty Server for LambdaExecutor to connect to
+    this.lambdaMaster.setNetty();
     // Set up netty server at port 9999, and registers handler
-    this.lambdaMaster = new LambdaMaster();
-
-    // Initiate one LambdaExecutor
     this.lambdaMaster.invokeExecutor();
     // NettyChannelinitializer.initChannel will be called if LambdaExecutor connects successfully
 
