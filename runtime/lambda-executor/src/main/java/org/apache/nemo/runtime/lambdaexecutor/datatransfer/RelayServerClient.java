@@ -177,7 +177,7 @@ public final class RelayServerClient {
 
     return completableFuture.supplyAsync(() -> {
       //LOG.info("Rendevous request address for {}", relayDst);
-      final String response = rendevousServerClient.requestAddress(relayDst);
+      //final String response = rendevousServerClient.requestAddress(relayDst);
       //LOG.info("Rendevous response address for {}", relayDst);
       return manager.newOutputContext(dstExecutorId, descriptor, true);
     }, SharedCachedPool.POOL);
