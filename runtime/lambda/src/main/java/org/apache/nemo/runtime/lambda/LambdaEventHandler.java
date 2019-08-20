@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.lambda;
 import com.google.gson.Gson;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.Task;
@@ -14,6 +15,8 @@ public final class LambdaEventHandler {
 
   private Channel channel;
   private transient CountDownLatch workerComplete;
+
+  public static Task task;
 
   public LambdaEventHandler(final CountDownLatch workerComplete) {
     this.workerComplete = workerComplete;
@@ -28,7 +31,16 @@ public final class LambdaEventHandler {
     switch (nemoEvent.getType()) {
       case WORKER_INIT:
         ByteBuf inBuffer = nemoEvent.getByteBuf();
-        Task task = SerializationUtils.deserialize(new byte[inBuffer.readableBytes()]);
+
+        // Task can be passed as bytebuf or byte array
+        if (inBuffer == null) {
+          this.task = SerializationUtils.deserialize(nemoEvent.getBytes());
+        } else {
+          byte[] bytes = new byte[inBuffer.readableBytes()];
+          int readerIndex = inBuffer.readerIndex();
+          inBuffer.getBytes(readerIndex, bytes);
+          this.task = SerializationUtils.deserialize(bytes);
+        }
 
         try {
           System.out.println("Decode task successfully" + task.toString());
