@@ -97,6 +97,7 @@ public final class UserApplicationRunner {
       runtimeMaster.recordIRDAGMetrics(optimizedDAG, physicalPlan.getPlanId());
 
       // Wait for the job to finish and stop logging
+      System.out.println("Wait for job to finish and stop logging");
       final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
       try {

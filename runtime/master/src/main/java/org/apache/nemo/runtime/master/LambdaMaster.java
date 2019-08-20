@@ -24,10 +24,7 @@ import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -100,8 +97,24 @@ public final class LambdaMaster {
     return false;
   }
 
-  public Channel getAcceptor() {
-    return this.acceptor;
+  /**
+   * serverChannelGroup is passed to LambdaInboundHandler, adding channels when connected.
+   * For now there is only one channel in the channel group -- since we only one LambdaExecutor.
+   * @return channel.
+   */
+  public Channel getExecutorChannel() {
+    Channel ch = null;
+    while(ch == null) {
+      for (Channel cn : this.serverChannelGroup) {
+        ch = cn;
+      }
+      try {
+      Thread.sleep(100);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    return ch;
   }
 
   public void setNetty() {

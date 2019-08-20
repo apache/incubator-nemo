@@ -43,7 +43,7 @@ public final class NettyChannelInitializer
    */
   @Override
   protected void initChannel(final SocketChannel ch) {
-    System.out.println("NettyChannelInitializer inits Channel");
+    System.out.println("NettyChannelInitializer inits SocketChannel " + ch.toString());
     ch.pipeline()
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
         Integer.MAX_VALUE, 0, 4, 0, 4))

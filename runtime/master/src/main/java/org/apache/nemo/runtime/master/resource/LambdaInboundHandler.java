@@ -31,11 +31,12 @@ import org.slf4j.LoggerFactory;
  * LambdaInboundHandler is executed when init channel.
  */
 @ChannelHandler.Sharable
-public class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
+public final class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaInboundHandler.class.getName());
-  private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);;
+  private final ChannelGroup channelGroup;
 
   public LambdaInboundHandler(final ChannelGroup channelGroup) {
+    this.channelGroup = channelGroup;
   }
 
   /**
@@ -45,7 +46,7 @@ public class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
    */
   @Override
   public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-    LOG.info("Channel activate: {}", ctx.channel());
+    System.out.println("Channel activate: " + ctx.channel());
     channelGroup.add(ctx.channel());
   }
 
@@ -57,7 +58,7 @@ public class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
    */
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
-    LOG.info("Channel read from {}, {}", ctx.channel(), msg);
+    System.out.println("Channel read from " + ctx.channel() + msg);
   }
 
   /**

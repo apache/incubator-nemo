@@ -24,7 +24,7 @@ public final class LambdaEventHandler {
   }
 
   public synchronized void onNext(final LambdaEvent nemoEvent) {
-    Gson gson = new Gson();
+    System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
     switch (nemoEvent.getType()) {
       case WORKER_INIT:
         ByteBuf inBuffer = nemoEvent.getByteBuf();

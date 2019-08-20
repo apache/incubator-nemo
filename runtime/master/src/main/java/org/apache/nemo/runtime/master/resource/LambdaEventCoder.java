@@ -42,6 +42,7 @@ public final class LambdaEventCoder {
     @Override
     protected void encode(final ChannelHandlerContext ctx,
                           final LambdaEvent msg, final List<Object> out) throws Exception {
+      System.out.println("LambdaEventEncoder->encode " + msg.getType());
       if (msg.getByteBuf() != null) {
         final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
@@ -70,7 +71,7 @@ public final class LambdaEventCoder {
     @Override
     protected void decode(final ChannelHandlerContext ctx,
                           final ByteBuf msg, final List<Object> out) throws Exception {
-
+      System.out.println("LambdaEventDecoder->decode " + msg.toString());
       try {
         final LambdaEvent.Type type = LambdaEvent.Type.values()[msg.readInt()];
         LOG.info("Decode message; " + type.name() + ", size: " + msg.readableBytes());

@@ -28,13 +28,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.nemo.runtime.master.resource.LambdaInboundHandler;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * LambdaExecutor deployed on AWS Lambda.
