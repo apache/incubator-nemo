@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 
@@ -27,11 +28,10 @@ public final class LambdaEventHandler {
     switch (nemoEvent.getType()) {
       case WORKER_INIT:
         ByteBuf inBuffer = nemoEvent.getByteBuf();
-        final ByteBufInputStream bis = new ByteBufInputStream(inBuffer);
+        Task task = SerializationUtils.deserialize(new byte[inBuffer.readableBytes()]);
+
         try {
-          String strbuf = bis.readLine();
-          Task task = gson.fromJson(strbuf, Task.class);
-          System.out.println("Decode task successfully");
+          System.out.println("Decode task successfully" + task.toString());
         } catch (Exception e) {
           e.printStackTrace();
           System.out.println("Read LambdaEvent bytebuf error");

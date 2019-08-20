@@ -111,12 +111,10 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     // serialize this task
     // write this task to the executor
     Channel channel = this.lambdaMaster.getAcceptor();
-    Gson gson = new Gson();
-    channel.writeAndFlush( new LambdaEvent(LambdaEvent.Type.WORKER_INIT,
-      Unpooled.copiedBuffer(gson.toJson(task, Task.class), CharsetUtil.UTF_8))
-    );
+    final byte[] serialized = SerializationUtils.serialize(task);
+    channel.writeAndFlush(new LambdaEvent(LambdaEvent.Type.WORKER_INIT, Unpooled.copiedBuffer(serialized)));
 
-    System.out.println("Operation not supported: Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
+    System.out.println("Dispatch task to LambdaExecutor taskId: " + task.getTaskId());
   }
 
   /**

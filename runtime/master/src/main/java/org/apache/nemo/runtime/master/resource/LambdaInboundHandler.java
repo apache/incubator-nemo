@@ -38,9 +38,6 @@ public class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
   public LambdaInboundHandler(final ChannelGroup channelGroup) {
   }
 
-  public LambdaInboundHandler() {
-  }
-
   /**
    * Add the active channel to channelGroup.
    * @param ctx the context object

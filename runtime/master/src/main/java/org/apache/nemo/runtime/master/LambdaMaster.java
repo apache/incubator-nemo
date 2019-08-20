@@ -97,7 +97,7 @@ public final class LambdaMaster {
    * @return true then NemoDriver will be shutdown.
    */
   public boolean isCompleted() {
-  return false;
+    return false;
   }
 
   public Channel getAcceptor() {
