@@ -33,6 +33,8 @@ import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * LambdaExecutor deployed on AWS Lambda.
@@ -41,9 +43,14 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
   private Channel openChannel;
   private Bootstrap clientBootstrap;
   private EventLoopGroup clientWorkerGroup;
+  private final LambdaExecutorInboundHandler lambdaExecutorInboundHandler = new LambdaExecutorInboundHandler();
+  private LambdaEventHandler lambdaEventHandler;
 
   private String serverAddr;
   private int serverPort;
+
+  private static transient CountDownLatch workerComplete;
+
   /**
    * Reads address and port from the netty server.
    * @param input
@@ -52,6 +59,9 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
    */
   @Override
   public Context handleRequest(final Map<String, Object> input, final Context context) {
+    this.workerComplete = new CountDownLatch(1);
+    this.lambdaEventHandler =  new LambdaEventHandler(this.workerComplete);
+
     final String address = (String) input.get("address");
     final int port = (Integer) input.get("port");
     final String requestedAddr = "/" + address + ":" + port;
@@ -65,7 +75,7 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
     this.clientBootstrap = new Bootstrap();
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
-      .handler(new NettyChannelInitializer(new LambdaInboundHandler()))
+      .handler(new NettyChannelInitializer(this.lambdaExecutorInboundHandler))
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
 
@@ -76,6 +86,20 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
      * and send the processed results back to LambdaMaster.
      */
     this.openChannel = channelOpen(input);
+    this.lambdaExecutorInboundHandler.setEventHandler(this.lambdaEventHandler);
+
+    /**
+     * Register open channel to LambdaEventHandler, so that
+     * LambdaEvent from Nemo will be processed and results will be returned.
+     */
+
+    while (this.workerComplete.getCount() > 0) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
     return null;
   }
 

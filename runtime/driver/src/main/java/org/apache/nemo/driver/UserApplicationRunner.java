@@ -80,6 +80,7 @@ public final class UserApplicationRunner {
    * @param dagString Serialized IR DAG from Nemo Client.
    */
   public synchronized void run(final String dagString) {
+    System.out.println("UserApplicationRunner->run");
     try {
       System.out.println("UserApplicationRunner");
       LOG.info("##### Nemo Compiler Start #####");

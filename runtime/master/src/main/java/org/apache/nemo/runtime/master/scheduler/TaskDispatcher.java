@@ -97,6 +97,7 @@ final class TaskDispatcher {
   }
 
   private void doScheduleTaskList() {
+    System.out.println("doScheduleTaskList");
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
@@ -132,6 +133,7 @@ final class TaskDispatcher {
 
           LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
           // send the task
+          System.out.println(task.getTaskId() + " scheduled to " + TaskState.State.EXECUTING);
           selectedExecutor.onTaskScheduled(task);
         } else {
           couldNotSchedule.add(task);

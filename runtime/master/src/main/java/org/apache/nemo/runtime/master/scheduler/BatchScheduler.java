@@ -192,7 +192,7 @@ public final class BatchScheduler implements Scheduler {
   public void schedulePlan(final PhysicalPlan submittedPhysicalPlan,
                            final int maxScheduleAttempt) {
     LOG.info("Plan to schedule: {}", submittedPhysicalPlan.getPlanId());
-    System.out.println("schedulePlan");
+    System.out.println("BatchScheduler: schedulePlan");
 
     if (!planStateManager.isInitialized()) {
       // First scheduling.

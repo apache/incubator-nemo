@@ -351,6 +351,7 @@ public final class RuntimeMaster {
       new LambdaExecutorRepresenter(executorId, this.lambdaMaster, nodeName);
     // make a new representer
     scheduler.onExecutorAdded(executorRepresenter);
+    System.out.println("requestLambdaExecutor ended");
   }
 
   /**

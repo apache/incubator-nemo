@@ -100,6 +100,10 @@ public final class LambdaMaster {
   return false;
   }
 
+  public Channel getAcceptor() {
+    return this.acceptor;
+  }
+
   public void setNetty() {
     LOG.info("##### Set up netty server #####");
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,

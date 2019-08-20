@@ -23,6 +23,10 @@ import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.Gson;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.util.CharsetUtil;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -47,7 +51,6 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private final Map<Task, Integer> runningTaskToAttempt;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
-//  private final ExecutorService serializationExecutorService;
   private final String nodeName;
 
   private final AWSLambda client;
@@ -61,7 +64,6 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    * @param nodeName                     physical name of the node where this executor resides
    */
   public LambdaExecutorRepresenter(final String executorId,
-  //                                 final ExecutorService serializationExecutorService,
                                    final LambdaMaster lambdaMaster,
                                    final String nodeName) {
     this.executorId = executorId;
@@ -71,7 +73,6 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     this.runningTaskToAttempt = new HashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
- //   this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
     this.lambdaMaster = lambdaMaster;
 
@@ -99,7 +100,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public void onTaskScheduled(final Task task) {
-    System.out.println("onTaskScheduled");
+    System.out.println("onTaskScheduled: " + task.getTaskId());
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
       ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
@@ -107,8 +108,13 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     // remove from failedTasks if this task failed before
     failedTasks.remove(task);
 
-    final byte[] serialized = SerializationUtils.serialize(task);
-    String json = "{\"d\":\"" + Base64.getEncoder().encodeToString(serialized) + "\"}";
+    // serialize this task
+    // write this task to the executor
+    Channel channel = this.lambdaMaster.getAcceptor();
+    Gson gson = new Gson();
+    channel.writeAndFlush( new LambdaEvent(LambdaEvent.Type.WORKER_INIT,
+      Unpooled.copiedBuffer(gson.toJson(task, Task.class), CharsetUtil.UTF_8))
+    );
 
     System.out.println("Operation not supported: Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
   }

@@ -115,6 +115,7 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     this.executorType = executorType;
     // TODO #69: Support job-wide execution property
+    System.out.println("NEMO driver instantiated");
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
@@ -161,10 +162,12 @@ public final class NemoDriver {
        */
       if (executorType.equals("lambda")) {
         LOG.info("##### lambda executor #####");
+        System.out.println("Lambda executor");
         runtimeMaster.requestLambdaExecutor();
 
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
+        System.out.println("NemoDriver StartHandler->onNext ended");
       } else if (executorType.equals("default")) {
         runtimeMaster.requestContainer(resourceSpecificationString);
       } else {
@@ -180,6 +183,7 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      System.out.println("NemoDriver AllocatedEvaluatorHandler");
       final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
         getExecutorConfiguration(executorId));
@@ -192,6 +196,7 @@ public final class NemoDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
+      System.out.println("NemoDriver ActiveContextHandler");
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
