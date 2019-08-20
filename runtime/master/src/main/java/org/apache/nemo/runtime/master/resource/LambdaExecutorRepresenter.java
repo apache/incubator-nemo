@@ -99,6 +99,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   @Override
   public void onTaskScheduled(final Task task) {
+    System.out.println("onTaskScheduled");
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
       ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
@@ -109,7 +110,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     final byte[] serialized = SerializationUtils.serialize(task);
     String json = "{\"d\":\"" + Base64.getEncoder().encodeToString(serialized) + "\"}";
 
-    LOG.info("Operation not supported: Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
+    System.out.println("Operation not supported: Dispatch task to LambdaExecutor! taskId: " + task.getTaskId());
   }
 
   /**

@@ -81,6 +81,7 @@ public final class UserApplicationRunner {
    */
   public synchronized void run(final String dagString) {
     try {
+      System.out.println("UserApplicationRunner");
       LOG.info("##### Nemo Compiler Start #####");
 
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));

@@ -241,6 +241,7 @@ public final class RuntimeMaster {
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                   final int maxScheduleAttempt) {
+    System.out.println("RuntimeMaster->execute");
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
