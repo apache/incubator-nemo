@@ -261,7 +261,7 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    if (watermark.getTimestamp() < inputWatermark.getTimestamp() + 1000) {
+    if (watermark.getTimestamp() < inputWatermark.getTimestamp() + 500) {
       return;
     }
 
