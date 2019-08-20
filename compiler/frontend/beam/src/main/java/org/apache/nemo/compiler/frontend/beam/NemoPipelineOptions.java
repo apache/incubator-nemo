@@ -30,7 +30,7 @@ public interface NemoPipelineOptions extends PipelineOptions {
    * @return the maximum number of elements in a bundle.
    */
   @Description("The maximum number of elements in a bundle.")
-  @Default.Long(1000)
+  @Default.Long(100000000)
   Long getMaxBundleSize();
 
   /**
@@ -42,7 +42,7 @@ public interface NemoPipelineOptions extends PipelineOptions {
    * @return the maximum time to wait before finalising a bundle (in milliseconds).
    */
   @Description("The maximum time to wait before finalising a bundle (in milliseconds).")
-  @Default.Long(1000)
+  @Default.Long(3000)
   Long getMaxBundleTimeMills();
 
   /**
