@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,6 +150,7 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public void writeWatermark(final Watermark watermark) {
     // 여기서 마스터에게 보내면됨.
+    LOG.info("Emit watermark of {}: {}", new Instant(watermark.getTimestamp()));
     rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
   }
 

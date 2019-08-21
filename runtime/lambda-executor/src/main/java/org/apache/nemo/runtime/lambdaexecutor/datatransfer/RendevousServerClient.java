@@ -101,7 +101,6 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
     taskLockMap.putIfAbsent(taskId, new Object());
     final Object lock = taskLockMap.get(taskId);
-
     synchronized (lock) {
       final long currTime = System.currentTimeMillis();
       if (taskInputWatermarkRequestTime.getOrDefault(taskId, 0L) + 200 < currTime) {
