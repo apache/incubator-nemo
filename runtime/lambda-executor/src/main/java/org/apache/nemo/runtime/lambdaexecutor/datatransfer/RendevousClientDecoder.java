@@ -49,7 +49,7 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
         client.registerWatermark(stageId, watermark);
       }
       default:
-        throw new RuntimeException("Unsupported");
+        throw new RuntimeException("Unsupported " + type);
     }
 
   }
