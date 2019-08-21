@@ -122,7 +122,13 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   }
 
   public void registerWatermark(final String taskId, final long watermark) {
-    taskInputWatermarkMap.put(taskId, watermark);
+    final Object lock = taskLockMap.get(taskId);
+
+    synchronized (lock) {
+      if (taskInputWatermarkMap.getOrDefault(taskId, 0L) < watermark) {
+        taskInputWatermarkMap.put(taskId, watermark);
+      }
+    }
   }
 
   public void registerResponse(final RendevousResponse response) {
