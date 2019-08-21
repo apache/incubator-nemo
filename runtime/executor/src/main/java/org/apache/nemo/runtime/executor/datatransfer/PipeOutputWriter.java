@@ -150,7 +150,7 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public void writeWatermark(final Watermark watermark) {
     // 여기서 마스터에게 보내면됨.
-    LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
+    //LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
     rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
   }
 
