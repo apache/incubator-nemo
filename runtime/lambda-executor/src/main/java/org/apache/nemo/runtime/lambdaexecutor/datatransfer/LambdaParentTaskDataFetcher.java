@@ -136,7 +136,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       }
     }
 
-    return false;
+    return watermarkTriggered;
   }
 
   @Override

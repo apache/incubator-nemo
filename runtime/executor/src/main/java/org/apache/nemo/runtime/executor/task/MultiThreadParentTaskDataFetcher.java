@@ -138,6 +138,10 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       return true;
     }
 
+    if (isWatermarkTriggerTime()) {
+      return true;
+    }
+
     //LOG.info("{} available {}", stageId, ret);
     return ret;
   }

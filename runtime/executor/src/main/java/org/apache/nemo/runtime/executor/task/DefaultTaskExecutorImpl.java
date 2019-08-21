@@ -1034,6 +1034,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     boolean dataProcessed = false;
 
+    LOG.info("Handler data for {}", taskId);
+
     /*
     if (!controlEventQueue.isEmpty()) {
       final ControlEvent event = controlEventQueue.poll();
