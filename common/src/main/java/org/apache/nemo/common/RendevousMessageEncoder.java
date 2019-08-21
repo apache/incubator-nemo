@@ -60,7 +60,7 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       bos.writeInt(Type.WATERMARK_REQUEST.ordinal());
 
       final WatermarkRequest req = (WatermarkRequest) msg;
-      bos.writeUTF(req.stageId);
+      bos.writeUTF(req.taskId);
       out.add(bos.buffer());
 
     } else if (msg instanceof WatermarkSend) {
