@@ -119,8 +119,8 @@ public final class WatermarkManager {
         long minWatermark = Long.MAX_VALUE;
         for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
           final Stage parent = edge.getSrc();
-          final StageWatermarkTracker tracker = stageWatermarkTrackerMap.get(parent);
-          final Long taskW = tracker.getWatermark(index);
+          final StageWatermarkTracker tracker = stageWatermarkTrackerMap.get(parent.getId());
+          final long taskW = tracker.getWatermark(index);
           if (taskW < minWatermark) {
             minWatermark = taskW;
           }
@@ -183,9 +183,9 @@ public final class WatermarkManager {
       return index;
     }
 
-    public synchronized Long getWatermark(final int index) {
-      LOG.info("Watermark request index: {}. size: {},. get {}",
-        index, watermarks.size(), watermarks.get(index));
+    public synchronized long getWatermark(final int index) {
+      //LOG.info("Watermark request index: {}. size: {},. get {}",
+      //  index, watermarks.size(), watermarks.get(index));
       return watermarks.get(index);
     }
 
