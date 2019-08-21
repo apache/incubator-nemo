@@ -63,6 +63,7 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -144,6 +145,8 @@ public final class Executor {
   final AtomicInteger bursty = new AtomicInteger(0);
 
   private final List<ExecutorThread> executorThreads;
+
+  private RendevousServerClient rendevousServerClient;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -407,7 +410,8 @@ public final class Executor {
         relayServer,
         taskLocationMap,
         prepareService,
-        executorGlobalInstances);
+        executorGlobalInstances,
+        rendevousServerClient);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
 
@@ -559,6 +563,8 @@ public final class Executor {
                   return Pair.of(entry.getAddress(), entry.getPort());
                 }));
 
+
+          rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
 
           LOG.info("{} Setting global relay server info {}", executorId, m);
 

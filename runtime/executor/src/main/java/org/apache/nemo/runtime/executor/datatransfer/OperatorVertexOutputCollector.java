@@ -135,49 +135,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     return inputTimestamp;
   }
 
-
-  public void handleControlMessage(final ControlEvent msg) {
-    switch (msg.getControlMessageType()) {
-      case FLUSH_LATENCY: {
-        //LOG.info("Operator {} flush latency", irVertex.getId());
-        //operatorMetricCollector.flushLatencies();
-        break;
-      }
-      default: {
-        throw new RuntimeException("Unsupported type: " + msg.getControlMessageType());
-      }
-    }
-  }
-
-
-  public void handleOffloadingControlMessage(final OffloadingControlEvent msg) {
-    switch (msg.getControlMessageType()) {
-      case START_OFFLOADING: {
-        LOG.info("Operator {} start to offload", irVertex.getId());
-        currOffloadingContext = (OffloadingContext) msg.getData().get();
-        operatorMetricCollector.startOffloading();
-        offloading = true;
-        break;
-      }
-      case STOP_OFFLOADING: {
-        LOG.info("Operator {} end to offload", irVertex.getId());
-        offloading = false;
-        operatorMetricCollector.endOffloading();
-        currOffloadingContext = null;
-        break;
-      }
-      case FLUSH: {
-        //LOG.info("Operator {} flush data", irVertex.getId());
-        if (operatorMetricCollector.hasFlushableData()) {
-          operatorMetricCollector.flushToServerless();
-        }
-        break;
-      }
-      default:
-        throw new RuntimeException("Unsupported type: " + msg.getControlMessageType());
-    }
-  }
-
   @Override
   public void emit(final O output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output);
@@ -231,23 +188,10 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       //LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
       //  nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
 
-      if (offloading) {
-        if (offloadingIds == null) {
-          offloadingIds = new LinkedList<>();
-        }
-        offloadingIds.add(nextOperator.getId());
-      } else {
-        final Pair<OperatorMetricCollector, OutputCollector> pair =
-          outputCollectorMap.get(nextOperator.getId());
-        ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
-        emit(nextOperator, output);
-      }
-    }
-
-    // For offloading
-    if (offloadingIds != null) {
-      operatorMetricCollector.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingIds, currWatermark);
+      final Pair<OperatorMetricCollector, OutputCollector> pair =
+        outputCollectorMap.get(nextOperator.getId());
+      ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+      emit(nextOperator, output);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
@@ -315,11 +259,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     */
 
     //LOG.info("Emit watermark {} from {}", watermark, irVertex.getId());
-
-    if (offloading) {
-      prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
-    }
-
     currWatermark = watermark.getTimestamp();
 
     if (LOG.isDebugEnabled()) {
@@ -360,19 +299,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
-    }
-
-    // For offloading
-    if (offloadingIds != null) {
-
-      // add this watermark to the expected map
-      final List<String> sinks = currOffloadingContext.getOffloadingSinks(irVertex);
-      for (final String sink : sinks) {
-        LOG.info("Expected watermark for {}: {}", sink, watermark);
-        expectedWatermarkMap.get(sink).left().add(watermark);
-      }
-
-      operatorMetricCollector.sendToServerless(watermark, offloadingIds, currWatermark);
     }
 
 

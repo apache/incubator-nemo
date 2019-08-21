@@ -116,12 +116,12 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     this.offloadingContext = context;
     final LambdaRuntimeContext lambdaRuntimeContext = (LambdaRuntimeContext) context;
 
-    // ADD taskId - eventHandler map
+    // ADD stageId - eventHandler map
     final OffloadingHandler.LambdaEventHandler eh =
       lambdaRuntimeContext.getLambdaEventHandler();
     lambdaRuntimeContext.getTaskAndEventHandlerMap().put(taskId, eh);
 
-    // TODO: add taskId and event handler
+    // TODO: add stageId and event handler
     this.offloadingOutputCollector = oc;
     pipeOutputWriters = new HashSet<>();
     this.dataQueue = new LinkedBlockingQueue<>();
@@ -469,7 +469,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -500,7 +500,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

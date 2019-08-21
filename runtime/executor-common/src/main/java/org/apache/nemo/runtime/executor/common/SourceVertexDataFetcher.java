@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Throttled;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -40,7 +41,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private Readable readable;
   private long boundedSourceReadTime = 0;
-  private static final long WATERMARK_PROGRESS = 500; // ms
+  private static final long WATERMARK_PROGRESS = Util.WATERMARK_PROGRESS; // ms
   private volatile boolean watermarkTriggered = false;
   private final boolean bounded;
 

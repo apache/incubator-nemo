@@ -79,6 +79,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ExecutorGlobalInstances executorGlobalInstances;
   final List<DataFetcher> allFetchers;
 
+  private final RendevousServerClient rendevousServerClient;
+
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
@@ -89,7 +91,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final OffloadingOutputCollector oc,
                                 final ScheduledExecutorService pollingTrigger,
                                 final ExecutorService prepareService,
-                                final ExecutorGlobalInstances executorGlobalInstances) {
+                                final ExecutorGlobalInstances executorGlobalInstances,
+                                final RendevousServerClient rendevousServerClient) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
     this.executorAddressMap = executorAddressMap;
@@ -106,6 +109,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.pollingTrigger = pollingTrigger;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
+    this.rendevousServerClient = rendevousServerClient;
 
     /*
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -198,13 +202,17 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           intermediateDataIOFactory,
           offloadingTask.taskIndex,
           offloadingTask.taskIndex,
-          serializerMap, pipeOutputWriters);
+          serializerMap, pipeOutputWriters,
+          offloadingTask.taskId,
+          rendevousServerClient);
 
       final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
         irVertex, offloadingTask.outgoingEdges,
         intermediateDataIOFactory,
         offloadingTask.taskIndex,
-        offloadingTask.taskIndex, serializerMap, pipeOutputWriters);
+        offloadingTask.taskIndex, serializerMap, pipeOutputWriters,
+        offloadingTask.taskId,
+        rendevousServerClient);
 
       for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
         operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
@@ -283,7 +291,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                 parentTaskReader.getSrcIrVertex(),
                 edge,
                 parentTaskReader,
-                dataFetcherOutputCollector));
+                dataFetcherOutputCollector,
+                rendevousServerClient));
 
           }
         });
@@ -622,7 +631,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     final int taskIndex,
     final int originTaskIndex,
     final Map<String, Serializer> serializerMap,
-    final Set<PipeOutputWriter> outputWriters) {
+    final Set<PipeOutputWriter> outputWriters,
+    final String taskId,
+    final RendevousServerClient client) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
 
@@ -635,7 +646,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client);
 
 
           outputWriters.add(outputWriter);
@@ -658,7 +669,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                                           final int taskIndex,
                                                           final int originTaskIndex,
                                                           final Map<String, Serializer> serializerMap,
-                                                              final Set<PipeOutputWriter> pipeOutputWriters) {
+                                                              final Set<PipeOutputWriter> pipeOutputWriters,
+                                                              final String taskId,
+                                                              final RendevousServerClient client) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
@@ -666,7 +679,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap);
+            .createPipeWriter(taskIndex,
+              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })
@@ -689,7 +703,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    //LOG.info("Isfinished: {}, pendingDone: {} for {}", finished, allPendingDone(), offloadingTask.taskId);
     return finished && allPendingDone();
   }
 

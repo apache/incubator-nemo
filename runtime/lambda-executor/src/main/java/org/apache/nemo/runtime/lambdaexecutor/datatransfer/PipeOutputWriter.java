@@ -61,11 +61,18 @@ public final class PipeOutputWriter implements Flushable {
 
   private volatile boolean closed = false;
 
-  PipeOutputWriter(final int srcTaskIndex,
+  private final RendevousServerClient rendevousServerClient;
+
+  private final String taskId;
+
+  PipeOutputWriter(final String taskId,
+                   final int srcTaskIndex,
                    final int originTaskIndex,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
-                   final Map<String, Serializer> serializerMap) {
+                   final Map<String, Serializer> serializerMap,
+                   final RendevousServerClient rendevousServerClient) {
+    this.taskId = taskId;
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.originTaskIndex = originTaskIndex;
@@ -77,6 +84,7 @@ public final class PipeOutputWriter implements Flushable {
     this.runtimeEdge = runtimeEdge;
     this.pipeAndStreamMap = new HashMap<>();
     this.serializer = serializerMap.get(runtimeEdge.getId());
+    this.rendevousServerClient = rendevousServerClient;
     this.pipes = doInitialize();
   }
 
@@ -108,10 +116,8 @@ public final class PipeOutputWriter implements Flushable {
   }
 
   public void writeWatermark(final Watermark watermark) {
-    //LOG.info("Watermark emit from taskIndex {}/{}, {}", srcTaskIndex, stageEdge.getSrcIRVertex().getId(), watermark);
-    final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
-    // flush data whenever receiving watermarks
-    writeData(watermarkWithIndex, pipes, true);
+    rendevousServerClient.sendWatermark(taskId, watermark.getTimestamp());
+
   }
 
   public Future<Integer> close(final String taskId) {
@@ -158,9 +164,9 @@ public final class PipeOutputWriter implements Flushable {
       @Override
       public Integer get() throws InterruptedException, ExecutionException {
         try {
-           //LOG.info("Waiting for ack {}...", taskId);
+           //LOG.info("Waiting for ack {}...", stageId);
            count.await();
-           //LOG.info("End of Waiting for ack {}...", taskId);
+           //LOG.info("End of Waiting for ack {}...", stageId);
          } catch (InterruptedException e) {
            e.printStackTrace();
          }

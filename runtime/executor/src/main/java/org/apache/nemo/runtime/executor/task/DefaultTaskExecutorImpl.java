@@ -61,6 +61,7 @@ import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,6 +195,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final ExecutorGlobalInstances executorGlobalInstances;
 
+  private final RendevousServerClient rendevousServerClient;
+
   /**
    * Constructor.
    *
@@ -227,7 +230,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final RelayServer relayServer,
                                  final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService,
-                                 final ExecutorGlobalInstances executorGlobalInstances) {
+                                 final ExecutorGlobalInstances executorGlobalInstances,
+                                 final RendevousServerClient rendevousServerClient) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
@@ -235,6 +239,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.copyIncomingEdges = copyIncomingEdges;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
+
+    this.rendevousServerClient = rendevousServerClient;
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
@@ -700,7 +706,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
@@ -719,7 +725,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient);
 
       OutputCollector outputCollector;
 
@@ -841,7 +847,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader.getSrcIrVertex(),
                   edge,
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector,
+                  rendevousServerClient,
+                  executorGlobalInstances));
             } else {
               parentDataFetchers.add(
                 new ParentTaskDataFetcher(

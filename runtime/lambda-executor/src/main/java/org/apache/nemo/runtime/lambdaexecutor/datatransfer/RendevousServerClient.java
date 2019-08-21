@@ -24,10 +24,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.RendevousRegister;
-import org.apache.nemo.common.RendevousRequest;
-import org.apache.nemo.common.RendevousResponse;
+import org.apache.nemo.common.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +32,10 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -60,6 +59,10 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
   private final Set<String> registerTasks;
 
+  private final ConcurrentMap<String, Long> stageInputWatermarkMap;
+  private final ConcurrentMap<String, Long> stageInputWatermarkRequestTime;
+  private final ConcurrentMap<String, Object> stageLockMap;
+
   public RendevousServerClient(final String myRendevousServerAddress,
                                final int myRendevousServerPort) {
 
@@ -79,6 +82,10 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
     this.myRendevousServerAddress = myRendevousServerAddress;
     this.myRendevousServerPort = myRendevousServerPort;
 
+    this.stageInputWatermarkMap = new ConcurrentHashMap<>();
+    this.stageInputWatermarkRequestTime = new ConcurrentHashMap<>();
+    this.stageLockMap = new ConcurrentHashMap<>();
+
     this.registerTasks = new HashSet<>();
 
     //final ChannelFuture channelFuture = connectToRelayServer(relayServerAddress, relayServerPort);
@@ -87,6 +94,35 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
       connectToRendevousServer(myRendevousServerAddress, myRendevousServerPort)
         .awaitUninterruptibly()
         .channel();
+  }
+
+  public Optional<Long> requestWatermark(final String stageId) {
+    // REQUEST every 200 ms
+
+    stageLockMap.putIfAbsent(stageId, new Object());
+    final Object lock = stageLockMap.get(stageId);
+
+    synchronized (lock) {
+      final long currTime = System.currentTimeMillis();
+      if (stageInputWatermarkRequestTime.getOrDefault(stageId, currTime) + 200 < currTime) {
+        channel.writeAndFlush(new WatermarkRequest(stageId));
+        stageInputWatermarkRequestTime.put(stageId, currTime);
+      }
+
+      if (stageInputWatermarkMap.containsKey(stageId)) {
+        return Optional.of(stageInputWatermarkMap.get(stageId));
+      } else {
+        return Optional.empty();
+      }
+    }
+  }
+
+  public void sendWatermark(final String taskId, final long watermark) {
+    channel.writeAndFlush(new WatermarkSend(taskId, watermark));
+  }
+
+  public void registerWatermark(final String taskId, final long watermark) {
+    stageInputWatermarkMap.put(taskId, watermark);
   }
 
   public void registerResponse(final RendevousResponse response) {

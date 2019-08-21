@@ -42,6 +42,12 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
         break;
       case REQUEST:
         throw new RuntimeException("Unsupported");
+      case WATERMARK_RESPONSE: {
+        // do sth
+        final String  stageId = bis.readUTF();
+        final long watermark = bis.readLong();
+        client.registerWatermark(stageId, watermark);
+      }
       default:
         throw new RuntimeException("Unsupported");
     }

@@ -30,6 +30,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -80,10 +81,10 @@ public final class IntermediateDataIOFactory {
     final String srcTaskId,
     final RuntimeEdge<?> runtimeEdge,
     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-    final Map<Long, Long> prevWatermarkMap,
-    final Map<Long, Integer> watermarkCounterMap) {
+    final Map<Long, Integer> watermarkCounterMap,
+    final RendevousServerClient rendevousServerClient) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, relayServer);
+      expectedWatermarkMap, watermarkCounterMap, relayServer, rendevousServerClient);
   }
 
   /**

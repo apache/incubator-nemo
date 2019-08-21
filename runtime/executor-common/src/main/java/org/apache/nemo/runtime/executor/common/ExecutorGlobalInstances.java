@@ -18,7 +18,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
   private final ScheduledExecutorService watermarkTriggerService;
   private final ScheduledExecutorService pollingTrigger;
   private static final long WATERMARK_PERIOD = 250; // ms
-  private final Queue<Pair<SourceVertex, Runnable>> watermarkServices;
+  private final Queue<Pair<Object, Runnable>> watermarkServices;
 
 
   public ExecutorGlobalInstances() {
@@ -36,15 +36,15 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
     return pollingTrigger;
   }
 
-  public void registerWatermarkService(final SourceVertex sv, final Runnable runnable) {
+  public void registerWatermarkService(final Object sv, final Runnable runnable) {
     //LOG.info("Register {}: ", sv);
     watermarkServices.add(Pair.of(sv, runnable));
   }
 
   public void deregisterWatermarkService(final SourceVertex taskId) {
-    final Iterator<Pair<SourceVertex, Runnable>> iterator = watermarkServices.iterator();
+    final Iterator<Pair<Object, Runnable>> iterator = watermarkServices.iterator();
     while (iterator.hasNext()) {
-      final Pair<SourceVertex, Runnable> pair = iterator.next();
+      final Pair<Object, Runnable> pair = iterator.next();
       if (pair.left().equals(taskId)) {
         iterator.remove();
         return;

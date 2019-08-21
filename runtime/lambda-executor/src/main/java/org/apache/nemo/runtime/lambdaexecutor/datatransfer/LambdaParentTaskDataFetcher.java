@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -36,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -82,14 +85,27 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
   private final ConcurrentLinkedQueue elementQueue;
 
   private final ConcurrentLinkedQueue<Pair<IteratorWithNumBytes, Integer>> taskAddPairQueue;
+  private volatile boolean watermarkTriggered = false;
+
+  private long prevWatermarkTimestamp = -1L;
+
+  private final ScheduledExecutorService watermarkTrigger;
+
+  private final RendevousServerClient rendevousServerClient;
+
+  private final String stageId;
+
+  private static final long WATERMARK_PROGRESS = Util.WATERMARK_PROGRESS;
 
   public LambdaParentTaskDataFetcher(final String taskId,
                                      final IRVertex dataSource,
                                      final RuntimeEdge edge,
                                      final InputReader readerForParentTask,
-                                     final OutputCollector outputCollector) {
+                                     final OutputCollector outputCollector,
+                                     final RendevousServerClient rendevousServerClient) {
     super(dataSource, edge, outputCollector);
     this.taskId = taskId;
+    this.stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.watermarkQueue = new ConcurrentLinkedQueue<>();
@@ -103,6 +119,13 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     this.taskAddPairQueue = new ConcurrentLinkedQueue<>();
 
     this.iterators.addAll(fetchBlocking());
+
+    this.rendevousServerClient = rendevousServerClient;
+
+    this.watermarkTrigger = Executors.newSingleThreadScheduledExecutor();
+    watermarkTrigger.scheduleAtFixedRate(() -> {
+      watermarkTriggered = true;
+    }, 200, 200, TimeUnit.MILLISECONDS);
   }
 
   @Override
@@ -123,6 +146,18 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
+    // Emit watermark
+    if (watermarkTriggered) {
+      watermarkTriggered = false;
+      // index=0 as there is only 1 input stream
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(stageId);
+
+      if (watermark.isPresent() && prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermark.get()) {
+        prevWatermarkTimestamp = watermark.get();
+        return new Watermark(watermark.get());
+      }
+    }
+
 
     int cnt = 0;
     while (cnt < iterators.size()) {
@@ -135,23 +170,8 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       } else if (iterator.hasNext()) {
         iteratorIndex = (iteratorIndex + 1) % iterators.size();
         final Object element = iterator.next();
-
-        if (element instanceof WatermarkWithIndex) {
-          // watermark element
-          // the input watermark manager is accessed by multiple threads
-          // so we should synchronize it
-          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-          inputWatermarkManager.trackAndEmitWatermarks(
-            watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
-
-          if (!watermarkQueue.isEmpty()) {
-            return watermarkQueue.poll();
-          }
-
-        } else {
-          // data element
-          return element;
-        }
+        // data element
+        return element;
       } else {
         //LOG.info("No next element in iterator {}, cnt: {}, size: {}", iteratorIndex, cnt, iterators.size());
         iteratorIndex = (iteratorIndex + 1) % iterators.size();

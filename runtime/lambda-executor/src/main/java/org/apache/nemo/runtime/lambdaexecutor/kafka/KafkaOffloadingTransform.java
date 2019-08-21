@@ -249,7 +249,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, null, outputCollector, null, "taskId...");
+          beamUnboundedSourceVertex, edge, null, outputCollector, null, "stageId...");
         dataFetchers.add(dataFetcher);
       }
 
@@ -389,7 +389,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -420,7 +420,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

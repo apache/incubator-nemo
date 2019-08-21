@@ -3,8 +3,6 @@ package org.apache.nemo.common;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
-import org.apache.nemo.common.RendevousRequest;
-import org.apache.nemo.common.RendevousResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +14,10 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
   public enum Type {
     REQUEST,
     RESPONSE,
-    REGISTER
+    REGISTER,
+    WATERMARK_REQUEST,
+    WATERMARK_RESPONSE,
+    WATERMARK_SEND
   }
 
   public RendevousMessageEncoder() {
@@ -55,6 +56,29 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       bos.writeUTF(req.dst);
 
       out.add(bos.buffer());
+    } else if (msg instanceof WatermarkRequest) {
+      bos.writeInt(Type.WATERMARK_REQUEST.ordinal());
+
+      final WatermarkRequest req = (WatermarkRequest) msg;
+      bos.writeUTF(req.stageId);
+      out.add(bos.buffer());
+
+    } else if (msg instanceof WatermarkSend) {
+      bos.writeInt(Type.WATERMARK_SEND.ordinal());
+
+      final WatermarkSend req = (WatermarkSend) msg;
+      bos.writeUTF(req.taskId);
+      bos.writeLong(req.watermark);
+      out.add(bos.buffer());
+
+    } else if (msg instanceof WatermarkResponse) {
+      bos.writeInt(Type.WATERMARK_RESPONSE.ordinal());
+
+      final WatermarkResponse req = (WatermarkResponse) msg;
+      bos.writeUTF(req.stageId);
+      bos.writeLong(req.watermark);
+      out.add(bos.buffer());
+
     } else {
       throw new RuntimeException("Unsupported type " + msg);
     }

@@ -40,7 +40,8 @@ public final class RendevousServer {
 
   @Inject
   private RendevousServer(final TcpPortProvider tcpPortProvider,
-                          @Parameter(EvalConf.Ec2.class) final boolean ec2) {
+                          @Parameter(EvalConf.Ec2.class) final boolean ec2,
+                          final WatermarkManager watermarkManager) {
 
     final String host;
     try {
@@ -65,7 +66,7 @@ public final class RendevousServer {
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RendevousServerChannelInitializer(channelMap))
+      .childHandler(new RendevousServerChannelInitializer(channelMap, watermarkManager))
       .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;

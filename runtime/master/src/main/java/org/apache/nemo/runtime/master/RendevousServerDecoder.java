@@ -7,6 +7,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.nemo.common.RendevousMessageEncoder;
 import org.apache.nemo.common.RendevousResponse;
+import org.apache.nemo.common.WatermarkResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,13 +26,17 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, List<Channel>> dstRequestChannelMap;
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
+  private final WatermarkManager watermarkManager;
 
   public RendevousServerDecoder(final ConcurrentMap<String, List<Channel>> dstRequestChannelMap,
                                 final ConcurrentMap<String, Channel> rendevousChannelMap,
-                                final ScheduledExecutorService scheduledExecutorService) {
+                                final ScheduledExecutorService scheduledExecutorService,
+                                final WatermarkManager watermarkManager) {
     this.dstRequestChannelMap = dstRequestChannelMap;
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = scheduledExecutorService;
+    this.watermarkManager = watermarkManager;
+
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
       for (final String dstRequestKey : dstRequestChannelMap.keySet()) {
@@ -54,7 +59,8 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
           }
         }
       }
-    }, 200, 200, TimeUnit.MILLISECONDS);
+    }, 1000, 1000, TimeUnit.MILLISECONDS);
+
   }
 
   @Override
@@ -99,6 +105,19 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         //LOG.info("Registering dst {} address {}", dst, ctx.channel());
 
         rendevousChannelMap.put(dst, ctx.channel());
+        break;
+      }
+      case WATERMARK_SEND: {
+        final String taskId = bis.readUTF();
+        final long watermark = bis.readLong();
+        watermarkManager.updateWatermark(taskId, watermark);
+        break;
+      }
+      case WATERMARK_REQUEST: {
+        final String stageId = bis.readUTF();
+        final long watermark = watermarkManager.getInputWatermark(stageId);
+        final WatermarkResponse watermarkResponse = new WatermarkResponse(stageId, watermark);
+        ctx.channel().writeAndFlush(watermarkResponse);
         break;
       }
       default:

@@ -34,6 +34,7 @@ import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,12 +63,13 @@ public final class PipeOutputWriter implements OutputWriter {
   private final List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
   final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
-  final Map<Long, Long> prevWatermarkMap;
   final Map<Long, Integer> watermarkCounterMap;
   private final StageEdge stageEdge;
   private final RelayServer relayServer;
 
   private volatile boolean stopped = false;
+
+  private final RendevousServerClient rendevousServerClient;
 
   /**
    * Constructor.
@@ -80,9 +82,9 @@ public final class PipeOutputWriter implements OutputWriter {
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-                   final Map<Long, Long> prevWatermarkMap,
                    final Map<Long, Integer> watermarkCounterMap,
-                   final RelayServer relayServer) {
+                   final RelayServer relayServer,
+                   final RendevousServerClient rendevousServerClient) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
@@ -94,10 +96,10 @@ public final class PipeOutputWriter implements OutputWriter {
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
     this.pipeAndStreamMap = new HashMap<>();
     this.expectedWatermarkMap = expectedWatermarkMap;
-    this.prevWatermarkMap = prevWatermarkMap;
     this.watermarkCounterMap = watermarkCounterMap;
     this.relayServer = relayServer;
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    this.rendevousServerClient = rendevousServerClient;
     this.pipes = doInitialize();
   }
 
@@ -146,65 +148,8 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void writeWatermark(final Watermark watermark) {
-
-    //LOG.info("Watermark in output writer from {} to {}", stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
-    final PriorityQueue<Watermark> expectedWatermarkQueue =
-      expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
-
-    if (!expectedWatermarkQueue.isEmpty()) {
-      // FOR OFFLOADING
-
-      // we should not emit the watermark directly.
-      final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).right();
-      pendingWatermarkQueue.add(watermark);
-      while (!expectedWatermarkQueue.isEmpty() && !pendingWatermarkQueue.isEmpty() &&
-        expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
-
-        // check whether outputs are emitted
-        final long ts = pendingWatermarkQueue.peek().getTimestamp();
-        if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
-          LOG.warn("This may be emitted from the internal vertex: {}, {} -> {}, we don't have to emit it again",
-            ts, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
-          pendingWatermarkQueue.poll();
-          //final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
-          //writeData(watermarkWithIndex, pipes, true);
-
-        } else {
-          if (!prevWatermarkMap.containsKey(ts)) {
-            final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
-            pendingWatermarkQueue.poll();
-            LOG.info("Emit watermark {} from {} -> {}",
-              watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
-
-            final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
-            writeData(watermarkWithIndex, pipes, true);
-
-          } else {
-            final long prevWatermark = prevWatermarkMap.get(ts);
-            if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
-              //LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
-              final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
-              pendingWatermarkQueue.poll();
-              prevWatermarkMap.remove(prevWatermark);
-              watermarkCounterMap.remove(prevWatermark);
-
-              LOG.info("Emit watermark {} from {} -> {}",
-                watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
-
-              final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
-              writeData(watermarkWithIndex, pipes, true);
-            } else {
-              break;
-            }
-          }
-        }
-      }
-    } else {
-      //LOG.info("No-offloading watermark {} from {}", watermark, stageEdge.getSrcIRVertex().getId());
-      final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
-      // flush data whenever receiving watermarks
-      writeData(watermarkWithIndex, pipes, true);
-    }
+    // 여기서 마스터에게 보내면됨.
+    rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
   }
 
   @Override

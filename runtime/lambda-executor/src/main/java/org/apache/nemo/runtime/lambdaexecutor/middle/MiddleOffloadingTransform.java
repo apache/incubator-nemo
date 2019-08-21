@@ -428,7 +428,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -459,7 +459,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

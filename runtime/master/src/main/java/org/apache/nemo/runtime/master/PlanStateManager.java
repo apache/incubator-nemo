@@ -104,11 +104,14 @@ public final class PlanStateManager {
   private final String dagDirectory;
   private MetricStore metricStore;
 
+  private final WatermarkManager watermarkManager;
+
   /**
    * Constructor.
    */
   @Inject
-  private PlanStateManager(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+  private PlanStateManager(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
+                           final WatermarkManager watermarkManager) {
     this.planState = new PlanState();
     this.stageIdToState = new HashMap<>();
     this.stageIdToTaskIdxToAttemptStates = new HashMap<>();
@@ -117,6 +120,7 @@ public final class PlanStateManager {
     this.dagDirectory = dagDirectory;
     this.metricStore = MetricStore.getStore();
     this.initialized = false;
+    this.watermarkManager = watermarkManager;
   }
 
   /**
@@ -139,6 +143,10 @@ public final class PlanStateManager {
     this.maxScheduleAttempt = maxScheduleAttemptToSet;
     this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
     this.metricStore.triggerBroadcast(JobMetric.class, planId);
+
+    // Initiailize watermark mamanger
+    watermarkManager.setStage(physicalPlan.getStageDAG());
+
     initializeStates();
   }
 

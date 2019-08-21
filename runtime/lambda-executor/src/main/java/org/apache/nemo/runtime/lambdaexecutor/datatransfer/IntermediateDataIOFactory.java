@@ -38,8 +38,11 @@ public final class IntermediateDataIOFactory {
     final int srcTaskIndex,
     final int originTaskindex,
     final RuntimeEdge<?> runtimeEdge,
-    final Map<String, Serializer> serializerMap) {
-    return new PipeOutputWriter(srcTaskIndex, originTaskindex, runtimeEdge, pipeManagerWorker, serializerMap);
+    final Map<String, Serializer> serializerMap,
+    final String taskId,
+    final RendevousServerClient rendevousServerClient) {
+    return new PipeOutputWriter(taskId,
+      srcTaskIndex, originTaskindex, runtimeEdge, pipeManagerWorker, serializerMap, rendevousServerClient);
   }
 
   public InputReader createReader(final int dstTaskIdx,
