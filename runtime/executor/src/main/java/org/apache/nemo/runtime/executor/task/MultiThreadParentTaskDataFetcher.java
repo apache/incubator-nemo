@@ -32,6 +32,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,12 +185,15 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     if (isWatermarkTriggerTime()) {
       watermarkTriggered = false;
       final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
+      LOG.info("Request watermark at {}", taskId);
 
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
+        LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+
         prevWatermarkTimestamp = watermark.get();
         return new Watermark(watermark.get());
       }
-    }
+   }
 
     int cnt = 0;
     while (cnt < iterators.size()) {
