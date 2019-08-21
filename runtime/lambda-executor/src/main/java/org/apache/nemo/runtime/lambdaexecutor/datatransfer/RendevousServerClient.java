@@ -105,8 +105,8 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
     synchronized (lock) {
       final long currTime = System.currentTimeMillis();
-      if (stageInputWatermarkRequestTime.getOrDefault(stageId, currTime) + 200 < currTime) {
-        LOG.info("Request watermark {}", stageId);
+      if (stageInputWatermarkRequestTime.getOrDefault(stageId, 0L) + 200 < currTime) {
+        //LOG.info("Request watermark {}", stageId);
         channel.writeAndFlush(new WatermarkRequest(stageId));
         stageInputWatermarkRequestTime.put(stageId, currTime);
       }

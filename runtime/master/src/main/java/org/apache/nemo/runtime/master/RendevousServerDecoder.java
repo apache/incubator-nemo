@@ -116,7 +116,7 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
       case WATERMARK_REQUEST: {
         final String stageId = bis.readUTF();
         final long watermark = watermarkManager.getInputWatermark(stageId);
-        LOG.info("Watermark manager input watermark {}, {}", stageId, watermark);
+        //LOG.info("Watermark manager input watermark {}, {}", stageId, watermark);
         final WatermarkResponse watermarkResponse = new WatermarkResponse(stageId, watermark);
         ctx.channel().writeAndFlush(watermarkResponse);
         break;
