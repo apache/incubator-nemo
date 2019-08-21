@@ -24,6 +24,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
+/**
+ * Data plane Configuration for Executors.
+ */
 public final class DataPlaneConf {
 
   private final int numIOThreads;
@@ -44,7 +47,6 @@ public final class DataPlaneConf {
                         @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBackLog,
                         @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int listenThreads,
                         @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int workThreads) {
-
     this.numIOThreads = numIOThreads;
     this.maxNumDownloads = maxNumDownloads;
     this.scheduleSerThread = scheduleSerThread;
