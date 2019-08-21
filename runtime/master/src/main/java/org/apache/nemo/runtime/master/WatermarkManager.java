@@ -227,7 +227,7 @@ public final class WatermarkManager {
     public String toString() {
       final StringBuilder sb = new StringBuilder();
       sb.append("[");
-      for (int i = 0; i > watermarks.size(); i++) {
+      for (int i = 0; i < watermarks.size(); i++) {
         sb.append(i);
         sb.append(": ");
         sb.append(watermarks.get(i));
