@@ -133,14 +133,17 @@ public final class NemoDriver {
 
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Scaling, message -> {
       final String decision = message.getScalingMsg().getDecision();
-      LOG.info("Receive scaling decision {}", decision);
 
-      if (decision.equals("o") || decision.equals("no")) {
-        jobScaler.scalingOut(message.getScalingMsg(), decision.equals("no"));
-      } else if (decision.equals("i")) {
-        jobScaler.scalingIn();
-      } else {
-        throw new RuntimeException("Invalid scaling decision " + decision);
+      if (evalConf.enableOffloading) {
+        LOG.info("Receive scaling decision {}", decision);
+
+        if (decision.equals("o") || decision.equals("no")) {
+          jobScaler.scalingOut(message.getScalingMsg(), decision.equals("no"));
+        } else if (decision.equals("i")) {
+          jobScaler.scalingIn();
+        } else {
+          throw new RuntimeException("Invalid scaling decision " + decision);
+        }
       }
 
     });
