@@ -33,6 +33,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -478,8 +479,10 @@ public final class GBKFinalTransform<K, InputT>
     @Override
     public void emitWatermark(final Watermark watermark) {
 
-      //LOG.info("Emit watermark in final: {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
-
+      if (RuntimeIdManager.getStageIdFromTaskId(getContext().getTaskId()).equals("Stage2")) {
+        LOG.info("Emit watermark in final: {}, {} / {}", new Instant(watermark.getTimestamp()),
+          watermark.getTimestamp(), getContext().getTaskId());
+      }
 
       outputCollector.emitWatermark(watermark);
     }

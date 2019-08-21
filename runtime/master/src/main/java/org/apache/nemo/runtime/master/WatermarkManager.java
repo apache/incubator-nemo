@@ -225,7 +225,16 @@ public final class WatermarkManager {
 
     @Override
     public String toString() {
-      return watermarks.toString();
+      final StringBuilder sb = new StringBuilder();
+      sb.append("[");
+      for (int i = 0; i > watermarks.size(); i++) {
+        sb.append(i);
+        sb.append(": ");
+        sb.append(watermarks.get(i));
+        sb.append("\n");
+      }
+      sb.append("]");
+      return sb.toString();
     }
   }
 }
