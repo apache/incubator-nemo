@@ -75,6 +75,7 @@ public final class WatermarkManager {
       stageDag.getOutgoingEdgesOf(stage).forEach(edge -> {
         final Stage child = edge.getDst();
         synchronized (child) {
+          LOG.info("Set input watermark update required true {}", child.getId());
           inputWatermarkUpdateRequiredMap.put(child.getId(), true);
         }
       });
@@ -82,6 +83,7 @@ public final class WatermarkManager {
   }
 
   public long getInputWatermark(final String stageId) {
+    LOG.info("Get input watermark {}", stageId);
     final long currInputWatermark = stageInputWatermarkMap.get(stageId);
     final Stage stage = stageIdStageMap.get(stageId);
 

@@ -261,10 +261,6 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    if (watermark.getTimestamp() < inputWatermark.getTimestamp() + 500) {
-      return;
-    }
-
     //LOG.info("Final watermark receive {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
