@@ -99,7 +99,6 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   public Optional<Long> requestWatermark(final String stageId) {
     // REQUEST every 200 ms
 
-    LOG.info("Request watermark {}", stageId);
 
     stageLockMap.putIfAbsent(stageId, new Object());
     final Object lock = stageLockMap.get(stageId);
@@ -107,6 +106,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
     synchronized (lock) {
       final long currTime = System.currentTimeMillis();
       if (stageInputWatermarkRequestTime.getOrDefault(stageId, currTime) + 200 < currTime) {
+        LOG.info("Request watermark {}", stageId);
         channel.writeAndFlush(new WatermarkRequest(stageId));
         stageInputWatermarkRequestTime.put(stageId, currTime);
       }
