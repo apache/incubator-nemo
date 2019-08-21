@@ -25,7 +25,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import org.apache.nemo.common.*;
-import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,9 +58,9 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
   private final Set<String> registerTasks;
 
-  private final ConcurrentMap<String, Long> stageInputWatermarkMap;
-  private final ConcurrentMap<String, Long> stageInputWatermarkRequestTime;
-  private final ConcurrentMap<String, Object> stageLockMap;
+  private final ConcurrentMap<String, Long> taskInputWatermarkMap;
+  private final ConcurrentMap<String, Long> taskInputWatermarkRequestTime;
+  private final ConcurrentMap<String, Object> taskLockMap;
 
   public RendevousServerClient(final String myRendevousServerAddress,
                                final int myRendevousServerPort) {
@@ -82,9 +81,9 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
     this.myRendevousServerAddress = myRendevousServerAddress;
     this.myRendevousServerPort = myRendevousServerPort;
 
-    this.stageInputWatermarkMap = new ConcurrentHashMap<>();
-    this.stageInputWatermarkRequestTime = new ConcurrentHashMap<>();
-    this.stageLockMap = new ConcurrentHashMap<>();
+    this.taskInputWatermarkMap = new ConcurrentHashMap<>();
+    this.taskInputWatermarkRequestTime = new ConcurrentHashMap<>();
+    this.taskLockMap = new ConcurrentHashMap<>();
 
     this.registerTasks = new HashSet<>();
 
@@ -96,23 +95,23 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
         .channel();
   }
 
-  public Optional<Long> requestWatermark(final String stageId) {
+  public Optional<Long> requestWatermark(final String taskId) {
     // REQUEST every 200 ms
 
 
-    stageLockMap.putIfAbsent(stageId, new Object());
-    final Object lock = stageLockMap.get(stageId);
+    taskLockMap.putIfAbsent(taskId, new Object());
+    final Object lock = taskLockMap.get(taskId);
 
     synchronized (lock) {
       final long currTime = System.currentTimeMillis();
-      if (stageInputWatermarkRequestTime.getOrDefault(stageId, 0L) + 200 < currTime) {
+      if (taskInputWatermarkRequestTime.getOrDefault(taskId, 0L) + 200 < currTime) {
         //LOG.info("Request watermark {}", stageId);
-        channel.writeAndFlush(new WatermarkRequest(stageId));
-        stageInputWatermarkRequestTime.put(stageId, currTime);
+        channel.writeAndFlush(new WatermarkRequest(taskId));
+        taskInputWatermarkRequestTime.put(taskId, currTime);
       }
 
-      if (stageInputWatermarkMap.containsKey(stageId)) {
-        return Optional.of(stageInputWatermarkMap.get(stageId));
+      if (taskInputWatermarkMap.containsKey(taskId)) {
+        return Optional.of(taskInputWatermarkMap.get(taskId));
       } else {
         return Optional.empty();
       }
@@ -124,7 +123,7 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
   }
 
   public void registerWatermark(final String taskId, final long watermark) {
-    stageInputWatermarkMap.put(taskId, watermark);
+    taskInputWatermarkMap.put(taskId, watermark);
   }
 
   public void registerResponse(final RendevousResponse response) {

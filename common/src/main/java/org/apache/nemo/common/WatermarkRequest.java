@@ -2,9 +2,9 @@ package org.apache.nemo.common;
 
 public final class WatermarkRequest {
 
-  public final String stageId;
+  public final String taskId;
 
-  public WatermarkRequest(final String stageId) {
-    this.stageId = stageId;
+  public WatermarkRequest(final String taskId) {
+    this.taskId = taskId;
   }
 }

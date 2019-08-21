@@ -150,7 +150,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     if (watermarkTriggered) {
       watermarkTriggered = false;
       // index=0 as there is only 1 input stream
-      final Optional<Long> watermark = rendevousServerClient.requestWatermark(stageId);
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
 
       if (watermark.isPresent() && prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermark.get()) {
         prevWatermarkTimestamp = watermark.get();

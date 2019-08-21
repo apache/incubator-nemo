@@ -4,6 +4,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.slf4j.Logger;
@@ -58,7 +59,13 @@ public final class WatermarkManager {
   public void updateWatermark(final String taskId, final long watermark) {
     final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+
+
     final StageWatermarkTracker stageWatermarkTracker = stageWatermarkTrackerMap.get(stageId);
+
+    if (stageId.equals("Stage2")) {
+      LOG.info("request update watermark of stage2 \n {}", stageWatermarkTracker);
+    }
 
     final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(index, watermark);
 
@@ -69,49 +76,81 @@ public final class WatermarkManager {
         throw new RuntimeException("Output watermark of " + stageId + " is greater than the emitted watermark " + outputW + ", " + val.get());
       }
 
+    if (stageId.equals("Stage2")) {
+      LOG.info("set update watermark of stage2 ");
+    }
+
       stageOutputWatermarkMap.put(stageId, val.get());
       // update dependent stages watermarks
       final Stage stage = stageIdStageMap.get(stageId);
       stageDag.getOutgoingEdgesOf(stage).forEach(edge -> {
         final Stage child = edge.getDst();
         synchronized (child) {
-          LOG.info("Set input watermark update required true {}", child.getId());
           inputWatermarkUpdateRequiredMap.put(child.getId(), true);
         }
       });
     }
   }
 
-  public long getInputWatermark(final String stageId) {
-    LOG.info("Get input watermark {}", stageId);
+
+  private boolean isOneToOne(final Stage stage) {
+
+    for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
+      if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public long getInputWatermark(final String taskId) {
+    final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+    //LOG.info("Get input watermark {}", stageId);
     final long currInputWatermark = stageInputWatermarkMap.get(stageId);
     final Stage stage = stageIdStageMap.get(stageId);
+    final boolean oneToOne = isOneToOne(stage);
 
+    LOG.info("onetoone ? {}: {}", stageId, oneToOne);
     synchronized (stage) {
-      if (inputWatermarkUpdateRequiredMap.get(stageId)) {
-        // update input watermark
-        inputWatermarkUpdateRequiredMap.put(stageId, false);
 
-
+      if (oneToOne) {
+        final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
         long minWatermark = Long.MAX_VALUE;
         for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
           final Stage parent = edge.getSrc();
-          final long stageW = stageOutputWatermarkMap.get(parent.getId());
-          if (stageW < minWatermark) {
-            minWatermark = stageW;
+          final StageWatermarkTracker tracker = stageWatermarkTrackerMap.get(parent);
+          final long taskW = tracker.getWatermark(index);
+          if (taskW < minWatermark) {
+            minWatermark = taskW;
           }
         }
-
-        // minWAtermar ==> stage input watermark
-        if (minWatermark < currInputWatermark) {
-          throw new RuntimeException("Input watermark cannot be less than prev input watermark: " + minWatermark + ", "
-            + currInputWatermark + ", " + " for stage " + stageId);
-        }
-        stageInputWatermarkMap.put(stageId, minWatermark);
-
         return minWatermark;
       } else {
-        return currInputWatermark;
+        if (inputWatermarkUpdateRequiredMap.get(stageId)) {
+          // update input watermark
+          inputWatermarkUpdateRequiredMap.put(stageId, false);
+
+          long minWatermark = Long.MAX_VALUE;
+          for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
+            final Stage parent = edge.getSrc();
+            final long stageW = stageOutputWatermarkMap.get(parent.getId());
+            if (stageW < minWatermark) {
+              minWatermark = stageW;
+            }
+          }
+
+          // minWAtermar ==> stage input watermark
+          if (minWatermark < currInputWatermark) {
+            throw new RuntimeException("Input watermark cannot be less than prev input watermark: " + minWatermark + ", "
+              + currInputWatermark + ", " + " for stage " + stageId);
+          }
+          stageInputWatermarkMap.put(stageId, minWatermark);
+
+          return minWatermark;
+        } else {
+          return currInputWatermark;
+        }
       }
     }
   }
@@ -142,6 +181,10 @@ public final class WatermarkManager {
         }
       }
       return index;
+    }
+
+    public synchronized long getWatermark(final int index) {
+      return watermarks.get(index);
     }
 
     public synchronized Optional<Long> trackAndEmitWatermarks(final int edgeIndex, final long watermark) {
@@ -176,6 +219,11 @@ public final class WatermarkManager {
       }
 
       return Optional.empty();
+    }
+
+    @Override
+    public String toString() {
+      return watermarks.toString();
     }
   }
 }

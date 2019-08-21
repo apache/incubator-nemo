@@ -183,7 +183,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     // Emit watermark
     if (isWatermarkTriggerTime()) {
       watermarkTriggered = false;
-      final Optional<Long> watermark = rendevousServerClient.requestWatermark(stageId);
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
 
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         prevWatermarkTimestamp = watermark.get();
