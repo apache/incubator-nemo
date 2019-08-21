@@ -111,7 +111,7 @@ public final class WatermarkManager {
     final Stage stage = stageIdStageMap.get(stageId);
     final boolean oneToOne = isOneToOne(stage);
 
-    LOG.info("onetoone ? {}: {}", stageId, oneToOne);
+    LOG.info("onetoone ? {}: {}, {}", stageId, oneToOne, taskId);
     synchronized (stage) {
 
       if (oneToOne) {
@@ -184,6 +184,8 @@ public final class WatermarkManager {
     }
 
     public synchronized long getWatermark(final int index) {
+      LOG.info("Watermark request index: {}. size: {},. get {}",
+        index, watermarks.size(), watermarks.get(index));
       return watermarks.get(index);
     }
 
