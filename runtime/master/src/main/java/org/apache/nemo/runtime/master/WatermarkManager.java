@@ -148,10 +148,10 @@ public final class WatermarkManager {
           }
           stageInputWatermarkMap.put(stageId, minWatermark);
 
-          LOG.info("Watermark for {}: {}", new Instant(minWatermark));
+          LOG.info("Watermark for {}: {}", taskId, new Instant(minWatermark));
           return minWatermark;
         } else {
-          LOG.info("Watermark for {}: {}", new Instant(currInputWatermark));
+          LOG.info("Watermark for {}: {}", taskId, new Instant(currInputWatermark));
           return currInputWatermark;
         }
       }
