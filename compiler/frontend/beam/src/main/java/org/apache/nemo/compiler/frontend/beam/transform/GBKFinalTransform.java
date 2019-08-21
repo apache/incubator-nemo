@@ -262,7 +262,7 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+    //LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
@@ -479,10 +479,12 @@ public final class GBKFinalTransform<K, InputT>
     @Override
     public void emitWatermark(final Watermark watermark) {
 
+      /*
       if (RuntimeIdManager.getStageIdFromTaskId(getContext().getTaskId()).equals("Stage2")) {
         LOG.info("Emit watermark in final: {}, {} / {}", new Instant(watermark.getTimestamp()),
           watermark.getTimestamp(), getContext().getTaskId());
       }
+      */
 
       outputCollector.emitWatermark(watermark);
     }

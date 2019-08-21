@@ -112,7 +112,7 @@ public final class WatermarkManager {
     final Stage stage = stageIdStageMap.get(stageId);
     final boolean oneToOne = isOneToOne(stage);
 
-    LOG.info("onetoone ? {}: {}, {}", stageId, oneToOne, taskId);
+    //LOG.info("onetoone ? {}: {}, {}", stageId, oneToOne, taskId);
     synchronized (stage) {
 
       if (oneToOne) {
@@ -148,10 +148,10 @@ public final class WatermarkManager {
           }
           stageInputWatermarkMap.put(stageId, minWatermark);
 
-          LOG.info("Watermark for {}: {}", taskId, new Instant(minWatermark));
+          //LOG.info("Watermark for {}: {}", taskId, new Instant(minWatermark));
           return minWatermark;
         } else {
-          LOG.info("Watermark for {}: {}", taskId, new Instant(currInputWatermark));
+          //LOG.info("Watermark for {}: {}", taskId, new Instant(currInputWatermark));
           return currInputWatermark;
         }
       }

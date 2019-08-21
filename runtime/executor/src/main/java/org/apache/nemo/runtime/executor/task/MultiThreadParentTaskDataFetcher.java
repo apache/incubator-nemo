@@ -153,7 +153,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-    LOG.info("Fetch data for {}", taskId);
+    //LOG.info("Fetch data for {}", taskId);
 
     while (!taskAddPairQueue.isEmpty()) {
       final Pair<IteratorWithNumBytes, Integer> pair = taskAddPairQueue.poll();
@@ -189,10 +189,10 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     if (isWatermarkTriggerTime()) {
       watermarkTriggered = false;
       final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
-      LOG.info("Request watermark at {}", taskId);
+      //LOG.info("Request watermark at {}", taskId);
 
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
-        LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+        //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
 
         prevWatermarkTimestamp = watermark.get();
         return new Watermark(watermark.get());

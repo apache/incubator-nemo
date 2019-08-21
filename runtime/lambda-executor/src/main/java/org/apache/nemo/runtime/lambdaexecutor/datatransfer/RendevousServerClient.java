@@ -97,8 +97,6 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
 
   public Optional<Long> requestWatermark(final String taskId) {
     // REQUEST every 200 ms
-
-
     taskLockMap.putIfAbsent(taskId, new Object());
     final Object lock = taskLockMap.get(taskId);
     synchronized (lock) {
