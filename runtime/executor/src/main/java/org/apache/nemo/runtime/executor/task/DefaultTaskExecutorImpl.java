@@ -899,7 +899,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
-    if (iterator.hasNext()) {
+    if (!iterator.hasNext()) {
       executorThread.decoderThread.execute(() -> {
         final Object element = iterator.next();
         executorThread.queue.add(() -> {
