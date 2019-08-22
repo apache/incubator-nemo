@@ -902,7 +902,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       executorThread.queue.add(() -> {
         final Object element = iterator.next();
         if (!element.equals(EmptyElement.getInstance())) {
-          //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+          LOG.info("handle intermediate data {}, {}", element, dataFetcher);
           onEventFromDataFetcher(element, dataFetcher);
         }
       });
