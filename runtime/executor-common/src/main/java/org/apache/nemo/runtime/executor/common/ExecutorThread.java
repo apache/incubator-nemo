@@ -16,7 +16,8 @@ public final class ExecutorThread {
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
   private volatile boolean isPollingTime = false;
-  public final ScheduledExecutorService dispatcher;
+  private final ScheduledExecutorService dispatcher;
+  public final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
   private final String executorThreadName;
 
@@ -37,6 +38,7 @@ public final class ExecutorThread {
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
+    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
     this.finishedTasks = new ArrayList<>();
@@ -108,6 +110,7 @@ public final class ExecutorThread {
             }
           }
 
+          // process source tasks
           final List<TaskExecutor> pendings = new ArrayList<>();
           synchronized (sourceTasks) {
             final Iterator<TaskExecutor> iterator = sourceTasks.iterator();
@@ -127,6 +130,7 @@ public final class ExecutorThread {
             pendingSourceTasks.addAll(pendings);
           }
 
+          // process intermediate data
           while (!queue.isEmpty()) {
             final Runnable runnable = queue.poll();
             runnable.run();
