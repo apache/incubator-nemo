@@ -86,11 +86,14 @@ public final class ExecutorThread {
     }, 5, 5, TimeUnit.SECONDS);
 
     dispatcher.scheduleAtFixedRate(() -> {
-      while (!pendingTasks.isEmpty()) {
-        final TaskExecutor pendingTask = pendingTasks.poll();
+      final Iterator<TaskExecutor> iterator = pendingTasks.iterator();
+      while (iterator.hasNext()) {
+        final TaskExecutor pendingTask = iterator.next();
         if (pendingTask.hasData()) {
+          iterator.remove();
           availableTasks.add(pendingTask);
         } else if (pendingTask.isFinished()) {
+          iterator.remove();
           finishedExecutors.add(pendingTask);
         }
       }
