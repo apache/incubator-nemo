@@ -83,7 +83,6 @@ public final class ExecutorThread {
 
   private volatile boolean loggingTime = false;
 
-
   public AtomicBoolean getThrottle() {
     return throttle;
   }

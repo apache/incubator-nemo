@@ -66,7 +66,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
-  public void prepare() {
+  public synchronized void prepare() {
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
       readableService = ReadableService.getInstance();
@@ -81,7 +81,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
-  public boolean isAvailable() {
+  public synchronized boolean isAvailable() {
     if (reader == null) {
       return false;
     }
@@ -104,7 +104,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
 
   @Override
-  public Object readCurrent() {
+  public synchronized Object readCurrent() {
 
     if (isCurrentAvailable) {
       final O elem = reader.getCurrent();
@@ -174,7 +174,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
-  public long readWatermark() {
+  public synchronized long readWatermark() {
     final Instant watermark = reader.getWatermark();
     // Finish if the watermark == TIMESTAMP_MAX_VALUE
     isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
