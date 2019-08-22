@@ -892,6 +892,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
     executorThread.queue.add(() -> {
+      LOG.info("handler watermark");
       onEventFromDataFetcher(element, dataFetcher);
     });
   }
