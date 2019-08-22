@@ -131,7 +131,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleIntermediateEvent(watermark.get(), this);
+        taskExecutor.handleIntermediateEvent(new Watermark(watermark.get()), this);
       }
     });
   }
