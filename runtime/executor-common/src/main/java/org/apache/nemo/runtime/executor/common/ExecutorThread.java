@@ -12,8 +12,8 @@ public final class ExecutorThread {
 
   private final ConcurrentLinkedQueue<TaskExecutor> newTasks;
   private final ConcurrentLinkedQueue<TaskExecutor> deletedTasks;
-  private final List<TaskExecutor> availableTasks;
-  private final List<TaskExecutor> pendingTasks;
+  private final ConcurrentLinkedQueue<TaskExecutor> availableTasks;
+  private final ConcurrentLinkedQueue<TaskExecutor> pendingTasks;
 
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
@@ -28,16 +28,23 @@ public final class ExecutorThread {
 
   private final AtomicBoolean throttle;
 
+  private final ScheduledExecutorService dispatcher;
+
+  private final ConcurrentLinkedQueue<TaskExecutor> finishedExecutors;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
-    this.availableTasks = new ArrayList<>();
-    this.pendingTasks = new ArrayList<>();
+    this.availableTasks = new ConcurrentLinkedQueue<>();
+    this.pendingTasks = new ConcurrentLinkedQueue<>();
+    this.finishedExecutors = new ConcurrentLinkedQueue<>();
     this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
+    this.dispatcher = Executors.newSingleThreadScheduledExecutor();
+
   }
 
   public void deleteTask(final TaskExecutor task) {
@@ -57,7 +64,7 @@ public final class ExecutorThread {
 
   public void start() {
 
-    final int batchSize = 100;
+    final int batchSize = 20;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       //isPollingTime.set(true);
@@ -77,6 +84,17 @@ public final class ExecutorThread {
       */
 
     }, 5, 5, TimeUnit.SECONDS);
+
+    dispatcher.scheduleAtFixedRate(() -> {
+      while (!pendingTasks.isEmpty()) {
+        final TaskExecutor pendingTask = pendingTasks.poll();
+        if (pendingTask.hasData()) {
+          availableTasks.add(pendingTask);
+        } else if (pendingTask.isFinished()) {
+          finishedExecutors.add(pendingTask);
+        }
+      }
+    }, 100, 100, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
       try {
@@ -109,20 +127,27 @@ public final class ExecutorThread {
             }
           }
 
+          /*
           while (throttle.get()) {
             LOG.info("Throttling thread {} ...", executorThreadName);
             Thread.sleep(200);
           }
+          */
 
           final Iterator<TaskExecutor> iterator = availableTasks.iterator();
           while (iterator.hasNext()) {
             final TaskExecutor availableTask = iterator.next();
 
-            final int processedCnt = availableTask.handleData();
+            int batchCnt = 0;
+            while (batchCnt < batchSize) {
+              final int processedCnt = availableTask.handleData();
+              batchCnt += 1;
 
-            if (processedCnt == 0) {
-              iterator.remove();
-              pendingTasks.add(availableTask);
+              if (processedCnt == 0) {
+                iterator.remove();
+                pendingTasks.add(availableTask);
+                break;
+              }
             }
 
             //final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
@@ -152,34 +177,9 @@ public final class ExecutorThread {
               */
           }
 
-          if (availableTasks.isEmpty()) {
-            try {
-              Thread.sleep(10);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
-
-          if (isPollingTime) {
-            isPollingTime = false;
-            boolean pendingSet = false;
-            // how to check whether the task is ready or not?
-            final Iterator<TaskExecutor> pendingIterator = pendingTasks.iterator();
-            while (pendingIterator.hasNext()) {
-              final TaskExecutor pendingTask = pendingIterator.next();
-              if (pendingTask.hasData()) {
-                availableTasks.add(pendingTask);
-                pendingIterator.remove();
-              } else if (pendingTask.isFinished()) {
-                pendingTask.finish();
-                pendingSet = true;
-                pendingIterator.remove();
-              }
-            }
-
-            if (pendingSet) {
-              LOG.info("After finishign task: availables: {}, pending: {}", availableTasks, pendingTasks);
-            }
+          while (!finishedExecutors.isEmpty()) {
+            final TaskExecutor finishedExecutor = finishedExecutors.poll();
+            finishedExecutor.finish();
           }
         }
 
