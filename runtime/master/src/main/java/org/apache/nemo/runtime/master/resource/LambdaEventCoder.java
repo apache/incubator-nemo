@@ -19,12 +19,15 @@
 package org.apache.nemo.runtime.master.resource;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import org.apache.commons.lang3.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,15 +44,22 @@ public final class LambdaEventCoder {
     @Override
     protected void encode(final ChannelHandlerContext ctx,
                           final LambdaEvent msg, final List<Object> out) throws Exception {
-      System.out.println("LambdaEventEncoder->encode " + msg.getType());
-      final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
-      LOG.info("Encoded bytes: " + msg.getLen() + 8);
-      buf.writeInt(msg.getLen());
-      buf.writeInt(msg.getType().ordinal());
-      buf.writeBytes(msg.getBytes(), 0, msg.getLen());
+      System.out.println("LambdaEventEncoder->encode LambdaEvent.getBytes().toString: " + msg.getBytes().toString());
 
-      LOG.info("Encode " + msg.getType().name() + ", size: " + buf.readableBytes());
-      out.add(buf);
+      ByteBuf byteBuf = Unpooled.copiedBuffer(SerializationUtils.serialize(msg));
+      out.add(byteBuf);
+      System.out.println("bytebuf readableBytes " + byteBuf.readableBytes());
+      for(byte i : msg.getBytes()) {
+        System.out.print(i);
+      }
+/*      ByteBuf byteBuf = ctx.alloc().buffer(5, msg.getLen() + 5);
+      byteBuf.writeInt(msg.getLen());
+      byteBuf.writeByte((byte)msg.getType().ordinal());
+      byteBuf.writeBytes(msg.getBytes());
+
+      out.add(byteBuf);
+      System.out.println("LambdaEvent encoded " + byteBuf.toString());
+ */
     }
   }
 
@@ -60,21 +70,33 @@ public final class LambdaEventCoder {
 
     @Override
     protected void decode(final ChannelHandlerContext ctx,
-                          final ByteBuf msg, final List<Object> out) throws Exception {
-      System.out.println("LambdaEventDecoder->decode " + msg.toString());
-      System.out.println("Size: " + msg.readableBytes());
-      System.out.println("Size: " + msg.readableBytes());
+                          final ByteBuf buf, final List<Object> out) throws Exception {
+      System.out.println("bytebuf.readableBytes " + buf.readableBytes());
       try {
-        final int len = msg.readInt();
-        final LambdaEvent.Type type = LambdaEvent.Type.values()[msg.readInt()];
-        System.out.println("Decode message; " + type.name()
-          + ", size: " + msg.readableBytes() + "byte array length " + len);
+        byte[] bytes = new byte[buf.readableBytes()];
+        buf.readBytes(bytes);
+        LambdaEvent lambdaEvent = (LambdaEvent) SerializationUtils.deserialize(bytes);
+        out.add(lambdaEvent);
 
-        byte[] arr = new byte[msg.readableBytes()];
-        msg.readBytes(arr);
-        System.out.println(arr.toString());
+        System.out.println("DEBUG " + lambdaEvent.getLen());
+        for(byte i : lambdaEvent.getBytes()) {
+          System.out.print(i);
+        }
 
-        out.add(new LambdaEvent(type, arr, len));
+/*        final int len = buf.readInt();
+        System.out.println("LambdaEventDecoder len: " + len);
+        final LambdaEvent.Type type = LambdaEvent.Type.values()[buf.readByte()];
+        System.out.println("LambdaEvent Type: " + type);
+        byte[] src = new byte[buf.readableBytes()];
+        System.out.println("Readable bytes" + buf.readableBytes());
+        buf.readBytes(src);
+        final LambdaEvent lambdaEvent = new LambdaEvent(type, src, len);
+        System.out.println("src: " + src.toString());
+
+        out.add(lambdaEvent);
+        System.out.println("Decoded LambdaEvent.toString: "
+          + lambdaEvent.toString() + " event bytes: "+ lambdaEvent.getBytes().toString());
+ */
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
         throw e;
@@ -82,4 +104,3 @@ public final class LambdaEventCoder {
     }
   }
 }
-

@@ -28,13 +28,16 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.commons.lang3.SerializationUtils;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableBiMap;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
 import org.apache.log4j.Level;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.lambda.common.Executor;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 
+import java.io.ObjectInputStream;
+import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -151,11 +154,18 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       switch (nemoEvent.getType()) {
         case WORKER_INIT:
           Task task;
-          // Task can be passed as bytebuf or byte array
-          task = SerializationUtils.deserialize(nemoEvent.getBytes());
           try {
-            System.out.println("Decode task successfully" + task.toString());
-            onTaskReceived(task);
+           // Task passed in a byte array
+           byte[] bytes = nemoEvent.getBytes();
+           ByteArrayInputStream byteInputStream = new ByteArrayInputStream(bytes);
+           ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream);
+           task = (Task) objectInputStream.readObject();
+           //task = SerializationUtils.deserialize(nemoEvent.getBytes());
+           System.out.println(ImmutableMap.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+           System.out.println(ImmutableBiMap.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+
+           System.out.println("Decode task successfully" + task.toString());
+           onTaskReceived(task);
           } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Read LambdaEvent bytebuf error");

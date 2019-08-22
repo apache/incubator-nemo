@@ -23,10 +23,7 @@ import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.Gson;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
-import io.netty.util.CharsetUtil;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -35,6 +32,10 @@ import org.apache.nemo.runtime.master.LambdaMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -112,9 +113,23 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     // write this task to the executor
     Channel channel = this.lambdaMaster.getExecutorChannel();
     System.out.println("onTaskScheduled write to this channel " + channel);
-    final byte[] serialized = SerializationUtils.serialize(task);
-    System.out.println(serialized.toString());
-    channel.writeAndFlush(new LambdaEvent(LambdaEvent.Type.WORKER_INIT, serialized, serialized.length));
+
+//    final byte[] serialized = SerializationUtils.serialize(task);
+    try {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+      objectOutputStream.writeObject(task);
+
+      byte[] bytes = byteArrayOutputStream.toByteArray();
+      System.out.println("Task bytes " + bytes + " length " + bytes.length);
+      channel.writeAndFlush(new LambdaEvent(LambdaEvent.Type.WORKER_INIT, bytes, bytes.length));
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    System.out.println("Task: " + task.toString());
+ //   System.out.println("LambdaEvent Len " + serialized.length);
+//    System.out.println(serialized.toString());
+//    channel.writeAndFlush(new LambdaEvent(LambdaEvent.Type.WORKER_INIT, serialized, serialized.length));
 
     System.out.println("Dispatch task to LambdaExecutor taskId: " + task.getTaskId());
   }
