@@ -175,13 +175,14 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    //LOG.info("On byteBuf {}", getContextId().getTransferIndex());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
 
       // add it to the queue
       final InputStreamIterator ii = inputStreamIterator;
       final Object event = ii.next();
+      LOG.info("On byteBuf {}, dataFetcher: {}, event: {}, taskExecutor: {}",
+        getContextId().getTransferIndex(), dataFetcher, event, taskExecutor);
       taskExecutor.handleIntermediateEvent(event, dataFetcher);
 
     } else {

@@ -390,4 +390,9 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
   public void close() throws Exception {
     queueInsertionThreads.shutdown();
   }
+
+  @Override
+  public String toString() {
+    return "dataFetcher" + taskId;
+  }
 }
