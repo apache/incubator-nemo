@@ -52,8 +52,11 @@ public final class ExecutorThread {
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
         //LOG.info("Pending source tasks: {}", pendingSourceTasks.size());
-        for (TaskExecutor sourceTask : pendingSourceTasks) {
+        final Iterator<TaskExecutor> iterator = pendingSourceTasks.iterator();
+        while (iterator.hasNext()) {
+          final TaskExecutor sourceTask = iterator.next();
           if (sourceTask.isSourceAvailable()) {
+            iterator.remove();
             synchronized (sourceTasks) {
               LOG.info("Add available source: {}", sourceTask.getId());
               sourceTasks.add(sourceTask);
