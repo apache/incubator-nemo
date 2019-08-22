@@ -63,7 +63,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public void prepare() {
-    LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
+    //LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
       kafkaReader = (KafkaUnboundedReader) reader;
@@ -77,7 +77,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public boolean isAvailable() {
-    LOG.info("unboudned source available: {}, {}", reader, isCurrentAvailable);
+    //LOG.info("unboudned source available: {}, {}", reader, isCurrentAvailable);
     if (reader == null) {
       return false;
     }

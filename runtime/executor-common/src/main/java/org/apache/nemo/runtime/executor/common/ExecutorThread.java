@@ -58,7 +58,7 @@ public final class ExecutorThread {
           if (sourceTask.isSourceAvailable()) {
             iterator.remove();
             synchronized (sourceTasks) {
-              LOG.info("Add available source: {}", sourceTask.getId());
+              //LOG.info("Add available source: {}", sourceTask.getId());
               sourceTasks.add(sourceTask);
             }
           }
@@ -125,7 +125,7 @@ public final class ExecutorThread {
                 sourceTask.handleSourceData();
               } else  {
                 iterator.remove();
-                LOG.info("Add pending task {}", sourceTask.getId());
+                //LOG.info("Add pending task {}", sourceTask.getId());
                 pendings.add(sourceTask);
               }
             }
