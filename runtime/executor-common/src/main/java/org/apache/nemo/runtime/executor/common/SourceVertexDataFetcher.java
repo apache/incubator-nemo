@@ -225,8 +225,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public boolean isAvailable() {
-    //LOG.info("Source {} available: {}, {}, {}, {}",
-    //  taskId, isStarted, isFinishd, readable.isAvailable(), watermarkProgressed);
+    LOG.info("Source {} available: {}, {}, {}, {}",
+      taskId, isStarted, isFinishd, readable.isAvailable(), watermarkProgressed);
     if (!isStarted) {
       return true;
     }
