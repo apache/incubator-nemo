@@ -49,6 +49,8 @@ public interface TaskExecutor extends AutoCloseable {
     DEOFFLOAD_PENDING
   }
 
+  ExecutorThread getExecutorThread();
+
   boolean isSource();
 
   boolean isSourceAvailable();

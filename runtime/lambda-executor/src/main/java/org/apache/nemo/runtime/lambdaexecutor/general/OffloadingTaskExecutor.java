@@ -722,6 +722,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
+  public ExecutorThread getExecutorThread() {
+    return executorThread;
+  }
+
+  @Override
   public boolean isSource() {
     return sourceVertexDataFetchers.size() > 0;
   }
