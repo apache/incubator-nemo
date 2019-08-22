@@ -308,7 +308,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean isSourceAvailable() {
-    LOG.info("Source available in {}", taskId);
+    //LOG.info("Source available in {}", taskId);
     for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
       if (sourceVertexDataFetcher.isAvailable()) {
         return true;
