@@ -82,6 +82,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public boolean isAvailable() {
+
+    LOG.info("unboudned source available: {}, {}", reader, isCurrentAvailable);
     if (reader == null) {
       return false;
     }
