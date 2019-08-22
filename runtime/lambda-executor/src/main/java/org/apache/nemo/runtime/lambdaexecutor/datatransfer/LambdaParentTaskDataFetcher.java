@@ -134,7 +134,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleIntermediateEvent(new Watermark(watermark.get()), this);
+        taskExecutor.handleIntermediateWatermarkEvent(new Watermark(watermark.get()), this);
       }
     }, 200, 200, TimeUnit.MILLISECONDS);
   }

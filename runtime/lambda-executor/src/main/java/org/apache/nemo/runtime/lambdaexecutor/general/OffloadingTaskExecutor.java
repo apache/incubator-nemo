@@ -26,6 +26,7 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -726,8 +727,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void handleIntermediateEvent(final Object element, final DataFetcher dataFetcher) {
+  public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
     executorThread.queue.add(() -> {
+      onEventFromDataFetcher(element, dataFetcher);
+    });
+  }
+
+  @Override
+  public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
+    executorThread.queue.add(() -> {
+      final Object element = iterator.next();
       if (!element.equals(EmptyElement.getInstance())) {
         onEventFromDataFetcher(element, dataFetcher);
       }

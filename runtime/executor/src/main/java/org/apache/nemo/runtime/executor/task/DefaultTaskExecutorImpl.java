@@ -52,6 +52,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -889,10 +890,18 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
   @Override
-  public void handleIntermediateEvent(final Object element, final DataFetcher dataFetcher) {
+  public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
     executorThread.queue.add(() -> {
+      onEventFromDataFetcher(element, dataFetcher);
+    });
+  }
+
+  @Override
+  public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
+    executorThread.queue.add(() -> {
+      final Object element = iterator.next();
       if (!element.equals(EmptyElement.getInstance())) {
-        LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+        //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
         onEventFromDataFetcher(element, dataFetcher);
       }
     });

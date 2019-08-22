@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -109,7 +110,8 @@ public interface TaskExecutor extends AutoCloseable {
   //int handleData();
 
   boolean handleSourceData();
-  void handleIntermediateEvent(final Object event, DataFetcher dataFetcher);
+  void handleIntermediateWatermarkEvent(final Object event, DataFetcher dataFetcher);
+  void handleIntermediateData(final IteratorWithNumBytes iterator, DataFetcher dataFetcher);
   void handleOffloadingEvent(final Object data);
 
   ////////////////////////////////////////////// Misc

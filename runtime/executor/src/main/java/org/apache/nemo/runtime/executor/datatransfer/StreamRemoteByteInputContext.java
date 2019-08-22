@@ -179,12 +179,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
 
       // add it to the queue
-      final InputStreamIterator ii = inputStreamIterator;
-      final Object event = ii.next();
-      LOG.info("On byteBuf {}, dataFetcher: {}, event: {}, taskExecutor: {}",
-        getContextId().getTransferIndex(), dataFetcher, event, taskExecutor);
-      taskExecutor.handleIntermediateEvent(event, dataFetcher);
-
+      taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
     } else {
       // ignore empty data frames
       byteBuf.release();

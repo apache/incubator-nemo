@@ -131,7 +131,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleIntermediateEvent(new Watermark(watermark.get()), this);
+        taskExecutor.handleIntermediateWatermarkEvent(new Watermark(watermark.get()), this);
       }
     });
   }
@@ -270,7 +270,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleIntermediateEvent(watermark.get(), this);
+        taskExecutor.handleIntermediateWatermarkEvent(watermark.get(), this);
       }
     });
     readersForParentTask.restart();
@@ -279,6 +279,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
 
     readersForParentTask.readAsync(taskId, pair -> {
+      //LOG.info("Task input context added {}", taskId, pair.left());
       taskAddPairQueue.add(pair);
     });
   }
