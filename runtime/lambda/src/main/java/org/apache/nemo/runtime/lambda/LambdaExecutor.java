@@ -28,6 +28,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.log4j.Level;
+import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.lambda.common.Executor;
+import org.apache.nemo.runtime.master.resource.LambdaEvent;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 
 import java.net.InetSocketAddress;
@@ -59,6 +64,8 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
   public Context handleRequest(final Map<String, Object> input, final Context context) {
     this.workerComplete = new CountDownLatch(1);
     this.lambdaEventHandler =  new LambdaEventHandler(this.workerComplete);
+
+    org.apache.log4j.Logger.getRootLogger().setLevel(Level.OFF);
 
     final String address = (String) input.get("address");
     final int port = (Integer) input.get("port");
@@ -100,6 +107,11 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
     return null;
   }
 
+  public void onTaskReceived(final Task task) {
+    Executor e = new Executor();
+    e.onTaskReceived(task);
+  }
+
   /**
    * Parse input.
    * @param input
@@ -119,4 +131,48 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
     final Channel opendChannel = channelFuture.channel();
     return opendChannel;
   }
+
+
+  public final class LambdaEventHandler {
+
+    private Channel channel;
+    private transient CountDownLatch workerComplete;
+
+    public LambdaEventHandler(final CountDownLatch workerComplete) {
+      this.workerComplete = workerComplete;
+    }
+
+    public void setChannel(Channel channel) {
+      this.channel = channel;
+    }
+
+    public synchronized void onNext(final LambdaEvent nemoEvent) {
+      System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
+      switch (nemoEvent.getType()) {
+        case WORKER_INIT:
+          Task task;
+          // Task can be passed as bytebuf or byte array
+          task = SerializationUtils.deserialize(nemoEvent.getBytes());
+          try {
+            System.out.println("Decode task successfully" + task.toString());
+            onTaskReceived(task);
+          } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Read LambdaEvent bytebuf error");
+          }
+          break;
+
+        case DATA:
+          throw new UnsupportedOperationException("DATA not supported");
+        case END:
+          // end of event
+          System.out.println("END received");
+          this.workerComplete.countDown();
+          break;
+        case WARMUP_END:
+          throw new UnsupportedOperationException("WARMUP_END not supported");
+      }
+    }
+  }
+
 }

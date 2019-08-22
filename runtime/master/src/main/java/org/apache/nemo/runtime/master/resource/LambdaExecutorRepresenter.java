@@ -113,6 +113,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     Channel channel = this.lambdaMaster.getExecutorChannel();
     System.out.println("onTaskScheduled write to this channel " + channel);
     final byte[] serialized = SerializationUtils.serialize(task);
+    System.out.println(serialized.toString());
     channel.writeAndFlush(new LambdaEvent(LambdaEvent.Type.WORKER_INIT, serialized, serialized.length));
 
     System.out.println("Dispatch task to LambdaExecutor taskId: " + task.getTaskId());

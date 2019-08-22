@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 public class LambdaExecutorInboundHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaExecutorInboundHandler.class.getName());
   private Channel channel;
-  private LambdaEventHandler lambdaEventHandler;
+  private LambdaExecutor.LambdaEventHandler lambdaEventHandler;
 
-  public void setEventHandler(LambdaEventHandler lambdaEventHandler) {
+  public void setEventHandler(LambdaExecutor.LambdaEventHandler lambdaEventHandler) {
     this.lambdaEventHandler = lambdaEventHandler;
   }
 
@@ -42,15 +42,8 @@ public class LambdaExecutorInboundHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
     System.out.println("Channel read from " + ctx.channel() + msg);
-    while (true) {
-      if (this.lambdaEventHandler != null) {
-        this.lambdaEventHandler.setChannel(this.channel);
-        this.lambdaEventHandler.onNext((LambdaEvent) msg);
-        return;
-      }
-      System.out.println("No event handler for msg " + msg.toString());
-      Thread.sleep(100);
-    }
+    lambdaEventHandler.setChannel(ctx.channel());
+    lambdaEventHandler.onNext((LambdaEvent) msg);
   }
 
   /**

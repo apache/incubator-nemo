@@ -50,27 +50,13 @@ public final class LambdaEvent implements Serializable {
   private final Type type;
   private final byte[] bytes;
   private final int len;
-  private ByteBuf byteBuf;
 
   public LambdaEvent(final Type type,
                          final byte[] bytes,
                          final int len) {
     this.type = type;
     this.bytes = bytes;
-    this.byteBuf = null;
     this.len = len;
-  }
-
-  public LambdaEvent(final Type type,
-                         final ByteBuf byteBuf) {
-    this.type = type;
-    this.bytes = null;
-    this.byteBuf = byteBuf;
-    this.len = 0;
-  }
-
-  public ByteBuf getByteBuf() {
-    return byteBuf;
   }
 
   public Type getType() {

@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.master.resource;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
@@ -43,23 +42,14 @@ public final class LambdaEventCoder {
     protected void encode(final ChannelHandlerContext ctx,
                           final LambdaEvent msg, final List<Object> out) throws Exception {
       System.out.println("LambdaEventEncoder->encode " + msg.getType());
-      if (msg.getByteBuf() != null) {
-        final ByteBuf buf = ctx.alloc().buffer(4);
-        buf.writeInt(msg.getType().ordinal());
-        LOG.info("Encode " + msg.getType().name() + ", size: "
-          + (buf.readableBytes() + msg.getByteBuf().readableBytes()));
-        final CompositeByteBuf compositeByteBuf =
-          ctx.alloc().compositeBuffer(2).addComponents(true, buf, msg.getByteBuf());
-        out.add(compositeByteBuf);
-      } else {
-        final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
-        LOG.info("Encoded bytes: " + msg.getLen() + 8);
-        buf.writeInt(msg.getType().ordinal());
-        buf.writeBytes(msg.getBytes(), 0, msg.getLen());
+      final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
+      LOG.info("Encoded bytes: " + msg.getLen() + 8);
+      buf.writeInt(msg.getLen());
+      buf.writeInt(msg.getType().ordinal());
+      buf.writeBytes(msg.getBytes(), 0, msg.getLen());
 
-        LOG.info("Encode " + msg.getType().name() + ", size: " + buf.readableBytes());
-        out.add(buf);
-      }
+      LOG.info("Encode " + msg.getType().name() + ", size: " + buf.readableBytes());
+      out.add(buf);
     }
   }
 
@@ -72,10 +62,19 @@ public final class LambdaEventCoder {
     protected void decode(final ChannelHandlerContext ctx,
                           final ByteBuf msg, final List<Object> out) throws Exception {
       System.out.println("LambdaEventDecoder->decode " + msg.toString());
+      System.out.println("Size: " + msg.readableBytes());
+      System.out.println("Size: " + msg.readableBytes());
       try {
+        final int len = msg.readInt();
         final LambdaEvent.Type type = LambdaEvent.Type.values()[msg.readInt()];
-        LOG.info("Decode message; " + type.name() + ", size: " + msg.readableBytes());
-        out.add(new LambdaEvent(type, msg.retain(1)));
+        System.out.println("Decode message; " + type.name()
+          + ", size: " + msg.readableBytes() + "byte array length " + len);
+
+        byte[] arr = new byte[msg.readableBytes()];
+        msg.readBytes(arr);
+        System.out.println(arr.toString());
+
+        out.add(new LambdaEvent(type, arr, len));
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
         throw e;
