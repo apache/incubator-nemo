@@ -138,6 +138,7 @@ public final class ExecutorThread {
           // process intermediate data
           while (!queue.isEmpty()) {
             final Runnable runnable = queue.poll();
+            LOG.info("Polling queue");
             runnable.run();
 
             while (!deletedTasks.isEmpty()) {
