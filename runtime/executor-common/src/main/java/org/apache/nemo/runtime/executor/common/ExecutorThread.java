@@ -140,8 +140,7 @@ public final class ExecutorThread {
           while (runnableIterator.hasNext()) {
             final Runnable runnable = runnableIterator.next();
             runnableIterator.remove();
-
-            LOG.info("Polling queue");
+            //LOG.info("Polling queue");
             runnable.run();
 
             while (!deletedTasks.isEmpty()) {
