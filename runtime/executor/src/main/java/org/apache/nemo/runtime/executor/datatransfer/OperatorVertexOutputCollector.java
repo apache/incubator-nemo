@@ -204,12 +204,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       proceseedCnt += 1;
       final long currTime = System.currentTimeMillis();
 
+      /*
       if (currTime - prevLogTime >= 1000) {
         LOG.info("Thp: {} at {}", (1000* proceseedCnt / (currTime - prevLogTime)),
           taskId);
         proceseedCnt = 0;
         prevLogTime = currTime;
       }
+      */
 
       if (random.nextDouble() < samplingRate) {
         final int latency = (int)((currTime - inputTimestamp));
