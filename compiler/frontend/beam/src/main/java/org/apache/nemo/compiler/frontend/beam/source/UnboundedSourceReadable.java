@@ -86,6 +86,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return true;
     } else {
       try {
+        // poll kafka
+        kafkaReader.pollRecord(5);
         isCurrentAvailable =  reader.advance();
       } catch (IOException e) {
         e.printStackTrace();
@@ -117,7 +119,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     } else {
       // poll kafka
       kafkaReader.pollRecord(5);
-
       // set current available
       try{
         isCurrentAvailable = reader.advance();
