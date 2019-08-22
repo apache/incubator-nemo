@@ -297,13 +297,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
         task,
-        executorAddressMap,
         serializerMap,
-        byteTransport,
-        pipeManagerWorker,
         intermediateDataIOFactory,
         oc,
-        scheduledExecutorService,
         prepareService,
         executorGlobalInstances,
         rendevousServerClient,

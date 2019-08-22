@@ -31,6 +31,8 @@ public final class ExecutorThread {
 
   public final ConcurrentLinkedQueue<Runnable> queue;
 
+  private List<TaskExecutor> tasks;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -41,6 +43,7 @@ public final class ExecutorThread {
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
     this.queue = new ConcurrentLinkedQueue<>();
+    this.tasks = new ArrayList<>();
   }
 
   public void deleteTask(final TaskExecutor task) {
@@ -48,6 +51,7 @@ public final class ExecutorThread {
   }
 
   public void addNewTask(final TaskExecutor task) {
+    tasks.add(task);
     //newTasks.add(task);
   }
 
@@ -66,6 +70,7 @@ public final class ExecutorThread {
 
           while (!deletedTasks.isEmpty()) {
             final TaskExecutor deletedTask = deletedTasks.poll();
+            tasks.remove(deletedTask);
 
             LOG.info("Deleting task {}", deletedTask.getId());
             //availableTasks.remove(deletedTask);
@@ -88,12 +93,22 @@ public final class ExecutorThread {
           }
           */
 
+          // for source
+          boolean processed = false;
+          synchronized (tasks) {
+            for (final TaskExecutor taskExecutor : tasks) {
+              processed = processed || taskExecutor.handleSourceData();
+            }
+          }
+
+          // four intermediate data
           while (!queue.isEmpty()) {
             final Runnable runnable = queue.poll();
             runnable.run();
 
             while (!deletedTasks.isEmpty()) {
               final TaskExecutor deletedTask = deletedTasks.poll();
+              tasks.remove(deletedTask);
 
               LOG.info("Deleting task {}", deletedTask.getId());
               //availableTasks.remove(deletedTask);
@@ -119,7 +134,7 @@ public final class ExecutorThread {
             }
           }
 
-          if (queue.isEmpty()) {
+          if (!processed && queue.isEmpty()) {
             Thread.sleep(10);
           }
         }

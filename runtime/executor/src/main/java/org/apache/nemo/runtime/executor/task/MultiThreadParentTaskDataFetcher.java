@@ -23,7 +23,6 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -32,7 +31,6 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +131,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleEvent(watermark.get(), this);
+        taskExecutor.handleIntermediateEvent(watermark.get(), this);
       }
     });
   }
@@ -272,7 +270,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
         //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
         prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleEvent(watermark.get(), this);
+        taskExecutor.handleIntermediateEvent(watermark.get(), this);
       }
     });
     readersForParentTask.restart();

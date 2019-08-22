@@ -226,8 +226,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
   }
 
   private Object retrieveElement() {
-
-
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       watermarkTriggered = false;

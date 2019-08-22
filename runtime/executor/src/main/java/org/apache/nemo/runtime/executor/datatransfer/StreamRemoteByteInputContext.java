@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -34,7 +33,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.Queue;
 import java.util.concurrent.*;
 
 /**
@@ -184,7 +182,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
       // add it to the queue
       final InputStreamIterator ii = inputStreamIterator;
       final Object event = ii.next();
-      taskExecutor.handleEvent(event, dataFetcher);
+      taskExecutor.handleIntermediateEvent(event, dataFetcher);
 
     } else {
       // ignore empty data frames

@@ -54,20 +54,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class TinyTaskOffloader implements Offloader {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloader.class.getName());
 
-  private final byte[] serializedDag;
   private final Map<String, List<String>> taskOutgoingEdges;
-  private final SerializerManager serializerManager;
-  private final ConcurrentLinkedQueue<Object> offloadingEventQueue;
   private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
   private final String taskId;
-  final ExecutorService closeService = Executors.newSingleThreadExecutor();
-
-
-  private static final AtomicInteger sourceId = new AtomicInteger(0);
-
-  private final List<OffloadingWorker> runningWorkers = new ArrayList<>();
-  final ConcurrentMap<Integer, KafkaOffloadingDataEvent> offloadedDataFetcherMap = new ConcurrentHashMap<>();
-  final Queue<KafkaOffloadingRequestEvent> kafkaOffloadPendingEvents = new LinkedBlockingQueue<>();
 
   private final AtomicReference<TaskExecutor.Status> taskStatus;
 
@@ -76,10 +65,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final AtomicLong prevOffloadStartTime;
   private final AtomicLong prevOffloadEndTime;
 
-  private final Map<String, InetSocketAddress> executorAddressMap;
-  private final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap;
   private final String executorId;
-  private final Task task;
 
   private final EvalConf evalConf;
   private final PersistentConnectionToMasterMap toMaster;
@@ -107,28 +93,20 @@ public final class TinyTaskOffloader implements Offloader {
   private TinyTaskWorker tinyTaskWorker;
 
   private final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
-  private final GlobalOffloadDone globalOffloadDone = GlobalOffloadDone.getInstance();
 
   private final ExecutorThread executorThread;
   private final ScheduledExecutorService scheduledExecutorService;
 
   public TinyTaskOffloader(final String executorId,
-                           final Task task,
                            final TaskExecutor taskExecutor,
                            final EvalConf evalConf,
-                           final Map<String, InetSocketAddress> executorAddressMap,
-                           final Map<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap,
                            final byte[] serializedDag,
                            final List<StageEdge> copyOutgoingEdges,
                            final List<StageEdge> copyIncomingEdges,
                            final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                            final Map<String, List<String>> taskOutgoingEdges,
-                           final SerializerManager serializerManager,
-                           final ConcurrentLinkedQueue<Object> offloadingEventQueue,
                            final List<SourceVertexDataFetcher> sourceVertexDataFetchers,
                            final String taskId,
-                           final List<DataFetcher> availableFetchers,
-                           final List<DataFetcher> pendingFetchers,
                            final SourceVertexDataFetcher sourceDataFetcher,
                            final AtomicReference<TaskExecutor.Status> taskStatus,
                            final AtomicLong prevOffloadStartTime,
@@ -136,29 +114,21 @@ public final class TinyTaskOffloader implements Offloader {
                            final PersistentConnectionToMasterMap toMaster,
                            final Collection<OutputWriter> outputWriters,
                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                           final RelayServer relayServer,
                            final TaskLocationMap taskLocationMap,
-                           final ExecutorThread executorThread) {
+                           final ExecutorThread executorThread,
+                           final List<DataFetcher> fetchers) {
     this.executorThread = executorThread;
     this.scheduledExecutorService = executorThread.scheduledExecutorService;
     this.executorId = executorId;
-    this.task = task;
     this.taskExecutor = taskExecutor;
     this.copyOutgoingEdges = copyOutgoingEdges;
     this.copyIncomingEdges = copyIncomingEdges;
     this.evalConf = evalConf;
-    this.executorAddressMap = executorAddressMap;
-    this.taskExecutorIdMap = taskExecutorIdMap;
-    this.serializedDag = serializedDag;
     this.copyDag = SerializationUtils.deserialize(serializedDag);
     this.tinyWorkerManager = tinyWorkerManager;
     this.taskOutgoingEdges = taskOutgoingEdges;
-    this.allFetchers.addAll(availableFetchers);
-    this.allFetchers.addAll(pendingFetchers);
-    this.serializerManager = serializerManager;
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
-    this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
     this.taskStatus = taskStatus;
@@ -169,6 +139,8 @@ public final class TinyTaskOffloader implements Offloader {
     this.irVertexDag = irVertexDag;
 
     this.taskLocationMap = taskLocationMap;
+
+    this.allFetchers.addAll(fetchers);
 
     /*
     logger.scheduleAtFixedRate(() -> {

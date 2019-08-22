@@ -48,8 +48,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingTaskExecutor.class.getName());
 
   private final OffloadingTask offloadingTask;
-  private final LambdaByteTransport byteTransport;
-  private final PipeManagerWorker pipeManagerWorker;
   private final OffloadingOutputCollector oc;
   private final OffloadingResultCollector resultCollector;
 
@@ -57,18 +55,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final Map<String, KafkaOperatorVertexOutputCollector> outputCollectorMap;
   private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
 
-  private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<String, Serializer> serializerMap;
   private final Set<PipeOutputWriter> pipeOutputWriters;
 
-  private final List<DataFetcher> availableFetchers;
-  private final List<DataFetcher> pendingFetchers;
+  private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
 
-  private final int pollingInterval = 50; // ms
-  private boolean pollingTime = false;
-
-  private final ScheduledExecutorService pollingTrigger;
-  public final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private boolean finished = false;
 
@@ -77,7 +68,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ExecutorService prepareService;
 
   private final ExecutorGlobalInstances executorGlobalInstances;
-  final List<DataFetcher> allFetchers;
+  final List<DataFetcher> allFetchers = new ArrayList<>();
 
   private final RendevousServerClient rendevousServerClient;
 
@@ -85,31 +76,22 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
-                                final Map<String, InetSocketAddress> executorAddressMap,
                                 final Map<String, Serializer> serializerMap,
-                                final LambdaByteTransport byteTransport,
-                                final PipeManagerWorker pipeManagerWorker,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
                                 final OffloadingOutputCollector oc,
-                                final ScheduledExecutorService pollingTrigger,
                                 final ExecutorService prepareService,
                                 final ExecutorGlobalInstances executorGlobalInstances,
                                 final RendevousServerClient rendevousServerClient,
                                 final ExecutorThread executorThread) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
-    this.executorAddressMap = executorAddressMap;
-    this.byteTransport = byteTransport;
-    this.pipeManagerWorker = pipeManagerWorker;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.oc = oc;
+    this.sourceVertexDataFetchers = new ArrayList<>();
     this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
     this.pipeOutputWriters = new HashSet<>();
     this.resultCollector = new OffloadingResultCollector(oc);
-    this.availableFetchers = new ArrayList<>();
-    this.pendingFetchers = new ArrayList<>();
-    this.pollingTrigger = pollingTrigger;
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
     this.rendevousServerClient = rendevousServerClient;
@@ -122,8 +104,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     */
 
     prepare();
-
-    allFetchers = new ArrayList<>(availableFetchers);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -263,7 +243,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
           beamUnboundedSourceVertex, edge, readable, outputCollector, prepareService, offloadingTask.taskId,
           executorGlobalInstances);
-        availableFetchers.add(dataFetcher);
+        allFetchers.add(dataFetcher);
+        sourceVertexDataFetchers.add(dataFetcher);
       }
 
       // task incoming edges!!
@@ -291,7 +272,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
                 outputCollector, edgeIndex, watermarkManager);
-            availableFetchers.add(
+            allFetchers.add(
               new LambdaParentTaskDataFetcher(
                 offloadingTask.taskId,
                 parentTaskReader.getSrcIrVertex(),
@@ -353,10 +334,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public void close() {
-    final Set<DataFetcher> allFetchers = new HashSet<>();
-    allFetchers.addAll(availableFetchers);
-    allFetchers.addAll(pendingFetchers);
-
     for (final DataFetcher dataFetcher : allFetchers) {
       LOG.info("Stopping data fetcher {}", dataFetcher);
       pendingFutures.add(dataFetcher.stop(offloadingTask.taskId));
@@ -387,12 +364,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public void finish() {
 
-    final Set<DataFetcher> allFetchers = new HashSet<>();
-    allFetchers.addAll(availableFetchers);
-    allFetchers.addAll(pendingFetchers);
-
-    availableFetchers.clear();
-    pendingFetchers.clear();
 
     LOG.info("Finishing {}", offloadingTask.taskId);
 
@@ -632,7 +603,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public AtomicLong getTaskExecutionTime() {
-    return taskExecutionTime;
+    return null;
   }
 
   @Override
@@ -724,8 +695,23 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     throw new UnsupportedOperationException();
   }
 
+  // exeutor thread가 바로 부르는 method
   @Override
-  public void handleEvent(final Object element, final DataFetcher dataFetcher) {
+  public boolean handleSourceData() {
+    boolean processed = false;
+
+    for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
+      final Object event = dataFetcher.fetchDataElement();
+      if (!event.equals(EmptyElement.getInstance()))  {
+        onEventFromDataFetcher(event, dataFetcher);
+        processed = true;
+      }
+    }
+    return processed;
+  }
+
+  @Override
+  public void handleIntermediateEvent(final Object element, final DataFetcher dataFetcher) {
     executorThread.queue.add(() -> {
       if (!element.equals(EmptyElement.getInstance())) {
         onEventFromDataFetcher(element, dataFetcher);

@@ -104,7 +104,8 @@ public interface TaskExecutor extends AutoCloseable {
    */
   //int handleData();
 
-  void handleEvent(final Object event, DataFetcher dataFetcher);
+  boolean handleSourceData();
+  void handleIntermediateEvent(final Object event, DataFetcher dataFetcher);
   void handleOffloadingEvent(final Object data);
 
   ////////////////////////////////////////////// Misc

@@ -195,7 +195,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
       // add it to the queue
       final InputStreamIterator ii = inputStreamIterator;
       final Object event = ii.next();
-      taskExecutor.handleEvent(event, dataFetcher);
+      taskExecutor.handleIntermediateEvent(event, dataFetcher);
 
     } else {
       // ignore empty data frames
