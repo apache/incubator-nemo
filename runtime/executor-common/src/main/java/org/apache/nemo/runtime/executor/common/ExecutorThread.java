@@ -74,6 +74,7 @@ public final class ExecutorThread {
   }
 
   public void addNewTask(final TaskExecutor task) {
+    LOG.info("Add task {}", task.getId());
     if (task.isSource()) {
       synchronized (pendingSourceTasks) {
         pendingSourceTasks.add(task);
@@ -160,6 +161,7 @@ public final class ExecutorThread {
 
               try {
                 deletedTask.close();
+                finishedTasks.add(deletedTask);
               } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
