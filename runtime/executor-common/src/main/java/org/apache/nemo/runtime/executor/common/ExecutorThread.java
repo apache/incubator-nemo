@@ -51,7 +51,9 @@ public final class ExecutorThread {
   }
 
   public void addNewTask(final TaskExecutor task) {
-    tasks.add(task);
+    synchronized (tasks) {
+      tasks.add(task);
+    }
     //newTasks.add(task);
   }
 
