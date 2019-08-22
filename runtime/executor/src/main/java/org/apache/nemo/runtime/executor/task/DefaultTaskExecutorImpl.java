@@ -900,12 +900,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
     if (iterator.hasNext()) {
-      executorThread.queue.add(() -> {
+      executorThread.decoderThread.execute(() -> {
         final Object element = iterator.next();
-        if (!element.equals(EmptyElement.getInstance())) {
-          LOG.info("handle intermediate data {}, {}", element, dataFetcher);
-          onEventFromDataFetcher(element, dataFetcher);
-        }
+        executorThread.queue.add(() -> {
+          if (!element.equals(EmptyElement.getInstance())) {
+            LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+            onEventFromDataFetcher(element, dataFetcher);
+          }
+        });
       });
     }
   }

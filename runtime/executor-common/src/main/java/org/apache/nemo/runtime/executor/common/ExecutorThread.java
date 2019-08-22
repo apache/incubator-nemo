@@ -35,6 +35,8 @@ public final class ExecutorThread {
   private final List<TaskExecutor> sourceTasks;
   private final List<TaskExecutor> pendingSourceTasks;
 
+  public final ExecutorService decoderThread = Executors.newSingleThreadExecutor();
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
