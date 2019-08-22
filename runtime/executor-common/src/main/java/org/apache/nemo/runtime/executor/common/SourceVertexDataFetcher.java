@@ -221,7 +221,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public boolean isAvailable() {
-    return !isFinishd && (readable.isAvailable() || watermarkProgressed);
+    return !isStarted || !isFinishd && (readable.isAvailable() || watermarkProgressed);
   }
 
   @Override
