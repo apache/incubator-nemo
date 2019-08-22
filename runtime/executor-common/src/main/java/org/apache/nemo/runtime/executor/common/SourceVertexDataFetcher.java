@@ -79,6 +79,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     if (!bounded) {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
         final long watermarkTimestamp = readable.readWatermark();
+        LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
         if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
           LOG.info("Watermark progressed {}", watermarkTimestamp);
           watermarkProgressed = true;

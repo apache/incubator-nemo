@@ -26,7 +26,10 @@ import java.util.concurrent.ExecutorService;
 public final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark> implements Readable<Object> {
   private final UnboundedSource<O, M> unboundedSource;
   private UnboundedSource.UnboundedReader<O> reader;
+  private boolean isStarted = false;
   private volatile boolean isCurrentAvailable = false;
+  private volatile boolean isKafkaPolled = false;
+  private volatile boolean isKafkaPolling = false;
   private boolean isFinished = false;
 
   private final PipelineOptions pipelineOptions;
@@ -37,6 +40,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   private KafkaUnboundedReader kafkaReader;
 
 
+  private ExecutorService readableService;
   /**
    * Constructor.
    * @param unboundedSource unbounded source.
@@ -63,8 +67,9 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public void prepare() {
-    //LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
+    LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
+      readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
       kafkaReader = (KafkaUnboundedReader) reader;
 
@@ -77,7 +82,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public boolean isAvailable() {
-    //LOG.info("unboudned source available: {}, {}", reader, isCurrentAvailable);
     if (reader == null) {
       return false;
     }
@@ -86,8 +90,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return true;
     } else {
       try {
-        // poll kafka
-        kafkaReader.pollRecord(5);
         isCurrentAvailable =  reader.advance();
       } catch (IOException e) {
         e.printStackTrace();
@@ -117,15 +119,25 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
-      // poll kafka
-      kafkaReader.pollRecord(5);
-      // set current available
-      try{
-        isCurrentAvailable = reader.advance();
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+      if (!isKafkaPolling) {
+        isKafkaPolling = true;
+        readableService.execute(() -> {
+
+          // poll kafka
+          kafkaReader.pollRecord(5);
+
+          // set current available
+          try{
+            isCurrentAvailable = reader.advance();
+          } catch (final IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          isKafkaPolling = false;
+        });
       }
+
       return EmptyElement.getInstance();
     }
 
