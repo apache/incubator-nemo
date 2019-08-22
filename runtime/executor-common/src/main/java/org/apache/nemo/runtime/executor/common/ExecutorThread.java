@@ -94,7 +94,7 @@ public final class ExecutorThread {
           finishedExecutors.add(pendingTask);
         }
       }
-    }, 100, 100, TimeUnit.MILLISECONDS);
+    }, 50, 50, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
       try {
@@ -178,7 +178,7 @@ public final class ExecutorThread {
           }
 
           if (availableTasks.isEmpty()) {
-            Thread.sleep(100);
+            Thread.sleep(10);
           }
 
           while (!finishedExecutors.isEmpty()) {
