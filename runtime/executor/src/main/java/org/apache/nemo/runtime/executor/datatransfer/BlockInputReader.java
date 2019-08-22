@@ -29,6 +29,7 @@ import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
@@ -69,6 +70,11 @@ public final class BlockInputReader implements InputReader {
   @Override
   public void restart() {
     throw new RuntimeException("unsupported");
+  }
+
+  @Override
+  public void setDataFetcher(DataFetcher dataFetcher) {
+
   }
 
   @Override

@@ -26,6 +26,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -97,10 +98,11 @@ public final class IntermediateDataIOFactory {
    */
   public InputReader createReader(final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
-                                  final RuntimeEdge runtimeEdge) {
+                                  final RuntimeEdge runtimeEdge,
+                                  final TaskExecutor taskExecutor) {
     if (isPipe(runtimeEdge)) {
       return new PipeInputReader(executorId, dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap,
-        relayServer, taskLocationMap);
+        relayServer, taskLocationMap, taskExecutor);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

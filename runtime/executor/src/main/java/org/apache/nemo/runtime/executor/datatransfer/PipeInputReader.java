@@ -26,6 +26,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
@@ -69,6 +71,9 @@ public final class PipeInputReader implements InputReader {
 
   private final AtomicBoolean stopped = new AtomicBoolean(false);
 
+  private final TaskExecutor taskExecutor;
+  private DataFetcher dataFetcher;
+
   PipeInputReader(final String executorId,
                   final int dstTaskIdx,
                   final IRVertex srcIRVertex,
@@ -76,9 +81,11 @@ public final class PipeInputReader implements InputReader {
                   final PipeManagerWorker pipeManagerWorker,
                   final TaskInputContextMap taskInputContextMap,
                   final RelayServer relayServer,
-                  final TaskLocationMap taskLocationMap) {
+                  final TaskLocationMap taskLocationMap,
+                  final TaskExecutor taskExecutor) {
     this.executorId = executorId;
     this.dstTaskIndex = dstTaskIdx;
+    this.taskExecutor = taskExecutor;
     this.srcVertex = srcIRVertex;
     this.taskInputContextMap = taskInputContextMap;
     this.runtimeEdge = runtimeEdge;
@@ -217,6 +224,11 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public void setDataFetcher(DataFetcher df) {
+    dataFetcher = df;
+  }
+
+  @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
@@ -253,7 +265,7 @@ public final class PipeInputReader implements InputReader {
           handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
         } else if (context instanceof StreamRemoteByteInputContext) {
           handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())),
+            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()), taskExecutor, dataFetcher),
             srcTaskIndex));
         } else {
           throw new RuntimeException("Unsupported type " + context);

@@ -24,6 +24,8 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 
@@ -49,15 +51,20 @@ public final class LambdaPipeInputReader implements InputReader {
   private final RuntimeEdge runtimeEdge;
   private final String taskId;
 
+  private DataFetcher dataFetcher;
+  private final TaskExecutor taskExecutor;
+
   LambdaPipeInputReader(final int dstTaskIdx,
                         final IRVertex srcIRVertex,
                         final RuntimeEdge runtimeEdge,
                         final PipeManagerWorker pipeManagerWorker,
-                        final String taskId) {
+                        final String taskId,
+                        final TaskExecutor taskExecutor) {
     this.dstTaskIndex = dstTaskIdx;
     this.srcVertex = srcIRVertex; this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskId = taskId;
+    this.taskExecutor = taskExecutor;
   }
 
 
@@ -72,18 +79,23 @@ public final class LambdaPipeInputReader implements InputReader {
   }
 
   @Override
+  public void setDataFetcher(DataFetcher df) {
+    dataFetcher = df;
+  }
+
+  @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
     if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
-      return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex));
+      return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex, taskExecutor, dataFetcher));
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
       final int numSrcTasks = InputReader.getSourceParallelism(this);
       final List<CompletableFuture<IteratorWithNumBytes>> futures = new ArrayList<>();
       for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-        futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
+        futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex, taskExecutor, dataFetcher));
       }
       return futures;
     } else {

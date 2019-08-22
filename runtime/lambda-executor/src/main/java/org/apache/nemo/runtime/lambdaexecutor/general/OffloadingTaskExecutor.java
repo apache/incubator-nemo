@@ -81,6 +81,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final RendevousServerClient rendevousServerClient;
 
+  private final ExecutorThread executorThread;
+
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
@@ -92,7 +94,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final ScheduledExecutorService pollingTrigger,
                                 final ExecutorService prepareService,
                                 final ExecutorGlobalInstances executorGlobalInstances,
-                                final RendevousServerClient rendevousServerClient) {
+                                final RendevousServerClient rendevousServerClient,
+                                final ExecutorThread executorThread) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
     this.executorAddressMap = executorAddressMap;
@@ -110,6 +113,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
     this.rendevousServerClient = rendevousServerClient;
+    this.executorThread = executorThread;
 
     /*
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -268,12 +272,14 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
         .map(incomingEdge -> {
 
+
+
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, offloadingTask.taskIndex,
             offloadingTask.taskId);
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
             .createReader(offloadingTask.taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge,
-              offloadingTask.taskId));
+              offloadingTask.taskId, this));
         })
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
@@ -292,7 +298,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                 edge,
                 parentTaskReader,
                 dataFetcherOutputCollector,
-                rendevousServerClient));
+                rendevousServerClient,
+                this));
 
           }
         });
@@ -311,94 +318,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
       }
     });
-  }
-
-  // receive batch (list) data
-  @Override
-  public int handleData() {
-    int processedCnt = 0;
-    boolean dataProcessed = false;
-
-    // We first fetch data from available data fetchers
-    final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
-    while (availableIterator.hasNext()) {
-
-      final DataFetcher dataFetcher = availableIterator.next();
-      try {
-        //final long a = System.currentTimeMillis();
-        final Object element = dataFetcher.fetchDataElement();
-
-        if (element.equals(EmptyElement.getInstance())) {
-          //LOG.info("No such element...");
-          // No element in current data fetcher, fetch data from next fetcher
-          // move current data fetcher to pending.
-          availableIterator.remove();
-          pendingFetchers.add(dataFetcher);
-        } else {
-
-          //fetchTime += (System.currentTimeMillis() - a);
-
-          //final long b = System.currentTimeMillis();
-          onEventFromDataFetcher(element, dataFetcher);
-          //processingTime += (System.currentTimeMillis() - b);
-          dataProcessed = true;
-          processedCnt += 1;
-
-          if (element instanceof Finishmark) {
-            availableIterator.remove();
-          }
-        }
-      } catch (final NoSuchElementException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-
-    final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
-
-    // We check pending data every polling interval
-    pollingTime = false;
-
-    while (pendingIterator.hasNext()) {
-      final DataFetcher dataFetcher = pendingIterator.next();
-      try {
-        //final long a = System.currentTimeMillis();
-        final Object element = dataFetcher.fetchDataElement();
-        //fetchTime += (System.currentTimeMillis() - a);
-
-        if (element.equals(EmptyElement.getInstance())) {
-          // The current data fetcher is still pending.. try next data fetcher
-        } else {
-          //final long b = System.currentTimeMillis();
-          onEventFromDataFetcher(element, dataFetcher);
-          // processingTime += (System.currentTimeMillis() - b);
-
-          // We processed data. This means the data fetcher is now available.
-          // Add current data fetcher to available
-          pendingIterator.remove();
-          if (!(element instanceof Finishmark)) {
-            availableFetchers.add(dataFetcher);
-          }
-
-          processedCnt += 1;
-          dataProcessed = true;
-        }
-      } catch (final NoSuchElementException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-
-    if (dataProcessed && processedCnt == 0) {
-      processedCnt += 1;
-    }
-    return processedCnt;
   }
 
   private void processWatermark(final OutputCollector outputCollector,
@@ -712,11 +631,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public ConcurrentLinkedQueue<Object> getOffloadingQueue() {
-    return null;
-  }
-
-  @Override
   public AtomicLong getTaskExecutionTime() {
     return taskExecutionTime;
   }
@@ -759,11 +673,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public String getId() {
     return offloadingTask.taskId;
-  }
-
-  @Override
-  public boolean hasData() {
-    return hasEventInFetchers();
   }
 
   private boolean hasEventInFetchers() {
@@ -812,6 +721,20 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public void sendToServerless(Object event, List<String> nextOperatorIds, long wm, String edgeId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void handleEvent(final Object element, final DataFetcher dataFetcher) {
+    executorThread.queue.add(() -> {
+      if (!element.equals(EmptyElement.getInstance())) {
+        onEventFromDataFetcher(element, dataFetcher);
+      }
+    });
+  }
+
+  @Override
+  public void handleOffloadingEvent(Object data) {
     throw new UnsupportedOperationException();
   }
 

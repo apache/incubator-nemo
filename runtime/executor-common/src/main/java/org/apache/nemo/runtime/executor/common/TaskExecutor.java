@@ -56,8 +56,6 @@ public interface TaskExecutor extends AutoCloseable {
 
   public void setOffloadedTaskTime(final long t);
 
-  ConcurrentLinkedQueue<Object> getOffloadingQueue();
-
   AtomicLong getTaskExecutionTime();
 
   OutputCollector getVertexOutputCollector(String vertexId);
@@ -76,7 +74,7 @@ public interface TaskExecutor extends AutoCloseable {
 
   String getId();
 
-  boolean hasData();
+  //boolean hasData();
 
   boolean isStateless();
 
@@ -104,7 +102,10 @@ public interface TaskExecutor extends AutoCloseable {
    * Executor should call this function.
    * @return true if an event is processed
    */
-  int handleData();
+  //int handleData();
+
+  void handleEvent(final Object event, DataFetcher dataFetcher);
+  void handleOffloadingEvent(final Object data);
 
   ////////////////////////////////////////////// Misc
 

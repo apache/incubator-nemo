@@ -386,6 +386,11 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
+
+      final int numTask = numReceivedTasks.getAndIncrement();
+      final int index = numTask % evalConf.executorThreadNum;
+      final ExecutorThread executorThread = executorThreads.get(index);
+
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(
         Thread.currentThread().getId(),
@@ -411,49 +416,10 @@ public final class Executor {
         taskLocationMap,
         prepareService,
         executorGlobalInstances,
-        rendevousServerClient);
+        rendevousServerClient,
+        executorThread);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
-
-
-      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
-      final Pair<AtomicInteger, List<ExecutorThread>> pair =
-        stageExecutorThreadMap.getStageExecutorThreadMap().getOrDefault(stageId,
-        Pair.of(new AtomicInteger(0), new ArrayList<>(evalConf.executorThreadNum)));
-
-
-      /*
-      final List<ExecutorThread> executorThreads = pair.right();
-
-      if (stageExecutorThreadMap.getStageExecutorThreadMap().putIfAbsent(stageId, pair) == null) {
-        // initialize threads
-        synchronized (executorThreads) {
-          for (int i = 0; i < evalConf.executorThreadNum; i++) {
-            executorThreads.add(new ExecutorThread(i, executorId + "-" + stageId));
-            executorThreads.get(i).start();
-          }
-        }
-      }
-
-      final int numTask = pair.left().getAndIncrement();
-      final int index = numTask % evalConf.executorThreadNum;
-
-
-      while (true) {
-        synchronized (executorThreads) {
-          if (executorThreads.size() == evalConf.executorThreadNum) {
-            LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
-            executorThreads.get(index).addNewTask(taskExecutor);
-            break;
-          } else {
-            Thread.sleep(500);
-          }
-        }
-      }
-      */
-
-      final int numTask = numReceivedTasks.getAndIncrement();
-      final int index = numTask % evalConf.executorThreadNum;
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.get(index).addNewTask(taskExecutor);
 

@@ -48,9 +48,13 @@ public abstract class DataFetcher implements AutoCloseable {
     this.outputCollector = outputCollector;
   }
 
+  // check data + watermark
   public boolean isAvailable() {
     return true;
   }
+
+  // just check data
+  public abstract boolean hasData();
 
   /**
    * Can block until the next data element becomes available.

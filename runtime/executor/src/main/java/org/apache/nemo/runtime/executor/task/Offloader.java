@@ -25,7 +25,4 @@ public interface Offloader {
 
   public void handleStartOffloadingEvent(TinyTaskWorker worker);
 
-  public boolean hasPendingStraemingWorkers();
-
-  public void handlePendingStreamingWorkers();
 }

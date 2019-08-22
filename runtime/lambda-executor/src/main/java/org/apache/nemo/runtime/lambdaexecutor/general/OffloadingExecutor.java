@@ -306,7 +306,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         scheduledExecutorService,
         prepareService,
         executorGlobalInstances,
-        rendevousServerClient);
+        rendevousServerClient,
+        executorThread);
 
       LOG.info("End of creating offloading task {}", task.taskId);
 

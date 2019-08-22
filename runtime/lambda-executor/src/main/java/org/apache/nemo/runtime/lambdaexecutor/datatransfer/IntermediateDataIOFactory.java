@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 
 import java.util.Map;
@@ -48,7 +49,8 @@ public final class IntermediateDataIOFactory {
   public InputReader createReader(final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge,
-                                  final String taskId) {
-    return new LambdaPipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskId);
+                                  final String taskId,
+                                  final TaskExecutor taskExecutor) {
+    return new LambdaPipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskId, taskExecutor);
   }
 }

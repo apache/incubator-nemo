@@ -404,7 +404,7 @@ public final class KafkaOffloader implements Offloader {
     }
   }
 
-  @Override
+  //@Override
   public boolean hasPendingStraemingWorkers() {
     return !kafkaOffloadPendingEvents.isEmpty();
   }
@@ -418,7 +418,7 @@ public final class KafkaOffloader implements Offloader {
     return true;
   }
 
-  @Override
+  //@Override
   public synchronized void handlePendingStreamingWorkers() {
 
     if (kafkaOffloadPendingEvents.isEmpty()) {

@@ -22,7 +22,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
 
 
   public ExecutorGlobalInstances() {
-    this.watermarkTriggerService = Executors.newScheduledThreadPool(3);
+    this.watermarkTriggerService = Executors.newScheduledThreadPool(10);
     this.watermarkServices = new ConcurrentLinkedQueue<>();
     this.pollingTrigger = Executors.newScheduledThreadPool(3);
 
@@ -41,7 +41,7 @@ public final class ExecutorGlobalInstances implements AutoCloseable {
     watermarkServices.add(Pair.of(sv, runnable));
   }
 
-  public void deregisterWatermarkService(final SourceVertex taskId) {
+  public void deregisterWatermarkService(final Object taskId) {
     final Iterator<Pair<Object, Runnable>> iterator = watermarkServices.iterator();
     while (iterator.hasNext()) {
       final Pair<Object, Runnable> pair = iterator.next();

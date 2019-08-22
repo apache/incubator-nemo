@@ -197,6 +197,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final RendevousServerClient rendevousServerClient;
 
+  private final ExecutorThread executorThread;
+
   /**
    * Constructor.
    *
@@ -231,10 +233,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService,
                                  final ExecutorGlobalInstances executorGlobalInstances,
-                                 final RendevousServerClient rendevousServerClient) {
+                                 final RendevousServerClient rendevousServerClient,
+                                 final ExecutorThread executorThread) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
+    this.executorThread = executorThread;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
     this.copyIncomingEdges = copyIncomingEdges;
     this.prepareService = prepareService;
@@ -363,11 +367,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public ConcurrentLinkedQueue<Object> getOffloadingQueue() {
-    return offloadingEventQueue;
-  }
-
-  @Override
   public AtomicLong getTaskExecutionTime() {
     return taskExecutionTime;
   }
@@ -421,90 +420,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           outputWriterMap,
           irVertexDag,
           relayServer,
-        taskLocationMap));
+        taskLocationMap,
+        executorThread));
 
-      /*
-      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
-        offloader = Optional.of(new TinyTaskOffloader(
-          executorId,
-          task,
-          this,
-          evalConf,
-          byteTransport.getExecutorAddressMap(),
-          pipeManagerWorker.getTaskExecutorIdMap(),
-          serializedDag,
-          tinyWorkerManager,
-          taskOutgoingEdges,
-          serializerManager,
-          offloadingEventQueue,
-          sourceVertexDataFetchers,
-          taskId,
-          availableFetchers,
-          pendingFetchers,
-          sourceVertexDataFetchers.get(0),
-          status,
-          prevOffloadStartTime,
-          prevOffloadEndTime,
-          toMaster,
-          outputWriterMap,
-          irVertexDag));
-      } else {
-        offloader = Optional.of(new DownstreamTaskOffloader(
-          executorId,
-          task,
-          this,
-          evalConf,
-          byteTransport.getExecutorAddressMap(),
-          pipeManagerWorker.getTaskExecutorIdMap(),
-          serializedDag,
-          offloadingWorkerFactory,
-          taskOutgoingEdges,
-          serializerManager,
-          offloadingEventQueue,
-          sourceVertexDataFetchers,
-          taskId,
-          availableFetchers,
-          pendingFetchers,
-          status,
-          prevOffloadStartTime,
-          prevOffloadEndTime,
-          toMaster,
-          outputWriterMap,
-          irVertexDag,
-          null,
-          taskInputContextMap));
-          */
-
-        /*
-        if (evalConf.middleParallelism > 0) {
-          offloader = Optional.of(new MiddleOffloader(
-            executorId,
-            task,
-            this,
-            evalConf,
-            byteTransport.getExecutorAddressMap(),
-            pipeManagerWorker.getTaskExecutorIdMap(),
-            serializedDag,
-            offloadingWorkerFactory,
-            taskOutgoingEdges,
-            serializerManager,
-            offloadingEventQueue,
-            sourceVertexDataFetchers,
-            taskId,
-            availableFetchers,
-            pendingFetchers,
-            status,
-            prevOffloadStartTime,
-            prevOffloadEndTime,
-            toMaster,
-            outputWriterMap,
-            irVertexDag,
-            offloadedTaskTimeMap));
-        } else {
-          offloader = Optional.empty();
-        }
-      }
-        */
     } else {
       offloader = Optional.empty();
     }
@@ -585,6 +503,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     }
   }
+
   @Override
   public void startOffloading(final long baseTime,
                               final Object worker,
@@ -819,7 +738,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge));
+            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge, this));
         })
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
@@ -849,7 +768,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader,
                   dataFetcherOutputCollector,
                   rendevousServerClient,
-                  executorGlobalInstances));
+                  executorGlobalInstances,
+                  this));
             } else {
               parentDataFetchers.add(
                 new ParentTaskDataFetcher(
@@ -1010,200 +930,75 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return false;
   }
 
-  /**
-   * task가 inactive한 상태일때 부르는 함수!!
-   * @return
-   */
   @Override
-  public boolean hasData() {
-    return
-      !offloadingEventQueue.isEmpty() ||
-        (offloader.isPresent() && offloader.get().hasPendingStraemingWorkers()) ||
-        hasEventInFetchers();
+  public void handleEvent(final Object element, final DataFetcher dataFetcher) {
+    executorThread.queue.add(() -> {
+      if (!element.equals(EmptyElement.getInstance())) {
+        onEventFromDataFetcher(element, dataFetcher);
+      }
+    });
   }
 
-  /**
-   * This method is non-blocking call and only process one event.
-   * Executor should call this function.
-   * @return true if an event is processed
-   */
   @Override
-  public int handleData() {
-    // handling control event
-    int processedCnt = 0;
-
-    boolean dataProcessed = false;
-
-    //LOG.info("Handler data for {}", taskId);
-
-    /*
-    if (!controlEventQueue.isEmpty()) {
-      final ControlEvent event = controlEventQueue.poll();
-      final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
-        vertexIdAndCollectorMap.get(event.getDstVertexId()).right();
-      oc.handleControlMessage(event);
-      dataProcessed = true;
-    }
-    */
-
-    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-
-      // check offloading queue to process events
-      while (!offloadingEventQueue.isEmpty()) {
-        dataProcessed = true;
-        // fetch events
-        final Object data = offloadingEventQueue.poll();
-
-        if (data instanceof OffloadingResultEvent) {
-          final OffloadingResultEvent msg = (OffloadingResultEvent) data;
-          LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
-
-          for (final Triple<List<String>, String, Object> triple : msg.data) {
-            //LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
-            handleOffloadingEvent(triple);
-          }
-        }  else if (data instanceof OffloadingResultTimestampEvent) {
-          final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
-          final long currTime = System.currentTimeMillis();
-          final long latency = currTime - event.timestamp;
-          LOG.info("Event Latency {} from lambda {} in {}, ts: {}", latency, event.vertexId, taskId, event.timestamp);
-
-        } else if (data instanceof KafkaOffloadingOutput) {
-
-          if (offloader.isPresent()) {
-            offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
-          }
-          endOffloadingHandler.onNext(1);
-
-        } else if (data instanceof StateOutput) {
-
-          if (offloader.isPresent()) {
-            offloader.get().handleStateOutput((StateOutput) data);
-          }
-          endOffloadingHandler.onNext(1);
-
-        } else if (data instanceof EndOffloadingKafkaEvent) {
-
-          if (offloader.isPresent()) {
-            LOG.info("Start -- Receive end offloading event {}", taskId);
-            offloader.get().handleEndOffloadingEvent();
-            LOG.info("End -- Receive end offloading event {}", taskId);
-          }
-
-        } else if (data instanceof StartOffloadingKafkaEvent) {
-
-          if (offloader.isPresent()) {
-            LOG.info("Start -- handle start offloading kafka event {}", taskId);
-            offloader.get().handleStartOffloadingEvent(((StartOffloadingKafkaEvent) data).worker);
-            LOG.info("End -- handle start offloading kafka event {}", taskId);
-          }
-        } else if (data instanceof OffloadingDoneEvent) {
-          final OffloadingDoneEvent e = (OffloadingDoneEvent) data;
-          LOG.info("Offloading done of {}", e.taskId);
-          offloadingDoneHandler.onNext(1);
-
-        } else {
-          throw new RuntimeException("Unsupported type: " + data);
-        }
-      }
-    }
-
-    // handle pending workers here!
-    if (offloader.isPresent()) {
-      if (offloader.get().hasPendingStraemingWorkers()) {
-        offloader.get().handlePendingStreamingWorkers();
-        dataProcessed = true;
-      }
-    }
-
-    // We first fetch data from available data fetchers
-    final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
-    while (availableIterator.hasNext()) {
-
-      //LOG.info("Available data fetcher fetchDataElement: {}", taskId);
-
-      final DataFetcher dataFetcher = availableIterator.next();
-      try {
-        //final long a = System.currentTimeMillis();
-        final Object element = dataFetcher.fetchDataElement();
-
-        if (element.equals(EmptyElement.getInstance())) {
-          // No element in current data fetcher, fetch data from next fetcher
-          // move current data fetcher to pending.
-          availableIterator.remove();
-          pendingFetchers.add(dataFetcher);
-        } else {
-          onEventFromDataFetcher(element, dataFetcher);
-          //processingTime += (System.currentTimeMillis() - b);
-          dataProcessed = true;
-          processedCnt += 1;
-
-          if (element instanceof Finishmark) {
-            availableIterator.remove();
-          }
-        }
-
-      } catch (final NoSuchElementException e) {
-        e.printStackTrace();
-        throw new RuntimeException("No such element");
-      } catch (final IOException e) {
-        // IOException means that this task should be retried.
-        taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-          Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-        return 0;
-      }
-    }
-
-
-    final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
-    // We check pending data every polling interval
-    pollingTime = false;
-
-    while (pendingIterator.hasNext()) {
-      final DataFetcher dataFetcher = pendingIterator.next();
-      try {
-        //final long a = System.currentTimeMillis();
-        final Object element = dataFetcher.fetchDataElement();
-        //fetchTime += (System.currentTimeMillis() - a);
-
-        if (element.equals(EmptyElement.getInstance())) {
-          // do nothing
-        } else {
-          //final long b = System.currentTimeMillis();
-          onEventFromDataFetcher(element, dataFetcher);
-          dataProcessed = true;
-          processedCnt += 1;
-          // processingTime += (System.currentTimeMillis() - b);
-
-          // We processed data. This means the data fetcher is now available.
-          // Add current data fetcher to available
-          pendingIterator.remove();
-          if (!(element instanceof Finishmark)) {
-            availableFetchers.add(dataFetcher);
-          }
-        }
-
-      } catch (final NoSuchElementException e) {
-        // The current data fetcher is still pending.. try next data fetcher
-        e.printStackTrace();
-        throw new RuntimeException("No such element");
-      } catch (final IOException e) {
-        // IOException means that this task should be retried.
-        taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-          Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-        return 0;
-      }
-    }
-
-    if (dataProcessed && processedCnt == 0) {
-      processedCnt += 1;
-    }
-
-    return processedCnt;
+  public void handleOffloadingEvent(final Object data) {
+    executorThread.queue.add(() -> {
+      offloadingEventHandler(data);
+    });
   }
 
+  private void offloadingEventHandler(final Object data) {
+      if (data instanceof OffloadingResultEvent) {
+      final OffloadingResultEvent msg = (OffloadingResultEvent) data;
+      LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
+
+      for (final Triple<List<String>, String, Object> triple : msg.data) {
+        //LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
+        handleOffloadingEvent(triple);
+      }
+    }  else if (data instanceof OffloadingResultTimestampEvent) {
+      final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
+      final long currTime = System.currentTimeMillis();
+      final long latency = currTime - event.timestamp;
+      LOG.info("Event Latency {} from lambda {} in {}, ts: {}", latency, event.vertexId, taskId, event.timestamp);
+
+    } else if (data instanceof KafkaOffloadingOutput) {
+
+      if (offloader.isPresent()) {
+        offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
+      }
+      endOffloadingHandler.onNext(1);
+
+    } else if (data instanceof StateOutput) {
+
+      if (offloader.isPresent()) {
+        offloader.get().handleStateOutput((StateOutput) data);
+      }
+      endOffloadingHandler.onNext(1);
+
+    } else if (data instanceof EndOffloadingKafkaEvent) {
+
+      if (offloader.isPresent()) {
+        LOG.info("Start -- Receive end offloading event {}", taskId);
+        offloader.get().handleEndOffloadingEvent();
+        LOG.info("End -- Receive end offloading event {}", taskId);
+      }
+
+    } else if (data instanceof StartOffloadingKafkaEvent) {
+
+      if (offloader.isPresent()) {
+        LOG.info("Start -- handle start offloading kafka event {}", taskId);
+        offloader.get().handleStartOffloadingEvent(((StartOffloadingKafkaEvent) data).worker);
+        LOG.info("End -- handle start offloading kafka event {}", taskId);
+      }
+    } else if (data instanceof OffloadingDoneEvent) {
+      final OffloadingDoneEvent e = (OffloadingDoneEvent) data;
+      LOG.info("Offloading done of {}", e.taskId);
+      offloadingDoneHandler.onNext(1);
+
+    } else {
+      throw new RuntimeException("Unsupported type: " + data);
+    }
+  }
 
   /**
    * Return a map of Internal Outputs associated with their output tag.

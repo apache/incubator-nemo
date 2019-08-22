@@ -12,13 +12,11 @@ public final class ExecutorThread {
 
   private final ConcurrentLinkedQueue<TaskExecutor> newTasks;
   private final ConcurrentLinkedQueue<TaskExecutor> deletedTasks;
-  private final ConcurrentLinkedQueue<TaskExecutor> availableTasks;
-  private final ConcurrentLinkedQueue<TaskExecutor> pendingTasks;
 
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
   private volatile boolean isPollingTime = false;
-  private final ScheduledExecutorService scheduledExecutorService;
+  public final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
   private final String executorThreadName;
 
@@ -28,23 +26,21 @@ public final class ExecutorThread {
 
   private final AtomicBoolean throttle;
 
-  private final ScheduledExecutorService dispatcher;
 
-  private final ConcurrentLinkedQueue<TaskExecutor> finishedExecutors;
+  private final List<TaskExecutor> finishedTasks;
+
+  public final ConcurrentLinkedQueue<Runnable> queue;
 
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
-    this.availableTasks = new ConcurrentLinkedQueue<>();
-    this.pendingTasks = new ConcurrentLinkedQueue<>();
-    this.finishedExecutors = new ConcurrentLinkedQueue<>();
+    this.finishedTasks = new ArrayList<>();
     this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
-    this.dispatcher = Executors.newSingleThreadScheduledExecutor();
-
+    this.queue = new ConcurrentLinkedQueue<>();
   }
 
   public void deleteTask(final TaskExecutor task) {
@@ -52,7 +48,7 @@ public final class ExecutorThread {
   }
 
   public void addNewTask(final TaskExecutor task) {
-    newTasks.add(task);
+    //newTasks.add(task);
   }
 
   private volatile boolean loggingTime = false;
@@ -64,56 +60,9 @@ public final class ExecutorThread {
 
   public void start() {
 
-    final int batchSize = 5;
-
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      //isPollingTime.set(true);
-      isPollingTime = true;
-    }, 50, 50, TimeUnit.MILLISECONDS);
-
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      loggingTime = true;
-
-      /*
-      int totalProcessedCnt = 0;
-      for (final String taskId : taskCounterMap.keySet()) {
-        totalProcessedCnt += taskCounterMap.remove(taskId);
-      }
-
-      LOG.info("{} total processed cnt: {}", executorThreadName, totalProcessedCnt);
-      */
-
-    }, 5, 5, TimeUnit.SECONDS);
-
-    dispatcher.scheduleAtFixedRate(() -> {
-      final Iterator<TaskExecutor> iterator = pendingTasks.iterator();
-      while (iterator.hasNext()) {
-        final TaskExecutor pendingTask = iterator.next();
-        if (pendingTask.hasData()) {
-          iterator.remove();
-          availableTasks.add(pendingTask);
-        } else if (pendingTask.isFinished()) {
-          iterator.remove();
-          finishedExecutors.add(pendingTask);
-        }
-      }
-    }, 50, 50, TimeUnit.MILLISECONDS);
-
     executorService.execute(() -> {
       try {
         while (!finished) {
-
-          if (loggingTime) {
-            loggingTime = false;
-            LOG.info("{} Available tasks {}: {}, pending {}: {}",
-              executorThreadName,
-              availableTasks.size(), availableTasks, pendingTasks.size(), pendingTasks);
-          }
-
-          while (!newTasks.isEmpty()) {
-            final TaskExecutor newTask = newTasks.poll();
-            availableTasks.add(newTask);
-          }
 
           while (!deletedTasks.isEmpty()) {
             final TaskExecutor deletedTask = deletedTasks.poll();
@@ -124,11 +73,13 @@ public final class ExecutorThread {
 
             try {
               deletedTask.close();
+              finishedTasks.add(deletedTask);
             } catch (Exception e) {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
           }
+
 
           /*
           while (throttle.get()) {
@@ -137,56 +88,39 @@ public final class ExecutorThread {
           }
           */
 
-          final Iterator<TaskExecutor> iterator = availableTasks.iterator();
-          while (iterator.hasNext()) {
-            final TaskExecutor availableTask = iterator.next();
+          while (!queue.isEmpty()) {
+            final Runnable runnable = queue.poll();
+            runnable.run();
 
-            int batchCnt = 0;
-            while (batchCnt < batchSize) {
-              final int processedCnt = availableTask.handleData();
-              batchCnt += 1;
+            while (!deletedTasks.isEmpty()) {
+              final TaskExecutor deletedTask = deletedTasks.poll();
 
-              if (processedCnt == 0) {
-                iterator.remove();
-                pendingTasks.add(availableTask);
-                break;
+              LOG.info("Deleting task {}", deletedTask.getId());
+              //availableTasks.remove(deletedTask);
+              //pendingTasks.remove(deletedTask);
+
+              try {
+                deletedTask.close();
+              } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
               }
             }
 
-            //final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
-            //taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
-
-              /*
-              int processedCnt = 0;
-
-              final long st = System.nanoTime();
-
-              while (availableTask.handleData() && processedCnt < batchSize) {
-                processedCnt += 1;
+            if (!finishedTasks.isEmpty()) {
+              final Iterator<TaskExecutor> iterator = finishedTasks.iterator();
+              while (iterator.hasNext()) {
+                final TaskExecutor finishedExecutor = iterator.next();
+                if (finishedExecutor.isFinished()) {
+                  finishedExecutor.finish();
+                  iterator.remove();
+                }
               }
-
-              final int cnt = taskCounterMap.getOrDefault(availableTask.getId(), 0);
-              taskCounterMap.put(availableTask.getId(), cnt + processedCnt);
-
-              //LOG.info("handling task {}, cnt: {}", availableTask.getId(), processedCnt);
-
-              final long et = System.nanoTime();
-              availableTask.getTaskExecutionTime().addAndGet(et - st);
-
-              if (processedCnt < batchSize) {
-                iterator.remove();
-                pendingTasks.add(availableTask);
-              }
-              */
+            }
           }
 
-          if (availableTasks.isEmpty()) {
+          if (queue.isEmpty()) {
             Thread.sleep(10);
-          }
-
-          while (!finishedExecutors.isEmpty()) {
-            final TaskExecutor finishedExecutor = finishedExecutors.poll();
-            finishedExecutor.finish();
           }
         }
 

@@ -22,7 +22,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
@@ -65,6 +67,9 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
   private final RelayServerClient relayServerClient;
 
+  private InputStreamIterator inputStreamIterator;
+  private TaskExecutor taskExecutor;
+  private DataFetcher dataFetcher;
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -95,10 +100,14 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
   }
 
   public <T> IteratorWithNumBytes<T> getInputIterator(
-    final Serializer<?, T> serializer) {
-    return new InputStreamIterator<>(serializer);
+    final Serializer<?, T> serializer,
+    final TaskExecutor te,
+    final DataFetcher df) {
+    inputStreamIterator = new InputStreamIterator<>(serializer);
+    taskExecutor = te;
+    dataFetcher = df;
+    return inputStreamIterator;
   }
-
 
   @Override
   public Iterator<InputStream> getInputStreams() {
@@ -182,6 +191,12 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     //  LambdaRemoteByteInputContext.this.hashCode());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
+
+      // add it to the queue
+      final InputStreamIterator ii = inputStreamIterator;
+      final Object event = ii.next();
+      taskExecutor.handleEvent(event, dataFetcher);
+
     } else {
       // ignore empty data frames
       byteBuf.release();

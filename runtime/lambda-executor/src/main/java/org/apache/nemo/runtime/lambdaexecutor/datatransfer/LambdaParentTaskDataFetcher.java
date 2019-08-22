@@ -102,8 +102,12 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
                                      final RuntimeEdge edge,
                                      final InputReader readerForParentTask,
                                      final OutputCollector outputCollector,
-                                     final RendevousServerClient rendevousServerClient) {
+                                     final RendevousServerClient rendevousServerClient,
+                                     final TaskExecutor taskExecutor) {
     super(dataSource, edge, outputCollector);
+
+    readerForParentTask.setDataFetcher(this);
+
     this.taskId = taskId;
     this.stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     this.readersForParentTask = readerForParentTask;
@@ -124,7 +128,14 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
     this.watermarkTrigger = Executors.newSingleThreadScheduledExecutor();
     watermarkTrigger.scheduleAtFixedRate(() -> {
-      watermarkTriggered = true;
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
+      //LOG.info("Request watermark at {}", taskId);
+
+      if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
+        //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+        prevWatermarkTimestamp = watermark.get();
+        taskExecutor.handleEvent(watermark.get(), this);
+      }
     }, 200, 200, TimeUnit.MILLISECONDS);
   }
 
@@ -137,6 +148,16 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     }
 
     return watermarkTriggered;
+  }
+
+  @Override
+  public boolean hasData() {
+    for (final IteratorWithNumBytes iterator : iterators) {
+      if (iterator.hasNext()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

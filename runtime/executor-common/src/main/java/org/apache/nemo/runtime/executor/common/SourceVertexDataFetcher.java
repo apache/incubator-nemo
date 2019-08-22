@@ -220,6 +220,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     return !isFinishd && (readable.isAvailable() || isWatermarkTriggerTime());
   }
 
+  @Override
+  public boolean hasData() {
+    return !isFinishd && readable.isAvailable();
+  }
+
   private Object retrieveElement() {
 
 

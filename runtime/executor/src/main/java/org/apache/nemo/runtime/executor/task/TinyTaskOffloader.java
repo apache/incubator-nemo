@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.executor.RemainingOffloadTasks;
 import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.common.TaskLocationMap;
@@ -90,14 +91,12 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
   private final SourceVertexDataFetcher sourceVertexDataFetcher;
-   private final List<DataFetcher> availableFetchers;
-  private final List<DataFetcher> pendingFetchers;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag;
 
   private final List<StageEdge> copyOutgoingEdges;
   private final List<StageEdge> copyIncomingEdges;
 
-  private final List<Future> inputStopPendingFutures = new ArrayList<>();
+  final List<Future> inputStopPendingFutures = new ArrayList<>();
   private final List<Future> outputStopPendingFutures = new ArrayList<>();
 
   private final Set<DataFetcher> allFetchers = new HashSet<>();
@@ -109,6 +108,9 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
   private final GlobalOffloadDone globalOffloadDone = GlobalOffloadDone.getInstance();
+
+  private final ExecutorThread executorThread;
+  private final ScheduledExecutorService scheduledExecutorService;
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -135,7 +137,10 @@ public final class TinyTaskOffloader implements Offloader {
                            final Collection<OutputWriter> outputWriters,
                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                            final RelayServer relayServer,
-                           final TaskLocationMap taskLocationMap) {
+                           final TaskLocationMap taskLocationMap,
+                           final ExecutorThread executorThread) {
+    this.executorThread = executorThread;
+    this.scheduledExecutorService = executorThread.scheduledExecutorService;
     this.executorId = executorId;
     this.task = task;
     this.taskExecutor = taskExecutor;
@@ -148,8 +153,6 @@ public final class TinyTaskOffloader implements Offloader {
     this.copyDag = SerializationUtils.deserialize(serializedDag);
     this.tinyWorkerManager = tinyWorkerManager;
     this.taskOutgoingEdges = taskOutgoingEdges;
-    this.availableFetchers = availableFetchers;
-    this.pendingFetchers = pendingFetchers;
     this.allFetchers.addAll(availableFetchers);
     this.allFetchers.addAll(pendingFetchers);
     this.serializerManager = serializerManager;
@@ -230,8 +233,6 @@ public final class TinyTaskOffloader implements Offloader {
       dataFetcher.restart();
     }
 
-    availableFetchers.add(sourceVertexDataFetcher);
-
     kafkaOffloadingOutputs.clear();
 
     taskStatus.set(TaskExecutor.Status.RUNNING);
@@ -267,8 +268,6 @@ public final class TinyTaskOffloader implements Offloader {
       dataFetcher.restart();
     }
 
-    availableFetchers.addAll(allFetchers);
-
     taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
@@ -296,8 +295,6 @@ public final class TinyTaskOffloader implements Offloader {
         for (final DataFetcher dataFetcher : allFetchers) {
           dataFetcher.restart();
         }
-
-        availableFetchers.addAll(allFetchers);
         taskStatus.set(TaskExecutor.Status.RUNNING);
       }
 
@@ -334,6 +331,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 
+
     // Source stop!!
     for (final DataFetcher dataFetcher : allFetchers) {
       inputStopPendingFutures.add(dataFetcher.stop(taskId));
@@ -343,10 +341,32 @@ public final class TinyTaskOffloader implements Offloader {
 
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
     pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
+
+    LOG.info("Scheduling pending check {}", taskId);
+    scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
   }
 
-  @Override
-  public boolean hasPendingStraemingWorkers() {
+  private void schedulePendingCheck() {
+    executorThread.queue.add(() -> {
+      if (hasPendingStraemingWorkers()) {
+        handlePendingStreamingWorkers();
+      } else {
+        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
+      }
+    });
+  }
+
+  private boolean hasDataInFetchers() {
+    for (final DataFetcher fetcher : allFetchers) {
+      if (fetcher.hasData()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private boolean hasPendingStraemingWorkers() {
     if (!taskStatus.get().equals(TaskExecutor.Status.OFFLOAD_PENDING)) {
       return false;
     }
@@ -356,7 +376,7 @@ public final class TinyTaskOffloader implements Offloader {
         if (checkIsAllInputPendingReady()) {
           inputStopPendingFutures.clear();
           LOG.info("Input pending done {}", taskId);
-          if (availableFetchers.isEmpty()) {
+          if (!hasDataInFetchers()) {
             LOG.info("End of waiting source stop futures...");
             LOG.info("Close current output contexts in {}", taskId);
             startOutputPending();
@@ -408,8 +428,6 @@ public final class TinyTaskOffloader implements Offloader {
   }
 
   private void sendTask() {
-    availableFetchers.clear();
-    pendingFetchers.clear();
 
     final OffloadingTask offloadingTask;
     final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
@@ -529,8 +547,7 @@ public final class TinyTaskOffloader implements Offloader {
     return Pair.of(stateMap, coderMap);
   }
 
-  @Override
-  public synchronized void handlePendingStreamingWorkers() {
+  private synchronized void handlePendingStreamingWorkers() {
     // Send ready signal and other data
     tinyWorkerManager.sendReadyTask(new ReadyTask(taskId, taskLocationMap.locationMap), tinyTaskWorker);
 

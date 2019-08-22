@@ -94,14 +94,20 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private long prevWatermarkTimestamp = -1L;
 
+  private final TaskExecutor taskExecutor;
+
   public MultiThreadParentTaskDataFetcher(final String taskId,
                                           final IRVertex dataSource,
                                           final RuntimeEdge edge,
                                           final InputReader readerForParentTask,
                                           final OutputCollector outputCollector,
                                           final RendevousServerClient rendevousServerClient,
-                                          final ExecutorGlobalInstances executorGlobalInstances) {
+                                          final ExecutorGlobalInstances executorGlobalInstances,
+                                          final TaskExecutor taskExecutor) {
     super(dataSource, edge, outputCollector);
+
+    readerForParentTask.setDataFetcher(this);
+
     this.taskId = taskId;
     this.stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     this.readersForParentTask = readerForParentTask;
@@ -115,13 +121,33 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.taskIndexIteratorMap = new ConcurrentHashMap<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
     this.taskAddPairQueue = new ConcurrentLinkedQueue<>();
+    this.taskExecutor = taskExecutor;
 
     fetchNonBlocking();
 
     this.executorGlobalInstances = executorGlobalInstances;
     executorGlobalInstances.registerWatermarkService(dataSource, () -> {
-      watermarkTriggered = true;
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
+      //LOG.info("Request watermark at {}", taskId);
+
+      if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
+        //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+        prevWatermarkTimestamp = watermark.get();
+        taskExecutor.handleEvent(watermark.get(), this);
+      }
     });
+  }
+
+  @Override
+  public boolean hasData() {
+    boolean ret = false;
+    for (final IteratorWithNumBytes iteratorWithNumBytes : iterators) {
+      if (iteratorWithNumBytes.hasNext()) {
+        ret = true;
+        break;
+      }
+    }
+    return ret;
   }
 
   @Override
@@ -233,11 +259,22 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public Future<Integer> stop(final String taskId) {
+    executorGlobalInstances.deregisterWatermarkService(getDataSource());
     return readersForParentTask.stop(taskId);
   }
 
   @Override
   public void restart() {
+    executorGlobalInstances.registerWatermarkService(getDataSource(), () -> {
+      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
+      //LOG.info("Request watermark at {}", taskId);
+
+      if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
+        //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+        prevWatermarkTimestamp = watermark.get();
+        taskExecutor.handleEvent(watermark.get(), this);
+      }
+    });
     readersForParentTask.restart();
   }
 

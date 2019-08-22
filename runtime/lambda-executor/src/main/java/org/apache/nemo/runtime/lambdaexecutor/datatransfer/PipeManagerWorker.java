@@ -27,7 +27,9 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,7 +207,9 @@ public final class PipeManagerWorker {
 
   public CompletableFuture<IteratorWithNumBytes> read(final int srcTaskIndex,
                                                       final RuntimeEdge runtimeEdge,
-                                                      final int dstTaskIndex) {
+                                                      final int dstTaskIndex,
+                                                      final TaskExecutor taskExecutor,
+                                                      final DataFetcher dataFetcher) {
     final String runtimeEdgeId = runtimeEdge.getId();
     final String srcExecutorId = taskExecutorIdMap.get(
       new NemoTriple(runtimeEdge.getId(), srcTaskIndex, false));
@@ -241,7 +245,7 @@ public final class PipeManagerWorker {
               contexts.add(context);
             }
             return ((LambdaRemoteByteInputContext) context).getInputIterator(
-              serializerMap.get(runtimeEdgeId));
+              serializerMap.get(runtimeEdgeId), taskExecutor, dataFetcher);
           });
       }
       case VM: {
@@ -256,7 +260,7 @@ public final class PipeManagerWorker {
               contexts.add(context);
             }
             return ((LambdaRemoteByteInputContext) context).getInputIterator(
-              serializerMap.get(runtimeEdgeId));
+              serializerMap.get(runtimeEdgeId), taskExecutor, dataFetcher);
           });
       }
       default: {

@@ -22,6 +22,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +36,8 @@ public interface InputReader {
   Future<Integer> stop(final String taskId);
 
   void restart();
+
+  void setDataFetcher(DataFetcher dataFetcher);
 
   /**
    * Reads input data depending on the communication pattern of the srcVertex.

@@ -21,8 +21,11 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.Queue;
 import java.util.concurrent.*;
 
 /**
@@ -59,6 +63,10 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   private Channel vmChannel;
   private Channel sfChannel;
 
+  private InputStreamIterator inputStreamIterator;
+  private TaskExecutor taskExecutor;
+  private DataFetcher dataFetcher;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -78,8 +86,13 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   }
 
   public <T> IteratorWithNumBytes<T> getInputIterator(
-    final Serializer<?, T> serializer) {
-    return new InputStreamIterator<>(serializer);
+    final Serializer<?, T> serializer,
+    final TaskExecutor te,
+    final DataFetcher df) {
+    inputStreamIterator = new InputStreamIterator<>(serializer);
+    taskExecutor = te;
+    dataFetcher = df;
+    return inputStreamIterator;
   }
 
 
@@ -167,6 +180,12 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     //LOG.info("On byteBuf {}", getContextId().getTransferIndex());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
+
+      // add it to the queue
+      final InputStreamIterator ii = inputStreamIterator;
+      final Object event = ii.next();
+      taskExecutor.handleEvent(event, dataFetcher);
+
     } else {
       // ignore empty data frames
       byteBuf.release();

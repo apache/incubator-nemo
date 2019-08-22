@@ -40,6 +40,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Fetches data from parent tasks.
  */
 @NotThreadSafe
+
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
@@ -63,6 +64,11 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+  }
+
+  @Override
+  public boolean hasData() {
+    return false;
   }
 
   @Override
