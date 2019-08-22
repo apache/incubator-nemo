@@ -119,24 +119,16 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       return new TimestampAndValue<>(currTs.getMillis(),
         WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
     } else {
-      if (!isKafkaPolling) {
-        isKafkaPolling = true;
-        readableService.execute(() -> {
-
-          // poll kafka
-          kafkaReader.pollRecord(5);
-
-          // set current available
-          try{
-            isCurrentAvailable = reader.advance();
-          } catch (final IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-
-          isKafkaPolling = false;
-        });
+      // poll kafka
+      kafkaReader.pollRecord(5);
+      // set current available
+      try{
+        isCurrentAvailable = reader.advance();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
+      isKafkaPolling = false;
 
       return EmptyElement.getInstance();
     }
