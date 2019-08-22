@@ -64,7 +64,7 @@ public final class ExecutorThread {
 
   public void start() {
 
-    final int batchSize = 20;
+    final int batchSize = 5;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       //isPollingTime.set(true);
