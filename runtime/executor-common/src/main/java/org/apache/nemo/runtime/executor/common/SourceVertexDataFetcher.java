@@ -203,10 +203,12 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public void restart() {
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
-      final long watermarkTimestamp = readable.readWatermark();
-      if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
-        watermarkProgressed = true;
-        prevWatermarkTimestamp = watermarkTimestamp;
+      if (isPrepared) {
+        final long watermarkTimestamp = readable.readWatermark();
+        if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
+          watermarkProgressed = true;
+          prevWatermarkTimestamp = watermarkTimestamp;
+        }
       }
     });
     //finishedAck = false;
