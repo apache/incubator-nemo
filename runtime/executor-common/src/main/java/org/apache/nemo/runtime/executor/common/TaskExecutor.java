@@ -48,6 +48,10 @@ public interface TaskExecutor extends AutoCloseable {
     DEOFFLOAD_PENDING
   }
 
+  boolean isSource();
+
+  boolean isSourceAvailable();
+
   PendingState getPendingStatus();
 
   boolean isFinished();

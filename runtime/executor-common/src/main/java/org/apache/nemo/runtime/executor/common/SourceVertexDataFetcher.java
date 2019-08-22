@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.Throttled;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -42,7 +41,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PROGRESS = Util.WATERMARK_PROGRESS; // ms
-  private volatile boolean watermarkTriggered = false;
   private final boolean bounded;
 
   private boolean isStarted = false;
@@ -60,25 +58,31 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private final ExecutorGlobalInstances executorGlobalInstances;
 
+  private boolean watermarkProgressed = false;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
-                                 final long prevWatermarkTimestamp,
+                                 final long pt,
                                  final ExecutorGlobalInstances executorGlobalInstances) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
    this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
     this.taskId = taskId;
-    this.prevWatermarkTimestamp = prevWatermarkTimestamp;
+    this.prevWatermarkTimestamp = pt;
     this.executorGlobalInstances = executorGlobalInstances;
 
     if (!bounded) {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
-        watermarkTriggered = true;
+        final long watermarkTimestamp = readable.readWatermark();
+        if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
+          watermarkProgressed = true;
+          prevWatermarkTimestamp = watermarkTimestamp;
+        }
       });
     }
   }
@@ -195,7 +199,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public void restart() {
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
-      watermarkTriggered = true;
+      final long watermarkTimestamp = readable.readWatermark();
+      if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
+        watermarkProgressed = true;
+        prevWatermarkTimestamp = watermarkTimestamp;
+      }
     });
     //finishedAck = false;
     isFinishd = false;
@@ -211,13 +219,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
     readable.close();
   }
 
-  private boolean isWatermarkTriggerTime() {
-    return watermarkTriggered;
-  }
-
   @Override
   public boolean isAvailable() {
-    return !isFinishd && (readable.isAvailable() || isWatermarkTriggerTime());
+    return !isFinishd && (readable.isAvailable() || watermarkProgressed);
   }
 
   @Override
@@ -227,18 +231,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private Object retrieveElement() {
     // Emit watermark
-    if (!bounded && isWatermarkTriggerTime()) {
-      watermarkTriggered = false;
-      // index=0 as there is only 1 input stream
-      final long watermarkTimestamp = readable.readWatermark();
-      if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
-        prevWatermarkTimestamp = watermarkTimestamp;
-        return new Watermark(watermarkTimestamp);
-      }
-    }
-
-    if (Throttled.getInstance().getThrottled()) {
-      return EmptyElement.getInstance();
+    if (watermarkProgressed) {
+      watermarkProgressed = false;
+      return new Watermark(prevWatermarkTimestamp);
     }
 
     // Data

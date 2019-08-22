@@ -16,7 +16,7 @@ public final class ExecutorThread {
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
   private volatile boolean isPollingTime = false;
-  public final ScheduledExecutorService scheduledExecutorService;
+  public final ScheduledExecutorService dispatcher;
   private final ExecutorService executorService;
   private final String executorThreadName;
 
@@ -31,11 +31,12 @@ public final class ExecutorThread {
 
   public final ConcurrentLinkedQueue<Runnable> queue;
 
-  private List<TaskExecutor> tasks;
+  private final List<TaskExecutor> sourceTasks;
+  private final List<TaskExecutor> pendingSourceTasks;
 
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
     this.finishedTasks = new ArrayList<>();
@@ -43,7 +44,20 @@ public final class ExecutorThread {
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
     this.queue = new ConcurrentLinkedQueue<>();
-    this.tasks = new ArrayList<>();
+    this.sourceTasks = new ArrayList<>();
+    this.pendingSourceTasks = new ArrayList<>();
+
+    dispatcher.scheduleAtFixedRate(() -> {
+      synchronized (pendingSourceTasks) {
+        for (TaskExecutor sourceTask : pendingSourceTasks) {
+          if (sourceTask.isSourceAvailable()) {
+            synchronized (sourceTasks) {
+              sourceTasks.add(sourceTask);
+            }
+          }
+        }
+      }
+    }, 20, 20, TimeUnit.MILLISECONDS);
   }
 
   public void deleteTask(final TaskExecutor task) {
@@ -51,10 +65,11 @@ public final class ExecutorThread {
   }
 
   public void addNewTask(final TaskExecutor task) {
-    synchronized (tasks) {
-      tasks.add(task);
+    if (task.isSource()) {
+      synchronized (pendingSourceTasks) {
+        pendingSourceTasks.add(task);
+      }
     }
-    //newTasks.add(task);
   }
 
   private volatile boolean loggingTime = false;
@@ -72,7 +87,13 @@ public final class ExecutorThread {
 
           while (!deletedTasks.isEmpty()) {
             final TaskExecutor deletedTask = deletedTasks.poll();
-            tasks.remove(deletedTask);
+
+            synchronized (pendingSourceTasks) {
+              pendingSourceTasks.remove(deletedTask);
+              synchronized (sourceTasks) {
+                sourceTasks.remove(deletedTask);
+              }
+            }
 
             LOG.info("Deleting task {}", deletedTask.getId());
             //availableTasks.remove(deletedTask);
@@ -87,30 +108,38 @@ public final class ExecutorThread {
             }
           }
 
+          final List<TaskExecutor> pendings = new ArrayList<>();
+          synchronized (sourceTasks) {
+            final Iterator<TaskExecutor> iterator = sourceTasks.iterator();
 
-          /*
-          while (throttle.get()) {
-            LOG.info("Throttling thread {} ...", executorThreadName);
-            Thread.sleep(200);
-          }
-          */
-
-          // for source
-          boolean processed = false;
-          synchronized (tasks) {
-            for (final TaskExecutor taskExecutor : tasks) {
-              processed = processed || taskExecutor.handleSourceData();
+            while (iterator.hasNext()) {
+              final TaskExecutor sourceTask = iterator.next();
+              if (sourceTask.isSourceAvailable()) {
+                sourceTask.handleSourceData();
+              } else  {
+                iterator.remove();
+                pendings.add(sourceTask);
+              }
             }
           }
 
-          // four intermediate data
+          synchronized (pendingSourceTasks) {
+            pendingSourceTasks.addAll(pendings);
+          }
+
           while (!queue.isEmpty()) {
             final Runnable runnable = queue.poll();
             runnable.run();
 
             while (!deletedTasks.isEmpty()) {
               final TaskExecutor deletedTask = deletedTasks.poll();
-              tasks.remove(deletedTask);
+
+              synchronized (pendingSourceTasks) {
+                pendingSourceTasks.remove(deletedTask);
+                synchronized (sourceTasks) {
+                  sourceTasks.remove(deletedTask);
+                }
+              }
 
               LOG.info("Deleting task {}", deletedTask.getId());
               //availableTasks.remove(deletedTask);
@@ -136,8 +165,8 @@ public final class ExecutorThread {
             }
           }
 
-          if (!processed && queue.isEmpty()) {
-            Thread.sleep(10);
+          if (sourceTasks.isEmpty() && queue.isEmpty()) {
+            Thread.sleep(20);
           }
         }
 

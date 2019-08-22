@@ -307,6 +307,22 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
+  public boolean isSourceAvailable() {
+    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
+      if (sourceVertexDataFetcher.isAvailable()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  @Override
+  public boolean isSource() {
+    return sourceVertexDataFetchers.size() > 0;
+  }
+
+  @Override
   public PendingState getPendingStatus() {
     if (offloader.isPresent()) {
       return offloader.get().getPendingStatus();

@@ -711,6 +711,21 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
+  public boolean isSourceAvailable() {
+    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
+      if (sourceVertexDataFetcher.isAvailable()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public boolean isSource() {
+    return sourceVertexDataFetchers.size() > 0;
+  }
+
+  @Override
   public void handleIntermediateEvent(final Object element, final DataFetcher dataFetcher) {
     executorThread.queue.add(() -> {
       if (!element.equals(EmptyElement.getInstance())) {
