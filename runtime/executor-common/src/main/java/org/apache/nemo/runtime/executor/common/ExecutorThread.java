@@ -177,6 +177,10 @@ public final class ExecutorThread {
               */
           }
 
+          if (availableTasks.isEmpty()) {
+            Thread.sleep(100);
+          }
+
           while (!finishedExecutors.isEmpty()) {
             final TaskExecutor finishedExecutor = finishedExecutors.poll();
             finishedExecutor.finish();
