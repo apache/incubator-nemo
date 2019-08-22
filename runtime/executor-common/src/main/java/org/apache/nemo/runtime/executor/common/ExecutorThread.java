@@ -88,34 +88,49 @@ public final class ExecutorThread {
     return throttle;
   }
 
+  private void checkDeleteTasks() {
+    while (!deletedTasks.isEmpty()) {
+      final TaskExecutor deletedTask = deletedTasks.poll();
+
+      synchronized (pendingSourceTasks) {
+        pendingSourceTasks.remove(deletedTask);
+        synchronized (sourceTasks) {
+          sourceTasks.remove(deletedTask);
+        }
+      }
+
+      LOG.info("Deleting task {}", deletedTask.getId());
+      //availableTasks.remove(deletedTask);
+      //pendingTasks.remove(deletedTask);
+
+      try {
+        deletedTask.close();
+        finishedTasks.add(deletedTask);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    if (!finishedTasks.isEmpty()) {
+      final Iterator<TaskExecutor> iterator = finishedTasks.iterator();
+      while (iterator.hasNext()) {
+        final TaskExecutor finishedExecutor = iterator.next();
+        if (finishedExecutor.isFinished()) {
+          finishedExecutor.finish();
+          iterator.remove();
+        }
+      }
+    }
+  }
+
   public void start() {
 
     executorService.execute(() -> {
       try {
         while (!finished) {
 
-          while (!deletedTasks.isEmpty()) {
-            final TaskExecutor deletedTask = deletedTasks.poll();
-
-            synchronized (pendingSourceTasks) {
-              pendingSourceTasks.remove(deletedTask);
-              synchronized (sourceTasks) {
-                sourceTasks.remove(deletedTask);
-              }
-            }
-
-            LOG.info("Deleting task {}", deletedTask.getId());
-            //availableTasks.remove(deletedTask);
-            //pendingTasks.remove(deletedTask);
-
-            try {
-              deletedTask.close();
-              finishedTasks.add(deletedTask);
-            } catch (Exception e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-          }
+          checkDeleteTasks();
 
           // process source tasks
           final List<TaskExecutor> pendings = new ArrayList<>();
@@ -144,40 +159,6 @@ public final class ExecutorThread {
             runnableIterator.remove();
             //LOG.info("Polling queue");
             runnable.run();
-
-            while (!deletedTasks.isEmpty()) {
-              final TaskExecutor deletedTask = deletedTasks.poll();
-
-              synchronized (pendingSourceTasks) {
-                pendingSourceTasks.remove(deletedTask);
-                synchronized (sourceTasks) {
-                  sourceTasks.remove(deletedTask);
-                }
-              }
-
-              LOG.info("Deleting task {}", deletedTask.getId());
-              //availableTasks.remove(deletedTask);
-              //pendingTasks.remove(deletedTask);
-
-              try {
-                deletedTask.close();
-                finishedTasks.add(deletedTask);
-              } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-              }
-            }
-
-            if (!finishedTasks.isEmpty()) {
-              final Iterator<TaskExecutor> iterator = finishedTasks.iterator();
-              while (iterator.hasNext()) {
-                final TaskExecutor finishedExecutor = iterator.next();
-                if (finishedExecutor.isFinished()) {
-                  finishedExecutor.finish();
-                  iterator.remove();
-                }
-              }
-            }
           }
 
           if (sourceTasks.isEmpty() && queue.isEmpty()) {
