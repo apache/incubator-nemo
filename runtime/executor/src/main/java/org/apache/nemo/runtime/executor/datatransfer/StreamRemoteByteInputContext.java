@@ -163,8 +163,10 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     // for guarantee
     taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
 
-    taskExecutor.getExecutorThread().queue.add(() -> {
-      ackHandler.onNext(1);
+    taskExecutor.getExecutorThread().decoderThread.execute(() -> {
+      taskExecutor.getExecutorThread().queue.add(() -> {
+        ackHandler.onNext(1);
+      });
     });
 
     /*

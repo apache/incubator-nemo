@@ -175,11 +175,13 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     //LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
 
     // for guarantee
+    // for guarantee
     taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
 
-    taskExecutor.getExecutorThread().queue.add(() -> {
-      LOG.info("Handling ack");
-      ackHandler.onNext(1);
+    taskExecutor.getExecutorThread().decoderThread.execute(() -> {
+      taskExecutor.getExecutorThread().queue.add(() -> {
+        ackHandler.onNext(1);
+      });
     });
 
     /*
