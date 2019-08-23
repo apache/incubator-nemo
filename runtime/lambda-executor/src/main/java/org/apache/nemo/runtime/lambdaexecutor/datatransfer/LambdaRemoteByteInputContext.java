@@ -34,7 +34,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -188,6 +190,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     */
   }
 
+
   /**
    * Called when {@link ByteBuf} is supplied to this context.
    * @param byteBuf the {@link ByteBuf} to supply
@@ -199,8 +202,10 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
 
-      // add it to the queue
-      taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+      if (taskExecutor != null && inputStreamIterator != null && dataFetcher != null) {
+        // add it to the queue
+        taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+      }
 
     } else {
       // ignore empty data frames

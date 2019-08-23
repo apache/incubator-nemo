@@ -184,9 +184,10 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   public void onByteBuf(final ByteBuf byteBuf) {
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
-
       // add it to the queue
-      taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+      if (taskExecutor != null && inputStreamIterator != null && dataFetcher != null) {
+        taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+      }
     } else {
       // ignore empty data frames
       byteBuf.release();
