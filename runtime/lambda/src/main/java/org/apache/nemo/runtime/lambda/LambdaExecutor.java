@@ -177,8 +177,10 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
                 protected Class resolveClass(ObjectStreamClass objectStreamClass)
                   throws IOException, ClassNotFoundException {
                   if (objectStreamClass.getName().equals(ImmutableBiMap.class.getName())) {
+                    System.out.println("Use urlClassLoader");
                     return Class.forName(objectStreamClass.getName(), true, urlClassLoader);
                   } else {
+                    System.out.println("Don't use urlClassLoader");
                     return Class.forName(objectStreamClass.getName(), true, ClassLoader.getSystemClassLoader());
                   }
                 }
