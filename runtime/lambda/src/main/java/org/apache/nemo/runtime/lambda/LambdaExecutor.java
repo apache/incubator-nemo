@@ -28,17 +28,19 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+//import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableBiMap;
+//import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableBiMap;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
 import org.apache.log4j.Level;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.lambda.common.Executor;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 
-import java.io.ObjectInputStream;
-import java.io.ByteArrayInputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -155,23 +157,44 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
         case WORKER_INIT:
           Task task;
           try {
-           // Task passed in a byte array
-           byte[] bytes = nemoEvent.getBytes();
-           ByteArrayInputStream byteInputStream = new ByteArrayInputStream(bytes);
-           ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream);
-           task = (Task) objectInputStream.readObject();
-           //task = SerializationUtils.deserialize(nemoEvent.getBytes());
-           System.out.println(ImmutableMap.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-           System.out.println(ImmutableBiMap.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+            // Task passed in a byte array
+            byte[] bytes = nemoEvent.getBytes();
+            ByteArrayInputStream byteInputStream = new ByteArrayInputStream(bytes);
+//           ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream);
+            //task = SerializationUtils.deserialize(nemoEvent.getBytes());
+//           task = (Task) objectInputStream.readObject();
+            URL[] urls = null;
+            try {
+              // Convert the file object to a URL
+              File dir = new File(System.getProperty("/opt/java/lib/beam-vendor-guava-20_0-0.1.jar")
+                + File.separator + "dir" + File.separator);
+              URL url = dir.toURL();
+              urls = new URL[]{url};
+              ClassLoader urlClassLoader = new URLClassLoader(urls);
+              ObjectInputStream ois = new ObjectInputStream(byteInputStream) {
+                @SuppressWarnings("rawtypes")
+                @Override
+                protected Class resolveClass(ObjectStreamClass objectStreamClass)
+                  throws IOException, ClassNotFoundException {
+                  if (objectStreamClass.getName().equals(ImmutableBiMap.class.getName())) {
+                    return Class.forName(objectStreamClass.getName(), true, urlClassLoader);
+                  } else {
+                    return Class.forName(objectStreamClass.getName(), true, ClassLoader.getSystemClassLoader());
+                  }
+                }
+              };
+              task = (Task) ois.readObject();
 
-           System.out.println("Decode task successfully" + task.toString());
-           onTaskReceived(task);
+              System.out.println("Decode task successfully" + task.toString());
+              onTaskReceived(task);
+            } catch (Exception e) {
+              e.printStackTrace();
+              System.out.println("Read LambdaEvent bytebuf error");
+            }
           } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Read LambdaEvent bytebuf error");
           }
           break;
-
         case DATA:
           throw new UnsupportedOperationException("DATA not supported");
         case END:
