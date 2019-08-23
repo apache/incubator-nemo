@@ -914,12 +914,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       executorThread.decoderThread.execute(() -> {
         while (iterator.hasNext()) {
           final Object element = iterator.next();
-          executorThread.queue.add(() -> {
-            if (!element.equals(EmptyElement.getInstance())) {
-              //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
-              onEventFromDataFetcher(element, dataFetcher);
-            }
-          });
+          if (prepared.get()) {
+            executorThread.queue.add(() -> {
+              if (!element.equals(EmptyElement.getInstance())) {
+                //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+                onEventFromDataFetcher(element, dataFetcher);
+              }
+            });
+          }
         }
       });
     }
