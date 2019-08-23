@@ -181,15 +181,8 @@ public final class TaskExecutor {
 
       // ???? do we need lambda output collector?
       final OutputCollector outputCollector;
-
-      if (irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
-        // ???? this output collector hardly does anything useful
-        outputCollector = new RunTimeMessageOutputCollector(this.taskId, irVertex, this);
-      } else {
-        outputCollector = new OperatorVertexOutputCollector(
-          irVertex, internalMainOutputs, internalAdditionalOutputMap);
-      }
+      outputCollector = new OperatorVertexOutputCollector(
+        irVertex, internalMainOutputs, internalAdditionalOutputMap);
 
       // Create VERTEX HARNESS
       // ???? what is this part doing?
@@ -280,7 +273,8 @@ public final class TaskExecutor {
 
   private void finalizeVertex(final VertexHarness vertexHarness) {
     closeTransform(vertexHarness);
-    finalizeOutputWriters(vertexHarness);
+    // remove use of output write because we don't have it now
+//    finalizeOutputWriters(vertexHarness);
   }
 
   /**
