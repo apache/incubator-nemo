@@ -739,7 +739,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   dataFetcherOutputCollector,
                   rendevousServerClient,
                   executorGlobalInstances,
-                  this));
+                  this,
+                  prepared));
             } else {
               allFetchers.add(
                 new ParentTaskDataFetcher(
