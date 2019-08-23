@@ -448,6 +448,7 @@ public final class JobLauncher {
         return YarnClientConfiguration.CONF
           .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class)
             + injector.getNamedInstance(JobConf.MaxOffheapRatio.class))
+          // Off-heap memory size is added to memory slack so that JVM heap region does not invade the off-heap region.
           .build();
       default:
         throw new UnsupportedOperationException(deployMode);

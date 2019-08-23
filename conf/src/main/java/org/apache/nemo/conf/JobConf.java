@@ -302,7 +302,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * Maximum off-heap memory ratio to the total memory in the executor.
    */
-  @NamedParameter(doc = "The ratio of total memory for maximum off-heap memory use",
+  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
     short_name = "max_offheap_ratio", default_value = "0.2")
   public final class MaxOffheapRatio implements Name<Double> {
   }
