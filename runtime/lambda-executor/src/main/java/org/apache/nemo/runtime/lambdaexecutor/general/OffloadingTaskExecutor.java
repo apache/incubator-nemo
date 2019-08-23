@@ -740,8 +740,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
-    executorThread.queue.add(() -> {
-      onEventFromDataFetcher(element, dataFetcher);
+    executorThread.decoderThread.execute(() -> {
+      executorThread.queue.add(() -> {
+        onEventFromDataFetcher(element, dataFetcher);
+      });
     });
   }
 
