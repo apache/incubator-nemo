@@ -111,13 +111,20 @@ public final class PipeOutputWriter implements Flushable {
   }
 
   public void write(final Object element) {
+    if (closed) {
+      throw new RuntimeException("Pipe is alread closed " + taskId + ", " + element);
+    }
+
     final TimestampAndValue tis = (TimestampAndValue) element;
     writeData(tis, getPipeToWrite(tis), false);
   }
 
   public void writeWatermark(final Watermark watermark) {
-    rendevousServerClient.sendWatermark(taskId, watermark.getTimestamp());
+    if (closed) {
+      throw new RuntimeException("Pipe is already closed " + taskId + ", " + watermark);
+    }
 
+    rendevousServerClient.sendWatermark(taskId, watermark.getTimestamp());
   }
 
   public Future<Integer> close(final String taskId) {
