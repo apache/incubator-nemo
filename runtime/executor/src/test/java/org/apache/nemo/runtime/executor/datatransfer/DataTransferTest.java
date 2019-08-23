@@ -147,6 +147,7 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
+
     injector.bindVolatileParameter(JobConf.JobId.class, "jobId");
 
     // Necessary for wiring up the message environments
@@ -183,6 +184,7 @@ public final class DataTransferTest {
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorId.class, executorId)
       .bindNamedParameter(MessageParameters.SenderId.class, executorId)
+      .bindNamedParameter(JobConf.MaxOffheapMb.class, "128")
       .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
