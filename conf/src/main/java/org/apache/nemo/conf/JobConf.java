@@ -300,11 +300,18 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Maximum off-heap memory size in the executor.
+   * Maximum off-heap memory ratio to the total memory in the executor.
    */
-  // TODO #397: Separation of JVM heap region and off-heap memory region
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated",
-    short_name = "max_offheap_mb", default_value = "8192")
+  @NamedParameter(doc = "The ratio of total memory for maximum off-heap memory use",
+    short_name = "max_offheap_ratio", default_value = "0.2")
+  public final class MaxOffheapRatio implements Name<Double> {
+  }
+
+  /**
+   * Maximum off-heap memory size in the executor.
+   * This is set by the system according to the off-heap ratio.
+   */
+  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
   public final class MaxOffheapMb implements Name<Integer> {
   }
 
