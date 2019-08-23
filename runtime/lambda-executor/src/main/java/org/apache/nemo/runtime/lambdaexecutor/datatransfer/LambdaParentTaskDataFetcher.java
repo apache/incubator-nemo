@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.*;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -97,6 +99,8 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
   private static final long WATERMARK_PROGRESS = Util.WATERMARK_PROGRESS;
 
+  private final AtomicBoolean stopped = new AtomicBoolean(false);
+
   public LambdaParentTaskDataFetcher(final String taskId,
                                      final IRVertex dataSource,
                                      final RuntimeEdge edge,
@@ -128,13 +132,18 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
     this.watermarkTrigger = Executors.newSingleThreadScheduledExecutor();
     watermarkTrigger.scheduleAtFixedRate(() -> {
-      final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
-      //LOG.info("Request watermark at {}", taskId);
 
-      if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
-        //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
-        prevWatermarkTimestamp = watermark.get();
-        taskExecutor.handleIntermediateWatermarkEvent(new Watermark(watermark.get()), this);
+      synchronized (stopped) {
+        if (!stopped.get()) {
+          final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
+          //LOG.info("Request watermark at {}", taskId);
+
+          if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {
+            //LOG.info("Receive watermark at {}: {}", taskId, new Instant(watermark.get()));
+            prevWatermarkTimestamp = watermark.get();
+            taskExecutor.handleIntermediateWatermarkEvent(new Watermark(watermark.get()), this);
+          }
+        }
       }
     }, 200, 200, TimeUnit.MILLISECONDS);
   }
@@ -205,6 +214,10 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public Future<Integer> stop(final String taskId) {
+    synchronized (stopped) {
+      stopped.set(true);
+    }
+    watermarkTrigger.shutdown();
     return readersForParentTask.stop(taskId);
   }
 
