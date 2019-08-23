@@ -4,6 +4,7 @@ import avro.shaded.com.google.common.collect.Lists;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -76,6 +78,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ExecutorThread executorThread;
 
   // TODO: we should get checkpoint mark in constructor!
+
+  final AtomicBoolean prepared = new AtomicBoolean(false);
+
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, Serializer> serializerMap,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
@@ -105,6 +110,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     */
 
     prepare();
+    prepared.set(true);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -281,7 +287,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                 parentTaskReader,
                 dataFetcherOutputCollector,
                 rendevousServerClient,
-                this));
+                this,
+                prepared));
 
           }
         });

@@ -101,16 +101,20 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
   private final AtomicBoolean stopped = new AtomicBoolean(false);
 
+  private final AtomicBoolean prepared;
+
   public LambdaParentTaskDataFetcher(final String taskId,
                                      final IRVertex dataSource,
                                      final RuntimeEdge edge,
                                      final InputReader readerForParentTask,
                                      final OutputCollector outputCollector,
                                      final RendevousServerClient rendevousServerClient,
-                                     final TaskExecutor taskExecutor) {
+                                     final TaskExecutor taskExecutor,
+                                     final AtomicBoolean prepared) {
     super(dataSource, edge, outputCollector);
 
     readerForParentTask.setDataFetcher(this);
+    this.prepared = prepared;
 
     this.taskId = taskId;
     this.stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
@@ -134,7 +138,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     watermarkTrigger.scheduleAtFixedRate(() -> {
 
       synchronized (stopped) {
-        if (!stopped.get()) {
+        if (!stopped.get() && prepared.get()) {
           final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
           //LOG.info("Request watermark at {}", taskId);
 
@@ -145,7 +149,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
           }
         }
       }
-    }, 200, 200, TimeUnit.MILLISECONDS);
+    }, 3000, 200, TimeUnit.MILLISECONDS);
   }
 
   @Override

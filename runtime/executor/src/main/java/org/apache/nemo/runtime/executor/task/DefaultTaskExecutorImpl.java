@@ -71,6 +71,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -176,6 +177,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final ExecutorThread executorThread;
 
+  private final AtomicBoolean prepared = new AtomicBoolean(false);
+
   /**
    * Constructor.
    *
@@ -268,6 +271,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     // Prepare data structures
     prepare(task, irVertexDag, intermediateDataIOFactory);
+
+    prepared.set(true);
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
