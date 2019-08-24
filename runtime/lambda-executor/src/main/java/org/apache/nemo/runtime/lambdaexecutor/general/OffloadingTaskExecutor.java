@@ -375,79 +375,75 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     LOG.info("Finishing {}", offloadingTask.taskId);
 
-    // close output writer!!
-    // we should first close output writer
-    // the code after this should not emit outputs to downstream operators
-    prepareService.execute(() -> {
-      try {
-        // TODO: fix
-        final List<Future> outputfutures = pipeOutputWriters.stream()
-          .map(outputWriter -> {
-            return outputWriter.close(offloadingTask.taskId);
-          }).collect(Collectors.toList());
+    try {
+      // TODO: fix
+      final List<Future> outputfutures = pipeOutputWriters.stream()
+        .map(outputWriter -> {
+          return outputWriter.close(offloadingTask.taskId);
+        }).collect(Collectors.toList());
 
-        LOG.info("Closing output writer {}", offloadingTask.taskId);
+      LOG.info("Closing output writer {}", offloadingTask.taskId);
 
-        for (final Future future : outputfutures) {
-          future.get();
-        }
-
-        LOG.info("All Clossed output writer {}", offloadingTask.taskId);
-
-        //Thread.sleep(3000);
-
-        // TODO: we send checkpoint mark to vm
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+      for (final Future future : outputfutures) {
+        future.get();
       }
 
-      boolean hasSource = false;
-      for (final DataFetcher dataFetcher : allFetchers) {
+      LOG.info("All Clossed output writer {}", offloadingTask.taskId);
 
-        if (dataFetcher instanceof SourceVertexDataFetcher) {
-          hasSource = true;
-          // send checkpoint mark to the VM!!
-          final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
-            stateAndCoderMap = getStateAndCoderMap();
+      //Thread.sleep(3000);
 
-          final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+      // TODO: we send checkpoint mark to vm
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
-          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-          if (srcDataFetcher.isStarted()) {
-            final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
-            final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
-            final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+    boolean hasSource = false;
+    for (final DataFetcher dataFetcher : allFetchers) {
 
-            LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
-            resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
-              checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
-          } else {
-            final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
-            final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
-
-            LOG.info("Send checkpointmark of task {}  / {} to vm",
-              offloadingTask.taskId, offloadingTask.checkpointMark);
-            resultCollector.collector.emit(new KafkaOffloadingOutput(
-              offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
-          }
-        }
-      }
-
-      if (!hasSource) {
-        // send states to vm !!
-        LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        hasSource = true;
+        // send checkpoint mark to the VM!!
         final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
           stateAndCoderMap = getStateAndCoderMap();
 
         final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-        resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap, stateAndCoderMap.right()));
+
+        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+        if (srcDataFetcher.isStarted()) {
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
+          final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+
+          LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
+          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
+            checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+        } else {
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
+          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+
+          LOG.info("Send checkpointmark of task {}  / {} to vm",
+            offloadingTask.taskId, offloadingTask.checkpointMark);
+          resultCollector.collector.emit(new KafkaOffloadingOutput(
+            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+        }
       }
+    }
 
-      pendingFutures.clear();
-      // Close all data fetchers
+    if (!hasSource) {
+      // send states to vm !!
+      LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
+      final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+        stateAndCoderMap = getStateAndCoderMap();
 
-      // TODO: close upstream data fetchers
+      final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap, stateAndCoderMap.right()));
+    }
+
+    pendingFutures.clear();
+    // Close all data fetchers
+
+    // TODO: close upstream data fetchers
     /*
       fetchers.forEach(fetcher -> {
         try {
@@ -459,8 +455,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       });
     */
 
+    // close output writer!!
+    // we should first close output writer
+    // the code after this should not emit outputs to downstream operators
+    /*
+    prepareService.execute(() -> {
+
+
 
     });
+    */
 
   }
 
