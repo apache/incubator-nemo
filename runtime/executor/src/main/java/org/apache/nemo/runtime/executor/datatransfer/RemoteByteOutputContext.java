@@ -38,6 +38,7 @@ import java.util.List;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext.Status.PENDING;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -57,6 +58,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   enum Status {
     PENDING_INIT,
+    START_PENDING,
     PENDING,
     NO_PENDING
   }
@@ -143,21 +145,9 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     synchronized (writeLock) {
       //sendDataTo = sdt;
 
-      currStatus = Status.PENDING;
+      currStatus = PENDING;
       taskId = tid;
 
-      final ByteTransferContextSetupMessage message =
-        new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-          getContextId().getTransferIndex(),
-          getContextId().getDataDirection(),
-          getContextDescriptor(),
-          getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-          VM,
-          taskId);
-
-      //LOG.info("Ack pending to {}, change to {}, {}",sendDataTo,  sdt, message);
-      currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
     }
   }
 
@@ -396,6 +386,23 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
       synchronized (writeLock) {
         try {
           switch (currStatus) {
+            case START_PENDING: {
+              final ByteTransferContextSetupMessage message =
+                new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+                  getContextId().getTransferIndex(),
+                  getContextId().getDataDirection(),
+                  getContextDescriptor(),
+                  getContextId().isPipe(),
+                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+                  VM,
+                  taskId);
+              //LOG.info("Ack pending to {}, change to {}, {}",sendDataTo,  sdt, message);
+              currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+
+              currStatus = PENDING;
+              pendingByteBufs.add(byteBuf);
+              break;
+            }
             case PENDING: {
               pendingByteBufs.add(byteBuf);
               break;
