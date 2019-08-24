@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryTimerInternalsFactory<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactoryCoder.class.getName());
@@ -79,7 +81,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     final Instant processingTime = new Instant(dis.readLong());
     final Instant synchronizedProcessingTime = new Instant(dis.readLong());
 
-    final Map<K, NemoTimerInternals> timerInternalsMap;
+    final ConcurrentMap<K, NemoTimerInternals> timerInternalsMap;
     try {
       timerInternalsMap = decodeTimerInternalsMap(
         watermarkTimers, processingTimers, synchronizedProcessingTimers, dis);
@@ -185,14 +187,14 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     */
   }
 
-  private Map<K, NemoTimerInternals> decodeTimerInternalsMap(
+  private ConcurrentMap<K, NemoTimerInternals> decodeTimerInternalsMap(
     final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers,
     final DataInputStream dis) throws Exception {
 
     final int size = dis.readInt();
-    final Map<K, NemoTimerInternals> map = new HashMap<>();
+    final ConcurrentMap<K, NemoTimerInternals> map = new ConcurrentHashMap<>();
     final FSTConfiguration conf = FSTSingleton.getInstance();
 
     for (int i = 0; i < size; i++) {
