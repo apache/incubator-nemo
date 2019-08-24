@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fetches data from a data source.
@@ -60,6 +61,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private boolean watermarkProgressed = false;
 
+
+  private final AtomicBoolean globalPrepared;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
@@ -67,10 +71,12 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final ExecutorService prepareService,
                                  final String taskId,
                                  final long pt,
-                                 final ExecutorGlobalInstances executorGlobalInstances) {
+                                 final ExecutorGlobalInstances executorGlobalInstances,
+                                 final AtomicBoolean globalPreapred) {
     super(dataSource, edge, outputCollector);
     this.readable = readable;
-   this.bounded = dataSource.isBounded();
+    this.globalPrepared = globalPreapred;
+    this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
     this.taskId = taskId;
     this.prevWatermarkTimestamp = 0;
@@ -78,7 +84,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
     if (!bounded) {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
-        if (isPrepared) {
+        if (isPrepared && globalPreapred.get()) {
           final long watermarkTimestamp = readable.readWatermark();
           //LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
           if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
@@ -97,8 +103,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
-                                 final ExecutorGlobalInstances executorGlobalInstances) {
-    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, executorGlobalInstances);
+                                 final ExecutorGlobalInstances executorGlobalInstances,
+                                 final AtomicBoolean globalPrepared) {
+    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, executorGlobalInstances, globalPrepared);
   }
 
   public SourceVertexDataFetcher(final SourceVertex dataSource,
@@ -106,8 +113,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final Readable readable,
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
-                                 final String taskId) {
-    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, null);
+                                 final String taskId,
+                                 final AtomicBoolean globalPrepared) {
+    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, null, globalPrepared);
   }
 
   public void setReadable(final Readable r) {
@@ -152,7 +160,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       });
     }
 
-    if (!isPrepared) {
+    if (!isPrepared || !globalPrepared.get()) {
       LOG.info("Not prepared for {}...", taskId);
       return EmptyElement.getInstance();
     }
@@ -203,7 +211,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public void restart() {
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
-      if (isPrepared) {
+      if (isPrepared && globalPrepared.get()) {
         final long watermarkTimestamp = readable.readWatermark();
         if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
           watermarkProgressed = true;
