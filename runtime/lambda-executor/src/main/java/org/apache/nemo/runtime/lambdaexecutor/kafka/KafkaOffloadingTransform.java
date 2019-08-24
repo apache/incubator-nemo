@@ -249,7 +249,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, null, outputCollector, null, "stageId...");
+          beamUnboundedSourceVertex, edge, null, outputCollector, null, "stageId...", null);
         dataFetchers.add(dataFetcher);
       }
 
