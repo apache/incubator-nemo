@@ -65,6 +65,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   private TaskExecutor taskExecutor;
   private DataFetcher dataFetcher;
 
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor

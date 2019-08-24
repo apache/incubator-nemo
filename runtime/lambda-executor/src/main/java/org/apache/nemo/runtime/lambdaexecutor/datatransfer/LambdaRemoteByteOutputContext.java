@@ -24,6 +24,7 @@ import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
@@ -40,7 +41,6 @@ import java.util.List;
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteOutputContext.Status.PENDING;
-import static org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteOutputContext.Status.START_PENDING;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -60,7 +60,6 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   enum Status {
     PENDING_INIT,
-    START_PENDING,
     PENDING,
     NO_PENDING
   }
@@ -76,6 +75,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   private String relayDst;
 
   private final Object writeLock = new Object();
+  private ExecutorThread executorThread;
 
   /**
    * Creates a output context.
@@ -138,11 +138,13 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
    * @throws IOException if an exception was set or this context was closed.
    */
   @Override
-  public ByteOutputStream newOutputStream() throws IOException {
+  public ByteOutputStream newOutputStream(final ExecutorThread et) throws IOException {
     ensureNoException();
     if (closed) {
       throw new IOException("Context already closed.");
     }
+
+    executorThread = et;
 
     return new RemoteByteOutputStream();
   }
@@ -152,8 +154,29 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
     synchronized (writeLock) {
       //sendDataTo = sdt;
+
       taskId = tid;
-      currStatus = START_PENDING;
+      executorThread.queue.add(() -> {
+        currStatus = PENDING;
+
+        final ByteTransferContextSetupMessage message =
+          new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+            getContextId().getTransferIndex(),
+            getContextId().getDataDirection(),
+            getContextDescriptor(),
+            getContextId().isPipe(),
+            ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+            SF,
+            taskId);
+
+        if (sdt.equals(VM)) {
+          //LOG.info("Ack pending to relay {}", message);
+          relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+        } else if (sdt.equals(SF)) {
+          //LOG.info("Ack pending to vm {}", message);
+          vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+        }
+      });
     }
   }
 
@@ -385,29 +408,6 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
       synchronized (writeLock) {
         try {
           switch (currStatus) {
-            case START_PENDING: {
-              final ByteTransferContextSetupMessage message =
-                new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-                  getContextId().getTransferIndex(),
-                  getContextId().getDataDirection(),
-                  getContextDescriptor(),
-                  getContextId().isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                  SF,
-                  taskId);
-
-              if (sendDataTo.equals(SF)) {
-                //LOG.info("Ack pending to relay {}", message);
-                relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
-              } else if (sendDataTo.equals(VM)) {
-                //LOG.info("Ack pending to vm {}", message);
-                vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
-              }
-
-              currStatus = PENDING;
-              pendingByteBufs.add(byteBuf);
-              break;
-            }
             case PENDING: {
               //LOG.info("Pending data to {}/{}, {}, {}", edgeId, opId, sendDataTo, getContextId());
               pendingByteBufs.add(byteBuf);

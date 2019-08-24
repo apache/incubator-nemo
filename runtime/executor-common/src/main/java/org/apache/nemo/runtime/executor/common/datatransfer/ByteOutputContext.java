@@ -22,6 +22,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import javax.annotation.Nullable;
@@ -39,7 +40,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
   public void receivePendingAck();
 
-  ByteOutputStream newOutputStream() throws IOException;
+  ByteOutputStream newOutputStream(ExecutorThread executorThread) throws IOException;
 
   // pending for moving downstream tasks
   void pending(TaskLoc sendDataTo, String tId);

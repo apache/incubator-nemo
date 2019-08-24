@@ -13,6 +13,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
@@ -92,7 +93,8 @@ public final class TaskExecutorUtil {
                                                           final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                                                           final Map<Long, Long> prevWatermarkMap,
                                                           final Map<Long, Integer> watermarkCounterMap,
-                                                          final RendevousServerClient rendevousServerClient) {
+                                                          final RendevousServerClient rendevousServerClient,
+                                                          final ExecutorThread executorThread) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
@@ -105,7 +107,7 @@ public final class TaskExecutorUtil {
         if (isPipe(outEdgeForThisVertex)) {
           outputWriter = intermediateDataIOFactory
             .createPipeWriter(
-              taskId, outEdgeForThisVertex, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient);
+              taskId, outEdgeForThisVertex, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, outEdgeForThisVertex);
@@ -132,7 +134,8 @@ public final class TaskExecutorUtil {
     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
     final Map<Long, Long> prevWatermarkMap,
     final Map<Long, Integer> watermarkCounterMap,
-    final RendevousServerClient rendevousServerClient) {
+    final RendevousServerClient rendevousServerClient,
+    final ExecutorThread executorThread) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<OutputWriter>> map = new HashMap<>();
 
@@ -147,7 +150,7 @@ public final class TaskExecutorUtil {
 
         if (isPipe(edge)) {
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskId, edge, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient);
+            .createPipeWriter(taskId, edge, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, edge);

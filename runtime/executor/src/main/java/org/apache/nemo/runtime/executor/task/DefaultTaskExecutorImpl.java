@@ -592,7 +592,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
@@ -611,7 +611,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
 
       OutputCollector outputCollector;
 

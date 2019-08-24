@@ -31,6 +31,7 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
@@ -110,7 +111,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
    * @throws IOException if an exception was set or this context was closed.
    */
   @Override
-  public ByteOutputStream newOutputStream() throws IOException {
+  public ByteOutputStream newOutputStream(ExecutorThread t) throws IOException {
     return new LocalByteOutputStream();
   }
 

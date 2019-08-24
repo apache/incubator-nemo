@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
@@ -65,13 +66,16 @@ public final class PipeOutputWriter implements Flushable {
 
   private final String taskId;
 
+  private final ExecutorThread executorThread;
+
   PipeOutputWriter(final String taskId,
                    final int srcTaskIndex,
                    final int originTaskIndex,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Serializer> serializerMap,
-                   final RendevousServerClient rendevousServerClient) {
+                   final RendevousServerClient rendevousServerClient,
+                   final ExecutorThread executorThread) {
     this.taskId = taskId;
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
@@ -85,6 +89,7 @@ public final class PipeOutputWriter implements Flushable {
     this.pipeAndStreamMap = new HashMap<>();
     this.serializer = serializerMap.get(runtimeEdge.getId());
     this.rendevousServerClient = rendevousServerClient;
+    this.executorThread = executorThread;
     this.pipes = doInitialize();
   }
 
@@ -232,7 +237,7 @@ public final class PipeOutputWriter implements Flushable {
       .map(byteOutputContext -> {
         try {
           final ByteOutputContext context = byteOutputContext.get();
-          pipeAndStreamMap.put(context, context.newOutputStream());
+          pipeAndStreamMap.put(context, context.newOutputStream(executorThread));
           //LOG.info("Context {}", context);
           return context;
         } catch (InterruptedException e) {

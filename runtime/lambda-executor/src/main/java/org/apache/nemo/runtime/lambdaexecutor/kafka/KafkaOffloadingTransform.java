@@ -389,7 +389,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -420,7 +420,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

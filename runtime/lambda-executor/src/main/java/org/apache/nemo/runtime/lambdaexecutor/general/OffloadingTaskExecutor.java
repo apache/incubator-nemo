@@ -195,7 +195,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           offloadingTask.taskIndex,
           serializerMap, pipeOutputWriters,
           offloadingTask.taskId,
-          rendevousServerClient);
+          rendevousServerClient,
+          executorThread);
 
       final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
         irVertex, offloadingTask.outgoingEdges,
@@ -203,7 +204,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         offloadingTask.taskIndex,
         offloadingTask.taskIndex, serializerMap, pipeOutputWriters,
         offloadingTask.taskId,
-        rendevousServerClient);
+        rendevousServerClient,
+        executorThread);
 
       for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
         operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
@@ -544,7 +546,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     final Map<String, Serializer> serializerMap,
     final Set<PipeOutputWriter> outputWriters,
     final String taskId,
-    final RendevousServerClient client) {
+    final RendevousServerClient client,
+    final ExecutorThread et) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
 
@@ -557,7 +560,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client, et);
 
 
           outputWriters.add(outputWriter);
@@ -575,14 +578,15 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   public static List<PipeOutputWriter> getExternalMainOutputs(final IRVertex irVertex,
-                                                          final List<StageEdge> outEdgesToChildrenTasks,
-                                                          final IntermediateDataIOFactory intermediateDataIOFactory,
-                                                          final int taskIndex,
-                                                          final int originTaskIndex,
-                                                          final Map<String, Serializer> serializerMap,
+                                                              final List<StageEdge> outEdgesToChildrenTasks,
+                                                              final IntermediateDataIOFactory intermediateDataIOFactory,
+                                                              final int taskIndex,
+                                                              final int originTaskIndex,
+                                                              final Map<String, Serializer> serializerMap,
                                                               final Set<PipeOutputWriter> pipeOutputWriters,
                                                               final String taskId,
-                                                              final RendevousServerClient client) {
+                                                              final RendevousServerClient client,
+                                                              final ExecutorThread et) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
@@ -591,7 +595,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
             .createPipeWriter(taskIndex,
-              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client);
+              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client, et);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

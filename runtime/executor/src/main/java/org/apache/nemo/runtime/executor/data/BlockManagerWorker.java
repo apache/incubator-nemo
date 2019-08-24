@@ -344,7 +344,7 @@ public final class BlockManagerWorker {
                 || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
-                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream(null)) {
                   //os.writeFileArea(fileArea);
                   throw new RuntimeException("Not support batch");
                 }
@@ -352,7 +352,7 @@ public final class BlockManagerWorker {
             } else {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
-                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream(null)) {
                   //os.writeSerializedPartition(partition);
                   throw new RuntimeException("Not support batch");
                 }

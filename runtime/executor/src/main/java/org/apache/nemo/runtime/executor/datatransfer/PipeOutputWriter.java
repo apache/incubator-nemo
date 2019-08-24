@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -71,6 +72,7 @@ public final class PipeOutputWriter implements OutputWriter {
   private volatile boolean stopped = false;
 
   private final RendevousServerClient rendevousServerClient;
+  private final ExecutorThread executorThread;
 
   /**
    * Constructor.
@@ -85,7 +87,8 @@ public final class PipeOutputWriter implements OutputWriter {
                    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                    final Map<Long, Integer> watermarkCounterMap,
                    final RelayServer relayServer,
-                   final RendevousServerClient rendevousServerClient) {
+                   final RendevousServerClient rendevousServerClient,
+                   final ExecutorThread executorThread) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
@@ -101,6 +104,7 @@ public final class PipeOutputWriter implements OutputWriter {
     this.relayServer = relayServer;
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
     this.rendevousServerClient = rendevousServerClient;
+    this.executorThread = executorThread;
     this.pipes = doInitialize();
   }
 
@@ -300,7 +304,7 @@ public final class PipeOutputWriter implements OutputWriter {
       .map(byteOutputContext -> {
         try {
           final ByteOutputContext context = byteOutputContext.get();
-          pipeAndStreamMap.put(context, context.newOutputStream());
+          pipeAndStreamMap.put(context, context.newOutputStream(executorThread));
           //LOG.info("Context {}, at {}", context, srcTaskId);
           return context;
         } catch (InterruptedException e) {
