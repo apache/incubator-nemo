@@ -222,6 +222,11 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       stopped.set(true);
     }
     watermarkTrigger.shutdown();
+    try {
+      watermarkTrigger.awaitTermination(2, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     return readersForParentTask.stop(taskId);
   }
 

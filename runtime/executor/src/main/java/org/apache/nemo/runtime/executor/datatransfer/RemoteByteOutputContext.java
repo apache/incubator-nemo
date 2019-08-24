@@ -423,7 +423,9 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
     @Override
     public void flush() {
-      channel.flush();
+      synchronized (writeLock) {
+        channel.flush();
+      }
     }
 
     /**

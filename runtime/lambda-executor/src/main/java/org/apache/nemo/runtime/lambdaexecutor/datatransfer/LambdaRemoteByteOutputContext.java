@@ -429,7 +429,9 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
     @Override
     public void flush() {
-      currChannel.flush();
+      synchronized (writeLock) {
+        currChannel.flush();
+      }
     }
 
     /** * Writes a data frame.
