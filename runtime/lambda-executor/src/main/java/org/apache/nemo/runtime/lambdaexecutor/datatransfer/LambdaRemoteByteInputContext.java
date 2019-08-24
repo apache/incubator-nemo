@@ -72,6 +72,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
   private InputStreamIterator inputStreamIterator;
   private TaskExecutor taskExecutor;
   private DataFetcher dataFetcher;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -184,6 +185,8 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
       });
     });
 
+    isFinished = true;
+
     /*
     if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
       //LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
@@ -205,6 +208,11 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
   public void onByteBuf(final ByteBuf byteBuf) {
     //LOG.info("input context {} On byteBuf, bytes: {}, hashCode: {}", getContextId().getTransferIndex(), byteBuf.readableBytes(),
     //  LambdaRemoteByteInputContext.this.hashCode());
+
+    if (isFinished) {
+      throw new RuntimeException("Input context is closed.. but get result");
+    }
+
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
 
