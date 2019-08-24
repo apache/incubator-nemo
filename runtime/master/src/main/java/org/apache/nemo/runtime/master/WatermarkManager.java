@@ -64,9 +64,11 @@ public final class WatermarkManager {
 
     final StageWatermarkTracker stageWatermarkTracker = stageWatermarkTrackerMap.get(stageId);
 
+    /*
     if (stageId.equals("Stage2")) {
       LOG.info("request update watermark of stage2 \n {}", stageWatermarkTracker);
     }
+    */
 
     final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(index, watermark);
 
@@ -77,9 +79,11 @@ public final class WatermarkManager {
         throw new RuntimeException("Output watermark of " + stageId + " is greater than the emitted watermark " + outputW + ", " + val.get());
       }
 
+      /*
     if (stageId.equals("Stage2")) {
       LOG.info("set update watermark of stage2 ");
     }
+    */
 
       stageOutputWatermarkMap.put(stageId, val.get());
       // update dependent stages watermarks
