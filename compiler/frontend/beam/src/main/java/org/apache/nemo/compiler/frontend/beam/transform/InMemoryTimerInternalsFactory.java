@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
    * InMemoryTimerInternalsFactory.
@@ -38,7 +36,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     /** Current synchronized processing time. */
     public Instant synchronizedProcessingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
 
-    public ConcurrentMap<K, NemoTimerInternals> timerInternalsMap;
+    public Map<K, NemoTimerInternals> timerInternalsMap;
 
     @Override
     public String toString() {
@@ -68,7 +66,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       this.watermarkTimers = new TreeSet<>(comparator);
       this.processingTimers = new TreeSet<>(comparator);
       this.synchronizedProcessingTimers = new TreeSet<>(comparator);
-      this.timerInternalsMap = new ConcurrentHashMap<>();
+      this.timerInternalsMap = new HashMap<>();
     }
 
     public InMemoryTimerInternalsFactory(
@@ -78,7 +76,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       final Instant inputWatermarkTime,
       final Instant processingTime,
       final Instant synchronizedProcessingTime,
-      final ConcurrentMap<K, NemoTimerInternals> timerInternalsMap) {
+      final Map<K, NemoTimerInternals> timerInternalsMap) {
       this.watermarkTimers = watermarkTimers;
       this.processingTimers = processingTimers;
       this.synchronizedProcessingTimers = synchronizedProcessingTimers;

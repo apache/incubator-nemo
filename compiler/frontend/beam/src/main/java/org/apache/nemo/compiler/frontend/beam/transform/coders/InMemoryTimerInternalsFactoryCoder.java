@@ -19,8 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryTimerInternalsFactory<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactoryCoder.class.getName());
@@ -81,7 +79,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     final Instant processingTime = new Instant(dis.readLong());
     final Instant synchronizedProcessingTime = new Instant(dis.readLong());
 
-    final ConcurrentMap<K, NemoTimerInternals> timerInternalsMap;
+    final Map<K, NemoTimerInternals> timerInternalsMap;
     try {
       timerInternalsMap = decodeTimerInternalsMap(
         watermarkTimers, processingTimers, synchronizedProcessingTimers, dis);
@@ -130,39 +128,9 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
   private void encodeTimerInternalsMap(final Map<K, NemoTimerInternals> timerInternalsMap,
                                        final DataOutputStream dos) throws IOException {
-
-    final int size = timerInternalsMap.size();
-    dos.writeInt(size);
+    dos.writeInt(timerInternalsMap.size());
     final FSTConfiguration conf = FSTSingleton.getInstance();
 
-    final Iterator<Map.Entry<K, NemoTimerInternals>> iterator = timerInternalsMap.entrySet().iterator();
-
-
-    int cnt = 0;
-    while (cnt < size) {
-      final Map.Entry<K, NemoTimerInternals> entry = iterator.next();
-      final K key = entry.getKey();
-      keyCoder.encode(key, dos);
-
-      final NemoTimerInternals nemoTimerInternals = entry.getValue();
-      final Table<StateNamespace, String, TimerInternals.TimerData> existingTimers = nemoTimerInternals.existingTimers;
-      final Instant inputWatermarkTime = nemoTimerInternals.currentInputWatermarkTime();
-      final Instant processingTime = nemoTimerInternals.currentProcessingTime();
-      final Instant synchronizedProcessingTime = nemoTimerInternals.currentSynchronizedProcessingTime();
-      final Instant outputWatermarkTime = nemoTimerInternals.currentOutputWatermarkTime();
-
-
-      encodeTable(existingTimers, dos);
-
-      conf.encodeToStream(dos, inputWatermarkTime);
-      conf.encodeToStream(dos, processingTime);
-      conf.encodeToStream(dos, synchronizedProcessingTime);
-      conf.encodeToStream(dos, outputWatermarkTime);
-
-      cnt += 1;
-    }
-
-    /*
     for (final Map.Entry<K, NemoTimerInternals> entry : timerInternalsMap.entrySet()) {
       final K key = entry.getKey();
       keyCoder.encode(key, dos);
@@ -184,17 +152,16 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
       //LOG.info("Serialize instances");
     }
-    */
   }
 
-  private ConcurrentMap<K, NemoTimerInternals> decodeTimerInternalsMap(
+  private Map<K, NemoTimerInternals> decodeTimerInternalsMap(
     final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers,
     final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers,
     final DataInputStream dis) throws Exception {
 
     final int size = dis.readInt();
-    final ConcurrentMap<K, NemoTimerInternals> map = new ConcurrentHashMap<>();
+    final Map<K, NemoTimerInternals> map = new HashMap<>();
     final FSTConfiguration conf = FSTSingleton.getInstance();
 
     for (int i = 0; i < size; i++) {
