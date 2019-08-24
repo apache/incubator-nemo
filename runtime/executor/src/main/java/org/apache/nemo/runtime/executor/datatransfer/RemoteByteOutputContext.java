@@ -61,9 +61,9 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     NO_PENDING
   }
 
-  private Status currStatus = Status.NO_PENDING;
+  private volatile Status currStatus = Status.NO_PENDING;
 
-  private TaskLoc sendDataTo = VM;
+  private volatile TaskLoc sendDataTo = VM;
 
   private EventHandler<Integer> ackHandler;
 

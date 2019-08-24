@@ -63,9 +63,9 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     NO_PENDING
   }
 
-  private Status currStatus = Status.NO_PENDING;
+  private volatile Status currStatus = Status.NO_PENDING;
 
-  private TaskLoc sendDataTo;
+  private volatile TaskLoc sendDataTo;
 
   private String remoteAddress;
   private EventHandler<Integer> ackHandler;

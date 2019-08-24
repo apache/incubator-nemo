@@ -375,6 +375,15 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     LOG.info("Finishing {}", offloadingTask.taskId);
 
+    while (!executorThread.queue.isEmpty()) {
+      LOG.info("Waiting for executor finish");
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
     try {
       // TODO: fix
       final List<Future> outputfutures = pipeOutputWriters.stream()
