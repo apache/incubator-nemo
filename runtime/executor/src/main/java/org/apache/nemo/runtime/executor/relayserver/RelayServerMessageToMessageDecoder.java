@@ -113,7 +113,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
       //final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
       if (!taskChannelMap.containsKey(dst)) {
-        LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
+        //LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
         pendingByteMap.putIfAbsent(dst, new ArrayList<>());
         final List<ByteBuf> pendingBytes = pendingByteMap.get(dst);
 
