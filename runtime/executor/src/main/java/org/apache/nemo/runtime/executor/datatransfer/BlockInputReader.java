@@ -102,21 +102,17 @@ public final class BlockInputReader implements InputReader {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all());
+    return blockManagerWorker.readBlock(
+      blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = InputReader.getSourceParallelism(this);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       futures.add(blockManagerWorker.readBlock(
-        blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all()));
+        blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all()));
     }
 
     return futures;
@@ -129,7 +125,6 @@ public final class BlockInputReader implements InputReader {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
     final KeyRange hashRangeToRead = keyRangeList.get(dstTaskIndex);
     if (hashRangeToRead == null) {
@@ -140,8 +135,8 @@ public final class BlockInputReader implements InputReader {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-      futures.add(
-        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), hashRangeToRead));
+      futures.add(blockManagerWorker.readBlock(
+        blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), hashRangeToRead));
     }
 
     return futures;

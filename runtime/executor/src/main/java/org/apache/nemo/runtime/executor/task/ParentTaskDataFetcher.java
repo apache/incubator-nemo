@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -117,6 +118,53 @@ class ParentTaskDataFetcher extends DataFetcher {
       this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
+  }
+
+  private void handleIncomingBlock(final String blockId,
+                                   final CompletableFuture<DataUtil.IteratorWithNumBytes> future) {
+    future.whenComplete((iterator, exception) -> {
+      try {
+        if (exception != null) {
+          if (BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER) {
+            // Retry this specific block!!!
+            LOG.info("RETRY start due to exception {}", exception.toString());
+            private int twoSecondsInMs =  2 * 1000;
+            Thread.sleep(twoSecondsInMs);
+            final Pair<String, CompletableFuture<DataUtil.IteratorWithNumBytes>> retryPair =
+              readersForParentTask.retry(blockId);
+            handleIncomingBlock(retryPair.left(), retryPair.right());
+          } else if (BlockFetchFailureProperty.Value.CANCEL_TASK) {
+
+          } else {
+
+          }
+
+        } else {
+          // handle completed iterator
+          iteratorQueue.put(iterator); // can block here
+        }
+      } catch (final InterruptedException e) {
+
+
+
+
+        LOG.info("INTERRUPTED - SHOULDNT HAPPEN");
+        System.exit(1);
+      }
+    });
+  }
+
+  private void fetchDataLazily() {
+    final List<Pair<String, CompletableFuture<DataUtil.IteratorWithNumBytes>>> futures =
+      readersForParentTask.read();
+    this.expectedNumOfIterators = futures.size();
+    futures.forEach(pair -> {
+      final String blockId = pair.left();
+      final CompletableFuture<DataUtil.IteratorWithNumBytes> future = pair.right();
+      future.whenComplete((iterator, exception) -> {
+        handleIncomingBlock(blockId, future);
+      });
+    });
   }
 
   private void fetchDataLazily() throws IOException {

@@ -26,8 +26,11 @@ import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
 import org.apache.nemo.common.exception.UnsupportedExecutionPropertyException;
+import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -155,8 +158,12 @@ public final class BlockManagerWorker {
   public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
     final String blockIdWildcard,
     final String runtimeEdgeId,
-    final DataStoreProperty.Value blockStore,
+    final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties,
     final KeyRange keyRange) {
+
+
+
+
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
@@ -199,6 +206,7 @@ public final class BlockManagerWorker {
       // This is the executor id that we wanted to know
       final String blockId = blockLocationInfoMsg.getBlockId();
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
+      final DataStoreProperty.Value blockStore = executionProperties.get(DataStoreProperty.class).get();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
@@ -228,9 +236,24 @@ public final class BlockManagerWorker {
           }
         });
 
-        return contextFuture
-          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-            serializerManager.getSerializer(runtimeEdgeId)));
+        final Optional<BlockFetchFailureProperty.Value> fetchFailure =
+          executionProperties.get(BlockFetchFailureProperty.class);
+        if (fetchFailure.isPresent() && !fetchFailure.get().equals(BlockFetchFailureProperty.Value.CANCEL_TASK)) {
+          /**
+           * TODO
+           */
+          return contextFuture
+            .thenCompose(context -> context.getCompletedFuture()) // this waits receiving the full block
+            .thenApply(streams -> new DataUtil.InputStreamIterator(streams,
+              serializerManager.getSerializer(runtimeEdgeId)));
+        } else {
+          /**
+           *
+           */
+          return contextFuture
+            .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+              serializerManager.getSerializer(runtimeEdgeId)));
+        }
       }
     });
   }
