@@ -151,7 +151,7 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       this.channel = channel;
     }
 
-    public synchronized void onNext(final LambdaEvent nemoEvent) {
+    public void onNext(final LambdaEvent nemoEvent) {
       System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
       switch (nemoEvent.getType()) {
         case WORKER_INIT:
@@ -163,25 +163,27 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
 //           ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream);
             //task = SerializationUtils.deserialize(nemoEvent.getBytes());
 //           task = (Task) objectInputStream.readObject();
+
             URL[] urls = null;
             try {
               // Convert the file object to a URL
-              File dir = new File(System.getProperty("/opt/java/lib/beam-vendor-guava-20_0-0.1.jar")
+              File dir = new File(System.getProperty("/opt/java/lib/guava-20.0.jar")
                 + File.separator + "dir" + File.separator);
               URL url = dir.toURL();
               urls = new URL[]{url};
               ClassLoader urlClassLoader = new URLClassLoader(urls);
               ObjectInputStream ois = new ObjectInputStream(byteInputStream) {
-                @SuppressWarnings("rawtypes")
                 @Override
                 protected Class resolveClass(ObjectStreamClass objectStreamClass)
                   throws IOException, ClassNotFoundException {
-                  if (objectStreamClass.getName().equals(ImmutableBiMap.class.getName())) {
+                  if (objectStreamClass.getName().startsWith("org.apache.beam.vendor.guava.v")) {
                     System.out.println("Use urlClassLoader");
                     return Class.forName(objectStreamClass.getName(), true, urlClassLoader);
                   } else {
-                    System.out.println("Don't use urlClassLoader");
-                    return Class.forName(objectStreamClass.getName(), true, ClassLoader.getSystemClassLoader());
+                    System.out.println("Don't use urlClassLoader "
+                      + objectStreamClass.getName() + " " + ImmutableBiMap.class.getName());
+                    return Class.forName(objectStreamClass.getName(),
+                      true, this.getClass().getClassLoader());
                   }
                 }
               };
