@@ -13,6 +13,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -30,6 +31,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
@@ -51,6 +53,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingTaskExecutor.class.getName());
 
   private final OffloadingTask offloadingTask;
+  private ReadyTask readyTask;
   private final OffloadingOutputCollector oc;
   private final OffloadingResultCollector resultCollector;
 
@@ -110,7 +113,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     */
 
     prepare();
-    prepared.set(true);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -122,7 +124,60 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
   }
 
-  private void prepare() {
+  public synchronized void start(final ReadyTask readyTask) {
+    this.readyTask = readyTask;
+
+
+    final List<IRVertex> reverseTopologicallySorted = Lists.reverse(offloadingTask.irDag.getTopologicalSort());
+
+
+    // pipe output writer prepare
+    LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
+    pipeOutputWriters.forEach(pipeOutputWriter -> {
+      pipeOutputWriter.doInitialize();
+    });
+
+    reverseTopologicallySorted.forEach(irVertex -> {
+      final Transform transform;
+      if (irVertex instanceof OperatorVertex) {
+        transform = ((OperatorVertex) irVertex).getTransform();
+        if (transform instanceof StatefulTransform) {
+          final GBKFinalState state = readyTask.stateMap.get(irVertex.getId());
+          if (state != null) {
+            LOG.info("Set state for operator {}", irVertex.getId());
+            final StatefulTransform statefulTransform = (StatefulTransform) transform;
+            statefulTransform.setState(state);
+          }
+        }
+
+        final OutputCollector outputCollector = outputCollectorMap.get(irVertex.getId());
+        transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
+      }
+    });
+
+    for (final DataFetcher dataFetcher : allFetchers) {
+
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        final UnboundedSource.CheckpointMark checkpointMark = readyTask.checkpointMark;
+        final UnboundedSource unboundedSource = readyTask.unboundedSource;
+        LOG.info("Receive checkpointmark: {}", checkpointMark);
+        final UnboundedSourceReadable readable =
+          new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
+
+        final SourceVertexDataFetcher sourceVertexDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+        sourceVertexDataFetcher.setReadable(readable);
+
+      } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
+
+        final LambdaParentTaskDataFetcher lambdaParentTaskDataFetcher = (LambdaParentTaskDataFetcher) dataFetcher;
+        lambdaParentTaskDataFetcher.prepare();
+      }
+    }
+
+    prepared.set(true);
+  }
+
+  private synchronized void prepare() {
 
     System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
@@ -240,17 +295,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
         final RuntimeEdge edge = offloadingTask.irDag.getOutgoingEdgesOf(irVertex).get(0);
 
-        final UnboundedSource.CheckpointMark checkpointMark = offloadingTask.checkpointMark;
-        final UnboundedSource unboundedSource = offloadingTask.unboundedSource;
-        LOG.info("Receive checkpointmark: {}", checkpointMark);
-
-        beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
-
-        final UnboundedSourceReadable readable =
-          new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
-
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, readable, outputCollector, prepareService, offloadingTask.taskId,
+          beamUnboundedSourceVertex, edge, null /* readable */, outputCollector, prepareService, offloadingTask.taskId,
           executorGlobalInstances, prepared);
         allFetchers.add(dataFetcher);
         sourceVertexDataFetchers.add(dataFetcher);
@@ -261,8 +307,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         .stream()
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
         .map(incomingEdge -> {
-
-
 
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, offloadingTask.taskIndex,
             offloadingTask.taskId);
@@ -290,24 +334,12 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                 dataFetcherOutputCollector,
                 rendevousServerClient,
                 this,
-                prepared));
+                prepared,
+                prepareService));
 
           }
         });
 
-      final Transform transform;
-      if (irVertex instanceof OperatorVertex) {
-        transform = ((OperatorVertex) irVertex).getTransform();
-        if (transform instanceof StatefulTransform) {
-          final GBKFinalState state = offloadingTask.stateMap.get(irVertex.getId());
-          if (state != null) {
-            LOG.info("Set state for operator {}", irVertex.getId());
-            final StatefulTransform statefulTransform = (StatefulTransform) transform;
-            statefulTransform.setState(state);
-          }
-        }
-        transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
-      }
     });
   }
 
@@ -374,7 +406,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public void finish() {
 
-
     LOG.info("Finishing {}", offloadingTask.taskId);
 
     while (!executorThread.queue.isEmpty()) {
@@ -434,9 +465,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
 
           LOG.info("Send checkpointmark of task {}  / {} to vm",
-            offloadingTask.taskId, offloadingTask.checkpointMark);
+            offloadingTask.taskId, readyTask.checkpointMark);
           resultCollector.collector.emit(new KafkaOffloadingOutput(
-            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+            offloadingTask.taskId, 1, readyTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
         }
       }
     }

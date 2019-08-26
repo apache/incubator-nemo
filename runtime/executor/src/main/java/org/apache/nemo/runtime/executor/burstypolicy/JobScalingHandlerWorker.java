@@ -204,6 +204,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
+              // TODO: When it is ready, send start message
+              task.callTaskOffloadingDone();
               //stageOffloadingWorkerManager.endOffloading(stageId);
             });
           }

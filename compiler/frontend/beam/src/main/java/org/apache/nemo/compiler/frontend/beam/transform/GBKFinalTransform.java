@@ -150,7 +150,7 @@ public final class GBKFinalTransform<K, InputT>
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      //LOG.info("Final input process: {}", element);
+      //LOG.info("Final input process: {}", getContext().getTaskId());
 
       //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
@@ -471,7 +471,7 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      //LOG.info("Emitting output: {}", output);
+      //LOG.info("Emitting output at {}: {}", getContext().getTaskId(),  output);
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);
     }

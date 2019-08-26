@@ -325,6 +325,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
+  public void callTaskOffloadingDone() {
+    LOG.info("Call task offloading done in task executor {}", taskId);
+    executorThread.queue.add(() -> {
+      offloader.get().callTaskOffloadingDone();
+    });
+  }
+
+  @Override
   public ExecutorThread getExecutorThread() {
     return executorThread;
   }

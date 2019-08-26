@@ -103,6 +103,8 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
   private final AtomicBoolean prepared;
 
+  private final ExecutorService prepareService;
+
   public LambdaParentTaskDataFetcher(final String taskId,
                                      final IRVertex dataSource,
                                      final RuntimeEdge edge,
@@ -110,11 +112,13 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
                                      final OutputCollector outputCollector,
                                      final RendevousServerClient rendevousServerClient,
                                      final TaskExecutor taskExecutor,
-                                     final AtomicBoolean prepared) {
+                                     final AtomicBoolean prepared,
+                                     final ExecutorService prepareService) {
     super(dataSource, edge, outputCollector);
 
     readerForParentTask.setDataFetcher(this);
     this.prepared = prepared;
+    this.prepareService = prepareService;
 
     this.taskId = taskId;
     this.stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
@@ -129,8 +133,6 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     this.taskIndexIteratorMap = new ConcurrentHashMap<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
     this.taskAddPairQueue = new ConcurrentLinkedQueue<>();
-
-    this.iterators.addAll(fetchBlocking());
 
     this.rendevousServerClient = rendevousServerClient;
 
@@ -150,6 +152,13 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
         }
       }
     }, 3000, 200, TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  public void prepare() {
+    LOG.info("Prepare data fetcher {}", taskId);
+    this.iterators.addAll(fetchBlocking());
+    LOG.info("End of Prepare data fetcher {}", taskId);
   }
 
   @Override

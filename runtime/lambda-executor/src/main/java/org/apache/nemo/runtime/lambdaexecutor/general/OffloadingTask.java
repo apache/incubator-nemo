@@ -35,14 +35,7 @@ public final class OffloadingTask {
 
   public final List<StageEdge> outgoingEdges;
   public final List<StageEdge> incomingEdges;
-
   public String taskId;
-  public final UnboundedSource.CheckpointMark checkpointMark;
-  public final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
-  public final UnboundedSource unboundedSource;
-  public final Map<String, GBKFinalState> stateMap;
-  public final Map<String, Coder<GBKFinalState>> stateCoderMap;
-  public final long prevWatermarkTimestamp;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTask(final String executorId,
@@ -52,13 +45,7 @@ public final class OffloadingTask {
                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                         final Map<String, List<String>> taskOutgoingEdges,
                         final List<StageEdge> outgoingEdges,
-                        final List<StageEdge> incomingEdges,
-                        final UnboundedSource.CheckpointMark checkpointMark,
-                        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-                        final long prevWatermarkTimestamp,
-                        final UnboundedSource unboundedSource,
-                        final Map<String, GBKFinalState>  stateMap,
-                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+                        final List<StageEdge> incomingEdges) {
     this.executorId = executorId;
     this.taskId = taskId;
     this.taskIndex = taskIndex;
@@ -67,12 +54,6 @@ public final class OffloadingTask {
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.outgoingEdges = outgoingEdges;
     this.incomingEdges = incomingEdges;
-    this.checkpointMark = checkpointMark;
-    this.prevWatermarkTimestamp = prevWatermarkTimestamp;
-    this.checkpointMarkCoder = checkpointMarkCoder;
-    this.unboundedSource = unboundedSource;
-    this.stateMap = stateMap;
-    this.stateCoderMap = stateCoderMap;
   }
 
   public ByteBuf encode() {
@@ -118,33 +99,10 @@ public final class OffloadingTask {
       oos.writeObject(incomingEdges);
       */
 
-      if (checkpointMark != null) {
-        dos.writeBoolean(true);
-        conf.encodeToStream(bos, checkpointMarkCoder);
-        checkpointMarkCoder.encode(checkpointMark, bos);
-        conf.encodeToStream(bos, unboundedSource);
-        dos.writeLong(prevWatermarkTimestamp);
-      } else {
-        dos.writeBoolean(false);
-      }
-
-      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
-        dos.writeInt(stateMap.size());
-        for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
-          dos.writeUTF(vertexIdAndState.getKey());
-          conf.encodeToStream(bos, stateCoderMap.get(vertexIdAndState.getKey()));
-          stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
-        }
-
-      } else {
-        dos.writeInt(0);
-      }
-
       dos.close();
       //oos.close();
       bos.close();
 
-      LOG.info("Encoding state done for {}, size: {}", taskId, byteBuf.readableBytes());
 
       return byteBuf;
     } catch (final IOException e) {
@@ -181,36 +139,6 @@ public final class OffloadingTask {
         (DAG<IRVertex, RuntimeEdge<IRVertex>>) conf.decodeFromStream(inputStream);
       LOG.info("{}, irDag: {}", taskId, irDag);
 
-      final UnboundedSource.CheckpointMark checkpointMark;
-      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
-      final UnboundedSource unboundedSource;
-      final long prevWatermarkTimestamp;
-      final boolean hasCheckpoint = dis.readBoolean();
-      if (hasCheckpoint) {
-        checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>) conf.decodeFromStream(inputStream);
-        checkpointMark = checkpointMarkCoder.decode(inputStream);
-        unboundedSource = (UnboundedSource) conf.decodeFromStream(inputStream);
-        prevWatermarkTimestamp  = dis.readLong();
-      } else {
-        checkpointMark = null;
-        unboundedSource = null;
-        checkpointMarkCoder = null;
-        prevWatermarkTimestamp = -1;
-      }
-
-      final Map<String, GBKFinalState> stateMap = new HashMap<>();
-      final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
-      final int size = dis.readInt();
-      for (int i = 0; i < size; i++) {
-        final String key = dis.readUTF();
-        final Coder<GBKFinalState> stateCoder = (Coder<GBKFinalState>) conf.decodeFromStream(inputStream);
-        final GBKFinalState state = stateCoder.decode(inputStream);
-        stateMap.put(key, state);
-        stateCoderMap.put(key, stateCoder);
-      }
-
-      LOG.info("Decoding state {}", taskId);
-
       return new OffloadingTask(executorId,
         taskId,
         taskIndex,
@@ -218,13 +146,7 @@ public final class OffloadingTask {
         irDag,
         taskOutgoingEdges,
         outgoingEdges,
-        incomingEdges,
-        checkpointMark,
-        checkpointMarkCoder,
-        prevWatermarkTimestamp,
-        unboundedSource,
-        stateMap,
-        stateCoderMap);
+        incomingEdges);
 
     } catch (Exception e) {
       e.printStackTrace();

@@ -292,32 +292,27 @@ public final class TinyTaskOffloader implements Offloader {
     //tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 
     tinyTaskWorker = worker;
-
     LOG.info("Waiting worker {} for {}", tinyTaskWorker, taskId);
 
 
-    // Source stop!!
-    for (final DataFetcher dataFetcher : allFetchers) {
-      inputStopPendingFutures.add(dataFetcher.stop(taskId));
-    }
-
-    LOG.info("Waiting for source stop futures in {}", taskId);
-
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
-    pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
+    pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
 
-    LOG.info("Scheduling pending check {}", taskId);
-    scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
+    LOG.info("Scheduling worker pending check {}", taskId);
+    scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);
   }
 
-  private void schedulePendingCheck() {
-    executorThread.queue.add(() -> {
-      if (hasPendingStraemingWorkers()) {
-        handlePendingStreamingWorkers();
-      } else {
-        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
-      }
-    });
+  // 1.
+  // 2는 taskIsReady
+  private void scheduleWorkerPendingCheck() {
+    if (tinyTaskWorker.isReady()) {
+      LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
+      sendTask();
+      LOG.info("Waiting for task {} ready...", taskId);
+      pendingStatus = TaskExecutor.PendingState.TASK_READY_PENDING;
+    } else {
+      scheduledExecutorService.schedule(this::scheduleWorkerPendingCheck, 100, TimeUnit.MILLISECONDS);
+    }
   }
 
   private boolean hasDataInFetchers() {
@@ -330,6 +325,43 @@ public final class TinyTaskOffloader implements Offloader {
     return false;
   }
 
+
+  // 2. 얘는 offloading done 받으면 trigger됨
+  @Override
+  public void callTaskOffloadingDone() {
+    if (pendingStatus != TaskExecutor.PendingState.TASK_READY_PENDING) {
+      throw new RuntimeException("Task is not ready pending but " + pendingStatus);
+    }
+
+    executorThread.queue.add(() -> {
+      if (tinyTaskWorker.isReady()) {
+        // Source stop!!
+        for (final DataFetcher dataFetcher : allFetchers) {
+          inputStopPendingFutures.add(dataFetcher.stop(taskId));
+        }
+
+        LOG.info("Waiting for source stop futures in {}", taskId);
+        pendingStatus = TaskExecutor.PendingState.INPUT_PENDING;
+
+        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
+      } else {
+        throw new RuntimeException("Worker should be ready... " + taskId);
+      }
+    });
+  }
+
+  // 3. taskIsReady가 trigger함
+  private void schedulePendingCheck() {
+    executorThread.queue.add(() -> {
+      if (hasPendingStraemingWorkers()) {
+        handlePendingStreamingWorkers();
+      } else {
+        scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
+      }
+    });
+  }
+
+  // 4. 여기서 state check
   private boolean hasPendingStraemingWorkers() {
     if (!taskStatus.get().equals(TaskExecutor.Status.OFFLOAD_PENDING)) {
       return false;
@@ -357,49 +389,40 @@ public final class TinyTaskOffloader implements Offloader {
         if (checkIsAllOutputPendingReady()) {
           LOG.info("Output stop done for {}", taskId);
           outputStopPendingFutures.clear();
-          pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
           remainingOffloadTasks.decrementAndGet();
-        } else {
-          break;
-        }
-      }
-      case WORKER_PENDING: {
-        if (tinyTaskWorker.isReady()) {
-          LOG.info("Worker is in ready {} for {}", tinyTaskWorker, taskId);
-          sendTask();
-          pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
-        } else {
-          //LOG.info("Worker not ready {} for {}", tinyTaskWorker, taskId);
-          break;
-        }
-      }
-      case OTHER_TASK_WAITING: {
-        return true;
-        /*
-        // No waiting global offloading sync
-        if (globalOffloadDone.getBoolean().get()) {
           return true;
         } else {
-          LOG.info("Waiting other offload tasks... {}/{}", remainingOffloadTasks.getRemainingCnt(),
-            globalOffloadDone.getBoolean());
           break;
         }
-        */
       }
     }
 
     return false;
   }
 
-  private void sendTask() {
+  // 5.
+  private synchronized void handlePendingStreamingWorkers() {
+    // Send ready signal and other data
+    sendReadyTask();
+    prevOffloadStartTime.set(System.currentTimeMillis());
 
-    final OffloadingTask offloadingTask;
+    if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
+      LOG.warn("Multiple start request ... just ignore it");
+      throw new RuntimeException("Invalid task status: " + taskStatus);
+    }
+  }
+
+  private void sendReadyTask() {
+    // Send ready signal and other data
+    // offloading done message 받은다음에 ready task 보내야함.
+
     final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
       stateAndCoderMap = getStateAndCoderMap();
 
     final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
     final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
 
+    final ReadyTask readyTask;
 
     if (sourceVertexDataFetcher != null) {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
@@ -417,44 +440,45 @@ public final class TinyTaskOffloader implements Offloader {
 
       taskExecutor.setOffloadedTaskTime(0);
 
-      offloadingTask = new OffloadingTask(
-        executorId,
+      readyTask = new ReadyTask(
         taskId,
-        RuntimeIdManager.getIndexFromTaskId(taskId),
-        evalConf.samplingJson,
-        copyDag,
-        taskOutgoingEdges,
-        copyOutgoingEdges,
-        copyIncomingEdges,
+        taskLocationMap.locationMap,
         checkpointMark,
         checkpointMarkCoder,
         prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
         coderMap);
-
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
-
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
     } else {
-      offloadingTask = new OffloadingTask(
-        executorId,
+      readyTask = new ReadyTask(
         taskId,
-        RuntimeIdManager.getIndexFromTaskId(taskId),
-        evalConf.samplingJson,
-        copyDag,
-        taskOutgoingEdges,
-        copyOutgoingEdges,
-        copyIncomingEdges,
+        taskLocationMap.locationMap,
         null,
         null,
         -1,
         null,
         stateMap,
         coderMap);
-
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
     }
+
+
+    LOG.info("Send ready task {}", taskId);
+
+    tinyWorkerManager.sendReadyTask(readyTask, tinyTaskWorker);
+  }
+
+  private void sendTask() {
+
+    final OffloadingTask offloadingTask = new OffloadingTask(
+      executorId,
+      taskId,
+      RuntimeIdManager.getIndexFromTaskId(taskId),
+      evalConf.samplingJson,
+      copyDag,
+      taskOutgoingEdges,
+      copyOutgoingEdges,
+      copyIncomingEdges);
+    tinyWorkerManager.sendTask(offloadingTask, taskExecutor, tinyTaskWorker);
 
     LOG.info("Send actual task {}", taskId);
   }
@@ -511,15 +535,4 @@ public final class TinyTaskOffloader implements Offloader {
     return Pair.of(stateMap, coderMap);
   }
 
-  private synchronized void handlePendingStreamingWorkers() {
-    // Send ready signal and other data
-    tinyWorkerManager.sendReadyTask(new ReadyTask(taskId, taskLocationMap.locationMap), tinyTaskWorker);
-
-    prevOffloadStartTime.set(System.currentTimeMillis());
-
-    if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
-      LOG.warn("Multiple start request ... just ignore it");
-      throw new RuntimeException("Invalid task status: " + taskStatus);
-    }
-  }
 }

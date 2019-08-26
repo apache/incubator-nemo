@@ -78,8 +78,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final Map<String, Pair<String, Integer>> relayServerInfo;
 
-  private final List<OffloadingTask> pendingTask;
-  private final List<ReadyTask> readyTasks;
+  //private final List<OffloadingTask> pendingTask;
+  //private final List<ReadyTask> readyTasks;
 
   private final String rendevousServerAddress;
 
@@ -111,8 +111,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.rendevousServerPort = rendevousServerPort;
     this.taskLocMap = new ConcurrentHashMap<>();
     this.relayServerInfo = relayServerInfo;
-    this.pendingTask = new ArrayList<>();
-    this.readyTasks = new ArrayList<>();
+    //this.pendingTask = new ArrayList<>();
+    //this.readyTasks = new ArrayList<>();
   }
   /**
    * Extracts task index from a task ID.
@@ -249,6 +249,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       new IntermediateDataIOFactory(pipeManagerWorker);
   }
 
+  /*
   private OffloadingTask findAndRemoveOffloadingTask(final String taskId) {
     synchronized (pendingTask) {
       final Iterator<OffloadingTask> iterator = pendingTask.iterator();
@@ -276,24 +277,30 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
     return null;
   }
+  */
 
-  private void startTask(final ReadyTask readyTask,
-                         final OffloadingTask task) {
-
-    LOG.info("Start task {}", task.taskId);
-
-    final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
-    final ExecutorThread executorThread = executorThreads.get(executorIndex);
-
-    LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
-
-
-    for (final Map.Entry<String, TaskLoc> entry
-      : readyTask.taskLocationMap.entrySet()) {
-      taskLocMap.put(entry.getKey(), entry.getValue());
+  private TaskExecutor findTaskExecutor(final String taskId) {
+    for (final TaskExecutor taskExecutor : taskAssignedMap.keySet()) {
+      if (taskExecutor.getId().equals(taskId)) {
+        return taskExecutor;
+      }
     }
 
-    executorStartService.execute(() -> {
+    throw new RuntimeException("Cannot find task executor " + taskId);
+  }
+
+  @Override
+  public void onData(Object event) {
+
+    if (event instanceof OffloadingTask) {
+      final OffloadingTask task = (OffloadingTask) event;
+
+      LOG.info("Start task {}", task.taskId);
+
+      final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
+      final ExecutorThread executorThread = executorThreads.get(executorIndex);
+
+      LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
       final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
         task,
@@ -305,54 +312,31 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         rendevousServerClient,
         executorThread);
 
-      LOG.info("End of creating offloading task {}", task.taskId);
-
-      executorThread.addNewTask(taskExecutor);
-
-      taskExecutorStartTimeMap.put(taskExecutor, System.currentTimeMillis());
       taskAssignedMap.put(taskExecutor, executorThread);
+
+      LOG.info("Pending task {}", task.taskId);
 
       // Emit offloading done
       synchronized (oc) {
         oc.emit(new OffloadingDoneEvent(
           task.taskId));
       }
-    });
-  }
-
-  @Override
-  public void onData(Object event) {
-
-    if (event instanceof OffloadingTask) {
-
-      final OffloadingTask task = (OffloadingTask) event;
-
-      final ReadyTask readyTask = findAndRemoveReadyTask(task.taskId);
-
-      if (readyTask != null) {
-        // just start
-        startTask(readyTask, task);
-      } else {
-        LOG.info("Pending task {}", task.taskId);
-        synchronized (pendingTask) {
-          pendingTask.add(task);
-        }
-      }
 
     } else if (event instanceof ReadyTask) {
-
+      LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
       final ReadyTask readyTask = (ReadyTask) event;
-      final OffloadingTask task = findAndRemoveOffloadingTask(readyTask.taskId);
 
-      if (task != null) {
-        startTask(readyTask, task);
-      } else {
-        // the task is not submitted yet
-        LOG.info("Task is not submitted yet {}", readyTask.taskId);
-        synchronized (readyTasks) {
-          readyTasks.add(readyTask);
-        }
+
+      for (final Map.Entry<String, TaskLoc> entry : readyTask.taskLocationMap.entrySet()) {
+        taskLocMap.put(entry.getKey(), entry.getValue());
       }
+
+
+      final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
+      taskExecutor.start(readyTask);
+
+      final ExecutorThread executorThread = taskAssignedMap.get(taskExecutor);
+      executorThread.addNewTask(taskExecutor);
 
     } else if (event instanceof TaskEndEvent) {
       // TODO

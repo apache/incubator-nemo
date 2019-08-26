@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SourceVertexDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(SourceVertexDataFetcher.class.getName());
 
-  private Readable readable;
+  private volatile Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PROGRESS = Util.WATERMARK_PROGRESS; // ms
   private final boolean bounded;
@@ -51,7 +51,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private volatile boolean isFinishd = false;
   //private volatile boolean finishedAck = false;
 
-  private boolean isPrepared = false;
+  private volatile boolean isPrepared = false;
 
   private final ExecutorService prepareService;
 
@@ -66,7 +66,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
-                                 final Readable readable,
+                                 final Readable r,
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
@@ -74,7 +74,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final ExecutorGlobalInstances executorGlobalInstances,
                                  final AtomicBoolean globalPreapred) {
     super(dataSource, edge, outputCollector);
-    this.readable = readable;
+    this.readable = r;
     this.globalPrepared = globalPreapred;
     this.bounded = dataSource.isBounded();
     this.prepareService = prepareService;
@@ -86,9 +86,9 @@ public class SourceVertexDataFetcher extends DataFetcher {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
         if (isPrepared && globalPreapred.get()) {
           final long watermarkTimestamp = readable.readWatermark();
-          //LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
+         //LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
           if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
-            //LOG.info("Watermark progressed at {} {}", taskId, watermarkTimestamp);
+           // LOG.info("Watermark progressed at {} {}", taskId, watermarkTimestamp);
             watermarkProgressed = true;
             prevWatermarkTimestamp = watermarkTimestamp;
           }
@@ -125,6 +125,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     isStarted = false;
   }
 
+  @Override
+  public void prepare() {
+
+  }
+
   public long getPrevWatermarkTimestamp() {
     return prevWatermarkTimestamp;
   }
@@ -150,7 +155,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       return EmptyElement.getInstance();
     }
 
-    if (!isStarted) {
+    if (!isStarted && readable != null) {
       isStarted = true;
       LOG.info("Reset readable: {} for {}", readable, taskId);
       prepareService.execute(() -> {
@@ -232,6 +237,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     readable.close();
   }
+
 
   @Override
   public boolean isAvailable() {

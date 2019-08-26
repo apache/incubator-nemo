@@ -157,6 +157,11 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
+  public void prepare() {
+
+  }
+
+  @Override
   public boolean isAvailable() {
     boolean ret = false;
     for (final IteratorWithNumBytes iteratorWithNumBytes : iterators) {

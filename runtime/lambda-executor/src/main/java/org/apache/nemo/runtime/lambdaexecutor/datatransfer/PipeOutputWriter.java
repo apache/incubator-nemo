@@ -55,7 +55,7 @@ public final class PipeOutputWriter implements Flushable {
 
   private boolean initialized;
   private final Serializer serializer;
-  private final List<ByteOutputContext> pipes;
+  private List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
   private final StageEdge stageEdge;
   private final int originTaskIndex;
@@ -90,7 +90,7 @@ public final class PipeOutputWriter implements Flushable {
     this.serializer = serializerMap.get(runtimeEdge.getId());
     this.rendevousServerClient = rendevousServerClient;
     this.executorThread = executorThread;
-    this.pipes = doInitialize();
+    //this.pipes = doInitialize();
   }
 
   private void writeData(final Object element,
@@ -128,6 +128,8 @@ public final class PipeOutputWriter implements Flushable {
     if (closed) {
       throw new RuntimeException("Pipe is already closed " + taskId + ", " + watermark);
     }
+
+    LOG.info("Write watermark at {} {}", taskId, watermark.getTimestamp());
 
     rendevousServerClient.sendWatermark(taskId, watermark.getTimestamp());
   }
@@ -207,8 +209,8 @@ public final class PipeOutputWriter implements Flushable {
     */
   }
 
-  private List<ByteOutputContext> doInitialize() {
-    LOG.info("Start - doInitialize() {}", runtimeEdge);
+  public void doInitialize() {
+    LOG.info("Start - doInitialize() {}/{}", taskId, runtimeEdge);
     initialized = true;
 
     final Optional<CommunicationPatternProperty.Value> comValue =
@@ -233,7 +235,7 @@ public final class PipeOutputWriter implements Flushable {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
 
-    return byteOutputContexts.stream()
+    pipes = byteOutputContexts.stream()
       .map(byteOutputContext -> {
         try {
           final ByteOutputContext context = byteOutputContext.get();

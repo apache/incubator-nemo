@@ -36,6 +36,7 @@ public interface TaskExecutor extends AutoCloseable {
 
   public enum PendingState {
     WORKER_PENDING,
+    TASK_READY_PENDING,
     INPUT_PENDING,
     OUTPUT_PENDING,
     OTHER_TASK_WAITING,
@@ -48,6 +49,10 @@ public interface TaskExecutor extends AutoCloseable {
     OFFLOADED,
     DEOFFLOAD_PENDING
   }
+
+  default void callTaskOffloadingDone() {
+    // do nothing
+  };
 
   ExecutorThread getExecutorThread();
 

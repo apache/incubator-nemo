@@ -67,6 +67,11 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
+  public void prepare() {
+
+  }
+
+  @Override
   public boolean hasData() {
     return false;
   }

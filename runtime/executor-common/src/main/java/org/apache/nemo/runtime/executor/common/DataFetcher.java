@@ -48,6 +48,8 @@ public abstract class DataFetcher implements AutoCloseable {
     this.outputCollector = outputCollector;
   }
 
+  public abstract void prepare();
+
   // check data + watermark
   public boolean isAvailable() {
     return true;
