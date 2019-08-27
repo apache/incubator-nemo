@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -45,6 +47,8 @@ public interface InputReader {
   CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index);
 
   IRVertex getSrcIrVertex();
+
+  ExecutionPropertyMap<EdgeExecutionProperty> getProperties();
 
   static int getSourceParallelism(final InputReader inputReader) {
     return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)

@@ -128,7 +128,7 @@ class ParentTaskDataFetcher extends DataFetcher {
           if (BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER) {
             // Retry this specific block!!!
             LOG.info("RETRY start due to exception {}", exception.toString());
-            private int twoSecondsInMs =  2 * 1000;
+            final int twoSecondsInMs =  2 * 1000;
             Thread.sleep(twoSecondsInMs);
             final CompletableFuture<DataUtil.IteratorWithNumBytes> retryPair = readersForParentTask.retry(index);
             handleIncomingBlock(index, retryPair);
@@ -153,9 +153,10 @@ class ParentTaskDataFetcher extends DataFetcher {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
+      final int index = i;
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
       future.whenComplete((iterator, exception) -> {
-        handleIncomingBlock(i, future);
+        handleIncomingBlock(index, future);
       });
     }
   }
