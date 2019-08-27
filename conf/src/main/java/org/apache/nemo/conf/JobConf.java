@@ -156,6 +156,17 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class JVMHeapSlack implements Name<Double> {
   }
 
+  /**
+   * Executor type:
+   * lambda: Nemo will use lambda executor.
+   * default: default executor will be used.
+   * other strings: throw UnsupportedExecption.
+   */
+  @NamedParameter(doc = "Executor Type",
+    short_name = "executor_type", default_value = "default")
+  public final class ExecutorType implements Name<String> {
+  }
+
   //////////////////////////////// Runtime Master Configurations
 
   /**
@@ -289,11 +300,18 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Maximum off-heap memory size in the executor.
+   * Maximum off-heap memory ratio to the total memory in the executor.
    */
-  // TODO #397: Separation of JVM heap region and off-heap memory region
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated",
-    short_name = "max_offheap_mb", default_value = "8192")
+  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
+    short_name = "max_offheap_ratio", default_value = "0.2")
+  public final class MaxOffheapRatio implements Name<Double> {
+  }
+
+  /**
+   * Maximum off-heap memory size in the executor.
+   * This is set by the system according to the off-heap ratio.
+   */
+  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
   public final class MaxOffheapMb implements Name<Integer> {
   }
 

@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.client;
 
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
@@ -147,6 +149,8 @@ public final class JobLauncher {
       + "{\"type\":\"Reserved\",\"memory_mb\":512,\"capacity\":5}]";
     final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
       JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
+    final Configuration offheapMemoryConfig = getMemoryConf(builtJobConf, executorResourceConfig,
+      JobConf.ExecutorJSONContents.class, JobConf.MaxOffheapRatio.class, JobConf.MaxOffheapMb.class);
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
     final Configuration clientConf = getClientConf();
@@ -154,7 +158,8 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfig,
-      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
+      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf,
+      offheapMemoryConfig);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -401,6 +406,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorType.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
     cl.registerShortNameOfClass(JobConf.BandwidthJSONPath.class);
@@ -416,7 +422,8 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
-    cl.registerShortNameOfClass(JobConf.MaxOffheapMb.class);
+    cl.registerShortNameOfClass(JobConf.ScheduleSerThread.class);
+    cl.registerShortNameOfClass(JobConf.MaxOffheapRatio.class);
     cl.registerShortNameOfClass(JobConf.ChunkSizeKb.class);
     cl.processCommandLine(args);
     return confBuilder.build();
@@ -439,7 +446,9 @@ public final class JobLauncher {
           .build();
       case "yarn":
         return YarnClientConfiguration.CONF
-          .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class))
+          .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class)
+            + injector.getNamedInstance(JobConf.MaxOffheapRatio.class))
+          // Off-heap memory size is added to memory slack so that JVM heap region does not invade the off-heap region.
           .build();
       default:
         throw new UnsupportedOperationException(deployMode);
@@ -468,6 +477,28 @@ public final class JobLauncher {
         : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
         .bindNamedParameter(contentsParameter, contents)
+        .build();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Configuration getMemoryConf(final Configuration jobConf,
+                                             final Configuration executorConf,
+                                             final Class<? extends Name<String>> contentsParameter,
+                                             final Class<? extends Name<Double>> offHeapRatio,
+                                             final Class<? extends Name<Integer>> maxOffHeapMb)
+    throws InjectionException {
+    final Injector injector = TANG.newInjector(Configurations.merge(jobConf, executorConf));
+    try {
+      final String contents = injector.getNamedInstance(contentsParameter);
+      final ObjectMapper objectMapper = new ObjectMapper();
+      final TreeNode jsonRootNode = objectMapper.readTree(contents);
+      final TreeNode resourceNode = jsonRootNode.get(0);
+      final int executorMemory = resourceNode.get("memory_mb").traverse().getIntValue();
+      final int offHeapMemory =  (int) (executorMemory * injector.getNamedInstance(offHeapRatio));
+      return TANG.newConfigurationBuilder()
+        .bindNamedParameter(maxOffHeapMb, String.valueOf(offHeapMemory))
         .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);
