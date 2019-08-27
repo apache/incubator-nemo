@@ -18,6 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang3.SerializationUtils;
@@ -56,10 +59,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -81,7 +81,7 @@ public final class BlockManagerWorker {
 
   // To-Master connections
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-  private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
+  private final LoadingCache<String, CompletableFuture<ControlMessage.Message>> blockLocationResponseCache;
 
   // To-Executor connections
   private final ByteTransfer byteTransfer;
@@ -124,7 +124,32 @@ public final class BlockManagerWorker {
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
     this.serializerManager = serializerManager;
-    this.pendingBlockLocationRequest = new ConcurrentHashMap<>();
+    this.blockLocationResponseCache = CacheBuilder.newBuilder()
+      // 2 seconds might be enough for "concurrent pending" fetch requests to reuse the same location
+      .expireAfterWrite(2, TimeUnit.SECONDS)
+      // No other eviction policy such as maximum cache size (i.e., this cache is unbounded)
+      .build(new CacheLoader<String, CompletableFuture<ControlMessage.Message>>() {
+        @Override
+        public CompletableFuture<ControlMessage.Message> load(final String blockIdWildcard) {
+          // Ask Master for the location.
+          // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
+          // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
+          // to become available.
+          final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+            .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.RequestBlockLocation)
+                .setRequestBlockLocationMsg(
+                  ControlMessage.RequestBlockLocationMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setBlockIdWildcard(blockIdWildcard)
+                    .build())
+                .build());
+          return responseFromMasterFuture;
+        }
+      });
     this.blockTransferThrottler = blockTransferThrottler;
   }
 
@@ -161,29 +186,12 @@ public final class BlockManagerWorker {
     final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
     final KeyRange keyRange) {
     // Let's see if a remote worker has it
-    final CompletableFuture<ControlMessage.Message> blockLocationFuture =
-      pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
-        // Ask Master for the location.
-        // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
-        // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
-        // to become available.
-        final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
-          .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.RequestBlockLocation)
-              .setRequestBlockLocationMsg(
-                ControlMessage.RequestBlockLocationMsg.newBuilder()
-                  .setExecutorId(executorId)
-                  .setBlockIdWildcard(blockIdWildcard)
-                  .build())
-              .build());
-        return responseFromMasterFuture;
-      });
-    blockLocationFuture.whenComplete((message, throwable) -> {
-      pendingBlockLocationRequest.remove(blockIdWildcard);
-    });
+    final CompletableFuture<ControlMessage.Message> blockLocationFuture;
+    try {
+      blockLocationFuture = blockLocationResponseCache.get(blockIdWildcard);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e); // This should never happen, since we're only getting a "future"
+    }
 
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
