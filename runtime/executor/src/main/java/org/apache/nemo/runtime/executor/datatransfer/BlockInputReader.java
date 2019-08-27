@@ -80,6 +80,10 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index) {
+  }
+
+  @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
   }

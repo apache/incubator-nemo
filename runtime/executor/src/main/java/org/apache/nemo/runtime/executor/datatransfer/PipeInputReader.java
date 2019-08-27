@@ -76,6 +76,11 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index) {
+    throw new UnsupportedOperationException(String.valueOf(index));
+  }
+
+  @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
   }

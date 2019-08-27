@@ -120,7 +120,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  private void handleIncomingBlock(final String blockId,
+  private void handleIncomingBlock(final int index,
                                    final CompletableFuture<DataUtil.IteratorWithNumBytes> future) {
     future.whenComplete((iterator, exception) -> {
       try {
@@ -130,24 +130,19 @@ class ParentTaskDataFetcher extends DataFetcher {
             LOG.info("RETRY start due to exception {}", exception.toString());
             private int twoSecondsInMs =  2 * 1000;
             Thread.sleep(twoSecondsInMs);
-            final Pair<String, CompletableFuture<DataUtil.IteratorWithNumBytes>> retryPair =
-              readersForParentTask.retry(blockId);
-            handleIncomingBlock(retryPair.left(), retryPair.right());
+            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryPair = readersForParentTask.retry(index);
+            handleIncomingBlock(index, retryPair);
           } else if (BlockFetchFailureProperty.Value.CANCEL_TASK) {
 
           } else {
+            throw new U
 
           }
-
         } else {
           // handle completed iterator
           iteratorQueue.put(iterator); // can block here
         }
       } catch (final InterruptedException e) {
-
-
-
-
         LOG.info("INTERRUPTED - SHOULDNT HAPPEN");
         System.exit(1);
       }
@@ -155,34 +150,14 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private void fetchDataLazily() {
-    final List<Pair<String, CompletableFuture<DataUtil.IteratorWithNumBytes>>> futures =
-      readersForParentTask.read();
-    this.expectedNumOfIterators = futures.size();
-    futures.forEach(pair -> {
-      final String blockId = pair.left();
-      final CompletableFuture<DataUtil.IteratorWithNumBytes> future = pair.right();
-      future.whenComplete((iterator, exception) -> {
-        handleIncomingBlock(blockId, future);
-      });
-    });
-  }
-
-  private void fetchDataLazily() throws IOException {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
-
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      try {
-        if (exception != null) {
-          iteratorQueue.put(exception);
-        } else {
-          iteratorQueue.put(iterator);
-        }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e); // this should not happen
-      }
-    }));
+    for (int i = 0; i < futures.size(); i++) {
+      final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
+      future.whenComplete((iterator, exception) -> {
+        handleIncomingBlock(i, future);
+      });
+    }
   }
 
   final long getSerializedBytes() {
