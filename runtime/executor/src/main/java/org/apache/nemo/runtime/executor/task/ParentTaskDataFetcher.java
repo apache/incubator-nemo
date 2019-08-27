@@ -40,7 +40,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
-  private final InputReader readersForParentTask;
+  private final InputReader inputReader;
   private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
@@ -52,10 +52,10 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long encodedBytes = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
-                        final InputReader readerForParentTask,
+                        final InputReader inputReader,
                         final OutputCollector outputCollector) {
     super(dataSource, outputCollector);
-    this.readersForParentTask = readerForParentTask;
+    this.inputReader = inputReader;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
@@ -125,32 +125,37 @@ class ParentTaskDataFetcher extends DataFetcher {
     future.whenComplete((iterator, exception) -> {
       try {
         if (exception != null) {
-          if (BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER) {
-            // Retry this specific block!!!
-            LOG.info("RETRY start due to exception {}", exception.toString());
+          final BlockFetchFailureProperty.Value fetchFailure = inputReader.getProperties()
+            .get(BlockFetchFailureProperty.class)
+            .orElse(BlockFetchFailureProperty.Value.CANCEL_TASK); // default behavior
+
+          if (fetchFailure.equals(BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER)) {
+            // Retry block fetch (keep the running task)
+            LOG.info("Retry src irvertex {} with index {} after two seconds",
+              inputReader.getSrcIrVertex().getId(), index);
             final int twoSecondsInMs =  2 * 1000;
             Thread.sleep(twoSecondsInMs);
-            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryPair = readersForParentTask.retry(index);
-            handleIncomingBlock(index, retryPair);
-          } else if (BlockFetchFailureProperty.Value.CANCEL_TASK) {
-
+            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryFuture = inputReader.retry(index);
+            handleIncomingBlock(index, retryFuture);
+          } else if (fetchFailure.equals(BlockFetchFailureProperty.Value.CANCEL_TASK)) {
+            // Retry the entire task
+            iteratorQueue.put(exception);
           } else {
-            throw new U
-
+            throw new UnsupportedOperationException(fetchFailure.toString());
           }
         } else {
-          // handle completed iterator
+          // Process the iterator
           iteratorQueue.put(iterator); // can block here
         }
       } catch (final InterruptedException e) {
-        LOG.info("INTERRUPTED - SHOULDNT HAPPEN");
-        System.exit(1);
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e); // this should not happen
       }
     });
   }
 
   private void fetchDataLazily() {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;

@@ -252,8 +252,8 @@ public final class BlockManagerWorker {
         } else {
           /**
            * Process "each element" of a block as soon as the element comes in.
-           * Probably best performance when there is no failure.
            * No worries about partial/duplicate processing here, as the task will be cancelled and restarted cleanly.
+           * Probably best performance when there is no failure.
            */
           return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
