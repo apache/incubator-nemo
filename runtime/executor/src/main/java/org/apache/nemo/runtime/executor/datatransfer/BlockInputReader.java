@@ -23,7 +23,6 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;

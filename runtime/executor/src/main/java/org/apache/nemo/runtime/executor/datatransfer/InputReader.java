@@ -44,7 +44,7 @@ public interface InputReader {
    * @param index of the failed iterator in the list returned by read().
    * @return the retried iterator.
    */
-  CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index);
+  CompletableFuture<DataUtil.IteratorWithNumBytes> retry(int index);
 
   IRVertex getSrcIrVertex();
 

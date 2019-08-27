@@ -247,7 +247,8 @@ public final class BlockManagerWorker {
            */
           return contextFuture
             .thenCompose(ByteInputContext::getCompletedFuture)
-            .thenApply(streams -> new DataUtil.InputStreamIterator( // thenApply waits for the future.
+            // thenApply waits for the future.
+            .thenApply(streams -> new DataUtil.InputStreamIterator(
               streams, serializerManager.getSerializer(runtimeEdgeId)));
         } else {
           /**
