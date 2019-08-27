@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -132,6 +133,7 @@ public final class ParentTaskDataFetcherTest {
   private InputReader generateInputReader(final CompletableFuture completableFuture) {
     final InputReader inputReader = mock(InputReader.class, Mockito.CALLS_REAL_METHODS);
     when(inputReader.read()).thenReturn(Arrays.asList(completableFuture));
+    when(inputReader.getProperties()).thenReturn(new ExecutionPropertyMap<>(""));
     return inputReader;
   }
 
