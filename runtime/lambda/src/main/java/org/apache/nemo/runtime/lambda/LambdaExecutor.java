@@ -1,6 +1,6 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.lambda;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.google.common.collect.ImmutableSet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -36,6 +37,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.lambda.common.Executor;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
+import org.apache.reef.util.Exceptions;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -155,30 +157,47 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
       switch (nemoEvent.getType()) {
         case WORKER_INIT:
-          Task task;
+          Task task = null;
           try {
             // Task passed in a byte array
             byte[] bytes = nemoEvent.getBytes();
             ByteArrayInputStream byteInputStream = new ByteArrayInputStream(bytes);
-//           ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream);
-            //task = SerializationUtils.deserialize(nemoEvent.getBytes());
-//           task = (Task) objectInputStream.readObject();
 
-            URL[] urls = null;
             try {
-              // Convert the file object to a URL
-              File dir = new File(System.getProperty("/opt/java/lib/guava-20.0.jar")
-                + File.separator + "dir" + File.separator);
-              URL url = dir.toURL();
-              urls = new URL[]{url};
-              ClassLoader urlClassLoader = new URLClassLoader(urls);
-              ObjectInputStream ois = new ObjectInputStream(byteInputStream) {
+              final ImmutableSet.Builder<Object> notFoundClasses = ImmutableSet.builder();
+              try {
+                ObjectInputStream objectInputStream = new ObjectInputStream(byteInputStream) {
+                  @Override
+                  protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+                    try {
+                      System.out.println(desc.getName());
+                      return super.resolveClass(desc);
+                    } catch (ClassNotFoundException e) {
+                      System.out.println("Class not found");
+                      notFoundClasses.add(desc.getName());
+                      throw e;
+                    }
+                  }
+                };
+                task = (Task) objectInputStream.readObject();
+              } catch (ClassCastException e) {
+                e.printStackTrace();
+                System.out.println("\"ClassCastException while de-serializing , classes not found are: " + notFoundClasses.build());
+              } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+                System.out.println("Could not deserialize ");
+              }
+/*             ObjectInputStream ois = new ObjectInputStream(byteInputStream) {
                 @Override
                 protected Class resolveClass(ObjectStreamClass objectStreamClass)
                   throws IOException, ClassNotFoundException {
-                  if (objectStreamClass.getName().startsWith("org.apache.beam.vendor.guava.v")) {
+                  String objName = objectStreamClass.getName();
+                  if (objName.contains("ImmutableMap") && objName.contains("org.apache.beam.vendor.guava.v")) {
                     System.out.println("Use urlClassLoader");
-                    return Class.forName(objectStreamClass.getName(), true, urlClassLoader);
+                    String className = objectStreamClass.getName();
+                    int index = className.indexOf("com");
+                    return Class.forName(objectStreamClass.getName().substring(index),
+                      true, this.getClass().getClassLoader());
                   } else {
                     System.out.println("Don't use urlClassLoader "
                       + objectStreamClass.getName() + " " + ImmutableBiMap.class.getName());
@@ -188,9 +207,12 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
                 }
               };
               task = (Task) ois.readObject();
+ */
 
-              System.out.println("Decode task successfully" + task.toString());
-              onTaskReceived(task);
+              if(task != null) {
+                System.out.println("Decode task successfully" + task.toString());
+                onTaskReceived(task);
+              }
             } catch (Exception e) {
               e.printStackTrace();
               System.out.println("Read LambdaEvent bytebuf error");

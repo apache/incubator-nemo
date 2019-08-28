@@ -80,6 +80,11 @@ under the License.
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-amazon-web-services</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
