@@ -20,6 +20,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
@@ -28,16 +30,16 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Transient resource pass for tagging edges with DataStore ExecutionProperty.
+ * Optimizes IREdges between transient resources and reserved resources.
  */
-@Annotates(DataStoreProperty.class)
+@Annotates({DataStoreProperty.class, DataFlowProperty.class, BlockFetchFailureProperty.class})
 @Requires(ResourcePriorityProperty.class)
-public final class TransientResourceDataStorePass extends AnnotatingPass {
+public final class TransientResourceDataTransferPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public TransientResourceDataStorePass() {
-    super(TransientResourceDataStorePass.class);
+  public TransientResourceDataTransferPass() {
+    super(TransientResourceDataTransferPass.class);
   }
 
   @Override
@@ -51,6 +53,9 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
               .equals(edge.getPropertyValue(DataStoreProperty.class))) {
               edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
             }
+            edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
+            edge.setPropertyPermanently(BlockFetchFailureProperty.of(
+              BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER));
           } else if (fromReservedToTransient(edge)) {
             edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
