@@ -119,7 +119,11 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
-    //LOG.info("{} process event to {}", vertex.getId(), vertex.getTransform());
+
+    if (vertex.getId().equals("vertex15")) {
+      LOG.info("{} process event to {}", vertex.getId(), vertex.getTransform());
+    }
+
     try {
       vertex.getTransform().onData(output);
     } catch (final Exception e){
