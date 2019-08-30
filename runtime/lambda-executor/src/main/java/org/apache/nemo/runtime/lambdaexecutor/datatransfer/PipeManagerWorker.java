@@ -178,30 +178,35 @@ public final class PipeManagerWorker {
 
 
     // Descriptor
-    final PipeTransferContextDescriptor descriptor =
-      new PipeTransferContextDescriptor(
-        runtimeEdgeId,
-        srcTaskIndex,
-        dstTaskIndex,
-        getNumOfInputPipeToWait(runtimeEdge));
+    try {
+      final PipeTransferContextDescriptor descriptor =
+        new PipeTransferContextDescriptor(
+          runtimeEdgeId,
+          srcTaskIndex,
+          dstTaskIndex,
+          getNumOfInputPipeToWait(runtimeEdge));
 
-    switch (loc) {
-      case SF: {
-        // Connect to the relay server!
-        return relayServerClient.newOutputContext(executorId, targetExecutorId, descriptor)
-          .thenApply(context -> context);
+      switch (loc) {
+        case SF: {
+          // Connect to the relay server!
+          return relayServerClient.newOutputContext(executorId, targetExecutorId, descriptor)
+            .thenApply(context -> context);
+        }
+        case VM: {
+          // The executor is in VM, just connects to the VM server
+          //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
+          //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+          // Connect to the executor
+          return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
+            .thenApply(context -> context);
+        }
+        default: {
+          throw new RuntimeException("Unsupported loc: " + loc);
+        }
       }
-      case VM: {
-        // The executor is in VM, just connects to the VM server
-        //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
-        //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
-        // Connect to the executor
-        return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
-          .thenApply(context -> context);
-      }
-      default: {
-        throw new RuntimeException("Unsupported loc: " + loc);
-      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Location of " + dstTaskId + ": " + loc);
     }
   }
 

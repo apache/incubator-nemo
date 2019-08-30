@@ -285,7 +285,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       final List<TaskExecutor> offloaded = new ArrayList<>();
       offloadedTasksPerStage.add(offloaded);
 
-      final int offloadTaskNum = (stageTasks.size() - (int) (stageTasks.size() / divideNum));
+      final int offloadTaskNum = (e.size() - (int) (e.size() / divideNum));
       totalOffloadTasks += offloadTaskNum;
       stageOffloadCntMap.put(RuntimeIdManager.getStageIdFromTaskId(e.get(0).getId()), offloadTaskNum);
       LOG.info("Stage offloading num {}: {}",
@@ -456,6 +456,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           final ControlMessage.GlobalScalingDoneMessage msg = message.getGlobalScalingDoneMsg();
           final List<String> offloadedTasks = msg.getOffloadedTasksList();
 
+          LOG.info("Offloaded tasks: {}", offloadedTasks);
           for (final String offloadedTask : offloadedTasks) {
             taskLocationMap.locationMap.put(offloadedTask, SF);
           }

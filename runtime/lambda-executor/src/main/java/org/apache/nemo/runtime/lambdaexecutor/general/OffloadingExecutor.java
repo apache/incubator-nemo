@@ -331,6 +331,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         taskLocMap.put(entry.getKey(), entry.getValue());
       }
 
+      LOG.info("TaskLocMap: {}", taskLocMap);
+
 
       final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
       taskExecutor.start(readyTask);
