@@ -21,6 +21,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.GlobalOffloadDone;
 import org.apache.nemo.runtime.executor.RemainingOffloadTasks;
 import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
@@ -389,7 +390,15 @@ public final class TinyTaskOffloader implements Offloader {
         if (checkIsAllOutputPendingReady()) {
           LOG.info("Output stop done for {}", taskId);
           outputStopPendingFutures.clear();
-          remainingOffloadTasks.decrementAndGet();
+          //remainingOffloadTasks.decrementAndGet();
+          pendingStatus = TaskExecutor.PendingState.OTHER_TASK_WAITING;
+        } else {
+          break;
+        }
+      }
+      case OTHER_TASK_WAITING: {
+        if (GlobalOffloadDone.getInstance().getBoolean().get()) {
+          LOG.info("global offloading done {}", taskId);
           return true;
         } else {
           break;

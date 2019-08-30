@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
@@ -55,7 +56,7 @@ public final class JobScaler {
 
   public void scalingOut(final ControlMessage.ScalingMessage msg, final boolean isNumber) {
 
-    final int divide = msg.getDivide();
+    final double divide = msg.getDivide();
     final int prevScalingCount = sumCount();
 
     if (prevScalingCount > 0) {
@@ -70,9 +71,10 @@ public final class JobScaler {
     final int query = msg.hasQuery() ? msg.getQuery() : 0;
 
     if (isNumber) {
-      scalingOutNumTasksToWorkers(divide);
+      scalingOutNumTasksToWorkers((int) divide);
     } else {
-      scalingOutToWorkers(divide, query);
+      //scalingOutToWorkers(divide, query);
+      scalingOutToWorkerWithSimpleDecision(divide);
     }
   }
 
@@ -192,8 +194,36 @@ public final class JobScaler {
     }
   }
 
+  private void scalingOutToWorkerWithSimpleDecision(final double divide) {
+     // 1. update all task location
+    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
-  private void scalingOutToWorkers(final int divide,
+    final ControlMessage.RequestScalingMessage.Builder builder =
+      ControlMessage.RequestScalingMessage.newBuilder();
+
+    builder.setRequestId(RuntimeIdManager.generateMessageId());
+    builder.setIsScaleOut(true);
+    builder.setDivideNum(divide);
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+
+      scalingExecutorCnt.getAndIncrement();
+
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(builder.build())
+            .build());
+      });
+    }
+  }
+
+
+  private void scalingOutToWorkers(final double divide,
                                    final int queryNum) {
 
     // 1. update all task location
@@ -201,7 +231,6 @@ public final class JobScaler {
 
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
-
 
       workerOffloadTaskMap.put(representer, new HashMap<>());
 
@@ -220,7 +249,7 @@ public final class JobScaler {
         }
         */
 
-        final int countToOffload = entry.getValue().size() - (entry.getValue().size() / divide);
+        final int countToOffload = (int) (entry.getValue().size() - (entry.getValue().size() / divide));
         final List<String> offloadTask = new ArrayList<>();
         offloadTaskMap.put(entry.getKey(), offloadTask);
 
@@ -302,6 +331,13 @@ public final class JobScaler {
   private void sendScalingOutDoneToAllWorkers() {
     LOG.info("Send scale out done to all workers");
 
+    final List<String> offloadedTasks = taskLocationMap.locationMap.entrySet()
+      .stream().filter(entry -> entry.getValue().equals(SF))
+      .map(entry -> entry.getKey())
+      .collect(Collectors.toList());
+
+    LOG.info("Offloaded tasks: {}", offloadedTasks);
+
     for (final ExecutorRepresenter representer : taskScheduledMap.getScheduledStageTasks().keySet()) {
       final long id = RuntimeIdManager.generateMessageId();
       executorService.execute(() -> {
@@ -311,6 +347,7 @@ public final class JobScaler {
         .setType(ControlMessage.MessageType.GlobalScalingReadyDone)
         .setGlobalScalingDoneMsg(ControlMessage.GlobalScalingDoneMessage.newBuilder()
           .setRequestId(id)
+          .addAllOffloadedTasks(offloadedTasks)
           .build())
         .build());
       });
@@ -329,12 +366,17 @@ public final class JobScaler {
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
           LOG.info("Receive LocalScalingDone for {}", executorId);
 
+          for (final String offloadedTask : localScalingDoneMessage.getOffloadedTasksList()) {
+            taskLocationMap.locationMap.put(offloadedTask, SF);
+          }
+
           final int cnt = scalingExecutorCnt.decrementAndGet();
           if (cnt == 0) {
             if (isScaling.compareAndSet(true, false)) {
               sendScalingOutDoneToAllWorkers();
             }
           }
+
           break;
         default:
           throw new IllegalMessageException(new Exception(message.toString()));

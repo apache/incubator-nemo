@@ -310,7 +310,7 @@ public final class JobLauncher {
             final String decision = split[0];
 
             if (decision.equals("o") || decision.equals("no")) {
-              final int offloadDivide = Integer.valueOf(split[1]);
+              final double offloadDivide = Double.valueOf(split[1]);
 
               if (split.length == 3) {
                 final int queryNum = Integer.valueOf(split[2]);

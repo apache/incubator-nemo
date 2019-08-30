@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.runtime.executor.relayserver.RelayServerChannelInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

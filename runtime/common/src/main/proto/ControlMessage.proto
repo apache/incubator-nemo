@@ -41,7 +41,7 @@ message LaunchDAGMessage {
 
 message ScalingMessage {
   required string decision = 1;
-  optional int32 divide = 2;
+  optional double divide = 2;
   optional int32 query = 3;
 }
 
@@ -330,6 +330,7 @@ message RequestScalingMessage {
   required bool isScaleOut = 2;
   repeated RequestScalingEntryMessage entry = 3;
   repeated TaskLocation taskLocation = 4;
+  optional double divideNum = 5;
 }
 
 message TaskLocation {
@@ -350,10 +351,12 @@ message ScalingDoneEntryMessage {
 
 message LocalScalingDoneMessage {
   required string executorId = 1;
+  repeated string offloadedTasks = 2;
 }
 
 message GlobalScalingDoneMessage {
   required int64 requestId = 1;
+  repeated string offloadedTasks = 2;
 }
 
 message LocalRelayServerInfoMessage {
