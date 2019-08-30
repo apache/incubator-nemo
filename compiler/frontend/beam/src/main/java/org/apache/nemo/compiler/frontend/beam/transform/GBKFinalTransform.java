@@ -145,8 +145,10 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    //LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
-    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+    LOG.info("Final input receive at {}: {}, timestamp: {}, inputWatermark: {}",
+      getContext().getTaskId(),
+      element,
+      element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
@@ -262,7 +264,7 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    //LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+    LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
