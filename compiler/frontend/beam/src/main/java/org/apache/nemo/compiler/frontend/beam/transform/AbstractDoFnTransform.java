@@ -190,6 +190,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   final void checkAndInvokeBundle() {
     if (bundleFinished) {
       bundleFinished = false;
+      LOG.info("Call bundle ");
       if (pushBackRunner == null) {
         doFnRunner.startBundle();
       } else {
