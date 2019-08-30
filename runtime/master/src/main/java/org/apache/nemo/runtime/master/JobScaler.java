@@ -201,9 +201,12 @@ public final class JobScaler {
     final ControlMessage.RequestScalingMessage.Builder builder =
       ControlMessage.RequestScalingMessage.newBuilder();
 
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
     builder.setRequestId(RuntimeIdManager.generateMessageId());
     builder.setIsScaleOut(true);
     builder.setDivideNum(divide);
+    builder.addAllTaskLocation(taskLocations);
 
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {

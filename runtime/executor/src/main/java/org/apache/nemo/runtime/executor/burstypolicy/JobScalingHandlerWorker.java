@@ -385,6 +385,13 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
                 throw new RuntimeException("GlobalOffloadDone should be true... but false TT");
               }
 
+              final List<ControlMessage.TaskLocation> locations = scalingMsg.getTaskLocationList();
+              for (final ControlMessage.TaskLocation location : locations) {
+                final String taskId = location.getTaskId();
+                final TaskLoc loc = location.getIsVm() ? VM : SF;
+                taskLocationMap.locationMap.put(taskId, loc);
+              }
+
               scaleOutWithDivideNum(scalingMsg.getDivideNum());
 
             } else {
