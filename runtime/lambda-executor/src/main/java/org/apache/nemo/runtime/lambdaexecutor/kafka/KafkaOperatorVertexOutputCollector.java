@@ -142,7 +142,14 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   @Override
   public void emit(final O output) {
     List<String> nextOpIds = null;
-    //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
+
+
+    final List<String> exclude = Arrays.asList("vertex1", "vertex2", "vertex3", "vertex4", "vertex5", "vertex6", "vertex7", "vertex8", "vertex9", "vertex10", "vertex11");
+    final Set<String> set = new HashSet<>(exclude);
+
+    if (!set.contains(irVertex.getId())) {
+      LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
+    }
 
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
