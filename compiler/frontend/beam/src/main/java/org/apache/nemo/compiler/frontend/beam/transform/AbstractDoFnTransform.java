@@ -77,9 +77,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   // or elapsed time > bundleMillis, we finish the current bundle and start a new one
   private transient long bundleSize;
   private transient long bundleMillis;
-  private long prevBundleStartTime;
-  private long currBundleCount = 0;
-  private boolean bundleFinished = true;
+  private transient long prevBundleStartTime;
+  private transient long currBundleCount = 0;
+  private transient boolean bundleFinished = true;
   private final DisplayData displayData;
 
   private transient Context context;
@@ -242,6 +242,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
     this.outputCollector = wrapOutputCollector(oc);
     this.context = context;
+
+
+    this.prevBundleStartTime = System.currentTimeMillis();
+    this.currBundleCount = 0;
+    this.bundleFinished = true;
 
     this.bundleMillis = options.getMaxBundleTimeMills();
     this.bundleSize = options.getMaxBundleSize();
