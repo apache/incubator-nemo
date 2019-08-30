@@ -253,6 +253,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           rendevousServerClient,
           executorThread);
 
+      LOG.info("External additional outputs at {}: {}", offloadingTask.taskId, externalAdditionalOutputMap);
+
       final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
         irVertex, offloadingTask.outgoingEdges,
         intermediateDataIOFactory,
@@ -261,6 +263,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         offloadingTask.taskId,
         rendevousServerClient,
         executorThread);
+
+      LOG.info("External main outputs at {}: {}", offloadingTask.taskId, externalMainOutputs);
 
       for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
         operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
