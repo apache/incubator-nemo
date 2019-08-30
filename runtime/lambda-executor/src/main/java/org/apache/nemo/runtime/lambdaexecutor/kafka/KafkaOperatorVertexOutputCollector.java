@@ -144,9 +144,6 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     List<String> nextOpIds = null;
     //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
 
-    if (irVertex.getId().equals("vertex29")) {
-      LOG.info("Operator " + irVertex.getId() + " emit " + output);
-    }
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
       //LOG.info("Set timestamp {} to {}", inputTimestamp, internalVertex.getNextOperator().getId());
@@ -157,7 +154,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      //LOG.info("Emit to output vertex at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
+      LOG.info("Emit to output vertex at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
       outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
     }
 
@@ -174,6 +171,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     if (irVertex.isSink) {
+      LOG.info("Sink output at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
       if (random.nextDouble() < samplingRate) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();
