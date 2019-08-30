@@ -143,11 +143,10 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   public void emit(final O output) {
     List<String> nextOpIds = null;
     //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
-    if (irVertex.isSink) {
 
+    if (irVertex.getId().equals("vertex29")) {
+      LOG.info("Operator " + irVertex.getId() + " emit " + output);
     }
-
-    //LOG.info("Operator " + irVertex.getId() + " emit to ");
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
       //LOG.info("Set timestamp {} to {}", inputTimestamp, internalVertex.getNextOperator().getId());
