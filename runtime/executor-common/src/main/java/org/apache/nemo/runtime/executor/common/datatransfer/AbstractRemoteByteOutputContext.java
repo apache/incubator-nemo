@@ -321,6 +321,9 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
       channelStatus = RUNNING;
       channel.writeAndFlush(message).addListener(getChannelWriteListener());
+      executorThread.queue.add(() -> {
+        currStatus = Status.NO_PENDING;
+      });
     } else {
       restarted = true;
     }
@@ -358,6 +361,11 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       // channel에 restart signal 날림.
       channelStatus = RUNNING;
       channel.writeAndFlush(message).addListener(getChannelWriteListener());
+      executorThread.queue.add(() -> {
+        currStatus = Status.NO_PENDING;
+      });
+
+      LOG.info("Restart {} output", taskId);
 
       restarted = false;
     } else {
