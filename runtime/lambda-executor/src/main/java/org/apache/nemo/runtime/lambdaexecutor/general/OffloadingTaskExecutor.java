@@ -84,7 +84,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   final AtomicBoolean prepared = new AtomicBoolean(false);
 
-  private List<Future> outputfutures;
+  private final List<Future> outputfutures = new ArrayList<>();
 
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, Serializer> serializerMap,
@@ -421,6 +421,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         }
       }
 
+      outputfutures.clear();
+
       LOG.info("All Clossed output writer {}", offloadingTask.taskId);
 
       //Thread.sleep(3000);
@@ -493,10 +495,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
 
     // TODO: fix
-    outputfutures = pipeOutputWriters.stream()
+    outputfutures.addAll(pipeOutputWriters.stream()
       .map(outputWriter -> {
         return outputWriter.close(offloadingTask.taskId);
-      }).collect(Collectors.toList());
+      }).collect(Collectors.toList()));
 
     LOG.info("Closing output writer {}", offloadingTask.taskId);
   }
