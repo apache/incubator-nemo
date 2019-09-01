@@ -75,6 +75,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
           // 내 채널에  destination 등록!!
           final Channel myRelayServer = relayServerClient.getRelayServerChannel(getLocalExecutorId());
           //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
+          LOG.info("Send init message for the connected relay server for scaling in... {} to {}", taskId, msg.getTaskId());
           relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
         });
         break;
@@ -91,7 +92,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
               ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
               SF,
               taskId);
-          //LOG.info("Send init message for the connected VM for scaling in...");
+          LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
           vmContextManager.getChannel().write(ackMessage);
         });
 

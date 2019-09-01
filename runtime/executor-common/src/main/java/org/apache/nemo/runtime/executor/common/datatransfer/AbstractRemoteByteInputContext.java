@@ -278,12 +278,13 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
             myLocation,
             taskId);
 
-      LOG.info("Setting up channel");
       // 기존 channel에 restart signal 날림.
       restarted = false;
 
       currChannel = setupChannel;
       receiveDataFrom = setupLocation;
+
+      LOG.info("Send restart message to parent: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
 
       channelStatus = RUNNING;
       currChannel.writeAndFlush(restartMsg);
@@ -308,6 +309,8 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
           VM,
           taskId);
+
+      LOG.info("Send restart message to parent: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
 
       currChannel = setupChannel;
       receiveDataFrom = setupLocation;

@@ -71,6 +71,7 @@ public final class RemoteByteOutputContext extends AbstractRemoteByteOutputConte
           VM,
           taskId);
 
+      LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
       vmChannel.writeAndFlush(ackMessage);
     }
   }
