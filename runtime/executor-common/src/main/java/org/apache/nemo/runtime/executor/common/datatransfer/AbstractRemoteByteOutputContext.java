@@ -222,10 +222,10 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         case OUTPUT_STOP: {
           // it means that we already send the ack (OS)
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
-          //channelStatus = ChannelStatus.INPUT_STOP;
+
           LOG.info("Receive input stop from {} after sending output stop {}/{}",
             msg.getTaskId(), taskId, getContextId().getTransferIndex());
-          //channelStatus = WAIT_FOR_INPUT_RESTART;
+
           executorThread.queue.add(() -> {
             setupOutputChannelToParentVM(msg, sdt);
           });
@@ -494,7 +494,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         throw new RuntimeException(e);
       }
 
-      LOG.info("Write element {} / {} / {} / {} ", taskId, currStatus, sendDataTo, channel);
+      //LOG.info("Write element {} / {} / {} / {} ", taskId, currStatus, sendDataTo, channel);
 
       synchronized (writeLock) {
         try {
