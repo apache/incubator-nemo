@@ -111,12 +111,15 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
         e.printStackTrace();
       }
     }
+    System.out.println("LambdaExecutor ends");
     return null;
   }
 
   public void onTaskReceived(final Task task) {
     Executor e = new Executor();
     e.onTaskReceived(task);
+    System.out.println("Task executed");
+    this.workerComplete.countDown();
   }
 
   /**
@@ -208,7 +211,6 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
               };
               task = (Task) ois.readObject();
  */
-
               if(task != null) {
                 System.out.println("Decode task successfully" + task.toString());
                 onTaskReceived(task);
