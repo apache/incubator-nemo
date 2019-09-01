@@ -172,12 +172,14 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         executorThread.queue.add(() -> {
           try {
             currStatus = Status.PENDING;
+            LOG.info("HAHAHA {}", taskId);
             sendControlFrame(message);
           } catch (final Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
         });
+        LOG.info("Executor queue size {}/{}", taskId, executorThread.queue.size());
         break;
       }
       default:
