@@ -160,7 +160,7 @@ public final class PipeOutputWriter implements Flushable {
 
       @Override
       public boolean isDone() {
-        return false;
+        return count.getCount() == 0;
       }
 
       @Override
