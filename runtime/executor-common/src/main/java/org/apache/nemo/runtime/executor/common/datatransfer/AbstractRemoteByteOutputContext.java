@@ -170,10 +170,6 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
-        currStatus = Status.PENDING;
-        LOG.info("HAHAHA {}", taskId);
-        sendControlFrame(message);
-
         executorThread.queue.add(() -> {
           try {
             currStatus = Status.PENDING;
