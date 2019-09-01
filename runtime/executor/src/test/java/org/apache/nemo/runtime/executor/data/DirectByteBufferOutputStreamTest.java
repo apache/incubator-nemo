@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.executor.data;
 
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -33,28 +34,29 @@ import static org.junit.Assert.assertEquals;
  */
 public class DirectByteBufferOutputStreamTest {
   private DirectByteBufferOutputStream outputStream;
+  private static final MemoryPoolAssigner memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
 
   @Before
-  public void setup(){
-    outputStream = new DirectByteBufferOutputStream();
+  public void setup() throws MemoryAllocationException {
+    outputStream = new DirectByteBufferOutputStream(memoryPoolAssigner);
   }
 
   @Test
-  public void testSingleWrite() {
+  public void testSingleWrite() throws IOException {
     int value = 1;
     outputStream.write(value);
     assertEquals(value, outputStream.toByteArray()[0]);
   }
 
   @Test
-  public void testWrite(){
+  public void testWrite() throws IOException {
     String value = "value";
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
   }
 
   @Test
-  public void testReWrite() {
+  public void testReWrite() throws IOException {
     String value1 = "value1";
     String value2 = "value2";
     outputStream.write(value1.getBytes());
@@ -64,7 +66,7 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testReRead() {
+  public void testReRead() throws IOException {
     String value = "value";
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
@@ -72,14 +74,14 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testLongWrite() {
+  public void testLongWrite() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     assertEquals(value,new String(outputStream.toByteArray()));
   }
 
   @Test
-  public void testLongReWrite() {
+  public void testLongReWrite() throws IOException {
     String value1 = RandomStringUtils.randomAlphanumeric(10000);
     String value2 = RandomStringUtils.randomAlphanumeric(5000);
     outputStream.write(value1.getBytes());
@@ -89,7 +91,7 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testLongReRead() {
+  public void testLongReRead() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
@@ -97,17 +99,17 @@ public class DirectByteBufferOutputStreamTest {
   }
 
   @Test
-  public void testGetDirectBufferList() {
+  public void testGetMemoryChunkList() throws IOException {
     String value = RandomStringUtils.randomAlphanumeric(10000);
     outputStream.write(value.getBytes());
     byte[] totalOutput = outputStream.toByteArray();
-    List<ByteBuffer> bufList = outputStream.getDirectByteBufferList();
+    List<MemoryChunk> chunkList = outputStream.getMemoryChunkList();
     int offset = 0;
     int byteToRead;
-    for (final ByteBuffer temp : bufList) {
-      byteToRead = temp.remaining();
+    for (final MemoryChunk temp : chunkList) {
+      byteToRead = temp.getBuffer().remaining();
       byte[] output = new byte[byteToRead];
-      temp.get(output, 0, byteToRead);
+      temp.getBuffer().get(output, 0, byteToRead);
       byte[] expected = Arrays.copyOfRange(totalOutput, offset, offset+byteToRead);
       assertEquals(new String(expected), new String(output));
       offset += byteToRead;

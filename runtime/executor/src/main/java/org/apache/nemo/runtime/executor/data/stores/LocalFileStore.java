@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
@@ -46,11 +47,13 @@ public final class LocalFileStore extends LocalBlockStore {
    *
    * @param fileDirectory     the directory which will contain the files.
    * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final SerializerManager serializerManager) {
-    super(serializerManager);
+                         final SerializerManager serializerManager,
+                         final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }
@@ -62,7 +65,8 @@ public final class LocalFileStore extends LocalBlockStore {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
-    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory),
+                                                                  metadata, getMemoryPoolAssigner());
   }
 
   /**

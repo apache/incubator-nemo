@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
 
@@ -38,9 +39,11 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    * Constructor.
    *
    * @param coderManager the coder manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
-  protected LocalBlockStore(final SerializerManager coderManager) {
-    super(coderManager);
+  protected LocalBlockStore(final SerializerManager coderManager,
+                            final MemoryPoolAssigner memoryPoolAssigner) {
+    super(coderManager, memoryPoolAssigner);
     this.blockMap = new ConcurrentHashMap<>();
   }
 

@@ -23,6 +23,7 @@ import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.XGBoostPass;
+import org.apache.nemo.conf.DataPlaneConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -80,6 +81,7 @@ public final class NemoDriver {
   private final String localDirectory;
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
+  private final DataPlaneConf dataPlaneConf;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
     new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
@@ -94,6 +96,7 @@ public final class NemoDriver {
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
+                     final DataPlaneConf dataPlaneConf,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
@@ -110,6 +113,7 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    this.dataPlaneConf = dataPlaneConf;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
@@ -259,8 +263,10 @@ public final class NemoDriver {
 
     final Configuration ncsConfiguration = getExecutorNcsConfiguration();
     final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
+    final Configuration dataPlaneConfiguration = dataPlaneConf.getDataPlaneConfiguration();
 
-    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration);
+    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration,
+      messageConfiguration, dataPlaneConfiguration);
   }
 
   private Configuration getExecutorNcsConfiguration() {
