@@ -486,6 +486,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         throw new RuntimeException(e);
       }
 
+      LOG.info("Write element {} / {} / {} / {} ", taskId, currStatus, sendDataTo, channel);
+
       synchronized (writeLock) {
         try {
           switch (currStatus) {
