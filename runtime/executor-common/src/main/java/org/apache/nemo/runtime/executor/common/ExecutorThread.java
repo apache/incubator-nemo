@@ -29,6 +29,7 @@ public final class ExecutorThread {
 
 
   private final List<TaskExecutor> finishedTasks;
+  private final List<TaskExecutor> finishWaitingTasks;
 
   public final ConcurrentLinkedQueue<Runnable> queue;
 
@@ -44,6 +45,7 @@ public final class ExecutorThread {
     this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
     this.finishedTasks = new ArrayList<>();
+    this.finishWaitingTasks = new ArrayList<>();
     this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
@@ -118,9 +120,14 @@ public final class ExecutorThread {
         final TaskExecutor finishedExecutor = iterator.next();
         if (finishedExecutor.isFinished()) {
           finishedExecutor.finish();
+          finishWaitingTasks.add(finishedExecutor);
           iterator.remove();
         }
       }
+    }
+
+    if (!finishWaitingTasks.isEmpty()) {
+      finishWaitingTasks.removeIf(executor -> executor.isFinishDone());
     }
   }
 
@@ -162,9 +169,7 @@ public final class ExecutorThread {
           }
 
           if (sourceTasks.isEmpty() && queue.isEmpty()) {
-            Thread.sleep(500);
-            // TODO: FIX
-            LOG.info("Queue is empty {}", this.hashCode());
+            Thread.sleep(20);
           }
         }
 
@@ -196,7 +201,14 @@ public final class ExecutorThread {
           }
 
           deletedTask.finish();
+          finishWaitingTasks.add(deletedTask);
           LOG.info("Finished task {}", deletedTask.getId());
+        }
+
+
+        while (!finishWaitingTasks.isEmpty()) {
+          finishWaitingTasks.removeIf(executor -> executor.isFinishDone());
+          Thread.sleep(100);
         }
 
         closed = true;

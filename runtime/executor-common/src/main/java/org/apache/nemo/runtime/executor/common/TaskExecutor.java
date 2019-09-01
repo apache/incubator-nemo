@@ -66,6 +66,9 @@ public interface TaskExecutor extends AutoCloseable {
 
   void finish();
 
+  // after finish called
+  boolean isFinishDone();
+
   public void setOffloadedTaskTime(final long t);
 
   AtomicLong getTaskExecutionTime();

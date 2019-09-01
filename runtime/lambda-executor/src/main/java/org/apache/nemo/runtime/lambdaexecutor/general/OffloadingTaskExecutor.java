@@ -84,6 +84,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   final AtomicBoolean prepared = new AtomicBoolean(false);
 
+  private List<Future> outputfutures;
+
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, Serializer> serializerMap,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
@@ -408,30 +410,15 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void finish() {
-
-    LOG.info("Finishing {}", offloadingTask.taskId);
-
-    while (!executorThread.queue.isEmpty()) {
-      LOG.info("Waiting for executor finish");
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
+  public boolean isFinishDone() {
 
     try {
-      // TODO: fix
-      final List<Future> outputfutures = pipeOutputWriters.stream()
-        .map(outputWriter -> {
-          return outputWriter.close(offloadingTask.taskId);
-        }).collect(Collectors.toList());
-
-      LOG.info("Closing output writer {}", offloadingTask.taskId);
-
       for (final Future future : outputfutures) {
-        future.get();
+        if (!future.isDone()) {
+          return false;
+        } else {
+          future.get();
+        }
       }
 
       LOG.info("All Clossed output writer {}", offloadingTask.taskId);
@@ -487,31 +474,31 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
 
     pendingFutures.clear();
-    // Close all data fetchers
 
-    // TODO: close upstream data fetchers
-    /*
-      fetchers.forEach(fetcher -> {
-        try {
-          fetcher.close();
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      });
-    */
+    return true;
+  }
 
-    // close output writer!!
-    // we should first close output writer
-    // the code after this should not emit outputs to downstream operators
-    /*
-    prepareService.execute(() -> {
+  @Override
+  public void finish() {
 
+    LOG.info("Finishing {}", offloadingTask.taskId);
 
+    while (!executorThread.queue.isEmpty()) {
+      LOG.info("Waiting for executor finish");
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
-    });
-    */
+    // TODO: fix
+    outputfutures = pipeOutputWriters.stream()
+      .map(outputWriter -> {
+        return outputWriter.close(offloadingTask.taskId);
+      }).collect(Collectors.toList());
 
+    LOG.info("Closing output writer {}", offloadingTask.taskId);
   }
 
   // Get all of the intra-task edges
