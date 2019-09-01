@@ -170,8 +170,13 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
         executorThread.queue.add(() -> {
-          currStatus = Status.PENDING;
-          sendControlFrame(message);
+          try {
+            currStatus = Status.PENDING;
+            sendControlFrame(message);
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
         });
         break;
       }
@@ -261,7 +266,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     channel = c;
     sendDataTo = msg.getLocation();
 
-    LOG.info("Receive input restart.. {}/{}", taskId, getContextId().getTransferIndex());
+    LOG.info("Receive input restart from {}/{}.. {}/{}", msg.getTaskId(), sendDataTo,
+      taskId, getContextId().getTransferIndex());
         /*
         final ByteTransferContextSetupMessage message =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
