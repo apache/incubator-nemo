@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
@@ -53,12 +54,14 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @param volumeDirectory   the remote volume directory which will contain the files.
    * @param jobId             the job id.
    * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
-                           final SerializerManager serializerManager) {
-    super(serializerManager);
+                           final SerializerManager serializerManager,
+                           final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
     this.fileDirectory = volumeDirectory + "/" + jobId;
     new File(fileDirectory).mkdirs();
   }
@@ -70,7 +73,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
       RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, getMemoryPoolAssigner());
   }
 
   /**
@@ -151,6 +154,6 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata<K> metadata =
       RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, getMemoryPoolAssigner());
   }
 }

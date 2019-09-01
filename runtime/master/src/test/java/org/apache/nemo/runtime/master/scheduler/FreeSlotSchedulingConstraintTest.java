@@ -59,8 +59,7 @@ public final class FreeSlotSchedulingConstraintTest {
    * @param capacity          the capacity of the executor.
    * @return the mocked executor.
    */
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numComplyingTasks,
-                                                             final int capacity) {
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numComplyingTasks, final int capacity) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     when(executorRepresenter.getNumOfComplyingRunningTasks()).thenReturn(numComplyingTasks);
     when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
