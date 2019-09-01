@@ -166,17 +166,18 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
 
   @Override
-  public synchronized void receiveStopSignalFromParent(final TaskLoc sendDataTo) {
+  public synchronized void receiveStopSignalFromParent(final ByteTransferContextSetupMessage msg, final TaskLoc sendDataTo) {
 
     switch (channelStatus) {
       case INPUT_STOP: {
-        LOG.info("Receive output stop after sending input stop {}/{}", taskId, getContextId().getTransferIndex());
+        LOG.info("Receive output stop after sending input stop {}/{} from {}", taskId, getContextId().getTransferIndex(),
+          msg.getTaskId());
         // input stop인데 output을 받았다?
         setupInputChannelToParentVM(sendDataTo);
         break;
       }
       case RUNNING: {
-        LOG.info("Receive output stop {}/{}", taskId, getContextId().getTransferIndex());
+        LOG.info("Receive output stop {}/{} from {}", taskId, getContextId().getTransferIndex(), msg.getTaskId());
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
         final ContextId contextId = getContextId();
@@ -262,7 +263,8 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     setupChannel = c;
     setupLocation = msg.getLocation();
 
-    LOG.info("Setup restart channel {} {}/{}", msg.getLocation(), taskId, getContextId().getTransferIndex());
+    LOG.info("Setup restart channel {} {}/{} for {}", msg.getLocation(), taskId, getContextId().getTransferIndex(),
+      msg.getTaskId());
 
     if (restarted) {
       // TODO: send signal

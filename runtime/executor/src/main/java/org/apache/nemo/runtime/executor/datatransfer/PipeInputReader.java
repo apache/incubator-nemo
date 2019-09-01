@@ -179,7 +179,7 @@ public final class PipeInputReader implements InputReader {
     for (final ByteInputContext byteInputContext : byteInputContexts) {
 
 
-      LOG.info("Send resume message {}", taskExecutor);
+      LOG.info("Send resume message {}", taskExecutor.getId());
 
       byteInputContext.restart(taskExecutor.getId());
       /*

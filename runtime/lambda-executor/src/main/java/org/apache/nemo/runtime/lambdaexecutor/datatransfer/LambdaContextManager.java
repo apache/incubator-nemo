@@ -206,7 +206,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
         final LambdaRemoteByteInputContext inputContext =
           (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
-        inputContext.receiveStopSignalFromParent(sendDataTo);
+        inputContext.receiveStopSignalFromParent(message, sendDataTo);
         break;
       }
       case ACK_FROM_PARENT_STOP_OUTPUT: {

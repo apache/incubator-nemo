@@ -63,7 +63,7 @@ public interface ByteInputContext extends ByteTransferContext {
   // For stopping
   void sendStopMessage(final EventHandler<Integer> pendingAckHandler);
   void receivePendingAck();
-  void receiveStopSignalFromParent(final TaskLoc sendDataTo);
+  void receiveStopSignalFromParent(final ByteTransferContextSetupMessage msg, final TaskLoc sendDataTo);
 
   // For restarting
   void receiveRestartSignalFromParent(Channel channel, ByteTransferContextSetupMessage msg);
