@@ -223,14 +223,35 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         break;
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
-        //LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
-        final ByteInputContext inputContext = inputContexts.get(transferIndex);
-        inputContext.receiveRestartSignalFromParent(channel, message);
+        LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
+        channelExecutorService.execute(() -> {
+          ByteInputContext inputContext = inputContexts.get(transferIndex);
+          while (inputContext == null) {
+            inputContext = inputContexts.get(transferIndex);
+            try {
+              Thread.sleep(500);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          inputContext.receiveRestartSignalFromParent(channel, message);
+        });
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
-        ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.receiveRestartSignalFromChild(channel, message);
+        channelExecutorService.execute(() -> {
+          ByteOutputContext outputContext = outputContexts.get(transferIndex);
+          while (outputContext == null) {
+            outputContext = outputContexts.get(transferIndex);
+            try {
+              Thread.sleep(500);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          outputContext.receiveRestartSignalFromChild(channel, message);
+        });
+
         break;
       }
       case CONTROL: {
