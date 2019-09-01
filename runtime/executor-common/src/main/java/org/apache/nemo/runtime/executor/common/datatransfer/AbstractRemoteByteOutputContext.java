@@ -140,7 +140,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       LOG.info("Send message to relay server {} / {} / {}", relayDst, taskId, message);
       channel.writeAndFlush(new RelayControlFrame(relayDst, message));
     } else {
-      LOG.info("Send message to VM {}", message);
+      LOG.info("Send message to VM {} / {}", message, taskId);
       channel.writeAndFlush(message);
     }
   }
@@ -162,6 +162,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         //  input이 이미 stop이면 걍 올림.
         //LOG.info("Wait for input restart {}/{}", taskId, getContextId().getTransferIndex());
         //channelStatus = WAIT_FOR_INPUT_RESTART;
+        LOG.info("Output stop input stop ack {}/{}", taskId, getContextId().getTransferIndex());
         ackHandler.onNext(1);
         break;
       }
