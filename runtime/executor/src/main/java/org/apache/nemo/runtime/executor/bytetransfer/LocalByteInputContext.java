@@ -80,10 +80,6 @@ public final class LocalByteInputContext implements ByteInputContext{
 
   }
 
-  @Override
-  public void receiveStopSignalFromParent(TaskLoc sendDataTo) {
-
-  }
 
   @Override
   public void receiveRestartSignalFromParent(Channel channel, ByteTransferContextSetupMessage msg) {
