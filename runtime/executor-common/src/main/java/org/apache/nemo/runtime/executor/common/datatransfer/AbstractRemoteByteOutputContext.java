@@ -169,6 +169,11 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       case RUNNING: {
         LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
+
+        currStatus = Status.PENDING;
+        LOG.info("HAHAHA {}", taskId);
+        sendControlFrame(message);
+
         executorThread.queue.add(() -> {
           try {
             currStatus = Status.PENDING;
@@ -181,11 +186,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         });
 
         try {
+          // TODO: FIX
           Thread.sleep(5000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        LOG.info("Executor queue size {}/{}", taskId, executorThread.queue.size());
+        LOG.info("Executor queue size {} {}/{}", executorThread.hashCode(), taskId, executorThread.queue.size());
         break;
       }
       default:

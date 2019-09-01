@@ -163,7 +163,8 @@ public final class ExecutorThread {
 
           if (sourceTasks.isEmpty() && queue.isEmpty()) {
             Thread.sleep(500);
-            LOG.info("Queue is empty");
+            // TODO: FIX
+            LOG.info("Queue is empty {}", this.hashCode());
           }
         }
 
