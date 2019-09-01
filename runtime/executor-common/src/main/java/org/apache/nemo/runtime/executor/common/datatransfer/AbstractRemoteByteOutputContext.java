@@ -179,6 +179,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
             throw new RuntimeException(e);
           }
         });
+
+        try {
+          Thread.sleep(5000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         LOG.info("Executor queue size {}/{}", taskId, executorThread.queue.size());
         break;
       }
