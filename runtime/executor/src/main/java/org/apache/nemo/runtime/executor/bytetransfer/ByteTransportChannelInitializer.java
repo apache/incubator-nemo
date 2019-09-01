@@ -22,22 +22,22 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Sets up {@link io.netty.channel.ChannelPipeline} for {@link ByteTransport}.
@@ -75,7 +75,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
   private final InjectionFuture<ByteTransfer> byteTransfer;
   private final InjectionFuture<ByteTransport> byteTransport;
-  private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
+  //private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
   private final InjectionFuture<AckScheduledService> ackScheduledService;
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
@@ -87,13 +87,11 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
   //private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
   //private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
-  private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
-  private final TaskLocationMap taskLocationMap;
   private final ExecutorService channelServiceExecutor;
   private final PersistentConnectionToMasterMap toMaster;
 
   private final OutputWriterFlusher outputWriterFlusher;
+  private final RelayServer relayServer;
 
   /**
    * Creates a netty channel initializer.
@@ -117,9 +115,9 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final DataFrameEncoder dataFrameEncoder,
                                           final TaskTransferIndexMap taskTransferIndexMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-                                          final TaskLocationMap taskLocationMap,
                                           final PersistentConnectionToMasterMap toMaster,
-                                          final EvalConf evalConf) {
+                                          final EvalConf evalConf,
+                                          final RelayServer relayServer) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -127,13 +125,13 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
-    this.vmScalingClientTransport = vmScalingClientTransport;
+    //this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
-    this.taskLocationMap = taskLocationMap;
     this.channelServiceExecutor = Executors.newCachedThreadPool();
     this.toMaster = toMaster;
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
+    this.relayServer = relayServer;
   }
 
   @Override
@@ -142,28 +140,26 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       channelServiceExecutor,
       pipeManagerWorker.get(),
       blockManagerWorker.get(),
-      byteTransfer.get(),
+      Optional.of(byteTransfer.get()),
       byteTransport.get().getChannelGroup(),
       localExecutorId,
       ch,
-      vmScalingClientTransport.get(),
+      //vmScalingClientTransport.get(),
       ackScheduledService.get(),
       taskTransferIndexMap.getMap(),
       inputContexts,
       outputContexts,
-      nextInputTransferIndex,
-      nextOutputTransferIndex,
-      taskLocationMap,
       toMaster,
-      outputWriterFlusher);
+      outputWriterFlusher,
+      relayServer);
 
     ch.pipeline()
-        // inbound
-        .addLast(new FrameDecoder(contextManager))
-        // outbound
-        .addLast(controlFrameEncoder)
-        .addLast(dataFrameEncoder)
-        // inbound
-        .addLast(contextManager);
+      // inbound
+      .addLast(new FrameDecoder(contextManager))
+      // outbound
+      .addLast(controlFrameEncoder)
+      .addLast(dataFrameEncoder)
+      // inbound
+      .addLast(contextManager);
   }
 }

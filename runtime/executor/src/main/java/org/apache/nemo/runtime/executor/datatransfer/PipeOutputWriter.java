@@ -205,22 +205,9 @@ public final class PipeOutputWriter implements OutputWriter {
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
     for (final ByteOutputContext byteOutputContext : pipes) {
-      final ByteTransferContextSetupMessage pendingMsg =
-        new ByteTransferContextSetupMessage(
-          byteOutputContext.getContextId().getInitiatorExecutorId(),
-          byteOutputContext.getContextId().getTransferIndex(),
-          byteOutputContext.getContextId().getDataDirection(),
-          byteOutputContext.getContextDescriptor(),
-          byteOutputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-          SF,
-          taskId,
-          relayServer.getPublicAddress(),
-          relayServer.getPort());
-
       //LOG.info("Send message {}", pendingMsg);
 
-      byteOutputContext.sendMessage(pendingMsg, (m) -> {
+      byteOutputContext.sendStopMessage((m) -> {
         LOG.info("receive ack from downstream!! {}/{}", runtimeEdge.getId(), runtimeEdge.getSrc());
         count.countDown();
       });

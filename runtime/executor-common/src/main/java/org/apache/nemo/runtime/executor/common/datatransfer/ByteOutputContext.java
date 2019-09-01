@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -38,33 +39,21 @@ import java.io.OutputStream;
  */
 public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
-  public void receivePendingAck();
+  void setTaskId(String taskId);
+
+  // For stopping
+  public void receiveStopAck();
+  void receiveStopSignalFromChild(ByteTransferContextSetupMessage msg, TaskLoc sendDataTo);
+  void sendStopMessage(EventHandler<Integer> ackHandler);
+
+  // For restarting
+  void receiveRestartAck();
+  void restart(final String taskId);
+  void receiveRestartSignalFromChild(Channel channel, ByteTransferContextSetupMessage msg);
+  void setupRestartChannel(Channel channel, ByteTransferContextSetupMessage msg);
 
   ByteOutputStream newOutputStream(ExecutorThread executorThread) throws IOException;
 
-  // pending for moving downstream tasks
-  void pending(TaskLoc sendDataTo, String tId);
-
-  // resume after moving downstream tasks
-  // This should be initiated when the byteOutputContext is in SF
-  void scaleoutToVm(final String address, final String taskId);
-
-  // this is called when the upstream operator moves to vm and the downstream is in SF
-  void scaleoutToVm(final Channel channel);
-
-  // this is called when the downstream operator moves to sf
-  void scaleoutToVmWoRestart(final Channel channel);
-
-  // this is called when the upstream operator moves to VM and the downstream is in VM
-  void scaleInToVm(Channel channel);
-  // this is called when the downstream operator moves to VM
-  void scaleInToVmWoRestart(Channel channel);
-
-  void stop();
-
-  void restart(final String taskId);
-
-  void sendMessage(ByteTransferContextSetupMessage msg, EventHandler<Integer> ackHandler);
 
   void onChannelError(@Nullable final Throwable cause);
 

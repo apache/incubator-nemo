@@ -131,9 +131,9 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       executorId, isPipe, relayDst, true);
   }
 
-  private void connectToRelay(final String relayServerAddress,
-                              final int relayServerPort,
-                              final EventHandler<Channel> handler) {
+  public void connectToRelay(final String relayServerAddress,
+                             final int relayServerPort,
+                             final EventHandler<Channel> handler) {
     channelExecutorService.execute(() -> {
       final ChannelFuture channelFuture = relayServerClient.connectToRelayServer(relayServerAddress, relayServerPort);
       while (!channelFuture.isDone()) {
@@ -149,8 +149,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     });
   }
 
-  private void connectToVm(final String targetExecutorId,
-                           final EventHandler<ContextManager> eventHandler) {
+  public void connectToVm(final String targetExecutorId,
+                          final EventHandler<ContextManager> eventHandler) {
     channelExecutorService.execute(() -> {
       final CompletableFuture<ContextManager> future = byteTransfer.connectTo(targetExecutorId);
       long st = System.currentTimeMillis();
@@ -180,7 +180,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   @Override
   protected void channelRead0(final ChannelHandlerContext ctx, final ByteTransferContextSetupMessage message)
-      throws Exception {
+    throws Exception {
     // TODO: handle scaleout messages!
     setRemoteExecutorId(message.getInitiatorExecutorId());
     //LOG.info("At {} Message {}", localExecutorId,  message);
@@ -196,262 +196,57 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
     switch (message.getMessageType()) {
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
-
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
         //LOG.info("SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} Pending output context for moving downstream to {}, transferIndex: {}",
         //  message.getTaskId(), sendDataTo, transferIndex);
-
-        switch (sendDataTo) {
-          case SF: {
-            final String relayServerAddress = message.getRelayServerAddress();
-            final int relayServerPort = message.getRelayServerPort();
-            //LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
-            //  relayServerAddress, relayServerPort, transferIndex);
-
-            connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
-
-              // 내 채널에  destination 등록!!
-              final Channel myRelayServer = relayServerClient.getRelayServerChannel(localExecutorId);
-              //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
-              relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-
-              //LOG.info("Register task to the remote relay server! {}, {}#{}#{}",
-              //  relayServerChannel, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), false);
-
-              //relayServerClient.registerTask(relayServerChannel,
-              //  cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-
-              outputContext.pending(sendDataTo, message.getTaskId());
-            });
-            break;
-          }
-          case VM: {
-
-            connectToVm(message.getInitiatorExecutorId(), (vmContextManager) -> {
-              // We send ack to the vm channel to initialize it !!!
-              final ByteTransferContextSetupMessage ackMessage =
-                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                  contextId.getTransferIndex(),
-                  contextId.getDataDirection(),
-                  contextDescriptor,
-                  contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-                  SF,
-                  message.getTaskId());
-
-              //LOG.info("Send init message for the connected VM for scaling in...");
-              vmContextManager.getChannel().write(ackMessage);
-
-              // then pending the output
-              //LOG.info("Set pending for ransferIndex {}...", transferIndex);
-              outputContext.pending(sendDataTo, message.getTaskId());
-            });
-
-            break;
-          }
-        }
-
+        outputContext.receiveStopSignalFromChild(message, sendDataTo);
         break;
       }
-
+      case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
+        final LambdaRemoteByteInputContext inputContext =
+          (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
+        inputContext.receiveStopSignalFromParent(sendDataTo);
+        break;
+      }
       case ACK_FROM_PARENT_STOP_OUTPUT: {
         final ByteInputContext context = inputContexts.get(transferIndex);
         //LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
         break;
       }
-      case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
-
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        final LambdaRemoteByteInputContext inputContext =
-          (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
-
-        switch (sendDataTo) {
-          case SF: {
-            // connect to relay server
-            channelExecutorService.execute(() -> {
-              final Channel relayServerChannel = relayServerClient.getRelayServerChannel(localExecutorId);
-              //LOG.info("Connect to my relay server {}/{}", localExecutorId, relayServerChannel);
-
-              relayServerClient.registerTask(relayServerChannel, cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
-
-              //LOG.info("Sending ack to the input context");
-              // ACK to the original channel
-              final ByteTransferContextSetupMessage ackMessage =
-                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                  contextId.getTransferIndex(),
-                  contextId.getDataDirection(),
-                  contextDescriptor,
-                  contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  SF,
-                  message.getTaskId());
-
-              inputContext.sendMessage(ackMessage, (m) -> {
-              });
-
-             // LOG.info("Setting input channel to SF {}, transferIndex: {}",
-             //   message.getTaskId(), contextId.getTransferIndex());
-
-              inputContext.receiveFromSF(relayServerChannel);
-            });
-
-            /*
-            final String relayServerAddress = message.getRelayServerAddress();
-            final int relayServerPort = message.getRelayServerPort();
-            LOG.info("Connecting to relay server for input {}/{}", relayServerAddress, relayServerPort);
-
-            connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
-              relayServerClient.registerTask(relayServerChannel,
-                cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
-
-              LOG.info("Sending ack to the input context");
-              // ACK to the original channel
-              final ByteTransferContextSetupMessage ackMessage =
-                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                  contextId.getTransferIndex(),
-                  contextId.getDataDirection(),
-                  contextDescriptor,
-                  contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  SF,
-                  message.getTaskId());
-
-              inputContext.sendMessage(ackMessage, (m) -> {});
-
-              LOG.info("Setting input channel to SF {}, transferIndex: {}",
-                message.getTaskId(), contextId.getTransferIndex());
-
-              inputContext.receiveFromSF(relayServerChannel);
-            });
-            */
-            break;
-          }
-          case VM: {
-            connectToVm(message.getInitiatorExecutorId(), (vmContextManager) -> {
-              // We send ack to the vm channel to initialize it !!!
-              final ByteTransferContextSetupMessage settingMsg =
-                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                  contextId.getTransferIndex(),
-                  contextId.getDataDirection(),
-                  contextDescriptor,
-                  contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
-                  SF,
-                  message.getTaskId());
-
-              //LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
-              vmContextManager.getChannel().write(settingMsg);
-
-              final ByteTransferContextSetupMessage ackMessage =
-                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                  contextId.getTransferIndex(),
-                  contextId.getDataDirection(),
-                  contextDescriptor,
-                  contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  SF,
-                  message.getTaskId());
-
-              inputContext.sendMessage(ackMessage, (m) -> {});
-
-              //LOG.info("Setting input channel to VM {}, transferIndex: {}",
-              //  message.getTaskId(), contextId.getTransferIndex());
-
-              inputContext.receiveFromVM(vmContextManager.getChannel());
-            });
-            break;
-          }
-        }
-        break;
-      }
       case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
         final ByteOutputContext context = outputContexts.get(transferIndex);
-       // LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context,
-       //   message);
-        context.receivePendingAck();
+        // LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context,
+        //   message);
+        context.receiveStopAck();
         break;
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
-        //LOG.info("Signal from parent restarting output from {}, {} / {}",
-        //  message.getTaskId(), sendDataTo, transferIndex);
-
-        /*
-        final LambdaRemoteByteInputContext inputContext = (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
-        // reset the channel!
-        if (isRelayServerChannel) {
-          inputContext.receiveFromSF(channel);
-        } else {
-          inputContext.receiveFromVM(channel);
-        }
-        */
+        //LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
+        final ByteInputContext inputContext = inputContexts.get(transferIndex);
+        inputContext.receiveRestartSignalFromParent(channel, message);
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
         ByteOutputContext outputContext = outputContexts.get(transferIndex);
-
-        if (outputContext == null) {
-          channelExecutorService.execute(() -> {
-            ByteOutputContext byteOutputContext = outputContexts.get(transferIndex);
-            while (byteOutputContext == null) {
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              //LOG.info("Waiting output context {}", transferIndex);
-              byteOutputContext = outputContexts.get(transferIndex);
-            }
-
-            //LOG.info("Signal from child for restart output {} / {}, context {}", sendDataTo, transferIndex, byteOutputContext);
-            switch (sendDataTo) {
-              case SF: {
-                final Channel remoteChannel = relayServerClient.getRelayServerChannel(message.getInitiatorExecutorId());
-                byteOutputContext.scaleoutToVm(remoteChannel);
-                break;
-              }
-              case VM: {
-                byteOutputContext.scaleInToVm(channel);
-                break;
-              }
-            }
-          });
-
-        } else {
-          //LOG.info("Signal from child for restart output {} / {}, context {}", sendDataTo, transferIndex, outputContext);
-
-          switch (sendDataTo) {
-            case SF: {
-              final Channel remoteChannel = relayServerClient.getRelayServerChannel(message.getInitiatorExecutorId());
-              outputContext.scaleoutToVm(remoteChannel);
-              break;
-            }
-            case VM: {
-              outputContext.scaleInToVm(channel);
-              break;
-            }
-          }
-        }
+        outputContext.receiveRestartSignalFromChild(channel, message);
         break;
       }
-     case CONTROL: {
-       throw new RuntimeException("Not supported CONTROL: " + message);
+      case CONTROL: {
+        throw new RuntimeException("Not supported CONTROL: " + message);
        /*
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
-
           LOG.info("Input Receive transfer index : {}", transferIndex);
           if (inputContexts.containsKey(transferIndex)) {
             LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
               transferIndex);
             LOG.info("Resetting channel to this context manager {}", transferIndex);
             final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-
             // reset the channel!
             inputContext.setContextManager(this);
             inputContext.setIsRelayServer(isRelayServerChannel);
-
           } else {
             throw new RuntimeException("Unknown transfer index " + transferIndex);
           }
@@ -569,13 +364,15 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, SF),
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
+          this, relayDst, SF, relayServerClient),
         executorId, isPipe, relayDst, false);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst, VM),
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
+          this, relayDst, VM, relayServerClient),
         executorId, isPipe, relayDst, false);
     }
   }

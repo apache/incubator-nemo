@@ -104,7 +104,7 @@ public final class IntermediateDataIOFactory {
                                   final TaskExecutor taskExecutor) {
     if (isPipe(runtimeEdge)) {
       return new PipeInputReader(executorId, dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap,
-        relayServer, taskLocationMap, taskExecutor);
+        relayServer, taskExecutor);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

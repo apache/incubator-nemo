@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -45,10 +46,6 @@ public interface ByteInputContext extends ByteTransferContext {
    */
   Iterator<InputStream> getInputStreams();
 
-  void receiveFromSF(Channel channel);
-
-  void receiveFromVM(Channel channel);
-
   /**
    * Returns a future, which is completed when the corresponding transfer for this context gets done.
    * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
@@ -60,10 +57,18 @@ public interface ByteInputContext extends ByteTransferContext {
    */
   void onNewStream();
 
-  void sendMessage(final ByteTransferContextSetupMessage message,
-                   final EventHandler<Integer> pendingAckHandler);
 
+  void setTaskId(String taskId);
+
+  // For stopping
+  void sendStopMessage(final EventHandler<Integer> pendingAckHandler);
   void receivePendingAck();
+  void receiveStopSignalFromParent(final TaskLoc sendDataTo);
+
+  // For restarting
+  void receiveRestartSignalFromParent(Channel channel, ByteTransferContextSetupMessage msg);
+  void restart(String taskId);
+  void setupRestartChannel(Channel channel, ByteTransferContextSetupMessage msg);
 
   /**
    * Called when {@link ByteBuf} is supplied to this context.

@@ -25,39 +25,37 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
 import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-
-import static org.apache.nemo.common.TaskLoc.VM;
 
 
 /**
  * Manages multiple transport contexts for one channel.
  */
-final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> implements ContextManager {
+public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> implements ContextManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultContextManagerImpl.class.getName());
 
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
-  private final ByteTransfer byteTransfer;
+  private final Optional<ByteTransfer> byteTransfer;
   private final ChannelGroup channelGroup;
   private final String localExecutorId;
   private final Channel channel;
@@ -71,18 +69,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   //private final AtomicInteger nextInputTransferIndex;
   //private final AtomicInteger nextOutputTransferIndex;
 
-  private final ScheduledExecutorService flusher;
-  private final VMScalingClientTransport vmScalingClientTransport;
   private final AckScheduledService ackScheduledService;
 
   // key: runtimeId, taskIndex, outputStream , value: transferIndex
   private final Map<TransferKey, Integer> taskTransferIndexMap;
 
-  private final TaskLocationMap taskLocationMap;
-
   private final ExecutorService channelExecutorService;
   private final PersistentConnectionToMasterMap toMaster;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final RelayServer relayServer;
 
   /**
    * Creates context manager for this channel.
@@ -93,52 +88,40 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    * @param localExecutorId     local executor id
    * @param channel             the {@link Channel} to manage
    */
-  DefaultContextManagerImpl(final ExecutorService channelExecutorService,
-                            final PipeManagerWorker pipeManagerWorker,
-                            final BlockManagerWorker blockManagerWorker,
-                            final ByteTransfer byteTransfer,
-                            final ChannelGroup channelGroup,
-                            final String localExecutorId,
-                            final Channel channel,
-                            final VMScalingClientTransport vmScalingClientTransport,
-                            final AckScheduledService ackScheduledService,
-                            final Map<TransferKey, Integer> taskTransferIndexMap,
-                            final ConcurrentMap<Integer, ByteInputContext> inputContexts,
-                            final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
-                            //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
-                            //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
-                            final AtomicInteger nextInputTransferIndex,
-                            final AtomicInteger nextOutputTransferIndex,
-                            final TaskLocationMap taskLocationMap,
-                            final PersistentConnectionToMasterMap toMaster,
-                            final OutputWriterFlusher outputWriterFlusher) {
+  public DefaultContextManagerImpl(final ExecutorService channelExecutorService,
+                                   final PipeManagerWorker pipeManagerWorker,
+                                   final BlockManagerWorker blockManagerWorker,
+                                   final Optional<ByteTransfer> byteTransfer,
+                                   final ChannelGroup channelGroup,
+                                   final String localExecutorId,
+                                   final Channel channel,
+                                   final AckScheduledService ackScheduledService,
+                                   final Map<TransferKey, Integer> taskTransferIndexMap,
+                                   final ConcurrentMap<Integer, ByteInputContext> inputContexts,
+                                   final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
+                                   //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
+                                   //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
+                                   final PersistentConnectionToMasterMap toMaster,
+                                   final OutputWriterFlusher outputWriterFlusher,
+                                   final RelayServer relayServer) {
     this.channelExecutorService = channelExecutorService;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
-    this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;
-    this.flusher = Executors.newSingleThreadScheduledExecutor();
     this.inputContexts = inputContexts;
     //this.inputContextsInitiatedByLocal = inputContextsInitiatedByLocal;
     this.outputContexts = outputContexts;
     //this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
     //this.nextInputTransferIndex = nextInputTransferIndex;
     //this.nextOutputTransferIndex = nextOutputTransferIndex;
-    this.taskLocationMap = taskLocationMap;
     this.toMaster = toMaster;
-    flusher.scheduleAtFixedRate(() -> {
-
-      if (channel.isOpen()) {
-        channel.flush();
-      }
-
-    }, 2, 2, TimeUnit.SECONDS);
+    this.relayServer = relayServer;
   }
 
 
@@ -186,11 +169,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    */
   @Override
   public ByteInputContext getInputContext(final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
-                                   final int transferIndex) {
+                                          final int transferIndex) {
     //LOG.info("Get input context: {} / {}", transferIndex, inputContextsInitiatedByRemote);
     final ConcurrentMap<Integer, ByteInputContext> contexts =
-        dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
-            ? inputContexts : inputContexts;
+      dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
+        ? inputContexts : inputContexts;
     return contexts.get(transferIndex);
   }
 
@@ -202,9 +185,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    */
   @Override
   protected void channelRead0(final ChannelHandlerContext ctx, final ByteTransferContextSetupMessage message)
-      throws Exception {
+    throws Exception {
     setRemoteExecutorId(message.getInitiatorExecutorId());
-    byteTransfer.onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
+    if (byteTransfer.isPresent()) {
+      byteTransfer.get().onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
+    }
+
+
     final ByteTransferContextSetupMessage.ByteTransferDataDirection
       dataDirection = message.getDataDirection();
     final int transferIndex = message.getTransferIndex();
@@ -215,50 +202,21 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final TaskLoc sendDataTo = message.getLocation();
 
     switch (message.getMessageType()) {
+      // For stop
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        //LOG.info("STOP_OUTPUT for moving {} pending {}", sendDataTo, transferIndex);
+        //final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        //LOG.info("STOP_OUTPUT for moving {} receiveStopSignalFromChild {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
-
-        if (sendDataTo.equals(VM)) {
-          // sf -> vm
-          // send ack to the vm channel
-          //LOG.info("Sending ack from parent stop output to ");
-          final ByteTransferContextSetupMessage ackMessage =
-            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-              contextId.getTransferIndex(),
-              contextId.getDataDirection(),
-              contextDescriptor,
-              contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-              VM,
-              message.getTaskId());
-          outputContext.sendMessageToVM(ackMessage, (m) -> {});
-        }
-
-        //LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, pending to {}", message.getTaskId(), transferIndex,
+        //LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, receiveStopSignalFromChild to {}", message.getTaskId(), transferIndex,
         //  sendDataTo);
-        outputContext.pending(sendDataTo, message.getTaskId());
+        outputContext.receiveStopSignalFromChild(message, sendDataTo);
         break;
       }
-      case SETTING_INPUT_CONTEXT: {
-        final StreamRemoteByteInputContext context =
-          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        //LOG.info("SETTING_INPUT_CONTEXT {}", transferIndex);
-
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        // why we do this? when the downstream move from SF -> VM,
-        // the upstream should connect with the VM channel
-        // we set the channel here between SF <=> VM
-        if (sendDataTo.equals(VM)) {
-          context.receiveFromVM(channel);
-        } else {
-          context.receiveFromSF(channel);
-        }
+      case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
+        final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        context.receiveStopSignalFromParent(sendDataTo);
         break;
       }
       case ACK_FROM_PARENT_STOP_OUTPUT: {
@@ -268,99 +226,38 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         context.receivePendingAck();
         break;
       }
-      case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-
-        channelExecutorService.execute(() -> {
-          //LOG.info("Sending ack to the input context");
-
-          if (sendDataTo.equals(VM)) {
-
-            final ByteTransferContextSetupMessage settingMsg =
-              new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-                contextId.getTransferIndex(),
-                contextId.getDataDirection(),
-                contextDescriptor,
-                contextId.isPipe(),
-                ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
-                VM,
-                message.getTaskId());
-            context.sendMessageToVM(settingMsg, (m) -> {});
-          }
-
-          final ByteTransferContextSetupMessage ackMessage =
-            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
-              contextId.getTransferIndex(),
-              contextId.getDataDirection(),
-              contextDescriptor,
-              contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-              VM,
-              message.getTaskId());
-
-          channel.writeAndFlush(ackMessage);
-        });
+      case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
+        final ByteOutputContext context = outputContexts.get(transferIndex);
+        //LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
+        context.receiveStopAck();
+        break;
+      }
+      // For restart
+      case SETTING_INPUT_CONTEXT: {
+        // restart 할때 받는것
+        final StreamRemoteByteInputContext context =
+          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        // why we do this? when the downstream move from SF -> VM,
+        // the upstream should connect with the VM channel
+        // we set the channel here between SF <=> VM
+        context.setupRestartChannel(channel, message);
         break;
       }
       case SETTING_OUTPUT_CONTEXT: {
         final ByteOutputContext context = outputContexts.get(transferIndex);
         //LOG.info("SETTING OUTPUT CONTEXT: {}, {}", transferIndex, context);
-
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        switch (sendDataTo) {
-          case SF: {
-            context.scaleoutToVm(channel);
-            break;
-          }
-          case VM: {
-            context.scaleInToVm(channel);
-            break;
-          }
-        }
-        break;
-      }
-      case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
-        final ByteOutputContext context = outputContexts.get(transferIndex);
-        //LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
-        context.receivePendingAck();
+        context.setupRestartChannel(channel, message);
         break;
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
-
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
         //LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
-
         final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-
-        // reset the channel!
-        if (sendDataTo.equals(VM)) {
-          inputContext.receiveFromVM(channel);
-        } else {
-          inputContext.receiveFromSF(channel);
-        }
-
+        inputContext.receiveRestartSignalFromParent(channel, message);
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-
-        //LOG.info("Signal from child for restart output {} / {}", sendDataTo, transferIndex);
-
-        switch (sendDataTo) {
-          case SF: {
-            outputContext.scaleoutToVmWoRestart(channel);
-            break;
-          }
-          case VM: {
-            outputContext.scaleInToVmWoRestart(channel);
-            break;
-          }
-        }
+        outputContext.receiveRestartSignalFromChild(channel, message);
         break;
       }
       case CONTROL: {
@@ -371,12 +268,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           //LOG.info("Input Receive transfer index : {}/{} {}->{}", transferIndex, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), cd.getDstTaskIndex());
           if (inputContexts.containsKey(transferIndex)) {
             throw new RuntimeException(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-                transferIndex));
+              transferIndex));
             /*
             // THIS always should be in SF
             taskLocationMap.locationMap.put(
               new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.TaskLoc.SF);
-
             final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
             // reset the channel!
             inputContext.setContextManager(this);
@@ -385,7 +281,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             //return inputContextsInitiatedByRemote.get(transferIndex);
           } else {
             final ByteInputContext c = new StreamRemoteByteInputContext(
-              remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
+              remoteExecutorId, contextId, contextDescriptor, this,
+              ackScheduledService.ackService, relayServer);
 
             if (inputContexts.putIfAbsent(transferIndex, c) != null) {
               LOG.warn(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
@@ -458,10 +355,10 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   public void onContextExpired(final ByteTransferContext context) {
     final ByteTransferContext.ContextId contextId = context.getContextId();
     final ConcurrentMap<Integer, ? extends ByteTransferContext> contexts = context instanceof ByteInputContext
-        ? (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
-            ? inputContexts : inputContexts)
-        : (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
-            ? outputContexts : outputContexts);
+      ? (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
+      ? inputContexts : inputContexts)
+      : (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
+      ? outputContexts : outputContexts);
 
     contexts.remove(contextId.getTransferIndex(), context);
   }
@@ -477,8 +374,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public void onContextRestartLocal(
     final int transferIndex) {
+
+    throw new UnsupportedOperationException();
     // REMOVE!!!
 
+    /*
     final ByteInputContext localInputContext = inputContexts.get(transferIndex);
     LOG.info("local context restart!! {}", localInputContext.getContextId());
     final ByteInputContext localByteInputContext = new LocalByteInputContext(
@@ -489,16 +389,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       ((LocalByteInputContext)localInputContext).getQueue(),
       ((LocalByteInputContext)localInputContext).getLocalByteOutputContext(),
       ackScheduledService.ackService);
-
     inputContexts.remove(transferIndex);
     inputContexts.put(transferIndex, localByteInputContext);
-
     try {
       pipeManagerWorker.onInputContext(localByteInputContext);
     } catch (InvalidProtocolBufferException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+    */
   }
 
   @Override
@@ -515,7 +414,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContexts.remove(contextId.getTransferIndex(), context);
     final ByteInputContext restartContext = new StreamRemoteByteInputContext(
-      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this, ackScheduledService.ackService);
+      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(),
+      this, ackScheduledService.ackService, relayServer);
     inputContexts.put(contextId.getTransferIndex(), restartContext);
   }
 
@@ -578,8 +478,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
     return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
-        contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this, ackScheduledService.ackService),
-        executorId, isPipe, false);
+      contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(),
+        this, ackScheduledService.ackService, relayServer),
+      executorId, isPipe, false);
   }
 
   /**
@@ -602,11 +503,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
     taskTransferIndexMap.put(key, transferIndex);
 
-     return newContext(outputContexts, transferIndex,
-        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> new RemoteByteOutputContext(executorId, contextId,
-          descriptor.encode(), this),
-        executorId, isPipe, false);
+    return newContext(outputContexts, transferIndex,
+      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+      contextId -> new RemoteByteOutputContext(executorId, contextId,
+        descriptor.encode(), this),
+      executorId, isPipe, false);
 
     /*
     if (localExecutorId.equals(executorId)) {
@@ -617,12 +518,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         final LocalByteOutputContext localByteOutputContext =
           new LocalByteOutputContext(executorId, contextId,
             contextDescriptor, this, queue, vmScalingClientTransport);
-
         final LocalByteInputContext localByteInputContext =
           new LocalByteInputContext(executorId, contextId, contextDescriptor, this, queue, localByteOutputContext, ackScheduledService.ackService);
-
         localByteOutputContext.setLocalByteInputContext(localByteInputContext);
-
           inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), localByteInputContext);
           try {
             pipeManagerWorker.onInputContext(localByteInputContext);
@@ -630,11 +528,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             e.printStackTrace();
             throw new RuntimeException(e);
           }
-
           return localByteOutputContext;
         },
         executorId, isPipe, true);
-
     } else {
       return newContext(outputContextsInitiatedByLocal, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,

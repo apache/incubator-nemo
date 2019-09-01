@@ -141,19 +141,7 @@ public final class PipeOutputWriter implements Flushable {
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
     for (final ByteOutputContext byteOutputContext : pipes) {
-      final ByteTransferContextSetupMessage pendingMsg =
-        new ByteTransferContextSetupMessage(byteOutputContext.getContextId().getInitiatorExecutorId(),
-          byteOutputContext.getContextId().getTransferIndex(),
-          byteOutputContext.getContextId().getDataDirection(),
-          byteOutputContext.getContextDescriptor(),
-          byteOutputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-          VM,
-          taskId);
-
-      LOG.info("Send finish message at {} {}", taskId, pendingMsg);
-
-      byteOutputContext.sendMessage(pendingMsg, (m) -> {
+      byteOutputContext.sendStopMessage((m) -> {
         count.countDown();
         LOG.info("receive ack from downstream at {}, {}!!", taskId, count.getCount());
       });
@@ -178,12 +166,12 @@ public final class PipeOutputWriter implements Flushable {
       @Override
       public Integer get() throws InterruptedException, ExecutionException {
         try {
-           //LOG.info("Waiting for ack {}...", stageId);
-           count.await();
-           //LOG.info("End of Waiting for ack {}...", stageId);
-         } catch (InterruptedException e) {
-           e.printStackTrace();
-         }
+          //LOG.info("Waiting for ack {}...", stageId);
+          count.await();
+          //LOG.info("End of Waiting for ack {}...", stageId);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         return 1;
       }
 
@@ -258,12 +246,10 @@ public final class PipeOutputWriter implements Flushable {
     /*
     final List<ByteOutputContext> boc = new ArrayList<>(byteOutputContexts.size());
     final List<CompletableFuture<ByteOutputContext>> byteOutputContextList = new ArrayList<>(byteOutputContexts);
-
     while (!byteOutputContextList.isEmpty()) {
       final Iterator<CompletableFuture<ByteOutputContext>> iterator = byteOutputContextList.iterator();
       while (iterator.hasNext()) {
          final CompletableFuture<ByteOutputContext> context = iterator.next();
-
          if (context.isDone()) {
            try {
              final ByteOutputContext c = context.get();
@@ -273,18 +259,15 @@ public final class PipeOutputWriter implements Flushable {
              e.printStackTrace();
              throw new RuntimeException(e);
            }
-
            iterator.remove();
          }
       }
-
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
-
     return boc;
     */
   }

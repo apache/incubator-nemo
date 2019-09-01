@@ -18,18 +18,15 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -41,9 +38,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static org.apache.nemo.common.TaskLoc.SF;
-import static org.apache.nemo.common.TaskLoc.VM;
 
 /**
  * Represents the input data transfer to a task.
@@ -67,7 +61,6 @@ public final class PipeInputReader implements InputReader {
 
   private final String executorId;
   private final RelayServer relayServer;
-  private final TaskLocationMap taskLocationMap;
 
   private final AtomicBoolean stopped = new AtomicBoolean(false);
 
@@ -81,7 +74,6 @@ public final class PipeInputReader implements InputReader {
                   final PipeManagerWorker pipeManagerWorker,
                   final TaskInputContextMap taskInputContextMap,
                   final RelayServer relayServer,
-                  final TaskLocationMap taskLocationMap,
                   final TaskExecutor taskExecutor) {
     this.executorId = executorId;
     this.dstTaskIndex = dstTaskIdx;
@@ -92,7 +84,6 @@ public final class PipeInputReader implements InputReader {
     this.pipeManagerWorker = pipeManagerWorker;
     this.byteInputContexts = new HashSet<>();
     this.relayServer = relayServer;
-    this.taskLocationMap = taskLocationMap;
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
   }
 
@@ -131,26 +122,13 @@ public final class PipeInputReader implements InputReader {
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
-      final ByteTransferContextSetupMessage pendingMsg =
-        new ByteTransferContextSetupMessage(executorId,
-          byteInputContext.getContextId().getTransferIndex(),
-          byteInputContext.getContextId().getDataDirection(),
-          byteInputContext.getContextDescriptor(),
-          byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
-          SF,
-          taskId,
-          relayServer.getPublicAddress(),
-          relayServer.getPort());
-
       //LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
 
-      byteInputContext.sendMessage(pendingMsg, (m) -> {
+      byteInputContext.sendStopMessage((m) -> {
         atomicInteger.decrementAndGet();
-
         //LOG.info("receive ack at {}, {}!!", taskId, );
 
-        //byteInputContext.sendMessage();
+        //byteInputContext.sendStopMessage();
         //throw new RuntimeException("TODO");
       });
 
@@ -199,26 +177,19 @@ public final class PipeInputReader implements InputReader {
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
-      final ByteTransferContextSetupMessage pendingMsg =
-        new ByteTransferContextSetupMessage(executorId,
-          byteInputContext.getContextId().getTransferIndex(),
-          byteInputContext.getContextId().getDataDirection(),
-          byteInputContext.getContextDescriptor(),
-          byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
-          VM,
-          "??");
 
-      LOG.info("Send resume message {}", pendingMsg);
 
-      byteInputContext.sendMessage(pendingMsg, (m) -> {
+      LOG.info("Send resume message {}", taskExecutor);
 
+      byteInputContext.restart(taskExecutor.getId());
+      /*
+      byteInputContext.sendStopMessage(pendingMsg, (m) -> {
         LOG.info("receive ack!!");
         atomicInteger.decrementAndGet();
-
-        //byteInputContext.sendMessage();
+        //byteInputContext.sendStopMessage();
         //throw new RuntimeException("TODO");
       });
+      */
 
     }
   }
@@ -254,16 +225,19 @@ public final class PipeInputReader implements InputReader {
     pipeManagerWorker
       .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
         final ByteInputContext context = pair.left();
+
+        context.setTaskId(taskId);
         taskInputContextMap.put(taskId, context);
 
         byteInputContexts.add(context);
 
         final int srcTaskIndex = pair.right();
 
-        if (context instanceof LocalByteInputContext) {
-          final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
-          handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
-        } else if (context instanceof StreamRemoteByteInputContext) {
+        //if (context instanceof LocalByteInputContext) {
+        //  final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
+        //  handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
+        //} else
+        if (context instanceof StreamRemoteByteInputContext) {
           handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
             pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()), taskExecutor, dataFetcher),
             srcTaskIndex));

@@ -243,7 +243,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
         LOG.info("Send message {}", pendingMsg);
 
-        byteInputContext.sendMessage(pendingMsg, (m) -> {
+        byteInputContext.sendStopMessage( (m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
 
@@ -398,7 +398,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
         runningWorkers.add(event.offloadingWorker);
 
-        byteInputContext.sendMessage(pendingMsg, (m) -> {
+        byteInputContext.sendStopMessage((m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
 

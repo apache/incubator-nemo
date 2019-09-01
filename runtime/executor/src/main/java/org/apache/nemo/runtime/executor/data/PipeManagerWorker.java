@@ -98,8 +98,8 @@ public final class PipeManagerWorker {
   }
 
   public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,
-                    final RuntimeEdge runtimeEdge,
-                    final int dstTaskIndex) {
+                                                    final RuntimeEdge runtimeEdge,
+                                                    final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // Get the location of the dst task (blocking call)
 
@@ -146,10 +146,16 @@ public final class PipeManagerWorker {
       //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
       //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
+      final String myStage = ((StageEdge) runtimeEdge).getSrc().getId();
+      final String myTaskId = RuntimeIdManager.generateTaskId(myStage, srcTaskIndex, 0);
+
       // Connect to the executor
       return byteTransfer.newOutputContext(targetExecutorId, descriptor, true,
         executorId.equals(targetExecutorId))
-        .thenApply(context -> context);
+        .thenApply(context -> {
+          context.setTaskId(myTaskId);
+          return context;
+        });
     });
   }
 
@@ -192,16 +198,24 @@ public final class PipeManagerWorker {
           dstTaskIndex,
           getNumOfPipeToWait(runtimeEdge));
 
+
+
+      final String myStage = ((StageEdge) runtimeEdge).getDst().getId();
+      final String myTaskId = RuntimeIdManager.generateTaskId(myStage, dstTaskIndex, 0);
+
       // Connect to the executor
       return byteTransfer.newInputContext(targetExecutorId, descriptor, true)
-        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-          serializerManager.getSerializer(runtimeEdgeId)));
+        .thenApply(context -> {
+          context.setTaskId(myTaskId);
+          return new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdgeId));
+        });
     });
   }
 
 
   public void notifyMaster(final String runtimeEdgeId, final long dstTaskIndex) {
-   // LOG.info("Notify to master {}/{}", runtimeEdgeId, dstTaskIndex);
+    // LOG.info("Notify to master {}/{}", runtimeEdgeId, dstTaskIndex);
     // Notify the master that we're using this pipe.
     toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
@@ -258,6 +272,8 @@ public final class PipeManagerWorker {
         final ByteInputContext byteInputContext = (ByteInputContext) value.left();
         final PipeTransferContextDescriptor descriptor =
           PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
+
+
 
         // ADD source task-executor id
         taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex(), false),
@@ -318,7 +334,7 @@ public final class PipeManagerWorker {
 
   public void onInputContext(final ByteInputContext inputContext) throws InvalidProtocolBufferException {
 
-     final PipeTransferContextDescriptor descriptor =
+    final PipeTransferContextDescriptor descriptor =
       PipeTransferContextDescriptor.decode(inputContext.getContextDescriptor());
 
     final int srcTaskIndex = (int) descriptor.getSrcTaskIndex();
