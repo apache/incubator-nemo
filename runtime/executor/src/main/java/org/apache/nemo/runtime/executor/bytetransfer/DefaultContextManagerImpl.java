@@ -216,7 +216,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
       }
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
         final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        context.receiveStopSignalFromParent(sendDataTo);
+        context.receiveStopSignalFromParent(message, sendDataTo);
         break;
       }
       case ACK_FROM_PARENT_STOP_OUTPUT: {
