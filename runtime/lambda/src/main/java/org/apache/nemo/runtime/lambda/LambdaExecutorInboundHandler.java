@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 @ChannelHandler.Sharable
 public class LambdaExecutorInboundHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaExecutorInboundHandler.class.getName());
-  private Channel channel;
+//  private Channel channel;
   private LambdaExecutor.LambdaEventHandler lambdaEventHandler;
 
   public void setEventHandler(LambdaExecutor.LambdaEventHandler lambdaEventHandler) {
@@ -30,7 +30,7 @@ public class LambdaExecutorInboundHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelActive(final ChannelHandlerContext ctx) throws Exception {
     System.out.println("Channel activate: " + ctx.channel());
-    this.channel = ctx.channel();
+//    this.channel = ctx.channel();
   }
 
   /**
@@ -42,7 +42,7 @@ public class LambdaExecutorInboundHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
     System.out.println("Channel read from " + ctx.channel() + msg);
-    lambdaEventHandler.setChannel(ctx.channel());
+//    lambdaEventHandler.setChannel(ctx.channel());
     lambdaEventHandler.onNext((LambdaEvent) msg);
   }
 

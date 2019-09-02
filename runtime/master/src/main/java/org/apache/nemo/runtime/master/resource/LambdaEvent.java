@@ -59,6 +59,11 @@ public final class LambdaEvent implements Serializable {
     this.len = len;
   }
 
+  public LambdaEvent(final Type type) {
+    this.type = type;
+    this.bytes = null;
+    this.len = 0;
+  }
   public Type getType() {
     return type;
   }

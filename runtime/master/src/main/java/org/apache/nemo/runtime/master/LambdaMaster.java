@@ -31,6 +31,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.runtime.master.resource.LambdaExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.LambdaInboundHandler;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
 import org.slf4j.Logger;
@@ -67,6 +68,8 @@ public final class LambdaMaster {
   private final Regions region;
   private final AWSLambda client;
   private static final String LAMBDA_FUNTIONNAME = "lambda-dev-executor";
+
+  public static LambdaExecutorRepresenter lambdaExecutorRepresenter;
 
   @Inject
   public LambdaMaster() {
@@ -125,7 +128,8 @@ public final class LambdaMaster {
       new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
-    ChannelInboundHandlerAdapter channelInboundHandlerAdapter = new LambdaInboundHandler(this.serverChannelGroup);
+    ChannelInboundHandlerAdapter channelInboundHandlerAdapter =
+      new LambdaInboundHandler(this.serverChannelGroup, this);
 
     serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
@@ -153,6 +157,16 @@ public final class LambdaMaster {
 
     LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, this.PORT);
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
+  }
+
+  /**
+   * Register LambdaExecutorRepresenter to LambdaMaster.
+   * LambdaMaster forward received LambdaEvent for representer to handle.
+   * TODO #415: Multiple LambdaExecutor dispatching
+   * LambdaMaster controls multiple executors through representer of the executor.
+   */
+  public void setRepresenter(LambdaExecutorRepresenter lambdaExecutorRepresenter) {
+    this.lambdaExecutorRepresenter = lambdaExecutorRepresenter;
   }
 
   private String getPublicIP() {

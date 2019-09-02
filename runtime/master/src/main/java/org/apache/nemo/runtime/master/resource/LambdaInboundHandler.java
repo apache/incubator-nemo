@@ -24,8 +24,14 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.apache.nemo.runtime.master.LambdaMaster;
+import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
 
 /**
  * LambdaInboundHandler is executed when init channel.
@@ -34,9 +40,11 @@ import org.slf4j.LoggerFactory;
 public final class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaInboundHandler.class.getName());
   private final ChannelGroup channelGroup;
+  private final LambdaMaster lambdaMaster;
 
-  public LambdaInboundHandler(final ChannelGroup channelGroup) {
+  public LambdaInboundHandler(final ChannelGroup channelGroup, final LambdaMaster lambdaMaster) {
     this.channelGroup = channelGroup;
+    this.lambdaMaster = lambdaMaster;
   }
 
   /**
@@ -47,6 +55,7 @@ public final class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelActive(final ChannelHandlerContext ctx) throws Exception {
     System.out.println("Channel activate: " + ctx.channel());
+    LOG.info("Channel active");
     channelGroup.add(ctx.channel());
   }
 
@@ -58,7 +67,9 @@ public final class LambdaInboundHandler extends ChannelInboundHandlerAdapter {
    */
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
-    System.out.println("Channel read from " + ctx.channel() + msg);
+    System.out.println("Channel read from LambdaExecutor at " + ctx.channel() + (LambdaEvent) msg);
+    LOG.info("Channel read from LambdaExecutor at " + ctx.channel() + (LambdaEvent) msg);
+    this.lambdaMaster.lambdaExecutorRepresenter.handleLambdaEvent((LambdaEvent) msg);
   }
 
   /**

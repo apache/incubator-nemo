@@ -22,10 +22,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.google.common.collect.ImmutableSet;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -112,6 +109,30 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       }
     }
     System.out.println("LambdaExecutor ends");
+    LambdaEvent endEvent = new LambdaEvent(LambdaEvent.Type.RESULT);
+
+    try {
+      if (openChannel.isActive()) {
+        this.openChannel.writeAndFlush(endEvent).addListener(new ChannelFutureListener() {
+          @Override
+          public void operationComplete(ChannelFuture future) {
+            System.out.println("Flush RESULT Event Complete");
+            if (future.isDone()) {
+              future.channel().writeAndFlush(new LambdaEvent(LambdaEvent.Type.END));
+            } else {
+            }
+          }
+        });
+      } else {
+        System.out.println("Channel not active, cannot write to LambdaMaster");
+      }
+    } catch (Exception e) {
+      System.out.println("Flushing END LambdaEvent error");
+      e.printStackTrace();
+    } finally {
+      //System.out.println("openChannel " + this.openChannel + "lambdaEventHandler.channel " + this.lambdaEventHandler.channel);
+      this.clientWorkerGroup.shutdownGracefully();
+    }
     return null;
   }
 
@@ -145,16 +166,17 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
 
   public final class LambdaEventHandler {
 
-    private Channel channel;
+//    private Channel channel;
     private transient CountDownLatch workerComplete;
 
     public LambdaEventHandler(final CountDownLatch workerComplete) {
       this.workerComplete = workerComplete;
     }
 
-    public void setChannel(Channel channel) {
+/*    public void setChannel(Channel channel) {
       this.channel = channel;
     }
+ */
 
     public void onNext(final LambdaEvent nemoEvent) {
       System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
@@ -173,10 +195,10 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
                   @Override
                   protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
                     try {
-                      System.out.println(desc.getName());
+                      //System.out.println(desc.getName());
                       return super.resolveClass(desc);
                     } catch (ClassNotFoundException e) {
-                      System.out.println("Class not found");
+                      //System.out.println("Class not found");
                       notFoundClasses.add(desc.getName());
                       throw e;
                     }

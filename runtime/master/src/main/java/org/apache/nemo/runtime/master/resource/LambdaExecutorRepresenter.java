@@ -29,6 +29,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.LambdaMaster;
+import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private final AWSLambda client;
   private final String lambdaFunctionName;
   private final LambdaMaster lambdaMaster;
+  private final RuntimeMaster runtimeMaster;
 
   /**
    * Creates a reference to the specified executor.
@@ -66,6 +69,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
    */
   public LambdaExecutorRepresenter(final String executorId,
                                    final LambdaMaster lambdaMaster,
+                                   final RuntimeMaster runtimeMaster,
                                    final String nodeName) {
     this.executorId = executorId;
 
@@ -76,11 +80,34 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     this.failedTasks = new HashSet<>();
     this.nodeName = nodeName;
     this.lambdaMaster = lambdaMaster;
+    this.runtimeMaster = runtimeMaster;
 
     // Need a function reading user parameters such as lambda function name etc.
     Regions region = Regions.fromName("ap-northeast-1");
     this.client = AWSLambdaClientBuilder.standard().withRegion(region).build();
     this.lambdaFunctionName = "lambda-dev-executor";
+  }
+
+  /**
+   * Handle LambdaEvent received from LambdaExecutor.
+   * @param lambdaEvent
+   * Event is passed from LambdaInboundHandler to LambdaMaster to representer.
+   * As a consequence, this class is kept as a public parameter in LambdaMaster.
+   */
+  public void handleLambdaEvent(LambdaEvent lambdaEvent) {
+    System.out.println("ExecutorRepresenter handles event from LambdaExecutor");
+    if(lambdaEvent.getType() == LambdaEvent.Type.END) {
+      /**
+       * TODO #415: Multiple LambdaExecutor dispatching
+       * In theory, there are multiple executors handling multiple tasks,
+       * runtime master should only mark one task as completed.
+       * In practice, there is only one executor now,
+       * So handling LambdaEvent equals terminating only in this case.
+       */
+      this.runtimeMaster.onLambdaExecutorComplete(lambdaEvent);
+    } else {
+      throw new UnsupportedOperationException("Event type not supported");
+    }
   }
 
   /**

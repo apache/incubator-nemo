@@ -337,7 +337,7 @@ public final class RuntimeMaster {
    * Requests a lambda executor.
    */
   public void requestLambdaExecutor() {
-    final ExecutorRepresenter executorRepresenter;
+    final LambdaExecutorRepresenter executorRepresenter;
     final String executorId = RuntimeIdManager.generateExecutorId();
     final String nodeName = "192.168.0.100";
 
@@ -348,10 +348,30 @@ public final class RuntimeMaster {
     // NettyChannelinitializer.initChannel will be called if LambdaExecutor connects successfully
 
     executorRepresenter =
-      new LambdaExecutorRepresenter(executorId, this.lambdaMaster, nodeName);
-    // make a new representer
+      new LambdaExecutorRepresenter(executorId, this.lambdaMaster, this, nodeName);
+
+    // register representer to LambdaMaster
+    // LambdaMaster pass received message to representer to handle
+    this.lambdaMaster.setRepresenter(executorRepresenter);
+
+    // register representer to scheduler
     scheduler.onExecutorAdded(executorRepresenter);
     System.out.println("requestLambdaExecutor ended");
+  }
+
+  /**
+   * LambdaEvent comes from the LambdaExecutor, and it marks the end of a task.
+   * TODO #415: Multiple LambdaExecutor dispatching
+   * Before multiple executors are used, currently the completion of one executor
+   * equals the end of the total application.
+   */
+  public void onLambdaExecutorComplete(LambdaEvent lambdaEvent) {
+    LOG.info("onLambdaExecutorComplete");
+    if (lambdaEvent.getType() == LambdaEvent.Type.END) {
+      this.terminate();
+    } else {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /**
