@@ -44,22 +44,8 @@ public final class LambdaEventCoder {
     @Override
     protected void encode(final ChannelHandlerContext ctx,
                           final LambdaEvent msg, final List<Object> out) throws Exception {
-      System.out.println("LambdaEventEncoder->encode LambdaEvent.getBytes().toString: " + msg.getBytes().toString());
-
       ByteBuf byteBuf = Unpooled.copiedBuffer(SerializationUtils.serialize(msg));
       out.add(byteBuf);
-      System.out.println("bytebuf readableBytes " + byteBuf.readableBytes());
-      for(byte i : msg.getBytes()) {
-        System.out.print(i);
-      }
-/*      ByteBuf byteBuf = ctx.alloc().buffer(5, msg.getLen() + 5);
-      byteBuf.writeInt(msg.getLen());
-      byteBuf.writeByte((byte)msg.getType().ordinal());
-      byteBuf.writeBytes(msg.getBytes());
-
-      out.add(byteBuf);
-      System.out.println("LambdaEvent encoded " + byteBuf.toString());
- */
     }
   }
 
@@ -71,33 +57,13 @@ public final class LambdaEventCoder {
     @Override
     protected void decode(final ChannelHandlerContext ctx,
                           final ByteBuf buf, final List<Object> out) throws Exception {
-      System.out.println("bytebuf.readableBytes " + buf.readableBytes());
       try {
         byte[] bytes = new byte[buf.readableBytes()];
         buf.readBytes(bytes);
         LambdaEvent lambdaEvent = (LambdaEvent) SerializationUtils.deserialize(bytes);
         out.add(lambdaEvent);
 
-        System.out.println("DEBUG " + lambdaEvent.getLen());
-        for(byte i : lambdaEvent.getBytes()) {
-          System.out.print(i);
-        }
-
-/*        final int len = buf.readInt();
-        System.out.println("LambdaEventDecoder len: " + len);
-        final LambdaEvent.Type type = LambdaEvent.Type.values()[buf.readByte()];
-        System.out.println("LambdaEvent Type: " + type);
-        byte[] src = new byte[buf.readableBytes()];
-        System.out.println("Readable bytes" + buf.readableBytes());
-        buf.readBytes(src);
-        final LambdaEvent lambdaEvent = new LambdaEvent(type, src, len);
-        System.out.println("src: " + src.toString());
-
-        out.add(lambdaEvent);
-        System.out.println("Decoded LambdaEvent.toString: "
-          + lambdaEvent.toString() + " event bytes: "+ lambdaEvent.getBytes().toString());
- */
-      } catch (final ArrayIndexOutOfBoundsException e) {
+     } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
         throw e;
       }

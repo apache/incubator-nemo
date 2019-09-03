@@ -26,20 +26,14 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-//import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableBiMap;
-//import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableBiMap;
 import org.apache.log4j.Level;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.lambda.common.Executor;
 import org.apache.nemo.runtime.master.resource.LambdaEvent;
 import org.apache.nemo.runtime.master.resource.NettyChannelInitializer;
-import org.apache.reef.util.Exceptions;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -108,7 +102,6 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
         e.printStackTrace();
       }
     }
-    System.out.println("LambdaExecutor ends");
     LambdaEvent endEvent = new LambdaEvent(LambdaEvent.Type.RESULT);
 
     try {
@@ -130,7 +123,6 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       System.out.println("Flushing END LambdaEvent error");
       e.printStackTrace();
     } finally {
-      //System.out.println("openChannel " + this.openChannel + "lambdaEventHandler.channel " + this.lambdaEventHandler.channel);
       this.clientWorkerGroup.shutdownGracefully();
     }
     return null;
@@ -166,17 +158,11 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
 
   public final class LambdaEventHandler {
 
-//    private Channel channel;
     private transient CountDownLatch workerComplete;
 
     public LambdaEventHandler(final CountDownLatch workerComplete) {
       this.workerComplete = workerComplete;
     }
-
-/*    public void setChannel(Channel channel) {
-      this.channel = channel;
-    }
- */
 
     public void onNext(final LambdaEvent nemoEvent) {
       System.out.println("LambdaEventHandler->onNext " + nemoEvent.getType());
@@ -195,10 +181,8 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
                   @Override
                   protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
                     try {
-                      //System.out.println(desc.getName());
                       return super.resolveClass(desc);
                     } catch (ClassNotFoundException e) {
-                      //System.out.println("Class not found");
                       notFoundClasses.add(desc.getName());
                       throw e;
                     }
@@ -212,28 +196,7 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
                 e.printStackTrace();
                 System.out.println("Could not deserialize ");
               }
-/*             ObjectInputStream ois = new ObjectInputStream(byteInputStream) {
-                @Override
-                protected Class resolveClass(ObjectStreamClass objectStreamClass)
-                  throws IOException, ClassNotFoundException {
-                  String objName = objectStreamClass.getName();
-                  if (objName.contains("ImmutableMap") && objName.contains("org.apache.beam.vendor.guava.v")) {
-                    System.out.println("Use urlClassLoader");
-                    String className = objectStreamClass.getName();
-                    int index = className.indexOf("com");
-                    return Class.forName(objectStreamClass.getName().substring(index),
-                      true, this.getClass().getClassLoader());
-                  } else {
-                    System.out.println("Don't use urlClassLoader "
-                      + objectStreamClass.getName() + " " + ImmutableBiMap.class.getName());
-                    return Class.forName(objectStreamClass.getName(),
-                      true, this.getClass().getClassLoader());
-                  }
-                }
-              };
-              task = (Task) ois.readObject();
- */
-              if(task != null) {
+             if(task != null) {
                 System.out.println("Decode task successfully" + task.toString());
                 onTaskReceived(task);
               }
