@@ -102,20 +102,11 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
         e.printStackTrace();
       }
     }
-    LambdaEvent endEvent = new LambdaEvent(LambdaEvent.Type.RESULT);
+    LambdaEvent endEvent = new LambdaEvent(LambdaEvent.Type.END);
 
     try {
       if (openChannel.isActive()) {
-        this.openChannel.writeAndFlush(endEvent).addListener(new ChannelFutureListener() {
-          @Override
-          public void operationComplete(ChannelFuture future) {
-            System.out.println("Flush RESULT Event Complete");
-            if (future.isDone()) {
-              future.channel().writeAndFlush(new LambdaEvent(LambdaEvent.Type.END));
-            } else {
-            }
-          }
-        });
+        this.openChannel.writeAndFlush(endEvent);
       } else {
         System.out.println("Channel not active, cannot write to LambdaMaster");
       }
@@ -123,7 +114,7 @@ public final class LambdaExecutor implements RequestHandler<Map<String, Object>,
       System.out.println("Flushing END LambdaEvent error");
       e.printStackTrace();
     } finally {
-      this.clientWorkerGroup.shutdownGracefully();
+      this.clientWorkerGroup.shutdownGracefully().awaitUninterruptibly();
     }
     return null;
   }

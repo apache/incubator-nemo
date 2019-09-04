@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
@@ -111,6 +112,7 @@ public final class RuntimeMaster {
   private final MetricStore metricStore;
 
   private static LambdaMaster lambdaMaster;
+  private static LambdaExecutorRepresenter executorRepresenter;
 
   /**
    * Constructor.
@@ -266,6 +268,8 @@ public final class RuntimeMaster {
    * Terminates the RuntimeMaster.
    */
   public void terminate() {
+    System.out.println("RuntimeMaster::terminate");
+    LOG.info("RuntimeMaster::terminate");
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
 
@@ -274,6 +278,7 @@ public final class RuntimeMaster {
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
         LOG.warn("Terminating master before all executor terminated messages arrived.");
       }
+      System.out.println("Metric flush finished");
     } catch (final InterruptedException e) {
       LOG.warn("Waiting executor terminating process interrupted: " + e);
       // clean up state...
@@ -281,14 +286,19 @@ public final class RuntimeMaster {
     }
 
     runtimeMasterThread.execute(() -> {
+      System.out.println("RuntimeMaster scheduler.terminate");
       scheduler.terminate();
+      System.out.println("RuntimeMaster scheduler.terminated!");
       try {
         masterMessageEnvironment.close();
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
+      System.out.println("RuntimeMaster metricMessageHandler terminate");
       metricMessageHandler.terminate();
+      System.out.println("RuntimeMaster metricMessageHandler terminated!\nRuntimeMaster containerManager.terminate");
       containerManager.terminate();
+      System.out.println("RuntimeMaster containerManager.terminated!");
 
       try {
         metricServer.stop();
@@ -296,7 +306,7 @@ public final class RuntimeMaster {
         throw new MetricException("Failed to stop rest api server: " + e);
       }
     });
-
+    System.out.println("RuntimeMaster::terminate finished");
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
@@ -337,7 +347,6 @@ public final class RuntimeMaster {
    * Requests a lambda executor.
    */
   public void requestLambdaExecutor() {
-    final LambdaExecutorRepresenter executorRepresenter;
     final String executorId = RuntimeIdManager.generateExecutorId();
     final String nodeName = "192.168.0.100";
 
@@ -354,6 +363,10 @@ public final class RuntimeMaster {
     // LambdaMaster pass received message to representer to handle
     this.lambdaMaster.setRepresenter(executorRepresenter);
 
+    // Metric not enabled, but instantiated due to RuntimeMaster.terminate
+    // Workaround to skipped metric flush
+    metricCountDownLatch = new CountDownLatch(0);
+
     // register representer to scheduler
     scheduler.onExecutorAdded(executorRepresenter);
     System.out.println("requestLambdaExecutor ended");
@@ -367,8 +380,15 @@ public final class RuntimeMaster {
    */
   public void onLambdaExecutorComplete(LambdaEvent lambdaEvent) {
     LOG.info("onLambdaExecutorComplete");
+    System.out.println("onLambdaExecutorComplete");
     if (lambdaEvent.getType() == LambdaEvent.Type.END) {
-      this.terminate();
+      lambdaMaster.shutdown();
+      /**
+       * When LambdaExecutor is used, the shutdown procedure differs from DefaultExecutor.
+       * Under DefaultExecutor, NemoDriver terminate RuntimeMaster, and then terminate default executor service.
+       */
+      scheduler.onTaskStateReportFromExecutor(this.executorRepresenter.getExecutorId(),
+        this.executorRepresenter.getTaskID(), 1, COMPLETE, null, null);
     } else {
       throw new UnsupportedOperationException();
     }

@@ -31,6 +31,7 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.client.REEF;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -41,6 +42,8 @@ import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.runtime.common.driver.idle.DriverIdleManager;
+import org.apache.reef.runtime.common.driver.idle.IdleMessage;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -81,6 +84,7 @@ public final class NemoDriver {
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
   private final String executorType;
+  private final DriverIdleManager driverIdleManager;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
     new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
@@ -100,7 +104,8 @@ public final class NemoDriver {
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
-                     @Parameter(JobConf.ExecutorType.class) final String executorType) {
+                     @Parameter(JobConf.ExecutorType.class) final String executorType,
+                     final DriverIdleManager driverIdleManager) {
 
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
@@ -114,6 +119,7 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     this.executorType = executorType;
+    this.driverIdleManager = driverIdleManager;
     // TODO #69: Support job-wide execution property
     System.out.println("NEMO driver instantiated");
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
@@ -145,6 +151,9 @@ public final class NemoDriver {
     LOG.info("Driver shutdown initiated");
     runnerThread.execute(runtimeMaster::terminate);
     runnerThread.shutdown();
+    IdleMessage idleMessage = new IdleMessage("NemoDriver", "Finished", true);
+    this.driverIdleManager.onPotentiallyIdle(idleMessage);
+    System.out.println("NemoDriver::shutdown finished! runnerThread.shutdown finished!");
   }
 
   /**
@@ -216,6 +225,7 @@ public final class NemoDriver {
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
+      System.out.println("NemoDriver sends ExecutionDone to JobLauncher");
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
       // flush metrics
@@ -265,6 +275,7 @@ public final class NemoDriver {
   public final class DriverStopHandler implements EventHandler<StopTime> {
     @Override
     public void onNext(final StopTime stopTime) {
+      System.out.println("DriverStopHandler invoked!");
       handler.close();
       clientRPC.shutdown();
     }

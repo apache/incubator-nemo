@@ -54,6 +54,7 @@ public final class LambdaMaster {
   private static final int SERVER_BOSS_NUM_THREADS = 3;
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = LambdaMaster.class.getName();
+  private static boolean executorCompleted = false;
 
   private EventLoopGroup serverBossGroup;
   private EventLoopGroup serverWorkerGroup;
@@ -97,7 +98,14 @@ public final class LambdaMaster {
    * @return true then NemoDriver will be shutdown.
    */
   public boolean isCompleted() {
-    return false;
+    return this.executorCompleted;
+  }
+
+  public void shutdown() {
+    this.executorCompleted = true;
+    this.serverBossGroup.shutdownGracefully();
+    this.serverWorkerGroup.shutdownGracefully();
+    LOG.info("LambdaMaster shut down successfully");
   }
 
   /**

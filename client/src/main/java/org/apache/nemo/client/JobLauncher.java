@@ -181,6 +181,7 @@ public final class JobLauncher {
    * Clean up everything.
    */
   public static void shutdown() {
+    System.out.println("JobLauncher DriverShutdown");
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
       .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
@@ -274,6 +275,7 @@ public final class JobLauncher {
     try {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
+      System.out.println("Client receives the ExecutionDone");
     } catch (final InterruptedException e) {
       LOG.warn("Interrupted: " + e);
       // clean up state...
@@ -401,7 +403,7 @@ public final class JobLauncher {
    */
   public static final class LambdaIdlenessSource implements DriverIdlenessSource {
     private static final String COMPONENT_NAME = "LambdaExecutor";
-    private final IdleMessage idleMessage = new IdleMessage(COMPONENT_NAME, "Executing lambda function", true);
+    private final IdleMessage idleMessage = new IdleMessage(COMPONENT_NAME, "Lambda function finished", true);
     private static final String NOT_IDLE_REASON = "Waiting for LambdaExecutor to finish";
     private final IdleMessage notIdleMessage = new IdleMessage(COMPONENT_NAME, NOT_IDLE_REASON, false);
 
@@ -415,8 +417,10 @@ public final class JobLauncher {
     @Override
     public IdleMessage getIdleStatus() {
       if (lambdaMaster.isCompleted()) {
+        System.out.println("LambdaMaster Completed. idleMessage: " + idleMessage);
         return idleMessage;
       } else {
+        System.out.println("LambdaMaster running idle!");
         return notIdleMessage;
       }
     }

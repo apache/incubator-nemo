@@ -60,6 +60,8 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   private final String lambdaFunctionName;
   private final LambdaMaster lambdaMaster;
   private final RuntimeMaster runtimeMaster;
+  // taskID used by RuntimeMaster to tell scheduler to change this task's state
+  private static String taskID;
 
   /**
    * Creates a reference to the specified executor.
@@ -88,6 +90,13 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
     this.lambdaFunctionName = "lambda-dev-executor";
   }
 
+  /**
+   * The current most-recent task handled.
+   * Used by RuntimeMaster to change this task's state.
+   */
+  public String getTaskID() {
+    return this.taskID;
+  }
   /**
    * Handle LambdaEvent received from LambdaExecutor.
    * @param lambdaEvent
@@ -129,6 +138,7 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
   @Override
   public void onTaskScheduled(final Task task) {
     System.out.println("onTaskScheduled: " + task.getTaskId());
+    this.taskID = task.getTaskId();
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
       ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
@@ -157,13 +167,13 @@ public class LambdaExecutorRepresenter implements ExecutorRepresenter {
 
   /**
    * Sends control message to the executor.
-   *
+   * Not supported in LambdaExecutor.
    * @param message Message object to send
    */
   @Override
   public void sendControlMessage(final ControlMessage.Message message) {
     if (message.getType() == ControlMessage.MessageType.RequestMetricFlush) {
-      throw new UnsupportedOperationException();
+      // workaround: ignore metric flush message
     } else {
       LOG.info("##### Lambda Executor control msg not supported " + message.getType());
       throw new UnsupportedOperationException();
