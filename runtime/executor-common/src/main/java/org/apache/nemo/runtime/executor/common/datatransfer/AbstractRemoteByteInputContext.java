@@ -150,13 +150,13 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     switch (channelStatus) {
       case OUTPUT_STOP: {
-        LOG.info("Send stop after receiving output stop.. wait for restart {}/{}", taskId, getContextId().getTransferIndex());
+        //LOG.info("Send stop after receiving output stop.. wait for restart {}/{}", taskId, getContextId().getTransferIndex());
         // output이 stop이면 그냥  ack.
         receivePendingAck();
         break;
       }
       case RUNNING: {
-        LOG.info("Send stop {}/{}", taskId, getContextId().getTransferIndex());
+        //LOG.info("Send stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.INPUT_STOP;
         sendMessage(getStopMessage());
         break;
@@ -170,14 +170,14 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
     switch (channelStatus) {
       case INPUT_STOP: {
-        LOG.info("Receive output stop after sending input stop {}/{} from {}", taskId, getContextId().getTransferIndex(),
-          msg.getTaskId());
+        //LOG.info("Receive output stop after sending input stop {}/{} from {}", taskId, getContextId().getTransferIndex(),
+        //  msg.getTaskId());
         // input stop인데 output을 받았다?
         setupInputChannelToParentVM(sendDataTo);
         break;
       }
       case RUNNING: {
-        LOG.info("Receive output stop {}/{} from {}", taskId, getContextId().getTransferIndex(), msg.getTaskId());
+        //LOG.info("Receive output stop {}/{} from {}", taskId, getContextId().getTransferIndex(), msg.getTaskId());
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
         final ContextId contextId = getContextId();
@@ -217,7 +217,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
   @Override
   public synchronized void receivePendingAck() {
-    LOG.info("Ack from parent stop output {}/{}", taskId, getContextId().getTransferIndex());
+    //LOG.info("Ack from parent stop output {}/{}", taskId, getContextId().getTransferIndex());
     // for guarantee
     taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
 
@@ -234,7 +234,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     currChannel = channel;
     receiveDataFrom = msg.getLocation();
 
-    LOG.info("Receive restart signal {}/{}", taskId, getContextId().getTransferIndex());
+    //LOG.info("Receive restart signal {}/{}", taskId, getContextId().getTransferIndex());
     channelStatus = RUNNING;
   }
 
@@ -263,8 +263,8 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     setupChannel = c;
     setupLocation = msg.getLocation();
 
-    LOG.info("Setup restart channel {} {}/{} for {}", msg.getLocation(), taskId, getContextId().getTransferIndex(),
-      msg.getTaskId());
+    //LOG.info("Setup restart channel {} {}/{} for {}", msg.getLocation(), taskId, getContextId().getTransferIndex(),
+    //  msg.getTaskId());
 
     if (restarted) {
       // TODO: send signal
@@ -284,7 +284,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
       currChannel = setupChannel;
       receiveDataFrom = setupLocation;
 
-      LOG.info("Send restart message to parent 2: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
+      //LOG.info("Send restart message to parent 2: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
 
       channelStatus = RUNNING;
       currChannel.writeAndFlush(restartMsg);
@@ -314,7 +314,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
       currChannel = setupChannel;
       receiveDataFrom = setupLocation;
 
-      LOG.info("Send restart message to parent 1: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
+      //LOG.info("Send restart message to parent 1: {}/ {} /{}", taskId, receiveDataFrom, currChannel);
 
       channelStatus = RUNNING;
       currChannel.writeAndFlush(restartMsg);

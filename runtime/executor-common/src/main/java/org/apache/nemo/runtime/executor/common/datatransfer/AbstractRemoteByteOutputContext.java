@@ -137,10 +137,10 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   private void sendControlFrame(ByteTransferContextSetupMessage message) {
     if (myLocation.equals(SF) && sendDataTo.equals(SF)) {
-      LOG.info("Send message to relay server {} / {} / {}", relayDst, taskId, message);
+      //LOG.info("Send message to relay server {} / {} / {}", relayDst, taskId, message);
       channel.writeAndFlush(new RelayControlFrame(relayDst, message));
     } else {
-      LOG.info("Send message to VM {} / {}", message, taskId);
+      //LOG.info("Send message to VM {} / {}", message, taskId);
       channel.writeAndFlush(message);
     }
   }
@@ -162,12 +162,12 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         //  input이 이미 stop이면 걍 올림.
         //LOG.info("Wait for input restart {}/{}", taskId, getContextId().getTransferIndex());
         //channelStatus = WAIT_FOR_INPUT_RESTART;
-        LOG.info("Output stop input stop ack {}/{}", taskId, getContextId().getTransferIndex());
+        //LOG.info("Output stop input stop ack {}/{}", taskId, getContextId().getTransferIndex());
         ackHandler.onNext(1);
         break;
       }
       case RUNNING: {
-        LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
+        //LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
         executorThread.queue.add(() -> {
@@ -180,7 +180,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           }
         });
 
-        LOG.info("Executor queue size {} {}/{}", executorThread.hashCode(), taskId, executorThread.queue.size());
+        //LOG.info("Executor queue size {} {}/{}", executorThread.hashCode(), taskId, executorThread.queue.size());
         break;
       }
       default:
@@ -190,7 +190,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   @Override
   public void receiveStopAck() {
-    LOG.info("Ack output stop {}/{}", taskId, getContextId().getTransferIndex());
+    //LOG.info("Ack output stop {}/{}", taskId, getContextId().getTransferIndex());
     ackHandler.onNext(1);
   }
 
@@ -223,8 +223,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           // it means that we already send the ack (OS)
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
 
-          LOG.info("Receive input stop from {} after sending output stop {}/{}",
-            msg.getTaskId(), taskId, getContextId().getTransferIndex());
+          //LOG.info("Receive input stop from {} after sending output stop {}/{}",
+          //  msg.getTaskId(), taskId, getContextId().getTransferIndex());
 
           executorThread.queue.add(() -> {
             setupOutputChannelToParentVM(msg, sdt);
@@ -232,7 +232,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           break;
         }
         case RUNNING: {
-          LOG.info("Receive input stop from {}.. {}/{}", msg.getTaskId(), taskId, getContextId().getTransferIndex());
+          //LOG.info("Receive input stop from {}.. {}/{}", msg.getTaskId(), taskId, getContextId().getTransferIndex());
           channelStatus = ChannelStatus.INPUT_STOP;
           executorThread.queue.add(() -> {
             currStatus = Status.PENDING;
@@ -269,8 +269,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     channel = c;
     sendDataTo = msg.getLocation();
 
-    LOG.info("Receive input restart from {}/{}.. {}/{}", msg.getTaskId(), sendDataTo,
-      taskId, getContextId().getTransferIndex());
+    //LOG.info("Receive input restart from {}/{}.. {}/{}", msg.getTaskId(), sendDataTo,
+    //  taskId, getContextId().getTransferIndex());
         /*
         final ByteTransferContextSetupMessage message =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
@@ -312,7 +312,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           myLocation,
           taskId);
 
-      LOG.info("Setting up serverless channel");
+      //LOG.info("Setting up serverless channel");
       // 기존 channel에 restart signal 날림.
       restarted = false;
 
@@ -365,7 +365,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         currStatus = Status.NO_PENDING;
       });
 
-      LOG.info("Restart {} output", taskId);
+      //LOG.info("Restart {} output", taskId);
 
       restarted = false;
     } else {
