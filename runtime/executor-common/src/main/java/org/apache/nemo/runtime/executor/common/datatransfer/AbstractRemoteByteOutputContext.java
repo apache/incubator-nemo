@@ -294,6 +294,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     channelStatus = ChannelStatus.RUNNING;
 
     if (executorThread == null) {
+      LOG.info("Executor thread is null... add it to runnables: {}", taskId);
       pendingRunnables.add(() -> {
         currStatus = Status.NO_PENDING;
       });
