@@ -422,6 +422,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
               scaleOut(scalingTaskMap);
 
+              /*
               scalingService.execute(() -> {
                 while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {
                   // waiting...
@@ -449,6 +450,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
                     .build());
 
               });
+              */
             }
           } else {
             // Scaling in

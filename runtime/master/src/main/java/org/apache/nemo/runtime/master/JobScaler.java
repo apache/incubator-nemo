@@ -73,8 +73,8 @@ public final class JobScaler {
     if (isNumber) {
       scalingOutNumTasksToWorkers((int) divide);
     } else {
-      //scalingOutToWorkers(divide, query);
-      scalingOutToWorkerWithSimpleDecision(divide);
+      scalingOutToWorkers(divide, query);
+      //scalingOutToWorkerWithSimpleDecision(divide);
     }
   }
 
