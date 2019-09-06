@@ -74,6 +74,7 @@ public final class JobScaler {
       scalingOutNumTasksToWorkers((int) divide);
     } else {
       scalingOutToWorkers(divide, query);
+      isScaling.set(false);
       //scalingOutToWorkerWithSimpleDecision(divide);
     }
   }
