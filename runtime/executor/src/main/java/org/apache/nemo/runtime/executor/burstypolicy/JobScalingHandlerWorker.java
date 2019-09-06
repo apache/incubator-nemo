@@ -416,9 +416,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
               LOG.info("Receive RequestScalingOut... {}", scalingTaskMap);
 
+              /*
               if (!GlobalOffloadDone.getInstance().getBoolean().compareAndSet(true, false)) {
                 throw new RuntimeException("GlobalOffloadDone should be true... but false TT");
               }
+              */
 
               scaleOut(scalingTaskMap);
 
