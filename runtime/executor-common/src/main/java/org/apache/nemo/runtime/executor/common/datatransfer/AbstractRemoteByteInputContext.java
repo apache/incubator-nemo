@@ -173,6 +173,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
         LOG.info("Receive output stop after sending input stop {}/{} from {}", taskId, getContextId().getTransferIndex(),
           msg.getTaskId());
         // input stop인데 output을 받았다?
+        receivePendingAck();
         setupInputChannelToParentVM(sendDataTo);
         break;
       }

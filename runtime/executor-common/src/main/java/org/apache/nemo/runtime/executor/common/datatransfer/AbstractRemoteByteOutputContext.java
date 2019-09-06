@@ -231,11 +231,14 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           // it means that we already send the ack (OS)
           // 왜냐면 이미 stopping한다고 signal이 갔기 때문에 input에서 이를 ack으로 취급함.
 
+          // output에서는 이를 ack으로 처리해야함
+
           LOG.info("Receive input stop from {} after sending output stop {}/{}",
             msg.getTaskId(), taskId, getContextId().getTransferIndex());
 
           executorThread.queue.add(() -> {
             setupOutputChannelToParentVM(msg, sdt);
+            ackHandler.onNext(1);
           });
           break;
         }

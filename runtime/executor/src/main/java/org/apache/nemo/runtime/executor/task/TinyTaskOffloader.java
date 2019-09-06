@@ -506,7 +506,7 @@ public final class TinyTaskOffloader implements Offloader {
 
   private void startOutputPending() {
     outputWriters.forEach(writer -> {
-      LOG.info("Stopping writer {}", writer);
+      LOG.info("Stopping writer {} / {}", writer, taskId);
       outputStopPendingFutures.add(writer.stop(taskId));
     });
   }
