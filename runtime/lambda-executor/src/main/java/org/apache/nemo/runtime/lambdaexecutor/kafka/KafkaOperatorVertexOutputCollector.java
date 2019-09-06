@@ -175,7 +175,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     if (irVertex.isSink) {
-      //LOG.info("Sink output at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
+      LOG.info("Sink output at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
       if (random.nextDouble() < samplingRate) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();
@@ -202,7 +202,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
+    LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
 
     List<String> nextOpIds = null;
 
