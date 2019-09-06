@@ -90,6 +90,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
   private Channel setupChannel;
   private TaskLoc setupLocation;
 
+  private final List<Runnable> pendingRunnables = new ArrayList<>();
+
   /**
    * Creates a output context.
    *
@@ -200,13 +202,18 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
    * @throws IOException if an exception was set or this context was closed.
    */
   @Override
-  public ByteOutputStream newOutputStream(final ExecutorThread t) throws IOException {
+  public synchronized ByteOutputStream newOutputStream(final ExecutorThread t) throws IOException {
     ensureNoException();
     if (closed) {
       throw new IOException("Context already closed.");
     }
 
     executorThread = t;
+
+    if (!pendingRunnables.isEmpty()) {
+      executorThread.queue.addAll(pendingRunnables);
+      pendingRunnables.clear();
+    }
 
     return new RemoteByteOutputStream();
   }
@@ -284,9 +291,16 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         */
 
     channelStatus = ChannelStatus.RUNNING;
-    executorThread.queue.add(() -> {
-      currStatus = Status.NO_PENDING;
-    });
+
+    if (executorThread == null) {
+      pendingRunnables.add(() -> {
+        currStatus = Status.NO_PENDING;
+      });
+    } else {
+      executorThread.queue.add(() -> {
+        currStatus = Status.NO_PENDING;
+      });
+    }
   }
 
   private volatile boolean restarted = false;
