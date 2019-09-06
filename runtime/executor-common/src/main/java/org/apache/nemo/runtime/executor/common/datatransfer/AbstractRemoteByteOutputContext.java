@@ -211,6 +211,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     executorThread = t;
 
     if (!pendingRunnables.isEmpty()) {
+      LOG.info("pending runnalbes! {}", taskId);
       executorThread.queue.addAll(pendingRunnables);
       pendingRunnables.clear();
     }
