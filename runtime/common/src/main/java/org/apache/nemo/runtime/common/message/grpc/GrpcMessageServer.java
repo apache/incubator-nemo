@@ -128,7 +128,7 @@ final class GrpcMessageServer {
    * For registering to the name server.
    *
    * @param port port of the socket address.
-   * @throws Exception
+   * @throws Exception exception.
    */
   private void registerToNameServer(final int port) throws Exception {
     final InetSocketAddress socketAddress = new InetSocketAddress(localAddressProvider.getLocalAddress(), port);
