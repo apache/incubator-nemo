@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import scala.Tuple2;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
