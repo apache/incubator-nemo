@@ -108,10 +108,18 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
                                          final TaskLoc sdt,
                                          final String relayDst) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    this.channelStatus = ChannelStatus.RUNNING;
     this.myLocation = myLocation;
     this.sendDataTo = sdt;
     this.relayDst = relayDst;
+
+    // TODO: ad-hoc
+    if (sendDataTo.equals(SF) && myLocation.equals(SF)) {
+      this.channelStatus = ChannelStatus.INPUT_STOP;
+      this.currStatus = Status.PENDING;
+    } else {
+      this.channelStatus = ChannelStatus.RUNNING;
+    }
+
     this.contextManager = contextManager;
     this.channel = contextManager.getChannel();
     //LOG.info("Channel start dst {} / {}", relayDst, channel.remoteAddress());
