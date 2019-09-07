@@ -55,17 +55,17 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2));
-    loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1));
-    loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, map2, map1));
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, combine, map2));
+    loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map1));
+    loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, map2, map1));
 
     originalDAG = new IRDAG(builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map1))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, combine, map2))
       .build());
   }
 

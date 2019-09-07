@@ -126,8 +126,6 @@ public final class LoopOptimizations {
         // Collect and group those with same termination condition.
         final Set<Set<LoopVertex>> setOfLoopsToBeFused = new HashSet<>();
         loopVertices.forEach(loopVertex -> {
-          final IntPredicate terminationCondition = loopVertex.getTerminationCondition();
-          final Integer numberOfIterations = loopVertex.getMaxNumberOfIterations();
           // We want loopVertices that are not dependent on each other
           // or the list that is potentially going to be merged.
           final List<LoopVertex> independentLoops = loopVertices.stream().filter(loop ->
@@ -267,9 +265,9 @@ public final class LoopOptimizations {
       loopVertices.forEach(loopVertex -> {
         final List<Map.Entry<IRVertex, Set<IREdge>>> candidates = loopVertex.getNonIterativeIncomingEdges().entrySet()
           .stream().filter(entry ->
-            loopVertex.getDAG().getIncomingEdgesOf(entry.getKey()).size() == 0 // no internal inEdges
+            loopVertex.getDAG().getIncomingEdgesOf(entry.getKey()).isEmpty() // no internal inEdges
               // no external inEdges
-              && loopVertex.getIterativeIncomingEdges().getOrDefault(entry.getKey(), new HashSet<>()).size() == 0)
+              && loopVertex.getIterativeIncomingEdges().getOrDefault(entry.getKey(), new HashSet<>()).isEmpty())
           .collect(Collectors.toList());
         candidates.forEach(candidate -> {
           // add refactored vertex to builder.

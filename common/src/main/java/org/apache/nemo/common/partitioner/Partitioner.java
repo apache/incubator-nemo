@@ -57,13 +57,13 @@ public interface Partitioner<K extends Serializable> {
       edgeProperties.get(PartitionerProperty.class).get().left();
     final Partitioner partitioner;
     switch (type) {
-      case Intact:
+      case INTACT:
         partitioner = new IntactPartitioner();
         break;
-      case DedicatedKeyPerElement:
+      case DEDICATED_KEY_PER_ELEMENT:
         partitioner = new DedicatedKeyPerElementPartitioner();
         break;
-      case Hash:
+      case HASH:
         final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
         final int actualNumOfPartitions = (numOfPartitions == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM)
           ? dstProperties.get(ParallelismProperty.class).get()

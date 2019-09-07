@@ -44,8 +44,8 @@ public final class ResourcePriorityProperty extends VertexExecutionProperty<Stri
   }
 
   // List of default pre-configured values.
-  public static final String NONE = "None";
-  public static final String TRANSIENT = "Transient";
-  public static final String RESERVED = "Reserved";
-  public static final String COMPUTE = "Compute";
+  public static final String NONE = "NONE";
+  public static final String TRANSIENT = "TRANSIENT";
+  public static final String RESERVED = "RESERVED";
+  public static final String COMPUTE = "COMPUTE";
 }

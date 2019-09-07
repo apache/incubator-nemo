@@ -142,7 +142,7 @@ public final class BlockOutputWriter implements OutputWriter {
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     final int duplicatedDataMultiplier =
       duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
-    final int readForABlock = CommunicationPatternProperty.Value.OneToOne.equals(
+    final int readForABlock = CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
         () -> new RuntimeException("No communication pattern on this edge.")))
       ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(

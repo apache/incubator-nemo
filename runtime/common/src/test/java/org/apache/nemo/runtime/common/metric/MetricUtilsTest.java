@@ -36,8 +36,8 @@ public class MetricUtilsTest {
 
   @Test
   public void testEnumIndexAndValue() {
-    final DataFlowProperty.Value pull = DataFlowProperty.Value.Pull;
-    final DataFlowProperty.Value push = DataFlowProperty.Value.Push;
+    final DataFlowProperty.Value pull = DataFlowProperty.Value.PULL;
+    final DataFlowProperty.Value push = DataFlowProperty.Value.PUSH;
 
     final DataFlowProperty ep = DataFlowProperty.of(pull);
     final Integer epKeyIndex = MetricUtils.getEpKeyIndex(ep);
@@ -135,7 +135,7 @@ public class MetricUtilsTest {
 
   @Test
   public void testPairAndValueToEP() {
-    final DataFlowProperty.Value pull = DataFlowProperty.Value.Pull;
+    final DataFlowProperty.Value pull = DataFlowProperty.Value.PULL;
     final DataFlowProperty ep = DataFlowProperty.of(pull);
     final Integer epKeyIndex = MetricUtils.getEpKeyIndex(ep);
     final Integer idx = MetricUtils.valueToIndex(epKeyIndex, ep);

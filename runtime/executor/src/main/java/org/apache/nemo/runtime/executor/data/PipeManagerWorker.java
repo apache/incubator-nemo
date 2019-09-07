@@ -194,6 +194,6 @@ public final class PipeManagerWorker {
       .getPropertyValue(CommunicationPatternProperty.class)
       .orElseThrow(() -> new IllegalStateException());
 
-    return commPattern.equals(CommunicationPatternProperty.Value.OneToOne) ? 1 : dstParallelism;
+    return commPattern.equals(CommunicationPatternProperty.Value.ONE_TO_ONE) ? 1 : dstParallelism;
   }
 }

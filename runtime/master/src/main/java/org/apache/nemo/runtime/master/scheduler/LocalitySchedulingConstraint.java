@@ -63,7 +63,7 @@ public final class LocalitySchedulingConstraint implements SchedulingConstraint 
   private List<String> getIntermediateDataLocations(final Task task) {
     if (task.getTaskIncomingEdges().size() == 1) {
       final StageEdge physicalStageEdge = task.getTaskIncomingEdges().get(0);
-      if (CommunicationPatternProperty.Value.OneToOne.equals(
+      if (CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
         physicalStageEdge.getPropertyValue(CommunicationPatternProperty.class)
           .orElseThrow(() -> new RuntimeException("No comm pattern!")))) {
         final Optional<DuplicateEdgeGroupPropertyValue> dupProp =

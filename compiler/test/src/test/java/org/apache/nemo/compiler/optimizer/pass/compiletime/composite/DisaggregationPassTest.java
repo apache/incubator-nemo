@@ -55,7 +55,7 @@ public class DisaggregationPassTest {
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->
-        assertEquals(DataStoreProperty.Value.GlusterFileStore,
+        assertEquals(DataStoreProperty.Value.GLUSTER_FILE_STORE,
           edgeToMerger.getPropertyValue(DataStoreProperty.class).get())));
   }
 }

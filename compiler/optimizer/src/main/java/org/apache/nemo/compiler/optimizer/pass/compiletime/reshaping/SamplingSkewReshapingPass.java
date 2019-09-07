@@ -74,7 +74,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(v -> {
       for (final IREdge e : dag.getIncomingEdgesOf(v)) {
-        if (CommunicationPatternProperty.Value.Shuffle.equals(
+        if (CommunicationPatternProperty.Value.SHUFFLE.equals(
           e.getPropertyValue(CommunicationPatternProperty.class).get())) {
           // Compute the partition and its source vertices
           final IRVertex shuffleWriter = e.getSrc();
@@ -129,9 +129,9 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
     final Set<IRVertex> unionSet = new HashSet<>();
     unionSet.add(curVertex);
     for (final IREdge inEdge : dag.getIncomingEdgesOf(curVertex)) {
-      if (CommunicationPatternProperty.Value.OneToOne
+      if (CommunicationPatternProperty.Value.ONE_TO_ONE
         .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())
-        && DataStoreProperty.Value.MemoryStore
+        && DataStoreProperty.Value.MEMORY_STORE
         .equals(inEdge.getPropertyValue(DataStoreProperty.class).get())
         && dag.getIncomingEdgesOf(curVertex).size() == 1) {
         unionSet.addAll(recursivelyBuildPartition(inEdge.getSrc(), dag));

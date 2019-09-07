@@ -56,7 +56,7 @@ public final class SkewAnnotatingPass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(v -> {
       dag.getIncomingEdgesOf(v).forEach(e -> {
-        if (CommunicationPatternProperty.Value.Shuffle
+        if (CommunicationPatternProperty.Value.SHUFFLE
           .equals(e.getPropertyValue(CommunicationPatternProperty.class).get())
           && !(e.getDst() instanceof MessageAggregatorVertex)) {
 
@@ -65,7 +65,7 @@ public final class SkewAnnotatingPass extends AnnotatingPass {
           final int dstParallelism = e.getDst().getPropertyValue(ParallelismProperty.class).get();
           LOG.info("SET {} to {} * {}", e.getId(), dstParallelism, HASH_RANGE_MULTIPLIER);
           e.setPropertyPermanently(PartitionerProperty.of(
-            PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
+            PartitionerProperty.Type.HASH, dstParallelism * HASH_RANGE_MULTIPLIER));
         }
       });
     });

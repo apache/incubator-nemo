@@ -37,8 +37,8 @@ import java.util.Map;
  * @param <K> key type.
  * @param <V> value type.
  */
-public final class ReduceByKeyTransform<K extends Serializable, V extends Serializable>
-  extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> {
+public final class ReduceByKeyTransform<K, V>
+  extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
 
   private final Map<K, List<V>> keyToValues;

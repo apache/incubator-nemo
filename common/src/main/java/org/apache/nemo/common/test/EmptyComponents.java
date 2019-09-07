@@ -52,7 +52,7 @@ public final class EmptyComponents {
   }
 
   public static IREdge newDummyShuffleEdge(final IRVertex src, final IRVertex dst) {
-    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, src, dst);
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, src, dst);
     edge.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
     edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
     edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
@@ -82,11 +82,11 @@ public final class EmptyComponents {
     dagBuilder.addVertex(t3);
     dagBuilder.addVertex(t4);
     dagBuilder.addVertex(t5);
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, s, t1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, s, t1));
     dagBuilder.connectVertices(newDummyShuffleEdge(t1, t2));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, t2, t3));
     dagBuilder.connectVertices(newDummyShuffleEdge(t3, t4));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, t2, t5));
     return new IRDAG(dagBuilder.build());
   }
 
@@ -115,11 +115,11 @@ public final class EmptyComponents {
     dagBuilder.addVertex(t3);
     dagBuilder.addVertex(t4);
     dagBuilder.addVertex(t5);
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, s, t1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, s, t1));
     dagBuilder.connectVertices(shuffleEdgeBetweenT1AndT2);
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, t2, t3));
     dagBuilder.connectVertices(shuffleEdgeBetweenT3AndT4);
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, t2, t5));
     return new IRDAG(dagBuilder.build());
   }
 
