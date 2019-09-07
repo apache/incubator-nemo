@@ -169,8 +169,11 @@ public final class RelayServerClient {
     registerTask(myChannel,
       descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
+
     // 여기서 rendevous server에 등록하기
     final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+
+    LOG.info("Get relay server channel {} / {} for dst {}", dstExecutorId, channel.remoteAddress(), relayDst);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
     //LOG.info("Getting context manager!!!");
