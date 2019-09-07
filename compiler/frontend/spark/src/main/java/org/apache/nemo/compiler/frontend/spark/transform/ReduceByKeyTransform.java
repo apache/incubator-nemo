@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,8 +36,7 @@ import java.util.Map;
  * @param <K> key type.
  * @param <V> value type.
  */
-public final class ReduceByKeyTransform<K, V>
-  extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> implements Serializable {
+public final class ReduceByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
 
   private final Map<K, List<V>> keyToValues;

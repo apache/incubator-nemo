@@ -34,8 +34,7 @@ import java.util.Map;
  * @param <K> output key type.
  * @param <V> output value type.
  */
-public final class TriggerTransform<I, K, V>
-  extends NoWatermarkEmitTransform<I, Pair<K, V>> {
+public final class TriggerTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(TriggerTransform.class.getName());
 
   private transient OutputCollector<Pair<K, V>> outputCollector;
