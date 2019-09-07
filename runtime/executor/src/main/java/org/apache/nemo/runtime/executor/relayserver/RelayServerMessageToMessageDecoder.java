@@ -74,7 +74,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
         throw new RuntimeException(e);
       }
 
-    }, 1, 1, TimeUnit.SECONDS);
+    }, 100, 100, TimeUnit.MILLISECONDS);
   }
 
 

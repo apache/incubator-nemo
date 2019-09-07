@@ -112,13 +112,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     this.sendDataTo = sdt;
     this.relayDst = relayDst;
 
-    // TODO: ad-hoc
-    if (sendDataTo.equals(SF) && myLocation.equals(SF)) {
-      this.channelStatus = ChannelStatus.INPUT_STOP;
-      this.currStatus = Status.PENDING;
-    } else {
-      this.channelStatus = ChannelStatus.RUNNING;
-    }
+    this.channelStatus = ChannelStatus.RUNNING;
 
     this.contextManager = contextManager;
     this.channel = contextManager.getChannel();
