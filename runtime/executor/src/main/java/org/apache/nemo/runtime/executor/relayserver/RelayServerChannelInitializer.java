@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReadWriteLock;
 
 public final class RelayServerChannelInitializer extends ChannelInitializer<SocketChannel> {
@@ -28,6 +25,8 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
   private final OutputWriterFlusher outputWriterFlusher;
   private final ScheduledExecutorService scheduledExecutorService;
 
+  private final ExecutorService executorService;
+
   public RelayServerChannelInitializer(
     final ConcurrentMap<String, Channel> taskChannelMap,
     final OutputWriterFlusher outputWriterFlusher,
@@ -35,6 +34,7 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
     this.taskChannelMap = taskChannelMap;
     this.outputWriterFlusher = outputWriterFlusher;
     this.scheduledExecutorService = scheduledExecutorService;
+    this.executorService = Executors.newCachedThreadPool();
   }
 
   @Override
@@ -48,6 +48,6 @@ public final class RelayServerChannelInitializer extends ChannelInitializer<Sock
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
         Integer.MAX_VALUE, 0, 4, 0, 4))
       .addLast(new RelayServerMessageToMessageDecoder(
-        taskChannelMap, pendingBytes, outputWriterFlusher, scheduledExecutorService));
+        taskChannelMap, pendingBytes, outputWriterFlusher, scheduledExecutorService, executorService));
   }
 }

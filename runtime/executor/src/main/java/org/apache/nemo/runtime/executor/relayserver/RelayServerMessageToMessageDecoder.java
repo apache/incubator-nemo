@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public final class RelayServerMessageToMessageDecoder extends MessageToMessageDecoder<ByteBuf> {
   private static final Logger LOG = LoggerFactory.getLogger(RelayServerMessageToMessageDecoder.class);
@@ -29,7 +26,8 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
   public RelayServerMessageToMessageDecoder(final ConcurrentMap<String, Channel> taskChannelMap,
                                             final ConcurrentMap<String, List<ByteBuf>> pendingByteMap,
                                             final OutputWriterFlusher outputWriterFlusher,
-                                            final ScheduledExecutorService scheduledExecutorService) {
+                                            final ScheduledExecutorService scheduledExecutorService,
+                                            final ExecutorService executorService) {
     this.taskChannelMap = taskChannelMap;
     this.pendingByteMap = pendingByteMap;
     this.pendingFlusher = scheduledExecutorService;
@@ -46,21 +44,23 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
             final Channel channel = taskChannelMap.get(dstKey);
 
             if (pendingBytes != null) {
-              synchronized (pendingBytes) {
-                LOG.info("Flushing pending byte {} size: {} / {}", dstKey, pendingBytes.size(), channel);
-                for (final ByteBuf pendingByte : pendingBytes) {
-                  if (channel.isOpen()) {
-                    channel.write(pendingByte);
-                  } else {
-                    throw new RuntimeException("Channel closed ");
+              executorService.execute(() -> {
+                synchronized (pendingBytes) {
+                  LOG.info("Flushing pending byte {} size: {} / {}", dstKey, pendingBytes.size(), channel);
+                  for (final ByteBuf pendingByte : pendingBytes) {
+                    if (channel.isOpen()) {
+                      channel.write(pendingByte);
+                    } else {
+                      throw new RuntimeException("Channel closed ");
+                    }
                   }
-                }
-                channel.flush();
-                pendingBytes.clear();
+                  channel.flush();
+                  pendingBytes.clear();
 
-                // 여기서 remove
-                pendingByteMap.remove(dstKey);
-              }
+                  // 여기서 remove
+                  pendingByteMap.remove(dstKey);
+                }
+              });
             }
           }
         }
@@ -74,7 +74,7 @@ public final class RelayServerMessageToMessageDecoder extends MessageToMessageDe
         throw new RuntimeException(e);
       }
 
-    }, 100, 100, TimeUnit.MILLISECONDS);
+    }, 100, 100, TimeUnit.SECONDS);
   }
 
 
