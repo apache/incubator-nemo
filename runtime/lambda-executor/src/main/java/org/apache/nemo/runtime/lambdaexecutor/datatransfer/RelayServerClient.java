@@ -106,7 +106,7 @@ public final class RelayServerClient {
       if (!registeredTasks.contains(key)) {
         registeredTasks.add(key);
 
-        //LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
+        LOG.info("Registering task {}#{}#{} to {}", edgeId, taskIndex, src, relayServerChannel);
         final RelayControlMessage message = new RelayControlMessage(
           edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
         relayServerChannel.writeAndFlush(message);
