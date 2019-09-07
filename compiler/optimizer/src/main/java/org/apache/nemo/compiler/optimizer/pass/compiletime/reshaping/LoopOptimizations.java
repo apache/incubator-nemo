@@ -30,7 +30,6 @@ import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.*;
-import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 
 /**
