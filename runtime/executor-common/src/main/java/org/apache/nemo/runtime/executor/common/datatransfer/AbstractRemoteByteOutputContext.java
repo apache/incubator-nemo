@@ -278,8 +278,13 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
   @Override
   public synchronized void receiveRestartSignalFromChild(Channel c,
                                                          ByteTransferContextSetupMessage msg) {
-    channel = c;
+
     sendDataTo = msg.getLocation();
+
+    if (!(myLocation.equals(SF) && sendDataTo.equals(SF))) {
+      // SF - SF 일 경우에는 channel이 다르므로 이렇게 받아야함.
+      channel = c;
+    }
 
     //LOG.info("Receive input restart from {}/{}.. {}/{}", msg.getTaskId(), sendDataTo,
     //  taskId, getContextId().getTransferIndex());
