@@ -168,6 +168,10 @@ public final class ExecutorThread {
             runnable.run();
           }
 
+          if (throttle.get()) {
+            Thread.sleep(30);
+          }
+
           if (sourceTasks.isEmpty() && queue.isEmpty()) {
             Thread.sleep(20);
           }

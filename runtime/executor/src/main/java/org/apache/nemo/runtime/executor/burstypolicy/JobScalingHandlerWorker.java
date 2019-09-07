@@ -63,6 +63,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final StageExecutorThreadMap stageExecutorThreadMap;
 
+  private final ExecutorThreads executorThreads;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -79,7 +81,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final MessageEnvironment messageEnvironment,
     final StageOffloadingWorkerManager stageOffloadingWorkerManager,
     final TaskLocationMap taskLocationMap,
-    final StageExecutorThreadMap stageExecutorThreadMap) {
+    final StageExecutorThreadMap stageExecutorThreadMap,
+    final ExecutorThreads executorThreads) {
     this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
@@ -87,6 +90,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.offloadedTasksPerStage = new ArrayList<>();
     this.messageEnvironment = messageEnvironment;
     this.stageExecutorThreadMap = stageExecutorThreadMap;
+    this.executorThreads = executorThreads;
 
     this.toMaster = toMaster;
     LOG.info("Start JobScalingHandlerWorker");
@@ -183,6 +187,10 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         executorThread.getThrottle().set(true);
       });
 
+    executorThreads.getExecutorThreads().forEach(executorThread -> {
+      executorThread.getThrottle().set(true);
+    });
+
     for (int i = 0; i < len; i++) {
       for (int j = 0; j < stageTasks.size(); j++) {
         final List<TaskExecutor> te = stageTasks.get(j);
@@ -223,6 +231,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       .forEach(executorThread -> {
         executorThread.getThrottle().set(false);
       });
+
+    executorThreads.getExecutorThreads().forEach(executorThread -> {
+      executorThread.getThrottle().set(false);
+    });
+
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }
 

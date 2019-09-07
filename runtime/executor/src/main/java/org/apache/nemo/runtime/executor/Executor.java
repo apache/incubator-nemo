@@ -144,9 +144,10 @@ public final class Executor {
 
   final AtomicInteger bursty = new AtomicInteger(0);
 
-  private final List<ExecutorThread> executorThreads;
 
   private RendevousServerClient rendevousServerClient;
+
+  private final ExecutorThreads executorThreads;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -170,12 +171,14 @@ public final class Executor {
                    final RelayServer relayServer,
                    final TaskLocationMap taskLocationMap,
                    final StageExecutorThreadMap stageExecutorThreadMap,
-                   final JobScalingHandlerWorker jobScalingHandlerWorker) {
+                   final JobScalingHandlerWorker jobScalingHandlerWorker,
+                   final ExecutorThreads executorThreads) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.executorThreads = executorThreads;
     this.jobScalingHandlerWorker = jobScalingHandlerWorker;
     this.executorGlobalInstances = new ExecutorGlobalInstances();
     this.relayServer = relayServer;
@@ -250,11 +253,6 @@ public final class Executor {
 
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 
-    this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
-    for (int i = 0; i < evalConf.executorThreadNum; i++) {
-      executorThreads.add(new ExecutorThread(i, executorId));
-      executorThreads.get(i).start();
-    }
   }
 
   private boolean isThrottleTime(final double cpuLoad) {
@@ -389,7 +387,7 @@ public final class Executor {
 
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
-      final ExecutorThread executorThread = executorThreads.get(index);
+      final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
 
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(
@@ -421,7 +419,7 @@ public final class Executor {
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
-      executorThreads.get(index).addNewTask(taskExecutor);
+      executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
