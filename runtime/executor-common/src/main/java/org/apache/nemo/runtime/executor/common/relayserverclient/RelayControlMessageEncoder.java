@@ -49,6 +49,6 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
 
     out.add(header);
 
-    LOG.info("Encoding control message {} to {}", id, ctx.channel().remoteAddress());
+    //LOG.info("Encoding control message {} to {}", id, ctx.channel().remoteAddress());
   }
 }

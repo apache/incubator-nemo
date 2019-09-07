@@ -114,7 +114,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     this.relayDst = relayDst;
     this.contextManager = contextManager;
     this.channel = contextManager.getChannel();
-    LOG.info("Channel start dst {} / {}", relayDst, channel.remoteAddress());
+    //LOG.info("Channel start dst {} / {}", relayDst, channel.remoteAddress());
   }
 
   protected String getLocalExecutorId() {
@@ -302,7 +302,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     channelStatus = ChannelStatus.RUNNING;
 
-    LOG.info("Retstart signal channel {} / {}", relayDst, channel.remoteAddress());
+    //LOG.info("Retstart signal channel {} / {}", relayDst, channel.remoteAddress());
 
     if (executorThread == null) {
       //LOG.info("Executor thread is null... add it to runnables: {}", taskId);
