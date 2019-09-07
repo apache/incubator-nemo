@@ -336,7 +336,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
-        //LOG.info(String.format("Duplicate ContextId: %s", contextId));
+        LOG.info(String.format("Duplicate ContextId: %s, dst {}, channel {}", contextId, relayDst, channel.remoteAddress()));
       }
       return contextGenerator.apply(contextId);
     });
@@ -382,6 +382,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final byte[] encodedDescriptor = descriptor.encode();
     final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
     if (isRelayServerChannel) {
+      LOG.info("Relay output channel dst {} / {}", relayDst, channel.remoteAddress());
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
