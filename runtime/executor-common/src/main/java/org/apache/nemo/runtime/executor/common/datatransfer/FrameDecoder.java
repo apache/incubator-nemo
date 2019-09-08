@@ -197,7 +197,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     final byte[] bytes;
     final int offset;
 
-
     /*
     if (in.hasArray()) {
       bytes = in.array();

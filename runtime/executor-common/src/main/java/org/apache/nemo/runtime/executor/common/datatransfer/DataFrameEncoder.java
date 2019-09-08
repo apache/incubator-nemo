@@ -113,11 +113,14 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     assert (in.length <= LENGTH_MAX);
     header.writeInt((int) in.length);
 
-    out.add(header);
-
     // encode body
     if (in.body != null) {
-      out.add(in.body);
+      final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+      cbb.addComponents(true, header, (ByteBuf) in.body);
+      out.add(cbb);
+      //out.add(in.body);
+    } else {
+      out.add(header);
     }
 
     // recycle DataFrame object

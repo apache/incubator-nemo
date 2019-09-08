@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -51,10 +52,21 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTrans
                      final ByteTransferContextSetupMessage message,
                      final List out) {
 
-    out.add(ZEROS.retain());
 
 
+
+    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(3);
     final ByteBuf data = message.encode();
+
+    cbb.addComponents(true, ZEROS.retain(),
+      ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
+      .writeInt(data.readableBytes()),
+      data);
+
+    out.add(cbb);
+
+    /*
+    out.add(ZEROS.retain());
 
     //out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
     //  .writeInt(frameBody.length));
@@ -63,5 +75,6 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTrans
       .writeInt(data.readableBytes()));
 
     out.add(data);
+    */
   }
 }

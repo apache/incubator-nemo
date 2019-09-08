@@ -197,6 +197,8 @@ public final class ByteTransferContextSetupMessage {
       final String relayServerAddress = bis.readUTF();
       final int relayServerPort = bis.readInt();
 
+      bis.close();
+
       return new ByteTransferContextSetupMessage(
         localExecutorId, transferIndex, direction, contextDescriptor,
         isPipe, type, loc, taskId, relayServerAddress, relayServerPort);
