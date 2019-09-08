@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.common.TaskLoc;
@@ -151,28 +152,59 @@ public final class ByteTransferContextSetupMessage {
   public ByteBuf encode() {
      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-    final DataOutputStream dos = new DataOutputStream(bos);
+    //final DataOutputStream dos = new DataOutputStream(bos);
     try {
-      dos.writeUTF(initiatorExecutorId);
-      dos.writeInt(transferIndex);
-      dos.writeInt(dataDirection.ordinal());
-      dos.writeInt(contextDescriptor.length);
-      dos.write(contextDescriptor);
-      dos.writeBoolean(isPipe);
-      dos.writeInt(messageType.ordinal());
-      dos.writeInt(location.ordinal());
-      dos.writeUTF(taskId);
-      dos.writeUTF(relayServerAddress);
-      dos.writeInt(relayServerPort);
+      bos.writeUTF(initiatorExecutorId);
+      bos.writeInt(transferIndex);
+      bos.writeInt(dataDirection.ordinal());
+      bos.writeInt(contextDescriptor.length);
+      bos.write(contextDescriptor);
+      bos.writeBoolean(isPipe);
+      bos.writeInt(messageType.ordinal());
+      bos.writeInt(location.ordinal());
+      bos.writeUTF(taskId);
+      bos.writeUTF(relayServerAddress);
+      bos.writeInt(relayServerPort);
       //dos.writeUTF(address); //dos.writeUTF(taskId);
 
-      dos.close();
       bos.close();
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
     return byteBuf;
+  }
+
+
+  public static ByteTransferContextSetupMessage decode(final ByteBuf byteBuf) {
+    final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+    try {
+      final String localExecutorId = bis.readUTF();
+      final int transferIndex = bis.readInt();
+      final ByteTransferDataDirection direction =
+        ByteTransferDataDirection.values()[bis.readInt()];
+      final int size = bis.readInt();
+      final byte[] contextDescriptor = new byte[size];
+      final int l = bis.read(contextDescriptor);
+      if (l != size) {
+        throw new RuntimeException("Invalid byte read: " + l + ", " + size);
+      }
+      final boolean isPipe = bis.readBoolean();
+      final int ordinal = bis.readInt();
+      final MessageType type = MessageType.values()[ordinal];
+      final TaskLoc loc = TaskLoc.values()[bis.readInt()];
+      final String taskId = bis.readUTF();
+      final String relayServerAddress = bis.readUTF();
+      final int relayServerPort = bis.readInt();
+
+      return new ByteTransferContextSetupMessage(
+        localExecutorId, transferIndex, direction, contextDescriptor,
+        isPipe, type, loc, taskId, relayServerAddress, relayServerPort);
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   public static ByteTransferContextSetupMessage decode(final byte[] bytes,

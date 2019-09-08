@@ -196,6 +196,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     final byte[] bytes;
     final int offset;
+
+
+    /*
     if (in.hasArray()) {
       bytes = in.array();
       offset = in.arrayOffset() + in.readerIndex();
@@ -210,6 +213,12 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     out.add(controlMessage);
     in.skipBytes((int) controlBodyBytesToRead);
+    */
+
+    final ByteTransferContextSetupMessage controlMessage =
+      ByteTransferContextSetupMessage.decode(in);
+    out.add(controlMessage);
+
     controlBodyBytesToRead = 0;
     return true;
   }
