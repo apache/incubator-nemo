@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -64,7 +65,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
 
-  private boolean offloadingTransformSerialized = false;
+  private final AtomicBoolean offloadingTransformSerialized = new AtomicBoolean(false);
 
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
@@ -198,9 +199,9 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   public synchronized TinyTaskWorker prepareSendTask() {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
 
-    if (!offloadingTransformSerialized) {
+    if (!offloadingTransformSerialized.get()) {
 
-      offloadingTransformSerialized = true;
+      offloadingTransformSerialized.set(true);
 
       final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
       ObjectOutputStream oos = null;
@@ -238,15 +239,51 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }
   }
 
-  public synchronized void sendReadyTask(final ReadyTask readyTask,
-                                         final TinyTaskWorker worker) {
+  public TinyTaskWorker createWorker() {
+
+    if (!offloadingTransformSerialized.get()) {
+
+
+      final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
+      ObjectOutputStream oos = null;
+      try {
+        oos = new ObjectOutputStream(bos);
+        oos.writeObject(offloadingTransform);
+        oos.writeObject(offloadingSerializer.getInputDecoder());
+        oos.writeObject(offloadingSerializer.getOutputEncoder());
+        oos.close();
+        bos.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      offloadingTransformSerialized.set(true);
+    }
+
+
+    final TinyTaskWorker newWorker = new TinyTaskWorker(
+      createNewWorker(), evalConf);
+
+    LOG.info("No preparable worker.. create new one {}", newWorker);
+
+    synchronized (workers) {
+      workers.add(Pair.of(System.currentTimeMillis(), newWorker));
+    }
+
+    newWorker.prepareTaskIfPossible();
+    return newWorker;
+  }
+
+  public void sendReadyTask(final ReadyTask readyTask,
+                            final TinyTaskWorker worker) {
     LOG.info("Send ready task {}", readyTask.taskId);
     worker.addReadyTask(readyTask);
   }
 
-  public synchronized void sendTask(final OffloadingTask offloadingTask,
-                                    final TaskExecutor taskExecutor,
-                                    final TinyTaskWorker worker) {
+  public void sendTask(final OffloadingTask offloadingTask,
+                       final TaskExecutor taskExecutor,
+                       final TinyTaskWorker worker) {
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     //LOG.info("Put task {} to offloadedTaskMap {}", offloadingTask.taskId, taskExecutor);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);

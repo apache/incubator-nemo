@@ -207,7 +207,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             final int offloadNum = offloadNumMap.getOrDefault(stageId, 0);
             offloadNumMap.put(stageId, offloadNum + 1);
 
-            final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask();
+            //final TinyTaskWorker worker = tinyWorkerManager.prepareSendTask();
+            final TinyTaskWorker worker = tinyWorkerManager.createWorker();
 
             LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
               remainingOffloadTasks.getRemainingCnt());
