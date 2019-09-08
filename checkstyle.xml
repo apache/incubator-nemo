@@ -83,12 +83,21 @@ under the License.
 
     <!-- Checks for Javadoc comments.                     -->
     <!-- See http://checkstyle.sf.net/config_javadoc.html -->
+    <module name="AtclauseOrder"/>
     <module name="JavadocMethod">
       <property name="severity" value="warning"/>
     </module>
     <module name="JavadocType"/>
-    <!--<module name="JavadocVariable"/>-->
+    <module name="JavadocVariable">
+      <property name="severity" value="warning"/>
+    </module>
     <module name="JavadocStyle"/>
+    <module name="NonEmptyAtclauseDescription"/>
+    <module name="SingleLineJavadoc"/>
+    <module name="WriteTag"/>
+    <module name="SummaryJavadoc">
+      <property name="severity" value="warning"/>
+    </module>
 
     <!-- Checks for Naming Conventions.                  -->
     <!-- See http://checkstyle.sf.net/config_naming.html -->
@@ -118,6 +127,7 @@ under the License.
       <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
     </module>
     <module name="MethodLength"/>
+    <!--<module name="ParameterNumber"/>-->
 
     <!-- Checks for whitespace                               -->
     <!-- See http://checkstyle.sf.net/config_whitespace.html -->

@@ -43,6 +43,7 @@ public interface Policy extends Serializable {
    *
    * @param dag     input DAG.
    * @param message from the DAG execution.
+   * @return optimized DAG, reshaped or tagged with execution properties.
    */
   IRDAG runRunTimeOptimizations(IRDAG dag, Message<?> message);
 }
