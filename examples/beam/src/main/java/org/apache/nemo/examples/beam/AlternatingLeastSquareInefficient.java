@@ -102,6 +102,7 @@ public final class AlternatingLeastSquareInefficient {
    * Main function for the ALS BEAM program.
    *
    * @param args arguments.
+   * @throws ClassNotFoundException exception.
    */
   public static void main(final String[] args) throws ClassNotFoundException {
     final Long start = System.currentTimeMillis();
