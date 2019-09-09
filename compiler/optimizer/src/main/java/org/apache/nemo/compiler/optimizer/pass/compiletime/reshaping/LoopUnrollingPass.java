@@ -72,7 +72,7 @@ public final class LoopUnrollingPass extends ReshapingPass {
       }
     });
 
-    if (builder.contains((vertex) -> vertex instanceof LoopVertex)) {
+    if (builder.contains(vertex -> vertex instanceof LoopVertex)) {
       return recursivelyUnroll(builder.build());
     } else {
       return builder.build();

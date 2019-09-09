@@ -66,5 +66,6 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
 
   @Override
   public void close() {
+    // Nothing to do in a SparkTransform.
   }
 }

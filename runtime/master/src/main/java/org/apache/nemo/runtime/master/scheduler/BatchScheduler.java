@@ -256,10 +256,9 @@ public final class BatchScheduler implements Scheduler {
       case ON_HOLD:
         // If the stage has completed
         final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
-        if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-          if (!planStateManager.isPlanDone()) {
-            doSchedule();
-          }
+        if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)
+          && !planStateManager.isPlanDone()) {
+          doSchedule();
         }
         break;
       case SHOULD_RETRY:
@@ -637,12 +636,12 @@ public final class BatchScheduler implements Scheduler {
       .flatMap(inStageEdge -> {
         final Set<String> parentTaskIds = planStateManager.getAllTaskAttemptsOfStage(inStageEdge.getSrc().getId());
         switch (inStageEdge.getDataCommunicationPattern()) {
-          case Shuffle:
-          case BroadCast:
+          case SHUFFLE:
+          case BROADCAST:
             // All of the parent stage's tasks
             return parentTaskIds.stream()
               .map(parentTaskId -> RuntimeIdManager.generateBlockId(inStageEdge.getId(), parentTaskId));
-          case OneToOne:
+          case ONE_TO_ONE:
             // Same-index tasks of the parent stage
             return parentTaskIds.stream()
               .filter(parentTaskId ->

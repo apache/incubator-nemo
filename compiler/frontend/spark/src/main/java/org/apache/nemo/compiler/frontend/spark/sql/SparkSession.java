@@ -287,7 +287,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public Builder config(final SparkConf conf) {
+    public synchronized Builder config(final SparkConf conf) {
       for (Tuple2<String, String> kv : conf.getAll()) {
         this.options.put(kv._1, kv._2);
       }
@@ -300,7 +300,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
      * @param conf the conf.
      * @return the builder with the conf applied.
      */
-    public Builder config(final Map<String, String> conf) {
+    public synchronized Builder config(final Map<String, String> conf) {
       conf.forEach((k, v) -> {
         this.options.put(k, v);
         super.config(k, v);
@@ -309,7 +309,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public Builder config(final String key, final String value) {
+    public synchronized Builder config(final String key, final String value) {
       this.options.put(key, value);
       return (Builder) super.config(key, value);
     }
@@ -320,7 +320,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public SparkSession getOrCreate() {
+    public synchronized SparkSession getOrCreate() {
       if (!options.containsKey("spark.master")) { // default spark_master option.
         return this.master("local[*]").getOrCreate();
       }

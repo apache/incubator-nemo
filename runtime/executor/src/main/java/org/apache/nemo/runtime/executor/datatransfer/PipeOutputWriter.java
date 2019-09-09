@@ -139,9 +139,9 @@ public final class PipeOutputWriter implements OutputWriter {
   private List<ByteOutputContext> getPipeToWrite(final Object element) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
-    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+    if (comm.equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(pipes.get(0));
-    } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
+    } else if (comm.equals(CommunicationPatternProperty.Value.BROADCAST)) {
       return pipes;
     } else {
       return Collections.singletonList(pipes.get((int) partitioner.partition(element)));
