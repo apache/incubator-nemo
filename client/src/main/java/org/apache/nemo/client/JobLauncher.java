@@ -274,7 +274,6 @@ public final class JobLauncher {
             .build())
         .build());
 
-
     try {
       BufferedWriter writer = new BufferedWriter(new FileWriter("/home/ubuntu/incubator-nemo/scaling.txt"));
       writer.close();
@@ -309,7 +308,25 @@ public final class JobLauncher {
             String[] split = lastLine.split(" ");
             final String decision = split[0];
 
-            if (decision.equals("o") || decision.equals("no")) {
+            if (decision.equals("oratio")) {
+              final int numStages = split.length - 2;
+              final double offloadDivide = Double.valueOf(split[1]);
+              final List<Double> stageRatio = new ArrayList<>(numStages);
+
+              for (int i = 2; i < split.length - 1; i++) {
+                stageRatio.add(Double.valueOf(split[i]));
+              }
+
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .setDivide(offloadDivide)
+                  .addAllStageRatio(stageRatio)
+                  .build())
+                .build());
+
+            } else if (decision.equals("o") || decision.equals("no")) {
               final double offloadDivide = Double.valueOf(split[1]);
 
               if (split.length == 3) {

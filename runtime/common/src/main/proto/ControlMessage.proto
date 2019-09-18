@@ -43,6 +43,7 @@ message ScalingMessage {
   required string decision = 1;
   optional double divide = 2;
   optional int32 query = 3;
+  repeated double stageRatio = 4;
 }
 
 message DataCollectMessage {

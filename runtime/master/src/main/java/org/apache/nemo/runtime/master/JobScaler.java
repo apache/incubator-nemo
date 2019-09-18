@@ -54,7 +54,7 @@ public final class JobScaler {
     this.executorService = Executors.newCachedThreadPool();
   }
 
-  public void scalingOut(final ControlMessage.ScalingMessage msg, final boolean isNumber) {
+  public void scalingOut(final ControlMessage.ScalingMessage msg) {
 
     final double divide = msg.getDivide();
     final int prevScalingCount = sumCount();
@@ -70,13 +70,9 @@ public final class JobScaler {
 
     final int query = msg.hasQuery() ? msg.getQuery() : 0;
 
-    if (isNumber) {
-      scalingOutNumTasksToWorkers((int) divide);
-    } else {
-      scalingOutToWorkers(divide, query);
-      isScaling.set(false);
-      //scalingOutToWorkerWithSimpleDecision(divide);
-    }
+    final List<Double> ratioList = msg.getStageRatioList();
+
+    scalingOutToWorkers(divide, ratioList);
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
@@ -226,9 +222,8 @@ public final class JobScaler {
     }
   }
 
-
   private void scalingOutToWorkers(final double divide,
-                                   final int queryNum) {
+                                   final List<Double> offloadingRatio) {
 
     // 1. update all task location
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
@@ -240,32 +235,58 @@ public final class JobScaler {
 
       final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
       final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+      final int totalTasks = tasks.values().stream().map(l -> l.size()).reduce(0, (x,y) -> x+y);
 
-      for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
-        // if query 5, do not move stage2 tasks
+      // If offloading ratio is empty, it means that just scaling with the divide value
+      if (offloadingRatio.isEmpty()) {
 
-        /*
-        if (queryNum == 5) {
-          if (entry.getKey().equals("Stage3")) {
-            LOG.info("Skip stage 3 offloading");
-            continue;
+        for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+
+          final int countToOffload = (int) (entry.getValue().size() - (entry.getValue().size() / divide));
+          final List<String> offloadTask = new ArrayList<>();
+          offloadTaskMap.put(entry.getKey(), offloadTask);
+
+          int offloadedCnt = 0;
+          for (final Task task : entry.getValue()) {
+            if (offloadedCnt < countToOffload) {
+              final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+
+              if (loc == VM) {
+                offloadTask.add(task.getTaskId());
+                taskLocationMap.locationMap.put(task.getTaskId(), SF);
+                offloadedCnt += 1;
+              }
+            }
           }
         }
-        */
+      } else {
+        // stage-offloading
+        // we set the number for each stage
+        final int totalCountToOffload = (int) (totalTasks - totalTasks / divide);
+        final Map<String, Integer> stageOffloadCnt = new HashMap<>();
+        for (int i = 0; i < offloadingRatio.size(); i++) {
+          final String stageId = "Stage" + i;
+          final int offloadCnt = (int) (totalCountToOffload * offloadingRatio.get(i));
+          stageOffloadCnt.put(stageId, offloadCnt);
+        }
 
-        final int countToOffload = (int) (entry.getValue().size() - (entry.getValue().size() / divide));
-        final List<String> offloadTask = new ArrayList<>();
-        offloadTaskMap.put(entry.getKey(), offloadTask);
+        for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
 
-        int offloadedCnt = 0;
-        for (final Task task : entry.getValue()) {
-          if (offloadedCnt < countToOffload) {
-            final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+          final int countToOffload = stageOffloadCnt.get(entry.getKey());
+          final List<String> offloadTask = new ArrayList<>();
+          offloadTaskMap.put(entry.getKey(), offloadTask);
 
-            if (loc == VM) {
-              offloadTask.add(task.getTaskId());
-              taskLocationMap.locationMap.put(task.getTaskId(), SF);
-              offloadedCnt += 1;
+          int offloadedCnt = 0;
+          for (final Task task : entry.getValue()) {
+            if (offloadedCnt < countToOffload) {
+              final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+
+              if (loc == VM) {
+                LOG.info("Offloading {} ", task.getTaskId());
+                offloadTask.add(task.getTaskId());
+                taskLocationMap.locationMap.put(task.getTaskId(), SF);
+                offloadedCnt += 1;
+              }
             }
           }
         }
