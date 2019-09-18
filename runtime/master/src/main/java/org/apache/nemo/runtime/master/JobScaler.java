@@ -274,7 +274,7 @@ public final class JobScaler {
 
         for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
 
-          LOG.info("Key {}", entry.getKey());
+          //LOG.info("Key {}", entry.getKey());
           final int countToOffload = stageOffloadCnt.get(entry.getKey());
           final List<String> offloadTask = new ArrayList<>();
           offloadTaskMap.put(entry.getKey(), offloadTask);

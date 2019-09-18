@@ -313,7 +313,7 @@ public final class JobLauncher {
               final double offloadDivide = Double.valueOf(split[1]);
               final List<Double> stageRatio = new ArrayList<>(numStages);
 
-              for (int i = 2; i < split.length - 1; i++) {
+              for (int i = 2; i < split.length; i++) {
                 stageRatio.add(Double.valueOf(split[i]));
               }
 
