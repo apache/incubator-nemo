@@ -69,10 +69,10 @@ public final class JobScaler {
     }
 
     final int query = msg.hasQuery() ? msg.getQuery() : 0;
-
     final List<Double> ratioList = msg.getStageRatioList();
-
     scalingOutToWorkers(divide, ratioList);
+    isScaling.set(false);
+
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
