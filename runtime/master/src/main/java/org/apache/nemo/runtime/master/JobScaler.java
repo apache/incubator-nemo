@@ -248,6 +248,8 @@ public final class JobScaler {
 
       int offloadedCnt = 0;
 
+      LOG.info("copInfos {}", copyInfos);
+
       for (final ControlMessage.TaskStatInfo taskStatInfo : copyInfos) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskStatInfo.getTaskId());
         offloadTaskMap.putIfAbsent(stageId, new ArrayList<>());

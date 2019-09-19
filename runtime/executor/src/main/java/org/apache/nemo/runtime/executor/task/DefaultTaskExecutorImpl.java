@@ -340,6 +340,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     if (isStateless) {
       return 0;
     } else {
+      final int num = gbkFinalTransform.getNumKeys();
+      LOG.info("Key {}, {}", num, taskId);
       return gbkFinalTransform.getNumKeys();
     }
   }
