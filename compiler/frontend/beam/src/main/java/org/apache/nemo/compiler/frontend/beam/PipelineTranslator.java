@@ -333,7 +333,7 @@ final class PipelineTranslator {
                                         final TransformHierarchy.Node beamNode,
                                         final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
-    vertex.isStateful = true;
+    //vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
