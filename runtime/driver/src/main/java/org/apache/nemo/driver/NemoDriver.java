@@ -137,9 +137,7 @@ public final class NemoDriver {
       if (evalConf.enableOffloading) {
         LOG.info("Receive scaling decision {}", decision);
 
-        if (decision.equals("oratio")) {
-          jobScaler.scalingOut(message.getScalingMsg());
-        } else if (decision.equals("o") || decision.equals("no")) {
+        if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
           jobScaler.scalingOut(message.getScalingMsg());
         } else if (decision.equals("i")) {
           jobScaler.scalingIn();
