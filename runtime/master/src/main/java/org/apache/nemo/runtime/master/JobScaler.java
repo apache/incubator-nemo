@@ -486,7 +486,7 @@ public final class JobScaler {
         case TaskStatSignal: {
           final ControlMessage.TaskStatMessage taskStatMessage = message.getTaskStatMsg();
           final String executorId = taskStatMessage.getExecutorId();
-          LOG.info("Receive taskstatSignal from {}", executorId);
+          //LOG.info("Receive taskstatSignal from {}", executorId);
           final List<ControlMessage.TaskStatInfo> taskStatInfos = taskStatMessage.getTaskStatsList();
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
           executorTaskStatMap.put(executorRepresenter, taskStatInfos);
