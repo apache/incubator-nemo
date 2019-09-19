@@ -235,7 +235,9 @@ public final class JobScaler {
       final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
 
       // sort by keys
-      Collections.sort(taskStatInfos, new Comparator<ControlMessage.TaskStatInfo>() {
+      final List<ControlMessage.TaskStatInfo> copyInfos = new ArrayList<>(taskStatInfos);
+
+      Collections.sort(copyInfos, new Comparator<ControlMessage.TaskStatInfo>() {
         @Override
         public int compare(ControlMessage.TaskStatInfo o1, ControlMessage.TaskStatInfo o2) {
           return Integer.compare(o1.getNumKeys(), o2.getNumKeys());
@@ -246,7 +248,7 @@ public final class JobScaler {
 
       int offloadedCnt = 0;
 
-      for (final ControlMessage.TaskStatInfo taskStatInfo : taskStatInfos) {
+      for (final ControlMessage.TaskStatInfo taskStatInfo : copyInfos) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskStatInfo.getTaskId());
         offloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
         final List<String> offloadTask = offloadTaskMap.get(stageId);
