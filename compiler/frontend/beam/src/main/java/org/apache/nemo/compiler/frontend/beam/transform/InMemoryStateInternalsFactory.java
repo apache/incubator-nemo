@@ -59,6 +59,10 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
     }
   }
 
+  public int getNumKeys() {
+    return stateInternalMap.size();
+  }
+
   @Override
   public String toString() {
     return "StateBackend: " + stateBackendMap;

@@ -99,7 +99,7 @@ public final class GBKFinalTransform<K, InputT>
   }
 
   public int getNumKeys() {
-    return keyAndWatermarkHoldMap.size();
+    return inMemoryTimerInternalsFactory.getNumKey() + inMemoryStateInternalsFactory.getNumKeys();
   }
 
   /**

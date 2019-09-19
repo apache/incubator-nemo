@@ -62,6 +62,10 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       }
     };
 
+    public int getNumKey() {
+      return watermarkTimers.size();
+    }
+
     InMemoryTimerInternalsFactory() {
       this.watermarkTimers = new TreeSet<>(comparator);
       this.processingTimers = new TreeSet<>(comparator);

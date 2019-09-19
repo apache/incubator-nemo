@@ -240,7 +240,12 @@ public final class JobScaler {
       Collections.sort(copyInfos, new Comparator<ControlMessage.TaskStatInfo>() {
         @Override
         public int compare(ControlMessage.TaskStatInfo o1, ControlMessage.TaskStatInfo o2) {
-          return Integer.compare(o1.getNumKeys(), o2.getNumKeys());
+          final int cmp = Integer.compare(o1.getNumKeys(), o2.getNumKeys());
+          if (cmp == 0) {
+            return o1.getTaskId().compareTo(o2.getTaskId());
+          } else {
+            return cmp;
+          }
         }
       });
 
