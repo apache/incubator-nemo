@@ -84,8 +84,8 @@ public final class PartitionerProperty
    * Partitioning types.
    */
   public enum Type {
-    Hash,
-    Intact,
-    DedicatedKeyPerElement
+    HASH,
+    INTACT,
+    DEDICATED_KEY_PER_ELEMENT
   }
 }

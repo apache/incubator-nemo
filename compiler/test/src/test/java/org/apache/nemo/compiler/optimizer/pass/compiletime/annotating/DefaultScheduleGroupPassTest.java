@@ -171,7 +171,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testBranch() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass();
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateBranchDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Push);
+      = generateBranchDAG(CommunicationPatternProperty.Value.ONE_TO_ONE, DataFlowProperty.Value.PUSH);
     pass.apply(dag.left());
     dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
@@ -184,7 +184,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testBranchWhenMultipleInEdgeNotAllowed() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(false, false, false);
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateBranchDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Pull);
+      = generateBranchDAG(CommunicationPatternProperty.Value.ONE_TO_ONE, DataFlowProperty.Value.PULL);
     pass.apply(dag.left());
     dag.right().subList(0, 4).forEach(v -> assertScheduleGroup(0, v));
     dag.right().subList(4, 5).forEach(v -> assertScheduleGroup(1, v));
@@ -198,7 +198,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testBranchWithPush() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(false, false, false);
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateBranchDAG(CommunicationPatternProperty.Value.Shuffle, DataFlowProperty.Value.Push);
+      = generateBranchDAG(CommunicationPatternProperty.Value.SHUFFLE, DataFlowProperty.Value.PUSH);
     pass.apply(dag.left());
     dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
@@ -211,7 +211,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testBranchWithBroadcast() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(false, true, true);
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateBranchDAG(CommunicationPatternProperty.Value.BroadCast, DataFlowProperty.Value.Pull);
+      = generateBranchDAG(CommunicationPatternProperty.Value.BROADCAST, DataFlowProperty.Value.PULL);
     assertDifferentScheduleGroup(pass.apply(dag.left()).getVertices());
   }
 
@@ -223,7 +223,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testBranchWithShuffle() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(true, false, true);
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateBranchDAG(CommunicationPatternProperty.Value.Shuffle, DataFlowProperty.Value.Pull);
+      = generateBranchDAG(CommunicationPatternProperty.Value.SHUFFLE, DataFlowProperty.Value.PULL);
     assertDifferentScheduleGroup(pass.apply(dag.left()).getVertices());
   }
 
@@ -235,7 +235,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testJoin() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass();
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateJoinDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Pull);
+      = generateJoinDAG(CommunicationPatternProperty.Value.ONE_TO_ONE, DataFlowProperty.Value.PULL);
     pass.apply(dag.left());
     final int idxForFirstScheduleGroup = getScheduleGroup(dag.right().get(0));
     final int idxForSecondScheduleGroup = getScheduleGroup(dag.right().get(2));
@@ -252,7 +252,7 @@ public final class DefaultScheduleGroupPassTest {
   public void testJoinWithPush() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass();
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateJoinDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Push);
+      = generateJoinDAG(CommunicationPatternProperty.Value.ONE_TO_ONE, DataFlowProperty.Value.PUSH);
     pass.apply(dag.left());
     dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
@@ -265,9 +265,9 @@ public final class DefaultScheduleGroupPassTest {
   public void testJoinWithSinglePush() {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass();
     final Pair<IRDAG, List<IRVertex>> dag
-      = generateJoinDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Push);
+      = generateJoinDAG(CommunicationPatternProperty.Value.ONE_TO_ONE, DataFlowProperty.Value.PUSH);
     dag.left().getOutgoingEdgesOf(dag.right().get(1)).iterator().next()
-      .setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+      .setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
     pass.apply(dag.left());
     final int idxForFirstScheduleGroup = getScheduleGroup(dag.right().get(0));
     final int idxForSecondScheduleGroup = getScheduleGroup(dag.right().get(2));

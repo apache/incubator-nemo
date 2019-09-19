@@ -209,7 +209,7 @@ public final class IRDAGChecker {
     final NeighborChecker parallelismWithCommPattern = ((v, inEdges, outEdges) -> {
       // Just look at incoming (edges, as this checker will be applied on every vertex
       for (final IREdge inEdge : inEdges) {
-        if (CommunicationPatternProperty.Value.OneToOne
+        if (CommunicationPatternProperty.Value.ONE_TO_ONE
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           if (v.getPropertyValue(ParallelismProperty.class).isPresent()
             && inEdge.getSrc().getPropertyValue(ParallelismProperty.class).isPresent()
@@ -278,7 +278,7 @@ public final class IRDAGChecker {
   void addShuffleEdgeCheckers() {
     final NeighborChecker shuffleChecker = ((v, inEdges, outEdges) -> {
       for (final IREdge inEdge : inEdges) {
-        if (CommunicationPatternProperty.Value.Shuffle
+        if (CommunicationPatternProperty.Value.SHUFFLE
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           // Shuffle edges must have the following properties
           if (!inEdge.getPropertyValue(KeyExtractorProperty.class).isPresent()
@@ -290,7 +290,7 @@ public final class IRDAGChecker {
           // Non-shuffle edges must not have the following properties
           final Optional<Pair<PartitionerProperty.Type, Integer>> partitioner =
             inEdge.getPropertyValue(PartitionerProperty.class);
-          if (partitioner.isPresent() && partitioner.get().left().equals(PartitionerProperty.Type.Hash)) {
+          if (partitioner.isPresent() && partitioner.get().left().equals(PartitionerProperty.Type.HASH)) {
             return failure("Only shuffle can have the hash partitioner",
               inEdge, CommunicationPatternProperty.class, PartitionerProperty.class);
           }
@@ -413,12 +413,12 @@ public final class IRDAGChecker {
         return success();
       }
 
-      if (Optional.of(DataFlowProperty.Value.Pull).equals(edge.getPropertyValue(DataFlowProperty.class))) {
+      if (Optional.of(DataFlowProperty.Value.PULL).equals(edge.getPropertyValue(DataFlowProperty.class))) {
         final Optional<Integer> srcSG = edge.getSrc().getPropertyValue(ScheduleGroupProperty.class);
         final Optional<Integer> dstSG = edge.getDst().getPropertyValue(ScheduleGroupProperty.class);
         if (srcSG.isPresent() && dstSG.isPresent()) {
           if (srcSG.get().equals(dstSG.get())) {
-            return failure("Schedule group must split by PULL",
+            return failure("Schedule group must split by Pull",
               edge.getSrc(), ScheduleGroupProperty.class, edge.getDst(), ScheduleGroupProperty.class);
           }
         }

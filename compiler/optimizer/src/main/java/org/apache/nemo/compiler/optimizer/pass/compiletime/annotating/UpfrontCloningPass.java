@@ -46,7 +46,7 @@ public final class UpfrontCloningPass extends AnnotatingPass {
         .anyMatch(edge ->
           edge.getPropertyValue(CommunicationPatternProperty.class)
             .orElseThrow(() -> new IllegalStateException())
-            .equals(CommunicationPatternProperty.Value.Shuffle))
+            .equals(CommunicationPatternProperty.Value.SHUFFLE))
       )
       .forEach(vertex -> vertex.setProperty(
         ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always

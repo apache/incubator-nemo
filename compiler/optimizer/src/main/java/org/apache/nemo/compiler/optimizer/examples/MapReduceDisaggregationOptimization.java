@@ -49,7 +49,7 @@ public final class MapReduceDisaggregationOptimization {
    * @param args arguments.
    * @throws Exception Exceptions on the way.
    */
-  public static void main(final String[] args) throws Exception {
+  public static void main(final String[] args) {
     final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
     final IRVertex map = new OperatorVertex(new EmptyComponents.EmptyTransform("MapVertex"));
     final IRVertex reduce = new OperatorVertex(new EmptyComponents.EmptyTransform("ReduceVertex"));
@@ -60,10 +60,10 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map);
+    final IREdge edge1 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, map, reduce);
+    final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map, reduce);
     builder.connectVertices(edge2);
 
     final IRDAG dag = new IRDAG(builder.build());

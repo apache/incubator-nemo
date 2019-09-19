@@ -75,7 +75,7 @@ public final class PlanStateManagerTest {
       TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
-    assertEquals(planStateManager.getPlanId(), "TestPlan");
+    assertEquals("TestPlan", planStateManager.getPlanId());
 
     final List<Stage> stageList = physicalPlan.getStageDAG().getTopologicalSort();
 
@@ -89,10 +89,10 @@ public final class PlanStateManagerTest {
           assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
       });
-      taskIds.forEach(taskId -> assertEquals(planStateManager.getTaskState(taskId), TaskState.State.COMPLETE));
+      taskIds.forEach(taskId -> assertEquals(TaskState.State.COMPLETE, planStateManager.getTaskState(taskId)));
 
       if (stageIdx == stageList.size() - 1) {
-        assertEquals(planStateManager.getPlanState(), PlanState.State.COMPLETE);
+        assertEquals(PlanState.State.COMPLETE, planStateManager.getPlanState());
       }
     }
   }

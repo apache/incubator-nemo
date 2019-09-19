@@ -127,7 +127,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       }).collect(Collectors.toList());
 
       final List<IRVertex> pushNoCycleOutEdgeDsts = noCycleOutEdges.stream()
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
+        .filter(e -> DataFlowProperty.Value.PUSH.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .map(IREdge::getDst)
         .collect(Collectors.toList());
 

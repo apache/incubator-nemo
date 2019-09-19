@@ -73,20 +73,20 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
-      case Shuffle:
-        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-        map.put(PartitionerProperty.of(PartitionerProperty.Type.Hash));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+      case SHUFFLE:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
+        map.put(PartitionerProperty.of(PartitionerProperty.Type.HASH));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
         break;
-      case BroadCast:
-        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-        map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+      case BROADCAST:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
+        map.put(PartitionerProperty.of(PartitionerProperty.Type.INTACT));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
         break;
-      case OneToOne:
-        map.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
-        map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+      case ONE_TO_ONE:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
+        map.put(PartitionerProperty.of(PartitionerProperty.Type.INTACT));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
         break;
       default:
         throw new IllegalStateException(commPattern.toString());

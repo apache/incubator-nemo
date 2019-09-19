@@ -34,6 +34,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
    * FlattenTransform Constructor.
    */
   public FlattenTransform() {
+    // Nothing to initialize.
   }
 
   @Override
@@ -53,6 +54,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
+    // Do nothing in a SparkTransform.
   }
 
   @Override

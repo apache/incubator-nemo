@@ -63,5 +63,6 @@ public final class MapTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
+    // Nothing to do in a SparkTransform.
   }
 }

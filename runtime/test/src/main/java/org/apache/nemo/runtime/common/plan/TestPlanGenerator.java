@@ -183,7 +183,7 @@ public final class TestPlanGenerator {
     final IREdge e1 = EmptyComponents.newDummyShuffleEdge(v1, v2);
     dagBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v2, v3);
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v2, v3);
     dagBuilder.connectVertices(e2);
 
     return new IRDAG(dagBuilder.buildWithoutSourceSinkCheck());
