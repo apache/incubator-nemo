@@ -326,7 +326,7 @@ public final class JobLauncher {
                   .build())
                 .build());
 
-            } else if (decision.equals("o") || decision.equals("no")) {
+            } else if (decision.equals("o") || decision.equals("no") || decision.equals("op")) {
               final double offloadDivide = Double.valueOf(split[1]);
 
               if (split.length == 3) {
