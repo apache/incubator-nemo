@@ -97,6 +97,9 @@ enum MessageType {
 
     LocalExecutorAddressInfo = 29; // worker -> master
     GlobalExecutorAddressInfo = 30; // master -> worker
+
+    // Stat
+    TaskStatSignal = 31; // worker -> master
 }
 
 message Message {
@@ -132,6 +135,8 @@ message Message {
     optional GlobalRelayServerInfoMessage globalRelayServerInfoMsg = 30;
     optional LocalExecutorAddressInfoMessage localExecutorAddressInfoMsg = 31;
     optional GlobalExecutorAddressInfoMessage globalExecutorAddressInfoMsg = 32;
+
+    optional TaskStatMessage taskStatMsg = 33;
 }
 
 // Messages from Master to Executors
@@ -353,6 +358,17 @@ message ScalingDoneEntryMessage {
 message LocalScalingDoneMessage {
   required string executorId = 1;
   repeated string offloadedTasks = 2;
+}
+
+message TaskStatMessage {
+  required string executorId = 1;
+  repeated TaskStatInfo taskStats = 2;
+}
+
+message TaskStatInfo {
+  required string taskId = 1;
+  required int32 numKeys = 2;
+  required int64 computation = 3;
 }
 
 message GlobalScalingDoneMessage {

@@ -770,6 +770,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
+  public int getNumKeys() {
+    throw new RuntimeException("Not supported");
+  }
+
+  @Override
   public ExecutorThread getExecutorThread() {
     return executorThread;
   }

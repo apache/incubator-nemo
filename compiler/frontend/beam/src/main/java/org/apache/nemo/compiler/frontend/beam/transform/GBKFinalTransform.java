@@ -98,6 +98,10 @@ public final class GBKFinalTransform<K, InputT>
     this.keyAndWatermarkHoldMap = new HashMap<>();
   }
 
+  public int getNumKeys() {
+    return keyAndWatermarkHoldMap.size();
+  }
+
   /**
    * This creates a new DoFn that groups elements by key and window.
    * @param doFn original doFn.

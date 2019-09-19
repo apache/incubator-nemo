@@ -32,6 +32,8 @@ public final class TaskScheduledMap {
 
   private final TaskLocationMap taskLocationMap;
 
+  private final Map<String, Task> taskIdMap = new ConcurrentHashMap<>();
+
   @Inject
   private TaskScheduledMap(final ExecutorRegistry executorRegistry,
                            final TaskLocationMap taskLocationMap) {
@@ -44,6 +46,8 @@ public final class TaskScheduledMap {
   }
 
   public void addTask(final ExecutorRepresenter representer, final Task task) {
+
+    taskIdMap.put(task.getTaskId(), task);
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
     executorIdRepresentorMap.putIfAbsent(representer.getExecutorId(), representer);
 
@@ -100,6 +104,10 @@ public final class TaskScheduledMap {
 
   public ConcurrentMap<ExecutorRepresenter, Map<String, List<Task>>> getScheduledStageTasks() {
     return scheduledStageTasks;
+  }
+
+  public Map<String, Task> getTaskIdMap() {
+    return taskIdMap;
   }
 
   public Map<String, List<Task>> getScheduledStageTasks(final ExecutorRepresenter representer) {

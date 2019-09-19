@@ -80,6 +80,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
+
 
 /**
  * Executor.
@@ -222,7 +224,29 @@ public final class Executor {
       }
       */
 
-    }, 1, 1, TimeUnit.SECONDS);
+      // Send task stats
+      final Set<TaskExecutor> taskExecutors = taskExecutorMapWrapper.getTaskExecutorMap().keySet();
+
+      final List<ControlMessage.TaskStatInfo> taskStatInfos = taskExecutors.stream().map(taskExecutor -> {
+        return ControlMessage.TaskStatInfo.newBuilder()
+          .setNumKeys(taskExecutor.getNumKeys())
+          .setComputation(0)
+          .setTaskId(taskExecutor.getId())
+          .build();
+      }).collect(Collectors.toList());
+
+      persistentConnectionToMasterMap.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.TaskStatSignal)
+          .setTaskStatMsg(ControlMessage.TaskStatMessage.newBuilder()
+            .setExecutorId(executorId)
+            .addAllTaskStats(taskStatInfos)
+            .build())
+          .build());
+
+    }, 2, 2, TimeUnit.SECONDS);
 
 
     // relayServer address/port 보내기!!

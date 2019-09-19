@@ -14,10 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +39,8 @@ public final class JobScaler {
 
   private final AtomicInteger scalingExecutorCnt = new AtomicInteger(0);
 
+  private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -50,6 +49,7 @@ public final class JobScaler {
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
     this.prevScalingCountMap = new HashMap<>();
+    this.executorTaskStatMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
   }
@@ -70,9 +70,9 @@ public final class JobScaler {
 
     final int query = msg.hasQuery() ? msg.getQuery() : 0;
     final List<Double> ratioList = msg.getStageRatioList();
-    scalingOutToWorkers(divide, ratioList);
+    //scalingOutToWorkers(divide, ratioList);
+    scalingOutBasedOnKeys(divide);
     isScaling.set(false);
-
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
@@ -217,6 +217,73 @@ public final class JobScaler {
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(builder.build())
+            .build());
+      });
+    }
+  }
+
+  private void scalingOutBasedOnKeys(final double divide) {
+    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+
+      workerOffloadTaskMap.put(representer, new HashMap<>());
+
+      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+
+      final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
+
+      // sort by keys
+      Collections.sort(taskStatInfos, new Comparator<ControlMessage.TaskStatInfo>() {
+        @Override
+        public int compare(ControlMessage.TaskStatInfo o1, ControlMessage.TaskStatInfo o2) {
+          return Integer.compare(o1.getNumKeys(), o2.getNumKeys());
+        }
+      });
+
+      final int countToOffload = (int) (taskStatInfos.size() - taskStatInfos.size() / divide);
+
+      int offloadedCnt = 0;
+
+      for (final ControlMessage.TaskStatInfo taskStatInfo : taskStatInfos) {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskStatInfo.getTaskId());
+        offloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
+        final List<String> offloadTask = offloadTaskMap.get(stageId);
+
+        if (offloadedCnt < countToOffload) {
+          final TaskLoc loc = taskLocationMap.locationMap.get(taskStatInfo.getTaskId());
+          LOG.info("Offloading {}, key {}, Executor {}", taskStatInfo.getTaskId(), taskStatInfo.getNumKeys(), representer.getExecutorId());
+
+          if (loc == VM) {
+            offloadTask.add(taskStatInfo.getTaskId());
+            taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
+            offloadedCnt += 1;
+          }
+        }
+      }
+    }
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
+    for (final Map.Entry<ExecutorRepresenter,
+      Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
+      scalingExecutorCnt.getAndIncrement();
+
+      final ExecutorRepresenter representer = entry.getKey();
+      final Map<String, List<String>> offloadTaskMap = entry.getValue();
+
+      // scaling out message
+      LOG.info("Send scaling out message {} to {}", entry.getValue(),
+        representer.getExecutorId());
+
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
             .build());
       });
     }
@@ -387,7 +454,7 @@ public final class JobScaler {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case LocalScalingReadyDone:
+        case LocalScalingReadyDone: {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();
 
@@ -406,6 +473,16 @@ public final class JobScaler {
           }
 
           break;
+        }
+        case TaskStatSignal: {
+          final ControlMessage.TaskStatMessage taskStatMessage = message.getTaskStatMsg();
+          final String executorId = taskStatMessage.getExecutorId();
+          LOG.info("Receive taskstatSignal from {}", executorId);
+          final List<ControlMessage.TaskStatInfo> taskStatInfos = taskStatMessage.getTaskStatsList();
+          final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+          executorTaskStatMap.put(executorRepresenter, taskStatInfos);
+          break;
+        }
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }

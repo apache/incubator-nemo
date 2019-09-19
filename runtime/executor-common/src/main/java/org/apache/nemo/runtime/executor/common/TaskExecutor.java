@@ -54,6 +54,8 @@ public interface TaskExecutor extends AutoCloseable {
     // do nothing
   };
 
+  public int getNumKeys();
+
   ExecutorThread getExecutorThread();
 
   boolean isSource();

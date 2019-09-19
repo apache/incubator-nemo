@@ -37,6 +37,7 @@ import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -178,6 +179,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final ExecutorThread executorThread;
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
+
+  private GBKFinalTransform gbkFinalTransform;
 
   /**
    * Constructor.
@@ -330,6 +333,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     executorThread.queue.add(() -> {
       offloader.get().callTaskOffloadingDone();
     });
+  }
+
+  @Override
+  public int getNumKeys() {
+    if (isStateless) {
+      return 0;
+    } else {
+      return gbkFinalTransform.getNumKeys();
+    }
   }
 
   @Override
@@ -539,6 +551,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       if (childVertex.isStateful) {
         isStateless = false;
+        if (childVertex instanceof OperatorVertex) {
+          final OperatorVertex ov = (OperatorVertex) childVertex;
+          gbkFinalTransform = (GBKFinalTransform) ov.getTransform();
+          LOG.info("Set GBK final transform");
+        }
       }
 
       // FOR OFFLOADING
