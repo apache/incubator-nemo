@@ -67,8 +67,8 @@ public class IRDAGTest {
     firstOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("first"));
     secondOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("second"));
 
-    oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, sourceVertex, firstOperatorVertex);
-    shuffleEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, firstOperatorVertex, secondOperatorVertex);
+    oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, sourceVertex, firstOperatorVertex);
+    shuffleEdge = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, firstOperatorVertex, secondOperatorVertex);
 
     // To pass the key-related checkers
     shuffleEdge.setProperty(KeyDecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
@@ -148,7 +148,7 @@ public class IRDAGTest {
   @Test
   public void testPartitionerNonShuffle() {
     // non-shuffle - fail
-    oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2));
+    oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH, 2));
     mustFail();
   }
 
@@ -197,14 +197,14 @@ public class IRDAGTest {
   public void testPartitionWriteAndRead() {
     firstOperatorVertex.setProperty(ParallelismProperty.of(1));
     secondOperatorVertex.setProperty(ParallelismProperty.of(2));
-    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 3));
+    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH, 3));
     shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
       HashRange.of(0, 2),
       HashRange.of(2, 3)))));
     mustPass();
 
     // This is incompatible with PartitionSet
-    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2));
+    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH, 2));
     mustFail();
 
     shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
@@ -215,7 +215,7 @@ public class IRDAGTest {
 
   @Test
   public void testCompressionSymmetry() {
-    oneToOneEdge.setProperty(CompressionProperty.of(CompressionProperty.Value.Gzip));
+    oneToOneEdge.setProperty(CompressionProperty.of(CompressionProperty.Value.GZIP));
     oneToOneEdge.setProperty(DecompressionProperty.of(CompressionProperty.Value.LZ4)); // not symmetric - failure
     mustFail();
   }
@@ -231,8 +231,8 @@ public class IRDAGTest {
   @Test
   public void testScheduleGroupPull() {
     sourceVertex.setProperty(ScheduleGroupProperty.of(1));
-    oneToOneEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-    firstOperatorVertex.setProperty(ScheduleGroupProperty.of(1)); // not split by PULL - failure
+    oneToOneEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
+    firstOperatorVertex.setProperty(ScheduleGroupProperty.of(1)); // not split by Pull - failure
     mustFail();
   }
 
@@ -437,26 +437,26 @@ public class IRDAGTest {
 
   private DataFlowProperty randomDFP() {
     return random.nextBoolean()
-      ? DataFlowProperty.of(DataFlowProperty.Value.Pull)
-      : DataFlowProperty.of(DataFlowProperty.Value.Push);
+      ? DataFlowProperty.of(DataFlowProperty.Value.PULL)
+      : DataFlowProperty.of(DataFlowProperty.Value.PUSH);
   }
 
   private DataPersistenceProperty randomDPP() {
     return random.nextBoolean()
-      ? DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep)
-      : DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard);
+      ? DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP)
+      : DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD);
   }
 
   private DataStoreProperty randomDSP() {
     switch (random.nextInt(4)) {
       case 0:
-        return DataStoreProperty.of(DataStoreProperty.Value.MemoryStore);
+        return DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE);
       case 1:
-        return DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore);
+        return DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE);
       case 2:
-        return DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore);
+        return DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE);
       case 3:
-        return DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore);
+        return DataStoreProperty.of(DataStoreProperty.Value.GLUSTER_FILE_STORE);
       default:
         throw new IllegalStateException();
     }

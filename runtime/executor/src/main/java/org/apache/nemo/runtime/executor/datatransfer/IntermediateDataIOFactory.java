@@ -79,6 +79,6 @@ public final class IntermediateDataIOFactory {
 
   private boolean isPipe(final RuntimeEdge runtimeEdge) {
     final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.Pipe);
+    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.PIPE);
   }
 }

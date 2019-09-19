@@ -149,7 +149,7 @@ public final class MetricStore {
     T metric = (T) metricMap.computeIfAbsent(metricClass, k -> new HashMap<>()).get(id);
     if (metric == null) {
       try {
-        metric = metricClass.getConstructor(new Class[]{String.class}).newInstance(id);
+        metric = metricClass.getConstructor(String.class).newInstance(id);
         putMetric(metric);
       } catch (final Exception e) {
         throw new MetricException(e);

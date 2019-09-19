@@ -65,7 +65,7 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
       edge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.Shuffle));
+        .equals(CommunicationPatternProperty.Value.SHUFFLE));
   }
 
   /**
@@ -76,7 +76,7 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
    */
   private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
-      .allMatch(edge -> CommunicationPatternProperty.Value.OneToOne.equals(
+      .allMatch(edge -> CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
         edge.getPropertyValue(CommunicationPatternProperty.class).get())
         && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
         ResourcePriorityProperty.RESERVED));

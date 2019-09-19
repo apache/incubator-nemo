@@ -41,7 +41,7 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> {
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
-        if (CommunicationPatternProperty.Value.Shuffle
+        if (CommunicationPatternProperty.Value.SHUFFLE
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           dag.insert(new RelayVertex(), edge);
         }

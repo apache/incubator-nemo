@@ -35,7 +35,7 @@ public final class LambdaPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
-      vertex.setPropertyPermanently(ResourceLambdaProperty.of(ResourceLambdaProperty.Value.On));
+      vertex.setPropertyPermanently(ResourceLambdaProperty.of(ResourceLambdaProperty.Value.ON));
     });
     return dag;
   }

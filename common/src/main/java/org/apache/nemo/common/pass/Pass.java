@@ -33,7 +33,7 @@ public abstract class Pass implements Serializable {
    * Default constructor.
    */
   public Pass() {
-    this((dag) -> true);
+    this(dag -> true);
   }
 
   /**

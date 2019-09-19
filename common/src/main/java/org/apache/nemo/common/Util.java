@@ -144,7 +144,7 @@ public final class Util {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
 
-    if (commPattern.equals(CommunicationPatternProperty.Value.Shuffle)) {
+    if (commPattern.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
         if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
           clone.setProperty(PartitionerProperty.of(p.left()));
@@ -177,7 +177,7 @@ public final class Util {
    * @return the control edge.
    */
   public static IREdge createControlEdge(final IRVertex src, final IRVertex dst) {
-    final IREdge controlEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, src, dst);
+    final IREdge controlEdge = new IREdge(CommunicationPatternProperty.Value.BROADCAST, src, dst);
     controlEdge.setPropertyPermanently(AdditionalOutputTagProperty.of(CONTROL_EDGE_TAG));
     return controlEdge;
   }

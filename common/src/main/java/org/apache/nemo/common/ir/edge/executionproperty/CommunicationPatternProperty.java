@@ -50,8 +50,8 @@ public final class CommunicationPatternProperty
    * Possible values of DataCommunicationPattern ExecutionProperty.
    */
   public enum Value {
-    OneToOne,
-    BroadCast,
-    Shuffle
+    ONE_TO_ONE,
+    BROADCAST,
+    SHUFFLE
   }
 }
