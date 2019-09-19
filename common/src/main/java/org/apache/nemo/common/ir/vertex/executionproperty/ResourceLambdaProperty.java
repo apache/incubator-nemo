@@ -47,7 +47,7 @@ public final class ResourceLambdaProperty extends VertexExecutionProperty<Resour
    * Possible values of DataStore ExecutionProperty.
    */
   public enum Value {
-    On,
-    Off,
+    ON,
+    OFF,
   }
 }

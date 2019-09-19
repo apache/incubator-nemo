@@ -22,6 +22,7 @@ import org.apache.nemo.common.Pair;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 
 /**
  * An EncoderFactory for {@link Pair}. Reference: KvCoder in BEAM.
@@ -29,7 +30,8 @@ import java.io.OutputStream;
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
-public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>> {
+public final class PairEncoderFactory<A extends Serializable, B extends Serializable>
+  implements EncoderFactory<Pair<A, B>> {
   private final EncoderFactory<A> leftEncoderFactory;
   private final EncoderFactory<B> rightEncoderFactory;
 
@@ -54,8 +56,8 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
    * @param <B>                 type of the right element.
    * @return the new PairEncoderFactory.
    */
-  public static <A, B> PairEncoderFactory<A, B> of(final EncoderFactory<A> leftEncoderFactory,
-                                                   final EncoderFactory<B> rightEncoderFactory) {
+  public static <A extends Serializable, B extends Serializable> PairEncoderFactory<A, B>
+  of(final EncoderFactory<A> leftEncoderFactory, final EncoderFactory<B> rightEncoderFactory) {
     return new PairEncoderFactory<>(leftEncoderFactory, rightEncoderFactory);
   }
 
@@ -81,7 +83,7 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
    * @param <T1> type for the left coder.
    * @param <T2> type for the right coder.
    */
-  private final class PairEncoder<T1, T2> implements Encoder<Pair<T1, T2>> {
+  private final class PairEncoder<T1 extends Serializable, T2 extends Serializable> implements Encoder<Pair<T1, T2>> {
 
     private final Encoder<T1> leftEncoder;
     private final Encoder<T2> rightEncoder;

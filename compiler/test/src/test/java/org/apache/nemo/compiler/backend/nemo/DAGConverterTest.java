@@ -86,21 +86,21 @@ public final class DAGConverterTest {
     final Stage stage1 = sortedDAGOfStages.get(0);
     final Stage stage2 = sortedDAGOfStages.get(1);
 
-    assertEquals(DAGOfStages.getVertices().size(), 2);
-    assertEquals(DAGOfStages.getIncomingEdgesOf(stage1).size(), 0);
-    assertEquals(DAGOfStages.getIncomingEdgesOf(stage2).size(), 1);
-    assertEquals(DAGOfStages.getOutgoingEdgesOf(stage1).size(), 1);
-    assertEquals(DAGOfStages.getOutgoingEdgesOf(stage2).size(), 0);
+    assertEquals(2, DAGOfStages.getVertices().size());
+    assertEquals(0, DAGOfStages.getIncomingEdgesOf(stage1).size());
+    assertEquals(1, DAGOfStages.getIncomingEdgesOf(stage2).size());
+    assertEquals(1, DAGOfStages.getOutgoingEdgesOf(stage1).size());
+    assertEquals(0, DAGOfStages.getOutgoingEdgesOf(stage2).size());
 
     // Test Physical DAG
     final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
     final Stage physicalStage1 = sortedPhysicalDAG.get(0);
     final Stage physicalStage2 = sortedPhysicalDAG.get(1);
     assertEquals(physicalDAG.getVertices().size(), 2);
-    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage1).size(), 0);
-    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage2).size(), 1);
-    assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
-    assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
+    assertEquals(0, physicalDAG.getIncomingEdgesOf(physicalStage1).size());
+    assertEquals(1, physicalDAG.getIncomingEdgesOf(physicalStage2).size());
+    assertEquals(1, physicalDAG.getOutgoingEdgesOf(physicalStage1).size());
+    assertEquals(0, physicalDAG.getOutgoingEdgesOf(physicalStage2).size());
 
     assertEquals(3, physicalStage1.getTaskIndices().size());
     assertEquals(2, physicalStage2.getTaskIndices().size());
@@ -149,28 +149,28 @@ public final class DAGConverterTest {
     irDAGBuilder.addVertex(v6);
     irDAGBuilder.addVertex(v8);
 
-    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v2);
-    e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v1, v2);
+    e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
 
-    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v3);
-    e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v1, v3);
+    e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
 
     final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
-    e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
 
     final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v3, v5);
-    e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
 
-    final IREdge e5 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v6);
-    e5.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-    e5.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    final IREdge e5 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v4, v6);
+    e5.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
+    e5.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
 
-    final IREdge e6 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v8);
-    e6.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-    e6.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    final IREdge e6 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v4, v8);
+    e6.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
+    e6.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
   }
 }

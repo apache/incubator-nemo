@@ -61,9 +61,9 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           // CASE #1: To a stream vertex
 
           // Data transfers
-          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
-          edge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
-          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore));
+          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
+          edge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD));
+          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE));
 
           // Resource slots
           edge.getDst().setPropertyPermanently(ResourceSlotProperty.of(false));
@@ -71,8 +71,8 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           // CASE #2: From a stream vertex
 
           // Data transfers
-          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.PULL));
+          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
         }
       }));
     return dag;

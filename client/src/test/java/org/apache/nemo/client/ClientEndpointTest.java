@@ -52,10 +52,10 @@ public class ClientEndpointTest {
     final StateTranslator stateTranslator = mock(StateTranslator.class);
     when(stateTranslator.translateState(any())).then(state -> state.getArgument(0));
     final ClientEndpoint clientEndpoint = new TestClientEndpoint(stateTranslator);
-    assertEquals(clientEndpoint.getPlanState(), PlanState.State.READY);
+    assertEquals(PlanState.State.READY, clientEndpoint.getPlanState());
 
     // Wait for connection but not connected.
-    assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.READY);
+    assertEquals(PlanState.State.READY, clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS));
 
     // Create a PlanStateManager of a dag and create a DriverEndpoint with it.
     final PhysicalPlan physicalPlan =
@@ -68,10 +68,10 @@ public class ClientEndpointTest {
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 
     // Check the current state.
-    assertEquals(clientEndpoint.getPlanState(), PlanState.State.EXECUTING);
+    assertEquals(PlanState.State.EXECUTING, clientEndpoint.getPlanState());
 
     // Wait for the job to finish but not finished
-    assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.EXECUTING);
+    assertEquals(PlanState.State.EXECUTING, clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS));
 
     // Check finish.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()

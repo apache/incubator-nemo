@@ -42,7 +42,7 @@ public final class MultinomialLogisticRegressionITCase {
     builder = new ArgBuilder();
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void test() throws Exception {
     final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_mlr";
     final String numFeatures = "100";

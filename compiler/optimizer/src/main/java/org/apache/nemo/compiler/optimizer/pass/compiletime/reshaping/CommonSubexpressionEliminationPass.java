@@ -146,7 +146,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
                                            final DAG<IRVertex, IREdge> dag,
                                            final Map<OperatorVertex, Set<IREdge>> inEdges,
                                            final Map<OperatorVertex, Set<IREdge>> outEdges) {
-    if (ovs.size() > 0) {
+    if (!ovs.isEmpty()) {
       final OperatorVertex operatorVertexToUse = ovs.get(0);
       final List<OperatorVertex> dependencyFailedOperatorVertices = new ArrayList<>();
 

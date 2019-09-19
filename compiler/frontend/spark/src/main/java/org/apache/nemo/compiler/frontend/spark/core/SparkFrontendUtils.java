@@ -113,7 +113,7 @@ public final class SparkFrontendUtils {
     // launch DAG
     JobLauncher.launchDAG(new IRDAG(builder.build()), SparkBroadcastVariables.getAll(), "");
 
-    return (List<T>) JobLauncher.getCollectedData();
+    return JobLauncher.getCollectedData();
   }
 
   /**
@@ -128,9 +128,9 @@ public final class SparkFrontendUtils {
     if (dst instanceof OperatorVertex
       && (((OperatorVertex) dst).getTransform() instanceof ReduceByKeyTransform
       || ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform)) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.SHUFFLE;
     } else {
-      return CommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.ONE_TO_ONE;
     }
   }
 

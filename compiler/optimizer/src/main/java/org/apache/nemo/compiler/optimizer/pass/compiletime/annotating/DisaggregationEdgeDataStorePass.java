@@ -44,7 +44,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge ->
-        edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore)));
+        edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.GLUSTER_FILE_STORE)));
     });
     return dag;
   }
