@@ -288,20 +288,20 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
           // Edge from the relayVertex.
-          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
+          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, vertexToInsert, v);
           fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
           fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
           // Annotations for efficient data transfers - toSV
           toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
           toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
-          toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
+          toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.NONE));
 
           // Annotations for efficient data transfers - fromSV
           fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
-          fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
+          fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.NONE));
           fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
-          fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
+          fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DEDICATED_KEY_PER_ELEMENT));
 
           // Track the new edges.
           builder.connectVertices(toSV);
@@ -393,7 +393,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
 
       final IREdge clone = Util.cloneEdge(
-        CommunicationPatternProperty.Value.OneToOne, edgeToClone, edge.getSrc(), triggerToAdd);
+        CommunicationPatternProperty.Value.ONE_TO_ONE, edgeToClone, edge.getSrc(), triggerToAdd);
       builder.connectVertices(clone);
     }
 
@@ -584,10 +584,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                                          final IRVertex agg,
                                          final EncoderProperty encoder,
                                          final DecoderProperty decoder) {
-    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, trigger, agg);
-    newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
-    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, trigger, agg);
+    newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP));
+    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
     newEdge.setPropertyPermanently(KeyExtractorProperty.of(new PairKeyExtractor()));

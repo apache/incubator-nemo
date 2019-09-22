@@ -251,10 +251,10 @@ public final class BlockManagerWorker {
     LOG.info("CommitBlock: {}", blockId);
 
     switch (persistence) {
-      case Discard:
+      case DISCARD:
         blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
         break;
-      case Keep:
+      case KEEP:
         // Do nothing but just keep the data.
         break;
       default:
@@ -269,7 +269,7 @@ public final class BlockManagerWorker {
         .setBlockId(blockId)
         .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
-    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+    if (DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       blockStateChangedMsgBuilder.setLocation(executorId);
@@ -303,7 +303,7 @@ public final class BlockManagerWorker {
           .setBlockId(blockId)
           .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
-      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+      if (DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         blockStateChangedMsgBuilder.setLocation(executorId);
@@ -345,8 +345,8 @@ public final class BlockManagerWorker {
         try {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
-            if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-              || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+            if (DataStoreProperty.Value.LOCAL_FILE_STORE.equals(blockStore)
+              || DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -476,13 +476,13 @@ public final class BlockManagerWorker {
    */
   private BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
-      case MemoryStore:
+      case MEMORY_STORE:
         return memoryStore;
-      case SerializedMemoryStore:
+      case SERIALIZED_MEMORY_STORE:
         return serializedMemoryStore;
-      case LocalFileStore:
+      case LOCAL_FILE_STORE:
         return localFileStore;
-      case GlusterFileStore:
+      case GLUSTER_FILE_STORE:
         return remoteFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
@@ -499,13 +499,13 @@ public final class BlockManagerWorker {
   private static ControlMessage.BlockStore convertBlockStore(
     final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
-      case MemoryStore:
+      case MEMORY_STORE:
         return ControlMessage.BlockStore.MEMORY;
-      case SerializedMemoryStore:
+      case SERIALIZED_MEMORY_STORE:
         return ControlMessage.BlockStore.SER_MEMORY;
-      case LocalFileStore:
+      case LOCAL_FILE_STORE:
         return ControlMessage.BlockStore.LOCAL_FILE;
-      case GlusterFileStore:
+      case GLUSTER_FILE_STORE:
         return ControlMessage.BlockStore.REMOTE_FILE;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
@@ -523,13 +523,13 @@ public final class BlockManagerWorker {
     final ControlMessage.BlockStore blockStoreType) {
     switch (blockStoreType) {
       case MEMORY:
-        return DataStoreProperty.Value.MemoryStore;
+        return DataStoreProperty.Value.MEMORY_STORE;
       case SER_MEMORY:
-        return DataStoreProperty.Value.SerializedMemoryStore;
+        return DataStoreProperty.Value.SERIALIZED_MEMORY_STORE;
       case LOCAL_FILE:
-        return DataStoreProperty.Value.LocalFileStore;
+        return DataStoreProperty.Value.LOCAL_FILE_STORE;
       case REMOTE_FILE:
-        return DataStoreProperty.Value.GlusterFileStore;
+        return DataStoreProperty.Value.GLUSTER_FILE_STORE;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }

@@ -99,7 +99,7 @@ public final class MultinomialLogisticRegression {
      * @param input input line.
      * @return the parsed key-value pair.
      */
-    private KV<Integer, Pair<List<Integer>, List<Double>>> parseLine(final String input) {
+    private KV<Integer, Pair<ArrayList<Integer>, ArrayList<Double>>> parseLine(final String input) {
       final String text = input.trim();
       if (text.startsWith("#") || text.length() == 0) { // comments or newline
         return null;
@@ -108,8 +108,8 @@ public final class MultinomialLogisticRegression {
       final String[] split = text.split("\\s+|:");
       final Integer output = Integer.parseInt(split[0]);
 
-      final List<Integer> indices = new ArrayList<>(split.length / 2);
-      final List<Double> data = new ArrayList<>(split.length / 2);
+      final ArrayList<Integer> indices = new ArrayList<>(split.length / 2);
+      final ArrayList<Double> data = new ArrayList<>(split.length / 2);
       for (Integer index = 0; index < split.length / 2; ++index) {
         indices.add(index, Integer.parseInt(split[2 * index + 1]) - 1);
         data.add(index, Double.parseDouble(split[2 * index + 2]));
@@ -129,7 +129,7 @@ public final class MultinomialLogisticRegression {
       // TODO #274: Use bundles properly in Beam MultinomialLogisticRegression
       savedContextHack = c;
 
-      final KV<Integer, Pair<List<Integer>, List<Double>>> data = parseLine(c.element());
+      final KV<Integer, Pair<ArrayList<Integer>, ArrayList<Double>>> data = parseLine(c.element());
       if (data == null) { // comments and newlines
         return;
       }
@@ -182,7 +182,7 @@ public final class MultinomialLogisticRegression {
       if (maxMargin > 0) {
         for (Integer i = 0; i < numClasses - 1; i++) {
           margins.set(i, margins.get(i) - maxMargin);
-          if (i == maxMarginIndex) {
+          if (i.equals(maxMarginIndex)) {
             sum += Math.exp(-maxMargin);
           } else {
             sum += Math.exp(margins.get(i));

@@ -47,8 +47,8 @@ public final class ShuffleEdgePushPass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
-            .equals(CommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+            .equals(CommunicationPatternProperty.Value.SHUFFLE)) {
+            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
           }
         });
       }

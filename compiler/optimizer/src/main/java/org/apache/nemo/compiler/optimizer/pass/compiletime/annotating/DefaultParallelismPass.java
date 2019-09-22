@@ -80,12 +80,12 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism
           final Integer o2oParallelism = inEdges.stream()
-            .filter(edge -> CommunicationPatternProperty.Value.OneToOne
+            .filter(edge -> CommunicationPatternProperty.Value.ONE_TO_ONE
               .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
             .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
             .max().orElse(1);
           final Integer shuffleParallelism = inEdges.stream()
-            .filter(edge -> CommunicationPatternProperty.Value.Shuffle
+            .filter(edge -> CommunicationPatternProperty.Value.SHUFFLE
               .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
             .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
             .map(i -> i / shuffleDecreaseFactor)
@@ -118,7 +118,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
                                                       final Integer parallelism) {
     final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
     final Integer ancestorParallelism = inEdges.stream()
-      .filter(edge -> CommunicationPatternProperty.Value.OneToOne
+      .filter(edge -> CommunicationPatternProperty.Value.ONE_TO_ONE
         .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
       .map(IREdge::getSrc)
       .mapToInt(inVertex -> recursivelySynchronizeO2OParallelism(dag, inVertex, parallelism))

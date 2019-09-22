@@ -68,11 +68,11 @@ public final class BlockInputReader implements InputReader {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
-    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
+    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(readOneToOne());
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)) {
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
       return readBroadcast();
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       return readDataInRange();
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));

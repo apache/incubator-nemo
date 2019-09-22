@@ -464,8 +464,11 @@ public final class PlanStateManager {
           while (!isPlanDone()) {
             planFinishedCondition.await();
           }
-        } else if (!planFinishedCondition.await(timeout, unit)) {
-          LOG.warn("Timeout during waiting the finish of Plan ID {}", planId);
+        } else {
+          while (!planFinishedCondition.await(timeout, unit)) {
+            LOG.warn("Timeout during waiting the finish of Plan ID {}", planId);
+            Thread.currentThread().interrupt();
+          }
         }
       }
     } catch (final InterruptedException e) {

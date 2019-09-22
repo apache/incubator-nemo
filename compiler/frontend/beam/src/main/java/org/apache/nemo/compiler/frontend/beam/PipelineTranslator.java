@@ -384,7 +384,7 @@ final class PipelineTranslator {
     }
     final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
     ctx.addVertex(finalCombine);
-    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, partialCombine, finalCombine);
     ctx.addEdge(
       edge,
       KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),

@@ -546,14 +546,14 @@ public final class TaskExecutorTest {
                                            final IRVertex dst,
                                            final String runtimeIREdgeId) {
     ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
-    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 
   }
 
   private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
     return new StageEdge("SEdge" + RUNTIME_EDGE_ID.getAndIncrement(),
-      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
+      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.ONE_TO_ONE),
       irVertex,
       new OperatorVertex(new StreamTransform()),
       mock(Stage.class),
@@ -562,7 +562,7 @@ public final class TaskExecutorTest {
 
   private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
     final ExecutionPropertyMap executionPropertyMap =
-      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
+      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.ONE_TO_ONE);
     return new StageEdge("runtime outgoing edge id",
       executionPropertyMap,
       new OperatorVertex(new StreamTransform()),
