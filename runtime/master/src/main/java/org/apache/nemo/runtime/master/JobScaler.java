@@ -41,6 +41,11 @@ public final class JobScaler {
 
   private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
 
+  private final AtomicBoolean isScalingIn = new AtomicBoolean(false);
+  private final AtomicInteger isScalingInCnt = new AtomicInteger(0);
+
+  private double prevDivide;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -54,10 +59,27 @@ public final class JobScaler {
     this.executorService = Executors.newCachedThreadPool();
   }
 
+  public void proactive(final ControlMessage.ScalingMessage msg) {
+    scalingIn();
+    //TODO: waiting scaling in
+    LOG.info("Waiting isScalingIn");
+    while (isScalingIn.get()) {
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    LOG.info("Waiting done isScalingIn");
+    scalingOutBasedOnKeys(prevDivide);
+  }
+
   public void scalingOut(final ControlMessage.ScalingMessage msg) {
 
     final double divide = msg.getDivide();
     final int prevScalingCount = sumCount();
+
+    prevDivide = divide;
 
     if (prevScalingCount > 0) {
       throw new RuntimeException("Scaling count should be equal to 0 when scaling out... but "
@@ -407,6 +429,13 @@ public final class JobScaler {
 
   public void scalingIn() {
 
+    if (isScalingIn.get() || isScalingInCnt.get() > 0){
+      throw new RuntimeException("Scaling in true..." + isScalingIn + ", " + isScalingInCnt);
+    }
+
+    isScalingIn.set(true);
+    isScalingInCnt.set(taskScheduledMap.getScheduledStageTasks().keySet().size());
+
     final Map<String, List<String>> unloadTaskMap = new HashMap<>();
 
     for (final String key : taskLocationMap.locationMap.keySet()) {
@@ -469,18 +498,34 @@ public final class JobScaler {
         case LocalScalingReadyDone: {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();
+          final int type = localScalingDoneMessage.getType();
 
-          final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
-          LOG.info("Receive LocalScalingDone for {}", executorId);
+          switch (type) {
+            case 1: {
+              final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+              LOG.info("Receive LocalScalingDone for {}", executorId);
 
-          for (final String offloadedTask : localScalingDoneMessage.getOffloadedTasksList()) {
-            taskLocationMap.locationMap.put(offloadedTask, SF);
-          }
+              for (final String offloadedTask : localScalingDoneMessage.getOffloadedTasksList()) {
+                taskLocationMap.locationMap.put(offloadedTask, SF);
+              }
 
-          final int cnt = scalingExecutorCnt.decrementAndGet();
-          if (cnt == 0) {
-            if (isScaling.compareAndSet(true, false)) {
-              sendScalingOutDoneToAllWorkers();
+              final int cnt = scalingExecutorCnt.decrementAndGet();
+              if (cnt == 0) {
+                if (isScaling.compareAndSet(true, false)) {
+                  sendScalingOutDoneToAllWorkers();
+                }
+              }
+            }
+            case 2: {
+              // Scaling in done
+              // this is useful for proactive migration
+
+              LOG.info("Scaling in done signal get {}", executorId);
+              if (isScalingInCnt.decrementAndGet() == 0) {
+                isScalingIn.set(false);
+              }
+
+              break;
             }
           }
 

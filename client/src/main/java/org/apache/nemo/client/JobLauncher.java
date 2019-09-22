@@ -356,6 +356,14 @@ public final class JobLauncher {
                   .setDecision(decision)
                   .build())
                 .build());
+            } else if (decision.equals("pa")) {
+              // Proactive migration
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .build())
+                .build());
             } else {
               throw new RuntimeException("Invalid line: " + lastLine);
             }

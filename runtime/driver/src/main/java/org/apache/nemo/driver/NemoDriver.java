@@ -138,9 +138,12 @@ public final class NemoDriver {
         LOG.info("Receive scaling decision {}", decision);
 
         if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
+          // Op: priority offloading
           jobScaler.scalingOut(message.getScalingMsg());
         } else if (decision.equals("i")) {
           jobScaler.scalingIn();
+        } else if (decision.equals("pa")) {
+          jobScaler.proactive(message.getScalingMsg());
         } else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }

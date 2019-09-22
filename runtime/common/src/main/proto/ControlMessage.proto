@@ -100,6 +100,7 @@ enum MessageType {
 
     // Stat
     TaskStatSignal = 31; // worker -> master
+
 }
 
 message Message {
@@ -357,7 +358,8 @@ message ScalingDoneEntryMessage {
 
 message LocalScalingDoneMessage {
   required string executorId = 1;
-  repeated string offloadedTasks = 2;
+  required int32 type = 2;
+  repeated string offloadedTasks = 3;
 }
 
 message TaskStatMessage {

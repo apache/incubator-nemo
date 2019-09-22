@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -250,8 +251,16 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     // scale in
     LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
 
+    final CountDownLatch countDownLatch = new CountDownLatch(
+      offloadedTasksPerStage.stream()
+      .map(l -> l.size())
+      .reduce(0, (x,y) -> x+y));
+
+    LOG.info("Deoffloading size {}", countDownLatch.getCount());
+
     for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
       int offcnt = offloadedTasks.size();
+
       for (final TaskExecutor offloadedTask : offloadedTasks) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
 
@@ -273,6 +282,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           // do sth
           LOG.info("Deoffloading done for {}", offloadedTask.getId());
           stageOffloadingWorkerManager.endOffloading(stageId);
+          countDownLatch.countDown();
         });
       }
     }
@@ -283,6 +293,27 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     for (final String key : taskLocationMap.locationMap.keySet()) {
       taskLocationMap.locationMap.put(key, VM);
     }
+
+    // send done message
+    LOG.info("Waiting for scaling in countdown latch");
+    try {
+      countDownLatch.await();
+      LOG.info("Send scaling in done");
+
+      toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.LocalScalingReadyDone)
+          .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
+            .setExecutorId(executorId)
+            .setType(2)
+            .build())
+          .build());
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
   }
 
   @Override
@@ -381,6 +412,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           .setType(ControlMessage.MessageType.LocalScalingReadyDone)
           .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
             .setExecutorId(executorId)
+            .setType(1)
             .addAllOffloadedTasks(offloadedTasks)
             .build())
           .build());
