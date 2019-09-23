@@ -425,6 +425,10 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case BroadcastInfo: {
+          LOG.info("Receive info {}", message.getBroadcastInfoMsg().getInfo());
+          break;
+        }
         case RequestScaling:
           final ControlMessage.RequestScalingMessage scalingMsg = message.getRequestScalingMsg();
 

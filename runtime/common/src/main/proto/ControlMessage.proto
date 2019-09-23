@@ -44,6 +44,7 @@ message ScalingMessage {
   optional double divide = 2;
   optional int32 query = 3;
   repeated double stageRatio = 4;
+  optional string info = 5;
 }
 
 message DataCollectMessage {
@@ -101,6 +102,8 @@ enum MessageType {
     // Stat
     TaskStatSignal = 31; // worker -> master
 
+    BroadcastInfo = 32; // master -> worker
+
 }
 
 message Message {
@@ -138,6 +141,12 @@ message Message {
     optional GlobalExecutorAddressInfoMessage globalExecutorAddressInfoMsg = 32;
 
     optional TaskStatMessage taskStatMsg = 33;
+
+    optional BroadcastInfoMessage broadcastInfoMsg = 34;
+}
+
+message BroadcastInfoMessage {
+  required string info = 1;
 }
 
 // Messages from Master to Executors

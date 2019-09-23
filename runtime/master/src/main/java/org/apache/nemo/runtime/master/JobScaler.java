@@ -59,6 +59,20 @@ public final class JobScaler {
     this.executorService = Executors.newCachedThreadPool();
   }
 
+  public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
+    LOG.info("Broadcast info {}", msg.getInfo());
+    for (final ExecutorRepresenter executorRepresenter : taskScheduledMap.getScheduledStageTasks().keySet()) {
+      executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.BroadcastInfo)
+        .setBroadcastInfoMsg(ControlMessage.BroadcastInfoMessage.newBuilder()
+          .setInfo(msg.getInfo())
+          .build())
+        .build());
+    }
+  }
+
   public void proactive(final ControlMessage.ScalingMessage msg) {
     scalingIn();
     //TODO: waiting scaling in
