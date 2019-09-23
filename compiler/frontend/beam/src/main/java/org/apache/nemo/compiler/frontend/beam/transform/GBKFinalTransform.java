@@ -99,6 +99,9 @@ public final class GBKFinalTransform<K, InputT>
   }
 
   public int getNumKeys() {
+    LOG.info("TimerInteranslKey: {} StateInternalsKey: {}", inMemoryTimerInternalsFactory.getNumKey(),
+      inMemoryStateInternalsFactory.getNumKeys());
+
     return inMemoryTimerInternalsFactory.getNumKey() + inMemoryStateInternalsFactory.getNumKeys();
   }
 
