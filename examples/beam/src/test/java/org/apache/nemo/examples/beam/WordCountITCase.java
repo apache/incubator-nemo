@@ -73,17 +73,6 @@ public final class WordCountITCase {
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
-  public void testTimeout() throws Exception {
-    JobLauncher.main(builder
-      .addResourceJson(executorResourceFileName)
-      .replaceUserMain(WordCountTimeOut1Sec.class.getCanonicalName())
-      .addJobId(WordCountITCasls
-        e.class.getSimpleName() + "_timeout")
-      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-      .build());
-  }
-
-  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
