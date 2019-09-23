@@ -55,6 +55,22 @@ public final class ArgBuilder {
   }
 
   /**
+   * Replaces the user main class.
+   * @param main user main class.
+   * @return builder with the user main class.
+   */
+  public ArgBuilder replaceUserMain(final String main) {
+    args.replaceAll(e -> {
+      if (e.get(0).equalsIgnoreCase("-user_main")) {
+        return Arrays.asList("-user_main", main);
+      } else {
+        return e;
+      }
+    });
+    return this;
+  }
+
+  /**
    * @param userArgs user arguments.
    * @return builder with the user arguments.
    */
