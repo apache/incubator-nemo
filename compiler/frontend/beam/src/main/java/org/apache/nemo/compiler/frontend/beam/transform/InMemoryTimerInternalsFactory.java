@@ -201,7 +201,11 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
         timerInternals.deleteTimer(timer.right());
         return timer;
       } else {
-        LOG.info("timer timestamp {}, watermark timestamp: {}", timers.first().right().getTimestamp(), currentTime);
+        if (timers.isEmpty()) {
+          LOG.info("timer empty");
+        } else {
+          LOG.info("timer timestamp {}, watermark timestamp: {}", timers.first().right().getTimestamp(), currentTime);
+        }
         return null;
       }
     }
