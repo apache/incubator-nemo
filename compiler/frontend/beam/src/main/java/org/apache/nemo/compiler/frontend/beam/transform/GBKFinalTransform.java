@@ -401,7 +401,6 @@ public final class GBKFinalTransform<K, InputT>
   private List<Pair<K, TimerInternals.TimerData>> getEligibleTimers() {
     final List<Pair<K, TimerInternals.TimerData>> timerData = new LinkedList<>();
 
-
     while (true) {
       Pair<K, TimerInternals.TimerData> timer;
       boolean hasFired = false;
