@@ -4,6 +4,7 @@ import avro.shaded.com.google.common.collect.Lists;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -771,6 +772,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public int getNumKeys() {
+    throw new RuntimeException("Not supported");
+  }
+
+  @Override
+  public TaskMetrics getTaskMetrics() {
     throw new RuntimeException("Not supported");
   }
 

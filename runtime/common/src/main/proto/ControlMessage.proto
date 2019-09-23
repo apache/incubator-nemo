@@ -380,6 +380,8 @@ message TaskStatInfo {
   required string taskId = 1;
   required int32 numKeys = 2;
   required int64 computation = 3;
+  required int64 inputElements = 4;
+  required int64 outputElements = 5;
 }
 
 message GlobalScalingDoneMessage {

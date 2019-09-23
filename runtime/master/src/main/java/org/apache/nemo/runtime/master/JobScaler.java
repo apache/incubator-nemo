@@ -17,6 +17,8 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -46,6 +48,8 @@ public final class JobScaler {
 
   private double prevDivide;
 
+  private final ScheduledExecutorService scheduler;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -57,6 +61,40 @@ public final class JobScaler {
     this.executorTaskStatMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
+
+    this.scheduler = Executors.newSingleThreadScheduledExecutor();
+    this.scheduler.scheduleAtFixedRate(() -> {
+      // TODO: avg keys, input element, output element per stage
+      final Map<String, Stat> stageStat = new HashMap<>();
+
+      for (final List<ControlMessage.TaskStatInfo> l : executorTaskStatMap.values()) {
+        for (final ControlMessage.TaskStatInfo info : l) {
+          final String taskId = info.getTaskId();
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+          stageStat.putIfAbsent(stageId, new Stat());
+          final Stat stat = stageStat.get(stageId);
+          stat.numKeys += info.getNumKeys();
+          stat.computation += info.getComputation();
+          stat.input += info.getInputElements();
+          stat.output += info.getOutputElements();
+        }
+      }
+
+      final StringBuilder sb = new StringBuilder();
+
+      for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
+        sb.append("Stage Stat:");
+        sb.append("[");
+        sb.append(entry.getKey());
+        sb.append(",");
+        sb.append(entry.getValue());
+        sb.append("]");
+        sb.append("\n");
+      }
+
+      LOG.info(sb.toString());
+
+    }, 1, 1, TimeUnit.SECONDS);
   }
 
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
@@ -562,6 +600,18 @@ public final class JobScaler {
     @Override
     public void onMessageWithContext(ControlMessage.Message message, MessageContext messageContext) {
       throw new RuntimeException("Not supported");
+    }
+  }
+
+  class Stat {
+    public int numKeys = 0;
+    public long computation = 0;
+    public long input = 0;
+    public long output = 0;
+
+    @Override
+    public String toString() {
+      return "key: " + numKeys + ", comp: " + computation + ", input: " + input + ", output: " + output;
     }
   }
 }

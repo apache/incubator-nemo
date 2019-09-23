@@ -20,7 +20,9 @@ package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.ExecutorMetrics;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -182,6 +184,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private GBKFinalTransform gbkFinalTransform;
 
+  private final String stageId;
+
+  private final TaskMetrics taskMetrics;
+
   /**
    * Constructor.
    *
@@ -220,6 +226,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorThread executorThread) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.taskMetrics = new TaskMetrics();
     this.copyOutgoingEdges = copyOutgoingEdges;
     this.executorThread = executorThread;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -228,6 +235,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.executorGlobalInstances = executorGlobalInstances;
 
     this.rendevousServerClient = rendevousServerClient;
+    this.stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
@@ -333,6 +341,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     executorThread.queue.add(() -> {
       offloader.get().callTaskOffloadingDone();
     });
+  }
+
+  public TaskMetrics getTaskMetrics() {
+    return taskMetrics;
   }
 
   @Override
@@ -624,7 +636,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
@@ -643,7 +655,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
 
       OutputCollector outputCollector;
 
@@ -842,6 +854,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       if (!event.equals(EmptyElement.getInstance()))  {
         onEventFromDataFetcher(event, dataFetcher);
         processed = true;
+
+        taskMetrics.inputElement.incrementAndGet();
+        //executorMetrics.increaseInputCounter(stageId);
       }
     }
     return processed;
@@ -954,6 +969,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             executorThread.queue.add(() -> {
               if (!element.equals(EmptyElement.getInstance())) {
                 //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+
+                //executorMetrics.increaseInputCounter(stageId);
+                taskMetrics.inputElement.incrementAndGet();
+
                 onEventFromDataFetcher(element, dataFetcher);
               }
             });

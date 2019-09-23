@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
@@ -12,6 +13,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.runtime.common.metric.TaskMetric;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
@@ -94,7 +96,8 @@ public final class TaskExecutorUtil {
                                                           final Map<Long, Long> prevWatermarkMap,
                                                           final Map<Long, Integer> watermarkCounterMap,
                                                           final RendevousServerClient rendevousServerClient,
-                                                          final ExecutorThread executorThread) {
+                                                          final ExecutorThread executorThread,
+                                                          final TaskMetrics taskMetrics) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
@@ -107,7 +110,7 @@ public final class TaskExecutorUtil {
         if (isPipe(outEdgeForThisVertex)) {
           outputWriter = intermediateDataIOFactory
             .createPipeWriter(
-              taskId, outEdgeForThisVertex, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
+              taskId, outEdgeForThisVertex, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, outEdgeForThisVertex);
@@ -135,7 +138,8 @@ public final class TaskExecutorUtil {
     final Map<Long, Long> prevWatermarkMap,
     final Map<Long, Integer> watermarkCounterMap,
     final RendevousServerClient rendevousServerClient,
-    final ExecutorThread executorThread) {
+    final ExecutorThread executorThread,
+    final TaskMetrics taskMetrics) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<OutputWriter>> map = new HashMap<>();
 
@@ -150,7 +154,7 @@ public final class TaskExecutorUtil {
 
         if (isPipe(edge)) {
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskId, edge, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread);
+            .createPipeWriter(taskId, edge, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, edge);

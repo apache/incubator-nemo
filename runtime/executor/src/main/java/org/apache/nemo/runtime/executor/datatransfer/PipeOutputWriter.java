@@ -18,7 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ExecutorMetrics;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
@@ -74,6 +76,9 @@ public final class PipeOutputWriter implements OutputWriter {
   private final RendevousServerClient rendevousServerClient;
   private final ExecutorThread executorThread;
 
+  private final String stageId;
+  private final TaskMetrics taskMetrics;
+
   /**
    * Constructor.
    *
@@ -88,10 +93,13 @@ public final class PipeOutputWriter implements OutputWriter {
                    final Map<Long, Integer> watermarkCounterMap,
                    final RelayServer relayServer,
                    final RendevousServerClient rendevousServerClient,
-                   final ExecutorThread executorThread) {
+                   final ExecutorThread executorThread,
+                   final TaskMetrics taskMetrics) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
+    this.stageId = RuntimeIdManager.getStageIdFromTaskId(srcTaskId);
+    this.taskMetrics = taskMetrics;
     this.pipeManagerWorker = pipeManagerWorker;
     //this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.partitioner = Partitioner
@@ -145,6 +153,9 @@ public final class PipeOutputWriter implements OutputWriter {
    */
   @Override
   public void write(final Object element) {
+
+    taskMetrics.outputElement.incrementAndGet();
+    //executorMetrics.increaseOutputCounter(stageId);
 
     final TimestampAndValue tis = (TimestampAndValue) element;
 

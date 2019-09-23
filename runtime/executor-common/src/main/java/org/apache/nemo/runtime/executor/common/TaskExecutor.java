@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.common;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -55,6 +56,8 @@ public interface TaskExecutor extends AutoCloseable {
   };
 
   public int getNumKeys();
+
+  TaskMetrics getTaskMetrics();
 
   ExecutorThread getExecutorThread();
 

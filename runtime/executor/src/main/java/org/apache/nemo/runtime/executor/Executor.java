@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
+import org.apache.nemo.common.ExecutorMetrics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Throttled;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -174,7 +175,8 @@ public final class Executor {
                    final TaskLocationMap taskLocationMap,
                    final StageExecutorThreadMap stageExecutorThreadMap,
                    final JobScalingHandlerWorker jobScalingHandlerWorker,
-                   final ExecutorThreads executorThreads) {
+                   final ExecutorThreads executorThreads,
+                   final ExecutorMetrics executorMetrics) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -232,6 +234,8 @@ public final class Executor {
           .setNumKeys(taskExecutor.getNumKeys())
           .setComputation(0)
           .setTaskId(taskExecutor.getId())
+          .setInputElements(taskExecutor.getTaskMetrics().inputElement.get())
+          .setOutputElements(taskExecutor.getTaskMetrics().outputElement.get())
           .build();
       }).collect(Collectors.toList());
 

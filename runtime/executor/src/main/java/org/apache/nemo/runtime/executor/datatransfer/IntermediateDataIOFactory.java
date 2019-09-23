@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -85,9 +86,10 @@ public final class IntermediateDataIOFactory {
     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
     final Map<Long, Integer> watermarkCounterMap,
     final RendevousServerClient rendevousServerClient,
-    final ExecutorThread executorThread) {
+    final ExecutorThread executorThread,
+    final TaskMetrics taskMetrics) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      expectedWatermarkMap, watermarkCounterMap, relayServer, rendevousServerClient, executorThread);
+      expectedWatermarkMap, watermarkCounterMap, relayServer, rendevousServerClient, executorThread, taskMetrics);
   }
 
   /**
