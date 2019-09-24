@@ -88,6 +88,10 @@ public final class TransientResourceDataTransferPass extends AnnotatingPass {
       && ResourcePriorityProperty.TRANSIENT.equals(getResourcePriority(irEdge.getDst()));
   }
 
+  /**
+   * @param irVertex that is assigned with a resource priority.
+   * @return the resource priority string.
+   */
   private String getResourcePriority(final IRVertex irVertex) {
     return irVertex.getPropertyValue(ResourcePriorityProperty.class).orElseThrow(IllegalStateException::new);
   }
