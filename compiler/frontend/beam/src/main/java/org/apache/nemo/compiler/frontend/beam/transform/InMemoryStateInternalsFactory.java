@@ -50,12 +50,13 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
 
     //LOG.info("Remove namespace for key {}/{}", key, namespace);
 
-    LOG.info("Removed stat key {}", stateBackendMap.get(key).map.remove(namespace));
-    LOG.info("Removed global key {}", stateBackendMap.get(key).map.remove(StateNamespaces.global()));
-    LOG.info("Remaining key {} / {}", key, stateBackendMap.get(key).map);
+    stateBackendMap.get(key).map.remove(namespace);
+    stateBackendMap.get(key).map.remove(StateNamespaces.global());
+
+    //LOG.info("Remaining key {} / {}", key, stateBackendMap.get(key).map);
 
     if (stateBackendMap.get(key).map.isEmpty()) {
-      LOG.info("Remove key: {}", key);
+      //LOG.info("Remove key: {}", key);
       // remove key
       stateBackendMap.remove(key);
       stateInternalMap.remove(key);
