@@ -38,7 +38,7 @@ public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
         .forEach(edge -> edge.setPropertyPermanently(
-          DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
+          DataStoreProperty.of(DataStoreProperty.Value.PIPE)));
     });
     return dag;
   }

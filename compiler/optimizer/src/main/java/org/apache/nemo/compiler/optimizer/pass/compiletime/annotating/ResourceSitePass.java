@@ -165,7 +165,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   private static boolean isOneToOneEdge(final Collection<IREdge> inEdges) {
     return inEdges.size() == 1 && inEdges.iterator().next()
       .getPropertyValue(CommunicationPatternProperty.class).get()
-      .equals(CommunicationPatternProperty.Value.OneToOne);
+      .equals(CommunicationPatternProperty.Value.ONE_TO_ONE);
   }
 
   /**

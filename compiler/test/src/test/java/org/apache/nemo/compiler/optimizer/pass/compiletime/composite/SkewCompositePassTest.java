@@ -87,7 +87,7 @@ public class SkewCompositePassTest {
     final Long numOfShuffleEdges =
       mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-          CommunicationPatternProperty.Value.Shuffle
+          CommunicationPatternProperty.Value.SHUFFLE
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
         .count();
 

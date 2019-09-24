@@ -118,8 +118,8 @@ public final class PipeContainer {
   /**
    * (SYNCHRONIZATION) Initialize the key exactly once.
    *
-   * @param pairKey
-   * @param expected
+   * @param pairKey the pair of the runtime edge id and the source task index.
+   * @param expected the expected number of pipes to wait for.
    */
   synchronized void putPipeListIfAbsent(final Pair<String, Long> pairKey, final int expected) {
     pipeMap.putIfAbsent(pairKey, new CountBasedBlockingContainer(expected));
@@ -128,9 +128,9 @@ public final class PipeContainer {
   /**
    * (SYNCHRONIZATION) CountBasedBlockingContainer takes care of it.
    *
-   * @param pairKey
-   * @param dstTaskIndex
-   * @param byteOutputContext
+   * @param pairKey the pair of the runtime edge id and the source task index.
+   * @param dstTaskIndex the destination task index.
+   * @param byteOutputContext the byte output context.
    */
   void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final ByteOutputContext byteOutputContext) {
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
@@ -140,8 +140,8 @@ public final class PipeContainer {
   /**
    * (SYNCHRONIZATION) CountBasedBlockingContainer takes care of it.
    *
-   * @param pairKey
-   * @return
+   * @param pairKey the pair of the runtime edge id and the source task index.
+   * @return the list of byte output context.
    */
   List<ByteOutputContext> getPipes(final Pair<String, Long> pairKey) {
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);

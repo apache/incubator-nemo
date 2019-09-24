@@ -49,15 +49,15 @@ public final class TransientResourceDataTransferPass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge)) {
-            if (!Optional.of(DataStoreProperty.Value.SerializedMemoryStore)
+            if (!Optional.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE)
               .equals(edge.getPropertyValue(DataStoreProperty.class))) {
-              edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+              edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
             }
             edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
             edge.setPropertyPermanently(BlockFetchFailureProperty.of(
               BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER));
           } else if (fromReservedToTransient(edge)) {
-            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
           }
         });
       }

@@ -22,6 +22,7 @@ import org.apache.nemo.common.Pair;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 
 /**
  * An DecoderFactory for {@link Pair}. Reference: KvCoder in BEAM.
@@ -29,7 +30,8 @@ import java.io.InputStream;
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
-public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>> {
+public final class PairDecoderFactory<A extends Serializable, B extends Serializable>
+  implements DecoderFactory<Pair<A, B>> {
   private final DecoderFactory<A> leftDecoderFactory;
   private final DecoderFactory<B> rightDecoderFactory;
 
@@ -54,8 +56,8 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
    * @param <B>                 type of the right element.
    * @return the new PairDecoderFactory.
    */
-  public static <A, B> PairDecoderFactory<A, B> of(final DecoderFactory<A> leftDecoderFactory,
-                                                   final DecoderFactory<B> rightDecoderFactory) {
+  public static <A extends Serializable, B extends Serializable> PairDecoderFactory<A, B>
+  of(final DecoderFactory<A> leftDecoderFactory, final DecoderFactory<B> rightDecoderFactory) {
     return new PairDecoderFactory<>(leftDecoderFactory, rightDecoderFactory);
   }
 
@@ -81,7 +83,7 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
    * @param <T1> type for the left coder.
    * @param <T2> type for the right coder.
    */
-  private final class PairDecoder<T1, T2> implements Decoder<Pair<T1, T2>> {
+  private final class PairDecoder<T1 extends Serializable, T2 extends Serializable> implements Decoder<Pair<T1, T2>> {
 
     private final Decoder<T1> leftDecoder;
     private final Decoder<T2> rightDecoder;

@@ -51,8 +51,8 @@ public final class PhysicalPlanGeneratorTest {
     final IRDAG irDAG = new IRDAG(new DAGBuilder<IRVertex, IREdge>()
       .addVertex(v0)
       .addVertex(v1)
-      .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
-        DataFlowProperty.Value.Pull))
+      .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.ONE_TO_ONE,
+        DataFlowProperty.Value.PULL))
       .buildWithoutSourceSinkCheck());
 
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);

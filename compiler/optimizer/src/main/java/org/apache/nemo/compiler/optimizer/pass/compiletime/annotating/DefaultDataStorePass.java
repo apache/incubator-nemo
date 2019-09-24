@@ -35,12 +35,11 @@ public final class DefaultDataStorePass extends AnnotatingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.getVertices().forEach(vertex -> {
+    dag.getVertices().forEach(vertex ->
       dag.getIncomingEdgesOf(vertex).stream()
         .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
         .forEach(edge -> edge.setProperty(
-          DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
-    });
+          DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE))));
     return dag;
   }
 }
