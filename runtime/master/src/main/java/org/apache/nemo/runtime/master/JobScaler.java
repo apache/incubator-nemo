@@ -47,7 +47,7 @@ public final class JobScaler {
   private final AtomicInteger scalingExecutorCnt = new AtomicInteger(0);
 
   private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
-  private final Map<ExecutorRepresenter, Double> executorCpuUseMap;
+  private final Map<String, Double> executorCpuUseMap;
 
   private final AtomicBoolean isScalingIn = new AtomicBoolean(false);
   private final AtomicInteger isScalingInCnt = new AtomicInteger(0);
@@ -659,9 +659,11 @@ public final class JobScaler {
           final List<ControlMessage.TaskStatInfo> taskStatInfos = taskStatMessage.getTaskStatsList();
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
 
-          executorCpuUseMap.put(executorRepresenter, taskStatMessage.getCpuUse());
+          if (executorRepresenter != null) {
+            executorCpuUseMap.put(executorRepresenter.getExecutorId(), taskStatMessage.getCpuUse());
 
-          executorTaskStatMap.put(executorRepresenter, taskStatInfos);
+            executorTaskStatMap.put(executorRepresenter, taskStatInfos);
+          }
           break;
         }
         default:
