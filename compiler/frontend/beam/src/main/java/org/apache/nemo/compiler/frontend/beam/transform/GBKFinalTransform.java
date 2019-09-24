@@ -382,9 +382,12 @@ public final class GBKFinalTransform<K, InputT>
       */
     }
 
+    /*
     if (System.currentTimeMillis() - prevLoggingTime >= 1000) {
+      prevLoggingTime = System.currentTimeMillis();
       LOG.info("Timers {}, {}", new Instant(triggerWatermark.getTimestamp()), inMemoryTimerInternalsFactory.watermarkTimers);
     }
+    */
 
 
 
