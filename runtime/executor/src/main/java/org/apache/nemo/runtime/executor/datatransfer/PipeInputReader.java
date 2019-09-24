@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -73,6 +75,16 @@ public final class PipeInputReader implements InputReader {
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
+  }
+
+  @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index) {
+    throw new UnsupportedOperationException(String.valueOf(index));
+  }
+
+  @Override
+  public ExecutionPropertyMap<EdgeExecutionProperty> getProperties() {
+    return runtimeEdge.getExecutionProperties();
   }
 
   @Override
