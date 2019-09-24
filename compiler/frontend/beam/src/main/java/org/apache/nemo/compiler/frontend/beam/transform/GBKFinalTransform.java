@@ -99,10 +99,9 @@ public final class GBKFinalTransform<K, InputT>
   }
 
   public int getNumKeys() {
-    LOG.info("TimerInteranslKey: {} StateInternalsKey: {}", inMemoryTimerInternalsFactory.getNumKey(),
-      inMemoryStateInternalsFactory.getNumKeys());
-
-    return inMemoryTimerInternalsFactory.getNumKey() + inMemoryStateInternalsFactory.getNumKeys();
+    //LOG.info("TimerInteranslKey: {} StateInternalsKey: {}", inMemoryTimerInternalsFactory.getNumKey(),
+    //  inMemoryStateInternalsFactory.getNumKeys());
+    return inMemoryTimerInternalsFactory.getNumKey();
   }
 
   /**
@@ -316,6 +315,8 @@ public final class GBKFinalTransform<K, InputT>
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
   }
 
+
+  private long prevLoggingTime = System.currentTimeMillis();
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
@@ -380,6 +381,12 @@ public final class GBKFinalTransform<K, InputT>
       }
       */
     }
+
+    if (System.currentTimeMillis() - prevLoggingTime >= 1000) {
+      LOG.info("Timers {}, {}", new Instant(triggerWatermark.getTimestamp()), inMemoryTimerInternalsFactory.watermarkTimers);
+    }
+
+
 
     // TODO: send end event
     /*
