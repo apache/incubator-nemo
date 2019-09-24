@@ -135,7 +135,7 @@ public final class BlockManagerWorker {
           // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
           // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
           // to become available.
-          final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+          return persistentConnectionToMasterMap
             .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
@@ -147,7 +147,6 @@ public final class BlockManagerWorker {
                     .setBlockIdWildcard(blockIdWildcard)
                     .build())
                 .build());
-          return responseFromMasterFuture;
         }
       });
     this.blockTransferThrottler = blockTransferThrottler;
@@ -256,7 +255,7 @@ public final class BlockManagerWorker {
           return contextFuture
             .thenCompose(ByteInputContext::getCompletedFuture)
             // thenApply waits for the future.
-            .thenApply(streams -> new DataUtil.InputStreamIterator(
+            .thenApply(streams -> new DataUtil.InputStreamIterator<>(
               streams, serializerManager.getSerializer(runtimeEdgeId)));
         } else {
           /**
@@ -265,7 +264,7 @@ public final class BlockManagerWorker {
            * Probably best performance when there is no failure.
            */
           return contextFuture
-            .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+            .thenApply(context -> new DataUtil.InputStreamIterator<>(context.getInputStreams(),
               serializerManager.getSerializer(runtimeEdgeId)));
         }
       }

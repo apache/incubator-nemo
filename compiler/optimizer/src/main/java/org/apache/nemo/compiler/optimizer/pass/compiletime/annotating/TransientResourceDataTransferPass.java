@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -53,7 +54,7 @@ public final class TransientResourceDataTransferPass extends AnnotatingPass {
               .equals(edge.getPropertyValue(DataStoreProperty.class))) {
               edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
             }
-            edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
+            edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
             edge.setPropertyPermanently(BlockFetchFailureProperty.of(
               BlockFetchFailureProperty.Value.RETRY_AFTER_TWO_SECONDS_FOREVER));
           } else if (fromReservedToTransient(edge)) {
@@ -71,11 +72,9 @@ public final class TransientResourceDataTransferPass extends AnnotatingPass {
    * @param irEdge edge to check.
    * @return whether or not the edge satisfies the condition.
    */
-  static boolean fromTransientToReserved(final IREdge irEdge) {
-    return ResourcePriorityProperty.TRANSIENT
-      .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
-      && ResourcePriorityProperty.RESERVED
-      .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
+  private boolean fromTransientToReserved(final IREdge irEdge) {
+    return ResourcePriorityProperty.TRANSIENT.equals(getResourcePriority(irEdge.getSrc()))
+      && ResourcePriorityProperty.RESERVED.equals(getResourcePriority(irEdge.getDst()));
   }
 
   /**
@@ -84,10 +83,12 @@ public final class TransientResourceDataTransferPass extends AnnotatingPass {
    * @param irEdge edge to check.
    * @return whether or not the edge satisfies the condition.
    */
-  static boolean fromReservedToTransient(final IREdge irEdge) {
-    return ResourcePriorityProperty.RESERVED
-      .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
-      && ResourcePriorityProperty.TRANSIENT
-      .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
+  private boolean fromReservedToTransient(final IREdge irEdge) {
+    return ResourcePriorityProperty.RESERVED.equals(getResourcePriority(irEdge.getSrc()))
+      && ResourcePriorityProperty.TRANSIENT.equals(getResourcePriority(irEdge.getDst()));
+  }
+
+  private String getResourcePriority(final IRVertex irVertex) {
+    return irVertex.getPropertyValue(ResourcePriorityProperty.class).orElseThrow(IllegalStateException::new);
   }
 }

@@ -73,9 +73,9 @@ public final class BlockInputReader implements InputReader {
     if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(readOneToOne());
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
-      return readBroadcast((index) -> true);
+      return readBroadcast(index -> true);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      return readDataInRange((index) -> true);
+      return readDataInRange(index -> true);
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -89,9 +89,9 @@ public final class BlockInputReader implements InputReader {
     if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return readOneToOne();
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
-      return checkSingleElement(readBroadcast((index) -> index == desiredIndex));
+      return checkSingleElement(readBroadcast(index -> index == desiredIndex));
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      return checkSingleElement(readDataInRange((index) -> index == desiredIndex));
+      return checkSingleElement(readDataInRange(index -> index == desiredIndex));
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
