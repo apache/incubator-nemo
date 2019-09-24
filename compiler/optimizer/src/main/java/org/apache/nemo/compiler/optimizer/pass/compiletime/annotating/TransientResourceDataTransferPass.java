@@ -28,7 +28,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Optimizes IREdges between transient resources and reserved resources.
