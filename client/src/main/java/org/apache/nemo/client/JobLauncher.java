@@ -59,6 +59,8 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -234,7 +236,7 @@ public final class JobLauncher {
     launchDAG(dag, Collections.emptyMap(), jobId);
   }
 
-  private static final ScheduledExecutorService scalingService = Executors.newSingleThreadScheduledExecutor();
+  private static final ScheduledExecutorService scalingService = Executors.newScheduledThreadPool(2);
 
   /**
    * @param dag the application DAG.
@@ -384,6 +386,34 @@ public final class JobLauncher {
         }
     }, 1, 1, TimeUnit.SECONDS);
 
+    // input rate 보내기
+    try {
+      final BufferedReader br =
+        new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/source.log"));
+
+      Pattern pattern = Pattern.compile("\\d+ events");
+
+      scalingService.scheduleAtFixedRate(() -> {
+
+        try {
+          String line;
+          while ((line = br.readLine()) != null) {
+            final Matcher matcher = pattern.matcher(line);
+            if (matcher.find()) {
+              final String inputRate = matcher.group();
+              LOG.info("Input rate {}", inputRate);
+            }
+          }
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+
+      }, 1, 1, TimeUnit.SECONDS);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
 
     // Wait for the ExecutionDone message from the driver
     try {
