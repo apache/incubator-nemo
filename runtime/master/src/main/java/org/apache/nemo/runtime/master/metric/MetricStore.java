@@ -278,7 +278,7 @@ public final class MetricStore {
                                           final String dbId, final String dbPasswd) {
     final String[] syntax = {"SERIAL PRIMARY KEY"};
 
-    if (!MetricUtils.metaDataLoaded()) {
+    if (!MetricUtils.metaDataLoaded() && !MetricUtils.loadMetaData()) {
       saveOptimizationMetricsToLocal(jobId);
       return;
     }

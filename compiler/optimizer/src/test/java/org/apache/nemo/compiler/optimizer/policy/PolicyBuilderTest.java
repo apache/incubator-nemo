@@ -35,7 +35,7 @@ public final class PolicyBuilderTest {
 
   @Test
   public void testTransientResourcePolicy() {
-    assertEquals(17, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(16, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
     assertEquals(0, TransientResourcePolicy.BUILDER.getRunTimePasses().size());
   }
 

@@ -23,9 +23,10 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -38,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 /**
  * Represents the input data transfer to a task.
@@ -71,9 +73,25 @@ public final class BlockInputReader implements InputReader {
     if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(readOneToOne());
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
-      return readBroadcast();
+      return readBroadcast(index -> true);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      return readDataInRange();
+      return readDataInRange(index -> true);
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
+  @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int desiredIndex) {
+    final Optional<CommunicationPatternProperty.Value> comValue =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+
+    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
+      return readOneToOne();
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
+      return checkSingleElement(readBroadcast(index -> index == desiredIndex));
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
+      return checkSingleElement(readDataInRange(index -> index == desiredIndex));
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -82,6 +100,19 @@ public final class BlockInputReader implements InputReader {
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
+  }
+
+  @Override
+  public ExecutionPropertyMap<EdgeExecutionProperty> getProperties() {
+    return runtimeEdge.getExecutionProperties();
+  }
+
+  private CompletableFuture<DataUtil.IteratorWithNumBytes> checkSingleElement(
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> list) {
+    if (list.size() != 1) {
+      throw new IllegalArgumentException(list.toString());
+    }
+    return list.get(0);
   }
 
   /**
@@ -102,21 +133,19 @@ public final class BlockInputReader implements InputReader {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all());
+    return blockManagerWorker.readBlock(
+      blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all());
   }
 
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast(final Predicate<Integer> predicate) {
     final int numSrcTasks = InputReader.getSourceParallelism(this);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-      futures.add(blockManagerWorker.readBlock(
-        blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all()));
+      if (predicate.test(srcTaskIdx)) {
+        final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
+        futures.add(blockManagerWorker.readBlock(
+          blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all()));
+      }
     }
 
     return futures;
@@ -127,9 +156,8 @@ public final class BlockInputReader implements InputReader {
    *
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange(final Predicate<Integer> predicate) {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
     final KeyRange hashRangeToRead = keyRangeList.get(dstTaskIndex);
     if (hashRangeToRead == null) {
@@ -139,9 +167,11 @@ public final class BlockInputReader implements InputReader {
     final int numSrcTasks = InputReader.getSourceParallelism(this);
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-      futures.add(
-        blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), hashRangeToRead));
+      if (predicate.test(srcTaskIdx)) {
+        final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
+        futures.add(blockManagerWorker.readBlock(
+          blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), hashRangeToRead));
+      }
     }
 
     return futures;

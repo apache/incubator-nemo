@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -32,11 +34,21 @@ public interface InputReader {
   /**
    * Reads input data depending on the communication pattern of the srcVertex.
    *
-   * @return the read data.
+   * @return the list of iterators.
    */
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
 
+  /**
+   * Retry reading input data.
+   *
+   * @param index of the failed iterator in the list returned by read().
+   * @return the retried iterator.
+   */
+  CompletableFuture<DataUtil.IteratorWithNumBytes> retry(int index);
+
   IRVertex getSrcIrVertex();
+
+  ExecutionPropertyMap<EdgeExecutionProperty> getProperties();
 
   static int getSourceParallelism(final InputReader inputReader) {
     return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)
