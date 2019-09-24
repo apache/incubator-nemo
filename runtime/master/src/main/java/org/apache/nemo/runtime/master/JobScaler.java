@@ -29,8 +29,8 @@ import static org.apache.nemo.common.TaskLoc.VM;
 public final class JobScaler {
 
   enum ExecutionStatus {
-    NORMAL,
-    BURSTY
+    SCALE_OUT,
+    NORMAL
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(JobScaler.class.getName());
@@ -60,11 +60,23 @@ public final class JobScaler {
 
   private final int WINDOW_SIZE = 5;
 
-  private int consecutive = 0;
 
   //private final List<Integer> stage0InputRates = new LinkedList<>();
 
   private int skipCnt = 0;
+
+  // scale out
+  private int consecutive = 0;
+  // scaling in
+  private int scalingInConsecutive = 0;
+
+  private long scalingDoneTime = 0;
+  private final int slackTime = 20;
+
+  private ExecutionStatus executionStatus = ExecutionStatus.NORMAL;
+
+  private int scalingThp;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -113,32 +125,71 @@ public final class JobScaler {
 
         //LOG.info(sb.toString());
 
-        if (stageStat.get("Stage0") != null) {
-          final int stage0InputRate = (int) stageStat.get("Stage0").input;
-          //stage0InputRates.add(stage0InputRate);
+        // scaling 중이면 이거 하면 안됨..!
+        // scaling 하고도 slack time 가지기
+        if (!isScaling.get() &&
+          System.currentTimeMillis() - scalingDoneTime >= TimeUnit.SECONDS.toMillis(slackTime)) {
 
-          //if (stage0InputRates.size() > WINDOW_SIZE) {
-          //  stage0InputRates.remove(0);
-          //}
+          if (stageStat.get("Stage0") != null) {
+            final int stage0InputRate = (int) stageStat.get("Stage0").input;
+            //stage0InputRates.add(stage0InputRate);
 
-          skipCnt += 1;
+            //if (stage0InputRates.size() > WINDOW_SIZE) {
+            //  stage0InputRates.remove(0);
+            //}
 
-          // 60초 이후에 scaling
-          LOG.info("skpCnt: {}, inputRates {}", skipCnt, inputRates.size());
-          if (skipCnt > 10) {
-            if (inputRates.size() == WINDOW_SIZE) {
-              final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-              //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-              final int throughput = stage0InputRate;
-              final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+            skipCnt += 1;
 
-              LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, executorCpuUseMap: {}",
-                recentInputRate, throughput, cpuAvg, executorCpuUseMap);
+            // 60초 이후에 scaling
+            LOG.info("skpCnt: {}, inputRates {}", skipCnt, inputRates.size());
+            if (skipCnt > 30) {
+              if (inputRates.size() == WINDOW_SIZE) {
+                final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+                //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+                final int throughput = stage0InputRate;
+                scalingThp = throughput;
 
-              if (cpuAvg > 0.8) {
-                final double burstiness = (recentInputRate / (double) throughput) + 0.5;
-                // 그다음에 task selection
-                LOG.info("Burstiness: {}", burstiness);
+                final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+                LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, executorCpuUseMap: {}",
+                  recentInputRate, throughput, cpuAvg, executorCpuUseMap);
+
+                if (cpuAvg > 0.8) {
+
+                  // Scaling out
+
+                  consecutive += 1;
+
+                  if (consecutive > 3) {
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+                    // 그다음에 task selection
+                    LOG.info("Scaling out !! Burstiness: {}", burstiness);
+                    // TODO: scaling!!
+                    scalingOutBasedOnKeys(burstiness);
+                    consecutive = 0;
+                    isScaling.set(true);
+
+                    executionStatus = ExecutionStatus.SCALE_OUT;
+                  }
+
+                  LOG.info("Consecutive {}", consecutive);
+                } else if (cpuAvg < 0.3 &&  scalingThp > throughput) {
+
+                  scalingInConsecutive += 1;
+
+                  if (scalingInConsecutive > 3) {
+                    //TODO: more sophisticaed algorihtm
+                    // Scaling in ...
+                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, throughput, scalingThp);
+                    scalingIn();
+                    isScalingIn.set(true);
+                    scalingInConsecutive = 0;
+                  }
+
+                } else {
+                  consecutive = 0;
+                  scalingInConsecutive = 0;
+                }
               }
             }
           }
@@ -218,7 +269,6 @@ public final class JobScaler {
     } else {
       scalingOutToWorkers(divide, ratioList);
     }
-    isScaling.set(false);
   }
 
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
@@ -626,14 +676,11 @@ public final class JobScaler {
               final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
               LOG.info("Receive LocalScalingDone for {}", executorId);
 
-              for (final String offloadedTask : localScalingDoneMessage.getOffloadedTasksList()) {
-                taskLocationMap.locationMap.put(offloadedTask, SF);
-              }
-
               final int cnt = scalingExecutorCnt.decrementAndGet();
               if (cnt == 0) {
+                scalingDoneTime = System.currentTimeMillis();
                 if (isScaling.compareAndSet(true, false)) {
-                  sendScalingOutDoneToAllWorkers();
+                  //sendScalingOutDoneToAllWorkers();
                 }
               }
             }
@@ -643,6 +690,8 @@ public final class JobScaler {
 
               LOG.info("Scaling in done signal get {}", executorId);
               if (isScalingInCnt.decrementAndGet() == 0) {
+                scalingDoneTime = System.currentTimeMillis();
+                isScaling.compareAndSet(true, false);
                 isScalingIn.set(false);
               }
 

@@ -149,6 +149,8 @@ public final class Executor {
 
   private final ExecutorThreads executorThreads;
 
+  private final ScalingOutCounter scalingOutCounter;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -173,7 +175,8 @@ public final class Executor {
                    final StageExecutorThreadMap stageExecutorThreadMap,
                    final JobScalingHandlerWorker jobScalingHandlerWorker,
                    final ExecutorThreads executorThreads,
-                   final ExecutorMetrics executorMetrics) {
+                   final ExecutorMetrics executorMetrics,
+                   final ScalingOutCounter scalingOutCounter) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -201,6 +204,8 @@ public final class Executor {
     this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
+    this.scalingOutCounter = scalingOutCounter;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final double load = profiler.getCpuLoad();
@@ -444,7 +449,8 @@ public final class Executor {
         prepareService,
         executorGlobalInstances,
         rendevousServerClient,
-        executorThread);
+        executorThread,
+        scalingOutCounter);
 
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);

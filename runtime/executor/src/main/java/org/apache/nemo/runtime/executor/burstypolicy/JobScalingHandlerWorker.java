@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
@@ -68,6 +69,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final EvalConf evalConf;
 
+  private final ScalingOutCounter scalingOutCounter;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -85,7 +88,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final StageOffloadingWorkerManager stageOffloadingWorkerManager,
     final TaskLocationMap taskLocationMap,
     final StageExecutorThreadMap stageExecutorThreadMap,
-    final ExecutorThreads executorThreads) {
+    final ExecutorThreads executorThreads,
+    final ScalingOutCounter scalingOutCounter) {
     this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
@@ -96,6 +100,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.executorThreads = executorThreads;
     this.evalConf = evalConf;
     this.toMaster = toMaster;
+    this.scalingOutCounter = scalingOutCounter;
     LOG.info("Start JobScalingHandlerWorker");
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
@@ -220,6 +225,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             LOG.info("Offloading {}, cnt: {}, remainingOffloadTask: {}", task.getId(), offloadNum,
               remainingOffloadTasks.getRemainingCnt());
 
+            scalingOutCounter.counter.getAndIncrement();
+
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
               // TODO: When it is ready, send ready message
@@ -243,6 +250,27 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     executorThreads.getExecutorThreads().forEach(executorThread -> {
       executorThread.getThrottle().set(false);
     });
+
+
+    while (scalingOutCounter.counter.get() > 0) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      LOG.info("Waiting scaling out... counter {}", scalingOutCounter.counter);
+    }
+
+    toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
+      .send(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.LocalScalingReadyDone)
+        .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
+          .setExecutorId(executorId)
+          .setType(1)
+          .build())
+        .build());
 
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }

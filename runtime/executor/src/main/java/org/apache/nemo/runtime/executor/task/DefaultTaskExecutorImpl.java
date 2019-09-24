@@ -188,6 +188,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final TaskMetrics taskMetrics;
 
+  private final ScalingOutCounter scalingOutCounter;
+
   /**
    * Constructor.
    *
@@ -223,7 +225,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorService prepareService,
                                  final ExecutorGlobalInstances executorGlobalInstances,
                                  final RendevousServerClient rendevousServerClient,
-                                 final ExecutorThread executorThread) {
+                                 final ExecutorThread executorThread,
+                                 final ScalingOutCounter scalingOutCounter) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.taskMetrics = new TaskMetrics();
@@ -239,6 +242,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     this.relayServer = relayServer;
     this.taskLocationMap = taskLocationMap;
+
+    this.scalingOutCounter = scalingOutCounter;
 
     this.pollingTrigger = executorGlobalInstances.getPollingTrigger();
 
@@ -444,7 +449,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           irVertexDag,
         taskLocationMap,
         executorThread,
-        allFetchers));
+        allFetchers,
+        scalingOutCounter));
 
     } else {
       offloader = Optional.empty();

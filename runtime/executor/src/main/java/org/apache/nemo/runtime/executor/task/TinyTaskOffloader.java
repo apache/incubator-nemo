@@ -21,10 +21,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.executor.GlobalOffloadDone;
-import org.apache.nemo.runtime.executor.RemainingOffloadTasks;
-import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
-import org.apache.nemo.runtime.executor.TinyTaskWorker;
+import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
@@ -89,6 +86,7 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final ExecutorThread executorThread;
   private final ScheduledExecutorService scheduledExecutorService;
+  private final ScalingOutCounter scalingOutCounter;
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
@@ -109,7 +107,8 @@ public final class TinyTaskOffloader implements Offloader {
                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                            final TaskLocationMap taskLocationMap,
                            final ExecutorThread executorThread,
-                           final List<DataFetcher> fetchers) {
+                           final List<DataFetcher> fetchers,
+                           final ScalingOutCounter scalingOutCounter) {
     this.executorThread = executorThread;
     this.scheduledExecutorService = executorThread.scheduledExecutorService;
     this.executorId = executorId;
@@ -121,6 +120,8 @@ public final class TinyTaskOffloader implements Offloader {
     this.tinyWorkerManager = tinyWorkerManager;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.sourceVertexDataFetcher = sourceDataFetcher;
+
+    this.scalingOutCounter = scalingOutCounter;
 
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
@@ -477,6 +478,8 @@ public final class TinyTaskOffloader implements Offloader {
     LOG.info("Send ready task {}", taskId);
 
     tinyWorkerManager.sendReadyTask(readyTask, tinyTaskWorker);
+
+    scalingOutCounter.counter.getAndDecrement();
   }
 
   private void sendTask() {
