@@ -64,7 +64,7 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
       }
     }
 
-    LOG.info("Remaining key {} / {}", key, stateBackendMap.get(key).map.keySet());
+    // LOG.info("Remaining key {}, timestamp {} / {}", key, timestamp, stateBackendMap.get(key).map.keySet());
 
     if (stateBackendMap.get(key).map.isEmpty()) {
       //LOG.info("Remove key: {}", key);
