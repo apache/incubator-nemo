@@ -3,6 +3,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.StateInternals;
 import org.apache.beam.runners.core.StateInternalsFactory;
 import org.apache.beam.runners.core.StateNamespace;
+import org.apache.beam.runners.core.StateNamespaces;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,10 +48,11 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
 
   public void removeNamespaceForKey(final K key, StateNamespace namespace) {
 
-    LOG.info("Remove namespace for key {}/{}", key, namespace);
+    //LOG.info("Remove namespace for key {}/{}", key, namespace);
 
-    LOG.info("Removed stat {}\n remaining states {}", stateBackendMap.get(key).map.remove(namespace),
-      stateBackendMap.get(key).map);
+    LOG.info("Removed stat key {}", stateBackendMap.get(key).map.remove(namespace));
+    LOG.info("Removed global key {}", stateBackendMap.get(key).map.remove(StateNamespaces.global()));
+    LOG.info("Remaining key {} / {}", key, stateBackendMap.get(key).map);
 
     if (stateBackendMap.get(key).map.isEmpty()) {
       LOG.info("Remove key: {}", key);
