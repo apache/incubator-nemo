@@ -62,7 +62,7 @@ public final class JobScaler {
 
   private int consecutive = 0;
 
-  private final List<Integer> stage0InputRates = new LinkedList<>();
+  //private final List<Integer> stage0InputRates = new LinkedList<>();
 
   private int skipCnt = 0;
   @Inject
@@ -94,6 +94,8 @@ public final class JobScaler {
             stat.computation += info.getComputation();
             stat.input += info.getInputElements();
             stat.output += info.getOutputElements();
+
+            //LOG.info("Task {}, Stat {}", taskId, stat);
           }
         }
 
@@ -113,20 +115,21 @@ public final class JobScaler {
 
         if (stageStat.get("Stage0") != null) {
           final int stage0InputRate = (int) stageStat.get("Stage0").input;
-          stage0InputRates.add(stage0InputRate);
+          //stage0InputRates.add(stage0InputRate);
 
-          if (stage0InputRates.size() > WINDOW_SIZE) {
-            stage0InputRates.remove(0);
-          }
+          //if (stage0InputRates.size() > WINDOW_SIZE) {
+          //  stage0InputRates.remove(0);
+          //}
 
           skipCnt += 1;
 
           // 60초 이후에 scaling
-          LOG.info("skpCnt: {}, inputRates {}, stage0InputRates {}", skipCnt, inputRates.size(), stage0InputRates.size());
+          LOG.info("skpCnt: {}, inputRates {}", skipCnt, inputRates.size());
           if (skipCnt > 10) {
-            if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
+            if (inputRates.size() == WINDOW_SIZE) {
               final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-              final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+              //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+              final int throughput = stage0InputRate;
               final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
               LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);

@@ -1,11 +1,13 @@
 package org.apache.nemo.common;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class TaskMetrics {
 
-  private final int window = 30;
+  private final int window = 5;
   private long updatedTime;
 
   private final AtomicLong inputElement;
@@ -14,11 +16,19 @@ public final class TaskMetrics {
 
   private final AtomicLong computation;
 
+  private final List<Long> inputElements;
+  private final List<Long> outputElements;
+  private final List<Long> computations;
+
   public TaskMetrics() {
     this.inputElement = new AtomicLong();
     this.outputElement = new AtomicLong();
     this.computation = new AtomicLong();
     this.updatedTime = System.currentTimeMillis();
+
+    this.inputElements = new LinkedList<>();
+    this.outputElements = new LinkedList<>();
+    this.computations = new LinkedList<>();
   }
 
   public void incrementInputElement() {
@@ -38,6 +48,27 @@ public final class TaskMetrics {
     final long oe = outputElement.get();
     final long c = computation.get();
 
+    inputElements.add(ie);
+    outputElements.add(oe);
+    computations.add(c);
+
+    if (inputElements.size() > window) {
+      inputElements.remove(0);
+    }
+
+    if (outputElements.size() > window) {
+      outputElements.remove(0);
+    }
+
+    if (computations.size() > window) {
+      computations.remove(0);
+    }
+
+    inputElement.getAndAdd(-ie);
+    outputElement.getAndAdd(-oe);
+    computation.getAndAdd(-c);
+
+    /*
     final long currTime = System.currentTimeMillis();
 
     if (currTime - updatedTime >= TimeUnit.SECONDS.toMillis(window)) {
@@ -54,8 +85,15 @@ public final class TaskMetrics {
       outputElement.getAndAdd(-updateOe);
       computation.getAndAdd(-updateComp);
     }
+    */
 
-    return new RetrievedMetrics(ie, oe, c);
+
+    return new RetrievedMetrics(avgCnt(inputElements),
+      avgCnt(outputElements), avgCnt(computations));
+  }
+
+  private long avgCnt(final List<Long> l) {
+    return l.stream().reduce(0L, (x,y) -> x+y) / l.size();
   }
 
   public static final class RetrievedMetrics {
