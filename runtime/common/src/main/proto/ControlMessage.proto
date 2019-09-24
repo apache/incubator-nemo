@@ -374,6 +374,7 @@ message LocalScalingDoneMessage {
 message TaskStatMessage {
   required string executorId = 1;
   repeated TaskStatInfo taskStats = 2;
+  optional double cpuUse = 3;
 }
 
 message TaskStatInfo {

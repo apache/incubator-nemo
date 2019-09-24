@@ -247,10 +247,11 @@ public final class Executor {
           .setTaskStatMsg(ControlMessage.TaskStatMessage.newBuilder()
             .setExecutorId(executorId)
             .addAllTaskStats(taskStatInfos)
+            .setCpuUse(load)
             .build())
           .build());
 
-    }, 2, 2, TimeUnit.SECONDS);
+    }, 1, 1, TimeUnit.SECONDS);
 
 
     // relayServer address/port 보내기!!

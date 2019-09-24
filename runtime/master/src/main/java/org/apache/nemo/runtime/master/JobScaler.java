@@ -28,6 +28,11 @@ import static org.apache.nemo.common.TaskLoc.VM;
 
 public final class JobScaler {
 
+  enum ExecutionStatus {
+    NORMAL,
+    BURSTY
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(JobScaler.class.getName());
 
   private final TaskScheduledMap taskScheduledMap;
@@ -42,6 +47,7 @@ public final class JobScaler {
   private final AtomicInteger scalingExecutorCnt = new AtomicInteger(0);
 
   private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
+  private final Map<ExecutorRepresenter, Double> executorCpuUseMap;
 
   private final AtomicBoolean isScalingIn = new AtomicBoolean(false);
   private final AtomicInteger isScalingInCnt = new AtomicInteger(0);
@@ -50,6 +56,15 @@ public final class JobScaler {
 
   private final ScheduledExecutorService scheduler;
 
+  private final List<Integer> inputRates = new LinkedList<>();
+
+  private final int WINDOW_SIZE = 5;
+
+  private int consecutive = 0;
+
+  private final List<Integer> stage0InputRates = new LinkedList<>();
+
+  private int skipCnt = 0;
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -59,6 +74,7 @@ public final class JobScaler {
     this.taskScheduledMap = taskScheduledMap;
     this.prevScalingCountMap = new HashMap<>();
     this.executorTaskStatMap = new HashMap<>();
+    this.executorCpuUseMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
 
@@ -92,17 +108,51 @@ public final class JobScaler {
         sb.append("\n");
       }
 
-      LOG.info(sb.toString());
+      //LOG.info(sb.toString());
+
+      final int stage0InputRate = (int) stageStat.get("Stage0").input;
+      stage0InputRates.add(stage0InputRate);
+
+      if (stage0InputRates.size() > WINDOW_SIZE) {
+        stage0InputRates.remove(0);
+      }
+
+
+      skipCnt += 1;
+
+      // 60초 이후에 scaling
+      if (skipCnt > 10) {
+        if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
+          final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+          final int throughput = stage0InputRates.stream().reduce(0, (x,y) -> x+y) / WINDOW_SIZE;
+          final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x,y) -> x+y) / executorCpuUseMap.size();
+
+          LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
+
+          if (cpuAvg > 0.8) {
+            final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+            // 그다음에 task selection
+            LOG.info("Burstiness: {}", burstiness);
+          }
+        }
+      }
 
     }, 1, 1, TimeUnit.SECONDS);
   }
+
 
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
 
     if (msg.getInfo().startsWith("INPUT")) {
       // input rate
       final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
-      LOG.info("Input rate {}", inputRate);
+      //LOG.info("Input rate {}", inputRate);
+
+      inputRates.add(inputRate);
+      if (inputRates.size() > WINDOW_SIZE) {
+        inputRates.remove(0);
+      }
+
     } else {
       LOG.info("Broadcast info {}", msg.getInfo());
       for (final ExecutorRepresenter executorRepresenter : taskScheduledMap.getScheduledStageTasks().keySet()) {
@@ -596,6 +646,9 @@ public final class JobScaler {
           //LOG.info("Receive taskstatSignal from {}", executorId);
           final List<ControlMessage.TaskStatInfo> taskStatInfos = taskStatMessage.getTaskStatsList();
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+
+          executorCpuUseMap.put(executorRepresenter, taskStatMessage.getCpuUse());
+
           executorTaskStatMap.put(executorRepresenter, taskStatInfos);
           break;
         }
