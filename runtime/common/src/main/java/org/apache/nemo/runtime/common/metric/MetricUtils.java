@@ -82,7 +82,7 @@ public final class MetricUtils {
   /**
    * Load the BiMaps (lightweight) Metadata from the DB.
    *
-   * @return the loaded BiMaps, or initialized ones.
+   * @return Whether or not the metadata has been successfully loaded from the DB.
    */
   public static Boolean loadMetaData() {
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
