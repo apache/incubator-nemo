@@ -4,6 +4,7 @@ import org.apache.beam.runners.core.StateInternals;
 import org.apache.beam.runners.core.StateInternalsFactory;
 import org.apache.beam.runners.core.StateNamespace;
 import org.apache.beam.runners.core.StateNamespaces;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,12 +47,22 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
     this.stateBackendMap = stateFactorty.stateBackendMap;
   }
 
-  public void removeNamespaceForKey(final K key, StateNamespace namespace) {
+  public void removeNamespaceForKey(final K key, StateNamespace namespace, final Instant timestamp) {
 
     //LOG.info("Remove namespace for key {}/{}", key, namespace);
 
     stateBackendMap.get(key).map.remove(namespace);
     stateBackendMap.get(key).map.remove(StateNamespaces.global());
+
+    for (final StateNamespace stateNamespace : stateBackendMap.get(key).map.keySet()) {
+      if (stateNamespace instanceof StateNamespaces.WindowNamespace) {
+        final StateNamespaces.WindowNamespace windowNamespace = (StateNamespaces.WindowNamespace) stateNamespace;
+        if (windowNamespace.getWindow().maxTimestamp().isBefore(timestamp)
+          || windowNamespace.getWindow().maxTimestamp().isEqual(timestamp)) {
+          stateBackendMap.get(key).map.remove(stateNamespace);
+        }
+      }
+    }
 
     LOG.info("Remaining key {} / {}", key, stateBackendMap.get(key).map.keySet());
 

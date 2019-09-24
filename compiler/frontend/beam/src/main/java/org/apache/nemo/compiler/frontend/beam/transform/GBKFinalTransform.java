@@ -370,7 +370,7 @@ public final class GBKFinalTransform<K, InputT>
 
       // Remove states
       inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(timer.left());
-      inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace());
+      inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace(), timer.right().getTimestamp());
 
       /*
       timerInternals.decrementRegisteredTimer();
