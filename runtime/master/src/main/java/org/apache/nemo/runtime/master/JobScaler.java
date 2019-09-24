@@ -80,61 +80,68 @@ public final class JobScaler {
 
     this.scheduler = Executors.newSingleThreadScheduledExecutor();
     this.scheduler.scheduleAtFixedRate(() -> {
-      // TODO: avg keys, input element, output element per stage
-      final Map<String, Stat> stageStat = new HashMap<>();
+      try {
+        // TODO: avg keys, input element, output element per stage
+        final Map<String, Stat> stageStat = new HashMap<>();
 
-      for (final List<ControlMessage.TaskStatInfo> l : executorTaskStatMap.values()) {
-        for (final ControlMessage.TaskStatInfo info : l) {
-          final String taskId = info.getTaskId();
-          final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-          stageStat.putIfAbsent(stageId, new Stat());
-          final Stat stat = stageStat.get(stageId);
-          stat.numKeys += info.getNumKeys();
-          stat.computation += info.getComputation();
-          stat.input += info.getInputElements();
-          stat.output += info.getOutputElements();
-        }
-      }
-
-      final StringBuilder sb = new StringBuilder();
-
-      for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
-        sb.append("Stage Stat:");
-        sb.append("[");
-        sb.append(entry.getKey());
-        sb.append(",");
-        sb.append(entry.getValue());
-        sb.append("]");
-        sb.append("\n");
-      }
-
-      //LOG.info(sb.toString());
-
-      final int stage0InputRate = (int) stageStat.get("Stage0").input;
-      stage0InputRates.add(stage0InputRate);
-
-      if (stage0InputRates.size() > WINDOW_SIZE) {
-        stage0InputRates.remove(0);
-      }
-
-
-      skipCnt += 1;
-
-      // 60초 이후에 scaling
-      if (skipCnt > 10) {
-        if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
-          final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-          final int throughput = stage0InputRates.stream().reduce(0, (x,y) -> x+y) / WINDOW_SIZE;
-          final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x,y) -> x+y) / executorCpuUseMap.size();
-
-          LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
-
-          if (cpuAvg > 0.8) {
-            final double burstiness = (recentInputRate / (double) throughput) + 0.5;
-            // 그다음에 task selection
-            LOG.info("Burstiness: {}", burstiness);
+        for (final List<ControlMessage.TaskStatInfo> l : executorTaskStatMap.values()) {
+          for (final ControlMessage.TaskStatInfo info : l) {
+            final String taskId = info.getTaskId();
+            final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+            stageStat.putIfAbsent(stageId, new Stat());
+            final Stat stat = stageStat.get(stageId);
+            stat.numKeys += info.getNumKeys();
+            stat.computation += info.getComputation();
+            stat.input += info.getInputElements();
+            stat.output += info.getOutputElements();
           }
         }
+
+        final StringBuilder sb = new StringBuilder();
+
+        for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
+          sb.append("Stage Stat:");
+          sb.append("[");
+          sb.append(entry.getKey());
+          sb.append(",");
+          sb.append(entry.getValue());
+          sb.append("]");
+          sb.append("\n");
+        }
+
+        //LOG.info(sb.toString());
+
+        final int stage0InputRate = (int) stageStat.get("Stage0").input;
+        stage0InputRates.add(stage0InputRate);
+
+        if (stage0InputRates.size() > WINDOW_SIZE) {
+          stage0InputRates.remove(0);
+        }
+
+
+        skipCnt += 1;
+
+        // 60초 이후에 scaling
+        LOG.info("skpCnt: {}, inputRates {}, stage0InputRates {}", skipCnt, inputRates.size(), stage0InputRates.size());
+        if (skipCnt > 10) {
+          if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
+            final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+            final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+            final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+            LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
+
+            if (cpuAvg > 0.8) {
+              final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+              // 그다음에 task selection
+              LOG.info("Burstiness: {}", burstiness);
+            }
+          }
+        }
+
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
 
     }, 1, 1, TimeUnit.SECONDS);
