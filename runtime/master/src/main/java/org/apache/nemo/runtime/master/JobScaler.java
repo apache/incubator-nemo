@@ -111,30 +111,31 @@ public final class JobScaler {
 
         //LOG.info(sb.toString());
 
-        final int stage0InputRate = (int) stageStat.get("Stage0").input;
-        stage0InputRates.add(stage0InputRate);
+        if (stageStat.get("Stage0") != null) {
+          final int stage0InputRate = (int) stageStat.get("Stage0").input;
+          stage0InputRates.add(stage0InputRate);
 
-        if (stage0InputRates.size() > WINDOW_SIZE) {
-          stage0InputRates.remove(0);
-        }
+          if (stage0InputRates.size() > WINDOW_SIZE) {
+            stage0InputRates.remove(0);
+          }
 
+          skipCnt += 1;
 
-        skipCnt += 1;
+          // 60초 이후에 scaling
+          LOG.info("skpCnt: {}, inputRates {}, stage0InputRates {}", skipCnt, inputRates.size(), stage0InputRates.size());
+          if (skipCnt > 10) {
+            if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
+              final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+              final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+              final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-        // 60초 이후에 scaling
-        LOG.info("skpCnt: {}, inputRates {}, stage0InputRates {}", skipCnt, inputRates.size(), stage0InputRates.size());
-        if (skipCnt > 10) {
-          if (inputRates.size() == WINDOW_SIZE && stage0InputRates.size() == WINDOW_SIZE) {
-            final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-            final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-            final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+              LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
 
-            LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
-
-            if (cpuAvg > 0.8) {
-              final double burstiness = (recentInputRate / (double) throughput) + 0.5;
-              // 그다음에 task selection
-              LOG.info("Burstiness: {}", burstiness);
+              if (cpuAvg > 0.8) {
+                final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+                // 그다음에 task selection
+                LOG.info("Burstiness: {}", burstiness);
+              }
             }
           }
         }
