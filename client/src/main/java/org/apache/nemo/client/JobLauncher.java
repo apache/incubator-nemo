@@ -58,6 +58,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -393,11 +394,15 @@ public final class JobLauncher {
 
       Pattern pattern = Pattern.compile("\\d+ events");
 
+      final AtomicBoolean prevNull = new AtomicBoolean(false);
+
       scalingService.scheduleAtFixedRate(() -> {
 
         try {
           String line;
+          boolean sent = false;
           while ((line = br.readLine()) != null) {
+            sent = true;
             final Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
               final String inputRateStr = matcher.group();
@@ -412,6 +417,20 @@ public final class JobLauncher {
                   .build())
                 .build());
             }
+          }
+
+          if (!sent && prevNull.get()) {
+            driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+              .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+              .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                .setDecision("info")
+                .setInfo("INPUT 0")
+                .build())
+              .build());
+          } else if (!sent) {
+            prevNull.set(true);
+          } else {
+            prevNull.set(false);
           }
 
         } catch (final Exception e) {
