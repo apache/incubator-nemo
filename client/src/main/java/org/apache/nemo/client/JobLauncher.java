@@ -400,8 +400,17 @@ public final class JobLauncher {
           while ((line = br.readLine()) != null) {
             final Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
-              final String inputRate = matcher.group();
-              LOG.info("Input rate {}", inputRate);
+              final String inputRateStr = matcher.group();
+              LOG.info("Input rate {}", inputRateStr);
+              final String[] s = inputRateStr.split(" events");
+              final String inputRateCmd = "INPUT " + s[0];
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision("info")
+                  .setInfo(inputRateCmd)
+                  .build())
+                .build());
             }
           }
         } catch (final Exception e) {

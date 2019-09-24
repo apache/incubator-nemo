@@ -98,16 +98,23 @@ public final class JobScaler {
   }
 
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
-    LOG.info("Broadcast info {}", msg.getInfo());
-    for (final ExecutorRepresenter executorRepresenter : taskScheduledMap.getScheduledStageTasks().keySet()) {
-      executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.BroadcastInfo)
-        .setBroadcastInfoMsg(ControlMessage.BroadcastInfoMessage.newBuilder()
-          .setInfo(msg.getInfo())
-          .build())
-        .build());
+
+    if (msg.getInfo().startsWith("INPUT")) {
+      // input rate
+      final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
+      LOG.info("Input rate {}", inputRate);
+    } else {
+      LOG.info("Broadcast info {}", msg.getInfo());
+      for (final ExecutorRepresenter executorRepresenter : taskScheduledMap.getScheduledStageTasks().keySet()) {
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.BroadcastInfo)
+          .setBroadcastInfoMsg(ControlMessage.BroadcastInfoMessage.newBuilder()
+            .setInfo(msg.getInfo())
+            .build())
+          .build());
+      }
     }
   }
 
