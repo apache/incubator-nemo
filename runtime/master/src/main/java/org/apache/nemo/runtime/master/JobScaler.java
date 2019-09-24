@@ -132,7 +132,8 @@ public final class JobScaler {
               final int throughput = stage0InputRate;
               final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-              LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}", recentInputRate, throughput, cpuAvg);
+              LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, executorCpuUseMap: {}",
+                recentInputRate, throughput, cpuAvg, executorCpuUseMap);
 
               if (cpuAvg > 0.8) {
                 final double burstiness = (recentInputRate / (double) throughput) + 0.5;
