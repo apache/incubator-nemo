@@ -413,6 +413,7 @@ public final class JobLauncher {
                 .build());
             }
           }
+
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);

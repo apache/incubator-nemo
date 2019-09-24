@@ -21,9 +21,7 @@ package org.apache.nemo.runtime.executor;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
-import org.apache.nemo.common.ExecutorMetrics;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Throttled;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
@@ -43,7 +41,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -230,12 +227,15 @@ public final class Executor {
       final Set<TaskExecutor> taskExecutors = taskExecutorMapWrapper.getTaskExecutorMap().keySet();
 
       final List<ControlMessage.TaskStatInfo> taskStatInfos = taskExecutors.stream().map(taskExecutor -> {
+
+        final TaskMetrics.RetrievedMetrics retrievedMetrics = taskExecutor.getTaskMetrics().retrieve();
+
         return ControlMessage.TaskStatInfo.newBuilder()
           .setNumKeys(taskExecutor.getNumKeys())
-          .setComputation(0)
           .setTaskId(taskExecutor.getId())
-          .setInputElements(taskExecutor.getTaskMetrics().inputElement.get())
-          .setOutputElements(taskExecutor.getTaskMetrics().outputElement.get())
+          .setInputElements(retrievedMetrics.inputElement)
+          .setOutputElements(retrievedMetrics.outputElement)
+          .setComputation(retrievedMetrics.computation)
           .build();
       }).collect(Collectors.toList());
 

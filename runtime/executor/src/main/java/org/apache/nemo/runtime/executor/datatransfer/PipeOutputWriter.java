@@ -154,7 +154,7 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public void write(final Object element) {
 
-    taskMetrics.outputElement.incrementAndGet();
+    taskMetrics.incrementOutputElement();
     //executorMetrics.increaseOutputCounter(stageId);
 
     final TimestampAndValue tis = (TimestampAndValue) element;

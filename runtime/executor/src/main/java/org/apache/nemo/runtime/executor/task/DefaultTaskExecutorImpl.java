@@ -812,9 +812,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
+    final long ns = System.nanoTime();
+
     processedCnt.getAndIncrement();
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
+
+    final long endNs = System.nanoTime();
+
+    taskMetrics.incrementComputation(endNs - ns);
   }
 
   private void processWatermark(final OutputCollector outputCollector,
@@ -854,7 +860,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         onEventFromDataFetcher(event, dataFetcher);
         processed = true;
 
-        taskMetrics.inputElement.incrementAndGet();
+        taskMetrics.incrementInputElement();
         //executorMetrics.increaseInputCounter(stageId);
       }
     }
@@ -970,7 +976,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
 
                 //executorMetrics.increaseInputCounter(stageId);
-                taskMetrics.inputElement.incrementAndGet();
+                taskMetrics.incrementInputElement();
 
                 onEventFromDataFetcher(element, dataFetcher);
               }
