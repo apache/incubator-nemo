@@ -99,23 +99,6 @@ public final class PolicyImplTest {
   }
 
   @Test
-  public void testTransientAndDisaggregationCombination() throws Exception {
-    final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
-    compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
-    compileTimePasses.addAll(DisaggregationPolicy.BUILDER.getCompileTimePasses());
-    runTimePasses.addAll(DisaggregationPolicy.BUILDER.getRunTimePasses());
-
-    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
-
-    // This should throw an exception.
-    // Not all data store should be transferred from and to the GFS.
-    expectedException.expect(CompileTimeOptimizationException.class);
-    combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
-  }
-
-  @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
     final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
