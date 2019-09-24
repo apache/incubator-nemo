@@ -860,7 +860,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         onEventFromDataFetcher(event, dataFetcher);
         processed = true;
 
-        taskMetrics.incrementInputElement();
         //executorMetrics.increaseInputCounter(stageId);
       }
     }
@@ -895,6 +894,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
       }
       */
+
+      taskMetrics.incrementInputElement();
 
       // Process data element
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
