@@ -84,7 +84,7 @@ public final class MetricUtils {
    *
    * @return the loaded BiMaps, or initialized ones.
    */
-  public static void loadMetaData() {
+  public static Boolean loadMetaData() {
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (Statement statement = c.createStatement()) {
@@ -120,6 +120,7 @@ public final class MetricUtils {
     } catch (Exception e) {
       LOG.warn("Loading metadata from DB failed : ", e);
     }
+    return metaDataLoaded();
   }
 
   public static Boolean metaDataLoaded() {
