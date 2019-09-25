@@ -120,7 +120,6 @@ public final class JobScaler {
           sb.append(",");
           sb.append(entry.getValue());
           sb.append("]");
-          sb.append("\n");
         }
 
         LOG.info(sb.toString());
@@ -160,7 +159,7 @@ public final class JobScaler {
                   consecutive += 1;
 
                   if (consecutive > 4) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.35;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
@@ -459,7 +458,7 @@ public final class JobScaler {
 
       final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
       final long totalComputation = taskStatInfos.stream().map(info -> info.getComputation())
-        .reduce(0L, (x,y) -> x + y) / taskStatInfos.size();
+        .reduce(0L, (x,y) -> x + y);
 
       LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
 
