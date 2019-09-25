@@ -583,10 +583,11 @@ public final class JobScaler {
       // sort by keys
       final List<ControlMessage.TaskStatInfo> copyInfos = sortByKeys(taskStatInfos);
 
-      final int countToOffload = (int) (taskStatInfos.size() - taskStatInfos.size() / divide);
+      final int countToOffload = (taskStatInfos.size() - (int) (taskStatInfos.size() / divide));
 
       int offloadedCnt = 0;
 
+      LOG.info("Count to offload: {}", countToOffload);
       LOG.info("copInfos {}", copyInfos);
 
       for (final ControlMessage.TaskStatInfo taskStatInfo : copyInfos) {
