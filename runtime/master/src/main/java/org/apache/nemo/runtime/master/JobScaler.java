@@ -450,8 +450,10 @@ public final class JobScaler {
   }
 
   private long getRelayOverhead(final ControlMessage.TaskStatInfo taskStatInfo) {
-    final List<String> inputTasks = taskOffloadingManager.getTaskInputTasksMap().get(taskStatInfo.getTaskId());
-    final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap().get(taskStatInfo.getTaskId());
+    final List<String> inputTasks = taskOffloadingManager.getTaskInputTasksMap()
+      .getOrDefault(taskStatInfo.getTaskId(), Collections.emptyList());
+    final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap()
+      .getOrDefault(taskStatInfo.getTaskId(), Collections.emptyList());
 
     final double alpha = 0.1;
 
