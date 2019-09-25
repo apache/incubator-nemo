@@ -1,14 +1,15 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.beam.runners.core.StateInternals;
-import org.apache.beam.runners.core.StateInternalsFactory;
-import org.apache.beam.runners.core.StateNamespace;
-import org.apache.beam.runners.core.StateNamespaces;
+import org.apache.beam.runners.core.*;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.state.State;
+import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -54,12 +55,18 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
     stateBackendMap.get(key).map.remove(namespace);
     stateBackendMap.get(key).map.remove(StateNamespaces.global());
 
-    for (final StateNamespace stateNamespace : stateBackendMap.get(key).map.keySet()) {
+    final Iterator<Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>>> iterator = stateBackendMap.get(key).map.entrySet().iterator();
+
+    while (iterator.hasNext()) {
+      final Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>> elem = iterator.next();
+      final StateNamespace stateNamespace = elem.getKey();
+
       if (stateNamespace instanceof StateNamespaces.WindowNamespace) {
         final StateNamespaces.WindowNamespace windowNamespace = (StateNamespaces.WindowNamespace) stateNamespace;
         if (windowNamespace.getWindow().maxTimestamp().isBefore(timestamp)
           || windowNamespace.getWindow().maxTimestamp().isEqual(timestamp)) {
-          stateBackendMap.get(key).map.remove(stateNamespace);
+
+          iterator.remove();
         }
       }
     }
