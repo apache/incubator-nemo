@@ -141,13 +141,12 @@ public final class JobScaler {
             skipCnt += 1;
 
             // 60초 이후에 scaling
-            LOG.info("skpCnt: {}, inputRates {}", skipCnt, inputRates.size());
+            LOG.info("skpCnt: {}, inputRates {}, scalingThp {}", skipCnt, inputRates.size(), scalingThp);
             if (skipCnt > 30) {
               if (inputRates.size() == WINDOW_SIZE) {
                 final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 final int throughput = stage0InputRate;
-                scalingThp = throughput;
 
                 final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
@@ -165,6 +164,9 @@ public final class JobScaler {
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
+
+                    scalingThp = throughput;
+
                     scalingOutBasedOnKeys(burstiness);
                     //scalingOutConsideringKeyAndComm(burstiness);
 
@@ -175,7 +177,7 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (cpuAvg < 0.3 &&  scalingThp > throughput) {
+                } else if (cpuAvg < 0.3 && scalingThp > throughput) {
 
                   scalingInConsecutive += 1;
 
