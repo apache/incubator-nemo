@@ -27,7 +27,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Objec
     if (msg instanceof OffloadingHeartbeatEvent) {
       final OffloadingHeartbeatEvent event = (OffloadingHeartbeatEvent) msg;
       //LOG.info("Heartbeat: " + event.taskIndex + ", " + event.time);
-      taskTimeMap.put(event.taskIndex, event.time);
+      //taskTimeMap.put(event.taskIndex, event.time);
 
     } else if (msg instanceof OffloadingResultEvent) {
       if (((OffloadingResultEvent) msg).data.size() > 0) {

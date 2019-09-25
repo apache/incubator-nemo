@@ -168,7 +168,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
             prevTime = tTime;
 
             LOG.info("Flush elapsed time: {}", elapsedTime);
-            resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
+            //resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
           }
           final DownstreamOffloadingDataEvent element = dataQueue.poll();
           // data processing
@@ -469,7 +469,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -500,7 +500,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex,
+              serializerMap, null, null, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

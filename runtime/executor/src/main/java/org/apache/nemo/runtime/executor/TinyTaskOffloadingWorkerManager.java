@@ -7,6 +7,7 @@ import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
@@ -67,12 +68,17 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final AtomicBoolean offloadingTransformSerialized = new AtomicBoolean(false);
 
+  private final SFTaskMetrics sfTaskMetrics;
+
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
-    final EvalConf evalConf) {
+    final EvalConf evalConf,
+    final SFTaskMetrics sfTaskMetrics) {
 
     this.evalConf = evalConf;
+
+    this.sfTaskMetrics = sfTaskMetrics;
 
     LOG.info("Start cached pool serverless executor service");
 
@@ -133,8 +139,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
         if (msg instanceof OffloadingHeartbeatEvent) {
           final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
-          //LOG.info("Set heartbeat for task {} / time {}", heartbeatEvent.taskId, heartbeatEvent.time);
-          te.setOffloadedTaskTime(heartbeatEvent.time);
+          LOG.info("Set task metrics from sf", heartbeatEvent.taskMetrics);
+
+          for (final Pair<String, TaskMetrics.RetrievedMetrics> metric : heartbeatEvent.taskMetrics) {
+            sfTaskMetrics.sfTaskMetrics.put(metric.left(), metric.right());
+          }
 
         } else if (msg instanceof OffloadingResultEvent) {
           if (((OffloadingResultEvent) msg).data.size() > 0) {

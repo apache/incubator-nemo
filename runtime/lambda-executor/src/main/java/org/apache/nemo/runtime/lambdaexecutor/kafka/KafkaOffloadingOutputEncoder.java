@@ -40,9 +40,9 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
     if (data instanceof OffloadingHeartbeatEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingHeartbeatEvent element = (OffloadingHeartbeatEvent) data;
-      dos.writeChar(HEARTBEAT);
-      dos.writeInt(element.taskIndex);
-      dos.writeLong(element.time);
+      //dos.writeChar(HEARTBEAT);
+      //dos.writeInt(element.taskIndex);
+      //dos.writeLong(element.time);
     } else if (data instanceof OffloadingResultTimestampEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;

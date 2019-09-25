@@ -165,6 +165,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     if (isSourceVertex) {
       processedCnt += 1;
 
+      /*
       final long currTime = System.currentTimeMillis();
       if (currTime - prevLogtime >= 1000) {
         offloadingOutputCollector.emit(
@@ -172,6 +173,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
         processedCnt = 0;
         prevLogtime = System.currentTimeMillis();
       }
+      */
     }
 
     if (irVertex.isSink) {

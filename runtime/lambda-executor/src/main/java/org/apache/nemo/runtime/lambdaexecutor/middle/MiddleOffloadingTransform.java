@@ -147,8 +147,8 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
             prevTime = tTime;
 
             LOG.info("Flush elapsed time: {}", elapsedTime);
-            resultCollector.collector.emit(
-              new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
+            //resultCollector.collector.emit(
+            //  new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
           }
           final MiddleOffloadingDataEvent element = dataQueue.poll();
           // data processing
@@ -428,7 +428,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, null, null, null, null);
 
 
           outputWriters.add(outputWriter);
@@ -459,7 +459,8 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap, null, null, null);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap,
+              null, null, null, null);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })

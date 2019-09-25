@@ -109,7 +109,7 @@ public final class HandleDataFetcher {
           final long tTime = threadMXBean.getThreadCpuTime(tid);
           final long elapsedTime = tTime - prevTime;
           LOG.info("Flush elapsed time: {}", elapsedTime);
-          resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
+          //resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
 
           prevTime = tTime;
         }

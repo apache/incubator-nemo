@@ -3,6 +3,8 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
@@ -53,9 +55,16 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingHeartbeatEvent element = (OffloadingHeartbeatEvent) data;
       dos.writeChar(HEARTBEAT);
-      dos.writeUTF(element.taskId);
-      dos.writeInt(element.taskIndex);
-      dos.writeLong(element.time);
+      dos.writeInt(element.taskMetrics.size());
+
+      for (final Pair<String, TaskMetrics.RetrievedMetrics> taskMetric : element.taskMetrics) {
+        dos.writeUTF(taskMetric.left());
+        dos.writeLong(taskMetric.right().inputElement);
+        dos.writeLong(taskMetric.right().outputElement);
+        dos.writeLong(taskMetric.right().computation);
+        dos.writeInt(taskMetric.right().numKeys);
+      }
+
     } else if (data instanceof KafkaOffloadingOutput) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(KAFKA_CHECKPOINT);

@@ -43,7 +43,7 @@ public final class TaskMetrics {
     computation.addAndGet(update);
   }
 
-  public RetrievedMetrics retrieve() {
+  public RetrievedMetrics retrieve(final int numKeys) {
     final long ie = inputElement.get();
     final long oe = outputElement.get();
     final long c = computation.get();
@@ -89,7 +89,7 @@ public final class TaskMetrics {
 
 
     return new RetrievedMetrics(avgCnt(inputElements),
-      avgCnt(outputElements), avgCnt(computations));
+      avgCnt(outputElements), avgCnt(computations), numKeys);
   }
 
   private long avgCnt(final List<Long> l) {
@@ -100,13 +100,16 @@ public final class TaskMetrics {
     public final long inputElement;
     public final long outputElement;
     public final long computation;
+    public final int numKeys;
 
     public RetrievedMetrics(final long inputElement,
                             final long outputElement,
-                            final long computation) {
+                            final long computation,
+                            final int numKeys) {
       this.inputElement = inputElement;
       this.outputElement = outputElement;
       this.computation = computation;
+      this.numKeys = numKeys;
     }
   }
 }

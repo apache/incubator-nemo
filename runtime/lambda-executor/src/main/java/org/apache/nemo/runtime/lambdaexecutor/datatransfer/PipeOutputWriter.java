@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -68,6 +69,8 @@ public final class PipeOutputWriter implements Flushable {
 
   private final ExecutorThread executorThread;
 
+  private final TaskMetrics taskMetrics;
+
   PipeOutputWriter(final String taskId,
                    final int srcTaskIndex,
                    final int originTaskIndex,
@@ -75,7 +78,8 @@ public final class PipeOutputWriter implements Flushable {
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Serializer> serializerMap,
                    final RendevousServerClient rendevousServerClient,
-                   final ExecutorThread executorThread) {
+                   final ExecutorThread executorThread,
+                   final TaskMetrics taskMetrics) {
     this.taskId = taskId;
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
@@ -90,11 +94,14 @@ public final class PipeOutputWriter implements Flushable {
     this.serializer = serializerMap.get(runtimeEdge.getId());
     this.rendevousServerClient = rendevousServerClient;
     this.executorThread = executorThread;
+    this.taskMetrics = taskMetrics;
     //this.pipes = doInitialize();
   }
 
   private void writeData(final Object element,
                          final List<ByteOutputContext> pipeList, final boolean flush) {
+    taskMetrics.incrementOutputElement();
+
     pipeList.forEach(pipe -> {
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
       stream.writeElement(element, serializer, runtimeEdge.getId(), stageEdge.getDstIRVertex().getId());

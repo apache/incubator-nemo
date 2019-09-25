@@ -78,6 +78,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 
@@ -151,6 +152,8 @@ public final class Executor {
 
   private final ScalingOutCounter scalingOutCounter;
 
+  private final SFTaskMetrics sfTaskMetrics;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -176,7 +179,8 @@ public final class Executor {
                    final JobScalingHandlerWorker jobScalingHandlerWorker,
                    final ExecutorThreads executorThreads,
                    final ExecutorMetrics executorMetrics,
-                   final ScalingOutCounter scalingOutCounter) {
+                   final ScalingOutCounter scalingOutCounter,
+                   final SFTaskMetrics sfTaskMetrics) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -207,6 +211,8 @@ public final class Executor {
 
     this.scalingOutCounter = scalingOutCounter;
 
+    this.sfTaskMetrics = sfTaskMetrics;
+
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final double load = profiler.getCpuLoad();
       LOG.info("Cpu load: {}", load);
@@ -233,15 +239,43 @@ public final class Executor {
 
       final List<ControlMessage.TaskStatInfo> taskStatInfos = taskExecutors.stream().map(taskExecutor -> {
 
-        final TaskMetrics.RetrievedMetrics retrievedMetrics = taskExecutor.getTaskMetrics().retrieve();
 
-        return ControlMessage.TaskStatInfo.newBuilder()
-          .setNumKeys(taskExecutor.getNumKeys())
-          .setTaskId(taskExecutor.getId())
-          .setInputElements(retrievedMetrics.inputElement)
-          .setOutputElements(retrievedMetrics.outputElement)
-          .setComputation(retrievedMetrics.computation)
-          .build();
+        final String taskId = taskExecutor.getId();
+
+        if (taskLocationMap.locationMap.get(taskId) == SF) {
+          // get metric from SF
+          if (sfTaskMetrics.sfTaskMetrics.containsKey(taskId)) {
+            final TaskMetrics.RetrievedMetrics metric = sfTaskMetrics.sfTaskMetrics.get(taskId);
+            return ControlMessage.TaskStatInfo.newBuilder()
+              .setNumKeys(metric.numKeys)
+              .setTaskId(taskExecutor.getId())
+              .setInputElements(metric.inputElement)
+              .setOutputElements(metric.outputElement)
+              .setComputation(metric.computation)
+              .build();
+          } else {
+            // 걍 기존 metric 보내줌
+            final TaskMetrics.RetrievedMetrics retrievedMetrics =
+              taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys());
+            return ControlMessage.TaskStatInfo.newBuilder()
+              .setNumKeys(taskExecutor.getNumKeys())
+              .setTaskId(taskExecutor.getId())
+              .setInputElements(retrievedMetrics.inputElement)
+              .setOutputElements(retrievedMetrics.outputElement)
+              .setComputation(retrievedMetrics.computation)
+              .build();
+          }
+        } else {
+          final TaskMetrics.RetrievedMetrics retrievedMetrics =
+            taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys());
+          return ControlMessage.TaskStatInfo.newBuilder()
+            .setNumKeys(taskExecutor.getNumKeys())
+            .setTaskId(taskExecutor.getId())
+            .setInputElements(retrievedMetrics.inputElement)
+            .setOutputElements(retrievedMetrics.outputElement)
+            .setComputation(retrievedMetrics.computation)
+            .build();
+        }
       }).collect(Collectors.toList());
 
       persistentConnectionToMasterMap.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
@@ -583,7 +617,8 @@ public final class Executor {
           tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
             offloadingWorkerFactory,
             lambdaExecutor,
-            evalConf);
+            evalConf,
+            sfTaskMetrics);
 
           jobScalingHandlerWorker.setTinyWorkerManager(tinyWorkerManager);
 

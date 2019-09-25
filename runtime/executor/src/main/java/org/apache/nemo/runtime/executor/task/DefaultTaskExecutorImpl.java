@@ -983,7 +983,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
 
                 //executorMetrics.increaseInputCounter(stageId);
-                taskMetrics.incrementInputElement();
+                //taskMetrics.incrementInputElement();
 
                 onEventFromDataFetcher(element, dataFetcher);
               }

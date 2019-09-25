@@ -4,6 +4,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
@@ -54,11 +55,26 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
             new ThpEvent(taskId, opId, thp));
         }
         case HEARTBEAT: {
-          final String taskId = dis.readUTF();
-          final Integer taskIndex = dis.readInt();
-          final Long time = dis.readLong();
+          final int len = dis.readInt();
+          final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetrics = new ArrayList<>(len);
+          String taskId = null;
+
+          for (int i = 0; i < len; i++) {
+            taskId = dis.readUTF();
+            final long inputElement = dis.readLong();
+            final long outputElement = dis.readLong();
+            final long computation = dis.readLong();
+            final int numKeys = dis.readInt();
+            taskMetrics.add(Pair.of(taskId, new TaskMetrics.RetrievedMetrics(
+              inputElement, outputElement, computation, numKeys)));
+          }
+
+          if (taskId == null) {
+            throw new RuntimeException("task id null");
+          }
+
           return Pair.of(taskId,
-            new OffloadingHeartbeatEvent(taskId, taskIndex, time));
+            new OffloadingHeartbeatEvent(taskMetrics));
         }
         case KAFKA_CHECKPOINT: {
           final String taskId = dis.readUTF();

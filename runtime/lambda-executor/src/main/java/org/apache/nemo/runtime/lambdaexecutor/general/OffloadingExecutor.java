@@ -26,10 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -181,23 +178,18 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
 
-      final long currTime = System.currentTimeMillis();
+      final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetricsList = new ArrayList<>(taskAssignedMap.size());
 
       for (final TaskExecutor taskExecutor : taskAssignedMap.keySet()) {
-        final long et = taskExecutor.getTaskExecutionTime().get();
-        taskExecutor.getTaskExecutionTime().getAndAdd(-et);
-
-        if (currTime - taskExecutorStartTimeMap.get(taskExecutor)
-          >= TimeUnit.SECONDS.toMillis(10)) {
-          LOG.info("Send heartbeat {}/{}", taskExecutor.getId(), et);
-          outputCollector.emit(new OffloadingHeartbeatEvent(
-            taskExecutor.getId(), getIndexFromTaskId(taskExecutor.getId()), et));
-        }
+        taskMetricsList.add(Pair.of(taskExecutor.getId(),
+          taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys())));
       }
 
+      outputCollector.emit(new OffloadingHeartbeatEvent(taskMetricsList));
+
       for (final SocketChannel channel : channels.keySet()) {
+        LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
         if (channel.isOpen()) {
           channel.flush();
         }

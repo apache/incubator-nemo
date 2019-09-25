@@ -161,11 +161,13 @@ public final class JobScaler {
                   consecutive += 1;
 
                   if (consecutive > 3) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.3;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
                     scalingOutBasedOnKeys(burstiness);
+                    //scalingOutConsideringKeyAndComm(burstiness);
+
                     consecutive = 0;
                     isScaling.set(true);
 
@@ -418,6 +420,104 @@ public final class JobScaler {
     }
   }
 
+  private List<ControlMessage.TaskStatInfo> sortByKeys(final List<ControlMessage.TaskStatInfo> taskStatInfos) {
+    // sort by keys
+    final List<ControlMessage.TaskStatInfo> copyInfos = new ArrayList<>(taskStatInfos);
+
+    Collections.sort(copyInfos, new Comparator<ControlMessage.TaskStatInfo>() {
+      @Override
+      public int compare(ControlMessage.TaskStatInfo o1, ControlMessage.TaskStatInfo o2) {
+        final int cmp = Integer.compare(o1.getNumKeys(), o2.getNumKeys());
+        if (cmp == 0) {
+          return o1.getTaskId().compareTo(o2.getTaskId());
+        } else {
+          return cmp;
+        }
+      }
+    });
+
+    return copyInfos;
+  }
+
+  /*
+  private long getRelayOverhead(final ControlMessage.TaskStatInfo taskStatInfo) {
+    // TODO:
+  }
+  */
+
+  private void scalingOutConsideringKeyAndComm(final double burstiness) {
+    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+
+      workerOffloadTaskMap.put(representer, new HashMap<>());
+
+      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+
+      final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
+      final long totalComputation = taskStatInfos.stream().map(info -> info.getComputation())
+        .reduce(0L, (x,y) -> x + y) / taskStatInfos.size();
+
+      final long totalOffloadComputation = (long) (totalComputation * ((burstiness - 1) / burstiness));
+      final List<ControlMessage.TaskStatInfo> copyInfos = sortByKeys(taskStatInfos);
+
+      LOG.info("Total comp: {}, offload comp: {}", totalComputation, totalOffloadComputation);
+
+      int i = 0;
+      long offloadComputation = 0;
+      while (offloadComputation < totalOffloadComputation && i < copyInfos.size()) {
+
+        final ControlMessage.TaskStatInfo taskStatInfo = copyInfos.get(i);
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskStatInfo.getTaskId());
+        offloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
+        final List<String> offloadTask = offloadTaskMap.get(stageId);
+
+        final TaskLoc loc = taskLocationMap.locationMap.get(taskStatInfo.getTaskId());
+        LOG.info("Offloading {}, key {}, comp {}, output {}, Executor {}",
+          taskStatInfo.getTaskId(),
+          taskStatInfo.getNumKeys(),
+          taskStatInfo.getComputation(),
+          taskStatInfo.getOutputElements(),
+          representer.getExecutorId());
+
+        if (loc == VM) {
+          offloadTask.add(taskStatInfo.getTaskId());
+          taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
+          offloadComputation += taskStatInfo.getComputation();
+
+          // check relay overhead
+        }
+
+        i += 1;
+      }
+    }
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
+    for (final Map.Entry<ExecutorRepresenter,
+      Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
+      scalingExecutorCnt.getAndIncrement();
+
+      final ExecutorRepresenter representer = entry.getKey();
+      final Map<String, List<String>> offloadTaskMap = entry.getValue();
+
+      // scaling out message
+      LOG.info("Send scaling out message {} to {}", entry.getValue(),
+        representer.getExecutorId());
+
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .build());
+      });
+    }
+  }
+
   private void scalingOutBasedOnKeys(final double divide) {
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
@@ -431,19 +531,7 @@ public final class JobScaler {
       final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
 
       // sort by keys
-      final List<ControlMessage.TaskStatInfo> copyInfos = new ArrayList<>(taskStatInfos);
-
-      Collections.sort(copyInfos, new Comparator<ControlMessage.TaskStatInfo>() {
-        @Override
-        public int compare(ControlMessage.TaskStatInfo o1, ControlMessage.TaskStatInfo o2) {
-          final int cmp = Integer.compare(o1.getNumKeys(), o2.getNumKeys());
-          if (cmp == 0) {
-            return o1.getTaskId().compareTo(o2.getTaskId());
-          } else {
-            return cmp;
-          }
-        }
-      });
+      final List<ControlMessage.TaskStatInfo> copyInfos = sortByKeys(taskStatInfos);
 
       final int countToOffload = (int) (taskStatInfos.size() - taskStatInfos.size() / divide);
 
@@ -683,6 +771,8 @@ public final class JobScaler {
                   //sendScalingOutDoneToAllWorkers();
                 }
               }
+
+              break;
             }
             case 2: {
               // Scaling in done

@@ -23,6 +23,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
@@ -67,6 +68,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
 
+  private boolean isStateless = true;
+
+  private GBKFinalTransform gbkFinalTransform;
 
   private boolean finished = false;
 
@@ -86,6 +90,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   final AtomicBoolean prepared = new AtomicBoolean(false);
 
   private final List<Future> outputfutures = new ArrayList<>();
+
+  final TaskMetrics taskMetrics;
 
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, Serializer> serializerMap,
@@ -108,6 +114,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     this.executorGlobalInstances = executorGlobalInstances;
     this.rendevousServerClient = rendevousServerClient;
     this.executorThread = executorThread;
+    this.taskMetrics = new TaskMetrics();
 
     /*
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -145,11 +152,17 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
         if (transform instanceof StatefulTransform) {
+          isStateless = false;
+
           final GBKFinalState state = readyTask.stateMap.get(irVertex.getId());
           if (state != null) {
             LOG.info("Set state for operator {}", irVertex.getId());
             final StatefulTransform statefulTransform = (StatefulTransform) transform;
             statefulTransform.setState(state);
+
+            if (statefulTransform instanceof GBKFinalTransform) {
+              gbkFinalTransform = (GBKFinalTransform) statefulTransform;
+            }
           }
         }
 
@@ -254,7 +267,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           serializerMap, pipeOutputWriters,
           offloadingTask.taskId,
           rendevousServerClient,
-          executorThread);
+          executorThread,
+          taskMetrics);
 
       LOG.info("External additional outputs at {}: {}", offloadingTask.taskId, externalAdditionalOutputMap);
 
@@ -265,7 +279,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         offloadingTask.taskIndex, serializerMap, pipeOutputWriters,
         offloadingTask.taskId,
         rendevousServerClient,
-        executorThread);
+        executorThread,
+        taskMetrics);
 
       LOG.info("External main outputs at {}: {}", offloadingTask.taskId, externalMainOutputs);
 
@@ -361,9 +376,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
 
     //LOG.info("Process element {}", dataElement.value);
+    final long ns = System.nanoTime();
 
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
+
+    final long endNs = System.nanoTime();
+
+    final long comp = (endNs - ns) / 2; // 2: 보정값.
+
+    taskMetrics.incrementComputation(comp);
   }
 
   private void onEventFromDataFetcher(final Object event,
@@ -374,6 +396,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // Process data element
+      taskMetrics.incrementInputElement();
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
 
     } else {
@@ -572,7 +595,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     final Set<PipeOutputWriter> outputWriters,
     final String taskId,
     final RendevousServerClient client,
-    final ExecutorThread et) {
+    final ExecutorThread et,
+    final TaskMetrics taskMetrics) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
 
@@ -585,7 +609,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client, et);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client, et, taskMetrics);
 
 
           outputWriters.add(outputWriter);
@@ -611,7 +635,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                                               final Set<PipeOutputWriter> pipeOutputWriters,
                                                               final String taskId,
                                                               final RendevousServerClient client,
-                                                              final ExecutorThread et) {
+                                                              final ExecutorThread et,
+                                                              final TaskMetrics taskMetrics) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
@@ -620,7 +645,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
             .createPipeWriter(taskIndex,
-              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client, et);
+              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client, et, taskMetrics);
         pipeOutputWriters.add(outputWriter);
         return outputWriter;
       })
@@ -772,12 +797,17 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public int getNumKeys() {
-    throw new RuntimeException("Not supported");
+    if (isStateless) {
+      return 0;
+    } else {
+      //LOG.info("Key {}, {}", num, taskId);
+      return gbkFinalTransform.getNumKeys();
+    }
   }
 
   @Override
   public TaskMetrics getTaskMetrics() {
-    throw new RuntimeException("Not supported");
+    return taskMetrics;
   }
 
   @Override

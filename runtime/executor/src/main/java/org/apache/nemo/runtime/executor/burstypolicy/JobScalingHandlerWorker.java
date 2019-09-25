@@ -71,6 +71,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final ScalingOutCounter scalingOutCounter;
 
+  private final SFTaskMetrics sfTaskMetrics;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -89,7 +91,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final TaskLocationMap taskLocationMap,
     final StageExecutorThreadMap stageExecutorThreadMap,
     final ExecutorThreads executorThreads,
-    final ScalingOutCounter scalingOutCounter) {
+    final ScalingOutCounter scalingOutCounter,
+    final SFTaskMetrics sfTaskMetrics) {
     this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
@@ -101,6 +104,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.evalConf = evalConf;
     this.toMaster = toMaster;
     this.scalingOutCounter = scalingOutCounter;
+    this.sfTaskMetrics = sfTaskMetrics;
     LOG.info("Start JobScalingHandlerWorker");
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
@@ -326,6 +330,9 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     LOG.info("Waiting for scaling in countdown latch");
     try {
       countDownLatch.await();
+
+      sfTaskMetrics.sfTaskMetrics.clear();
+
       LOG.info("Send scaling in done");
 
       toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)

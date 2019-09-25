@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
@@ -43,9 +44,11 @@ public final class IntermediateDataIOFactory {
     final Map<String, Serializer> serializerMap,
     final String taskId,
     final RendevousServerClient rendevousServerClient,
-    final ExecutorThread executorThread) {
+    final ExecutorThread executorThread,
+    final TaskMetrics taskMetrics) {
     return new PipeOutputWriter(taskId,
-      srcTaskIndex, originTaskindex, runtimeEdge, pipeManagerWorker, serializerMap, rendevousServerClient, executorThread);
+      srcTaskIndex, originTaskindex, runtimeEdge, pipeManagerWorker, serializerMap, rendevousServerClient, executorThread,
+      taskMetrics);
   }
 
   public InputReader createReader(final int dstTaskIdx,

@@ -37,7 +37,7 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
           final String taskId = dis.readUTF();
           final Integer taskIndex = dis.readInt();
           final Long time = dis.readLong();
-          return new OffloadingHeartbeatEvent(taskId, taskIndex, time);
+          //return new OffloadingHeartbeatEvent(taskId, taskIndex, time);
         }
         case KafkaOffloadingOutputEncoder.OFFLOADING_RESULT: {
 
