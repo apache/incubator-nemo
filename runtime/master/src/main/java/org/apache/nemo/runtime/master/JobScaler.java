@@ -1,8 +1,12 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -15,16 +19,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty.Value.Shuffle;
 
 public final class JobScaler {
 
@@ -47,6 +49,8 @@ public final class JobScaler {
   private final AtomicInteger scalingExecutorCnt = new AtomicInteger(0);
 
   private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
+  private final Map<String, ControlMessage.TaskStatInfo> taskStatInfoMap = new ConcurrentHashMap<>();
+
   private final Map<String, Double> executorCpuUseMap;
 
   private final AtomicBoolean isScalingIn = new AtomicBoolean(false);
@@ -77,10 +81,13 @@ public final class JobScaler {
 
   private int scalingThp;
 
+  private final TaskOffloadingManager taskOffloadingManager;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
-                    final TaskLocationMap taskLocationMap) {
+                    final TaskLocationMap taskLocationMap,
+                    final TaskOffloadingManager taskOffloadingManager) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
@@ -89,6 +96,8 @@ public final class JobScaler {
     this.executorCpuUseMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
+
+    this.taskOffloadingManager = taskOffloadingManager;
 
     this.scheduler = Executors.newSingleThreadScheduledExecutor();
     this.scheduler.scheduleAtFixedRate(() -> {
@@ -159,7 +168,7 @@ public final class JobScaler {
                   consecutive += 1;
 
                   if (consecutive > 4) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 0.35;
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.4;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
@@ -176,7 +185,7 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (cpuAvg < 0.3 && scalingThp > throughput) {
+                } else if (cpuAvg < 0.4 && scalingThp > throughput) {
 
                   scalingInConsecutive += 1;
 
@@ -440,11 +449,30 @@ public final class JobScaler {
     return copyInfos;
   }
 
-  /*
   private long getRelayOverhead(final ControlMessage.TaskStatInfo taskStatInfo) {
-    // TODO:
+    final List<String> inputTasks = taskOffloadingManager.getTaskInputTasksMap().get(taskStatInfo.getTaskId());
+    final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap().get(taskStatInfo.getTaskId());
+
+    final double alpha = 0.1;
+
+    long relayEvents = 0;
+
+    for (final String inputTask : inputTasks) {
+      if (taskLocationMap.locationMap.get(inputTask).equals(SF)) {
+        relayEvents += taskStatInfoMap.get(inputTask).getOutputElements();
+      }
+    }
+
+    for (final String outputTask : outputTasks) {
+       if (taskLocationMap.locationMap.get(outputTask).equals(SF)) {
+        relayEvents += taskStatInfo.getOutputElements();
+      }
+    }
+
+    //TODO: add overhead
+    final long overhead = (long) (alpha * relayEvents);
+    return overhead;
   }
-  */
 
   private void scalingOutConsideringKeyAndComm(final double burstiness) {
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
@@ -485,11 +513,18 @@ public final class JobScaler {
           representer.getExecutorId());
 
         if (loc == VM) {
-          offloadTask.add(taskStatInfo.getTaskId());
-          taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
-          offloadComputation += taskStatInfo.getComputation();
+          final long overhead = getRelayOverhead(taskStatInfo);
 
-          // check relay overhead
+          if (overhead < taskStatInfo.getComputation()) {
+            offloadTask.add(taskStatInfo.getTaskId());
+            taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
+            offloadComputation += taskStatInfo.getComputation();
+            // TODO: check relay overhead
+            offloadComputation -= overhead;
+
+            LOG.info("Task offloading overhead {}, computation {}, offloadComp {}",
+              overhead, taskStatInfo.getComputation(), offloadComputation);
+          }
         }
 
         i += 1;
@@ -805,6 +840,10 @@ public final class JobScaler {
             executorCpuUseMap.put(executorRepresenter.getExecutorId(), taskStatMessage.getCpuUse());
 
             executorTaskStatMap.put(executorRepresenter, taskStatInfos);
+
+            for (final ControlMessage.TaskStatInfo taskStatInfo : taskStatInfos) {
+              taskStatInfoMap.putIfAbsent(taskStatInfo.getTaskId(), taskStatInfo);
+            }
           }
           break;
         }

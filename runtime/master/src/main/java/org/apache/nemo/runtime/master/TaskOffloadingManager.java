@@ -6,6 +6,7 @@ import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -16,10 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
@@ -35,6 +33,8 @@ public final class TaskOffloadingManager {
 
   private final Map<String, Pair<Status, AtomicInteger>> stageStatusMap;
   private final Map<String, Stage> stageIdMap;
+  private final Map<String, List<String>> taskOutputTasksMap = new HashMap<>();
+  private final Map<String, List<String>> taskInputTasksMap = new HashMap<>();
 
   private static final Logger LOG = LoggerFactory.getLogger(TransferIndexMaster.class.getName());
 
@@ -52,6 +52,71 @@ public final class TaskOffloadingManager {
       stageIdMap.put(stage.getId(), stage);
       stageStatusMap.put(stage.getId(), Pair.of(Status.RUNNING, new AtomicInteger()));
     }
+
+    for (Stage stage : stageDAG.getVertices()) {
+      final List<StageEdge> outputEges = stageDAG.getOutgoingEdgesOf(stage);
+      for (final StageEdge edge : outputEges) {
+        final Stage dstStage = edge.getDst();
+
+        for (int i = 0; i < stage.getParallelism(); i++) {
+          final String srcTaskId = RuntimeIdManager.generateTaskId(stage.getId(), i, 0);
+          final List<String> dstTaskIds = new LinkedList<>();
+
+          if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.Shuffle)) {
+            for (int j = 0; j < dstStage.getParallelism(); j++) {
+              dstTaskIds.add(RuntimeIdManager.generateTaskId(dstStage.getId(), j, 0));
+            }
+          } else if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)) {
+            dstTaskIds.add(RuntimeIdManager.generateTaskId(dstStage.getId(), i, 0));
+          }
+
+          taskOutputTasksMap.put(srcTaskId, dstTaskIds);
+        }
+      }
+    }
+
+
+    for (Stage stage : stageDAG.getVertices()) {
+      final List<StageEdge> inputEdges = stageDAG.getIncomingEdgesOf(stage);
+      for (final StageEdge edge : inputEdges) {
+        final Stage srcStage = edge.getSrc();
+
+        for (int i = 0; i < stage.getParallelism(); i++) {
+          final String dstTaskId = RuntimeIdManager.generateTaskId(stage.getId(), i, 0);
+          final List<String> srcTaskIds = new LinkedList<>();
+
+          if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.Shuffle)) {
+            for (int j = 0; j < srcStage.getParallelism(); j++) {
+             srcTaskIds.add(RuntimeIdManager.generateTaskId(srcStage.getId(), j, 0));
+            }
+          } else if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)) {
+            srcTaskIds.add(RuntimeIdManager.generateTaskId(srcStage.getId(), i, 0));
+          }
+
+          taskInputTasksMap.put(dstTaskId, srcTaskIds);
+        }
+      }
+    }
+
+
+    LOG.info("Task output dependency map: {}", taskOutputTasksMap);
+    LOG.info("Task input dependency map: {}", taskInputTasksMap);
+  }
+
+  public Map<String, List<String>> getTaskInputTasksMap() {
+    return taskInputTasksMap;
+  }
+
+  public Map<String, List<String>> getTaskOutputTasksMap() {
+    return taskOutputTasksMap;
+  }
+
+  public Stage getStage(final String stageId) {
+    return stageIdMap.get(stageId);
+  }
+
+  public DAG<Stage, StageEdge> getStageDAG() {
+    return stageDAG;
   }
 
   private List<String> getDependencies(final Stage stage) {
