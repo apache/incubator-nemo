@@ -159,7 +159,7 @@ public final class JobScaler {
 
                   consecutive += 1;
 
-                  if (consecutive > 3) {
+                  if (consecutive > 4) {
                     final double burstiness = (recentInputRate / (double) throughput) + 0.3;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
@@ -167,8 +167,8 @@ public final class JobScaler {
 
                     scalingThp = throughput;
 
-                    scalingOutBasedOnKeys(burstiness);
-                    //scalingOutConsideringKeyAndComm(burstiness);
+                    //scalingOutBasedOnKeys(burstiness);
+                    scalingOutConsideringKeyAndComm(burstiness);
 
                     consecutive = 0;
                     isScaling.set(true);
