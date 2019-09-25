@@ -114,7 +114,7 @@ public final class JobScaler {
         final StringBuilder sb = new StringBuilder();
 
         for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
-          sb.append("Stage Stat:");
+          sb.append("Stage Stat:\n");
           sb.append("[");
           sb.append(entry.getKey());
           sb.append(",");
@@ -123,7 +123,7 @@ public final class JobScaler {
           sb.append("\n");
         }
 
-        //LOG.info(sb.toString());
+        LOG.info(sb.toString());
 
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
@@ -160,7 +160,7 @@ public final class JobScaler {
                   consecutive += 1;
 
                   if (consecutive > 4) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 0.3;
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
@@ -460,6 +460,8 @@ public final class JobScaler {
       final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
       final long totalComputation = taskStatInfos.stream().map(info -> info.getComputation())
         .reduce(0L, (x,y) -> x + y) / taskStatInfos.size();
+
+      LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
 
       final long totalOffloadComputation = (long) (totalComputation * ((burstiness - 1) / burstiness));
       final List<ControlMessage.TaskStatInfo> copyInfos = sortByKeys(taskStatInfos);
