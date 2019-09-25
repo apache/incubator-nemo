@@ -459,17 +459,27 @@ public final class JobScaler {
 
     long relayEvents = 0;
 
+    /*
     for (final String inputTask : inputTasks) {
       if (taskLocationMap.locationMap.get(inputTask).equals(SF)) {
         relayEvents += taskStatInfoMap.get(inputTask).getOutputElements();
       }
     }
+    */
+
+    LOG.info("Output task of {}: {}", taskStatInfo.getTaskId(), outputTasks);
+
+    /*
 
     for (final String outputTask : outputTasks) {
        if (taskLocationMap.locationMap.get(outputTask).equals(SF)) {
         relayEvents += taskStatInfo.getOutputElements();
       }
     }
+    */
+
+    relayEvents += taskStatInfo.getInputElements();
+    relayEvents += taskStatInfo.getOutputElements();
 
     //TODO: add overhead
     final long overhead = (long) (alpha * relayEvents);
