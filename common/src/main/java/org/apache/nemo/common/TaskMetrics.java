@@ -40,7 +40,7 @@ public final class TaskMetrics {
   }
 
   public void incrementComputation(final long update) {
-    computation.addAndGet(update);
+    computation.addAndGet(update / 1000);
   }
 
   public RetrievedMetrics retrieve(final int numKeys) {

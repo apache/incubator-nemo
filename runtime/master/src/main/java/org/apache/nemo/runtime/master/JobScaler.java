@@ -114,7 +114,7 @@ public final class JobScaler {
         final StringBuilder sb = new StringBuilder();
 
         for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
-          sb.append("Stage Stat:\n");
+          sb.append("\nStage Stat:");
           sb.append("[");
           sb.append(entry.getKey());
           sb.append(",");
