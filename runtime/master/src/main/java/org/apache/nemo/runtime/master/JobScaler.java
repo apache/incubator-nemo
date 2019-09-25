@@ -185,7 +185,7 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (cpuAvg < 0.4 && scalingThp > throughput) {
+                } else if (scalingThp / 1.5 >= throughput) {
 
                   scalingInConsecutive += 1;
 
