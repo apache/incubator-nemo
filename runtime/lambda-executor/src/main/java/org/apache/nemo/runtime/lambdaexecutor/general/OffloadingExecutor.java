@@ -186,14 +186,17 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           taskExecutor.getTaskMetrics().retrieve(taskExecutor.getNumKeys())));
       }
 
-      outputCollector.emit(new OffloadingHeartbeatEvent(taskMetricsList));
+      if (!taskMetricsList.isEmpty()) {
+        outputCollector.emit(new OffloadingHeartbeatEvent(taskMetricsList));
 
-      for (final SocketChannel channel : channels.keySet()) {
-        LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
-        if (channel.isOpen()) {
-          channel.flush();
+        for (final SocketChannel channel : channels.keySet()) {
+          LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
+          if (channel.isOpen()) {
+            channel.flush();
+          }
         }
       }
+
     }, 1, 1, TimeUnit.SECONDS);
 
     final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
