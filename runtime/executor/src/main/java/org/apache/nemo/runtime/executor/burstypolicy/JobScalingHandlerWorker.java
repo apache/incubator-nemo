@@ -165,7 +165,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     return l;
   }
 
-  private void scaleOut(final Map<String, List<String>> offloadTasks) {
+  private synchronized void scaleOut(final Map<String, List<String>> offloadTasks) {
     // scale out
     final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
 
@@ -279,7 +279,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }
 
-  private void scaleIn() {
+  private synchronized void scaleIn() {
     // scale in
     LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
 
