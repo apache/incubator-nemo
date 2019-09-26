@@ -139,7 +139,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
         if (msg instanceof OffloadingHeartbeatEvent) {
           final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
-          LOG.info("Set task metrics from sf", heartbeatEvent.taskMetrics);
+          //LOG.info("Set task metrics from sf", heartbeatEvent.taskMetrics);
 
           for (final Pair<String, TaskMetrics.RetrievedMetrics> metric : heartbeatEvent.taskMetrics) {
             sfTaskMetrics.sfTaskMetrics.put(metric.left(), metric.right());
