@@ -563,6 +563,8 @@ public final class JobScaler {
   private void scalingOutConsideringKeyAndComm(final double burstiness) {
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
+    int offloadingCnt = 0;
+
     for (final ExecutorRepresenter representer :
       taskScheduledMap.getScheduledStageTasks().keySet()) {
 
@@ -602,6 +604,7 @@ public final class JobScaler {
           final long overhead = getRelayOverhead(taskStatInfo);
 
           if (overhead < taskStatInfo.getComputation()) {
+            offloadingCnt += 1;
             offloadTask.add(taskStatInfo.getTaskId());
             taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), SF);
             offloadComputation += taskStatInfo.getComputation();
@@ -617,7 +620,11 @@ public final class JobScaler {
       }
     }
 
+
+    LOG.info("Total offloading count: {}", offloadingCnt);
+
     final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
 
     for (final Map.Entry<ExecutorRepresenter,
       Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
