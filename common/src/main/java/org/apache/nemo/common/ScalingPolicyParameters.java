@@ -18,7 +18,7 @@ public final class ScalingPolicyParameters {
 
   public static double CPU_LOW_THRESHOLD = 0.65;
 
-  public static int CONSECUTIVE = 4;
+  public static int CONSECUTIVE = 3;
 
   public static int SLACK_TIME = 15;
 }
