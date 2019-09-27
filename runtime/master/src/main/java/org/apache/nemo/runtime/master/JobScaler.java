@@ -227,47 +227,48 @@ public final class JobScaler {
                 LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
                   recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
+                if (evalConf.autoscaling) {
+                  if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
+                    recentInputRate * 0.8 > throughput) {
 
-                if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
-                  recentInputRate * 0.8 > throughput) {
+                    // Scaling out
+                    consecutive += 1;
 
-                  // Scaling out
-                  consecutive += 1;
+                    if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
+                      final double burstiness = (recentInputRate / (double) (throughput * 0.65));
+                      // 그다음에 task selection
+                      LOG.info("Scaling out !! Burstiness: {}", burstiness);
+                      // TODO: scaling!!
+                      scalingThp = throughput;
 
-                  if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
-                    final double burstiness = (recentInputRate / (double) (throughput * 0.65));
-                    // 그다음에 task selection
-                    LOG.info("Scaling out !! Burstiness: {}", burstiness);
-                    // TODO: scaling!!
-                    scalingThp = throughput;
+                      //scalingOutBasedOnKeys(burstiness);
+                      scalingOutConsideringKeyAndComm(burstiness);
 
-                    //scalingOutBasedOnKeys(burstiness);
-                    scalingOutConsideringKeyAndComm(burstiness);
+                      consecutive = 0;
+                      isScaling.set(true);
 
-                    consecutive = 0;
-                    isScaling.set(true);
+                      executionStatus = ExecutionStatus.SCALE_OUT;
+                    }
 
-                    executionStatus = ExecutionStatus.SCALE_OUT;
-                  }
-
-                  LOG.info("Consecutive {}", consecutive);
-                } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
-                  && executionStatus == ExecutionStatus.SCALE_OUT) {
+                    LOG.info("Consecutive {}", consecutive);
+                  } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
+                    && executionStatus == ExecutionStatus.SCALE_OUT) {
 
                     scalingInConsecutive += 1;
 
-                  if (scalingInConsecutive > ScalingPolicyParameters.CONSECUTIVE) {
-                    //TODO: more sophisticaed algorihtm
-                    // Scaling in ...
-                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
-                    scalingIn();
-                    isScalingIn.set(true);
+                    if (scalingInConsecutive > ScalingPolicyParameters.CONSECUTIVE) {
+                      //TODO: more sophisticaed algorihtm
+                      // Scaling in ...
+                      LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
+                      scalingIn();
+                      isScalingIn.set(true);
+                      scalingInConsecutive = 0;
+                    }
+
+                  } else {
+                    consecutive = 0;
                     scalingInConsecutive = 0;
                   }
-
-                } else {
-                  consecutive = 0;
-                  scalingInConsecutive = 0;
                 }
               }
             }
