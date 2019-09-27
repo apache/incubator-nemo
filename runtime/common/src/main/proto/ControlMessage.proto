@@ -375,6 +375,7 @@ message TaskStatMessage {
   required string executorId = 1;
   repeated TaskStatInfo taskStats = 2;
   optional double cpuUse = 3;
+  optional double sfCpuUse = 4;
 }
 
 message TaskStatInfo {

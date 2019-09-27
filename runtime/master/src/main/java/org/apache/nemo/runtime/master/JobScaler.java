@@ -53,7 +53,8 @@ public final class JobScaler {
   private final Map<ExecutorRepresenter, List<ControlMessage.TaskStatInfo>> executorTaskStatMap;
   private final Map<String, ControlMessage.TaskStatInfo> taskStatInfoMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Double> executorCpuUseMap;
+  // pair left: vm cpu, right: sf cpu
+  private final Map<String, Pair<Double, Double>> executorCpuUseMap;
 
   private final AtomicBoolean isScalingIn = new AtomicBoolean(false);
   private final AtomicInteger isScalingInCnt = new AtomicInteger(0);
@@ -196,10 +197,16 @@ public final class JobScaler {
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 final int throughput = stage0InputRate;
 
-                final double cpuAvg = executorCpuUseMap.values().stream().reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+                final double cpuAvg = executorCpuUseMap.values().stream()
+                  .map(pair -> pair.left())
+                  .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-                LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, executorCpuUseMap: {}",
-                  recentInputRate, throughput, cpuAvg, executorCpuUseMap);
+                final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
+                  .map(pair -> pair.left() + pair.right())
+                  .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+                LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
+                  recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
                 if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
 
@@ -229,7 +236,7 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (cpuAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
+                } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
                   && executionStatus == ExecutionStatus.SCALE_OUT) {
 
                     scalingInConsecutive += 1;
@@ -895,7 +902,8 @@ public final class JobScaler {
           final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
 
           if (executorRepresenter != null) {
-            executorCpuUseMap.put(executorRepresenter.getExecutorId(), taskStatMessage.getCpuUse());
+            executorCpuUseMap.put(executorRepresenter.getExecutorId(),
+              Pair.of(taskStatMessage.getCpuUse(), taskStatMessage.getSfCpuUse()));
 
             executorTaskStatMap.put(executorRepresenter, taskStatInfos);
 
