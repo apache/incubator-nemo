@@ -174,7 +174,7 @@ public final class JobScaler {
 
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
-        if (!isScaling.get() &&
+        if (!isScaling.get() && !isScalingIn.get() &&
           System.currentTimeMillis() - scalingDoneTime >= TimeUnit.SECONDS.toMillis(slackTime)) {
 
           if (stageStat.get("Stage0") != null) {
