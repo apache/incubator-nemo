@@ -356,16 +356,19 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       LOG.info("Get throttling");
 
-      executorThreads.forEach(thread -> {
-        thread.getThrottle().set(true);
-      });
+      scheduledExecutorService.schedule(() -> {
+        executorThreads.forEach(thread -> {
+          thread.getThrottle().set(true);
+        });
+      }, 10, TimeUnit.MILLISECONDS);
+
 
 
       scheduledExecutorService.schedule(() -> {
         executorThreads.forEach(thread -> {
           thread.getThrottle().set(false);
         });
-      }, 1, TimeUnit.SECONDS);
+      }, 900, TimeUnit.MILLISECONDS);
 
     } else {
       throw new RuntimeException("Unsupported event type: " + event);
