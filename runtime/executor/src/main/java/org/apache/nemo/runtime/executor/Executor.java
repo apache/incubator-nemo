@@ -286,10 +286,11 @@ public final class Executor {
         .reduce(0L, (x, y) -> x + y);
 
       final long vmComputation =
+        Math.max(10000,
         taskStatInfos.stream().filter(taskStatInfo -> {
         return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == VM;
       }).map(taskStatInfo -> taskStatInfo.getComputation())
-        .reduce(0L, (x, y) -> x + y);
+        .reduce(0L, (x, y) -> x + y));
 
       final double sfCpuLoad = (sfComputation  / (double)vmComputation) * load;
 
