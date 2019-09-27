@@ -187,7 +187,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       }
 
       if (!taskMetricsList.isEmpty()) {
-        outputCollector.emit(new OffloadingHeartbeatEvent(taskMetricsList));
+        final OperatingSystemMXBean bean =
+          (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        final double cpuLoad = bean.getProcessCpuLoad();
+
+        outputCollector.emit(new OffloadingHeartbeatEvent(executorId, taskMetricsList,
+          cpuLoad / ScalingPolicyParameters.VM_LAMBDA_CPU_LOAD_RATIO));
 
         for (final SocketChannel channel : channels.keySet()) {
           LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());

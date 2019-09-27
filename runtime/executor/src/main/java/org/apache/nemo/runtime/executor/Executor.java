@@ -278,6 +278,10 @@ public final class Executor {
         }
       }).collect(Collectors.toList());
 
+      final double sfCpuLoad = sfTaskMetrics.cpuLoadMap.values().stream().reduce(0.0, (x, y) -> x + y);
+
+      LOG.info("VM cpu use: {}, SF cpu use: {}", sfCpuLoad);
+
       persistentConnectionToMasterMap.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
@@ -286,7 +290,7 @@ public final class Executor {
           .setTaskStatMsg(ControlMessage.TaskStatMessage.newBuilder()
             .setExecutorId(executorId)
             .addAllTaskStats(taskStatInfos)
-            .setCpuUse(load)
+            .setCpuUse(load + sfCpuLoad)
             .build())
           .build());
 

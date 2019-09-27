@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ScalingPolicyParameters;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
@@ -65,7 +66,6 @@ public final class JobScaler {
 
   private final int WINDOW_SIZE = 5;
 
-
   //private final List<Integer> stage0InputRates = new LinkedList<>();
 
   private int skipCnt = 0;
@@ -76,7 +76,6 @@ public final class JobScaler {
   private int scalingInConsecutive = 0;
 
   private long scalingDoneTime = 0;
-  private final int slackTime = 20;
 
   private ExecutionStatus executionStatus = ExecutionStatus.NORMAL;
 
@@ -176,7 +175,8 @@ public final class JobScaler {
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
         if (!isScaling.get() && !isScalingIn.get() &&
-          System.currentTimeMillis() - scalingDoneTime >= TimeUnit.SECONDS.toMillis(slackTime)) {
+          System.currentTimeMillis() - scalingDoneTime >=
+            TimeUnit.SECONDS.toMillis(ScalingPolicyParameters.SLACK_TIME)) {
 
           if (stageStat.get("Stage0") != null) {
             final int stage0InputRate = (int) stageStat.get("Stage0").getLeft().input;
@@ -190,7 +190,7 @@ public final class JobScaler {
 
             // 60초 이후에 scaling
             LOG.info("skpCnt: {}, inputRates {}, scalingThp {}", skipCnt, inputRates.size(), scalingThp);
-            if (skipCnt > 30) {
+            if (skipCnt > 45) {
               if (inputRates.size() == WINDOW_SIZE) {
                 final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
@@ -201,7 +201,7 @@ public final class JobScaler {
                 LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, executorCpuUseMap: {}",
                   recentInputRate, throughput, cpuAvg, executorCpuUseMap);
 
-                if (cpuAvg > 0.8) {
+                if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
 
                   // Scaling out
 
@@ -211,7 +211,7 @@ public final class JobScaler {
                     baseThp = throughput;
                   }
 
-                  if (consecutive > 4) {
+                  if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
                     final double burstiness = (recentInputRate / (double) baseThp) + 0.5;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
@@ -229,11 +229,12 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (cpuAvg < 0.5 && executionStatus == ExecutionStatus.SCALE_OUT) {
+                } else if (cpuAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
+                  && executionStatus == ExecutionStatus.SCALE_OUT) {
 
                     scalingInConsecutive += 1;
 
-                  if (scalingInConsecutive > 3) {
+                  if (scalingInConsecutive > ScalingPolicyParameters.CONSECUTIVE) {
                     //TODO: more sophisticaed algorihtm
                     // Scaling in ...
                     LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
@@ -499,7 +500,7 @@ public final class JobScaler {
     final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap()
       .getOrDefault(taskStatInfo.getTaskId(), Collections.emptyList());
 
-    final double alpha = 20;
+    final double alpha = ScalingPolicyParameters.RELAY_OVERHEAD;
 
     long relayEvents = 0;
 

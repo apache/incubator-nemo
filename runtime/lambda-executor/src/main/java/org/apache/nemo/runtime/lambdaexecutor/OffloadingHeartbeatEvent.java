@@ -9,8 +9,15 @@ import java.util.Map;
 public final class OffloadingHeartbeatEvent {
 
   public final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetrics;
+  public final double cpuUse;
+  public final String executorId;
 
-  public OffloadingHeartbeatEvent(final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetrics) {
+  public OffloadingHeartbeatEvent(
+    final String executorId,
+    final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetrics,
+                                  final double cpuUse) {
+    this.executorId = executorId;
     this.taskMetrics = taskMetrics;
+    this.cpuUse = cpuUse;
   }
 }

@@ -55,6 +55,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingHeartbeatEvent element = (OffloadingHeartbeatEvent) data;
       dos.writeChar(HEARTBEAT);
+      dos.writeUTF(element.executorId);
       dos.writeInt(element.taskMetrics.size());
 
       for (final Pair<String, TaskMetrics.RetrievedMetrics> taskMetric : element.taskMetrics) {
@@ -64,6 +65,8 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
         dos.writeLong(taskMetric.right().computation);
         dos.writeInt(taskMetric.right().numKeys);
       }
+
+      dos.writeDouble(element.cpuUse);
 
     } else if (data instanceof KafkaOffloadingOutput) {
       final DataOutputStream dos = new DataOutputStream(outputStream);

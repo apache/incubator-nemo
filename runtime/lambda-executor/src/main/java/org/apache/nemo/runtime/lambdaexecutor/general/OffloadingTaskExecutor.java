@@ -4,6 +4,7 @@ import avro.shaded.com.google.common.collect.Lists;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ScalingPolicyParameters;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
@@ -383,7 +384,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     final long endNs = System.nanoTime();
 
-    final long comp = (long) ((endNs - ns) / 1.5); // 2: 보정값.
+    final long comp = (long) ((endNs - ns) /
+      ScalingPolicyParameters.LAMBDA_CPU_PROC_TIME_RATIO); // 2: 보정값.
 
     taskMetrics.incrementComputation(comp);
   }

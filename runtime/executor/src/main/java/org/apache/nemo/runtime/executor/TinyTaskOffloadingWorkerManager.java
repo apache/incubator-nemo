@@ -143,7 +143,10 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
           for (final Pair<String, TaskMetrics.RetrievedMetrics> metric : heartbeatEvent.taskMetrics) {
             sfTaskMetrics.sfTaskMetrics.put(metric.left(), metric.right());
+
           }
+
+          sfTaskMetrics.cpuLoadMap.put(heartbeatEvent.executorId, heartbeatEvent.cpuUse);
 
         } else if (msg instanceof OffloadingResultEvent) {
           if (((OffloadingResultEvent) msg).data.size() > 0) {

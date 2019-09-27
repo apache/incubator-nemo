@@ -332,6 +332,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       countDownLatch.await();
 
       sfTaskMetrics.sfTaskMetrics.clear();
+      sfTaskMetrics.cpuLoadMap.clear();
 
       LOG.info("Send scaling in done");
 

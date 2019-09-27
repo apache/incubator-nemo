@@ -55,6 +55,7 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
             new ThpEvent(taskId, opId, thp));
         }
         case HEARTBEAT: {
+          final String executorId = dis.readUTF();
           final int len = dis.readInt();
           final List<Pair<String, TaskMetrics.RetrievedMetrics>> taskMetrics = new ArrayList<>(len);
           String taskId = null;
@@ -73,8 +74,10 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
             throw new RuntimeException("task id null");
           }
 
+          final double cpuLoad = dis.readDouble();
+
           return Pair.of(taskId,
-            new OffloadingHeartbeatEvent(taskMetrics));
+            new OffloadingHeartbeatEvent(executorId, taskMetrics, cpuLoad));
         }
         case KAFKA_CHECKPOINT: {
           final String taskId = dis.readUTF();
