@@ -81,6 +81,7 @@ public final class JobScaler {
   private ExecutionStatus executionStatus = ExecutionStatus.NORMAL;
 
   private int scalingThp;
+  private int baseThp = 0;
 
   private final TaskOffloadingManager taskOffloadingManager;
 
@@ -206,8 +207,12 @@ public final class JobScaler {
 
                   consecutive += 1;
 
+                  if (consecutive == 1) {
+                    baseThp = throughput;
+                  }
+
                   if (consecutive > 4) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 1;
+                    final double burstiness = (recentInputRate / (double) baseThp) + 1;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
