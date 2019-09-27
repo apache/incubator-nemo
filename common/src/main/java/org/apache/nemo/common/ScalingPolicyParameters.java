@@ -14,9 +14,9 @@ public final class ScalingPolicyParameters {
 
   public static double RELAY_OVERHEAD = 15;
 
-  public static double CPU_HIGH_THRESHOLD = 0.85;
+  public static double CPU_HIGH_THRESHOLD = 0.8;
 
-  public static double CPU_LOW_THRESHOLD = 0.65;
+  public static double CPU_LOW_THRESHOLD = 0.6;
 
   public static int CONSECUTIVE = 3;
 

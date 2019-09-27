@@ -592,7 +592,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               .forEach(executorThread -> {
                 executorThread.getThrottle().set(false);
               });
-          }, 600, TimeUnit.MILLISECONDS);
+          }, 500, TimeUnit.MILLISECONDS);
 
           break;
         }
