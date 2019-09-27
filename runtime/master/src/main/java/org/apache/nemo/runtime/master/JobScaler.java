@@ -229,14 +229,14 @@ public final class JobScaler {
                   }
 
                   LOG.info("Consecutive {}", consecutive);
-                } else if (scalingThp / 1.5 >= throughput) {
+                } else if (cpuAvg < 0.5 && executionStatus == ExecutionStatus.SCALE_OUT) {
 
-                  scalingInConsecutive += 1;
+                    scalingInConsecutive += 1;
 
                   if (scalingInConsecutive > 3) {
                     //TODO: more sophisticaed algorihtm
                     // Scaling in ...
-                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp , scalingThp);
+                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
                     scalingIn();
                     isScalingIn.set(true);
                     scalingInConsecutive = 0;
@@ -499,7 +499,7 @@ public final class JobScaler {
     final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap()
       .getOrDefault(taskStatInfo.getTaskId(), Collections.emptyList());
 
-    final double alpha = 5;
+    final double alpha = 20;
 
     long relayEvents = 0;
 
