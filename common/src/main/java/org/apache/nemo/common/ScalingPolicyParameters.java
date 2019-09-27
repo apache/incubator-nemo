@@ -20,5 +20,5 @@ public final class ScalingPolicyParameters {
 
   public static int CONSECUTIVE = 3;
 
-  public static int SLACK_TIME = 15;
+  public static int SLACK_TIME = 25;
 }

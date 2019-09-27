@@ -259,6 +259,7 @@ public final class JobScaler {
                     scalingInConsecutive += 1;
 
                     if (scalingInConsecutive > ScalingPolicyParameters.CONSECUTIVE) {
+                      executionStatus = ExecutionStatus.NORMAL;
                       //TODO: more sophisticaed algorihtm
                       // Scaling in ...
                       LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
