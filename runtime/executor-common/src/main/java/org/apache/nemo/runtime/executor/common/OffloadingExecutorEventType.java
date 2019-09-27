@@ -4,6 +4,7 @@ public final class OffloadingExecutorEventType {
   public enum EventType {
     TASK_START,
     TASK_READY,
-    TASK_END
+    TASK_END,
+    THROTTLE,
   }
 }

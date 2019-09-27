@@ -190,7 +190,7 @@ public final class JobScaler {
             skipCnt += 1;
 
             // 60초 이후에 scaling
-            LOG.info("skpCnt: {}, inputRates {}, scalingThp {}", skipCnt, inputRates.size(), scalingThp);
+            LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
             if (skipCnt > 45) {
               if (inputRates.size() == WINDOW_SIZE) {
                 final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
@@ -208,22 +208,31 @@ public final class JobScaler {
                 LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
                   recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
+
                 if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
+                  // Throttling
+                  executorTaskStatMap.keySet().forEach(representer -> {
+                      executorService.execute(() -> {
+                        representer.sendControlMessage(
+                          ControlMessage.Message.newBuilder()
+                            .setId(RuntimeIdManager.generateMessageId())
+                            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                            .setType(ControlMessage.MessageType.Throttling)
+                            .build());
+                      });
+                    }
+                  );
+                }
 
+                if (recentInputRate * 0.8 > throughput) {
                   // Scaling out
-
                   consecutive += 1;
 
-                  if (consecutive == 1) {
-                    baseThp = throughput;
-                  }
-
                   if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
-                    final double burstiness = (recentInputRate / (double) baseThp) + 0.5;
+                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
-
                     scalingThp = throughput;
 
                     //scalingOutBasedOnKeys(burstiness);

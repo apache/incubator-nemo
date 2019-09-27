@@ -17,6 +17,7 @@ import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
+import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
@@ -350,6 +351,21 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       taskExecutorStartTimeMap.remove(deletedTask);
 
       executorThread.deleteTask(deletedTask);
+
+    } else if (event instanceof ThrottlingEvent) {
+
+      LOG.info("Get throttling");
+
+      executorThreads.forEach(thread -> {
+        thread.getThrottle().set(true);
+      });
+
+
+      scheduledExecutorService.schedule(() -> {
+        executorThreads.forEach(thread -> {
+          thread.getThrottle().set(false);
+        });
+      }, 1, TimeUnit.SECONDS);
 
     } else {
       throw new RuntimeException("Unsupported event type: " + event);

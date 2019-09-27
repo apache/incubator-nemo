@@ -25,10 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.common.TaskLoc.SF;
@@ -360,6 +357,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   public void close() {
   }
 
+
   private void scaleOutWithDivideNum(final double divideNum) {
     // scale out
     final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
@@ -457,6 +455,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   }
 
   private final class ScalingDecisionHandler implements MessageListener<ControlMessage.Message> {
+
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
@@ -569,6 +569,30 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           }
 
           break;
+        case Throttling: {
+          LOG.info("Start Throttleing");
+          stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
+            .map(pair -> pair.right())
+            .flatMap(l -> l.stream())
+            .forEach(executorThread -> {
+              executorThread.getThrottle().set(true);
+            });
+
+
+          // sf worker에게도 전달.
+
+          scheduledExecutorService.schedule(() -> {
+            LOG.info("End of Throttleing");
+            stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
+              .map(pair -> pair.right())
+              .flatMap(l -> l.stream())
+              .forEach(executorThread -> {
+                executorThread.getThrottle().set(false);
+              });
+          }, 1, TimeUnit.SECONDS);
+
+          break;
+        }
         default:
           throw new IllegalMessageException(
             new Exception("This message should not be received by an executor :" + message.getType()));

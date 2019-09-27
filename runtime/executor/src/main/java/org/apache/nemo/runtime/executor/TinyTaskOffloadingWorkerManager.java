@@ -337,6 +337,25 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }
   }
 
+  public void sendThrottle() {
+    LOG.info("Send throttling in worker manager");
+    try {
+      synchronized (workers) {
+        final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+        while (iterator.hasNext()) {
+          final Pair<Long, TinyTaskWorker> pair = iterator.next();
+          final TinyTaskWorker taskWorker = pair.right();
+          if (taskWorker.isReady()) {
+            taskWorker.sendThrottling();
+          }
+        }
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public void execute(ByteBuf data) {
     throw new RuntimeException("Unsupported operation");

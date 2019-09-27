@@ -151,6 +151,13 @@ public final class TinyTaskWorker {
     }
   }
 
+  public void sendThrottling() {
+    LOG.info("Send throttling  in worker");
+    final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+    byteBuf.writeInt(OffloadingExecutorEventType.EventType.THROTTLE.ordinal());
+    offloadingWorker.execute(byteBuf, 1, false);
+  }
+
   public AtomicInteger getDeletePending() {
     return deletePending;
   }

@@ -7,6 +7,7 @@ import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCode
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
+import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +50,9 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
       case TASK_END: {
         final String taskId = dis.readUTF();
         return new TaskEndEvent(taskId);
+      }
+      case THROTTLE: {
+        return new ThrottlingEvent();
       }
       default:
         throw new RuntimeException("Not supported type: " + et);

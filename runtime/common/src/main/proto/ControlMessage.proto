@@ -104,6 +104,8 @@ enum MessageType {
 
     BroadcastInfo = 32; // master -> worker
 
+    Throttling = 33;
+
 }
 
 message Message {

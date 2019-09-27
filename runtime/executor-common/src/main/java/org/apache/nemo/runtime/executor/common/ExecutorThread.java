@@ -141,16 +141,21 @@ public final class ExecutorThread {
 
           // process source tasks
           final List<TaskExecutor> pendings = new ArrayList<>();
-          synchronized (sourceTasks) {
-            final Iterator<TaskExecutor> iterator = sourceTasks.iterator();
-            while (iterator.hasNext()) {
-              final TaskExecutor sourceTask = iterator.next();
-              if (sourceTask.isSourceAvailable()) {
-                sourceTask.handleSourceData();
-              } else  {
-                iterator.remove();
-                //LOG.info("Add pending task {}", sourceTask.getId());
-                pendings.add(sourceTask);
+
+          boolean processed = false;
+
+          if (!throttle.get()) {
+            synchronized (sourceTasks) {
+              final Iterator<TaskExecutor> iterator = sourceTasks.iterator();
+              while (iterator.hasNext()) {
+                final TaskExecutor sourceTask = iterator.next();
+                if (sourceTask.isSourceAvailable()) {
+                  sourceTask.handleSourceData();
+                } else {
+                  iterator.remove();
+                  //LOG.info("Add pending task {}", sourceTask.getId());
+                  pendings.add(sourceTask);
+                }
               }
             }
           }
@@ -166,10 +171,11 @@ public final class ExecutorThread {
             runnableIterator.remove();
             //LOG.info("Polling queue");
             runnable.run();
+            processed = true;
           }
 
-          if (throttle.get()) {
-            Thread.sleep(30);
+          if (throttle.get() && !processed) {
+            Thread.sleep(20);
           }
 
           if (sourceTasks.isEmpty() && queue.isEmpty()) {

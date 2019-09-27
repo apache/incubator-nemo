@@ -61,7 +61,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private boolean watermarkProgressed = false;
 
-
   private final AtomicBoolean globalPrepared;
 
   public SourceVertexDataFetcher(final SourceVertex dataSource,
