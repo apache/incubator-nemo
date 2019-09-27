@@ -233,7 +233,7 @@ public final class JobScaler {
                   consecutive += 1;
 
                   if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
-                    final double burstiness = (recentInputRate / (double) throughput) + 0.5;
+                    final double burstiness = (recentInputRate / (double) (throughput * 0.65));
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
