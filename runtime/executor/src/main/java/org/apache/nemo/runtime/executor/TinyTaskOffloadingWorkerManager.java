@@ -338,7 +338,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   }
 
   public void sendThrottle() {
-    LOG.info("Send throttling in worker manager");
+    //LOG.info("Send throttling in worker manager");
+
     try {
       synchronized (workers) {
         final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();

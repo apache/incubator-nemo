@@ -79,6 +79,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 
@@ -239,7 +240,6 @@ public final class Executor {
 
       final List<ControlMessage.TaskStatInfo> taskStatInfos = taskExecutors.stream().map(taskExecutor -> {
 
-
         final String taskId = taskExecutor.getId();
 
         if (taskLocationMap.locationMap.get(taskId) == SF) {
@@ -278,7 +278,22 @@ public final class Executor {
         }
       }).collect(Collectors.toList());
 
-      final double sfCpuLoad = sfTaskMetrics.cpuLoadMap.values().stream().reduce(0.0, (x, y) -> x + y);
+
+      final long sfComputation =
+        taskStatInfos.stream().filter(taskStatInfo -> {
+        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == SF;
+      }).map(taskStatInfo -> taskStatInfo.getComputation())
+        .reduce(0L, (x, y) -> x + y);
+
+      final long vmComputation =
+        taskStatInfos.stream().filter(taskStatInfo -> {
+        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == VM;
+      }).map(taskStatInfo -> taskStatInfo.getComputation())
+        .reduce(0L, (x, y) -> x + y);
+
+      final double sfCpuLoad = (sfComputation  / (double)vmComputation) * load;
+
+      //final double sfCpuLoad = sfTaskMetrics.cpuLoadMap.values().stream().reduce(0.0, (x, y) -> x + y);
 
       LOG.info("VM cpu use: {}, SF cpu use: {}", load, sfCpuLoad);
 
