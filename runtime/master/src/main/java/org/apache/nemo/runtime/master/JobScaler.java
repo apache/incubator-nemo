@@ -175,6 +175,41 @@ public final class JobScaler {
 
         LOG.info(sb.toString());
 
+
+        final double cpuAvg = executorCpuUseMap.values().stream()
+          .map(pair -> pair.left())
+          .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+        if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
+          // Throttling
+          executorTaskStatMap.keySet().forEach(representer -> {
+              executorService.execute(() -> {
+                representer.sendControlMessage(
+                  ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                    .setType(ControlMessage.MessageType.Throttling)
+                    .build());
+              });
+            }
+          );
+        }
+
+        // 60초 이후에 scaling
+        LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
+        final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+        final int stage0InputRate = stageStat.get("Stage0") == null ?
+          0 : (int) stageStat.get("Stage0").getLeft().input;
+
+        final int throughput = stage0InputRate;
+
+        final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
+          .map(pair -> pair.left() + pair.right())
+          .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+        LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
+          recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
+
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
         if (!isScaling.get() && !isScalingIn.get() &&
@@ -182,44 +217,12 @@ public final class JobScaler {
             TimeUnit.SECONDS.toMillis(ScalingPolicyParameters.SLACK_TIME)) {
 
           if (stageStat.get("Stage0") != null) {
-            final int stage0InputRate = (int) stageStat.get("Stage0").getLeft().input;
             //stage0InputRates.add(stage0InputRate);
 
             //if (stage0InputRates.size() > WINDOW_SIZE) {
             //  stage0InputRates.remove(0);
             //}
 
-
-            final double cpuAvg = executorCpuUseMap.values().stream()
-              .map(pair -> pair.left())
-              .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
-
-            if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
-              // Throttling
-              executorTaskStatMap.keySet().forEach(representer -> {
-                  executorService.execute(() -> {
-                    representer.sendControlMessage(
-                      ControlMessage.Message.newBuilder()
-                        .setId(RuntimeIdManager.generateMessageId())
-                        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-                        .setType(ControlMessage.MessageType.Throttling)
-                        .build());
-                  });
-                }
-              );
-            }
-
-            // 60초 이후에 scaling
-            LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
-            final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-            final int throughput = stage0InputRate;
-
-            final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
-              .map(pair -> pair.left() + pair.right())
-              .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
-
-            LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
-              recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
             if (recentInputRate > 100) {
               skipCnt += 1;
