@@ -579,7 +579,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               .forEach(executorThread -> {
                 executorThread.getThrottle().set(true);
               });
-          }, 200, TimeUnit.MILLISECONDS);
+          }, 10, TimeUnit.MILLISECONDS);
 
           // sf worker에게도 전달.
           tinyWorkerManager.sendThrottle();
@@ -592,7 +592,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               .forEach(executorThread -> {
                 executorThread.getThrottle().set(false);
               });
-          }, 1100, TimeUnit.MILLISECONDS);
+          }, 600, TimeUnit.MILLISECONDS);
 
           break;
         }

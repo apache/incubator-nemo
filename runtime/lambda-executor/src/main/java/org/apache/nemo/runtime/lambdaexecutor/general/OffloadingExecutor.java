@@ -368,7 +368,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         executorThreads.forEach(thread -> {
           thread.getThrottle().set(false);
         });
-      }, 900, TimeUnit.MILLISECONDS);
+      }, 600, TimeUnit.MILLISECONDS);
 
     } else {
       throw new RuntimeException("Unsupported event type: " + event);
