@@ -191,7 +191,7 @@ public final class JobScaler {
 
             // 60초 이후에 scaling
             LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
-            if (skipCnt > 45) {
+            if (skipCnt > 35) {
               if (inputRates.size() == WINDOW_SIZE) {
                 final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
@@ -224,7 +224,9 @@ public final class JobScaler {
                   );
                 }
 
-                if (recentInputRate * 0.8 > throughput) {
+                if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
+                  recentInputRate * 0.8 > throughput) {
+
                   // Scaling out
                   consecutive += 1;
 

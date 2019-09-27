@@ -571,13 +571,15 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           break;
         case Throttling: {
           LOG.info("Start Throttleing");
-          stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
-            .map(pair -> pair.right())
-            .flatMap(l -> l.stream())
-            .forEach(executorThread -> {
-              executorThread.getThrottle().set(true);
-            });
 
+          scheduledExecutorService.schedule(() -> {
+            stageExecutorThreadMap.getStageExecutorThreadMap().values().stream()
+              .map(pair -> pair.right())
+              .flatMap(l -> l.stream())
+              .forEach(executorThread -> {
+                executorThread.getThrottle().set(true);
+              });
+          }, 200, TimeUnit.MILLISECONDS);
 
           // sf worker에게도 전달.
 
@@ -589,7 +591,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               .forEach(executorThread -> {
                 executorThread.getThrottle().set(false);
               });
-          }, 1, TimeUnit.SECONDS);
+          }, 1100, TimeUnit.MILLISECONDS);
 
           break;
         }
