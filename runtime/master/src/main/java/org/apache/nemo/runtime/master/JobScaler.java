@@ -189,7 +189,6 @@ public final class JobScaler {
             //  stage0InputRates.remove(0);
             //}
 
-            skipCnt += 1;
 
             final double cpuAvg = executorCpuUseMap.values().stream()
               .map(pair -> pair.left())
@@ -212,20 +211,23 @@ public final class JobScaler {
 
             // 60초 이후에 scaling
             LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
-            if (skipCnt > 35) {
+            final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
+            final int throughput = stage0InputRate;
+
+            final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
+              .map(pair -> pair.left() + pair.right())
+              .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+            LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
+              recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
+
+            if (recentInputRate > 100) {
+              skipCnt += 1;
+            }
+
+            if (skipCnt > 20) {
               if (inputRates.size() == WINDOW_SIZE) {
-                final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
-                final int throughput = stage0InputRate;
-
-
-
-                final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
-                  .map(pair -> pair.left() + pair.right())
-                  .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
-
-                LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
-                  recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
                 if (evalConf.autoscaling) {
                   if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
