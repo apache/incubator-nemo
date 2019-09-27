@@ -582,6 +582,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           }, 200, TimeUnit.MILLISECONDS);
 
           // sf worker에게도 전달.
+          tinyWorkerManager.sendThrottle();
 
           scheduledExecutorService.schedule(() -> {
             LOG.info("End of Throttleing");
