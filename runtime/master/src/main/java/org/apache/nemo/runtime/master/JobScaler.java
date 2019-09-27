@@ -189,6 +189,25 @@ public final class JobScaler {
 
             skipCnt += 1;
 
+            final double cpuAvg = executorCpuUseMap.values().stream()
+              .map(pair -> pair.left())
+              .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
+            if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
+              // Throttling
+              executorTaskStatMap.keySet().forEach(representer -> {
+                  executorService.execute(() -> {
+                    representer.sendControlMessage(
+                      ControlMessage.Message.newBuilder()
+                        .setId(RuntimeIdManager.generateMessageId())
+                        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                        .setType(ControlMessage.MessageType.Throttling)
+                        .build());
+                  });
+                }
+              );
+            }
+
             // 60초 이후에 scaling
             LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
             if (skipCnt > 35) {
@@ -197,9 +216,7 @@ public final class JobScaler {
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
                 final int throughput = stage0InputRate;
 
-                final double cpuAvg = executorCpuUseMap.values().stream()
-                  .map(pair -> pair.left())
-                  .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
+
 
                 final double cpuSfPlusAvg = executorCpuUseMap.values().stream()
                   .map(pair -> pair.left() + pair.right())
@@ -208,21 +225,6 @@ public final class JobScaler {
                 LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
                   recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
-
-                if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
-                  // Throttling
-                  executorTaskStatMap.keySet().forEach(representer -> {
-                      executorService.execute(() -> {
-                        representer.sendControlMessage(
-                          ControlMessage.Message.newBuilder()
-                            .setId(RuntimeIdManager.generateMessageId())
-                            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-                            .setType(ControlMessage.MessageType.Throttling)
-                            .build());
-                      });
-                    }
-                  );
-                }
 
                 if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
                   recentInputRate * 0.8 > throughput) {
