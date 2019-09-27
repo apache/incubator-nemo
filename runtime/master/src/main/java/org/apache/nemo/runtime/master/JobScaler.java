@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.IllegalMessageException;
@@ -103,18 +104,37 @@ public final class JobScaler {
     this.scheduler.scheduleAtFixedRate(() -> {
       try {
         // TODO: avg keys, input element, output element per stage
-        final Map<String, Stat> stageStat = new HashMap<>();
+
+        // triple: total stat, vm stat, sf stat
+        final Map<String, Triple<Stat, Stat, Stat>> stageStat = new HashMap<>();
 
         for (final List<ControlMessage.TaskStatInfo> l : executorTaskStatMap.values()) {
           for (final ControlMessage.TaskStatInfo info : l) {
             final String taskId = info.getTaskId();
             final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-            stageStat.putIfAbsent(stageId, new Stat());
-            final Stat stat = stageStat.get(stageId);
-            stat.numKeys += info.getNumKeys();
-            stat.computation += info.getComputation();
-            stat.input += info.getInputElements();
-            stat.output += info.getOutputElements();
+            stageStat.putIfAbsent(stageId, Triple.of(new Stat(), new Stat(), new Stat()));
+            final Triple<Stat, Stat, Stat> triple = stageStat.get(stageId);
+
+            final Stat totalStat = triple.getLeft();
+            final Stat vmStat = triple.getMiddle();
+            final Stat sfStat = triple.getRight();
+
+            totalStat.numKeys += info.getNumKeys();
+            totalStat.computation += info.getComputation();
+            totalStat.input += info.getInputElements();
+            totalStat.output += info.getOutputElements();
+
+            if (taskLocationMap.locationMap.get(taskId).equals(SF)) {
+              sfStat.numKeys += info.getNumKeys();
+              sfStat.computation += info.getComputation();
+              sfStat.input += info.getInputElements();
+              sfStat.output += info.getOutputElements();
+            } else {
+              vmStat.numKeys += info.getNumKeys();
+              vmStat.computation += info.getComputation();
+              vmStat.input += info.getInputElements();
+              vmStat.output += info.getOutputElements();
+            }
 
             //LOG.info("Task {}, Stat {}", taskId, stat);
           }
@@ -122,12 +142,31 @@ public final class JobScaler {
 
         final StringBuilder sb = new StringBuilder();
 
-        for (final Map.Entry<String, Stat> entry : stageStat.entrySet()) {
-          sb.append("\nStage Stat:");
+        for (final Map.Entry<String, Triple<Stat, Stat, Stat>> entry : stageStat.entrySet()) {
+          final Triple<Stat, Stat, Stat> triple = entry.getValue();
+          final Stat totalStat = triple.getLeft();
+          final Stat vmStat = triple.getMiddle();
+          final Stat sfStat = triple.getRight();
+
+          sb.append("\nTotal stage stat:");
           sb.append("[");
           sb.append(entry.getKey());
           sb.append(",");
-          sb.append(entry.getValue());
+          sb.append(totalStat);
+          sb.append("]");
+
+          sb.append("\nVM stage stat:");
+          sb.append("[");
+          sb.append(entry.getKey());
+          sb.append(",");
+          sb.append(vmStat);
+          sb.append("]");
+
+          sb.append("\nSF stage stat:");
+          sb.append("[");
+          sb.append(entry.getKey());
+          sb.append(",");
+          sb.append(sfStat);
           sb.append("]");
         }
 
@@ -139,7 +178,7 @@ public final class JobScaler {
           System.currentTimeMillis() - scalingDoneTime >= TimeUnit.SECONDS.toMillis(slackTime)) {
 
           if (stageStat.get("Stage0") != null) {
-            final int stage0InputRate = (int) stageStat.get("Stage0").input;
+            final int stage0InputRate = (int) stageStat.get("Stage0").getLeft().input;
             //stage0InputRates.add(stage0InputRate);
 
             //if (stage0InputRates.size() > WINDOW_SIZE) {
