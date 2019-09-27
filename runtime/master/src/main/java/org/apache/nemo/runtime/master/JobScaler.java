@@ -236,7 +236,7 @@ public final class JobScaler {
                   if (scalingInConsecutive > 3) {
                     //TODO: more sophisticaed algorihtm
                     // Scaling in ...
-                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, throughput, scalingThp);
+                    LOG.info("Scaling in !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp , scalingThp);
                     scalingIn();
                     isScalingIn.set(true);
                     scalingInConsecutive = 0;
@@ -499,7 +499,7 @@ public final class JobScaler {
     final List<String> outputTasks = taskOffloadingManager.getTaskOutputTasksMap()
       .getOrDefault(taskStatInfo.getTaskId(), Collections.emptyList());
 
-    final double alpha = 0.1;
+    final double alpha = 5;
 
     long relayEvents = 0;
 
