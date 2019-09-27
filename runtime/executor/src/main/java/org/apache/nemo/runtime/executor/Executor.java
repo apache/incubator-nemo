@@ -292,7 +292,7 @@ public final class Executor {
       }).map(taskStatInfo -> taskStatInfo.getComputation())
         .reduce(0L, (x, y) -> x + y));
 
-      final double sfCpuLoad = (sfComputation  / (double)vmComputation) * load;
+      final double sfCpuLoad = ((sfComputation  / (double)vmComputation) * load) / 2;
 
       //final double sfCpuLoad = sfTaskMetrics.cpuLoadMap.values().stream().reduce(0.0, (x, y) -> x + y);
 
