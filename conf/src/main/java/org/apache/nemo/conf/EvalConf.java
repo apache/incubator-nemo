@@ -37,7 +37,7 @@ public final class EvalConf {
   }
 
   @NamedParameter(short_name = "autoscaling", default_value = "true")
-  public final class Autoscaling implements Name<Boolean>
+  public final class Autoscaling implements Name<Boolean> {}
 
   @NamedParameter(doc = "flush period (ms)", short_name = "flush_period", default_value = "1000")
   public final class FlushPeriod implements Name<Integer> {
