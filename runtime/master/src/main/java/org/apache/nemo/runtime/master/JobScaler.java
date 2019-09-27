@@ -225,7 +225,7 @@ public final class JobScaler {
               skipCnt += 1;
             }
 
-            if (skipCnt > 20) {
+            if (skipCnt > 35) {
               if (inputRates.size() == WINDOW_SIZE) {
                 //final int throughput = stage0InputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
 
