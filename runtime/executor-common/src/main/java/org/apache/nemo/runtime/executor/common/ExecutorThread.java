@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class ExecutorThread {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
@@ -53,9 +54,14 @@ public final class ExecutorThread {
     this.sourceTasks = new ArrayList<>();
     this.pendingSourceTasks = new ArrayList<>();
 
+    final AtomicLong l = new AtomicLong(System.currentTimeMillis());
+
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
-        //LOG.info("Pending source tasks: {}", pendingSourceTasks.size());
+        if (System.currentTimeMillis() - l.get() >= 1000) {
+          LOG.info("Pending source tasks: {}", pendingSourceTasks.size());
+          l.set(System.currentTimeMillis());
+        }
         final Iterator<TaskExecutor> iterator = pendingSourceTasks.iterator();
         while (iterator.hasNext()) {
           final TaskExecutor sourceTask = iterator.next();
