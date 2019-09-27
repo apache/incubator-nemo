@@ -383,7 +383,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     final long endNs = System.nanoTime();
 
-    final long comp = (endNs - ns) / 2; // 2: 보정값.
+    final long comp = (long) ((endNs - ns) / 1.5); // 2: 보정값.
 
     taskMetrics.incrementComputation(comp);
   }

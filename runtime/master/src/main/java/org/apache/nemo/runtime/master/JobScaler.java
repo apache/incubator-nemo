@@ -212,7 +212,7 @@ public final class JobScaler {
                   }
 
                   if (consecutive > 4) {
-                    final double burstiness = (recentInputRate / (double) baseThp) + 1;
+                    final double burstiness = (recentInputRate / (double) baseThp) + 0.5;
                     // 그다음에 task selection
                     LOG.info("Scaling out !! Burstiness: {}", burstiness);
                     // TODO: scaling!!
