@@ -110,14 +110,22 @@ public final class VMOffloadingRequester {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
+      try {
+        synchronized (requestInstanceIds) {
 
-      synchronized (requestInstanceIds) {
-        final StartInstancesRequest startRequest = new StartInstancesRequest()
-          .withInstanceIds(requestInstanceIds);
-        ec2.startInstances(startRequest);
-        LOG.info("Starting ec2 instances {}/{}", requestInstanceIds, System.currentTimeMillis());
+          if (!requestInstanceIds.isEmpty()) {
 
-        requestInstanceIds.clear();
+            final StartInstancesRequest startRequest = new StartInstancesRequest()
+              .withInstanceIds(requestInstanceIds);
+            ec2.startInstances(startRequest);
+            LOG.info("Starting ec2 instances {}/{}", requestInstanceIds, System.currentTimeMillis());
+
+            requestInstanceIds.clear();
+          }
+        }
+      } catch( final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
 
     }, 2, 2, TimeUnit.SECONDS);
