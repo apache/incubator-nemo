@@ -358,6 +358,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       });
     } else {
       restarted = true;
+      channelStatus = RUNNING;
     }
   }
 
@@ -404,6 +405,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       restarted = false;
     } else {
       restarted = true;
+      channelStatus = RUNNING;
     }
   }
 
