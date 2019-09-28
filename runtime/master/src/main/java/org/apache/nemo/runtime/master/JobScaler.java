@@ -218,9 +218,10 @@ public final class JobScaler {
 
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
+        final int slackTimes = evalConf.offloadingType.equals("vm") ? 2 : 1;
         if (!isScaling.get() && !isScalingIn.get() &&
           System.currentTimeMillis() - scalingDoneTime >=
-            TimeUnit.SECONDS.toMillis(ScalingPolicyParameters.SLACK_TIME)) {
+            TimeUnit.SECONDS.toMillis(ScalingPolicyParameters.SLACK_TIME * slackTimes)) {
 
           if (stageStat.get("Stage0") != null) {
             //stage0InputRates.add(stage0InputRate);
