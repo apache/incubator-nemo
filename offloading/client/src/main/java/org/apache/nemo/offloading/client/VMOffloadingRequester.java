@@ -86,6 +86,8 @@ public final class VMOffloadingRequester {
 
   private final AtomicInteger numVMs = new AtomicInteger(0);
 
+  private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
+
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
                                final int port) {
@@ -292,37 +294,38 @@ public final class VMOffloadingRequester {
     }
   }
 
-  private Channel startInstance(final String instanceId, final String vmAddress) {
+  private void startInstance(final String instanceId, final String vmAddress) {
     final long waitingTime = 2000;
 
     startVM(instanceId);
 
-    ChannelFuture channelFuture;
-    while (true) {
-      final long st = System.currentTimeMillis();
-      channelFuture = clientBootstrap.connect(new InetSocketAddress(vmAddress, VM_WORKER_PORT));
-      channelFuture.awaitUninterruptibly(waitingTime);
-      assert channelFuture.isDone();
-      if (!channelFuture.isSuccess()) {
-        LOG.warn("A connection failed for " + vmAddress + "  waiting...");
-        final long elapsedTime = System.currentTimeMillis() - st;
-        try {
-          Thread.sleep(Math.max(1, waitingTime - elapsedTime));
-        } catch (InterruptedException e) {
-          e.printStackTrace();
+    waitingExecutor.execute(() -> {
+      ChannelFuture channelFuture;
+      while (true) {
+        final long st = System.currentTimeMillis();
+        channelFuture = clientBootstrap.connect(new InetSocketAddress(vmAddress, VM_WORKER_PORT));
+        channelFuture.awaitUninterruptibly(waitingTime);
+        assert channelFuture.isDone();
+        if (!channelFuture.isSuccess()) {
+          LOG.warn("A connection failed for " + vmAddress + "  waiting...");
+          final long elapsedTime = System.currentTimeMillis() - st;
+          try {
+            Thread.sleep(Math.max(1, waitingTime - elapsedTime));
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        } else {
+          break;
         }
-      } else {
-        break;
       }
-    }
 
-    final Channel openChannel = channelFuture.channel();
-    LOG.info("Open channel for VM: {}", openChannel);
+      final Channel openChannel = channelFuture.channel();
+      LOG.info("Open channel for VM: {}", openChannel);
 
-    // send handshake
-    final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
-      serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
-    openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+      // send handshake
+      final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+        serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
+      openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
 
     /*
     synchronized (readyVMs) {
@@ -330,11 +333,12 @@ public final class VMOffloadingRequester {
     }
     */
 
-    LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
+      LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
 
-    vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
+      vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
 
-    return openChannel;
+      //return openChannel;
+    });
   }
 
   public void destroy() {
