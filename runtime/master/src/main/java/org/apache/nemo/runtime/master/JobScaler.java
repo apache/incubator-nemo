@@ -180,20 +180,6 @@ public final class JobScaler {
           .map(pair -> pair.left())
           .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-        if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD) {
-          // Throttling
-          executorTaskStatMap.keySet().forEach(representer -> {
-              executorService.execute(() -> {
-                representer.sendControlMessage(
-                  ControlMessage.Message.newBuilder()
-                    .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-                    .setType(ControlMessage.MessageType.Throttling)
-                    .build());
-              });
-            }
-          );
-        }
 
         // 60초 이후에 scaling
         LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
@@ -209,6 +195,23 @@ public final class JobScaler {
 
         LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
           recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
+
+
+        if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
+          recentInputRate * 0.8 <= throughput ) {
+          // Throttling
+          executorTaskStatMap.keySet().forEach(representer -> {
+              executorService.execute(() -> {
+                representer.sendControlMessage(
+                  ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                    .setType(ControlMessage.MessageType.Throttling)
+                    .build());
+              });
+            }
+          );
+        }
 
         // scaling 중이면 이거 하면 안됨..!
         // scaling 하고도 slack time 가지기
