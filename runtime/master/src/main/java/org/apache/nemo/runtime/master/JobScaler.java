@@ -658,6 +658,15 @@ public final class JobScaler {
       LOG.info("Send scaling out message {} to {}", entry.getValue(),
         representer.getExecutorId());
 
+      if (evalConf.offloadingType.equals("vm")) {
+        try {
+          LOG.info("Sleep for request limit");
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
       executorService.execute(() -> {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()

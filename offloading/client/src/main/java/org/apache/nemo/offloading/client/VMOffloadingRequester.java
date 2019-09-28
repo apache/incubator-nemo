@@ -235,6 +235,7 @@ public final class VMOffloadingRequester {
               final StartInstancesRequest startRequest = new StartInstancesRequest()
                 .withInstanceIds(instanceId);
               LOG.info("Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
+              /*
               final Random random = new Random();
               final double d = random.nextDouble();
 
@@ -243,6 +244,7 @@ public final class VMOffloadingRequester {
               } catch (InterruptedException e) {
                 e.printStackTrace();
               }
+              */
 
               ec2.startInstances(startRequest);
               LOG.info("End of Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
