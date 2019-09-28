@@ -86,6 +86,8 @@ public final class JobScaler {
 
   private final TaskOffloadingManager taskOffloadingManager;
 
+  private final EvalConf evalConf;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -101,6 +103,7 @@ public final class JobScaler {
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
 
+    this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
 
     this.scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -507,6 +510,14 @@ public final class JobScaler {
     }
   }
 
+  private List<ControlMessage.TaskStatInfo> shuffle(final List<ControlMessage.TaskStatInfo> taskStatInfos) {
+    // sort by keys
+    final List<ControlMessage.TaskStatInfo> copyInfos = new ArrayList<>(taskStatInfos);
+
+    Collections.shuffle(copyInfos);
+    return copyInfos;
+  }
+
   private List<ControlMessage.TaskStatInfo> sortByKeys(final List<ControlMessage.TaskStatInfo> taskStatInfos) {
     // sort by keys
     final List<ControlMessage.TaskStatInfo> copyInfos = new ArrayList<>(taskStatInfos);
@@ -582,7 +593,13 @@ public final class JobScaler {
       LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
 
       final long totalOffloadComputation = (long) (totalComputation * ((burstiness - 1) / burstiness));
-      final List<ControlMessage.TaskStatInfo> copyInfos = sortByKeys(taskStatInfos);
+
+      final List<ControlMessage.TaskStatInfo> copyInfos;
+      if (evalConf.offloadingType.equals("vm")) {
+        copyInfos = shuffle(taskStatInfos);
+      } else {
+        copyInfos = sortByKeys(taskStatInfos);
+      }
 
       LOG.info("Total comp: {}, offload comp: {}", totalComputation, totalOffloadComputation);
 

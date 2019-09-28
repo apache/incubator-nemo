@@ -189,7 +189,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         break;
       }
       default:
-        throw new RuntimeException("Unsupported channel status " + channelStatus);
+        throw new RuntimeException("Unsupported channel status " + channelStatus + " for task " + taskId + "/"
+          + getContextId().getTransferIndex());
     }
   }
 
@@ -304,6 +305,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     channelStatus = ChannelStatus.RUNNING;
 
+    LOG.info("Restart channel of task {}/{}", taskId, getContextId().getTransferIndex());
+
     //LOG.info("Retstart signal channel {} / {}", relayDst, channel.remoteAddress());
 
     if (executorThread == null) {
@@ -386,6 +389,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
       sendDataTo = setupLocation;
       channel = setupChannel;
+
+      LOG.info("Restart channel of task {}/{}", taskId, getContextId().getTransferIndex());
 
       // channel에 restart signal 날림.
       channelStatus = RUNNING;
