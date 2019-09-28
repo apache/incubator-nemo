@@ -227,6 +227,16 @@ public final class VMOffloadingRequester {
       request.setInstanceIds(Arrays.asList(instanceId));
       final DescribeInstancesResult response = ec2.describeInstances(request);
 
+
+      final Random random = new Random();
+      final double d = random.nextDouble();
+
+      try {
+        Thread.sleep((long)(8000* d));
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
       for(final Reservation reservation : response.getReservations()) {
         for(final Instance instance : reservation.getInstances()) {
           if (instance.getInstanceId().equals(instanceId)) {
@@ -235,16 +245,6 @@ public final class VMOffloadingRequester {
               final StartInstancesRequest startRequest = new StartInstancesRequest()
                 .withInstanceIds(instanceId);
               LOG.info("Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
-              /*
-              final Random random = new Random();
-              final double d = random.nextDouble();
-
-              try {
-                Thread.sleep((long)(1300* d));
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              */
 
               ec2.startInstances(startRequest);
               LOG.info("End of Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
