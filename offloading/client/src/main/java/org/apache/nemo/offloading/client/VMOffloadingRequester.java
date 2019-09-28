@@ -88,6 +88,8 @@ public final class VMOffloadingRequester {
 
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
 
+  private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
                                final int port) {
@@ -105,6 +107,20 @@ public final class VMOffloadingRequester {
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
 
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+
+
+      synchronized (requestInstanceIds) {
+        final StartInstancesRequest startRequest = new StartInstancesRequest()
+          .withInstanceIds(requestInstanceIds);
+        ec2.startInstances(startRequest);
+        LOG.info("Starting ec2 instances {}/{}", requestInstanceIds, System.currentTimeMillis());
+
+        requestInstanceIds.clear();
+      }
+
+    }, 2, 2, TimeUnit.SECONDS);
 
     /*
     createChannelExecutor.execute(() -> {
@@ -223,47 +239,26 @@ public final class VMOffloadingRequester {
     }
   }
 
-  private long batchInterval = 3000;
-  private long prevBatch = -1;
   private final List<String> requestInstanceIds = new ArrayList<>();
 
-  private synchronized void startVM(final String instanceId) {
-
-    if (prevBatch == -1) {
-      prevBatch = System.currentTimeMillis();
+  private void startVM(final String instanceId) {
+    synchronized (requestInstanceIds) {
+      requestInstanceIds.add(instanceId);
     }
 
-    requestInstanceIds.add(instanceId);
-
-    if (System.currentTimeMillis() - prevBatch < batchInterval) {
-      return;
-    }
-
-    prevBatch = System.currentTimeMillis();
-
+    /*
     while (true) {
       final DescribeInstancesRequest request = new DescribeInstancesRequest();
       request.setInstanceIds(instanceIds);
       final DescribeInstancesResult response = ec2.describeInstances(request);
 
 
-      /*
-      final Random random = new Random();
-      final double d = random.nextDouble();
-
-      try {
-        Thread.sleep((long)(8000* d));
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      */
-
       final StartInstancesRequest startRequest = new StartInstancesRequest()
         .withInstanceIds(instanceIds);
       ec2.startInstances(startRequest);
       LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+      break;
 
-      /*
       for(final Reservation reservation : response.getReservations()) {
         for(final Instance instance : reservation.getInstances()) {
           if (instance.getInstanceId().equals(instanceId)) {
@@ -290,8 +285,8 @@ public final class VMOffloadingRequester {
           }
         }
       }
-    */
     }
+    */
   }
 
   private void startInstance(final String instanceId, final String vmAddress) {
