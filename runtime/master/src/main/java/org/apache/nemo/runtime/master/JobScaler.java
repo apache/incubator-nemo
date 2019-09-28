@@ -263,7 +263,7 @@ public final class JobScaler {
 
                     LOG.info("Consecutive {}", consecutive);
                   } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
-                    && executionStatus == ExecutionStatus.SCALE_OUT) {
+                    && executionStatus == ExecutionStatus.SCALE_OUT && recentInputRate * 1.1 >= throughput) {
 
                     scalingInConsecutive += 1;
 
