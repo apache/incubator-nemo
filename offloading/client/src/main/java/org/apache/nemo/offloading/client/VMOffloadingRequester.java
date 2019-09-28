@@ -221,10 +221,27 @@ public final class VMOffloadingRequester {
     }
   }
 
-  private void startVM(final String instanceId) {
+  private long batchInterval = 3000;
+  private long prevBatch = -1;
+  private final List<String> requestInstanceIds = new ArrayList<>();
+
+  private synchronized void startVM(final String instanceId) {
+
+    if (prevBatch == -1) {
+      prevBatch = System.currentTimeMillis();
+    }
+
+    requestInstanceIds.add(instanceId);
+
+    if (System.currentTimeMillis() - prevBatch < batchInterval) {
+      return;
+    }
+
+    prevBatch = System.currentTimeMillis();
+
     while (true) {
       final DescribeInstancesRequest request = new DescribeInstancesRequest();
-      request.setInstanceIds(Arrays.asList(instanceId));
+      request.setInstanceIds(instanceIds);
       final DescribeInstancesResult response = ec2.describeInstances(request);
 
 
@@ -239,6 +256,12 @@ public final class VMOffloadingRequester {
       }
       */
 
+      final StartInstancesRequest startRequest = new StartInstancesRequest()
+        .withInstanceIds(instanceIds);
+      ec2.startInstances(startRequest);
+      LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+
+      /*
       for(final Reservation reservation : response.getReservations()) {
         for(final Instance instance : reservation.getInstances()) {
           if (instance.getInstanceId().equals(instanceId)) {
@@ -265,6 +288,7 @@ public final class VMOffloadingRequester {
           }
         }
       }
+    */
     }
   }
 

@@ -673,6 +673,7 @@ public final class JobScaler {
       });
 
 
+      /*
       if (i % 4 == 0) {
         if (evalConf.offloadingType.equals("vm")) {
           try {
@@ -683,6 +684,7 @@ public final class JobScaler {
           }
         }
       }
+      */
 
     }
   }
