@@ -12,7 +12,7 @@ public final class ScalingPolicyParameters {
   // vm과 lambda cpu load 차이. core 갯수 * 보정값
   public static double VM_LAMBDA_CPU_LOAD_RATIO =  (VM_VCPU / LAMBDA_VCPU) * LAMBDA_CPU_PROC_TIME_RATIO;
 
-  public static double RELAY_OVERHEAD = 15;
+  public static double RELAY_OVERHEAD = 17;
 
   public static double CPU_HIGH_THRESHOLD = 0.8;
 
