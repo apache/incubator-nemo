@@ -86,7 +86,7 @@ public final class PipeManagerMaster {
         case PipeInit:
           final ControlMessage.PipeInitMessage pipeInitMessage = message.getPipeInitMsg();
           final Pair<String, Long> keyPair = getPair(pipeInitMessage);
-          LOG.info("Receive pipeInit key: {}, executorId: {}", keyPair, pipeInitMessage.getExecutorId());
+          //LOG.info("Receive pipeInit key: {}, executorId: {}", keyPair, pipeInitMessage.getExecutorId());
 
           // Allow to put at most once
           final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
@@ -137,16 +137,16 @@ public final class PipeManagerMaster {
           // Use the executor service to avoid blocking the networking thread.
           waitForPipe.submit(() -> {
             final Pair<String, Long> keyPair = getPair(pipeLocRequest);
-            LOG.info("Receive pipeLocRequest: {}, key: {}, message id: {}", pipeLocRequest, keyPair,
-              message.getId());
+            //LOG.info("Receive pipeLocRequest: {}, key: {}, message id: {}", pipeLocRequest, keyPair,
+            //  message.getId());
 
             final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
             lock.lock();
             try {
               if (!runtimeEdgeIndexToExecutor.containsKey(keyPair)) {
-                LOG.info("Waiting for executorLocation of key {}", keyPair);
+                //LOG.info("Waiting for executorLocation of key {}", keyPair);
                 runtimeEdgeIndexToCondition.get(keyPair).await();
-                LOG.info("End of Waiting for executorLocation of key {}", keyPair);
+                //LOG.info("End of Waiting for executorLocation of key {}", keyPair);
               }
 
               final String location = runtimeEdgeIndexToExecutor.get(keyPair);
@@ -154,7 +154,7 @@ public final class PipeManagerMaster {
                 throw new IllegalStateException(keyPair.toString());
               }
 
-              LOG.info("Reply to message {}", message.getId());
+              //LOG.info("Reply to message {}", message.getId());
 
               // Reply the location
               messageContext.reply(
