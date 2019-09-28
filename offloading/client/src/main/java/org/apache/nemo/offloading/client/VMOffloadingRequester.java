@@ -228,6 +228,7 @@ public final class VMOffloadingRequester {
       final DescribeInstancesResult response = ec2.describeInstances(request);
 
 
+      /*
       final Random random = new Random();
       final double d = random.nextDouble();
 
@@ -236,6 +237,7 @@ public final class VMOffloadingRequester {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
+      */
 
       for(final Reservation reservation : response.getReservations()) {
         for(final Instance instance : reservation.getInstances()) {
