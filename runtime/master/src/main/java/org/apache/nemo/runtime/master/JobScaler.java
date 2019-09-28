@@ -661,7 +661,7 @@ public final class JobScaler {
       if (evalConf.offloadingType.equals("vm")) {
         try {
           LOG.info("Sleep for request limit");
-          Thread.sleep(1000);
+          Thread.sleep(250);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
