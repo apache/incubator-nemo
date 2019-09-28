@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class TaskMetrics {
 
-  private final int window = 30;
+  private final int window = 20;
   private long updatedTime;
 
   private final AtomicLong inputElement;
