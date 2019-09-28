@@ -647,6 +647,8 @@ public final class JobScaler {
     final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
 
 
+    int i = 1;
+
     for (final Map.Entry<ExecutorRepresenter,
       Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
       scalingExecutorCnt.getAndIncrement();
@@ -658,14 +660,19 @@ public final class JobScaler {
       LOG.info("Send scaling out message {} to {}", entry.getValue(),
         representer.getExecutorId());
 
-      if (evalConf.offloadingType.equals("vm")) {
-        try {
-          LOG.info("Sleep for request limit");
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
+
+      if (i % 4 == 0) {
+        if (evalConf.offloadingType.equals("vm")) {
+          try {
+            LOG.info("Sleep for request limit");
+            Thread.sleep(4000);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
         }
       }
+
+      i += 1;
 
       executorService.execute(() -> {
         representer.sendControlMessage(
