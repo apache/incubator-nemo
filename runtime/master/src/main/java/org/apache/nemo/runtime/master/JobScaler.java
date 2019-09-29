@@ -596,7 +596,7 @@ public final class JobScaler {
       final long totalOffloadComputation = (long) (totalComputation * ((burstiness - 1) / burstiness));
 
       final List<ControlMessage.TaskStatInfo> copyInfos;
-      if (evalConf.offloadingType.equals("vm")) {
+      if (evalConf.offloadingType.equals("vm") || evalConf.randomSelection) {
         copyInfos = shuffle(taskStatInfos);
       } else {
         copyInfos = sortByKeys(taskStatInfos);
@@ -622,7 +622,12 @@ public final class JobScaler {
           representer.getExecutorId());
 
         if (loc == VM) {
-          final long overhead = getRelayOverhead(taskStatInfo);
+          long overhead;
+          if (evalConf.randomSelection) {
+            overhead = 0;
+          } else {
+            overhead = getRelayOverhead(taskStatInfo);
+          }
 
           if (overhead < taskStatInfo.getComputation()) {
             offloadingCnt += 1;

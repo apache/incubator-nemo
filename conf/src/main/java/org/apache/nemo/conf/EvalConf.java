@@ -39,6 +39,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "autoscaling", default_value = "true")
   public final class Autoscaling implements Name<Boolean> {}
 
+  @NamedParameter(short_name = "randomselection", default_value = "false")
+  public final class RandomSelection implements Name<Boolean> {}
+
   @NamedParameter(doc = "flush period (ms)", short_name = "flush_period", default_value = "1000")
   public final class FlushPeriod implements Name<Integer> {
   }
@@ -138,6 +141,7 @@ public final class EvalConf {
   public final int taskSlot;
   public final boolean controlLogging;
   public final boolean autoscaling;
+  public final boolean randomSelection;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -163,7 +167,8 @@ public final class EvalConf {
                    @Parameter(OffExecutorThreadNum.class) final int offExecutorThreadNum,
                    @Parameter(TaskSlot.class) final int taskSlot,
                    @Parameter(ControlLogging.class) final boolean controlLogging,
-                   @Parameter(Autoscaling.class) final boolean autoscaling) throws IOException {
+                   @Parameter(Autoscaling.class) final boolean autoscaling,
+                   @Parameter(RandomSelection.class) final boolean randomSelection) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -188,6 +193,7 @@ public final class EvalConf {
     this.taskSlot = taskSlot;
     this.controlLogging = controlLogging;
     this.autoscaling = autoscaling;
+    this.randomSelection = randomSelection;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -223,6 +229,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(OffExecutorThreadNum.class, Integer.toString(offExecutorThreadNum));
     jcb.bindNamedParameter(ControlLogging.class, Boolean.toString(controlLogging));
     jcb.bindNamedParameter(Autoscaling.class, Boolean.toString(autoscaling));
+    jcb.bindNamedParameter(RandomSelection.class, Boolean.toString(randomSelection));
     return jcb.build();
   }
 
@@ -252,6 +259,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(OffExecutorThreadNum.class);
     cl.registerShortNameOfClass(ControlLogging.class);
     cl.registerShortNameOfClass(Autoscaling.class);
+    cl.registerShortNameOfClass(RandomSelection.class);
   }
 
   @Override
@@ -283,6 +291,7 @@ public final class EvalConf {
     sb.append("offExecutorThreadNum: "); sb.append(offExecutorThreadNum); sb.append("\n");
     sb.append("controlLogging: "); sb.append(controlLogging); sb.append("\n");
     sb.append("autoscaling: "); sb.append(autoscaling); sb.append("\n");
+    sb.append("randomselection: "); sb.append(randomSelection); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
