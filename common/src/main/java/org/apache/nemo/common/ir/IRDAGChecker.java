@@ -434,9 +434,10 @@ public final class IRDAGChecker {
 
   void addEncodingCompressionCheckers() {
     final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
-      final Map<Optional<String>, List<IREdge>> outEdgesByAdditionalOutputTag = outEdges.stream().collect(Collectors.groupingBy(
-        outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class),
-        Collectors.toList()));
+      final Map<Optional<String>, List<IREdge>> outEdgesByAdditionalOutputTag =
+        outEdges.stream().collect(Collectors.groupingBy(
+          outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class),
+          Collectors.toList()));
       for (final List<IREdge> sameTagOutEdges : outEdgesByAdditionalOutputTag.values()) {
         final List<IREdge> nonStreamVertexEdge = sameTagOutEdges.stream()
           .filter(stoe -> !isConnectedToStreamVertex(stoe))
