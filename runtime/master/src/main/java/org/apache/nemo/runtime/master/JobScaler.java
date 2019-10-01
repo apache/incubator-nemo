@@ -247,14 +247,16 @@ public final class JobScaler {
                     consecutive += 1;
 
                     if (consecutive > ScalingPolicyParameters.CONSECUTIVE) {
-                      final double burstiness = (recentInputRate / (double) (throughput * 0.6));
+                      //final double burstiness = (recentInputRate / (double) (throughput * evalConf.scalingAlpha));
                       // 그다음에 task selection
-                      LOG.info("Scaling out !! Burstiness: {}", burstiness);
+                      //LOG.info("Scaling out !! Burstiness: {}", burstiness);
+                      LOG.info("Scaling out !!");
+
                       // TODO: scaling!!
                       scalingThp = throughput;
 
                       //scalingOutBasedOnKeys(burstiness);
-                      scalingOutConsideringKeyAndComm(burstiness);
+                      scalingOutConsideringKeyAndComm(throughput, recentInputRate);
 
                       consecutive = 0;
                       isScaling.set(true);
@@ -575,7 +577,7 @@ public final class JobScaler {
     return overhead;
   }
 
-  private void scalingOutConsideringKeyAndComm(final double burstiness) {
+  private void scalingOutConsideringKeyAndComm(final long thp, final long input_rate) {
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
     int offloadingCnt = 0;
@@ -593,7 +595,10 @@ public final class JobScaler {
 
       LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
 
-      final long totalOffloadComputation = (long) (totalComputation * ((burstiness - 1) / burstiness));
+      final double ratio = (1 - (thp * evalConf.scalingAlpha) / input_rate);
+      final long totalOffloadComputation = (long) (totalComputation * ratio);
+
+      LOG.info("Offloading ratio: {}, alpha: {}, input_rate: {}, thp: {}", ratio, evalConf.scalingAlpha, input_rate, thp);
 
       final List<ControlMessage.TaskStatInfo> copyInfos;
       if (evalConf.offloadingType.equals("vm") || evalConf.randomSelection) {
