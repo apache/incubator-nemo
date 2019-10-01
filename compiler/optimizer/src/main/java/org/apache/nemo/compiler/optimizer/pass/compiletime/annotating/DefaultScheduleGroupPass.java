@@ -113,12 +113,12 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       groupIdToVertices.get(curId).add(irVertex);
 
       final List<IRVertex> verticesOfGroup = groupIdToVertices.get(curId);
-      final List<IREdge> allOutEdges = groupIdToVertices.get(curId).stream()
+      final List<IREdge> allOutEdgesOfGroup = groupIdToVertices.get(curId).stream()
         .flatMap(vtx -> dag.getOutgoingEdgesOf(vtx).stream())
-        .filter(edge -> !verticesOfGroup.contains(edge.getDst()))
+        .filter(edge -> !verticesOfGroup.contains(edge.getDst()))  // We don't count the group-internal edges.
         .collect(Collectors.toList());
-      final List<IREdge> noCycleOutEdges = allOutEdges.stream().filter(curEdge -> {
-        final List<IREdge> outgoingEdgesWithoutCurEdge = new ArrayList<>(allOutEdges);
+      final List<IREdge> noCycleOutEdges = allOutEdgesOfGroup.stream().filter(curEdge -> {
+        final List<IREdge> outgoingEdgesWithoutCurEdge = new ArrayList<>(allOutEdgesOfGroup);
         outgoingEdgesWithoutCurEdge.remove(curEdge);
         return outgoingEdgesWithoutCurEdge.stream()
           .map(IREdge::getDst)

@@ -349,8 +349,12 @@ public final class IRDAGChecker {
   }
 
   void addLoopVertexCheckers() {
+    final AtomicInteger distinctIntegerForEmptyOutputTag = new AtomicInteger(0);
     final NeighborChecker duplicateEdgeGroupId = ((v, inEdges, outEdges) -> {
-      final Map<String, List<IREdge>> tagToOutEdges = groupOutEdgesByAdditionalOutputTag(outEdges);
+      final Map<String, List<IREdge>> tagToOutEdges = outEdges.stream().collect(Collectors.groupingBy(
+        outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)
+          .orElse(String.valueOf(distinctIntegerForEmptyOutputTag.getAndIncrement())),
+        Collectors.toList()));
       for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
         if (sameTagOutEdges.stream()
           .map(e -> e.getPropertyValue(DuplicateEdgeGroupProperty.class)
@@ -430,7 +434,10 @@ public final class IRDAGChecker {
 
   void addEncodingCompressionCheckers() {
     final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
-      for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges).values()) {
+      final Map<Optional<String>, List<IREdge>> outEdgesByAdditionalOutputTag = outEdges.stream().collect(Collectors.groupingBy(
+        outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class),
+        Collectors.toList()));
+      for (final List<IREdge> sameTagOutEdges : outEdgesByAdditionalOutputTag.values()) {
         final List<IREdge> nonStreamVertexEdge = sameTagOutEdges.stream()
           .filter(stoe -> !isConnectedToStreamVertex(stoe))
           .collect(Collectors.toList());
@@ -470,14 +477,6 @@ public final class IRDAGChecker {
 
   private boolean isConnectedToStreamVertex(final IREdge irEdge) {
     return irEdge.getDst() instanceof RelayVertex || irEdge.getSrc() instanceof RelayVertex;
-  }
-
-  private final AtomicInteger distinctIntegerForEmptyOutputTag = new AtomicInteger(0);
-  private Map<String, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
-    return outEdges.stream().collect(Collectors.groupingBy(
-      (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)
-        .orElse(String.valueOf(distinctIntegerForEmptyOutputTag.getAndIncrement()))),
-      Collectors.toList()));
   }
 
   private Set<Integer> getZeroToNSet(final int n) {
