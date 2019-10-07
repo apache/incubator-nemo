@@ -36,7 +36,7 @@ final class BlockMetadata {
   private static final Logger LOG = LoggerFactory.getLogger(BlockMetadata.class.getName());
   private final String blockId;
   private final BlockState blockState;
-  private volatile BlockManagerMaster.BlockRequestHandler locationHandler;
+  private final BlockManagerMaster.BlockRequestHandler locationHandler;
 
   /**
    * Constructs the metadata for a block.

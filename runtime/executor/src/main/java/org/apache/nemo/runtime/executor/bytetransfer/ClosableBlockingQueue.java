@@ -32,7 +32,7 @@ import java.util.Queue;
 public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
   private final Queue<T> queue;
-  private volatile boolean closed = false;
+  private boolean closed = false;
   private volatile Throwable throwable = null;
 
   /**
