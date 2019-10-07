@@ -91,21 +91,23 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   @Override
   public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
-    try {
-      // If the connection toward the receiver exists already, reuses it.
-      final Connection connection;
-      if (receiverToConnectionMap.containsKey(receiverId)) {
-        connection = receiverToConnectionMap.get(receiverId);
-      } else {
-        connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
+    // If the connection toward the receiver exists already, reuses it.
+    final Connection connection;
+
+    if (receiverToConnectionMap.containsKey(receiverId)) {
+      connection = receiverToConnectionMap.get(receiverId);
+    } else {
+      connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
+      try {
         connection.open();
+      } catch (final NetworkException e) {
+        final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
+        failedFuture.completeExceptionally(e);
+        return failedFuture;
       }
-      return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
-    } catch (final NetworkException e) {
-      final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
-      failedFuture.completeExceptionally(e);
-      return failedFuture;
     }
+
+    return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
   }
 
   @Override

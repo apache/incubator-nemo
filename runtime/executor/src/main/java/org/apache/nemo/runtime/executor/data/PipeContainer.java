@@ -77,6 +77,7 @@ public final class PipeContainer {
         }
         return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new RuntimeException(e);
       } finally {
         lock.unlock();

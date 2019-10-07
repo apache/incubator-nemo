@@ -106,7 +106,7 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       return false;
     }
     // If the edge is not OneToOne, return false
-    if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+    if (edge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(IllegalStateException::new)
       != CommunicationPatternProperty.Value.ONE_TO_ONE) {
       return false;
     }

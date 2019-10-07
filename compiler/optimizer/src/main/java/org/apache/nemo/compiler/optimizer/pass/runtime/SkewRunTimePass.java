@@ -65,8 +65,9 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
 
     // Use the following execution properties.
     final Pair<PartitionerProperty.Type, Integer> partitionerProperty =
-      representativeEdge.getPropertyValue(PartitionerProperty.class).get();
-    final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
+      representativeEdge.getPropertyValue(PartitionerProperty.class).orElseThrow(IllegalStateException::new);
+    final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(IllegalStateException::new);
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();

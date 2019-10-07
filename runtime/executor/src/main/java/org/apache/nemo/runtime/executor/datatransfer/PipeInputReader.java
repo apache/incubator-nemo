@@ -59,13 +59,14 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
-    final Optional<CommunicationPatternProperty.Value> comValue =
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
 
-    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
+    if (comValue.equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex));
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)
-      || comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
+    } else if (comValue.equals(CommunicationPatternProperty.Value.BROADCAST)
+      || comValue.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       final int numSrcTasks = InputReader.getSourceParallelism(this);
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
       for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
