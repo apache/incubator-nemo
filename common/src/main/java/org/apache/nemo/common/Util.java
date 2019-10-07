@@ -117,7 +117,10 @@ public final class Util {
                                  final IRVertex newSrc,
                                  final IRVertex newDst) {
     return cloneEdge(
-      edgeToClone.getPropertyValue(CommunicationPatternProperty.class).get(), edgeToClone, newSrc, newDst);
+      edgeToClone.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(IllegalStateException::new),
+      edgeToClone,
+      newSrc,
+      newDst);
   }
 
   /**

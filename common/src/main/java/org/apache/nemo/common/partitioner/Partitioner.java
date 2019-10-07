@@ -54,7 +54,7 @@ public interface Partitioner<K extends Serializable> {
   static Partitioner getPartitioner(final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
                                     final ExecutionPropertyMap<VertexExecutionProperty> dstProperties) {
     final PartitionerProperty.Type type =
-      edgeProperties.get(PartitionerProperty.class).get().left();
+      edgeProperties.get(PartitionerProperty.class).orElseThrow(IllegalStateException::new).left();
     final Partitioner partitioner;
     switch (type) {
       case Intact:
@@ -64,11 +64,15 @@ public interface Partitioner<K extends Serializable> {
         partitioner = new DedicatedKeyPerElementPartitioner();
         break;
       case Hash:
-        final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
+        final int numOfPartitions = edgeProperties
+          .get(PartitionerProperty.class)
+          .orElseThrow(IllegalStateException::new)
+          .right();
         final int actualNumOfPartitions = (numOfPartitions == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM)
-          ? dstProperties.get(ParallelismProperty.class).get()
+          ? dstProperties.get(ParallelismProperty.class).orElseThrow(IllegalStateException::new)
           : numOfPartitions;
-        final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class).get();
+        final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class)
+          .orElseThrow(IllegalStateException::new);
         partitioner = new HashPartitioner(actualNumOfPartitions, keyExtractor);
         break;
       default:
