@@ -20,19 +20,16 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
-// TODO #492: modularizing runtime components for data communication pattern.
-
 /**
- * DataCommunicationPattern ExecutionProperty.
+ * Decides how to react to a data block fetch failure.
  */
-public final class CommunicationPatternProperty
-  extends EdgeExecutionProperty<CommunicationPatternProperty.Value> {
+public final class BlockFetchFailureProperty extends EdgeExecutionProperty<BlockFetchFailureProperty.Value> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private CommunicationPatternProperty(final Value value) {
+  private BlockFetchFailureProperty(final Value value) {
     super(value);
   }
 
@@ -42,16 +39,28 @@ public final class CommunicationPatternProperty
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static CommunicationPatternProperty of(final Value value) {
-    return new CommunicationPatternProperty(value);
+  public static BlockFetchFailureProperty of(final Value value) {
+    return new BlockFetchFailureProperty(value);
   }
 
   /**
-   * Possible values of DataCommunicationPattern ExecutionProperty.
+   * Possible values of DataFlowModel ExecutionProperty.
    */
   public enum Value {
-    ONE_TO_ONE,
-    BROADCAST,
-    SHUFFLE
+    /**
+     * (DEFAULT BEHAVIOR)
+     * The task will be cancelled and retried by the scheduler.
+     */
+    CANCEL_TASK,
+
+    /**
+     * Do not cancel the running task.
+     * Instead, retry fetching the data block two seconds after the fetch failure.
+     *
+     * We wait two seconds in the hope that the parent task will be re-scheduled by the master,
+     * and make the block "available" again.
+     * Upon the failure of the retry, we retry again. (i.e., we retry forever)
+     */
+    RETRY_AFTER_TWO_SECONDS_FOREVER,
   }
 }

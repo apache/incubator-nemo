@@ -102,5 +102,6 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
+    // Nothing to do in a SparkTransform.
   }
 }

@@ -34,6 +34,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.assertTrue;
+
 public final class PolicyImplTest {
   private IRDAG dag;
   private IRDAG dagForSkew;
@@ -50,25 +52,33 @@ public final class PolicyImplTest {
   @Test
   public void testTransientPolicy() throws Exception {
     // this should run without an exception.
-    TransientResourcePolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG =
+      TransientResourcePolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    assertTrue(optimizedDAG.checkIntegrity().isPassed());
   }
 
   @Test
   public void testDisaggregationPolicy() throws Exception {
     // this should run without an exception.
-    DisaggregationPolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG =
+      DisaggregationPolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    assertTrue(optimizedDAG.checkIntegrity().isPassed());
   }
 
   @Test
   public void testDataSkewPolicy() throws Exception {
     // this should run without an exception.
-    DataSkewPolicy.BUILDER.build().runCompileTimeOptimization(dagForSkew, DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG =
+      DataSkewPolicy.BUILDER.build().runCompileTimeOptimization(dagForSkew, DAG.EMPTY_DAG_DIRECTORY);
+    assertTrue(optimizedDAG.checkIntegrity().isPassed());
   }
 
   @Test
   public void testLargeShufflePolicy() throws Exception {
     // this should run without an exception.
-    LargeShufflePolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG =
+      LargeShufflePolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    assertTrue(optimizedDAG.checkIntegrity().isPassed());
   }
 
   @Test
@@ -83,24 +93,9 @@ public final class PolicyImplTest {
     final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
 
     // This should NOT throw an exception and work well together.
-    combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
-  }
-
-  @Test
-  public void testTransientAndDisaggregationCombination() throws Exception {
-    final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
-    compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
-    compileTimePasses.addAll(DisaggregationPolicy.BUILDER.getCompileTimePasses());
-    runTimePasses.addAll(DisaggregationPolicy.BUILDER.getRunTimePasses());
-
-    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
-
-    // This should throw an exception.
-    // Not all data store should be transferred from and to the GFS.
-    expectedException.expect(CompileTimeOptimizationException.class);
-    combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG =
+      combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    assertTrue(optimizedDAG.checkIntegrity().isPassed());
   }
 
   @Test

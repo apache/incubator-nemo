@@ -47,7 +47,7 @@ public final class SparkJava {
       .addResourceJson(executorResourceFileName);
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkPi() throws Exception {
     final String numParallelism = "3";
 
@@ -59,7 +59,7 @@ public final class SparkJava {
       .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
     final String inputFileName = "inputs/test_input_employees.json";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
@@ -72,7 +72,7 @@ public final class SparkJava {
       .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
     final String inputFileName = "inputs/test_input_employees.json";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
@@ -85,7 +85,7 @@ public final class SparkJava {
       .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLExample() throws Exception {
     final String peopleJson = "inputs/test_input_people.json";
     final String peopleTxt = "inputs/test_input_people.txt";

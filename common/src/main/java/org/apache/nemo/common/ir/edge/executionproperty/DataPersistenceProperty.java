@@ -47,7 +47,7 @@ public final class DataPersistenceProperty extends EdgeExecutionProperty<DataPer
    * Possible options for the data persistence strategy.
    */
   public enum Value {
-    Discard,
-    Keep
+    DISCARD,
+    KEEP
   }
 }

@@ -44,11 +44,11 @@ public class CompressionStreamChainer implements EncodeStreamChainer {
   @Override
   public final OutputStream chainOutput(final OutputStream out) throws IOException {
     switch (compression) {
-      case Gzip:
+      case GZIP:
         return new GZIPOutputStream(out);
       case LZ4:
         return new LZ4BlockOutputStream(out);
-      case None:
+      case NONE:
         return out;
       default:
         throw new UnsupportedCompressionException("Not supported compression method");

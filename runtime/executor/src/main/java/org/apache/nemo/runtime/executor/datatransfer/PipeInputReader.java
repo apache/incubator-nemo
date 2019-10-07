@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -60,10 +62,10 @@ public final class PipeInputReader implements InputReader {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
-    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
+    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
       return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex));
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
-      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)
+      || comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       final int numSrcTasks = InputReader.getSourceParallelism(this);
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
       for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -73,6 +75,16 @@ public final class PipeInputReader implements InputReader {
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
+  }
+
+  @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index) {
+    throw new UnsupportedOperationException(String.valueOf(index));
+  }
+
+  @Override
+  public ExecutionPropertyMap<EdgeExecutionProperty> getProperties() {
+    return runtimeEdge.getExecutionProperties();
   }
 
   @Override

@@ -63,5 +63,6 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
 
   @Override
   public void close() {
+    // Do nothing in a SparkTransform.
   }
 }

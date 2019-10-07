@@ -125,12 +125,12 @@ final class PipelineTranslationContext {
 
       // First edge: view to transform
       final IREdge firstEdge =
-        new IREdge(CommunicationPatternProperty.Value.OneToOne, srcVertex, sideInputTransformVertex);
+        new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, srcVertex, sideInputTransformVertex);
       addEdge(firstEdge, viewCoder, windowCoder);
 
       // Second edge: transform to the dstIRVertex
       final IREdge secondEdge =
-        new IREdge(CommunicationPatternProperty.Value.BroadCast, sideInputTransformVertex, dstVertex);
+        new IREdge(CommunicationPatternProperty.Value.BROADCAST, sideInputTransformVertex, dstVertex);
       final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
         WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
 
@@ -270,19 +270,19 @@ final class PipelineTranslationContext {
     final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.SHUFFLE;
     }
     if (srcTransform instanceof FlattenTransform) {
-      return CommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.ONE_TO_ONE;
     }
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.SHUFFLE;
     }
     if (dstTransform instanceof CreateViewTransform) {
-      return CommunicationPatternProperty.Value.BroadCast;
+      return CommunicationPatternProperty.Value.BROADCAST;
     }
-    return CommunicationPatternProperty.Value.OneToOne;
+    return CommunicationPatternProperty.Value.ONE_TO_ONE;
   }
 
   /**

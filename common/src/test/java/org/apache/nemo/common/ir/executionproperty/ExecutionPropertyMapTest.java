@@ -40,15 +40,15 @@ import static org.junit.Assert.*;
 public class ExecutionPropertyMapTest {
   private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
-  private final CommunicationPatternProperty.Value comPattern = CommunicationPatternProperty.Value.OneToOne;
-  private final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, source, destination);
+  private final CommunicationPatternProperty.Value comPattern = CommunicationPatternProperty.Value.ONE_TO_ONE;
+  private final IREdge edge = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, destination);
 
   private ExecutionPropertyMap<EdgeExecutionProperty> edgeMap;
   private ExecutionPropertyMap<VertexExecutionProperty> vertexMap;
 
   @Before
   public void setUp() {
-    this.edgeMap = ExecutionPropertyMap.of(edge, CommunicationPatternProperty.Value.OneToOne);
+    this.edgeMap = ExecutionPropertyMap.of(edge, CommunicationPatternProperty.Value.ONE_TO_ONE);
     this.vertexMap = ExecutionPropertyMap.of(source);
   }
 
@@ -61,10 +61,10 @@ public class ExecutionPropertyMapTest {
 
   @Test
   public void testPutGetAndRemove() {
-    edgeMap.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    assertEquals(DataStoreProperty.Value.MemoryStore, edgeMap.get(DataStoreProperty.class).get());
-    edgeMap.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-    assertEquals(DataFlowProperty.Value.Pull, edgeMap.get(DataFlowProperty.class).get());
+    edgeMap.put(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    assertEquals(DataStoreProperty.Value.MEMORY_STORE, edgeMap.get(DataStoreProperty.class).get());
+    edgeMap.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
+    assertEquals(DataFlowProperty.Value.PULL, edgeMap.get(DataFlowProperty.class).get());
     edgeMap.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     assertEquals(EncoderFactory.DUMMY_ENCODER_FACTORY, edgeMap.get(EncoderProperty.class).get());
     edgeMap.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
@@ -95,13 +95,13 @@ public class ExecutionPropertyMapTest {
     map0.put(ParallelismProperty.of(2));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
-    map0.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    map0.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map1.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    map1.put(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map1.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    map1.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
   }
