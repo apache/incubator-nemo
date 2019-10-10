@@ -131,6 +131,8 @@ public final class XGBoostPass extends AnnotatingPass {
       return MESSAGE_QUEUE.take();
     } catch (InterruptedException e) {
       throw new MetricException("Interrupted while waiting for message: " + e);
+      // Restore interrupted state...
+      Thread.currentThread().interrupt();
     }
   }
 }
