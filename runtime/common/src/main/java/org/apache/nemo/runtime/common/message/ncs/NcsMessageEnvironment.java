@@ -101,6 +101,12 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       try {
         connection.open();
       } catch (final NetworkException e) {
+        try {
+          connection.close();
+        } catch (final NetworkException exceptionToIgnore) {
+          LOG.info("Can't close the broken connection.", exceptionToIgnore);
+        }
+
         final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
         failedFuture.completeExceptionally(e);
         return failedFuture;
