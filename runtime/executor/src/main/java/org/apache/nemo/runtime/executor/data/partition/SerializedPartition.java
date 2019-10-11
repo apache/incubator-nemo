@@ -59,7 +59,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   @Nullable
   private final EncoderFactory.Encoder encoder;
   private final MemoryPoolAssigner memoryPoolAssigner;
-  private volatile List<MemoryChunk> dataList;
+  private List<MemoryChunk> dataList;
   private final boolean offheap;
 
   /**
