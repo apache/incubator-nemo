@@ -135,8 +135,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   @VisibleForTesting
   byte[] toByteArray() {
     if (dataList.isEmpty()) {
-      final byte[] byteArray = new byte[0];
-      return byteArray;
+      return new byte[0];
     }
     MemoryChunk lastBuf = dataList.getLast();
     // pageSize equals the size of the data filled in the ByteBuffers
@@ -191,6 +190,8 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Closing this output stream has no effect.
    */
+  @Override
   public void close() {
+    // do nothing
   }
 }
