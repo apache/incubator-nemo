@@ -33,7 +33,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
   private final Queue<T> queue;
   private volatile boolean closed = false;
-  private volatile Throwable throwable = null;
+  private volatile Throwable throwable = null; // intentionally volatilize the reference
 
   /**
    * Creates a closable blocking queue.

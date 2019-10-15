@@ -107,7 +107,7 @@ public final class BlockOutputWriter implements OutputWriter {
   public void close() {
     // Commit block.
     final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
-      .getPropertyValue(DataPersistenceProperty.class).get();
+      .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
 
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
