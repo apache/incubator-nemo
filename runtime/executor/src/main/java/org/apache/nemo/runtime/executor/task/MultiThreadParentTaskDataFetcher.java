@@ -136,7 +136,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           countBytesSynchronized(iterator);
           elementQueue.offer(Finishmark.getInstance());
         } else {
-          exception.printStackTrace();
+          LOG.error(exception.getMessage());
           throw new RuntimeException(exception);
         }
       });

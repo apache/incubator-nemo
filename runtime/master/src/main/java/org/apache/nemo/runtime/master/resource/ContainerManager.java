@@ -186,7 +186,10 @@ public final class ContainerManager {
     try {
       messageSender =
         messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      messageSender = new FailedMessageSender();
+    } catch (final ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
       messageSender = new FailedMessageSender();
     }
