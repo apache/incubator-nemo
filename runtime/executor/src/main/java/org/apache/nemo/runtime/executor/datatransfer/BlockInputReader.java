@@ -67,33 +67,37 @@ public final class BlockInputReader implements InputReader {
 
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
-    final Optional<CommunicationPatternProperty.Value> comValue =
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
 
-    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
-      return Collections.singletonList(readOneToOne());
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
-      return readBroadcast(index -> true);
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      return readDataInRange(index -> true);
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return Collections.singletonList(readOneToOne());
+      case BROADCAST:
+        return readBroadcast(index -> true);
+      case SHUFFLE:
+        return readDataInRange(index -> true);
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
 
   @Override
   public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int desiredIndex) {
-    final Optional<CommunicationPatternProperty.Value> comValue =
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
 
-    if (comValue.get().equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
-      return readOneToOne();
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BROADCAST)) {
-      return checkSingleElement(readBroadcast(index -> index == desiredIndex));
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      return checkSingleElement(readDataInRange(index -> index == desiredIndex));
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return readOneToOne();
+      case BROADCAST:
+        return checkSingleElement(readBroadcast(index -> index == desiredIndex));
+      case SHUFFLE:
+        return checkSingleElement(readDataInRange(index -> index == desiredIndex));
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
 

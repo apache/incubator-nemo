@@ -44,6 +44,7 @@ public final class NemoContext {
 
   private final Clock clock;
   private final int crashTimeSec;
+  private final Random random;
 
   @Inject
   private NemoContext(final Executor executor,
@@ -54,6 +55,7 @@ public final class NemoContext {
     // For poison handling
     this.clock = clock;
     this.crashTimeSec = crashTimeSec;
+    this.random = new Random();
   }
 
   /**
@@ -87,7 +89,6 @@ public final class NemoContext {
   }
 
   private int addNoise(final int number) {
-    final Random random = new Random();
     final int fiftyPercent = random.nextInt((int) (number * (50.0 / 100.0)));
     return random.nextBoolean() ? number + fiftyPercent : number - fiftyPercent; // -50% ~ +50%
   }

@@ -95,23 +95,23 @@ public final class MetricUtils {
             + " (type TEXT NOT NULL, key INT NOT NULL UNIQUE, value BYTEA NOT NULL, "
             + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
 
-        final ResultSet rsl = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';");
-        LOG.info("Metadata can be successfully loaded.");
-        while (rsl.next()) {
-          EP_KEY_METADATA.put(rsl.getInt("key"),
-            SerializationUtils.deserialize(rsl.getBytes("value")));
+        try (ResultSet rsl = statement.executeQuery(
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';")) {
+          LOG.info("Metadata can be successfully loaded.");
+          while (rsl.next()) {
+            EP_KEY_METADATA.put(rsl.getInt("key"),
+              SerializationUtils.deserialize(rsl.getBytes("value")));
+          }
         }
-        rsl.close();
 
-        final ResultSet rsr = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';");
-        while (rsr.next()) {
-          final Integer l = rsr.getInt("key");
-          EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
-            SerializationUtils.deserialize(rsr.getBytes("value")));
+        try (ResultSet rsr = statement.executeQuery(
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';")) {
+          while (rsr.next()) {
+            final Integer l = rsr.getInt("key");
+            EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
+              SerializationUtils.deserialize(rsr.getBytes("value")));
+          }
         }
-        rsr.close();
         METADATA_LOADED.countDown();
         LOG.info("Metadata successfully loaded from DB.");
       } catch (Exception e) {
