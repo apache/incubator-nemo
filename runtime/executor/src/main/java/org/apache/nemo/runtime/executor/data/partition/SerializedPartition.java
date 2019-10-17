@@ -48,7 +48,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   private static final Logger LOG = LoggerFactory.getLogger(SerializedPartition.class.getName());
 
   private final K key;
-  private volatile byte[] serializedData;
+  private volatile byte[] serializedData; // intentionally volatilize the reference
   private volatile int length;
   private volatile boolean committed;
   // Will be null when the partition is committed when it is constructed.
