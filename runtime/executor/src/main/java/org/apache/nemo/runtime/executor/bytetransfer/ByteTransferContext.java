@@ -41,7 +41,7 @@ public abstract class ByteTransferContext {
   private final ContextManager contextManager;
 
   private volatile boolean hasException = false;
-  private volatile Throwable exception = null;
+  private Throwable exception = null;
 
   /**
    * Creates a transfer context.

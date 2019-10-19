@@ -44,7 +44,8 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private volatile ByteBufInputStream currentByteBufInputStream = null;
+  private volatile boolean hasActiveInputStream = false;
+  private ByteBufInputStream currentByteBufInputStream = null;
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override
@@ -107,11 +108,12 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when a punctuation for sub-stream incarnation is detected.
    */
   void onNewStream() {
-    if (currentByteBufInputStream != null) {
+    if (hasActiveInputStream) {
       currentByteBufInputStream.byteBufQueue.close();
     }
     currentByteBufInputStream = new ByteBufInputStream();
     byteBufInputStreams.put(currentByteBufInputStream);
+    hasActiveInputStream = true;
   }
 
   /**
@@ -120,7 +122,7 @@ public final class ByteInputContext extends ByteTransferContext {
    * @param byteBuf the {@link ByteBuf} to supply
    */
   void onByteBuf(final ByteBuf byteBuf) {
-    if (currentByteBufInputStream == null) {
+    if (!hasActiveInputStream) {
       throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
     }
     if (byteBuf.readableBytes() > 0) {
@@ -135,7 +137,7 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
   void onContextClose() {
-    if (currentByteBufInputStream != null) {
+    if (hasActiveInputStream) {
       currentByteBufInputStream.byteBufQueue.close();
     }
     byteBufInputStreams.close();
@@ -147,7 +149,7 @@ public final class ByteInputContext extends ByteTransferContext {
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
 
-    if (currentByteBufInputStream != null) {
+    if (hasActiveInputStream) {
       currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
     }
     byteBufInputStreams.closeExceptionally(cause);

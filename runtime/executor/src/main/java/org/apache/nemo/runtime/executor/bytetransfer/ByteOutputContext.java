@@ -53,7 +53,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
   private final Channel channel;
 
-  private volatile ByteOutputStream currentByteOutputStream = null;
+  private volatile boolean hasActiveOutputStream = false;
+  private ByteOutputStream currentByteOutputStream = null;
   private volatile boolean closed = false;
 
   /**
@@ -83,10 +84,11 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     if (closed) {
       throw new IOException("Context already closed.");
     }
-    if (currentByteOutputStream != null) {
+    if (hasActiveOutputStream) {
       currentByteOutputStream.close();
     }
     currentByteOutputStream = new ByteOutputStream();
+    hasActiveOutputStream = true;
     return currentByteOutputStream;
   }
 
@@ -101,7 +103,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     if (closed) {
       return;
     }
-    if (currentByteOutputStream != null) {
+    if (hasActiveOutputStream) {
       currentByteOutputStream.close();
     }
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
