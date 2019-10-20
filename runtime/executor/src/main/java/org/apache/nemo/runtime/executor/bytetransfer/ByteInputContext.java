@@ -45,7 +45,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
+  private final AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override

@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -53,8 +54,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
   private final Channel channel;
 
-  private volatile boolean hasActiveOutputStream = false;
-  private ByteOutputStream currentByteOutputStream = null;
+  private final AtomicReference<ByteOutputStream> currentByteOutputStream = new AtomicReference<>();
   private volatile boolean closed = false;
 
   /**
@@ -84,12 +84,11 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     if (closed) {
       throw new IOException("Context already closed.");
     }
-    if (hasActiveOutputStream) {
-      currentByteOutputStream.close();
+    if (currentByteOutputStream.get() != null) {
+      currentByteOutputStream.get().close();
     }
-    currentByteOutputStream = new ByteOutputStream();
-    hasActiveOutputStream = true;
-    return currentByteOutputStream;
+    currentByteOutputStream.set(new ByteOutputStream());
+    return currentByteOutputStream.get();
   }
 
   /**
@@ -103,8 +102,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     if (closed) {
       return;
     }
-    if (hasActiveOutputStream) {
-      currentByteOutputStream.close();
+    if (currentByteOutputStream.get() != null) {
+      currentByteOutputStream.get().close();
     }
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
       .addListener(getChannelWriteListener());

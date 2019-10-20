@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Objects;
 
 /**
@@ -39,9 +40,7 @@ public abstract class ByteTransferContext {
   private final byte[] contextDescriptor;
   private final ChannelWriteFutureListener channelWriteFutureListener = new ChannelWriteFutureListener();
   private final ContextManager contextManager;
-
-  private volatile boolean hasException = false;
-  private Throwable exception = null;
+  private final AtomicReference<Throwable> exception = new AtomicReference<>();
 
   /**
    * Creates a transfer context.
@@ -86,14 +85,14 @@ public abstract class ByteTransferContext {
    * @return Whether this context has exception or not.
    */
   public final boolean hasException() {
-    return hasException;
+    return exception.get() != null;
   }
 
   /**
    * @return The exception involved with this context, or {@code null}.
    */
   public final Throwable getException() {
-    return exception;
+    return exception.get();
   }
 
   @Override
@@ -121,12 +120,11 @@ public abstract class ByteTransferContext {
    * @param cause the exception to set
    */
   protected final void setChannelError(@Nullable final Throwable cause) {
-    if (hasException) {
+    if (hasException()) {
       return;
     }
-    hasException = true;
     LOG.error(String.format("A channel exception set on %s", toString())); // Not logging throwable, which isn't useful
-    exception = cause;
+    exception.set(cause);
   }
 
   /**
