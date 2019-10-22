@@ -284,10 +284,12 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    * @param stage to check for
    */
   private void integrityCheck(final Stage stage) {
-    stage.getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-    stage.getPropertyValue(ScheduleGroupProperty.class)
-      .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
+    if (!stage.getPropertyValue(ParallelismProperty.class).isPresent()) {
+      throw new RuntimeException("Parallelism property must be set for Stage");
+    }
+    if (!stage.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
+      throw new RuntimeException("ScheduleGroup property must be set for Stage");
+    }
 
     stage.getIRDAG().getVertices().forEach(irVertex -> {
       // Check vertex type.

@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
@@ -44,7 +45,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private volatile ByteBufInputStream currentByteBufInputStream = null;
+  private final AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override
@@ -107,11 +108,11 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when a punctuation for sub-stream incarnation is detected.
    */
   void onNewStream() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.close();
     }
-    currentByteBufInputStream = new ByteBufInputStream();
-    byteBufInputStreams.put(currentByteBufInputStream);
+    currentByteBufInputStream.set(new ByteBufInputStream());
+    byteBufInputStreams.put(currentByteBufInputStream.get());
   }
 
   /**
@@ -120,11 +121,11 @@ public final class ByteInputContext extends ByteTransferContext {
    * @param byteBuf the {@link ByteBuf} to supply
    */
   void onByteBuf(final ByteBuf byteBuf) {
-    if (currentByteBufInputStream == null) {
+    if (currentByteBufInputStream.get() == null) {
       throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
     }
     if (byteBuf.readableBytes() > 0) {
-      currentByteBufInputStream.byteBufQueue.put(byteBuf);
+      currentByteBufInputStream.get().byteBufQueue.put(byteBuf);
     } else {
       // ignore empty data frames
       byteBuf.release();
@@ -135,8 +136,8 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
   void onContextClose() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.close();
     }
     byteBufInputStreams.close();
     completedFuture.complete(inputStreams);
@@ -147,8 +148,8 @@ public final class ByteInputContext extends ByteTransferContext {
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
 
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.closeExceptionally(cause);
     }
     byteBufInputStreams.closeExceptionally(cause);
     completedFuture.completeExceptionally(cause);
