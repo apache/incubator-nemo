@@ -82,8 +82,8 @@ public final class MetricUtils {
   }
 
   /**
-   * Method to derive db credentials.
-   * @return credentials.
+   * Method to derive db credentials. This method is not for real authentication. Please change the method accordingly.
+   * @return db credentials.
    */
   private static String getCreds() {
     try {
