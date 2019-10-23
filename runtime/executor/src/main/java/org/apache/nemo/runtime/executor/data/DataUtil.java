@@ -30,6 +30,7 @@ import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -209,19 +210,20 @@ public final class DataUtil {
    *
    * @param <T> The type of elements.
    */
+  @NotThreadSafe
   public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
     private final Iterator<InputStream> inputStreams;
     private final Serializer<?, T> serializer;
 
-    private volatile CountingInputStream serializedCountingStream = null;
-    private volatile CountingInputStream encodedCountingStream = null;
-    private volatile boolean hasNext = false;
-    private volatile T next;
-    private volatile boolean cannotContinueDecoding = false;
-    private volatile DecoderFactory.Decoder<T> decoder = null;
-    private volatile long numSerializedBytes = 0;
-    private volatile long numEncodedBytes = 0;
+    private CountingInputStream serializedCountingStream = null;
+    private CountingInputStream encodedCountingStream = null;
+    private boolean hasNext = false;
+    private T next;
+    private boolean cannotContinueDecoding = false;
+    private DecoderFactory.Decoder<T> decoder = null;
+    private long numSerializedBytes = 0;
+    private long numEncodedBytes = 0;
 
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
