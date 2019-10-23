@@ -18,9 +18,6 @@
  */
 package org.apache.nemo.common.coder;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -30,8 +27,6 @@ import java.io.InputStream;
  * A {@link DecoderFactory} which is used for an array of bytes.
  */
 public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
-  private static final Logger LOG = LoggerFactory.getLogger(BytesDecoderFactory.class.getName());
-
   private static final BytesDecoderFactory BYTES_DECODER_FACTORY = new BytesDecoderFactory();
 
   /**

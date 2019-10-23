@@ -43,6 +43,7 @@ public class MemoryChunk {
   private static final int CHAR_SIZE = 2;
   private static final int INT_SIZE = 4;
   private static final int LONG_SIZE = 8;
+  private static final String CHUNK_FREED = "MemoryChunk has been freed";
   private final ByteBuffer buffer;
   // Since using UNSAFE does not automatically track the address and limit, it should be accessed
   // through address for data write and get, and addressLimit for sanity checks on the buffer use.
@@ -87,7 +88,7 @@ public class MemoryChunk {
    */
   public ByteBuffer getBuffer() {
     if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     }
     return buffer;
   }
@@ -121,7 +122,7 @@ public class MemoryChunk {
     if (checkIndex(index, pos, BYTE_SIZE)) {
       return UNSAFE.getByte(pos);
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -139,7 +140,7 @@ public class MemoryChunk {
     if (checkIndex(index, pos, BYTE_SIZE)) {
       UNSAFE.putByte(pos, b);
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -184,7 +185,7 @@ public class MemoryChunk {
       final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
       UNSAFE.copyMemory(null, pos, dst, arrayAddress, length);
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -208,7 +209,7 @@ public class MemoryChunk {
       final long arrayAddress = BYTE_ARRAY_BASE_OFFSET + offset;
       UNSAFE.copyMemory(src, arrayAddress, null, pos, length);
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -232,7 +233,7 @@ public class MemoryChunk {
         return Character.reverseBytes(UNSAFE.getChar(pos));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("This MemoryChunk has been freed.");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -256,7 +257,7 @@ public class MemoryChunk {
         UNSAFE.putChar(pos, Character.reverseBytes(value));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -281,7 +282,7 @@ public class MemoryChunk {
         return Short.reverseBytes(UNSAFE.getShort(pos));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -306,7 +307,7 @@ public class MemoryChunk {
         UNSAFE.putShort(pos, Short.reverseBytes(value));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -329,7 +330,7 @@ public class MemoryChunk {
         return Integer.reverseBytes(UNSAFE.getInt(pos));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -352,7 +353,7 @@ public class MemoryChunk {
         UNSAFE.putInt(pos, Integer.reverseBytes(value));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -375,7 +376,7 @@ public class MemoryChunk {
         return Long.reverseBytes(UNSAFE.getLong(pos));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
@@ -398,7 +399,7 @@ public class MemoryChunk {
         UNSAFE.putLong(pos, Long.reverseBytes(value));
       }
     } else if (address > addressLimit) {
-      throw new IllegalStateException("MemoryChunk has been freed");
+      throw new IllegalStateException(CHUNK_FREED);
     } else {
       throw new IndexOutOfBoundsException();
     }
