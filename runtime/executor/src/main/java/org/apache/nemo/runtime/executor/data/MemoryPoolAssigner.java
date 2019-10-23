@@ -20,8 +20,6 @@ package org.apache.nemo.runtime.executor.data;
 
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.nemo.conf.JobConf;
 
 import javax.inject.Inject;
@@ -42,9 +40,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @ThreadSafe
 public class MemoryPoolAssigner {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
-
   private final int chunkSize;
 
   private static final int MIN_CHUNK_SIZE_KB = 4;
