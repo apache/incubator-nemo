@@ -33,9 +33,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.sql.*;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
@@ -80,13 +82,27 @@ public final class MetricUtils {
   }
 
   /**
+   * Method to derive db credentials.
+   * @return credentials.
+   */
+  private static String getCreds() {
+    try {
+      final String str = "ZmFrZV9wYXNzd29yZA==";
+      byte[] decodedBytes = Base64.getDecoder().decode(str.getBytes("UTF-8"));
+      return new String(decodedBytes);
+    } catch (UnsupportedEncodingException e) {
+      throw new MetricException(e);
+    }
+  }
+
+  /**
    * Load the BiMaps (lightweight) Metadata from the DB.
    *
    * @return Whether or not the metadata has been successfully loaded from the DB.
    */
   public static Boolean loadMetaData() {
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
-      "postgres", "fake_password")) {
+      "postgres", getCreds())) {
       try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
@@ -141,7 +157,7 @@ public final class MetricUtils {
     LOG.info("Saving Metadata..");
 
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
-      "postgres", "fake_password")) {
+      "postgres", getCreds())) {
       try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
