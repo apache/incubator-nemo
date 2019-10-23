@@ -79,7 +79,7 @@ Below describes how Beam applications can be run directly on Nemo.
 
 ### Examples
 ```bash
-## Beam WordCount (from Beam website) example
+## WordCount example from the Beam website (Count words from a document)
 $ ./bin/run_beam.sh \
     -job_id beam_wordcount \
     -optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
@@ -87,7 +87,7 @@ $ ./bin/run_beam.sh \
     -user_args "--runner=NemoRunner --inputFile=`pwd`/examples/resources/inputs/test_input_wordcount --output=`pwd`/outputs/wordcount"
 $ less `pwd`/outputs/wordcount*
 
-## MapReduce example
+## MapReduce WordCount example (Count words from the Wikipedia dataset)
 $ ./bin/run_beam.sh \
     -job_id mr_default \
     -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
