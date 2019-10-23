@@ -24,8 +24,6 @@ import org.apache.nemo.runtime.executor.data.MemoryChunk;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -45,8 +43,6 @@ import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
-  private static final Logger LOG = LoggerFactory.getLogger(SerializedPartition.class.getName());
-
   private final K key;
   private volatile byte[] serializedData; // intentionally volatilize the reference
   private volatile int length;
@@ -59,7 +55,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   @Nullable
   private final EncoderFactory.Encoder encoder;
   private final MemoryPoolAssigner memoryPoolAssigner;
-  private List<MemoryChunk> dataList;
+  private volatile List<MemoryChunk> dataList; // intentionally set to volatile to prevent null reference
   private final boolean offheap;
 
   /**
