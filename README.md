@@ -31,38 +31,38 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
     * On Ubuntu 14.04 LTS and its point releases:
 
       ```bash
-      sudo apt-get install protobuf-compiler
+      $ sudo apt-get install protobuf-compiler
       ```
 
     * On Ubuntu 16.04 LTS and its point releases:
 
       ```bash
-      sudo add-apt-repository ppa:snuspl/protobuf-250
-      sudo apt update
-      sudo apt install protobuf-compiler=2.5.0-9xenial1
+      $ sudo add-apt-repository ppa:snuspl/protobuf-250
+      $ sudo apt update
+      $ sudo apt install protobuf-compiler=2.5.0-9xenial1
       ```
 
     * On macOS:
 
       ```bash
-      brew tap homebrew/versions
-      brew install protobuf@2.5
+      $ brew tap homebrew/versions
+      $ brew install protobuf@2.5
       ```
 
     * Or build from source:
 
       * Downloadable at https://github.com/google/protobuf/releases/tag/v2.5.0
       * Extract the downloaded tarball
-      * `./configure`
-      * `make`
-      * `make check`
-      * `sudo make install`
+      * `$ ./configure`
+      * `$ make`
+      * `$ make check`
+      * `$ sudo make install`
 
-    *  To check for a successful installation of version 2.5.0, run `protoc --version`
+    *  To check for a successful installation of version 2.5.0, run `$ protoc --version`
 
 ### Installing Nemo
-* Run all tests and install: `mvn clean install -T 2C`
-* Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
+* Run all tests and install: `$ mvn clean install -T 2C`
+* Run only unit tests and install: `$ mvn clean install -DskipITs -T 2C`
 
 ## Running Beam applications
 
@@ -79,31 +79,40 @@ Below describes how Beam applications can be run directly on Nemo.
 
 ### Examples
 ```bash
-## MapReduce example
-./bin/run_beam.sh \
-	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
-	-optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
-	-user_main org.apache.nemo.examples.beam.WordCount \
-        -user_args "`pwd`/examples/resources/inputs/test_input_wordcount `pwd`/outputs/wordcount"
+## WordCount example from the Beam website (Count words from a document)
+$ ./bin/run_beam.sh \
+    -job_id beam_wordcount \
+    -optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
+    -user_main org.apache.nemo.examples.beam.BeamWordCount \
+    -user_args "--runner=NemoRunner --inputFile=`pwd`/examples/resources/inputs/test_input_wordcount --output=`pwd`/outputs/wordcount"
+$ less `pwd`/outputs/wordcount*
+
+## MapReduce WordCount example (Count words from the Wikipedia dataset)
+$ ./bin/run_beam.sh \
+    -job_id mr_default \
+    -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+    -optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
+    -user_main org.apache.nemo.examples.beam.WordCount \
+    -user_args "`pwd`/examples/resources/inputs/test_input_wordcount `pwd`/outputs/wordcount"
+$ less `pwd`/outputs/wordcount*
 
 ## YARN cluster example
-./bin/run_beam.sh \
-	-deploy_mode yarn \
- 	-job_id mr_transient \
-	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
- 	-user_main org.apache.nemo.examples.beam.WordCount \
- 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
-	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
+$ ./bin/run_beam.sh \
+    -deploy_mode yarn \
+    -job_id mr_transient \
+    -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+    -user_main org.apache.nemo.examples.beam.WordCount \
+    -optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+    -user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
 
 ## NEXMark streaming Q0 (query0) example 
-./bin/run_nexmark.sh \
- 	-job_id nexmark-Q0 \
-	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
- 	-user_main org.apache.beam.sdk.nexmark.Main \
- 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
-  -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \	
-	-user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=0 --numEventGenerators=1"
+$ ./bin/run_nexmark.sh \
+    -job_id nexmark-Q0 \
+    -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+    -user_main org.apache.beam.sdk.nexmark.Main \
+    -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
+    -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \	
+    -user_args "--runner=NemoRunner --streaming=true --query=0 --numEventGenerators=1"
 
 ```
 ## Resource Configuration
@@ -146,13 +155,13 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 
 ### Examples
 ```bash
-./bin/run_beam.sh \
-	-job_id als \
-	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
-  	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
-  	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
+$ ./bin/run_beam.sh \
+    -job_id als \
+    -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+    -user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
+    -optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+    -dag_dir "./dag/als" \
+    -user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
 ```
 
 ## Options for writing metric results to databases.
