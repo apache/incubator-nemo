@@ -197,7 +197,7 @@ public final class ResourceSitePass extends AnnotatingPass {
       // Download bandwidth
       final double[] downloadCoefficientVector = new double[coefficientVectorSize];
       downloadCoefficientVector[OBJECTIVE_COEFFICIENT_INDEX] = bandwidthSpecification.down(nodeName);
-      downloadCoefficientVector[nodeCoefficientIndex] = parentParallelismOnThisLocation - parentParallelism;
+      downloadCoefficientVector[nodeCoefficientIndex] = (double) parentParallelismOnThisLocation - parentParallelism;
       constraints.add(new LinearConstraint(downloadCoefficientVector, Relationship.GEQ, 0));
 
       // The coefficient is non-negative

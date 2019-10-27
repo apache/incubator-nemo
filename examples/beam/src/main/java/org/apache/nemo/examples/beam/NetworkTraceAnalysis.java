@@ -33,6 +33,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -128,10 +129,8 @@ public final class NetworkTraceAnalysis {
    * @return extracted long typed data
    */
   private static long getLong(final Iterable<Long> data) {
-    for (final long datum : data) {
-      return datum;
-    }
-    return 0;
+    final Iterator<Long> iterator = data.iterator();
+    return iterator.hasNext() ? iterator.next() : 0;
   }
 
   /**
