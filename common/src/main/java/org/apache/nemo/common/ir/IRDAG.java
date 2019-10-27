@@ -216,13 +216,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof TriggerVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
-      final int deletedMessageId = vertexGroupToDelete.stream()
+      final Optional<Integer> deletedMessageIdOptional = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
-        .map(vtd -> ((MessageAggregatorVertex) vtd).getPropertyValue(MessageIdVertexProperty.class).get())
-        .findAny().get();
-      modifiedDAG.getEdges().stream()
-        .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent())
-        .forEach(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get().remove(deletedMessageId));
+        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).orElseThrow(() ->
+            new RuntimeException("MessageAggregatorVertex " + vtd.getId() + " does not have MessageIdVertexProperty.")))
+        .findAny();
+      deletedMessageIdOptional.ifPresent(deletedMessageId ->
+        modifiedDAG.getEdges().forEach(e ->
+          e.getPropertyValue(MessageIdEdgeProperty.class).ifPresent(
+            hashSet -> hashSet.remove(deletedMessageId))));
     } else if (vertexToDelete instanceof SamplingVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
     } else {
