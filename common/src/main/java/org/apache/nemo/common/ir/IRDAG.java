@@ -218,8 +218,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
       final Optional<Integer> deletedMessageIdOptional = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
-        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).orElseThrow(() ->
-            new RuntimeException("MessageAggregatorVertex " + vtd.getId() + " does not have MessageIdVertexProperty.")))
+        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).orElseThrow(
+          () -> new IllegalArgumentException(
+            "MessageAggregatorVertex " + vtd.getId() + " does not have MessageIdVertexProperty.")))
         .findAny();
       deletedMessageIdOptional.ifPresent(deletedMessageId ->
         modifiedDAG.getEdges().forEach(e ->

@@ -125,7 +125,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
       .max().orElse(1);
     final Integer maxParallelism = ancestorParallelism > parallelism ? ancestorParallelism : parallelism;
     final Integer myParallelism = vertex.getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new RuntimeException("No ParallelismProperty for the vertex " + vertex.getId()));
+      .orElseThrow(() -> new IllegalArgumentException("No ParallelismProperty for the vertex " + vertex.getId()));
 
     // update the vertex with the max value.
     if (maxParallelism > myParallelism) {
