@@ -268,8 +268,8 @@ public final class AlternatingLeastSquare {
     extends LoopCompositeTransform<PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final double lambda;
-    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData;
-    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
+    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData; // NOSONAR
+    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData; // NOSONAR
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
