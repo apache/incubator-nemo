@@ -57,6 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   private final RDD<T> rdd;
+  private static final String NOT_IMPL = "Operation not yet implemented.";
 
   /**
    * Static method to create a RDD object from an iterable object.
@@ -265,93 +266,93 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public JavaRDD<T> coalesce(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> coalesce(final int numPartitions, final boolean shuffle) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> distinct() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> distinct(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> filter(final Function<T, Boolean> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<List<T>> glom() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f, final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <R> JavaRDD<R> mapPartitionsWithIndex(final Function2<Integer, Iterator<T>, Iterator<R>> f,
                                                final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T>[] randomSplit(final double[] weights) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T>[] randomSplit(final double[] weights, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> repartition(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> sample(final boolean withReplacement, final double fraction) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> sample(final boolean withReplacement, final double fraction, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> setName(final String name) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <S> JavaRDD<T> sortBy(final Function<T, S> f, final boolean ascending, final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> unpersist() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<T> unpersist(final boolean blocking) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   /////////////// UNSUPPORTED TRANSFORMATION TO PAIR RDD ///////////////
@@ -359,43 +360,43 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<U, T> keyBy(final Function<T, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<Iterator<T>, K2, V2> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<java.util.Iterator<T>, K2, V2> f,
                                                           final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<T, Long> zipWithIndex() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<T, Long> zipWithUniqueId() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   /////////////// UNSUPPORTED ACTIONS ///////////////
@@ -403,234 +404,234 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public <U> U aggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void checkpoint() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
 
   @Override
   public JavaFutureAction<List<T>> collectAsync() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T>[] collectPartitions(final int[] partitionIds) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public long count() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<BoundedDouble> countApprox(final long timeout) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<BoundedDouble> countApprox(final long timeout, final double confidence) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public long countApproxDistinct(final double relativeSD) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaFutureAction<Long> countAsync() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Map<T, Long> countByValue() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<Map<T, BoundedDouble>> countByValueApprox(final long timeout) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<Map<T, BoundedDouble>> countByValueApprox(final long timeout, final double confidence) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T first() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T fold(final T zeroValue, final Function2<T, T, T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void foreach(final VoidFunction<T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaFutureAction<Void> foreachAsync(final VoidFunction<T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void foreachPartition(final VoidFunction<Iterator<T>> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaFutureAction<Void> foreachPartitionAsync(final VoidFunction<Iterator<T>> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Optional<String> getCheckpointFile() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public int getNumPartitions() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public StorageLevel getStorageLevel() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public int id() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public boolean isCheckpointed() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public boolean isEmpty() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Iterator<T> iterator(final Partition split, final TaskContext taskContext) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T max(final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T min(final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public String name() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public org.apache.spark.api.java.Optional<Partitioner> partitioner() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<Partition> partitions() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void saveAsObjectFile(final String path) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void saveAsTextFile(final String path,
                              final Class<? extends org.apache.hadoop.io.compress.CompressionCodec> codec) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> take(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaFutureAction<List<T>> takeAsync(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> takeOrdered(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> takeOrdered(final int num, final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> takeSample(final boolean withReplacement, final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> takeSample(final boolean withReplacement, final int num, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public String toDebugString() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Iterator<T> toLocalIterator() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> top(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<T> top(final int num, final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> U treeAggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> U treeAggregate(final U zeroValue, final Function2<U, T, U> seqOp,
                              final Function2<U, U, U> combOp, final int depth) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T treeReduce(final Function2<T, T, T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public T treeReduce(final Function2<T, T, T> f, final int depth) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 }
