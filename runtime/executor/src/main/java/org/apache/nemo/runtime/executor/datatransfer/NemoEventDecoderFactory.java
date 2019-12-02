@@ -59,6 +59,7 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
   private final class NemoEventDecoder implements DecoderFactory.Decoder {
 
     private final Decoder valueDecoder;
+    //NOSONAR
     private final InputStream inputStream;
 
     NemoEventDecoder(final Decoder valueDecoder,
