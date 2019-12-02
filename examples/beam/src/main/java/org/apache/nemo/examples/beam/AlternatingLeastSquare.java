@@ -329,7 +329,7 @@ public final class AlternatingLeastSquare {
      * @throws Exception Exception on the way.
      */
     @ProcessElement
-    public void processElement(final ProcessContext c) throws Exception {
+    public void processElement(final ProcessContext c) {
       final float[] result = new float[numFeatures];
 
       final KV<Integer, KV<int[], float[]>> element = c.element();
@@ -356,7 +356,7 @@ public final class AlternatingLeastSquare {
    * @param args arguments.
    * @throws ClassNotFoundException exception.
    */
-  public static void main(final String[] args) throws ClassNotFoundException {
+  public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
     LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
