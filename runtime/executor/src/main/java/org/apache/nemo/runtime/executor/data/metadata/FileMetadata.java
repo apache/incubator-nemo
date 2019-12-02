@@ -83,7 +83,7 @@ public abstract class FileMetadata<K extends Serializable> {
    * @return the list containing the partition metadata.
    * @throws IOException if fail to get the iterable.
    */
-  public final List<PartitionMetadata<K>> getPartitionMetadataList() throws IOException {
+  public final List<PartitionMetadata<K>> getPartitionMetadataList() {
     return Collections.unmodifiableList(partitionMetadataList);
   }
 

@@ -163,7 +163,7 @@ public final class BlockManagerWorker {
    * @throws BlockWriteException for any error occurred while trying to create a block.
    */
   public Block createBlock(final String blockId,
-                           final DataStoreProperty.Value blockStore) throws BlockWriteException {
+                           final DataStoreProperty.Value blockStore) {
     final BlockStore store = getBlockStore(blockStore);
     return store.createBlock(blockId);
   }
