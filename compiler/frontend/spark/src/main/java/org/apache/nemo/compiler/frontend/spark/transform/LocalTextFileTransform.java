@@ -34,7 +34,7 @@ import java.util.UUID;
 public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
   private String fileName;
-  private List<I> elements;
+  private transient List<I> elements;
 
   /**
    * Constructor.
