@@ -118,7 +118,8 @@ public interface Block<K extends Serializable> {
    * If another element is written after this method is called, a new non-committed partition should be created
    * for the element even if a partition with the same key is committed already.
    *
-   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to commit partitions.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred
+   *                             while trying to commit partitions.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
