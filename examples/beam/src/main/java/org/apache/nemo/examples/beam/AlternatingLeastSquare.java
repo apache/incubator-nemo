@@ -264,6 +264,9 @@ public final class AlternatingLeastSquare {
    * Composite transform that wraps the transforms inside the loop.
    * The loop updates the user matrix and the item matrix in each iteration.
    */
+
+
+
   public static final class UpdateUserAndItemMatrix
     extends LoopCompositeTransform<PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
