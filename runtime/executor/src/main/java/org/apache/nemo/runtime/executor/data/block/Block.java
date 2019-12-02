@@ -47,7 +47,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void write(K key, Object element) throws BlockWriteException;
+  void write(K key, Object element);
 
   /**
    * Stores {@link NonSerializedPartition}s to this block.
@@ -60,7 +60,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void writePartitions(Iterable<NonSerializedPartition<K>> partitions) throws BlockWriteException;
+  void writePartitions(Iterable<NonSerializedPartition<K>> partitions);
 
   /**
    * Stores {@link SerializedPartition}s to this block.
@@ -73,7 +73,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void writeSerializedPartitions(Iterable<SerializedPartition<K>> partitions) throws BlockWriteException;
+  void writeSerializedPartitions(Iterable<SerializedPartition<K>> partitions);
 
   /**
    * Retrieves the {@link NonSerializedPartition}s in a specific key range from this block.
@@ -87,7 +87,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Iterable<NonSerializedPartition<K>> readPartitions(KeyRange<K> keyRange) throws BlockFetchException;
+  Iterable<NonSerializedPartition<K>> readPartitions(KeyRange<K> keyRange);
 
   /**
    * Retrieves the {@link SerializedPartition}s in a specific key range.
@@ -100,7 +100,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Iterable<SerializedPartition<K>> readSerializedPartitions(KeyRange<K> keyRange) throws BlockFetchException;
+  Iterable<SerializedPartition<K>> readSerializedPartitions(KeyRange<K> keyRange);
 
   /**
    * Commits this block to prevent further write.
@@ -111,7 +111,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<Map<K, Long>> commit() throws BlockWriteException;
+  Optional<Map<K, Long>> commit();
 
   /**
    * Commits all un-committed partitions.
@@ -125,7 +125,7 @@ public interface Block<K extends Serializable> {
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void commitPartitions() throws BlockWriteException;
+  void commitPartitions();
 
   /**
    * @return the ID of this block.
