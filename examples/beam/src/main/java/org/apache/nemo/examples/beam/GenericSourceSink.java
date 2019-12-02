@@ -128,9 +128,9 @@ final class HDFSWrite extends DoFn<String, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(HDFSWrite.class.getName());
 
   private final String path;
-  private Path fileName;
-  private FileSystem fileSystem;
-  private FSDataOutputStream outputStream;
+  private transient Path fileName;
+  private transient FileSystem fileSystem;
+  private transient FSDataOutputStream outputStream;
 
   /**
    * Constructor.
