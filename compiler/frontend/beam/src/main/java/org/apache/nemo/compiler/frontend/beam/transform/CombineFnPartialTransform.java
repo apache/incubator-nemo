@@ -58,6 +58,7 @@ public final class CombineFnPartialTransform<K, I, A>
    */
   public CombineFnPartialTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);
+    //NOSONAR
     this.keyToAcuumulator = new HashMap<>();
   }
 

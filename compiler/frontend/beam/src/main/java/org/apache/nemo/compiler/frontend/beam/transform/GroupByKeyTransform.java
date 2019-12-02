@@ -34,6 +34,7 @@ import java.util.*;
  */
 public final class GroupByKeyTransform<I> extends NoWatermarkEmitTransform<I, WindowedValue<KV<Object, List>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
+  //NOSONAR
   private final Map<Object, List> keyToValues;
   private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;
 

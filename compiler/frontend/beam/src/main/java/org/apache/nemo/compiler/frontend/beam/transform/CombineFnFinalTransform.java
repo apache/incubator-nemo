@@ -46,6 +46,7 @@ import java.util.Map;
 public final class CombineFnFinalTransform<K, A, O>
   extends NoWatermarkEmitTransform<WindowedValue<KV<K, A>>, WindowedValue<KV<K, O>>> {
   private static final Logger LOG = LoggerFactory.getLogger(CombineFnFinalTransform.class.getName());
+  //NOSONAR
   private final Map<K, A> keyToAcuumulator;
   private OutputCollector<WindowedValue<KV<K, O>>> outputCollector;
 
