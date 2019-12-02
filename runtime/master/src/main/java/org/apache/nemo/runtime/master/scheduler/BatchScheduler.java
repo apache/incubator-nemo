@@ -172,7 +172,7 @@ public final class BatchScheduler implements Scheduler {
       .map(edge -> edge.getExecutionProperties()
         .get(MessageIdEdgeProperty.class)
         .<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException(edge.getId())))
-      .findFirst().<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException());
+      .findFirst().<IllegalArgumentException>orElseThrow(IllegalArgumentException::new);
     // Type casting is needed. See: https://stackoverflow.com/a/40865318
 
     return messageIds.iterator().next();
