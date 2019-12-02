@@ -128,8 +128,11 @@ final class HDFSWrite extends DoFn<String, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(HDFSWrite.class.getName());
 
   private final String path;
+  @java.lang.SuppressWarnings("squid:S1948")
   private Path fileName;
+  @java.lang.SuppressWarnings("squid:S1948")
   private FileSystem fileSystem;
+  @java.lang.SuppressWarnings("squid:S1948")
   private FSDataOutputStream outputStream;
 
   /**
