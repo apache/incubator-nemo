@@ -126,7 +126,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void write(final K key,
-                    final Object element) throws BlockWriteException {
+                    final Object element) {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -152,7 +152,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-    throws BlockWriteException {
+    {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -175,7 +175,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-    throws BlockWriteException {
+    {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -195,7 +195,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) {
     if (!metadata.isCommitted()) {
       throw new BlockFetchException(new Throwable("Cannot retrieve elements before a block is committed"));
     } else {
@@ -241,7 +241,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) {
     if (!metadata.isCommitted()) {
       throw new BlockFetchException(new Throwable("Cannot retrieve elements before a block is committed"));
     } else {
@@ -334,7 +334,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public synchronized Optional<Map<K, Long>> commit() throws BlockWriteException {
+  public synchronized Optional<Map<K, Long>> commit() {
     try {
       if (!metadata.isCommitted()) {
         commitPartitions();
@@ -363,7 +363,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * The committed partitions will be flushed to the storage.
    */
   @Override
-  public synchronized void commitPartitions() throws BlockWriteException {
+  public synchronized void commitPartitions() {
     final List<SerializedPartition<K>> partitions = new ArrayList<>();
     try {
       for (final Partition<?, K> partition : nonCommittedPartitionsMap.values()) {
