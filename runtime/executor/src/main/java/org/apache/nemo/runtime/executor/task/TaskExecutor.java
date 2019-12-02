@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
+  private const TaskMetric = "TaskMetric"
 
   // Essential information
   private boolean isExecuted;
@@ -339,11 +340,11 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TaskMetric, taskId,
       "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TaskMetric, taskId,
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TaskMetric, taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
 
     // Phase 2: Finalize task-internal states and elements
@@ -696,7 +697,7 @@ public final class TaskExecutor {
     }
 
     // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TaskMetric, taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }
