@@ -44,6 +44,7 @@ import static org.apache.spark.sql.functions.col;
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaSparkSQLExample {
+  private static final String peopleString="people";
 
   /**
    * Private constructor.
@@ -182,7 +183,7 @@ public final class JavaSparkSQLExample {
     // +----+-----+
 
     // Register the DataFrame as a SQL temporary view
-    df.createOrReplaceTempView("people");
+    df.createOrReplaceTempView(peopleString);
 
     Dataset<Row> sqlDF = spark.sql("SELECT * FROM people");
     sqlDF.show();
@@ -195,7 +196,7 @@ public final class JavaSparkSQLExample {
     // +----+-------+
 
     // Register the DataFrame as a global temporary view
-    df.createGlobalTempView("people");
+    df.createGlobalTempView(peopleString);
 
     // Global temporary view is tied to a system preserved database `global_temp`
     spark.sql("SELECT * FROM global_temp.people").show();
@@ -288,7 +289,7 @@ public final class JavaSparkSQLExample {
     // Apply a schema to an RDD of JavaBeans to get a DataFrame
     Dataset<Row> peopleDF = spark.createDataFrame(peopleRDD, Person.class);
     // Register the DataFrame as a temporary view
-    peopleDF.createOrReplaceTempView("people");
+    peopleDF.createOrReplaceTempView(peopleString);
 
     // SQL statements can be run by using the sql methods provided by spark
     Dataset<Row> teenagersDF = spark.sql("SELECT name FROM people WHERE age BETWEEN 13 AND 19");
@@ -350,7 +351,7 @@ public final class JavaSparkSQLExample {
     Dataset<Row> peopleDataFrame = spark.createDataFrame(rowRDD, schema);
 
     // Creates a temporary view using the DataFrame
-    peopleDataFrame.createOrReplaceTempView("people");
+    peopleDataFrame.createOrReplaceTempView(peopleString);
 
     // SQL can be run over a temporary view created using DataFrames
     Dataset<Row> results = spark.sql("SELECT name FROM people");
