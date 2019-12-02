@@ -88,7 +88,7 @@ public final class LoopVertex extends IRVertex {
     that.iterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addIterativeIncomingEdge));
     that.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addNonIterativeIncomingEdge));
     that.dagOutgoingEdges.forEach(((v, es) -> es.forEach(this::addDagOutgoingEdge)));
-    that.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal) -> this.mapEdgeWithLoop(eLoop, eInternal));
+    that.edgeWithLoopToEdgeWithInternalVertex.forEach(this::mapEdgeWithLoop);
     this.maxNumberOfIterations = that.maxNumberOfIterations;
     this.terminationCondition = that.terminationCondition;
   }
