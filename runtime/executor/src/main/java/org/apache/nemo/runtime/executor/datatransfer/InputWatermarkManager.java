@@ -27,7 +27,7 @@ import org.apache.nemo.common.punctuation.Watermark;
  * --edge 2--&gt;  watermarkManager --(emitWatermark)--&gt; nextOperator
  * --edge 3--&gt;
  */
-public interface InputWatermarkManager {
+public interface InputWatermarkManager implements Serializable {
 
   /**
    * This tracks the minimum input watermark among multiple input streams.
