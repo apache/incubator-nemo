@@ -120,11 +120,11 @@ public final class DAGTest {
     assertEquals(dag.getVertexById("3"), new IntegerVertex(3));
 
     List<IntegerVertex> ancestors = dag.getAncestors("5");
-    assertEquals(ancestors.size(), 1);
+    assertEquals(1, ancestors.size());
     assertTrue(ancestors.contains(new IntegerVertex(4)));
 
     ancestors = dag.getAncestors("3");
-    assertEquals(ancestors.size(), 3);
+    assertEquals(3, ancestors.size());
     assertTrue(ancestors.contains(new IntegerVertex(1)));
     assertTrue(ancestors.contains(new IntegerVertex(2)));
     assertTrue(ancestors.contains(new IntegerVertex(4)));
