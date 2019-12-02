@@ -87,7 +87,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     while (true) {
       final Object element = elementQueue.poll();
       if (element == null) {
-        throw new RuntimeException(exception);
+        throw new RuntimeException();
       } else if (element instanceof Finishmark) {
         numOfFinishMarks++;
         if (numOfFinishMarks == numOfIterators) {
