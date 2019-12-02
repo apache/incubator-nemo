@@ -44,6 +44,8 @@ import static org.apache.spark.sql.functions.col;
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaSparkSQLExample {
+  private static final String peopleString="people";
+  private static final String nameString="Name: ";
 
   /**
    * Private constructor.
@@ -182,7 +184,7 @@ public final class JavaSparkSQLExample {
     // +----+-----+
 
     // Register the DataFrame as a SQL temporary view
-    df.createOrReplaceTempView("people");
+    df.createOrReplaceTempView(peopleString);
 
     Dataset<Row> sqlDF = spark.sql("SELECT * FROM people");
     sqlDF.show();
@@ -195,7 +197,7 @@ public final class JavaSparkSQLExample {
     // +----+-------+
 
     // Register the DataFrame as a global temporary view
-    df.createGlobalTempView("people");
+    df.createGlobalTempView(peopleString);
 
     // Global temporary view is tied to a system preserved database `global_temp`
     spark.sql("SELECT * FROM global_temp.people").show();
@@ -288,7 +290,7 @@ public final class JavaSparkSQLExample {
     // Apply a schema to an RDD of JavaBeans to get a DataFrame
     Dataset<Row> peopleDF = spark.createDataFrame(peopleRDD, Person.class);
     // Register the DataFrame as a temporary view
-    peopleDF.createOrReplaceTempView("people");
+    peopleDF.createOrReplaceTempView(peopleString);
 
     // SQL statements can be run by using the sql methods provided by spark
     Dataset<Row> teenagersDF = spark.sql("SELECT name FROM people WHERE age BETWEEN 13 AND 19");
@@ -296,7 +298,7 @@ public final class JavaSparkSQLExample {
     // The columns of a row in the result can be accessed by field index
     Encoder<String> stringEncoder = Encoders.STRING();
     Dataset<String> teenagerNamesByIndexDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> nameString + row.getString(0),
       stringEncoder);
     teenagerNamesByIndexDF.show();
     // +------------+
@@ -307,7 +309,7 @@ public final class JavaSparkSQLExample {
 
     // or by field name
     Dataset<String> teenagerNamesByFieldDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.<String>getAs("name"),
+      (MapFunction<Row, String>) row -> nameString + row.<String>getAs("name"),
       stringEncoder);
     teenagerNamesByFieldDF.show();
     // +------------+
@@ -350,7 +352,7 @@ public final class JavaSparkSQLExample {
     Dataset<Row> peopleDataFrame = spark.createDataFrame(rowRDD, schema);
 
     // Creates a temporary view using the DataFrame
-    peopleDataFrame.createOrReplaceTempView("people");
+    peopleDataFrame.createOrReplaceTempView(peopleString);
 
     // SQL can be run over a temporary view created using DataFrames
     Dataset<Row> results = spark.sql("SELECT name FROM people");
@@ -358,7 +360,7 @@ public final class JavaSparkSQLExample {
     // The results of SQL queries are DataFrames and support all the normal RDD operations
     // The columns of a row in the result can be accessed by field index or by field name
     Dataset<String> namesDS = results.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> nameString + row.getString(0),
       Encoders.STRING());
     namesDS.show();
     // +-------------+
