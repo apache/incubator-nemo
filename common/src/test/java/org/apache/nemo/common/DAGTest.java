@@ -78,7 +78,7 @@ public final class DAGTest {
 
     assertEquals(dag.getRootVertices().size(), 1);
     assertEquals(0, dag.getParents("1").size());
-    assertEquals(dag.getChildren("1").size(), 1);
+    assertEquals(1, dag.getChildren("1").size());
     assertEquals(dag.getParents("2").size(), 1);
     assertEquals(dag.getChildren("2").size(), 1);
     assertEquals(dag.getParents("5").size(), 1);
