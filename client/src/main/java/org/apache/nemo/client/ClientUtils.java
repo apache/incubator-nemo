@@ -47,9 +47,8 @@ public final class ClientUtils {
    */
   static void handleOptimizationType(final ControlMessage.DriverToClientMessage message,
                                      final DriverRPCServer driverRPCServer) {
-    switch (message.getOptimizationType()) {
-      case XGBoost:
-        new Thread(() ->
+    if(message.getOptimizationType()==XGBoost){
+      new Thread(() ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
             .setType(ControlMessage.ClientToDriverMessageType.Notification)
             .setMessage(ControlMessage.NotificationMessage.newBuilder()
@@ -58,9 +57,7 @@ public final class ClientUtils {
               .build())
             .build()))
           .start();
-        break;
-      default:
-        break;
+          }
     }
   }
 
