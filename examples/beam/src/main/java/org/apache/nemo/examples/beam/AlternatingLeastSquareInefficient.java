@@ -104,7 +104,7 @@ public final class AlternatingLeastSquareInefficient {
    * @param args arguments.
    * @throws ClassNotFoundException exception.
    */
-  public static void main(final String[] args) throws ClassNotFoundException {
+  public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
     LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];

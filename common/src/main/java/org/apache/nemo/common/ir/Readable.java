@@ -45,7 +45,7 @@ public interface Readable<O> extends Serializable {
    * @return a data read by the readable.
    * @throws NoSuchElementException when no element exists
    */
-  O readCurrent() throws NoSuchElementException;
+  O readCurrent();
 
   /**
    * Read watermark.
