@@ -130,7 +130,7 @@ public final class DAGTest {
     assertTrue(ancestors.contains(new IntegerVertex(4)));
 
     List<IntegerVertex> descendants = dag.getDescendants("4");
-    assertEquals(descendants.size(), 2);
+    assertEquals(2,descendants.size());
     assertTrue(descendants.contains(new IntegerVertex(3)));
     assertTrue(descendants.contains(new IntegerVertex(5)));
 

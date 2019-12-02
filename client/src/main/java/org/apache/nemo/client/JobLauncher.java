@@ -344,7 +344,7 @@ public final class JobLauncher {
    * @return driver ncs configuration.
    * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverNcsConf() throws InjectionException {
+  private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
       LocalNameResolverConfiguration.CONF.build(),
       TANG.newConfigurationBuilder()
@@ -358,7 +358,7 @@ public final class JobLauncher {
    * @return driver message configuration.
    * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverMessageConf() throws InjectionException {
+  private static Configuration getDriverMessageConf()  {
     return TANG.newConfigurationBuilder()
       .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
       .build();
@@ -397,7 +397,7 @@ public final class JobLauncher {
    * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
-  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+  public static Configuration getJobConf(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
