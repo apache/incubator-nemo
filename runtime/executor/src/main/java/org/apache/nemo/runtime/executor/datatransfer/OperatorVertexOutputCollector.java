@@ -42,10 +42,14 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private transient final List<NextIntraTaskOperatorInfo> internalMainOutputs;
-  private transient final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
-  private transient final List<OutputWriter> externalMainOutputs;
-  private transient final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+  @SuppressWarnings("squid:S1948")
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  @SuppressWarnings("squid:S1948")
+  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
+  @SuppressWarnings("squid:S1948")
+  private final List<OutputWriter> externalMainOutputs;
+  @SuppressWarnings("squid:S1948")
+  private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
   /**
    * Constructor of the output collector.
