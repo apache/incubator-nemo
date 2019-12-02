@@ -34,8 +34,8 @@ import java.util.Map;
  * @param <K> key type.
  * @param <V> value type.
  */
-public final class GroupByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, Iterable<V>>> {
-  private transient final Map<K, List<V>> keyToValues;
+public final class GroupByKeyTransform<K extends Serializable, V extends Serializable> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, Iterable<V>>> {
+  private final Map<K, List<V>> keyToValues;
   private OutputCollector<Tuple2<K, Iterable<V>>> outputCollector;
 
   /**
