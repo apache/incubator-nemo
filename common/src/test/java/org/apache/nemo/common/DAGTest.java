@@ -101,7 +101,7 @@ public final class DAGTest {
     final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
     assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 2);
-    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 2);
+    assertEquals(dag.getIncomingEdgesOf(2, new IntegerVertex(3)).size());
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
     assertEquals(topologicalOrder.get(0).getValue(), 4);
