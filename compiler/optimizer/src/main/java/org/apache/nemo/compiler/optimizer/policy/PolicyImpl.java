@@ -81,11 +81,11 @@ public final class PolicyImpl implements Policy {
         // Apply the pass to the DAG.
         processedDAG = passToApply.apply(dag);
 
-        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> {
+        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> 
           // Ensure AnnotatingPass and ReshapingPass functions as intended.
-          return !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
+          !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
             || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass)));
-        });
+        );
 
         if (!advanced) {
           throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
