@@ -32,7 +32,7 @@ import java.io.InputStream;
  * @param <T> type of the object to deserialize.
  */
 public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
-  private final Serializer serializer;
+  private final transient Serializer serializer;
 
   /**
    * Default constructor.
