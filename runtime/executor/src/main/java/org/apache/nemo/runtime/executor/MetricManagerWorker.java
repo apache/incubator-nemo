@@ -102,7 +102,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
   }
 
   @Override
-  public void close() throws UnknownFailureCauseException {
+  public void close() {
     scheduledExecutorService.shutdownNow();
     flushMetricMessageQueueToMaster();
   }
