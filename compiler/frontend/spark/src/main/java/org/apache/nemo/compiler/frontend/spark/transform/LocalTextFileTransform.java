@@ -31,10 +31,10 @@ import java.util.UUID;
  *
  * @param <I> input type.
  */
-public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
+public final class LocalTextFileTransform<I extends Serializable> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
   private String fileName;
-  private transient List<I> elements;
+  private List<I> elements;
 
   /**
    * Constructor.
