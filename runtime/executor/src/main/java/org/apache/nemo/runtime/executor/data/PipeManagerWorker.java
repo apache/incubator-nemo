@@ -192,7 +192,7 @@ public final class PipeManagerWorker {
       .orElseThrow(() -> new IllegalStateException());
     final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
       .getPropertyValue(CommunicationPatternProperty.class)
-      .orElseThrow(() -> new IllegalStateException());
+      .orElseThrow(IllegalStateException::new);
 
     return commPattern.equals(CommunicationPatternProperty.Value.ONE_TO_ONE) ? 1 : dstParallelism;
   }
