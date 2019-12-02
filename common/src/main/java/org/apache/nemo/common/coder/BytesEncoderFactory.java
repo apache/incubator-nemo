@@ -58,7 +58,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
    */
   private final class BytesEncoder implements Encoder<byte[]> {
 
-    private final OutputStream outputStream;
+    transient final OutputStream outputStream;
 
     /**
      * Constructor.
