@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.IntPredicate;
+import java.util.function.IntPredicate; //NOSONAR
 
 /**
  * IRVertex that contains a partial DAG that is iterative.
