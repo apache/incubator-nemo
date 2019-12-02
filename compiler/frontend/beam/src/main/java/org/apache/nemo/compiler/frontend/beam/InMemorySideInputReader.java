@@ -110,7 +110,7 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
     this.curWatermark = newWatermark;
     // TODO #282: Handle late data
     inMemorySideInputs.entrySet().removeIf(entry ->
-      return entry.getKey().right().maxTimestamp().getMillis() <= this.curWatermark; // Discard old sideinputs.
+      entry.getKey().right().maxTimestamp().getMillis() <= this.curWatermark // Discard old sideinputs.
     );
   }
 }

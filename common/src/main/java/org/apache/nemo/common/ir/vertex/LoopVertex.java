@@ -106,7 +106,7 @@ public final class LoopVertex extends IRVertex {
   }
 
   /**
-   * @return the DAG of rthe LoopVertex
+   * @return the DAG of the LoopVertex
    */
   public DAG<IRVertex, IREdge> getDAG() {
     return builder.buildWithoutSourceSinkCheck();
