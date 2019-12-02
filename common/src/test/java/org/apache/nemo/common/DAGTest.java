@@ -100,12 +100,12 @@ public final class DAGTest {
 
     final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
-    assertEquals(dag.getOutgoingEdgesOf(2, new IntegerVertex(4)).size());
-    assertEquals(dag.getIncomingEdgesOf(2, new IntegerVertex(3)).size());
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 2);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 2);
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
     assertEquals(topologicalOrder.get(0).getValue(), 4);
-    assertEquals(topologicalOrder.get(1).getValue(), 5);
+    assertEquals(5, topologicalOrder.get(1).getValue());
     assertEquals(topologicalOrder.get(2).getValue(), 1);
     assertEquals(topologicalOrder.get(3).getValue(), 2);
     assertEquals(topologicalOrder.get(4).getValue(), 3);
