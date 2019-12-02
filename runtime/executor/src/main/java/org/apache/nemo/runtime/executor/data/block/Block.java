@@ -19,8 +19,6 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.common.exception.BlockFetchException;
-import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 
@@ -42,7 +40,7 @@ public interface Block<K extends Serializable> {
    *
    * @param key     the key.
    * @param element the element to write.
-   * @throws BlockWriteException for any error occurred while trying to write a block.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to write a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -55,7 +53,7 @@ public interface Block<K extends Serializable> {
    * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
-   * @throws BlockWriteException for any error occurred while trying to write a block.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to write a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -68,7 +66,7 @@ public interface Block<K extends Serializable> {
    * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
-   * @throws BlockWriteException for any error occurred while trying to write a block.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to write a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -82,7 +80,7 @@ public interface Block<K extends Serializable> {
    *
    * @param keyRange the key range to retrieve.
    * @return an iterable of {@link NonSerializedPartition}s.
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
+   * @throws org.apache.nemo.common.exception.BlockFetchException for any error occurred while trying to fetch a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -95,7 +93,7 @@ public interface Block<K extends Serializable> {
    *
    * @param keyRange the hash range to retrieve.
    * @return an iterable of {@link SerializedPartition}s.
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
+   * @throws org.apache.nemo.common.exception.BlockFetchException for any error occurred while trying to fetch a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -106,7 +104,7 @@ public interface Block<K extends Serializable> {
    * Commits this block to prevent further write.
    *
    * @return the size of each partition if the data in the block is serialized.
-   * @throws BlockWriteException for any error occurred while trying to commit a block.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to commit a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
@@ -120,7 +118,7 @@ public interface Block<K extends Serializable> {
    * If another element is written after this method is called, a new non-committed partition should be created
    * for the element even if a partition with the same key is committed already.
    *
-   * @throws BlockWriteException for any error occurred while trying to commit partitions.
+   * @throws org.apache.nemo.common.exception.BlockWriteException for any error occurred while trying to commit partitions.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
