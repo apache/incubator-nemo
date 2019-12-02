@@ -27,7 +27,7 @@ import java.util.function.Predicate;
  * Abstract class for optimization passes. All passes basically extends this class.
  */
 public abstract class Pass implements Serializable {
-  private Predicate<IRDAG> condition; // NOSONAR
+  private Predicate<IRDAG> condition; //NOSONAR
 
   /**
    * Default constructor.
