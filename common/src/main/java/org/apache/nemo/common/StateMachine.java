@@ -230,6 +230,9 @@ public final class StateMachine {
    * Builder that builds a StateMachine.
    */
   public static final class Builder {
+    private final String RE_prefix = "A state "
+    private final String RE_suffix = " should be added first"
+
     private final Set<Enum> stateEnumSet;
     private final Map<Enum, String> stateDescriptionMap;
     private final Map<Enum, Set<Pair<Enum, String>>> transitionMap;
@@ -255,7 +258,7 @@ public final class StateMachine {
      */
     public Builder addState(final Enum stateEnum, final String description) {
       if (stateEnumSet.contains(stateEnum)) {
-        throw new RuntimeException("A state " + stateEnum + " was already added");
+        throw new RuntimeException(RE_prefix + stateEnum + " was already added");
       }
 
       stateEnumSet.add(stateEnum);
@@ -270,7 +273,7 @@ public final class StateMachine {
      */
     public Builder setInitialState(final Enum stateToSet) {
       if (!stateEnumSet.contains(stateToSet)) {
-        throw new RuntimeException("A state " + stateToSet + " should be added first");
+        throw new RuntimeException(RE_prefix + stateToSet + RE_suffix);
       }
       this.initialState = stateToSet;
       return this;
@@ -288,11 +291,11 @@ public final class StateMachine {
      */
     public Builder addTransition(final Enum from, final Enum to, final String description) {
       if (!stateEnumSet.contains(from)) {
-        throw new RuntimeException("A state " + from + " should be added first");
+        throw new RuntimeException(RE_prefix + from + RE_suffix);
       }
 
       if (!stateEnumSet.contains(to)) {
-        throw new RuntimeException("A state " + to + " should be added first");
+        throw new RuntimeException(RE_prefix + to + RE_suffix);
       }
 
       final Pair<Enum, String> transition = Pair.of(to, description);
