@@ -151,8 +151,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-    {
+  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -174,8 +173,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-    {
+  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
