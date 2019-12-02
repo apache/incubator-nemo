@@ -172,7 +172,7 @@ public final class BatchScheduler implements Scheduler {
       .map(edge -> edge.getExecutionProperties()
         .get(MessageIdEdgeProperty.class)
         .<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException(edge.getId())))
-      .findFirst().<IllegalArgumentException>orElseThrow(() -> new IllegalArgumentException());
+      .findFirst().<IllegalArgumentException>orElseThrow(IllegalArgumentException::new);
     // Type casting is needed. See: https://stackoverflow.com/a/40865318
 
     return messageIds.iterator().next();
@@ -286,7 +286,7 @@ public final class BatchScheduler implements Scheduler {
   public void onSpeculativeExecutionCheck() {
     MutableBoolean isNewCloneCreated = new MutableBoolean(false);
 
-    selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
+    selectEarliestSchedulableGroup().ifPresent(scheduleGroup ->
       scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
         final Stage stage = planStateManager.getPhysicalPlan().getStageDAG().getVertexById(stageId);
 
@@ -297,7 +297,7 @@ public final class BatchScheduler implements Scheduler {
           }
         });
       });
-    });
+    );
 
     if (isNewCloneCreated.booleanValue()) {
       doSchedule(); // Do schedule the new clone.
@@ -513,7 +513,7 @@ public final class BatchScheduler implements Scheduler {
     final Stage stagePutOnHold = stageDag.getVertices().stream()
       .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
       .findFirst()
-      .orElseThrow(() -> new RuntimeException());
+      .orElseThrow(RuntimeException::new);
 
     // Stage put on hold, i.e. stage with vertex containing MessageAggregatorTransform
     // should have a parent stage whose outgoing edges contain the target edge of dynamic optimization.
