@@ -228,7 +228,7 @@ public final class IRDAGChecker {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
       for (final IREdge inEdge : inEdges) {
         final Optional<Integer> keyRangeListSize = inEdge.getPropertyValue(PartitionSetProperty.class)
-          .map(keyRangeList -> keyRangeList.size());
+          .map(keyRangeList::keyRangeList.size());
         if (parallelism.isPresent() && keyRangeListSize.isPresent() && !parallelism.equals(keyRangeListSize)) {
           return failure("PartitionSet must contain all task offsets required for the dst parallelism",
             v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
