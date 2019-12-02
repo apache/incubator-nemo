@@ -534,7 +534,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<VertexExecutionProperty<Serializable>>) ep)
-      .map(ep -> v.getPropertyValue(ep))
+      .map(this::v.getPropertyValue())
       .collect(Collectors.toList());
     return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
   }
@@ -544,7 +544,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<EdgeExecutionProperty<Serializable>>) ep)
-      .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
+      .map(this::e.getPropertyValue()).collect(Collectors.toList());
     return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
       description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
   }
