@@ -36,9 +36,9 @@ import java.util.UUID;
  *
  * @param <I> input type.
  */
-public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
+public final class HDFSTextFileTransform<I implements Serializable> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
-  private Path fileName;
+  private Path fileName; //NOSONAR
   private List<I> elements;
 
   /**
