@@ -138,7 +138,7 @@ public final class DAGTest {
     assertEquals(descendants.size(), 0);
 
     descendants = dag.getDescendants("2");
-    assertEquals(descendants.size(), 1);
+    assertEquals(1, descendants.size());
     assertTrue(descendants.contains(new IntegerVertex(3)));
   }
 
