@@ -46,6 +46,7 @@ import java.util.Map;
 public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairRDD<K, V> {
 
   private final RDD<Tuple2<K, V>> rdd;
+  private static final String NOT_IMPL = "Operation not yet implemented.";
 
   /**
    * Static method to create a JavaPairRDD object from {@link RDD}.
@@ -118,107 +119,107 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
 
   @Override
   public JavaPairRDD<K, V> cache() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> persist(final StorageLevel newLevel) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> unpersist() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> unpersist(final boolean blocking) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> distinct() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> distinct(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> filter(final Function<Tuple2<K, V>, Boolean> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> coalesce(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> coalesce(final int numPartitions,
                                     final boolean shuffle) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> repartition(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sample(final boolean withReplacement,
                                   final double fraction) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sample(final boolean withReplacement,
                                   final double fraction,
                                   final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sampleByKey(final boolean withReplacement,
                                        final Map<K, Double> fractions,
                                        final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sampleByKey(final boolean withReplacement,
                                        final Map<K, Double> fractions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sampleByKeyExact(final boolean withReplacement,
                                             final Map<K, Double> fractions,
                                             final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sampleByKeyExact(final boolean withReplacement,
                                             final Map<K, Double> fractions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> union(final org.apache.spark.api.java.JavaPairRDD<K, V> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> intersection(final org.apache.spark.api.java.JavaPairRDD<K, V> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Tuple2<K, V> first() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -228,7 +229,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                             final Partitioner partitioner,
                                             final boolean mapSideCombine,
                                             final Serializer serializer) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -236,7 +237,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                             final Function2<C, V, C> mergeValue,
                                             final Function2<C, C, C> mergeCombiners,
                                             final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -244,39 +245,39 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                             final Function2<C, V, C> mergeValue,
                                             final Function2<C, C, C> mergeCombiners,
                                             final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> reduceByKey(final Partitioner partitioner,
                                        final Function2<V, V, V> func) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Map<K, V> reduceByKeyLocally(final Function2<V, V, V> func) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Map<K, Long> countByKey() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<Map<K, BoundedDouble>> countByKeyApprox(final long timeout) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public PartialResult<Map<K, BoundedDouble>> countByKeyApprox(final long timeout,
                                                                final double confidence) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public double countByKeyApprox$default$2() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -284,7 +285,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                               final Partitioner partitioner,
                                               final Function2<U, V, U> seqFunc,
                                               final Function2<U, U, U> combFunc) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -292,200 +293,200 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                               final int numPartitions,
                                               final Function2<U, V, U> seqFunc,
                                               final Function2<U, U, U> combFunc) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<K, U> aggregateByKey(final U zeroValue,
                                               final Function2<U, V, U> seqFunc,
                                               final Function2<U, U, U> combFunc) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> foldByKey(final V zeroValue,
                                      final Partitioner partitioner,
                                      final Function2<V, V, V> func) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> foldByKey(final V zeroValue,
                                      final int numPartitions,
                                      final Function2<V, V, V> func) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> foldByKey(final V zeroValue,
                                      final Function2<V, V, V> func) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> reduceByKey(final Function2<V, V, V> func,
                                        final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, Iterable<V>> groupByKey(final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, Iterable<V>> groupByKey(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> subtract(final org.apache.spark.api.java.JavaPairRDD<K, V> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> subtract(final org.apache.spark.api.java.JavaPairRDD<K, V> other,
                                     final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> subtract(final org.apache.spark.api.java.JavaPairRDD<K, V> other,
                                     final Partitioner p) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, V> subtractByKey(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, V> subtractByKey(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                                              final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, V> subtractByKey(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                                              final Partitioner p) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> partitionBy(final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, W>> join(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                                                final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, Optional<W>>>
   leftOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                 final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, W>>
   rightOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                  final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, Optional<W>>>
   fullOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                 final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <C> JavaPairRDD<K, C> combineByKey(final Function<V, C> createCombiner,
                                             final Function2<C, V, C> mergeValue,
                                             final Function2<C, C, C> mergeCombiners) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public org.apache.spark.api.java.JavaPairRDD<K, Iterable<V>> groupByKey() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, W>> join(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, W>> join(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                                                final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, Optional<W>>>
   leftOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<V, Optional<W>>>
   leftOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                 final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, W>>
   rightOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, W>>
   rightOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                  final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, Optional<W>>>
   fullOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Optional<V>, Optional<W>>>
   fullOuterJoin(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
                 final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public Map<K, V> collectAsMap() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<K, U> mapValues(final Function<V, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <U> JavaPairRDD<K, U> flatMapValues(final Function<V, Iterable<U>> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Iterable<V>, Iterable<W>>>
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
           final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -493,7 +494,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
           final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -502,20 +503,20 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
           final org.apache.spark.api.java.JavaPairRDD<K, W3> other3,
           final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Iterable<V>, Iterable<W>>>
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W1, W2> JavaPairRDD<K, Tuple3<Iterable<V>, Iterable<W1>, Iterable<W2>>>
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -523,14 +524,14 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
           final org.apache.spark.api.java.JavaPairRDD<K, W3> other3) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Iterable<V>, Iterable<W>>>
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W> other,
           final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -538,7 +539,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   cogroup(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
           final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -547,20 +548,20 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
           final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
           final org.apache.spark.api.java.JavaPairRDD<K, W3> other3,
           final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W> JavaPairRDD<K, Tuple2<Iterable<V>, Iterable<W>>>
   groupWith(final org.apache.spark.api.java.JavaPairRDD<K, W> other) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public <W1, W2> JavaPairRDD<K, Tuple3<Iterable<V>, Iterable<W1>, Iterable<W2>>>
   groupWith(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
             final org.apache.spark.api.java.JavaPairRDD<K, W2> other2) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -568,12 +569,12 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   groupWith(final org.apache.spark.api.java.JavaPairRDD<K, W1> other1,
             final org.apache.spark.api.java.JavaPairRDD<K, W2> other2,
             final org.apache.spark.api.java.JavaPairRDD<K, W3> other3) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public List<V> lookup(final K key) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   // Commented out due to an IDE issue
@@ -583,7 +584,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                                               final Class<?> valueClass,
                                                               final Class<F> outputFormatClass,
                                                               final JobConf conf) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -591,7 +592,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                                               final Class<?> keyClass,
                                                               final Class<?> valueClass,
                                                               final Class<F> outputFormatClass) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -600,7 +601,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                                                               final Class<?> valueClass,
                                                               final Class<F> outputFormatClass,
                                                               final Class<? extends CompressionCodec> codec) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -610,12 +611,12 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                          final Class<?> valueClass,
                          final Class<F> outputFormatClass,
                          final Configuration conf) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public void saveAsNewAPIHadoopDataset(final Configuration conf) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
@@ -624,88 +625,88 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
                          final Class<?> keyClass,
                          final Class<?> valueClass,
                          final Class<F> outputFormatClass) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }*/
 
   @Override
   public void saveAsHadoopDataset(final JobConf conf) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> repartitionAndSortWithinPartitions(final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> repartitionAndSortWithinPartitions(final Partitioner partitioner,
                                                               final Comparator<K> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey(final boolean ascending) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey(final boolean ascending,
                                      final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey(final Comparator<K> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey(final Comparator<K> comp,
                                      final boolean ascending) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> sortByKey(final Comparator<K> comp,
                                      final boolean ascending,
                                      final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<K> keys() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaRDD<V> values() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, Long> countApproxDistinctByKey(final double relativeSD,
                                                        final Partitioner partitioner) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, Long> countApproxDistinctByKey(final double relativeSD,
                                                        final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, Long> countApproxDistinctByKey(final double relativeSD) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 
   @Override
   public JavaPairRDD<K, V> setName(final String name) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_IMPL);
   }
 }
