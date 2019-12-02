@@ -45,6 +45,7 @@ import static org.apache.spark.sql.functions.col;
  */
 public final class JavaSparkSQLExample {
   private static final String peopleString="people";
+  private static final String nameString="Name: ";
 
   /**
    * Private constructor.
@@ -297,7 +298,7 @@ public final class JavaSparkSQLExample {
     // The columns of a row in the result can be accessed by field index
     Encoder<String> stringEncoder = Encoders.STRING();
     Dataset<String> teenagerNamesByIndexDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> nameString + row.getString(0),
       stringEncoder);
     teenagerNamesByIndexDF.show();
     // +------------+
@@ -308,7 +309,7 @@ public final class JavaSparkSQLExample {
 
     // or by field name
     Dataset<String> teenagerNamesByFieldDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.<String>getAs("name"),
+      (MapFunction<Row, String>) row -> nameString + row.<String>getAs("name"),
       stringEncoder);
     teenagerNamesByFieldDF.show();
     // +------------+
@@ -359,7 +360,7 @@ public final class JavaSparkSQLExample {
     // The results of SQL queries are DataFrames and support all the normal RDD operations
     // The columns of a row in the result can be accessed by field index or by field name
     Dataset<String> namesDS = results.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> nameString + row.getString(0),
       Encoders.STRING());
     namesDS.show();
     // +-------------+
