@@ -180,6 +180,7 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
+  private static final String INTERRUPTED = "Interrupted: ";
   public static void shutdown() {
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -191,7 +192,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
+          LOG.warn(INTERRUPTED, e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -252,7 +253,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the driver to be ready");
       driverReadyLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
@@ -274,7 +275,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -319,7 +320,7 @@ public final class JobLauncher {
     return jcb.build();
   }
 
-  /**
+  /**:
    * Fetch scheduler configuration.
    *
    * @param jobConf job configuration.
