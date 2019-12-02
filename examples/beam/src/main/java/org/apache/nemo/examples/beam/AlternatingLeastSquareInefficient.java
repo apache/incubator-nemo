@@ -57,8 +57,8 @@ public final class AlternatingLeastSquareInefficient {
     PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final Double lambda;
-    private final PCollection<String> rawData;
-    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
+    transient private final PCollection<String> rawData;
+    transient private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
