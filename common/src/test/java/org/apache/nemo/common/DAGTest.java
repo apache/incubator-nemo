@@ -70,19 +70,19 @@ public final class DAGTest {
     assertEquals(5, dag.getTopologicalSort().size());
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
-    assertEquals(1,topologicalOrder.get(0).getValue());
-    assertEquals(2,topologicalOrder.get(1).getValue());
-    assertEquals(3,topologicalOrder.get(2).getValue());
-    assertEquals(4,topologicalOrder.get(3).getValue());
-    assertEquals(5,topologicalOrder.get(4).getValue());
+    assertEquals(1, topologicalOrder.get(0).getValue());
+    assertEquals(2, topologicalOrder.get(1).getValue());
+    assertEquals(3, topologicalOrder.get(2).getValue());
+    assertEquals(4, topologicalOrder.get(3).getValue());
+    assertEquals(5, topologicalOrder.get(4).getValue());
 
-    assertEquals(1,dag.getRootVertices().size());
-    assertEquals(0,dag.getParents("1").size());
-    assertEquals(1,dag.getChildren("1").size());
-    assertEquals(1,dag.getParents("2").size());
-    assertEquals(1,dag.getChildren("2").size());
-    assertEquals(1,dag.getParents("5").size());
-    assertEquals(0,dag.getChildren("5").size());
+    assertEquals(1, dag.getRootVertices().size());
+    assertEquals(0, dag.getParents("1").size());
+    assertEquals(1, dag.getChildren("1").size());
+    assertEquals(1, dag.getParents("2").size());
+    assertEquals(1, dag.getChildren("2").size());
+    assertEquals(1, dag.getParents("5").size());
+    assertEquals(0, dag.getChildren("5").size());
     assertEquals(dag.getVertexById("1"), new IntegerVertex(1));
   }
 
