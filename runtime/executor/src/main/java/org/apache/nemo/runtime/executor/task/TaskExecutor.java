@@ -683,13 +683,13 @@ public final class TaskExecutor {
     });
 
     // finalize OutputWriters for additional tagged children
-    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriters -> {
+    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriters ->
       outputWriters.forEach(outputWriter -> {
         outputWriter.close();
         final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
         writtenBytes.ifPresent(writtenBytesList::add);
       });
-    });
+    );
 
     long totalWrittenBytes = 0;
     for (final Long writtenBytes : writtenBytesList) {
