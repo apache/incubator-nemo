@@ -78,7 +78,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException {
+  Object fetchDataElement() throws IOException, RuntimeException {
     if (firstFetch) {
       fetchDataLazily();
       firstFetch = false;
@@ -87,7 +87,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     while (true) {
       final Object element = elementQueue.poll();
       if (element == null) {
-        throw new RuntimeException();
+        throw new RuntimeException(exception);
       } else if (element instanceof Finishmark) {
         numOfFinishMarks++;
         if (numOfFinishMarks == numOfIterators) {
