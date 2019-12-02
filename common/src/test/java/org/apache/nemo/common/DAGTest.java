@@ -62,8 +62,8 @@ public final class DAGTest {
 
     final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
-    assertEquals(dag.getVertices().size(), 5);
-    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(1)).size(), 0);
+    assertEquals(5, dag.getVertices().size());
+    assertEquals(0, dag.getIncomingEdgesOf(new IntegerVertex(1)).size());
     assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(5)).size(), 0);
     assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 1);
     assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 1);
