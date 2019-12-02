@@ -198,8 +198,6 @@ public final class TaskExecutorTest {
    */
   @Test()
   public void testInvalidInputData() throws Exception {
-    boolean check
-
     try {
       // Execute the task.
       final TaskExecutor taskExecutor = getTaskExecutor(null, null);
@@ -208,7 +206,7 @@ public final class TaskExecutorTest {
       // This should not be reached.
       fail();
     } catch (NullPointerException e) {
-      ;
+      assert true;
     }
   }
 

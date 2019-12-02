@@ -62,6 +62,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    */
   public OperatorVertexOutputCollector(
     final IRVertex irVertex,
+    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
