@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
+// import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -78,7 +78,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException, NoSuchElementException {
+  Object fetchDataElement() throws IOException {
     if (firstFetch) {
       fetchDataLazily();
       firstFetch = false;
@@ -87,7 +87,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     while (true) {
       final Object element = elementQueue.poll();
       if (element == null) {
-        throw new NoSuchElementException();
+        throw new RuntimeException(exception);
       } else if (element instanceof Finishmark) {
         numOfFinishMarks++;
         if (numOfFinishMarks == numOfIterators) {
