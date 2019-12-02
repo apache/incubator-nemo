@@ -21,7 +21,6 @@ package org.apache.nemo.common.ir;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
