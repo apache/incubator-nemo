@@ -710,7 +710,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   @Override
   public IREdge getEdgeBetween(final String srcVertexId,
-                               final String dstVertexId) throws IllegalEdgeOperationException {
+                               final String dstVertexId) {
     return modifiedDAG.getEdgeBetween(srcVertexId, dstVertexId);
   }
 
