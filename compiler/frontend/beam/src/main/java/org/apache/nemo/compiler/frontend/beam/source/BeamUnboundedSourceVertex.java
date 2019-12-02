@@ -123,7 +123,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
     implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
-    private UnboundedSource.UnboundedReader<O> reader;
+    private UnboundedSource.UnboundedReader<O> reader; //NOSONAR
     private boolean isStarted = false;
     private boolean isCurrentAvailable = false;
     private boolean isFinished = false;
