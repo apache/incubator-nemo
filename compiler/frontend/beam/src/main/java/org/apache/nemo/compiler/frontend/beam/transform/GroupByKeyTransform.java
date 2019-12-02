@@ -34,6 +34,9 @@ import java.util.*;
  */
 public final class GroupByKeyTransform<I> extends NoWatermarkEmitTransform<I, WindowedValue<KV<Object, List>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
+  //The below NOSONAR is added to ignore squid:S1948 "Fields in a Serializable should be transient or serializable
+  //We would have to overwrite all Map classes if we were to implement Serializable(unrealistic)
+  //Because we want to serealize this class, we cannot make this transient
   //NOSONAR
   private final Map<Object, List> keyToValues;
   private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;

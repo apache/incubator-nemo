@@ -46,6 +46,9 @@ import java.util.Map;
 public final class CombineFnFinalTransform<K, A, O>
   extends NoWatermarkEmitTransform<WindowedValue<KV<K, A>>, WindowedValue<KV<K, O>>> {
   private static final Logger LOG = LoggerFactory.getLogger(CombineFnFinalTransform.class.getName());
+  //The below NOSONAR is added to ignore squid:S1948 "Fields in a Serializable should be transient or serializable
+  //We would have to overwrite all Map classes if we were to implement Serializable(unrealistic)
+  //Because we want to serealize this class, we cannot make this transient
   //NOSONAR
   private final Map<K, A> keyToAcuumulator;
   private OutputCollector<WindowedValue<KV<K, O>>> outputCollector;
