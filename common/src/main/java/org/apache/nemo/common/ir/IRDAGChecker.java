@@ -228,7 +228,7 @@ public final class IRDAGChecker {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
       for (final IREdge inEdge : inEdges) {
         final Optional<Integer> keyRangeListSize = inEdge.getPropertyValue(PartitionSetProperty.class)
-          .map(keyRangeList -> keyRangeList.size());
+          .map(keyRangeList::keyRangeList.size());
         if (parallelism.isPresent() && keyRangeListSize.isPresent() && !parallelism.equals(keyRangeListSize)) {
           return failure("PartitionSet must contain all task offsets required for the dst parallelism",
             v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
@@ -382,7 +382,7 @@ public final class IRDAGChecker {
 
       for (final IRVertex v : irdag.getVertices()) {
         final MutableObject violatingReachableVertex = new MutableObject();
-        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup -> {
+        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup -> 
           irdag.dfsDo(
             v,
             visited -> {
@@ -393,7 +393,7 @@ public final class IRDAGChecker {
             },
             DAGInterface.TraversalOrder.PreOrder,
             new HashSet<>());
-        });
+        );
         if (violatingReachableVertex.getValue() != null) {
           return failure(
             "A reachable vertex with a smaller schedule group ",

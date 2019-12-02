@@ -64,7 +64,7 @@ public final class DAGTest {
 
     assertEquals(dag.getVertices().size(), 5);
     assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(1)).size(), 0);
-    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(5)).size(), 0);
+    assertEquals(dag.getOutgoingEdgesOf(0, new IntegerVertex(5)).size());
     assertEquals(dag.getIncomingEdgesOf(1, new IntegerVertex(3)).size());
     assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 1);
     assertEquals(dag.getTopologicalSort().size(), 5);
