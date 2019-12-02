@@ -296,7 +296,7 @@ public final class BatchScheduler implements Scheduler {
             isNewCloneCreated.setValue(doSpeculativeExecution(stage, cloneConf));
           }
         });
-      });
+      })
     );
 
     if (isNewCloneCreated.booleanValue()) {
