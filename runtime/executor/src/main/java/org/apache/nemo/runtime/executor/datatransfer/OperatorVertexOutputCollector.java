@@ -42,10 +42,10 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
-  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
-  private final List<OutputWriter> externalMainOutputs;
-  private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+  private transient final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private transient final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
+  private transient final List<OutputWriter> externalMainOutputs;
+  private transient final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
   /**
    * Constructor of the output collector.
@@ -58,7 +58,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    */
   public OperatorVertexOutputCollector(
     final IRVertex irVertex,
-    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
