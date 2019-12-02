@@ -246,7 +246,7 @@ public final class LoopOptimizations {
 
     @Override
     public IRDAG apply(final IRDAG inputDAG) {
-      inputDAG.reshapeUnsafely(recursivelyOptimize);
+      inputDAG.reshapeUnsafely(this::recursivelyOptimize);
       return inputDAG;
     }
 
