@@ -30,14 +30,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.io.Serializable;
 
 /**
  * Transform which saves elements to a HDFS text file for Spark.
  *
  * @param <I> input type.
  */
-public final class HDFSTextFileTransform<I extends Serializable> extends NoWatermarkEmitTransform<I, String> {
+public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> { //NOSONAR
   private final String path;
   private Path fileName; //NOSONAR
   private List<I> elements;
