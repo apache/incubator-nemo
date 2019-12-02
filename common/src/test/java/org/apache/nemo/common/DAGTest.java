@@ -108,7 +108,7 @@ public final class DAGTest {
     assertEquals(topologicalOrder.get(1).getValue(), 5);
     assertEquals(topologicalOrder.get(2).getValue(), 1);
     assertEquals(topologicalOrder.get(3).getValue(), 2);
-    assertEquals(topologicalOrder.get(4).getValue(), 3);
+    assertEquals(3, topologicalOrder.get(4).getValue());
 
     assertEquals(dag.getRootVertices().size(), 2);
     assertEquals(dag.getParents("4").size(), 0);
