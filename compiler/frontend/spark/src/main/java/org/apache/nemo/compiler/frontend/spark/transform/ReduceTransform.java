@@ -34,7 +34,7 @@ import java.util.Iterator;
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private OutputCollector<T> outputCollector;
-  transient private T result;
+  private T result;
 
   /**
    * Constructor.
