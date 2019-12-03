@@ -40,6 +40,9 @@ import java.util.*;
  */
 public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
+
+  // Exclude from sonar-cloud check as Map is Java standard lib
+  //NOSONAR
   private final Map<BoundedWindow, List<I>> windowListMap;
 
   private OutputCollector<WindowedValue<O>> outputCollector;
@@ -125,6 +128,8 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
    * @param <T> primitive view type
    */
   public static final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
+    // Exclude from sonar-cloud check as Iterable is Java standard lib
+    //NOSONAR
     private final Iterable<T> iterable;
 
     /**
