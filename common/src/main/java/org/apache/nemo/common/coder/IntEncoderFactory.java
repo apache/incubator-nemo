@@ -59,7 +59,7 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
    * IntEncoder.
    */
   private final class IntEncoder implements Encoder<Integer> {
-    private final transient DataOutputStream outputStream;
+    private final transient outputStream;
 
     /**
      * Constructor.
