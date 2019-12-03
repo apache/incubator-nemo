@@ -59,9 +59,7 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
    * IntEncoder.
    */
   private final class IntEncoder implements Encoder<Integer> {
-    // Exclude from sonar-cloud check as DataOutputStream is Java standard lib
-    //NOSONAR
-    private final DataOutputStream outputStream;
+    private final transient DataOutputStream outputStream;
 
     /**
      * Constructor.
