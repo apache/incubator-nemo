@@ -189,10 +189,10 @@ public final class PipeManagerWorker {
 
   private int getNumOfPipeToWait(final RuntimeEdge runtimeEdge) {
     final int dstParallelism = ((StageEdge) runtimeEdge).getDstIRVertex().getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(IllegalStateException::new);
+      .orElseThrow(() -> new IllegalStateException());
     final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
       .getPropertyValue(CommunicationPatternProperty.class)
-      .orElseThrow(IllegalStateException::new);
+      .orElseThrow(() -> new IllegalStateException());
 
     return commPattern.equals(CommunicationPatternProperty.Value.ONE_TO_ONE) ? 1 : dstParallelism;
   }
