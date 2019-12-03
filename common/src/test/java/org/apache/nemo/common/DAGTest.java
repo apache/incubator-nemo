@@ -62,28 +62,28 @@ public final class DAGTest {
 
     final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
-    assertEquals(5, dag.getVertices().size());
-    assertEquals(0, dag.getIncomingEdgesOf(new IntegerVertex(1)).size());
-    assertEquals(0, dag.getOutgoingEdgesOf(new IntegerVertex(5)).size());
-    assertEquals(1, dag.getIncomingEdgesOf(new IntegerVertex(3)).size());
-    assertEquals(1, dag.getOutgoingEdgesOf(new IntegerVertex(4)).size());
-    assertEquals(5, dag.getTopologicalSort().size());
+    assertEquals(dag.getVertices().size(), 5);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(1)).size(), 0);
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(5)).size(), 0);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 1);
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 1);
+    assertEquals(dag.getTopologicalSort().size(), 5);
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
-    assertEquals(1, topologicalOrder.get(0).getValue());
-    assertEquals(2, topologicalOrder.get(1).getValue());
-    assertEquals(3, topologicalOrder.get(2).getValue());
-    assertEquals(4, topologicalOrder.get(3).getValue());
-    assertEquals(5, topologicalOrder.get(4).getValue());
+    assertEquals(topologicalOrder.get(0).getValue(), 1);
+    assertEquals(topologicalOrder.get(1).getValue(), 2);
+    assertEquals(topologicalOrder.get(2).getValue(), 3);
+    assertEquals(topologicalOrder.get(3).getValue(), 4);
+    assertEquals(topologicalOrder.get(4).getValue(), 5);
 
-    assertEquals(1, dag.getRootVertices().size());
-    assertEquals(0, dag.getParents("1").size());
-    assertEquals(1, dag.getChildren("1").size());
-    assertEquals(1, dag.getParents("2").size());
-    assertEquals(1, dag.getChildren("2").size());
-    assertEquals(1, dag.getParents("5").size());
-    assertEquals(0, dag.getChildren("5").size());
-    assertEquals(new IntegerVertex(1), dag.getVertexById("1"));
+    assertEquals(dag.getRootVertices().size(), 1);
+    assertEquals(dag.getParents("1").size(), 0);
+    assertEquals(dag.getChildren("1").size(), 1);
+    assertEquals(dag.getParents("2").size(), 1);
+    assertEquals(dag.getChildren("2").size(), 1);
+    assertEquals(dag.getParents("5").size(), 1);
+    assertEquals(dag.getChildren("5").size(), 0);
+    assertEquals(dag.getVertexById("1"), new IntegerVertex(1));
   }
 
   @Test
@@ -100,45 +100,45 @@ public final class DAGTest {
 
     final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
-    assertEquals(2, dag.getOutgoingEdgesOf(new IntegerVertex(4)).size());
-    assertEquals(2, dag.getIncomingEdgesOf(new IntegerVertex(3)).size());
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 2);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 2);
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
-    assertEquals(4, topologicalOrder.get(0).getValue());
-    assertEquals(5, topologicalOrder.get(1).getValue());
-    assertEquals(1, topologicalOrder.get(2).getValue());
-    assertEquals(2, topologicalOrder.get(3).getValue());
-    assertEquals(3, topologicalOrder.get(4).getValue());
+    assertEquals(topologicalOrder.get(0).getValue(), 4);
+    assertEquals(topologicalOrder.get(1).getValue(), 5);
+    assertEquals(topologicalOrder.get(2).getValue(), 1);
+    assertEquals(topologicalOrder.get(3).getValue(), 2);
+    assertEquals(topologicalOrder.get(4).getValue(), 3);
 
-    assertEquals(2, dag.getRootVertices().size());
-    assertEquals(0, dag.getParents("4").size());
-    assertEquals(2, dag.getChildren("4").size());
-    assertEquals(2, dag.getParents("3").size());
-    assertEquals(0, dag.getChildren("3").size());
+    assertEquals(dag.getRootVertices().size(), 2);
+    assertEquals(dag.getParents("4").size(), 0);
+    assertEquals(dag.getChildren("4").size(), 2);
+    assertEquals(dag.getParents("3").size(), 2);
+    assertEquals(dag.getChildren("3").size(), 0);
     assertEquals(1, dag.getParents("5").size());
     assertEquals(0, dag.getChildren("5").size());
-    assertEquals(new IntegerVertex(3), dag.getVertexById("3"));
+    assertEquals(dag.getVertexById("3"), new IntegerVertex(3));
 
     List<IntegerVertex> ancestors = dag.getAncestors("5");
-    assertEquals(1, ancestors.size());
+    assertEquals(ancestors.size(), 1);
     assertTrue(ancestors.contains(new IntegerVertex(4)));
 
     ancestors = dag.getAncestors("3");
-    assertEquals(3, ancestors.size());
+    assertEquals(ancestors.size(), 3);
     assertTrue(ancestors.contains(new IntegerVertex(1)));
     assertTrue(ancestors.contains(new IntegerVertex(2)));
     assertTrue(ancestors.contains(new IntegerVertex(4)));
 
     List<IntegerVertex> descendants = dag.getDescendants("4");
-    assertEquals(2, descendants.size());
+    assertEquals(descendants.size(), 2);
     assertTrue(descendants.contains(new IntegerVertex(3)));
     assertTrue(descendants.contains(new IntegerVertex(5)));
 
     descendants = dag.getDescendants("5");
-    assertEquals(0, descendants.size());
+    assertEquals(descendants.size(), 0);
 
     descendants = dag.getDescendants("2");
-    assertEquals(1, descendants.size());
+    assertEquals(descendants.size(), 1);
     assertTrue(descendants.contains(new IntegerVertex(3)));
   }
 
