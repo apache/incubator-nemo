@@ -34,7 +34,6 @@ import java.util.Iterator;
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private OutputCollector<T> outputCollector;
-  private T result;
 
   /**
    * Constructor.
@@ -43,7 +42,6 @@ public final class ReduceTransform<T> implements Transform<T, T> {
    */
   public ReduceTransform(final Function2<T, T, T> func) {
     this.func = func;
-    this.result = null;
   }
 
   @Override
@@ -53,6 +51,8 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
+    T result = null;
+
     if (element == null) { // nothing to be done.
       return;
     }
