@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
-  private const TaskMetric = "TaskMetric"
+  private static final String TASK_METRIC_ID = "TaskMetric"
 
   // Essential information
   private boolean isExecuted;
