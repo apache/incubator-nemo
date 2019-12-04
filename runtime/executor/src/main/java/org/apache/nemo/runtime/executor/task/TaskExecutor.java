@@ -340,11 +340,11 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send(TaskMetric, taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send(TaskMetric, taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send(TaskMetric, taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
 
     // Phase 2: Finalize task-internal states and elements
@@ -697,7 +697,7 @@ public final class TaskExecutor {
     }
 
     // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send(TaskMetric, taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }
