@@ -59,7 +59,7 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
    * LongDecoder.
    */
   private final class LongDecoder implements Decoder<Long> {
-    private final transient DataInputStream inputStream;
+    private final DataInputStream inputStream;
 
     /**
      * Constructor.
