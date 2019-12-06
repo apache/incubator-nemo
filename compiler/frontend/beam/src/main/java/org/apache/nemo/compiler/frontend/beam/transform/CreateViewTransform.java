@@ -40,12 +40,7 @@ import java.util.*;
  */
 public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
-<<<<<<< HEAD
-
-  private final transient Map<BoundedWindow, List<I>> windowListMap;
-=======
   private final Map<BoundedWindow, List<I>> windowListMap;
->>>>>>> fix minor chores
 
   private OutputCollector<WindowedValue<O>> outputCollector;
 
