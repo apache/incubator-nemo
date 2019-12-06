@@ -48,14 +48,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
   private final SystemReduceFn reduceFn;
-  //not serializable, but we don't want it to be transient
-  //NOSONAR
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
-  //not serializable, but we don't want it to be transient
-  //NOSONAR
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
   private boolean dataReceived = false;
 
