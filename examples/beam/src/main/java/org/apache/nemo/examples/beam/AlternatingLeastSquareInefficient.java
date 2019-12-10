@@ -57,8 +57,8 @@ public final class AlternatingLeastSquareInefficient {
     PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final Double lambda;
-    transient private final PCollection<String> rawData;
-    transient private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
+    private final transient PCollection<String> rawData;
+    private final transient PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
@@ -102,7 +102,6 @@ public final class AlternatingLeastSquareInefficient {
    * Main function for the ALS BEAM program.
    *
    * @param args arguments.
-   * @throws ClassNotFoundException exception.
    */
   public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
