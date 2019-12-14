@@ -234,7 +234,7 @@ public final class BlockManagerWorker {
           } else {
             // Connection is okay. Notify blockTransferThrottler when the actual transfer is done, or fails.
             connectionContext.getCompletedFuture().whenComplete((transferContext, transferThrowable) -> 
-              blockTransferThrottler.onTransferFinished(runtimeEdgeId)
+              blockTransferThrottler.onTransferFinished(runtimeEdgeId);
             );
           }
         });
