@@ -96,7 +96,7 @@ public final class TestPlanGenerator {
    * @throws Exception exception.
    */
   private static PhysicalPlan convertIRToPhysical(final IRDAG irDAG,
-                                                  final Policy policy) throws Exception {
+                                                  final Policy policy) {
     final IRDAG optimized = policy.runCompileTimeOptimization(irDAG, EMPTY_DAG_DIRECTORY);
     final DAG<Stage, StageEdge> physicalDAG = PLAN_GENERATOR.apply(optimized);
     return new PhysicalPlan("TestPlan", physicalDAG);
