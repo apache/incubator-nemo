@@ -58,7 +58,6 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
    */
   private final class NemoEventEncoder<T> implements EncoderFactory.Encoder<T> {
     private final EncoderFactory.Encoder<T> valueEncoder;
-    //NOSONAR
     private final OutputStream outputStream;
 
     NemoEventEncoder(final EncoderFactory.Encoder<T> valueEncoder,
