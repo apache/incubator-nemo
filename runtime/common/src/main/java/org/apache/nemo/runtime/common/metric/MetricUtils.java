@@ -74,6 +74,7 @@ public final class MetricUtils {
   public static final String POSTGRESQL_METADATA_DB_NAME =
     "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
   private static final String METADATA_TABLE_NAME = "nemo_optimization_meta";
+  private static final String SAVING_METADATA_FAIL_MSG = "Saving of Metadata to DB failed: ";
 
   /**
    * Private constructor.
@@ -166,7 +167,7 @@ public final class MetricUtils {
             try {
               insertOrUpdateMetadata(c, "EP_KEY_METADATA", l, r);
             } catch (SQLException e) {
-              LOG.warn("Saving of Metadata to DB failed: ", e);
+              LOG.warn(SAVING_METADATA_FAIL_MSG, e);
             }
           });
           LOG.info("EP Key Metadata saved to DB.");
@@ -177,14 +178,14 @@ public final class MetricUtils {
             try {
               insertOrUpdateMetadata(c, "EP_METADATA", l.left() * 10000 + l.right(), r);
             } catch (SQLException e) {
-              LOG.warn("Saving of Metadata to DB failed: ", e);
+              LOG.warn(SAVING_METADATA_FAIL_MSG, e);
             }
           });
           LOG.info("EP Metadata saved to DB.");
         }
       }
     } catch (SQLException e) {
-      LOG.warn("Saving of Metadata to DB failed: ", e);
+      LOG.warn(SAVING_METADATA_FAIL_MSG, e);
     }
   }
 
