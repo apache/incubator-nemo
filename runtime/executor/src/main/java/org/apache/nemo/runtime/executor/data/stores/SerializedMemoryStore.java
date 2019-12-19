@@ -62,7 +62,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
    * @throws BlockWriteException if fail to write.
    */
   @Override
-  public void writeBlock(final Block block) throws BlockWriteException {
+  public void writeBlock(final Block block) {
     if (!(block instanceof SerializedMemoryBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + "only accept " + SerializedMemoryBlock.class.getName()));
