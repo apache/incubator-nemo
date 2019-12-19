@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.IntPredicate; //NOSONAR
+import java.util.function.IntPredicate;
 
 /**
  * IRVertex that contains a partial DAG that is iterative.
@@ -56,7 +56,7 @@ public final class LoopVertex extends IRVertex {
   private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
   private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
   private Integer maxNumberOfIterations;
-  private IntPredicate terminationCondition;
+  private transient IntPredicate terminationCondition;
 
   /**
    * The LoopVertex constructor.
