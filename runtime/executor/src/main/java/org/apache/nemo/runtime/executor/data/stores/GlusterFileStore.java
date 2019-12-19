@@ -80,7 +80,6 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * Writes a committed block to this store.
    *
    * @param block the block to write.
-   * @throws BlockWriteException if fail to write.
    */
   @Override
   public void writeBlock(final Block block) {
@@ -98,7 +97,6 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    *
    * @param blockId of the target partition.
    * @return the target block (if it exists).
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
   public Optional<Block> readBlock(final String blockId) {
