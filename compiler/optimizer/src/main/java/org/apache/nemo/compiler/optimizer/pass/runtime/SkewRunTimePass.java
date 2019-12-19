@@ -59,7 +59,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
     final Set<IREdge> edges = message.getExaminedEdges();
-    LOG.info("Examined edges {}", edges.stream().map(e -> e.getId()).collect(Collectors.toList()));
+    LOG.info("Examined edges {}", edges.stream().map(IREdge::getId).collect(Collectors.toList()));
 
     final IREdge representativeEdge = edges.iterator().next();
 
