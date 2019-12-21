@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * Used by tasks to get/fetch (probably remote) broadcast variables.
  */
 @ThreadSafe
-public final class BroadcastManagerWorker implements Serializable {
+public final class BroadcastManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerWorker.class.getName());
   private static BroadcastManagerWorker staticReference;
 
