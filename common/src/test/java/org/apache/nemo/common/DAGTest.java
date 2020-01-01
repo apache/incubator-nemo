@@ -83,7 +83,7 @@ public final class DAGTest {
     assertEquals(1, dag.getChildren("2").size());
     assertEquals(1, dag.getParents("5").size());
     assertEquals(0, dag.getChildren("5").size());
-    assertEquals(new IntegerVertex(1),dag.getVertexById("1"));
+    assertEquals(new IntegerVertex(1), dag.getVertexById("1"));
   }
 
   @Test

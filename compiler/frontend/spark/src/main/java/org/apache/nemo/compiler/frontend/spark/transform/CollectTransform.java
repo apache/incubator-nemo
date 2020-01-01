@@ -22,6 +22,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Base64;
 
@@ -31,7 +32,7 @@ import java.util.Base64;
  *
  * @param <T> type of data to collect.
  */
-public final class CollectTransform<T> extends NoWatermarkEmitTransform<T, T> {
+public final class CollectTransform<T> extends NoWatermarkEmitTransform<T, T> implements Serializable {
   private final ArrayList<T> list;
   private Context ctxt;
 
