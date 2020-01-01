@@ -47,7 +47,8 @@ import java.util.stream.Stream;
 /**
  * A simple version of the Spark session, containing SparkContext that contains SparkConf.
  */
-public final class SparkSession extends org.apache.spark.sql.SparkSession implements NemoSparkUserFacingClass, Serializable {
+public final class SparkSession extends org.apache.spark.sql.SparkSession
+    implements NemoSparkUserFacingClass, Serializable {
   private final LinkedHashMap<String, Object[]> datasetCommandsList;
   private final Map<String, String> initialConf;
   private final AtomicBoolean isUserTriggered;
