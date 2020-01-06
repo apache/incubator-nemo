@@ -56,8 +56,8 @@ class SourceVertexDataFetcher extends DataFetcher {
     if (!bounded) {
       this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
       this.watermarkTriggerService.scheduleAtFixedRate(() ->
-        watermarkTriggered = true
-      , WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
+        watermarkTriggered = true,
+        WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
     } else {
       this.watermarkTriggerService = null;
     }
