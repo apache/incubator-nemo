@@ -36,7 +36,7 @@ import java.util.UUID;
  *
  * @param <I> input type.
  */
-public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> { //NOSONAR
+public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
   private transient Path fileName;
   private transient List<I> elements;
