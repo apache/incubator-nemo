@@ -139,9 +139,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           LOG.error(exception.getMessage());
           throw new RuntimeException(exception);
         }
-      })
-
-    ));
+      })));
   }
 
   final long getSerializedBytes() {
