@@ -20,7 +20,6 @@ package org.apache.nemo.common.pass;
 
 import org.apache.nemo.common.ir.IRDAG;
 
-import java.io.Serializable;
 import java.util.function.Predicate;
 
 /**
