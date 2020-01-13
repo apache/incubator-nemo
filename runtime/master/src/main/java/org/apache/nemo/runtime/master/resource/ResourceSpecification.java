@@ -37,7 +37,7 @@ public final class ResourceSpecification {
                                final int capacity,
                                final int memory,
                                final double maxOffheapRatio) {
-    this(containerType, capacity, memory, maxOffheapRatio,-1);
+    this(containerType, capacity, memory, maxOffheapRatio, -1);
   }
 
   public ResourceSpecification(final String containerType,
@@ -75,9 +75,13 @@ public final class ResourceSpecification {
     return memory;
   }
 
-  public double getMaxOffheapRatio() { return maxOffheapRatio; }
+  public double getMaxOffheapRatio() {
+    return maxOffheapRatio;
+  }
 
-  public int getMaxOffheapMb() { return maxOffheapMb; }
+  public int getMaxOffheapMb() {
+    return maxOffheapMb;
+  }
 
   public String getResourceSpecId() {
     return resourceSpecId;
