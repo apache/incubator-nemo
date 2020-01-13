@@ -38,6 +38,7 @@ public final class ResourceSpecification {
                                final int memory) {
     this(containerType, capacity, memory, 0.02, -1);
   }
+
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory,
