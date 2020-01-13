@@ -78,7 +78,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    */
   @Override
   public void write(final K key,
-                    final Object element) throws BlockWriteException {
+                    final Object element) {
     if (committed) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -104,7 +104,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) throws BlockWriteException {
+  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) {
     if (!committed) {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
@@ -127,7 +127,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws BlockWriteException {
+  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) {
     if (!committed) {
       partitions.forEach(serializedPartitions::add);
     } else {
@@ -145,7 +145,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) {
     try {
       return DataUtil.convertToNonSerPartitions(serializer, readSerializedPartitions(keyRange));
     } catch (final IOException e) {
@@ -162,7 +162,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) {
     if (committed) {
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
       serializedPartitions.forEach(serializedPartition -> {
@@ -186,7 +186,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public synchronized Optional<Map<K, Long>> commit() throws BlockWriteException {
+  public synchronized Optional<Map<K, Long>> commit() {
     try {
       if (!committed) {
         commitPartitions();
@@ -213,7 +213,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * Commits all un-committed partitions.
    */
   @Override
-  public synchronized void commitPartitions() throws BlockWriteException {
+  public synchronized void commitPartitions() {
     try {
       for (final SerializedPartition<K> partition : nonCommittedPartitionsMap.values()) {
         partition.commit();
