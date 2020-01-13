@@ -29,22 +29,28 @@ public final class ResourceSpecification {
   private final String containerType;
   private final int capacity;
   private final int memory;
+  private final double maxOffheapRatio;
+  private final int maxOffheapMb;
   private final int poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
-                               final int memory) {
-    this(containerType, capacity, memory, -1);
+                               final int memory,
+                               final double maxOffheapRatio) {
+    this(containerType, capacity, memory, maxOffheapRatio,-1);
   }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory,
+                               final double maxOffheapRatio,
                                final int poisonSec) {
     this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
+    this.maxOffheapRatio = maxOffheapRatio;
+    this.maxOffheapMb = (int) (memory * maxOffheapRatio);
     this.poisonSec = poisonSec;
   }
 
@@ -68,6 +74,10 @@ public final class ResourceSpecification {
   public int getMemory() {
     return memory;
   }
+
+  public double getMaxOffheapRatio() { return maxOffheapRatio; }
+
+  public int getMaxOffheapMb() { return maxOffheapMb; }
 
   public String getResourceSpecId() {
     return resourceSpecId;

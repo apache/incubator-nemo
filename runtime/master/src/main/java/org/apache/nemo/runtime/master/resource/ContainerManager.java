@@ -63,7 +63,6 @@ public final class ContainerManager {
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
-  private final double maxOffHeapRatio;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -83,7 +82,6 @@ public final class ContainerManager {
 
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
-                           @Parameter(JobConf.MaxOffheapRatio.class) final double maxOffHeapRatio,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment) {
     this.isTerminated = false;
@@ -94,7 +92,6 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
-    this.maxOffHeapRatio = maxOffHeapRatio;
   }
 
   /**
@@ -154,14 +151,15 @@ public final class ContainerManager {
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
 
-    final Configuration maxOffHeapMemConfiguration =  JobConf.EXECUTOR_CONF
-      .set(JobConf.MAX_OFFHEAP_MB,
-        Integer.toString((int) (resourceSpecification.getMemory() * this.maxOffHeapRatio)))
-      .build();
-
     LOG.info("Container type (" + resourceSpecification.getContainerType()
       + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
+
+    // MaxOffheap handling
+    final Configuration maxOffHeapConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(resourceSpecification.getMaxOffheapRatio()))
+      .bindNamedParameter(JobConf.MaxOffheapMb.class, String.valueOf(resourceSpecification.getMaxOffheapMb()))
+      .build();
 
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
@@ -169,7 +167,7 @@ public final class ContainerManager {
       .build();
 
     allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration,
-      maxOffHeapMemConfiguration));
+      maxOffHeapConfiguration));
   }
 
   /**

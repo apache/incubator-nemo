@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -313,11 +314,15 @@ public final class RuntimeMaster {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+          final double maxOffheapRatio =
+            (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT)
+              ? resourceNode.path("max_offheap_ratio").traverse().getFloatValue() : 0.02;
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
           resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory, poisonSec));
+          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory,
+            maxOffheapRatio, poisonSec));
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {

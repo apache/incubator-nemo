@@ -300,14 +300,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Maximum off-heap memory ratio to the total memory in the executor.
-   */
-  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
-    short_name = "max_offheap_ratio", default_value = "0")
-  public final class MaxOffheapRatio implements Name<Double> {
-  }
-
-  /**
    * MemoryChunk size in the memory pool.
    */
   @NamedParameter(doc = "The memory chunk size in the memory pool of the executor",
@@ -325,6 +317,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * Maximum off-heap memory ratio to the total memory in the executor.
+   */
+  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
+    short_name = "max_offheap_ratio", default_value = "0.02")
+  public final class MaxOffheapRatio implements Name<Double> {
+  }
+
+  /**
    * Maximum off-heap memory size in the executor.
    * This is set by the system according to the off-heap ratio.
    */
@@ -333,6 +333,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
+  public static final RequiredParameter<Double> MAX_OFFHEAP_RATIO = new RequiredParameter<>();
   public static final RequiredParameter<Integer> MAX_OFFHEAP_MB = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
@@ -340,6 +341,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
     .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
+    .bindNamedParameter(MaxOffheapRatio.class, MAX_OFFHEAP_RATIO)
     .bindNamedParameter(MaxOffheapMb.class, MAX_OFFHEAP_MB)
     .bindNamedParameter(JobId.class, JOB_ID)
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
