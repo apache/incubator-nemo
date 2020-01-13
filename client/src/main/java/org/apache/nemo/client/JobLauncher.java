@@ -149,8 +149,6 @@ public final class JobLauncher {
       + "{\"type\":\"Reserved\",\"memory_mb\":512,\"capacity\":5}]";
     final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
       JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
-    final Configuration offheapMemoryConfig = getMemoryConf(builtJobConf, executorResourceConfig,
-      JobConf.ExecutorJSONContents.class, JobConf.MaxOffheapRatio.class, JobConf.MaxOffheapMb.class);
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
     final Configuration clientConf = getClientConf();
@@ -158,8 +156,7 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfig,
-      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf,
-      offheapMemoryConfig);
+      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -477,28 +474,6 @@ public final class JobLauncher {
         : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
         .bindNamedParameter(contentsParameter, contents)
-        .build();
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static Configuration getMemoryConf(final Configuration jobConf,
-                                             final Configuration executorConf,
-                                             final Class<? extends Name<String>> contentsParameter,
-                                             final Class<? extends Name<Double>> offHeapRatio,
-                                             final Class<? extends Name<Integer>> maxOffHeapMb)
-    throws InjectionException {
-    final Injector injector = TANG.newInjector(Configurations.merge(jobConf, executorConf));
-    try {
-      final String contents = injector.getNamedInstance(contentsParameter);
-      final ObjectMapper objectMapper = new ObjectMapper();
-      final TreeNode jsonRootNode = objectMapper.readTree(contents);
-      final TreeNode resourceNode = jsonRootNode.get(0);
-      final int executorMemory = resourceNode.get("memory_mb").traverse().getIntValue();
-      final int offHeapMemory =  (int) (executorMemory * injector.getNamedInstance(offHeapRatio));
-      return TANG.newConfigurationBuilder()
-        .bindNamedParameter(maxOffHeapMb, String.valueOf(offHeapMemory))
         .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);

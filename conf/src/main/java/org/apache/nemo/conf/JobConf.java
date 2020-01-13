@@ -198,7 +198,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",
     short_name = "executor_poison_sec", default_value = "-1")
-  public final class ExecutorPosionSec implements Name<Integer> {
+  public final class ExecutorPoisonSec implements Name<Integer> {
   }
 
   /**
@@ -303,16 +303,8 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Maximum off-heap memory ratio to the total memory in the executor.
    */
   @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
-    short_name = "max_offheap_ratio", default_value = "0.2")
+    short_name = "max_offheap_ratio", default_value = "0")
   public final class MaxOffheapRatio implements Name<Double> {
-  }
-
-  /**
-   * Maximum off-heap memory size in the executor.
-   * This is set by the system according to the off-heap ratio.
-   */
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
-  public final class MaxOffheapMb implements Name<Integer> {
   }
 
   /**
@@ -332,13 +324,23 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorId implements Name<String> {
   }
 
+  /**
+   * Maximum off-heap memory size in the executor.
+   * This is set by the system according to the off-heap ratio.
+   */
+  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
+  public final class MaxOffheapMb implements Name<Integer> {
+  }
+
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> MAX_OFFHEAP_MB = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
     .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
+    .bindNamedParameter(MaxOffheapMb.class, MAX_OFFHEAP_MB)
     .bindNamedParameter(JobId.class, JOB_ID)
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
     .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
