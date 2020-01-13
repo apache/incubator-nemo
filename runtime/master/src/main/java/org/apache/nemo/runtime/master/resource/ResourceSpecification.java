@@ -35,6 +35,11 @@ public final class ResourceSpecification {
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
+                               final int memory) {
+    this(containerType, capacity, memory, 0.02, -1);
+  }
+  public ResourceSpecification(final String containerType,
+                               final int capacity,
                                final int memory,
                                final double maxOffheapRatio) {
     this(containerType, capacity, memory, maxOffheapRatio, -1);

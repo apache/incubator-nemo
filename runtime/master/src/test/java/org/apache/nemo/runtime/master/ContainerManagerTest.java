@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
  */
 public final class ContainerManagerTest {
   private static final ResourceSpecification RESOURCE_SPEC_A =
-    new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 1, 1024);
+    new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 1,1024);
   private static final ResourceSpecification RESOURCE_SPEC_B =
     new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, 2, 2048);
   private static final ResourceSpecification RESOURCE_SPEC_C =
