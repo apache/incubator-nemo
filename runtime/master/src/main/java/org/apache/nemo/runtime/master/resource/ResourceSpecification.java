@@ -36,7 +36,7 @@ public final class ResourceSpecification {
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
-    this(containerType, capacity, memory, 0.02, -1);
+    this(containerType, capacity, memory, 0.2, -1);
   }
 
   public ResourceSpecification(final String containerType,
