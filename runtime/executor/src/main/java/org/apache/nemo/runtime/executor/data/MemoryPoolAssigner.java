@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.executor.data;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.nemo.conf.JobConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
@@ -46,9 +48,13 @@ public class MemoryPoolAssigner {
 
   private final MemoryPool memoryPool;
 
+  //inserted for debugging
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
+
   @Inject
   public MemoryPoolAssigner(@Parameter(JobConf.MaxOffheapMb.class) final int maxOffheapMb,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
+    LOG.info("[HWARIM][MemoryPoolAssigner] maxOffheapMb input = ", maxOffheapMb);
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }

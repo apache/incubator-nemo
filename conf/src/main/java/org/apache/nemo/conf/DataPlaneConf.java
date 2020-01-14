@@ -21,6 +21,8 @@ package org.apache.nemo.conf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -40,6 +42,9 @@ public final class DataPlaneConf {
   private final int maxOffHeapMb;
   private final int chunkSizeKb;
 
+  //added for debugging
+  private static final Logger LOG = LoggerFactory.getLogger(DataPlaneConf.class.getName());
+
   @Inject
   private DataPlaneConf(@Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numIOThreads,
                         @Parameter(JobConf.MaxNumDownloadsForARuntimeEdge.class) final int maxNumDownloads,
@@ -51,6 +56,7 @@ public final class DataPlaneConf {
                         @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int workThreads,
                         @Parameter(JobConf.MaxOffheapMb.class) final int maxOffHeapMb,
                         @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
+    LOG.info("[HWARIM][DataPlaneConf] maxOffheapMb input = ", maxOffHeapMb);
     this.numIOThreads = numIOThreads;
     this.maxNumDownloads = maxNumDownloads;
     this.scheduleSerThread = scheduleSerThread;
