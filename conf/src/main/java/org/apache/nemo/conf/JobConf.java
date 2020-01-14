@@ -225,7 +225,8 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "Contents of JSON file that specifies bandwidth between locations")
   public final class BandwidthJSONContents implements Name<String> {
   }
-  
+
+
   /**
    * Contents of the JSON file that specifies resource layout.
    */
