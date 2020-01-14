@@ -21,8 +21,6 @@ package org.apache.nemo.conf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -40,9 +38,6 @@ public final class DataPlaneConf {
   private final int listenThreads;
   private final int workThreads;
   private final int chunkSizeKb;
-
-  //added for debugging
-  private static final Logger LOG = LoggerFactory.getLogger(DataPlaneConf.class.getName());
 
   @Inject
   private DataPlaneConf(@Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numIOThreads,
