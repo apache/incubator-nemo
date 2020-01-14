@@ -25,7 +25,7 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.OptionalParameter;
 import org.apache.reef.tang.formats.RequiredParameter;
 
-import javax.xml.ws.RequestWrapper;
+//import javax.xml.ws.RequestWrapper;
 
 /**
  * Job Configurations.
