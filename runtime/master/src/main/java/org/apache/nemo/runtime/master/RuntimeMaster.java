@@ -316,7 +316,7 @@ public final class RuntimeMaster {
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
           final double maxOffheapRatio =
             (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT)
-              ? resourceNode.path("max_offheap_ratio").traverse().getFloatValue() : 0;
+              ? resourceNode.path("max_offheap_ratio").traverse().getFloatValue() : 0.02;
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
