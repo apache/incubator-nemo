@@ -336,17 +336,12 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
-  //maybe need to add here.... required or optional?
-  public static final RequiredParameter<Double> MAX_OFFHEAP_RATIO = new RequiredParameter<>();
-  public static final RequiredParameter<Integer> MAX_OFFHEAP_MB = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
     .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
     .bindNamedParameter(JobId.class, JOB_ID)
-    .bindNamedParameter(MaxOffheapRatio.class, MAX_OFFHEAP_RATIO)
-    .bindNamedParameter(MaxOffheapMb.class, MAX_OFFHEAP_MB)
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
     .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
     .build();
