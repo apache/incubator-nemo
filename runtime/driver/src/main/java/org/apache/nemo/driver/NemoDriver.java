@@ -250,6 +250,8 @@ public final class NemoDriver {
   private Configuration getExecutorConfiguration(final String executorId) {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
       .set(JobConf.EXECUTOR_ID, executorId)
+      //.set(JobConf.MAX_OFFHEAP_RATIO, )
+      //.set(JobConf.MAX_OFFHEAP_MB, )
       .set(JobConf.GLUSTER_DISK_DIRECTORY, glusterDirectory)
       .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
       .set(JobConf.JOB_ID, jobId)

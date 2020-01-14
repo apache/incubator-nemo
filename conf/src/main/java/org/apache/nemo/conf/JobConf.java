@@ -25,6 +25,8 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.OptionalParameter;
 import org.apache.reef.tang.formats.RequiredParameter;
 
+import javax.xml.ws.RequestWrapper;
+
 /**
  * Job Configurations.
  */
@@ -202,22 +204,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Maximum off-heap memory ratio to the total memory in the executor.
-   */
-  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
-    short_name = "max_offheap_ratio", default_value = "0.2")
-  public final class MaxOffheapRatio implements Name<Double> {
-  }
-
-  /**
-   * Maximum off-heap memory size in the executor.
-   * This is set by the system according to the off-heap ratio.
-   */
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
-  public final class MaxOffheapMb implements Name<Integer> {
-  }
-
-  /**
    * Path to the JSON file that specifies bandwidth between locations.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies bandwidth between locations",
@@ -332,14 +318,35 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorId implements Name<String> {
   }
 
+  /**
+   * Maximum off-heap memory ratio to the total memory in the executor.
+   */
+  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
+    short_name = "max_offheap_ratio", default_value = "0")
+  public final class MaxOffheapRatio implements Name<Double> {
+  }
+
+  /**
+   * Maximum off-heap memory size in the executor.
+   * This is set by the system according to the off-heap ratio.
+   */
+  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
+  public final class MaxOffheapMb implements Name<Integer> {
+  }
+
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
+  //maybe need to add here.... required or optional?
+  public static final RequiredParameter<Double> MAX_OFFHEAP_RATIO = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> MAX_OFFHEAP_MB = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
     .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
     .bindNamedParameter(JobId.class, JOB_ID)
+    .bindNamedParameter(MaxOffheapRatio.class, MAX_OFFHEAP_RATIO)
+    .bindNamedParameter(MaxOffheapMb.class, MAX_OFFHEAP_MB)
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
     .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
     .build();
