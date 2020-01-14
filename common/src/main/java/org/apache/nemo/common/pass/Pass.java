@@ -20,13 +20,12 @@ package org.apache.nemo.common.pass;
 
 import org.apache.nemo.common.ir.IRDAG;
 
-import java.io.Serializable;
 import java.util.function.Predicate;
 
 /**
  * Abstract class for optimization passes. All passes basically extends this class.
  */
-public abstract class Pass implements Serializable {
+public abstract class Pass {
   private Predicate<IRDAG> condition;
 
   /**
