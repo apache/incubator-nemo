@@ -45,7 +45,7 @@ public final class ResourceSpecification {
                                final int memory,
                                final Optional<Double> maxOffheapRatio,
                                final Optional<Integer> poisonSec) {
-    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();n
+    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
