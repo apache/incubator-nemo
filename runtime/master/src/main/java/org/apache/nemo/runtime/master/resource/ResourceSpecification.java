@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 
+import java.util.Optional;
+
 /**
  * Represents the specifications of a resource.
  */
@@ -29,34 +31,25 @@ public final class ResourceSpecification {
   private final String containerType;
   private final int capacity;
   private final int memory;
-  private final double maxOffheapRatio;
-  private final int maxOffheapMb;
-  private final int poisonSec; // -1 if this resources is not poisoned
+  private final Optional<Double> maxOffheapRatio;
+  private final Optional<Integer> poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
-    this(containerType, capacity, memory, 0.02, -1);
+    this(containerType, capacity, memory, null, null);
   }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory,
-                               final double maxOffheapRatio) {
-    this(containerType, capacity, memory, maxOffheapRatio, -1);
-  }
-
-  public ResourceSpecification(final String containerType,
-                               final int capacity,
-                               final int memory,
-                               final double maxOffheapRatio,
-                               final int poisonSec) {
+                               final Optional<Double> maxOffheapRatio,
+                               final Optional<Integer> poisonSec) {
     this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
     this.maxOffheapRatio = maxOffheapRatio;
-    this.maxOffheapMb = (int) (memory * maxOffheapRatio);
     this.poisonSec = poisonSec;
   }
 
@@ -81,12 +74,8 @@ public final class ResourceSpecification {
     return memory;
   }
 
-  public double getMaxOffheapRatio() {
+  public Optional<Double> getMaxOffheapRatio() {
     return maxOffheapRatio;
-  }
-
-  public int getMaxOffheapMb() {
-    return maxOffheapMb;
   }
 
   public String getResourceSpecId() {
@@ -97,7 +86,7 @@ public final class ResourceSpecification {
    * @return -1   if this resource is not poisoned. (for all other normal cases)
    * &gt;= 0 the expected time to failure by poison. (for fault-handling tests)
    */
-  public int getPoisonSec() {
+  public Optional<Integer> getPoisonSec() {
     return poisonSec;
   }
 }

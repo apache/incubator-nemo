@@ -123,7 +123,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   @Override
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
-    LOG.debug("metric {} is just arrived!", metricField);
+    LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
       case "serializedReadBytes":
         setSerializedReadBytes(SerializationUtils.deserialize(metricValue));
@@ -137,8 +137,17 @@ public class TaskMetric implements StateMetric<TaskState.State> {
       case "writtenBytes":
         setWrittenBytes(SerializationUtils.deserialize(metricValue));
         break;
+      case "taskSerializationTime":
+      //  setTaskSerializationTime(SerializationUtils.deserialize(metricValue));
+        break;
       case "taskDeserializationTime":
         setTaskDeserializationTime(SerializationUtils.deserialize(metricValue));
+        break;
+      case "taskPeakExecutionMemory":
+      case "taskShuffleReadTime":
+      case "taskShuffleWriteTime":
+      case "taskShuffleReadBytes":
+      case "taskShuffleWrittenBytes":
         break;
       case "stateTransitionEvent":
         final StateTransitionEvent<TaskState.State> newStateTransitionEvent =
@@ -158,3 +167,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
     return true;
   }
 }
+
+/*
+ * Task duration (already there)
+ * Task CPU time
+ * Task serialization/deserialization time (added / already here)
+ * Task peak execution memory (added)
+ * Task input/output bytes (already there)
+ * Task shuffle read/write (added)
+ * bytes
+ * time
+ */

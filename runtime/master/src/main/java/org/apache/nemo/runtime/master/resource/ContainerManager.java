@@ -149,25 +149,38 @@ public final class ContainerManager {
     }
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
+    final List<Configuration> configurationsToMerge = new ArrayList<>();
+
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
       + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    // MaxOffheap handling
-    final Configuration maxOffHeapConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(resourceSpecification.getMaxOffheapRatio()))
-      .bindNamedParameter(JobConf.MaxOffheapMb.class, String.valueOf(resourceSpecification.getMaxOffheapMb()))
-      .build();
+    configurationsToMerge.add(executorConfiguration);
+
+    // ExecutorMemory handling
+    configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorMemoryMb.class, String.valueOf(resourceSpecification.getMemory()))
+        .build());
+
+    // MaxOffheapRatio handling
+    resourceSpecification.getMaxOffheapRatio().ifPresent(p -> {
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(resourceSpecification.getMaxOffheapRatio()))
+        .build()
+      );
+    });
 
     // Poison handling
-    final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(JobConf.ExecutorPoisonSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
-      .build();
+    resourceSpecification.getPoisonSec().ifPresent(p -> {
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorPoisonSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
+        .build()
+      );
+    });
 
-    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration,
-      maxOffHeapConfiguration));
+    allocatedContainer.submitContext(Configurations.merge(configurationsToMerge));
   }
 
   /**

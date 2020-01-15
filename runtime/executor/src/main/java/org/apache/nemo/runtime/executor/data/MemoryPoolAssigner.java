@@ -47,6 +47,13 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
+  public MemoryPoolAssigner(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
+                            @Parameter(JobConf.MaxOffheapRatio.class) final double maxOffheapRatio,
+                            @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb){
+    this((int)(memory * maxOffheapRatio), chunkSizeKb);
+  }
+
+  @Inject
   public MemoryPoolAssigner(@Parameter(JobConf.MaxOffheapMb.class) final int maxOffheapMb,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
