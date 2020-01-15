@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -313,12 +314,25 @@ public final class RuntimeMaster {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
-          final Optional<Double> maxOffheapRatio = Optional.ofNullable(
-            resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
+          final Optional<Double> maxOffheapRatio;
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          final Optional<Integer> poisonSec = Optional.ofNullable(
-            resourceNode.path("poison_sec").traverse().getIntValue());
+          final Optional<Integer> poisonSec;
+
+          if(resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT){
+            maxOffheapRatio = Optional.ofNullable(
+              resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
+          } else {
+            maxOffheapRatio = Optional.empty();
+          }
+
+          if(resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT){
+            poisonSec = Optional.ofNullable(
+              resourceNode.path("poison_sec").traverse().getIntValue());
+          } else {
+            poisonSec = Optional.empty();
+          }
+
           resourceRequestCount.getAndAdd(executorNum);
           containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory,
             maxOffheapRatio, poisonSec));
