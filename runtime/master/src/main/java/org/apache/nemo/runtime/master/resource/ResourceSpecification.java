@@ -37,7 +37,7 @@ public final class ResourceSpecification {
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
-    this(containerType, capacity, memory, null, null);
+    this(containerType, capacity, memory, Optional.empty(), Optional.empty());
   }
 
   public ResourceSpecification(final String containerType,
@@ -45,7 +45,7 @@ public final class ResourceSpecification {
                                final int memory,
                                final Optional<Double> maxOffheapRatio,
                                final Optional<Integer> poisonSec) {
-    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
+    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();n
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;

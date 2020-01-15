@@ -166,7 +166,7 @@ public final class ContainerManager {
     );
 
     // MaxOffheapRatio handling
-    resourceSpecification.getMaxOffheapRatio().ifPresent(p -> {
+    resourceSpecification.getMaxOffheapRatio().ifPresent(value -> {
       configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(resourceSpecification.getMaxOffheapRatio()))
         .build()
@@ -174,7 +174,7 @@ public final class ContainerManager {
     });
 
     // Poison handling
-    resourceSpecification.getPoisonSec().ifPresent(p -> {
+    resourceSpecification.getPoisonSec().ifPresent(value -> {
       configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorPoisonSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
         .build()
