@@ -162,7 +162,8 @@ public final class ContainerManager {
     // ExecutorMemory handling
     configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorMemoryMb.class, String.valueOf(resourceSpecification.getMemory()))
-        .build());
+        .build()
+    );
 
     // MaxOffheapRatio handling
     resourceSpecification.getMaxOffheapRatio().ifPresent(p -> {

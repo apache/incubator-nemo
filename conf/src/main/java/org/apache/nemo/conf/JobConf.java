@@ -328,9 +328,9 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Maximum off-heap memory size in the executor.
    * This is set by the system according to the off-heap ratio.
    */
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
-  public final class MaxOffheapMb implements Name<Integer> {
-  }
+  //@NamedParameter(doc = "The maximum off-heap memory that can be allocated")
+  //public final class MaxOffheapMb implements Name<Integer> {
+  //}
 
   /**
    * The size of total memory in the executor.
@@ -338,7 +338,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * We assume that the size of memory per executor is always given as input (therefore, no default value).
    */
   @NamedParameter(doc = "The size of total memory(sum of heap and off-heap memory) per executor")
-  public final class ExecutorMemoryMb implements Name<Integer>{
+  public final class ExecutorMemoryMb implements Name<Integer> {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
