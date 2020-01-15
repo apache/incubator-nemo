@@ -319,14 +319,14 @@ public final class RuntimeMaster {
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final Optional<Integer> poisonSec;
 
-          if(resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT){
+          if (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT) {
             maxOffheapRatio = Optional.ofNullable(
               resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
           } else {
             maxOffheapRatio = Optional.empty();
           }
 
-          if(resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT){
+          if (resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT) {
             poisonSec = Optional.ofNullable(
               resourceNode.path("poison_sec").traverse().getIntValue());
           } else {
