@@ -39,6 +39,7 @@ import java.util.Map;
 public final class ReduceByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
 
+  // TODO #431: Handle states in Transforms better
   private final Map<K, List<V>> keyToValues;
   private final Function2<V, V, V> func;
   private OutputCollector<Tuple2<K, V>> outputCollector;

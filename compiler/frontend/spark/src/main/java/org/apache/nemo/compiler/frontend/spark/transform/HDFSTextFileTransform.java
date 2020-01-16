@@ -38,8 +38,8 @@ import java.util.UUID;
  */
 public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
-  private Path fileName;
-  private List<I> elements;
+  private transient Path fileName;
+  private transient List<I> elements;
 
   /**
    * Constructor.

@@ -482,7 +482,7 @@ final class PipelineTranslator {
       .entrySet()
       .stream()
       .filter(e -> e.getValue() instanceof PCollection)
-      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
+      .collect(Collectors.toMap(Map.Entry::getKey, e -> ((PCollection) e.getValue()).getCoder()));
   }
 
   /**

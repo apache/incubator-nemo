@@ -143,9 +143,9 @@ public final class Util {
     clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
       .orElseThrow(IllegalStateException::new)));
 
-    edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
-      clone.setProperty(AdditionalOutputTagProperty.of(tag));
-    });
+    edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag ->
+      clone.setProperty(AdditionalOutputTagProperty.of(tag))
+    );
 
     if (commPattern.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
@@ -157,15 +157,15 @@ public final class Util {
       });
     }
 
-    edgeToClone.getPropertyValue(KeyExtractorProperty.class).ifPresent(ke -> {
-      clone.setProperty(KeyExtractorProperty.of(ke));
-    });
-    edgeToClone.getPropertyValue(KeyEncoderProperty.class).ifPresent(keyEncoder -> {
-      clone.setProperty(KeyEncoderProperty.of(keyEncoder));
-    });
-    edgeToClone.getPropertyValue(KeyDecoderProperty.class).ifPresent(keyDecoder -> {
-      clone.setProperty(KeyDecoderProperty.of(keyDecoder));
-    });
+    edgeToClone.getPropertyValue(KeyExtractorProperty.class).ifPresent(ke ->
+      clone.setProperty(KeyExtractorProperty.of(ke))
+    );
+    edgeToClone.getPropertyValue(KeyEncoderProperty.class).ifPresent(keyEncoder ->
+      clone.setProperty(KeyEncoderProperty.of(keyEncoder))
+    );
+    edgeToClone.getPropertyValue(KeyDecoderProperty.class).ifPresent(keyDecoder ->
+      clone.setProperty(KeyDecoderProperty.of(keyDecoder))
+    );
 
     return clone;
   }
