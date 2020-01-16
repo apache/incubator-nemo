@@ -53,7 +53,7 @@ public final class BlockTest {
   public void setUp() throws Exception {
     serializer = new Serializer<>(IntEncoderFactory.of(), IntDecoderFactory.of(), new ArrayList<>(), new ArrayList<>());
     testData = new HashMap<>();
-    memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
+    memoryPoolAssigner = new MemoryPoolAssigner(5, 0.2, 32);
 
     final List<Integer> list1 = Collections.singletonList(1);
     final List<Integer> list2 = Arrays.asList(1, 2);

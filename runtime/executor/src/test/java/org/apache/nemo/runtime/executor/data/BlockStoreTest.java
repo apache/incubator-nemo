@@ -229,7 +229,8 @@ public final class BlockStoreTest {
   public void testMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(SerializerManager.class, serializerManager);
-    injector.bindVolatileParameter(JobConf.MaxOffheapMb.class, 128);
+    injector.bindVolatileParameter(JobConf.ExecutorMemoryMb.class, 640);
+    injector.bindVolatileParameter(JobConf.MaxOffheapRatio.class, 0.2);
     final BlockStore memoryStore = injector.getInstance(MemoryStore.class);
     shuffle(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
@@ -245,7 +246,8 @@ public final class BlockStoreTest {
   public void testSerMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(SerializerManager.class, serializerManager);
-    injector.bindVolatileParameter(JobConf.MaxOffheapMb.class, 128);
+    injector.bindVolatileParameter(JobConf.ExecutorMemoryMb.class, 640);
+    injector.bindVolatileParameter(JobConf.MaxOffheapRatio.class, 0.2);
     final BlockStore serMemoryStore = injector.getInstance(SerializedMemoryStore.class);
     shuffle(serMemoryStore, serMemoryStore);
     concurrentRead(serMemoryStore, serMemoryStore);
@@ -263,8 +265,8 @@ public final class BlockStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileInstance(SerializerManager.class, serializerManager);
-    injector.bindVolatileParameter(JobConf.MaxOffheapMb.class, 128);
-
+    injector.bindVolatileParameter(JobConf.ExecutorMemoryMb.class, 640);
+    injector.bindVolatileParameter(JobConf.MaxOffheapRatio.class, 0.2);
     final BlockStore localFileStore = injector.getInstance(LocalFileStore.class);
     shuffle(localFileStore, localFileStore);
     concurrentRead(localFileStore, localFileStore);
@@ -300,7 +302,8 @@ public final class BlockStoreTest {
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
     injector.bindVolatileInstance(SerializerManager.class, serializerManager);
-    injector.bindVolatileParameter(JobConf.MaxOffheapMb.class, 128);
+    injector.bindVolatileParameter(JobConf.ExecutorMemoryMb.class, 640);
+    injector.bindVolatileParameter(JobConf.MaxOffheapRatio.class, 0.2);
     return injector.getInstance(GlusterFileStore.class);
   }
 
