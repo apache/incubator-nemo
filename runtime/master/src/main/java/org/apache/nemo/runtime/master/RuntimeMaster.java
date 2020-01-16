@@ -320,13 +320,13 @@ public final class RuntimeMaster {
           final Optional<Integer> poisonSec;
 
           if (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT) {
-            maxOffheapRatio = Optional.of(resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
+            maxOffheapRatio = Optional.ofNullable(resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
           } else {
             maxOffheapRatio = Optional.empty();
           }
 
           if (resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT) {
-            poisonSec = Optional.of(resourceNode.path("poison_sec").traverse().getIntValue());
+            poisonSec = Optional.ofNullable(resourceNode.path("poison_sec").traverse().getIntValue());
           } else {
             poisonSec = Optional.empty();
           }
