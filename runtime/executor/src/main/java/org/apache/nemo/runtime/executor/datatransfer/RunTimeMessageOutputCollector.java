@@ -44,8 +44,8 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
 
   private final String taskId;
   private final IRVertex irVertex;
-  private final PersistentConnectionToMasterMap connectionToMasterMap; //NOSONAR
-  private final TaskExecutor taskExecutor; //NOSONAR
+  private final PersistentConnectionToMasterMap connectionToMasterMap;
+  private final TaskExecutor taskExecutor;
 
   public RunTimeMessageOutputCollector(final String taskId,
                                        final IRVertex irVertex,
