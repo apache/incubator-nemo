@@ -183,7 +183,8 @@ public final class DataTransferTest {
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorId.class, executorId)
       .bindNamedParameter(MessageParameters.SenderId.class, executorId)
-      .bindNamedParameter(JobConf.MaxOffheapMb.class, "128")
+      .bindNamedParameter(JobConf.ExecutorMemoryMb.class, "640")
+      .bindNamedParameter(JobConf.MaxOffheapRatio.class, "0.2")
       .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
