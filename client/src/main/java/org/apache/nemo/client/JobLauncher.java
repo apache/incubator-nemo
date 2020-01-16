@@ -320,7 +320,7 @@ public final class JobLauncher {
     return jcb.build();
   }
 
-  /**:
+  /**
    * Fetch scheduler configuration.
    *
    * @param jobConf job configuration.
@@ -343,7 +343,6 @@ public final class JobLauncher {
    * Get driver ncs configuration.
    *
    * @return driver ncs configuration.
-   * @throws InjectionException exception while injection.
    */
   private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
@@ -357,7 +356,6 @@ public final class JobLauncher {
    * Get driver message configuration.
    *
    * @return driver message configuration.
-   * @throws InjectionException exception while injection.
    */
   private static Configuration getDriverMessageConf()  {
     return TANG.newConfigurationBuilder()
@@ -395,7 +393,6 @@ public final class JobLauncher {
    * @param args arguments to be processed as command line.
    * @return job configuration.
    * @throws IOException        exception while processing command line.
-   * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
   public static Configuration getJobConf(final String[] args) throws IOException {

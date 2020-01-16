@@ -33,7 +33,7 @@ import java.util.List;
  * @param <T> type of data.
  */
 public final class InMemorySourceVertex<T> extends SourceVertex<T> {
-  transient Iterable<T> initializedSourceData;
+  private transient Iterable<T> initializedSourceData;
 
   /**
    * Constructor for InMemorySourceVertex.
@@ -106,7 +106,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    */
   private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
 
-    transient final Iterable<T> initializedSourceData;
+    private final transient Iterable<T> initializedSourceData;
 
     /**
      * Constructor.
