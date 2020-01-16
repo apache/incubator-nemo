@@ -60,10 +60,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.Serializable;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -314,21 +311,21 @@ public final class RuntimeMaster {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
-          final Optional<Double> maxOffheapRatio;
+          final OptionalDouble maxOffheapRatio;
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          final Optional<Integer> poisonSec;
+          final OptionalInt poisonSec;
 
           if (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT) {
-            maxOffheapRatio = Optional.ofNullable(resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
+            maxOffheapRatio = OptionalDouble.of(resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
           } else {
-            maxOffheapRatio = Optional.empty();
+            maxOffheapRatio = OptionalDouble.empty();
           }
 
           if (resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT) {
-            poisonSec = Optional.ofNullable(resourceNode.path("poison_sec").traverse().getIntValue());
+            poisonSec = OptionalInt.of(resourceNode.path("poison_sec").traverse().getIntValue());
           } else {
-            poisonSec = Optional.empty();
+            poisonSec = OptionalInt.empty();
           }
 
           resourceRequestCount.getAndAdd(executorNum);

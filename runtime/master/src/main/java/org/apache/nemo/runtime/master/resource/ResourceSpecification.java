@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.master.resource;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 
 import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
 
 /**
  * Represents the specifications of a resource.
@@ -31,20 +33,20 @@ public final class ResourceSpecification {
   private final String containerType;
   private final int capacity;
   private final int memory;
-  private final Optional<Double> maxOffheapRatio;
-  private final Optional<Integer> poisonSec; // -1 if this resources is not poisoned
+  private final OptionalDouble maxOffheapRatio;
+  private final OptionalInt poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
-    this(containerType, capacity, memory, Optional.empty(), Optional.empty());
+    this(containerType, capacity, memory, OptionalDouble.empty(), OptionalInt.empty());
   }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory,
-                               final Optional<Double> maxOffheapRatio,
-                               final Optional<Integer> poisonSec) {
+                               final OptionalDouble maxOffheapRatio,
+                               final OptionalInt poisonSec) {
     this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
@@ -74,7 +76,7 @@ public final class ResourceSpecification {
     return memory;
   }
 
-  public Optional<Double> getMaxOffheapRatio() {
+  public OptionalDouble getMaxOffheapRatio() {
     return maxOffheapRatio;
   }
 
@@ -86,7 +88,7 @@ public final class ResourceSpecification {
    * @return -1   if this resource is not poisoned. (for all other normal cases)
    * &gt;= 0 the expected time to failure by poison. (for fault-handling tests)
    */
-  public Optional<Integer> getPoisonSec() {
+  public OptionalInt getPoisonSec() {
     return poisonSec;
   }
 }
