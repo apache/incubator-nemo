@@ -47,20 +47,16 @@ public final class ClientUtils {
    */
   static void handleOptimizationType(final ControlMessage.DriverToClientMessage message,
                                      final DriverRPCServer driverRPCServer) {
-    switch (message.getOptimizationType()) {
-      case XGBoost:
-        new Thread(() ->
-          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-            .setType(ControlMessage.ClientToDriverMessageType.Notification)
-            .setMessage(ControlMessage.NotificationMessage.newBuilder()
-              .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
-              .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
-              .build())
-            .build()))
-          .start();
-        break;
-      default:
-        break;
+    if (message.getOptimizationType().equals(ControlMessage.OptimizationType.XGBoost)) {
+      new Thread(() ->
+        driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.Notification)
+          .setMessage(ControlMessage.NotificationMessage.newBuilder()
+            .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
+            .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
+            .build())
+          .build()))
+        .start();
     }
   }
 
