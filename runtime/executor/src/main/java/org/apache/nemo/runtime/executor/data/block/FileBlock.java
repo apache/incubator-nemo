@@ -69,7 +69,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final String filePath;
   private final FileMetadata<K> metadata;
   private final MemoryPoolAssigner memoryPoolAssigner;
-  private final static String ALREADY_COMMITED = "The partition is already committed!";  
+  private static final String ALREADY_COMMITED = "The partition is already committed!";
 
   /**
    * Constructor.
