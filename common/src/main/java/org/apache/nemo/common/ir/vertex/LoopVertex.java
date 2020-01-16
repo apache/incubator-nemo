@@ -56,7 +56,7 @@ public final class LoopVertex extends IRVertex {
   private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
   private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
   private Integer maxNumberOfIterations;
-  private IntPredicate terminationCondition;
+  private transient IntPredicate terminationCondition;
 
   /**
    * The LoopVertex constructor.
