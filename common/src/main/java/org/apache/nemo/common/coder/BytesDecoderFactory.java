@@ -60,7 +60,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
    */
   private final class BytesDecoder implements Decoder<byte[]> {
 
-    private final InputStream inputStream;
+    private final transient InputStream inputStream;
     private boolean returnedArray;
 
     /**
