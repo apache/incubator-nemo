@@ -162,7 +162,8 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     sorted.stream()
       .map(sg -> groupIdToVertices.get(sg.getScheduleGroupId()))
       .forEach(vertices -> {
-        vertices.forEach(vertex -> vertex.setPropertyPermanently(ScheduleGroupProperty.of(actualScheduleGroup.intValue())));
+        vertices.forEach(vertex -> vertex.setPropertyPermanently(
+          ScheduleGroupProperty.of(actualScheduleGroup.intValue())));
         actualScheduleGroup.increment();
       });
 
