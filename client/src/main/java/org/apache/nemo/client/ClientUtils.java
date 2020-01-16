@@ -49,14 +49,14 @@ public final class ClientUtils {
                                      final DriverRPCServer driverRPCServer) {
     if (message.getOptimizationType().equals(ControlMessage.OptimizationType.XGBoost)) {
       new Thread(() ->
-      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-        .setType(ControlMessage.ClientToDriverMessageType.Notification)
-        .setMessage(ControlMessage.NotificationMessage.newBuilder()
-          .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
-          .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
-          .build())
-        .build()))
-      .start();
+        driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.Notification)
+          .setMessage(ControlMessage.NotificationMessage.newBuilder()
+            .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
+            .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
+            .build())
+          .build()))
+        .start();
     }
   }
 

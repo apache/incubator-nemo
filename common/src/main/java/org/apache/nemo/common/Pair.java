@@ -28,7 +28,6 @@ import java.util.Objects;
  * @param <B> type of the right element.
  */
 public final class Pair<A, B> implements Serializable {
-  // TODO #430: Pair elements should be serializable
   private final A left;
   private final B right;
 

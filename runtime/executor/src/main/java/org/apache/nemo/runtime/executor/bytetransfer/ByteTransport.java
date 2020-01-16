@@ -157,8 +157,8 @@ final class ByteTransport implements AutoCloseable {
         serverListeningGroup.shutdownGracefully();
         serverWorkingGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
-        LOG.error(String.format("Cannot bind to %s:%d when bind ChannelFuture", host, port), e);
-        throw new RuntimeException(String.format("Cannot bind to %s:%d when connect ChannelFuture", host, port), e);
+        LOG.error(String.format("Cannot bind to %s:%d", host, port), e);
+        throw new RuntimeException(String.format("Cannot bind to %s:%d", host, port), e);
       }
     }
 
