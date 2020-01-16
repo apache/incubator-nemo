@@ -58,10 +58,6 @@ public final class CombineFnPartialTransform<K, I, A>
    */
   public CombineFnPartialTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);
-    //The below NOSONAR is added to ignore squid:S1948 "Fields in a Serializable should be transient or serializable
-    //We would have to overwrite all Map classes if we were to implement Serializable(unrealistic)
-    //Because we want to serealize this class, we cannot make this transient
-    //NOSONAR
     this.keyToAcuumulator = new HashMap<>();
   }
 
