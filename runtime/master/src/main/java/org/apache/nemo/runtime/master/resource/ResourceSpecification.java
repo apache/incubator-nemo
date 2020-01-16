@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 
-import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
