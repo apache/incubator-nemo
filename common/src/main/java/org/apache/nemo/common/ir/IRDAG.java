@@ -416,7 +416,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     ////////////////////////////////// STEP 2: Annotate the MessageId on optimization target edges
 
-    modifiedDAG.topologicalDo(v -> {
+    modifiedDAG.topologicalDo(v ->
       modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
         if (edgesToOptimize.contains(inEdge)) {
           final HashSet<Integer> msgEdgeIds =
@@ -424,8 +424,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           msgEdgeIds.add(messageAggregatorVertex.getPropertyValue(MessageIdVertexProperty.class).get());
           inEdge.setProperty(MessageIdEdgeProperty.of(msgEdgeIds));
         }
-      });
-    });
+      })
+    );
 
     final Set<IRVertex> insertedVertices = new HashSet<>();
     insertedVertices.addAll(triggerList);
