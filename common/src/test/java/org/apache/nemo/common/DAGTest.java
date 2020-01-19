@@ -83,7 +83,7 @@ public final class DAGTest {
     assertEquals(1, dag.getChildren("2").size());
     assertEquals(1, dag.getParents("5").size());
     assertEquals(0, dag.getChildren("5").size());
-    assertEquals(dag.getVertexById("1"), new IntegerVertex(1));
+    assertEquals(new IntegerVertex(1), dag.getVertexById("1"));
   }
 
   @Test
@@ -117,7 +117,7 @@ public final class DAGTest {
     assertEquals(0, dag.getChildren("3").size());
     assertEquals(1, dag.getParents("5").size());
     assertEquals(0, dag.getChildren("5").size());
-    assertEquals(dag.getVertexById("3"), new IntegerVertex(3));
+    assertEquals(new IntegerVertex(3), dag.getVertexById("3"));
 
     List<IntegerVertex> ancestors = dag.getAncestors("5");
     assertEquals(1, ancestors.size());
@@ -130,7 +130,7 @@ public final class DAGTest {
     assertTrue(ancestors.contains(new IntegerVertex(4)));
 
     List<IntegerVertex> descendants = dag.getDescendants("4");
-    assertEquals(2,descendants.size());
+    assertEquals(2, descendants.size());
     assertTrue(descendants.contains(new IntegerVertex(3)));
     assertTrue(descendants.contains(new IntegerVertex(5)));
 

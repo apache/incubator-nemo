@@ -56,7 +56,7 @@ public final class LoopVertex extends IRVertex {
   private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
   private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
   private Integer maxNumberOfIterations;
-  private IntPredicate terminationCondition;
+  private transient IntPredicate terminationCondition;
 
   /**
    * The LoopVertex constructor.
@@ -88,7 +88,7 @@ public final class LoopVertex extends IRVertex {
     that.iterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addIterativeIncomingEdge));
     that.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addNonIterativeIncomingEdge));
     that.dagOutgoingEdges.forEach(((v, es) -> es.forEach(this::addDagOutgoingEdge)));
-    that.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal) -> this.mapEdgeWithLoop(eLoop, eInternal));
+    that.edgeWithLoopToEdgeWithInternalVertex.forEach(this::mapEdgeWithLoop);
     this.maxNumberOfIterations = that.maxNumberOfIterations;
     this.terminationCondition = that.terminationCondition;
   }
@@ -106,7 +106,7 @@ public final class LoopVertex extends IRVertex {
   }
 
   /**
-   * @return the DAG of rthe LoopVertex
+   * @return the DAG of the LoopVertex
    */
   public DAG<IRVertex, IREdge> getDAG() {
     return builder.buildWithoutSourceSinkCheck();

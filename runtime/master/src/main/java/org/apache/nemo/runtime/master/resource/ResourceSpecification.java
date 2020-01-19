@@ -20,6 +20,9 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
+
 /**
  * Represents the specifications of a resource.
  */
@@ -29,22 +32,25 @@ public final class ResourceSpecification {
   private final String containerType;
   private final int capacity;
   private final int memory;
-  private final int poisonSec; // -1 if this resources is not poisoned
+  private final OptionalDouble maxOffheapRatio;
+  private final OptionalInt poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
-    this(containerType, capacity, memory, -1);
+    this(containerType, capacity, memory, OptionalDouble.empty(), OptionalInt.empty());
   }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory,
-                               final int poisonSec) {
+                               final OptionalDouble maxOffheapRatio,
+                               final OptionalInt poisonSec) {
     this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
+    this.maxOffheapRatio = maxOffheapRatio;
     this.poisonSec = poisonSec;
   }
 
@@ -69,6 +75,10 @@ public final class ResourceSpecification {
     return memory;
   }
 
+  public OptionalDouble getMaxOffheapRatio() {
+    return maxOffheapRatio;
+  }
+
   public String getResourceSpecId() {
     return resourceSpecId;
   }
@@ -77,7 +87,7 @@ public final class ResourceSpecification {
    * @return -1   if this resource is not poisoned. (for all other normal cases)
    * &gt;= 0 the expected time to failure by poison. (for fault-handling tests)
    */
-  public int getPoisonSec() {
+  public OptionalInt getPoisonSec() {
     return poisonSec;
   }
 }

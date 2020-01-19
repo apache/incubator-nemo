@@ -194,11 +194,29 @@ public final class JobConf extends ConfigurationModuleBuilder {
   //////////////////////////////// Runtime Executor Configurations
 
   /**
+   * Maximum off-heap memory ratio to the total memory in the executor.
+   */
+  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
+    short_name = "max_offheap_ratio", default_value = "0.2")
+  public final class MaxOffheapRatio implements Name<Double> {
+  }
+
+  /**
+   * The size of total memory in the executor.
+   * (Max off-heap memory) = (executor memory) * (max off-heap ratio)
+   * We assume that the size of memory per executor is always given as input (therefore, no default value).
+   */
+  @NamedParameter(doc = "The size of total memory(sum of heap and off-heap memory) per executor",
+    short_name = "memory_mb")
+  public final class ExecutorMemoryMb implements Name<Integer> {
+  }
+
+  /**
    * Used for fault-injected tests.
    */
   @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",
     short_name = "executor_poison_sec", default_value = "-1")
-  public final class ExecutorPosionSec implements Name<Integer> {
+  public final class ExecutorPoisonSec implements Name<Integer> {
   }
 
   /**
@@ -297,22 +315,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
     short_name = "block_threads_client", default_value = "10")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
-  }
-
-  /**
-   * Maximum off-heap memory ratio to the total memory in the executor.
-   */
-  @NamedParameter(doc = "The maximum ratio of off-heap memory size to the total memory size.",
-    short_name = "max_offheap_ratio", default_value = "0.2")
-  public final class MaxOffheapRatio implements Name<Double> {
-  }
-
-  /**
-   * Maximum off-heap memory size in the executor.
-   * This is set by the system according to the off-heap ratio.
-   */
-  @NamedParameter(doc = "The maximum off-heap memory that can be allocated")
-  public final class MaxOffheapMb implements Name<Integer> {
   }
 
   /**
