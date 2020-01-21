@@ -70,6 +70,7 @@ public final class DAGTest {
     assertEquals(5, dag.getTopologicalSort().size());
 
     final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
+
     assertEquals(1, topologicalOrder.get(0).getValue());
     assertEquals(2, topologicalOrder.get(1).getValue());
     assertEquals(3, topologicalOrder.get(2).getValue());
