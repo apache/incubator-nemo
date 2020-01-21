@@ -160,10 +160,9 @@ public final class BlockManagerWorker {
    * @param blockId    the ID of the block to create.
    * @param blockStore the store to place the block.
    * @return the created block.
-   * @throws BlockWriteException for any error occurred while trying to create a block.
    */
   public Block createBlock(final String blockId,
-                           final DataStoreProperty.Value blockStore) throws BlockWriteException {
+                           final DataStoreProperty.Value blockStore) {
     final BlockStore store = getBlockStore(blockStore);
     return store.createBlock(blockId);
   }
