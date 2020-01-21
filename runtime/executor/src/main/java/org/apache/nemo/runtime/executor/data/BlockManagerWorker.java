@@ -26,7 +26,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
-import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
 import org.apache.nemo.common.exception.UnsupportedExecutionPropertyException;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
