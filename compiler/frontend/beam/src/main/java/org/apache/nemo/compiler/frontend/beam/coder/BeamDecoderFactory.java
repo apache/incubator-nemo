@@ -69,7 +69,7 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
   private abstract class BeamAbstractDecoder<T2> implements Decoder<T2> {
 
     private final Coder<T2> beamCoder;
-    private final InputStream inputStream;
+    private final transient InputStream inputStream;
 
     /**
      * Constructor.

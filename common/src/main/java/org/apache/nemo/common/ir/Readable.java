@@ -21,7 +21,6 @@ package org.apache.nemo.common.ir;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
@@ -39,13 +38,10 @@ public interface Readable<O> extends Serializable {
    * Method to read current data from the source.
    * The caller should check whether the Readable is finished or not by using isFinished() method
    * before calling this method.
-   * <p>
-   * It can throw NoSuchElementException although it is not finished in Unbounded source.
    *
    * @return a data read by the readable.
-   * @throws NoSuchElementException when no element exists
    */
-  O readCurrent() throws NoSuchElementException;
+  O readCurrent();
 
   /**
    * Read watermark.
