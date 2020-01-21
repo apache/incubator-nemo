@@ -141,13 +141,13 @@ public final class Executor {
         getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
         e.getPropertyValue(CompressionProperty.class).orElse(null),
         e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-      irDag.getVertices().forEach(v -> 
+      irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
           getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
           getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-      );
+      });
 
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
         metricMessageSender, persistentConnectionToMasterMap).execute();
