@@ -48,7 +48,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    final Runnable batchMetricMessages = () -> flushMetricMessageQueueToMaster();
+    final Runnable batchMetricMessages = this::flushMetricMessageQueueToMaster;
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
       FLUSHING_PERIOD, TimeUnit.MILLISECONDS);
   }

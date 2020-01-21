@@ -59,7 +59,7 @@ final class GrpcMessageSender implements MessageSender<ControlMessage.Message> {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws Throwable {
     grpcClient.close();
   }
 }
