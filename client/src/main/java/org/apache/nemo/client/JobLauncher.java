@@ -175,6 +175,7 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
+  private static final String INTERRUPTED = "Interrupted: ";
   public static void shutdown() {
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -186,7 +187,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
+          LOG.warn(INTERRUPTED, e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -247,7 +248,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the driver to be ready");
       driverReadyLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
@@ -269,7 +270,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -337,9 +338,8 @@ public final class JobLauncher {
    * Get driver ncs configuration.
    *
    * @return driver ncs configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverNcsConf() throws InjectionException {
+  private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
       LocalNameResolverConfiguration.CONF.build(),
       TANG.newConfigurationBuilder()
@@ -351,9 +351,8 @@ public final class JobLauncher {
    * Get driver message configuration.
    *
    * @return driver message configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverMessageConf() throws InjectionException {
+  private static Configuration getDriverMessageConf()  {
     return TANG.newConfigurationBuilder()
       .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
       .build();
@@ -389,10 +388,9 @@ public final class JobLauncher {
    * @param args arguments to be processed as command line.
    * @return job configuration.
    * @throws IOException        exception while processing command line.
-   * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
-  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+  public static Configuration getJobConf(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
