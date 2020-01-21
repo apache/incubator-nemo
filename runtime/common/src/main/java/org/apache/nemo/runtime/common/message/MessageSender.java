@@ -48,7 +48,7 @@ public interface MessageSender<T> {
   /**
    * Closes the connection.
    *
-   * @throws Exception while closing.
+   * @throws Throwable while closing.
    */
-  void close() throws Exception;
+  void close() throws Throwable;
 }

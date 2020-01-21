@@ -76,7 +76,7 @@ public final class LocalFileStore extends LocalBlockStore {
    * @throws BlockWriteException if fail to write.
    */
   @Override
-  public void writeBlock(final Block block) throws BlockWriteException {
+  public void writeBlock(final Block block) {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + "only accept " + FileBlock.class.getName()));
@@ -94,7 +94,7 @@ public final class LocalFileStore extends LocalBlockStore {
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) {
     final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
     if (fileBlock == null) {
       return false;

@@ -30,6 +30,7 @@ import java.util.Map;
 
 /**
  * Transform for group by key transformation.
+ * TODO #431: Handle states in Transforms better
  *
  * @param <K> key type.
  * @param <V> value type.

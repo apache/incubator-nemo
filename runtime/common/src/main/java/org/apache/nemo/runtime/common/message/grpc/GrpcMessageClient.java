@@ -151,9 +151,9 @@ final class GrpcMessageClient {
   /**
    * Closes the channel.
    *
-   * @throws Exception exception while closing.
+   * @throws Throwable exception while closing.
    */
-  void close() throws Exception {
+  void close() throws Throwable {
     managedChannel.shutdown();
   }
 }
