@@ -206,7 +206,7 @@ public final class TaskExecutorTest {
       // This should not be reached.
       fail();
     } catch (NullPointerException e) {
-      assert true;
+      assertTrue(true);
     }
   }
 
