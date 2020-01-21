@@ -442,9 +442,7 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      final HasDisplayData displayData = (builder) -> {
-        builder.add(DisplayData.item("name", beamNode.getFullName()));
-      };
+      final HasDisplayData displayData = (builder) -> builder.add(DisplayData.item("name", beamNode.getFullName()));
 
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(
@@ -484,7 +482,7 @@ final class PipelineTranslator {
       .entrySet()
       .stream()
       .filter(e -> e.getValue() instanceof PCollection)
-      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
+      .collect(Collectors.toMap(Map.Entry::getKey, e -> ((PCollection) e.getValue()).getCoder()));
   }
 
   /**

@@ -255,7 +255,7 @@ public final class StateMachine {
      */
     public Builder addState(final Enum stateEnum, final String description) {
       if (stateEnumSet.contains(stateEnum)) {
-        throw new RuntimeException("A state " + stateEnum + " was already added");
+        throw new RuntimeException(stateEnum + " was already added");
       }
 
       stateEnumSet.add(stateEnum);
@@ -269,9 +269,8 @@ public final class StateMachine {
      * @throws RuntimeException if the initial state was not added first
      */
     public Builder setInitialState(final Enum stateToSet) {
-      if (!stateEnumSet.contains(stateToSet)) {
-        throw new RuntimeException("A state " + stateToSet + " should be added first");
-      }
+      checkStateWasAdded(stateToSet);
+
       this.initialState = stateToSet;
       return this;
     }
@@ -287,13 +286,8 @@ public final class StateMachine {
      *                          was already added
      */
     public Builder addTransition(final Enum from, final Enum to, final String description) {
-      if (!stateEnumSet.contains(from)) {
-        throw new RuntimeException("A state " + from + " should be added first");
-      }
-
-      if (!stateEnumSet.contains(to)) {
-        throw new RuntimeException("A state " + to + " should be added first");
-      }
+      checkStateWasAdded(from);
+      checkStateWasAdded(to);
 
       final Pair<Enum, String> transition = Pair.of(to, description);
 
@@ -336,5 +330,12 @@ public final class StateMachine {
 
       return new StateMachine(stateMap, initialState);
     }
+
+    private void checkStateWasAdded(final Enum state) {
+      if (!stateEnumSet.contains(state)) {
+        throw new RuntimeException("State " + state + " should be added first");
+      }
+    }
+
   }
 }

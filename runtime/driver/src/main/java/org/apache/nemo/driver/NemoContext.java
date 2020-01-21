@@ -48,7 +48,7 @@ public final class NemoContext {
 
   @Inject
   private NemoContext(final Executor executor,
-                      @Parameter(JobConf.ExecutorPosionSec.class) final int crashTimeSec,
+                      @Parameter(JobConf.ExecutorPoisonSec.class) final int crashTimeSec,
                       final Clock clock) {
     this.executor = executor; // To make Tang instantiate Executor
 

@@ -148,14 +148,12 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     });
 
     // ScheduleGroupEdges
-    irVertexToGroupIdMap.forEach((vertex, groupId) -> {
-      dag.getIncomingEdgesOf(vertex).stream()
-        .filter(inEdge -> !groupIdToVertices.get(groupId).contains(inEdge.getSrc()))
-        .map(inEdge -> new ScheduleGroupEdge(
-          idToGroup.get(irVertexToGroupIdMap.get(inEdge.getSrc())),
-          idToGroup.get(irVertexToGroupIdMap.get(inEdge.getDst()))))
-        .forEach(builder::connectVertices);
-    });
+    irVertexToGroupIdMap.forEach((vertex, groupId) -> dag.getIncomingEdgesOf(vertex).stream()
+      .filter(inEdge -> !groupIdToVertices.get(groupId).contains(inEdge.getSrc()))
+      .map(inEdge -> new ScheduleGroupEdge(
+        idToGroup.get(irVertexToGroupIdMap.get(inEdge.getSrc())),
+        idToGroup.get(irVertexToGroupIdMap.get(inEdge.getDst()))))
+      .forEach(builder::connectVertices));
 
     // Step 3: Actually set new schedule group properties based on topological ordering
     final MutableInt actualScheduleGroup = new MutableInt(0);
@@ -164,9 +162,8 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     sorted.stream()
       .map(sg -> groupIdToVertices.get(sg.getScheduleGroupId()))
       .forEach(vertices -> {
-        vertices.forEach(vertex -> {
-          vertex.setPropertyPermanently(ScheduleGroupProperty.of(actualScheduleGroup.intValue()));
-        });
+        vertices.forEach(vertex -> vertex.setPropertyPermanently(
+          ScheduleGroupProperty.of(actualScheduleGroup.intValue())));
         actualScheduleGroup.increment();
       });
 

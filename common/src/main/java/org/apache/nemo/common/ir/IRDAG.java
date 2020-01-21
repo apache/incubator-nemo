@@ -28,7 +28,6 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -218,7 +217,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
       final Optional<Integer> deletedMessageIdOptional = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
-        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).orElseThrow(
+        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).<IllegalArgumentException>orElseThrow(
           () -> new IllegalArgumentException(
             "MessageAggregatorVertex " + vtd.getId() + " does not have MessageIdVertexProperty.")))
         .findAny();
@@ -417,7 +416,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     ////////////////////////////////// STEP 2: Annotate the MessageId on optimization target edges
 
-    modifiedDAG.topologicalDo(v -> {
+    modifiedDAG.topologicalDo(v ->
       modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
         if (edgesToOptimize.contains(inEdge)) {
           final HashSet<Integer> msgEdgeIds =
@@ -425,8 +424,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           msgEdgeIds.add(messageAggregatorVertex.getPropertyValue(MessageIdVertexProperty.class).get());
           inEdge.setProperty(MessageIdEdgeProperty.of(msgEdgeIds));
         }
-      });
-    });
+      })
+    );
 
     final Set<IRVertex> insertedVertices = new HashSet<>();
     insertedVertices.addAll(triggerList);
@@ -710,7 +709,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   @Override
   public IREdge getEdgeBetween(final String srcVertexId,
-                               final String dstVertexId) throws IllegalEdgeOperationException {
+                               final String dstVertexId) {
     return modifiedDAG.getEdgeBetween(srcVertexId, dstVertexId);
   }
 
