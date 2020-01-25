@@ -71,7 +71,7 @@ public final class PipeManagerWorker {
   private final PersistentConnectionToMasterMap toMaster;
 
   // boolean: output context?
-  private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   private final EvalConf evalConf;
 
@@ -89,7 +89,7 @@ public final class PipeManagerWorker {
     this.evalConf = evalConf;
   }
 
-  public Map<NemoTriple<String, Integer, Boolean>, String> getTaskExecutorIdMap() {
+  public Map<String, String> getTaskExecutorIdMap() {
     return taskExecutorIdMap;
   }
 
@@ -141,7 +141,10 @@ public final class PipeManagerWorker {
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
-      taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), targetExecutorId);
+      final String dstStage = ((StageEdge) runtimeEdge).getDst().getId();
+      final String dstTaskId = RuntimeIdManager.generateTaskId(dstStage, dstTaskIndex, 0);
+
+      taskExecutorIdMap.put(dstTaskId, targetExecutorId);
 
       //LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
       //  runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
@@ -273,11 +276,11 @@ public final class PipeManagerWorker {
         final PipeTransferContextDescriptor descriptor =
           PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
 
-
+        final String srcStage = ((StageEdge) runtimeEdge).getSrc().getId();
+        final String dstTaskId = RuntimeIdManager.generateTaskId(srcStage, (int) descriptor.getSrcTaskIndex(), 0);
 
         // ADD source task-executor id
-        taskExecutorIdMap.put(new NemoTriple<>(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex(), false),
-          byteInputContext.getRemoteExecutorId());
+        taskExecutorIdMap.put(dstTaskId, byteInputContext.getRemoteExecutorId());
 
         eventHandler.onNext(value);
       }

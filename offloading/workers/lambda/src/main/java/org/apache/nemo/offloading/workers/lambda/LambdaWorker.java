@@ -56,7 +56,8 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
   }
 
 	public LambdaWorker() {
-    this.offloadingHandler = new OffloadingHandler(new HashMap<>());
+    this.offloadingHandler = new OffloadingHandler(
+      new HashMap<>(), true);
 	}
 
 

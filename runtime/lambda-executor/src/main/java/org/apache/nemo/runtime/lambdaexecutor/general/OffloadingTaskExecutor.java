@@ -409,7 +409,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   @Override
   public void close() {
     for (final DataFetcher dataFetcher : allFetchers) {
-      LOG.info("Stopping data fetcher {}", dataFetcher);
+      LOG.info("Stopping data fetcher of {}/ {}", offloadingTask.taskId, dataFetcher);
       pendingFutures.add(dataFetcher.stop(offloadingTask.taskId));
     }
 
@@ -511,14 +511,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     LOG.info("Finishing {}", offloadingTask.taskId);
 
+    /*
     while (!executorThread.queue.isEmpty()) {
-      LOG.info("Waiting for executor finish");
+      LOG.info("Waiting for executor finish, numEvent: {}", executorThread.queue);
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+    */
 
     // TODO: fix
     outputfutures.addAll(pipeOutputWriters.stream()
@@ -670,7 +672,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    return finished && allPendingDone();
+    return finished && allPendingDone() && executorThread.queue.isEmpty();
   }
 
   @Override

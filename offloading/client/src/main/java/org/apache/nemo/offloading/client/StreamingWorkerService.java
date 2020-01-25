@@ -111,7 +111,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
     }
 
     final OffloadingWorker<I, O> worker =
-      workerFactory.createStreamingWorker(copiedBuf, offloadingSerializer, eventHandler);
+      workerFactory.createStreamingWorker(null, copiedBuf, offloadingSerializer, eventHandler);
 
     synchronized (streamingWorkers) {
       streamingWorkers.add(Pair.of(System.currentTimeMillis(), worker));

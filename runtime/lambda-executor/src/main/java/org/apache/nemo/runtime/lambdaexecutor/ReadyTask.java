@@ -32,6 +32,7 @@ public final class ReadyTask {
   public final Map<String, GBKFinalState> stateMap;
   public final Map<String, Coder<GBKFinalState>> stateCoderMap;
   public final long prevWatermarkTimestamp;
+  public final Map<String, String> taskExecutorIdMap;
 
   public ReadyTask(final String taskId,
                    final Map<String, TaskLoc> taskLocationMap,
@@ -40,7 +41,8 @@ public final class ReadyTask {
                    final long prevWatermarkTimestamp,
                    final UnboundedSource unboundedSource,
                    final Map<String, GBKFinalState>  stateMap,
-                   final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+                   final Map<String, Coder<GBKFinalState>> stateCoderMap,
+                   final Map<String, String> taskExecutorIdMap) {
     this.taskId = taskId;
     this.taskLocationMap = taskLocationMap;
     this.checkpointMark = checkpointMark;
@@ -49,6 +51,7 @@ public final class ReadyTask {
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
     this.stateCoderMap = stateCoderMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
   }
 
   public ByteBuf encode() {
@@ -84,6 +87,8 @@ public final class ReadyTask {
       } else {
         dos.writeInt(0);
       }
+
+      conf.encodeToStream(bos, taskExecutorIdMap);
 
       LOG.info("Encoding state done for {}, size: {}", taskId, byteBuf.readableBytes());
 
@@ -136,6 +141,8 @@ public final class ReadyTask {
 
       LOG.info("Decoding state {}", taskId);
 
+      final Map<String, String> taskExecutorMap = (Map<String, String>) conf.decodeFromStream(inputStream);
+
       return new ReadyTask(taskId,
         taskLocationMap,
         checkpointMark,
@@ -143,7 +150,8 @@ public final class ReadyTask {
         prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
-        stateCoderMap);
+        stateCoderMap,
+        taskExecutorMap);
 
     } catch (Exception e) {
       e.printStackTrace();

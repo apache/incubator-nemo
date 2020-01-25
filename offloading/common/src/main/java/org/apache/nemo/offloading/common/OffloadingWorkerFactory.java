@@ -3,14 +3,17 @@ package org.apache.nemo.offloading.common;
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
 
+import java.util.Optional;
+
 public interface OffloadingWorkerFactory {
 
   OffloadingWorker createOffloadingWorker(ByteBuf workerInitBuf,
                                           OffloadingSerializer offloadingSerializer);
 
-  <O> OffloadingWorker createStreamingWorker(ByteBuf workerInitBuf,
+  OffloadingWorker createStreamingWorker(ByteBuf vmScalingInfoBuf,
+                                             ByteBuf workerInitBuf,
                                           OffloadingSerializer offloadingSerializer,
-                                         EventHandler<O> eventHandler);
+                                         EventHandler eventHandler);
 
   void deleteOffloadingWorker(OffloadingWorker worker);
 

@@ -19,21 +19,26 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
+import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
+import org.apache.reef.io.network.naming.NameResolver;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.Map;
 
 /**
@@ -49,6 +54,14 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final ChannelGroup channelGroup;
   private final Channel relayServerChannel;
+  private final Boolean isSf;
+
+  private EventLoopGroup serverListeningGroup;
+  private EventLoopGroup serverWorkingGroup;
+  private int bindingPort;
+  private Channel serverListeningChannel;
+  private String publicAddress;
+  private final NameResolver nameResolver;
 
   public LambdaByteTransport(
       final String localExecutorId,
@@ -57,10 +70,14 @@ public final class LambdaByteTransport {//implements AutoCloseable {
       final Map<String, InetSocketAddress> executorAddressMap,
       final ChannelGroup channelGroup,
       final String relayServerAddres,
-      final int relayServerPort) {
+      final int relayServerPort,
+      final NameResolver nameResolver,
+      final boolean isSf) {
 
     this.executorAddressMap = executorAddressMap;
     this.channelGroup = channelGroup;
+    this.isSf = isSf;
+    this.nameResolver = nameResolver;
 
     clientGroup = channelImplSelector.newEventLoopGroup(10, new DefaultThreadFactory(CLIENT));
 
@@ -70,8 +87,78 @@ public final class LambdaByteTransport {//implements AutoCloseable {
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
 
-    final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
-    this.relayServerChannel = channelFuture.channel();
+    if (isSf) {
+      final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
+      this.relayServerChannel = channelFuture.channel();
+    } else {
+      // this is vm scaling worker!!
+      serverListeningGroup = channelImplSelector.newEventLoopGroup(16,
+        new DefaultThreadFactory("vm:scaling:listening"));
+      serverWorkingGroup = channelImplSelector.newEventLoopGroup(16,
+        new DefaultThreadFactory("vm:scaling:working"));
+      // vm scaling worker
+      final ServerBootstrap serverBootstrap = new ServerBootstrap()
+        .group(serverListeningGroup, serverWorkingGroup)
+        .channel(channelImplSelector.getServerChannelClass())
+        .childHandler(channelInitializer)
+        .option(ChannelOption.SO_BACKLOG, 128)
+        .option(ChannelOption.SO_REUSEADDR, true);
+
+      final String host;
+      try {
+        this.publicAddress = NetworkUtils.getPublicIP();
+        host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
+      } catch (UnknownHostException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      try {
+        Channel listeningChannel = null;
+        final TcpPortProvider tcpPortProvider = Tang.Factory.getTang().newInjector().getInstance(TcpPortProvider.class);
+        for (final int candidatePort : tcpPortProvider) {
+          try {
+            final ChannelFuture future = serverBootstrap.bind(host, candidatePort).await();
+            if (future.cause() != null) {
+              LOG.debug(String.format("Cannot bind to %s:%d", host, candidatePort), future.cause());
+            } else if (!future.isSuccess()) {
+              LOG.debug("Cannot bind to {}:{}", host, candidatePort);
+            } else {
+              listeningChannel = future.channel();
+              bindingPort = candidatePort;
+              break;
+            }
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.debug(String.format("Interrupted while binding to %s:%d", host, candidatePort), e);
+          }
+        }
+        if (listeningChannel == null) {
+          serverListeningGroup.shutdownGracefully();
+          serverWorkingGroup.shutdownGracefully();
+          clientGroup.shutdownGracefully();
+          LOG.error("Cannot bind to {} with tcpPortProvider", host);
+          throw new RuntimeException(String.format("Cannot bind to %s with tcpPortProvider", host));
+        }
+
+
+        serverListeningChannel = listeningChannel;
+
+        final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
+        nameResolver.register(identifier, new InetSocketAddress(publicAddress, bindingPort));
+
+        LOG.info("public address: {}, port: {}, executorId: {}, registering to nameResolver", publicAddress, bindingPort, localExecutorId);
+        //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
+
+        LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
+        this.relayServerChannel = null;
+
+      } catch (final Exception e) {
+        e.printStackTrace();
+        // LOG.error("Cannot register ByteTransport listening address to the naming registry", e);
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public Channel getRelayServerChannel() {
@@ -106,9 +193,37 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     return connectFuture;
   }
 
+  private InetSocketAddress getAddress(final String remoteExecutorId) {
+
+    if (isSf) {
+      final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
+      LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
+      return address;
+
+    } else {
+      InetSocketAddress address;
+      while (true) {
+        try {
+          final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
+          address = nameResolver.lookup(identifier);
+          LOG.info("Address of {}: {}", remoteExecutorId, address);
+          //executorAddressMap.put(remoteExecutorId, address);
+          return address;
+        } catch (final Exception e) {
+          LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e1) {
+            e1.printStackTrace();
+          }
+        }
+      }
+    }
+  }
+
   ChannelFuture connectTo(final String remoteExecutorId) {
 
-    final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
+    final InetSocketAddress address = getAddress(remoteExecutorId);
     LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
 
     final ChannelFuture connectFuture = clientBootstrap.connect(address);

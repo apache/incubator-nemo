@@ -16,7 +16,6 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -26,11 +25,10 @@ import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -87,6 +85,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final ExecutorThread executorThread;
   private final ScheduledExecutorService scheduledExecutorService;
   private final ScalingOutCounter scalingOutCounter;
+  private final Map<String, String> taskExecutorIdMap;
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,
@@ -108,7 +107,8 @@ public final class TinyTaskOffloader implements Offloader {
                            final TaskLocationMap taskLocationMap,
                            final ExecutorThread executorThread,
                            final List<DataFetcher> fetchers,
-                           final ScalingOutCounter scalingOutCounter) {
+                           final ScalingOutCounter scalingOutCounter,
+                           final Map<String, String> taskExecutorIdMap) {
     this.executorThread = executorThread;
     this.scheduledExecutorService = executorThread.scheduledExecutorService;
     this.executorId = executorId;
@@ -122,6 +122,7 @@ public final class TinyTaskOffloader implements Offloader {
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
     this.scalingOutCounter = scalingOutCounter;
+    this.taskExecutorIdMap = taskExecutorIdMap;
 
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
@@ -461,7 +462,8 @@ public final class TinyTaskOffloader implements Offloader {
         prevWatermarkTimestamp,
         unboundedSource,
         stateMap,
-        coderMap);
+        coderMap,
+        taskExecutorIdMap);
     } else {
       readyTask = new ReadyTask(
         taskId,
@@ -471,7 +473,8 @@ public final class TinyTaskOffloader implements Offloader {
         -1,
         null,
         stateMap,
-        coderMap);
+        coderMap,
+        taskExecutorIdMap);
     }
 
 

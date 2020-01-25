@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 import static org.apache.nemo.runtime.executor.common.ChannelStatus.RUNNING;
 
 /**
@@ -156,7 +157,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
         break;
       }
       case RUNNING: {
-        //LOG.info("Send stop {}/{}", taskId, getContextId().getTransferIndex());
+        LOG.info("Send stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.INPUT_STOP;
         sendMessage(getStopMessage());
         break;
@@ -263,7 +264,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
   @Override
   public synchronized void setupRestartChannel(final Channel c, ByteTransferContextSetupMessage msg) {
 
-    if (myLocation.equals(SF)) {
+    if (myLocation.equals(SF) || myLocation.equals(VM_SCALING)) {
       throw new RuntimeException("This should not be called in serverless");
     }
 
@@ -302,7 +303,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
   @Override
   public synchronized void restart(String taskId) {
-    if (myLocation.equals(SF)) {
+    if (myLocation.equals(SF) || myLocation.equals(VM_SCALING)) {
       throw new RuntimeException("Restart shouldn't be called in lambda");
     }
 

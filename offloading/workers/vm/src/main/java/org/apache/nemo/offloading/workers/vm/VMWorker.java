@@ -1,5 +1,6 @@
 package org.apache.nemo.offloading.workers.vm;
 
+import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -12,6 +13,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.OffloadingHandler;
+
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +36,18 @@ public class VMWorker {
   private EventLoopGroup serverBossGroup;
   private EventLoopGroup serverWorkerGroup;
   private Channel acceptor;
-  private Map<Channel, EventHandler> channelEventHandlerMap;
 
   private final Map<String, OffloadingHandler.LambdaEventHandler> lambdaEventHandlerMap;
 
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
-    private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+
+
+  private String nameServerAddr;
+  private int nameServerPort = 0;
+  private String newExecutorId;
+
+  private OffloadingHandler offloadingHandler;
 
   private VMWorker() {
 
@@ -60,7 +68,9 @@ public class VMWorker {
           executorService.execute(() -> {
             switch (event.getType()) {
               case CLIENT_HANDSHAKE: {
-                final OffloadingHandler handler = new OffloadingHandler(lambdaEventHandlerMap);
+                final OffloadingHandler handler = new OffloadingHandler(
+                  lambdaEventHandlerMap, false);
+                offloadingHandler = handler;
                 handlers.add(handler);
                 final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
                 event.getByteBuf().readBytes(bytes);

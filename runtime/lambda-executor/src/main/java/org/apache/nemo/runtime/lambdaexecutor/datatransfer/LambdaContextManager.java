@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
@@ -61,6 +62,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final RelayServerClient relayServerClient;
   private final ByteTransfer byteTransfer;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final TaskLoc myLocation;
+  private final TaskLocationMap taskLocationMap;
 
   public LambdaContextManager(
     final ExecutorService channelExecutorService,
@@ -74,7 +77,9 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final boolean isRelayServerChannel,
     final RelayServerClient relayServerClient,
     final ByteTransfer byteTransfer,
-    final OutputWriterFlusher outputWriterFlusher) {
+    final OutputWriterFlusher outputWriterFlusher,
+    final TaskLoc myLocation,
+    final TaskLocationMap taskLocationMap) {
     //LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
     this.inputContexts = inputContexts;
@@ -88,6 +93,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.relayServerClient = relayServerClient;
     this.byteTransfer = byteTransfer;
     this.outputWriterFlusher = outputWriterFlusher;
+    this.myLocation = myLocation;
+    this.taskLocationMap = taskLocationMap;
 
     //LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
@@ -125,7 +132,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
       contextId -> {
         final LambdaRemoteByteInputContext ic = new LambdaRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this,
-          ackScheduledService.ackService, isRelayServerChannel, relayServerClient);
+          ackScheduledService.ackService, isRelayServerChannel, relayServerClient, myLocation);
         return ic;
       },
       executorId, isPipe, relayDst, true);
@@ -198,8 +205,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        //LOG.info("SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} Pending output context for moving downstream to {}, transferIndex: {}",
-        //  message.getTaskId(), sendDataTo, transferIndex);
+        LOG.info("SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} Pending output context for moving downstream to {}, transferIndex: {}",
+          message.getTaskId(), sendDataTo, transferIndex);
         outputContext.receiveStopSignalFromChild(message, sendDataTo);
         break;
       }
@@ -348,7 +355,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextDescriptor(),
         context.getContextId().isPipe(),
         messageType,
-        SF,
+        myLocation,
         "??");
 
     if (isRelayServerChannel) {
@@ -387,14 +394,14 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, SF, relayServerClient),
+          this, relayDst, SF, relayServerClient, myLocation, taskLocationMap),
         executorId, isPipe, relayDst, false);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, VM, relayServerClient),
+          this, relayDst, VM, relayServerClient, myLocation, taskLocationMap),
         executorId, isPipe, relayDst, false);
     }
   }

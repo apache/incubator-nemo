@@ -41,7 +41,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -80,6 +80,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 
@@ -242,7 +243,8 @@ public final class Executor {
 
         final String taskId = taskExecutor.getId();
 
-        if (taskLocationMap.locationMap.get(taskId) == SF) {
+        if (taskLocationMap.locationMap.get(taskId) == SF
+          || taskLocationMap.locationMap.get(taskId) == VM_SCALING) {
           // get metric from SF
           if (sfTaskMetrics.sfTaskMetrics.containsKey(taskId)) {
             final TaskMetrics.RetrievedMetrics metric = sfTaskMetrics.sfTaskMetrics.get(taskId);
@@ -281,7 +283,8 @@ public final class Executor {
 
       final long sfComputation =
         taskStatInfos.stream().filter(taskStatInfo -> {
-        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == SF;
+        return taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == SF
+          || taskLocationMap.locationMap.get(taskStatInfo.getTaskId()) == VM_SCALING;
       }).map(taskStatInfo -> taskStatInfo.getComputation())
         .reduce(0L, (x, y) -> x + y);
 
@@ -633,7 +636,8 @@ public final class Executor {
             msg.getRendevousAddress(),
             msg.getRendevousPort(),
             executorId,
-            m);
+            m,
+            evalConf.offloadingType.equals("vm") ? VM_SCALING : SF);
 
           tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
             offloadingWorkerFactory,

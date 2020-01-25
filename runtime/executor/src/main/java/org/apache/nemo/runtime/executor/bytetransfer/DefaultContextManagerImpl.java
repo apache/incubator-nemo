@@ -25,7 +25,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -78,6 +78,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
   private final PersistentConnectionToMasterMap toMaster;
   private final OutputWriterFlusher outputWriterFlusher;
   private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   /**
    * Creates context manager for this channel.
@@ -103,7 +104,8 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
                                    //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
                                    final PersistentConnectionToMasterMap toMaster,
                                    final OutputWriterFlusher outputWriterFlusher,
-                                   final RelayServer relayServer) {
+                                   final RelayServer relayServer,
+                                   final TaskLocationMap taskLocationMap) {
     this.channelExecutorService = channelExecutorService;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
@@ -115,6 +117,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;
     this.inputContexts = inputContexts;
+    this.taskLocationMap = taskLocationMap;
     //this.inputContextsInitiatedByLocal = inputContextsInitiatedByLocal;
     this.outputContexts = outputContexts;
     //this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
@@ -206,8 +209,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
-        //final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        //LOG.info("STOP_OUTPUT for moving {} receiveStopSignalFromChild {}", sendDataTo, transferIndex);
         final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
         //LOG.info("Receiving SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT from {} for index {}, receiveStopSignalFromChild to {}", message.getTaskId(), transferIndex,
         //  sendDataTo);
@@ -325,7 +326,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
             */
           } else {
             final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
-              contextDescriptor, this);
+              contextDescriptor, this, taskLocationMap);
             try {
               if (isPipe) {
                 pipeManagerWorker.onOutputContext(c);
@@ -506,7 +507,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     return newContext(outputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
       contextId -> new RemoteByteOutputContext(executorId, contextId,
-        descriptor.encode(), this),
+        descriptor.encode(), this, taskLocationMap),
       executorId, isPipe, false);
 
     /*

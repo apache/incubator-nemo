@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -79,7 +80,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   @Override
-  public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
+  public OffloadingWorker createStreamingWorker(final ByteBuf vmScalingInfoBuf,
+                                                final ByteBuf workerInitBuffer,
                                                 final OffloadingSerializer offloadingSerializer,
                                                 final EventHandler eventHandler) {
     createChannelRequest();

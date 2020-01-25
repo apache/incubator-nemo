@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -92,6 +93,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
 
   private final OutputWriterFlusher outputWriterFlusher;
   private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   /**
    * Creates a netty channel initializer.
@@ -117,7 +119,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                           final PersistentConnectionToMasterMap toMaster,
                                           final EvalConf evalConf,
-                                          final RelayServer relayServer) {
+                                          final RelayServer relayServer,
+                                          final TaskLocationMap taskLocationMap) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -132,6 +135,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.toMaster = toMaster;
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
     this.relayServer = relayServer;
+    this.taskLocationMap = taskLocationMap;
   }
 
   @Override
@@ -151,7 +155,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       outputContexts,
       toMaster,
       outputWriterFlusher,
-      relayServer);
+      relayServer,
+      taskLocationMap);
 
     ch.pipeline()
       // inbound

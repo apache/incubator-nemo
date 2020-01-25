@@ -20,12 +20,14 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 import static org.apache.nemo.common.TaskLoc.SF;
+import static org.apache.nemo.common.TaskLoc.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -37,6 +39,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
   private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteOutputContext.class.getName());
 
   private final RelayServerClient relayServerClient;
+  private final TaskLoc myLocation;
+
   /**
    * Creates a output context.
    *
@@ -51,12 +55,15 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
                                        final ContextManager contextManager,
                                        final String relayDst,
                                        final TaskLoc sendDataTo,
-                                       final RelayServerClient relayServerClient) {
+                                       final RelayServerClient relayServerClient,
+                                       final TaskLoc myLocation,
+                                       final TaskLocationMap taskLocationMap) {
     super(remoteExecutorId, contextId, contextDescriptor,
-      contextManager, SF, sendDataTo, relayDst);
+      contextManager, myLocation, sendDataTo, relayDst, taskLocationMap);
     //LOG.info("RelayDst {} for remoteExecutor: {}, channel {}", relayDst, remoteExecutorId,
     //  relayChannel);
     this.relayServerClient = relayServerClient;
+    this.myLocation = myLocation;
   }
 
   @Override
@@ -64,40 +71,34 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
     final LambdaContextManager cm = (LambdaContextManager) contextManager;
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(getContextDescriptor());
 
-    switch (sendDataTo) {
-      case SF: {
-        final String relayServerAddress = msg.getRelayServerAddress();
-        final int relayServerPort = msg.getRelayServerPort();
-        //LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
-        //  relayServerAddress, relayServerPort, transferIndex);
+    if (myLocation.equals(SF) && sendDataTo.equals(SF)) {
+      final String relayServerAddress = msg.getRelayServerAddress();
+      final int relayServerPort = msg.getRelayServerPort();
+      //LOG.info("Connecting to relay server for input {}/{}, transferIndex: {}",
+      //  relayServerAddress, relayServerPort, transferIndex);
 
-        cm.connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
-          // 내 채널에  destination 등록!!
-          final Channel myRelayServer = relayServerClient.getRelayServerChannel(getLocalExecutorId());
-          //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
-          LOG.info("Send init message for the connected relay server for scaling in... {} to {}", taskId, msg.getTaskId());
-          relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
-        });
-        break;
-      }
-      case VM: {
-        cm.connectToVm(msg.getInitiatorExecutorId(), (vmContextManager) -> {
-          // We send ack to the vm channel to initialize it !!!
-          final ByteTransferContextSetupMessage ackMessage =
-            new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-              getContextId().getTransferIndex(),
-              getContextId().getDataDirection(),
-              getContextDescriptor(),
-              getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-              SF,
-              taskId);
-          LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
-          vmContextManager.getChannel().write(ackMessage);
-        });
-
-        break;
-      }
+      cm.connectToRelay(relayServerAddress, relayServerPort, (relayServerChannel) -> {
+        // 내 채널에  destination 등록!!
+        final Channel myRelayServer = relayServerClient.getRelayServerChannel(getLocalExecutorId());
+        //LOG.info("Connect to my relay server for child stop {}/{}", localExecutorId, myRelayServer);
+        LOG.info("Send init message for the connected relay server for scaling in... {} to {}", taskId, msg.getTaskId());
+        relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+      });
+    } else if (sendDataTo.equals(VM)) {
+      cm.connectToVm(msg.getInitiatorExecutorId(), (vmContextManager) -> {
+        // We send ack to the vm channel to initialize it !!!
+        final ByteTransferContextSetupMessage ackMessage =
+          new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+            getContextId().getTransferIndex(),
+            getContextId().getDataDirection(),
+            getContextDescriptor(),
+            getContextId().isPipe(),
+            ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
+            myLocation,
+            taskId);
+        LOG.info("Send init message for the connected VM for scaling in... {} to {}", taskId, msg.getTaskId());
+        vmContextManager.getChannel().write(ackMessage);
+      });
     }
 
   }

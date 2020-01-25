@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -70,7 +71,8 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   }
 
   @Override
-  public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
+  public OffloadingWorker createStreamingWorker(final ByteBuf vmScalingInfoBuffer,
+                                                final ByteBuf workerInitBuffer,
                                                 final OffloadingSerializer offloadingSerializer,
                                                 final EventHandler eventHandler) {
     LOG.info("Create streaming worker request!");
@@ -102,6 +104,11 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
           throw new RuntimeException(e);
         }
 
+        if (vmScalingInfoBuffer == null) {
+          throw new RuntimeException("Vm scaling info buffer is null");
+        }
+
+        pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.VM_SCALING_INFO, vmScalingInfoBuffer));
         pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
 
         return pair;

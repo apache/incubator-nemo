@@ -126,18 +126,18 @@ public final class OffloadingTask {
       LOG.info("Decoding task!! {}", taskId);
 
       final Map<String, Double> samplingMap = (Map<String, Double>) conf.decodeFromStream(inputStream);
-      LOG.info("{}, samplingMap: {}", taskId, samplingMap);
+      // LOG.info("{}, samplingMap: {}", taskId, samplingMap);
 
       final Map<String, List<String>> taskOutgoingEdges =  (Map<String, List<String>>) conf.decodeFromStream(inputStream);
-      LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
+      // LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
       final List<StageEdge> outgoingEdges = (List<StageEdge>) conf.decodeFromStream(inputStream);
-      LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
+      // LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
       final List<StageEdge> incomingEdges = (List<StageEdge>) conf.decodeFromStream(inputStream);
-      LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
+      // LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
 
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
         (DAG<IRVertex, RuntimeEdge<IRVertex>>) conf.decodeFromStream(inputStream);
-      LOG.info("{}, irDag: {}", taskId, irDag);
+      // LOG.info("{}, irDag: {}", taskId, irDag);
 
       return new OffloadingTask(executorId,
         taskId,

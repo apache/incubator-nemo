@@ -1,9 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
@@ -116,14 +113,14 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       }
   }
 
-  private StreamingLambdaWorkerProxy createNewWorker() {
+  private StreamingLambdaWorkerProxy createNewWorker(final ByteBuf vmScalingInfoBuf) {
 
 
     // create new worker
     LOG.info("Creating new worker... current num: {}", workers.size());
 
     final StreamingLambdaWorkerProxy worker = (StreamingLambdaWorkerProxy)
-      workerFactory.createStreamingWorker(workerInitBuffer.retain(), offloadingSerializer, (event) -> {
+      workerFactory.createStreamingWorker(vmScalingInfoBuf, workerInitBuffer.retain(), offloadingSerializer, (event) -> {
         // TODO: We should retrieve states (checkpointmark, operator states, and so on)
 
         final Pair<String, Object> pair = (Pair<String, Object>) event;
@@ -212,7 +209,6 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
 
     if (!offloadingTransformSerialized.get()) {
-
       offloadingTransformSerialized.set(true);
 
       final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
@@ -240,7 +236,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       }
 
       final TinyTaskWorker newWorker = new TinyTaskWorker(
-        createNewWorker(), evalConf);
+        createNewWorker(null), evalConf);
 
       LOG.info("No preparable worker.. create new one {}", newWorker);
 
@@ -250,6 +246,58 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       return newWorker;
     }
   }
+
+  public TinyTaskWorker createVmScalingWorker(
+    final String nameServerAddr,
+    final int nameServerPort,
+    final String newExecutorId) {
+
+    if (!offloadingTransformSerialized.get()) {
+
+
+      final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
+      ObjectOutputStream oos = null;
+      try {
+        oos = new ObjectOutputStream(bos);
+        oos.writeObject(offloadingTransform);
+        oos.writeObject(offloadingSerializer.getInputDecoder());
+        oos.writeObject(offloadingSerializer.getOutputEncoder());
+        oos.close();
+        bos.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      offloadingTransformSerialized.set(true);
+    }
+
+    final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
+    try {
+      bos.writeUTF(nameServerAddr);
+      bos.writeInt(nameServerPort);
+      bos.writeUTF(newExecutorId);
+      bos.close();
+
+      final TinyTaskWorker newWorker = new TinyTaskWorker(
+        createNewWorker(byteBuf), evalConf);
+
+      LOG.info("No preparable worker.. create new one {}", newWorker);
+
+      synchronized (workers) {
+        workers.add(Pair.of(System.currentTimeMillis(), newWorker));
+      }
+
+      newWorker.prepareTaskIfPossible();
+      return newWorker;
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
 
   public TinyTaskWorker createWorker() {
 
@@ -275,7 +323,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
 
     final TinyTaskWorker newWorker = new TinyTaskWorker(
-      createNewWorker(), evalConf);
+      createNewWorker(null), evalConf);
 
     LOG.info("No preparable worker.. create new one {}", newWorker);
 

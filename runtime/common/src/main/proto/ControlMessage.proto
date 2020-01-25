@@ -348,12 +348,13 @@ message RequestScalingMessage {
   required bool isScaleOut = 2;
   repeated RequestScalingEntryMessage entry = 3;
   repeated TaskLocation taskLocation = 4;
-  optional double divideNum = 5;
+  repeated TaskExecutorIdEntryMessage taskExecutorId = 5;
+  optional double divideNum = 6;
 }
 
 message TaskLocation {
   required string taskId = 1;
-  required bool isVm = 2;
+  required int64 location = 2; // 0: vm, 1: sf, 2: vm-scaling
 }
 
 message RequestScalingEntryMessage {
@@ -361,6 +362,10 @@ message RequestScalingEntryMessage {
   repeated string offloadTasks = 2;
 }
 
+message TaskExecutorIdEntryMessage {
+  required string taskId = 1;
+  required string executorId = 2;
+}
 
 message ScalingDoneEntryMessage {
   required string stageId = 1;

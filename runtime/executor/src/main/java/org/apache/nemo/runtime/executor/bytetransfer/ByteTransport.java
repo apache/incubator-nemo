@@ -19,12 +19,13 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NetworkUtils;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
@@ -36,10 +37,8 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.runtime.executor.Executor;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -300,42 +299,4 @@ public final class ByteTransport implements AutoCloseable {
     return channelGroup;
   }
 
-  /**
-   * {@link Identifier} for {@link ByteTransfer}.
-   */
-  private static final class ByteTransportIdentifier implements Identifier {
-
-    private final String executorId;
-
-    /**
-     * Creates a {@link ByteTransportIdentifier}.
-     *
-     * @param executorId id of the {@link Executor}
-     */
-    private ByteTransportIdentifier(final String executorId) {
-      this.executorId = executorId;
-    }
-
-    @Override
-    public String toString() {
-      return "byte://" + executorId;
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      final ByteTransportIdentifier that = (ByteTransportIdentifier) o;
-      return executorId.equals(that.executorId);
-    }
-
-    @Override
-    public int hashCode() {
-      return executorId.hashCode();
-    }
-  }
 }

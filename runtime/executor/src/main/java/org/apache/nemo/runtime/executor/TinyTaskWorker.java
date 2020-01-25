@@ -58,12 +58,15 @@ public final class TinyTaskWorker {
   }
 
   public synchronized void addTask(final OffloadingTask task) {
+
+    /*
     final int prepCnt = prepareRequest.decrementAndGet();
 
     if (prepCnt < 0) {
       throw new RuntimeException("Invalid prepare request cnt for worker "
       + offloadingWorker.getId() + ": " + prepCnt);
     }
+    */
 
     pendingTasks.add(task);
   }
@@ -155,6 +158,10 @@ public final class TinyTaskWorker {
     LOG.info("Send throttling  in worker");
     final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
     byteBuf.writeInt(OffloadingExecutorEventType.EventType.THROTTLE.ordinal());
+    offloadingWorker.execute(byteBuf, 1, false);
+  }
+
+  public void sendMessage(final ByteBuf byteBuf) {
     offloadingWorker.execute(byteBuf, 1, false);
   }
 

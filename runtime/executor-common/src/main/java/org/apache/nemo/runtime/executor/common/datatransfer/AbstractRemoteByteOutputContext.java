@@ -22,6 +22,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.ChannelStatus;
@@ -40,6 +41,7 @@ import java.util.List;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 import static org.apache.nemo.runtime.executor.common.ChannelStatus.RUNNING;
 
 /**
@@ -92,6 +94,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
   private final List<Runnable> pendingRunnables = new ArrayList<>();
 
+  private final TaskLocationMap taskLocationMap;
+
   /**
    * Creates a output context.
    *
@@ -106,7 +110,8 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
                                          final ContextManager contextManager,
                                          final TaskLoc myLocation,
                                          final TaskLoc sdt,
-                                         final String relayDst) {
+                                         final String relayDst,
+                                         final TaskLocationMap taskLocationMap) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.myLocation = myLocation;
     this.sendDataTo = sdt;
@@ -116,6 +121,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     this.contextManager = contextManager;
     this.channel = contextManager.getChannel();
+    this.taskLocationMap = taskLocationMap;
     //LOG.info("Channel start dst {} / {}", relayDst, channel.remoteAddress());
   }
 
@@ -127,7 +133,17 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
     }
   }
 
+  private TaskLoc getMovingLoc() {
+    if (myLocation.equals(SF) || myLocation.equals(VM_SCALING)) {
+      return VM;
+    } else {
+      return taskLocationMap.locationMap.get(taskId);
+    }
+  }
+
   private ByteTransferContextSetupMessage getStopMsg() {
+
+
     final ByteTransferContextSetupMessage pendingMsg =
       new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
         getContextId().getTransferIndex(),
@@ -135,7 +151,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         getContextDescriptor(),
         getContextId().isPipe(),
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
-        myLocation.equals(VM) ? SF : VM,
+        getMovingLoc(),
         taskId);
     return pendingMsg;
   }
@@ -326,7 +342,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
   @Override
   public synchronized void setupRestartChannel(final Channel c, final ByteTransferContextSetupMessage msg) {
 
-    if (myLocation.equals(SF)) {
+    if (myLocation.equals(SF) || myLocation.equals(VM_SCALING)) {
       throw new RuntimeException("This should not be called in serverless");
     }
 
@@ -373,7 +389,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
    */
   @Override
   public synchronized void restart(final String taskId) {
-    if (myLocation.equals(SF)) {
+    if (myLocation.equals(SF) || myLocation.equals(VM_SCALING)) {
       throw new RuntimeException("Restart shouldn't be called in lambda");
     }
 
@@ -384,7 +400,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           getContextId().getDataDirection(), getContextDescriptor(),
           getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-          VM,
+          myLocation,
           taskId);
 
       sendDataTo = setupLocation;
@@ -578,30 +594,14 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         throw new IOException("Stream already closed.");
       }
 
-      switch (myLocation) {
-        case SF: {
-          switch (sendDataTo) {
-            case SF: {
-              channel.write(new RelayDataFrame(relayDst,
-                DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
-                .addListener(getChannelWriteListener());
-              break;
-            }
-            case VM: {
-              channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
-                .addListener(getChannelWriteListener());
-              break;
-            }
-          }
-          break;
-        }
-        case VM: {
-          channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
-            .addListener(getChannelWriteListener());
-          break;
-        }
+      if (myLocation.equals(SF) && sendDataTo.equals(SF)) {
+        channel.write(new RelayDataFrame(relayDst,
+          DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
+          .addListener(getChannelWriteListener());
+      } else {
+        channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+          .addListener(getChannelWriteListener());
       }
-
     }
   }
 }

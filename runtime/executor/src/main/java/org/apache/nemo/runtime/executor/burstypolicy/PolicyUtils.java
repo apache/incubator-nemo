@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public class PolicyUtils {
@@ -22,9 +24,13 @@ public class PolicyUtils {
     final List<TaskExecutor> runningTasks = new ArrayList<>(taskExecutorMap.size());
     final List<TaskExecutor> statelessRunningTasks = new ArrayList<>(taskExecutorMap.size());
     final List<TaskExecutor> statefulRunningTasks = new ArrayList<>(taskExecutorMap.size());
+    final Map<String, TaskExecutor> taskIdTaskExecutorMap = new HashMap<>();
     for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
       //if (taskExecutor.isStateless()) {
       //  stateless += 1;
+
+      taskIdTaskExecutorMap.put(taskExecutor.getId(), taskExecutor);
+
       if (taskExecutor.isRunning()) {
         if (taskExecutor.isStateless()) {
           stateless += 1;
@@ -48,6 +54,7 @@ public class PolicyUtils {
     LOG.info("Stateless Task running {}, Stateful running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
       stateless, stateful, offpending, offloaded, deoffpending, taskExecutorMap.size());
 
-    return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks, statelessRunningTasks, statefulRunningTasks);
+    return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending,
+      stateless, runningTasks, statelessRunningTasks, statefulRunningTasks, taskIdTaskExecutorMap);
   }
 }

@@ -11,6 +11,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.resolver.NameResolver;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -23,6 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class OffloadingHandler {
 
@@ -66,9 +68,17 @@ public final class OffloadingHandler {
 
   private transient CountDownLatch workerInitLatch;
 
-	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
+  private final boolean isSf;
+
+  private String nameServerAddr;
+  private int nameServerPort;
+  private String newExecutorId;
+
+	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
+                           final boolean isSf) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
+    this.isSf = isSf;
 
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -86,6 +96,15 @@ public final class OffloadingHandler {
     this.status = LambdaStatus.INIT;
     //this.classLoaderCallable = classLoaderCallable;
 	}
+
+	public void setNameserverAddr(final String addr, final int port) {
+	  this.nameServerAddr = addr;
+	  this.nameServerPort = port;
+  }
+
+  public void setNewExecutorId(final String id) {
+	  this.newExecutorId = id;
+  }
 
   private Channel channelOpen(final Map<String, Object> input) {
     // 1) connect to the VM worker
@@ -349,6 +368,27 @@ public final class OffloadingHandler {
     @Override
     public synchronized void onNext(final OffloadingEvent nemoEvent) {
       switch (nemoEvent.getType()) {
+        case VM_SCALING_INFO: {
+          // It receives global information such as name server address ...
+          final ByteBuf byteBuf = nemoEvent.getByteBuf();
+          final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+          final DataInputStream dataInputStream = new DataInputStream(bis);
+          try {
+            nameServerAddr = dataInputStream.readUTF();
+            nameServerPort = dataInputStream.readInt();
+            newExecutorId = dataInputStream.readUTF();
+
+            System.out.println(
+              "VM Scaling info..  nameServerAddr: " + nameServerAddr
+                + ", nameSeverPort: " + nameServerPort
+              + ", executorID: " + newExecutorId);
+
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          break;
+        }
         case WORKER_INIT: {
           System.out.println("Worker init... bytes: " + nemoEvent.getByteBuf().readableBytes());
           final long st = System.currentTimeMillis();
@@ -383,7 +423,8 @@ public final class OffloadingHandler {
           // TODO: OffloadingTransform that receives data from parent tasks should register its id
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
-            new LambdaRuntimeContext(lambdaEventHandlerMap, this), outputCollector);
+            new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
+              nameServerAddr, nameServerPort, newExecutorId), outputCollector);
 
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 

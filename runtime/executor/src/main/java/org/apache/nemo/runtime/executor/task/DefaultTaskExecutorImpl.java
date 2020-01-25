@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.ExecutorMetrics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.dag.DAG;
@@ -44,12 +43,11 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
@@ -71,7 +69,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -450,7 +447,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskLocationMap,
         executorThread,
         allFetchers,
-        scalingOutCounter));
+        scalingOutCounter,
+        pipeManagerWorker.getTaskExecutorIdMap()));
 
     } else {
       offloader = Optional.empty();

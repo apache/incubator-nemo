@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.common;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.TaskLoc;
 
@@ -13,7 +13,7 @@ public final class TaskLocationMap implements Serializable {
   public final Map<String, TaskLoc> locationMap;
 
   @Inject
-  private TaskLocationMap() {
+  public TaskLocationMap() {
     this.locationMap = new ConcurrentHashMap<>();
   }
 }

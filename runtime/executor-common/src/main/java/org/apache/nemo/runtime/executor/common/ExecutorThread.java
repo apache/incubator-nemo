@@ -39,6 +39,8 @@ public final class ExecutorThread {
 
   public final ExecutorService decoderThread = Executors.newSingleThreadExecutor();
 
+  private final String executorId;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
@@ -53,6 +55,7 @@ public final class ExecutorThread {
     this.queue = new ConcurrentLinkedQueue<>();
     this.sourceTasks = new ArrayList<>();
     this.pendingSourceTasks = new ArrayList<>();
+    this.executorId = executorId;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -239,6 +242,15 @@ public final class ExecutorThread {
     finished = true;
 
     LOG.info("Closing executor thread...");
+
+    while (!queue.isEmpty()) {
+      LOG.info("Waiting for executor {}, numEvent: {}",  executorId, queue);
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
     while (!closed) {
       try {

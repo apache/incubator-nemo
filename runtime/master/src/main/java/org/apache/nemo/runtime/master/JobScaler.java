@@ -3,14 +3,11 @@ package org.apache.nemo.runtime.master;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ScalingPolicyParameters;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.common.ir.edge.Stage;
-import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.common.TaskLocationMap;
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -29,7 +26,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
-import static org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty.Value.Shuffle;
+import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 
 public final class JobScaler {
 
@@ -256,7 +253,11 @@ public final class JobScaler {
                       scalingThp = throughput;
 
                       //scalingOutBasedOnKeys(burstiness);
-                      scalingOutConsideringKeyAndComm(throughput, recentInputRate);
+                      if (evalConf.offloadingType.equals("vm")) {
+                        scalingOutToVms(throughput, recentInputRate);
+                      } else {
+                        scalingOutConsideringKeyAndComm(throughput, recentInputRate);
+                      }
 
                       consecutive = 0;
                       isScaling.set(true);
@@ -386,16 +387,36 @@ public final class JobScaler {
         .build());
     }
 
+    for (final Map.Entry<String, String> entry : taskScheduledMap.getTaskExecutorIdMap().entrySet()) {
+      builder.addTaskExecutorId(ControlMessage.TaskExecutorIdEntryMessage
+        .newBuilder()
+        .setTaskId(entry.getKey())
+        .setExecutorId(entry.getValue())
+        .build());
+    }
+
     return builder.build();
   }
 
+
+  private int getLocInt(final TaskLoc loc) {
+    if (loc == VM) {
+      return 0;
+    } else if (loc == SF) {
+      return 1;
+    } else if (loc == VM_SCALING) {
+      return 2;
+    } else {
+      throw new RuntimeException("Invalid location " + loc);
+    }
+  }
 
   private List<ControlMessage.TaskLocation> encodeTaskLocationMap() {
     final List<ControlMessage.TaskLocation> list = new ArrayList<>(taskLocationMap.locationMap.size());
     for (final Map.Entry<String, TaskLoc> entry : taskLocationMap.locationMap.entrySet()) {
       list.add(ControlMessage.TaskLocation.newBuilder()
         .setTaskId(entry.getKey())
-        .setIsVm(entry.getValue() == VM)
+        .setLocation(getLocInt(entry.getValue()))
         .build());
     }
     return list;
@@ -575,6 +596,131 @@ public final class JobScaler {
     //TODO: add overhead
     final long overhead = (long) (alpha * relayEvents);
     return overhead;
+  }
+
+  private void scalingOutToVms(final long thp, final long input_rate) {
+    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
+
+    int offloadingCnt = 0;
+
+    final double ratio = (1 - ((double)thp * evalConf.scalingAlpha / input_rate));
+
+    // # of vm scaling workers for each vm
+    final int numWorkers = (int) Math.ceil((1 / ratio));
+    final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+
+    LOG.info("ratio {}, # of vm scaling workers: {}", ratio, numWorkers);
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+
+      workerOffloadTaskMap.put(representer, new HashMap<>());
+
+      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
+
+      final List<ControlMessage.TaskStatInfo> taskStatInfos = executorTaskStatMap.get(representer);
+      final long totalComputation = taskStatInfos.stream().map(info -> info.getComputation())
+        .reduce(0L, (x,y) -> x + y);
+
+      LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
+
+      final long totalOffloadComputation = (long) (totalComputation * ratio);
+
+      LOG.info("Offloading ratio: {}, alpha: {}, input_rate: {}, thp: {}", ratio, evalConf.scalingAlpha, input_rate, thp);
+
+      final List<ControlMessage.TaskStatInfo> copyInfos;
+      copyInfos = shuffle(taskStatInfos);
+
+      LOG.info("Total comp: {}, offload comp: {}", totalComputation, totalOffloadComputation);
+
+      int i = 0;
+      long offloadComputation = 0;
+      final long compForEachVmScalingWorker = totalOffloadComputation / numWorkers;
+      while (offloadComputation < totalOffloadComputation && i < copyInfos.size()) {
+
+        final int executorIndex = Math.min((int) (offloadComputation / compForEachVmScalingWorker),
+          numWorkers - 1);
+
+        final String newExecutorId = representer.getExecutorId() + "-" + executorIndex;
+
+        final ControlMessage.TaskStatInfo taskStatInfo = copyInfos.get(i);
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskStatInfo.getTaskId());
+        offloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
+        final List<String> offloadTask = offloadTaskMap.get(stageId);
+
+        final TaskLoc loc = taskLocationMap.locationMap.get(taskStatInfo.getTaskId());
+        LOG.info("Offloading {}, key {}, comp {}, output {}, Executor {}",
+          taskStatInfo.getTaskId(),
+          taskStatInfo.getNumKeys(),
+          taskStatInfo.getComputation(),
+          taskStatInfo.getOutputElements(),
+          newExecutorId);
+
+        if (loc == VM) {
+          long overhead = 0;
+
+          if (overhead < taskStatInfo.getComputation()) {
+            offloadingCnt += 1;
+            offloadTask.add(taskStatInfo.getTaskId());
+            taskLocationMap.locationMap.put(taskStatInfo.getTaskId(), VM_SCALING);
+            offloadComputation += taskStatInfo.getComputation();
+
+            taskExecutorIdMap.put(taskStatInfo.getTaskId(), newExecutorId);
+
+            LOG.info("Task offloading overhead {}, computation {}, offloadComp {}",
+              overhead, taskStatInfo.getComputation(), offloadComputation);
+          }
+        }
+
+        i += 1;
+      }
+    }
+
+    LOG.info("Total offloading count: {}", offloadingCnt);
+
+    LOG.info("TaskExecutorIdMap: {}", taskExecutorIdMap);
+
+    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
+
+    int i = 0;
+    for (final Map.Entry<ExecutorRepresenter,
+      Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
+      scalingExecutorCnt.getAndIncrement();
+
+      final ExecutorRepresenter representer = entry.getKey();
+      final Map<String, List<String>> offloadTaskMap = entry.getValue();
+
+      // scaling out message
+      LOG.info("Send scaling out message {} to {}", entry.getValue(),
+        representer.getExecutorId());
+
+      i += 1;
+
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .build());
+      });
+
+
+      /*
+      if (i % 4 == 0) {
+        if (evalConf.offloadingType.equals("vm")) {
+          try {
+            LOG.info("Sleep for request limit");
+            Thread.sleep(7500);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+      */
+
+    }
   }
 
   private void scalingOutConsideringKeyAndComm(final long thp, final long input_rate) {

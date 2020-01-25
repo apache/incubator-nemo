@@ -21,11 +21,13 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
 
+import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.nemo.common.TaskLoc.VM;
+import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -49,17 +51,20 @@ public final class RemoteByteOutputContext extends AbstractRemoteByteOutputConte
   public RemoteByteOutputContext(final String remoteExecutorId,
                                  final ContextId contextId,
                                  final byte[] contextDescriptor,
-                                 final ContextManager contextManager) {
-    super(remoteExecutorId, contextId, contextDescriptor, contextManager, VM, VM, "");
+                                 final ContextManager contextManager,
+                                 final TaskLocationMap taskLocationMap) {
+    super(remoteExecutorId, contextId, contextDescriptor,
+      contextManager, VM, VM, "", taskLocationMap);
     this.vmChannel = contextManager.getChannel();
   }
 
   @Override
   protected void setupOutputChannelToParentVM(ByteTransferContextSetupMessage msg, TaskLoc sendDataTo) {
 
-    if (sendDataTo.equals(VM)) {
+    if (sendDataTo.equals(VM) || sendDataTo.equals(VM_SCALING)) {
       // sf -> vm
-      // send ack to the vm channel
+      // send ack to the vm channel (why?)
+
       //LOG.info("Sending ack from parent stop output to ");
       final ByteTransferContextSetupMessage ackMessage =
         new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
