@@ -58,9 +58,8 @@ public final class SkewReshapingPass extends ReshapingPass {
     // TODO #210: Data-aware dynamic optimization at run-time
     dag.topologicalDo(v -> {
       // Incoming shuffle edges grouped by the AdditionalOutputTagProperty.
-      final Function<IREdge, String> groupingFunction = irEdge -> {
-        return irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);
-      };
+      final Function<IREdge, String> groupingFunction = irEdge ->
+        irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);
       final Map<String, Set<IREdge>> shuffleEdgesGroupedByTag = dag.getIncomingEdgesOf(v).stream()
         .filter(e -> CommunicationPatternProperty.Value.SHUFFLE
           .equals(e.getPropertyValue(CommunicationPatternProperty.class).get()))
@@ -76,7 +75,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         // Insert the vertices
         final TriggerVertex trigger = new TriggerVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor));
         final MessageAggregatorVertex mav =
-          new MessageAggregatorVertex(() -> new HashMap(), SkewHandlingUtil.getMessageAggregator());
+          new MessageAggregatorVertex(HashMap::new, SkewHandlingUtil.getMessageAggregator());
         dag.insert(trigger, mav, SkewHandlingUtil.getEncoder(representativeEdge),
           SkewHandlingUtil.getDecoder(representativeEdge), shuffleEdgeGroup, shuffleEdgeGroup);
       }

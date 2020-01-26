@@ -33,6 +33,7 @@ import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.types.StructType;
+import scala.Serializable;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
@@ -46,7 +47,8 @@ import java.util.stream.Stream;
 /**
  * A simple version of the Spark session, containing SparkContext that contains SparkConf.
  */
-public final class SparkSession extends org.apache.spark.sql.SparkSession implements NemoSparkUserFacingClass {
+public final class SparkSession extends org.apache.spark.sql.SparkSession
+    implements NemoSparkUserFacingClass, Serializable {
   private final LinkedHashMap<String, Object[]> datasetCommandsList;
   private final Map<String, String> initialConf;
   private final AtomicBoolean isUserTriggered;

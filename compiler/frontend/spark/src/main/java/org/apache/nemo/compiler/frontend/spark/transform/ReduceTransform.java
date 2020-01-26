@@ -34,6 +34,7 @@ import java.util.Iterator;
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private OutputCollector<T> outputCollector;
+  // TODO #431: Handle states in Transforms better
   private T result;
 
   /**
@@ -41,14 +42,15 @@ public final class ReduceTransform<T> implements Transform<T, T> {
    *
    * @param func function to run for the reduce transform.
    */
+  // TODO #432: ReduceTransform Unit Test
   public ReduceTransform(final Function2<T, T, T> func) {
     this.func = func;
-    this.result = null;
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
     this.outputCollector = oc;
+    this.result = null;
   }
 
   @Override

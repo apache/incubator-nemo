@@ -123,7 +123,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   @Override
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
-    LOG.debug("metric {} is just arrived!", metricField);
+    LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
       case "serializedReadBytes":
         setSerializedReadBytes(SerializationUtils.deserialize(metricValue));
