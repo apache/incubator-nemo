@@ -294,7 +294,7 @@ public final class LoopVertex extends IRVertex {
    * @return whether or not the loop termination condition has been met.
    */
   public Boolean loopTerminationConditionMet(final Integer intPredicateInput) {
-    return maxNumberOfIterations <= 0 || terminationCondition.test(intPredicateInput);
+    return maxNumberOfIterations <= 0 || (terminationCondition != null && terminationCondition.test(intPredicateInput));
   }
 
   /**
