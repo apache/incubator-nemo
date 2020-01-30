@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambdaexecutor.general;
+package org.apache.nemo.offloading.workers.vm;
 
 import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
@@ -17,24 +17,34 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTaskExecutor;
+import org.apache.reef.io.network.naming.NameResolver;
+import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
+import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class OffloadingExecutor implements OffloadingTransform<Object, Object> {
+public final class VmOffloadingExecutor implements OffloadingTransform<Object, Object> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutor.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(VmOffloadingExecutor.class.getName());
 
   private final int executorThreadNum;
   private List<ExecutorThread> executorThreads;
@@ -61,11 +71,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final ConcurrentMap<TaskExecutor, Long> taskExecutorStartTimeMap;
   private final Map<TransferKey, Integer> taskTransferIndexMap;
 
-  private final String relayServerAddress;
-  private final int relayServerPort;
   private final int rendevousServerPort;
 
-  private transient RelayServerClient relayServerClient;
   private transient RendevousServerClient rendevousServerClient;
   private final TaskLocationMap taskLocationMap;
   private final Map<String, TaskLoc> taskLocMap;
@@ -76,29 +83,28 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private transient OutputWriterFlusher outputWriterFlusher;
 
-  private final Map<String, Pair<String, Integer>> relayServerInfo;
-
-  //private final List<OffloadingTask> pendingTask;
-  //private final List<ReadyTask> readyTasks;
-
   private final String rendevousServerAddress;
 
   private transient ExecutorService executorStartService;
 
   private final TaskLoc myLocation;
 
-  public OffloadingExecutor(final int executorThreadNum,
-                            final Map<String, InetSocketAddress> executorAddressMap,
-                            final Map<String, Serializer> serializerMap,
-                            final Map<String, String> taskExecutorIdMap,
-                            final Map<TransferKey, Integer> taskTransferIndexMap,
-                            final String relayServerAddress,
-                            final int relayServerPort,
-                            final String rendevousServerAddress,
-                            final int rendevousServerPort,
-                            final String executorId,
-                            final Map<String, Pair<String, Integer>> relayServerInfo,
-                            final TaskLoc myLocation) {
+  private final String nameServerAddr;
+  private final int nameServerPort;
+
+  private final NameResolver nameResolver;
+
+  public VmOffloadingExecutor(final int executorThreadNum,
+                              final Map<String, InetSocketAddress> executorAddressMap,
+                              final Map<String, Serializer> serializerMap,
+                              final Map<String, String> taskExecutorIdMap,
+                              final Map<TransferKey, Integer> taskTransferIndexMap,
+                              final String rendevousServerAddress,
+                              final int rendevousServerPort,
+                              final String nameServerAddr,
+                              final int nameServerPort,
+                              final String executorId,
+                              final TaskLoc myLocation) {
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
     this.executorId = executorId;
@@ -108,14 +114,24 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskAssignedMap = new ConcurrentHashMap<>();
     this.taskExecutorStartTimeMap = new ConcurrentHashMap<>();
-    this.relayServerAddress = relayServerAddress;
-    this.relayServerPort = relayServerPort;
     this.rendevousServerAddress = rendevousServerAddress;
     this.rendevousServerPort = rendevousServerPort;
+    this.nameServerAddr = nameServerAddr;
+    this.nameServerPort = nameServerPort;
     this.taskLocationMap = new TaskLocationMap();
     this.taskLocMap = taskLocationMap.locationMap;
-    this.relayServerInfo = relayServerInfo;
     this.myLocation = myLocation;
+
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    jcb.bindNamedParameter(NameResolverNameServerAddr.class, nameServerAddr);
+    jcb.bindNamedParameter(NameResolverNameServerPort.class, nameServerPort + "");
+    final Injector injector = Tang.Factory.getTang().newInjector(jcb.build());
+    try {
+      this.nameResolver = injector.getInstance(NameResolver.class);
+    } catch (InjectionException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -133,35 +149,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
-
-    final boolean isSf = runtimeContext.getIsSf();
-
-    /*
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      final OperatingSystemMXBean bean =
-        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-
-      final double cpuLoad = bean.getProcessCpuLoad();
-
-      if (cpuLoad > 0.78) {
-        if (!Throttled.getInstance().getThrottled()) {
-          System.out.println("throttle true");
-          Throttled.getInstance().setThrottle(true);
-        }
-      }
-
-      if (cpuLoad < 0.65) {
-        if (Throttled.getInstance().getThrottled()) {
-          System.out.println("throttle false");
-          Throttled.getInstance().setThrottle(false);
-        }
-      }
-    }, 1, 1, TimeUnit.SECONDS);
-    */
-
    LOG.info("ExecutorIdMap: {}", taskExecutorIdMap);
-
 
     LOG.info("ExecutorAddressMap: {}", executorAddressMap);
 
@@ -225,80 +213,22 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         taskTransferIndexMap, inputContexts, outputContexts,
         outputWriterFlusher, myLocation, taskLocationMap);
 
-    if (isSf) {
-      // this executor is running on sf worker
-      final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
-        new RelayServerClientChannelInitializer(channelGroup,
-          controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-          taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, taskLocationMap);
+    // this executor is running on vm scaling worker
+    this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
 
-      final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
-      final Bootstrap clientBootstrap = new Bootstrap()
-        .group(clientGroup)
-        .channel(NioSocketChannel.class)
-        .handler(relayServerClientChannelInitializer)
-        .option(ChannelOption.SO_REUSEADDR, true);
+    byteTransport = new VMScalingLambdaByteTransport(
+      executorId, selector, initializer, executorAddressMap, channelGroup, "none",
+      0, nameResolver, false);
 
+    final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
 
-      this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
+    initializer.setByteTransfer(byteTransfer);
 
-      this.relayServerClient = new RelayServerClient(
-        clientGroup, clientBootstrap, relayServerAddress, relayServerPort, relayServerInfo, rendevousServerClient);
+    pipeManagerWorker =
+      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, null, false);
 
-      initializer.setRelayServerClient(relayServerClient);
-      relayServerClientChannelInitializer.setRelayServerClient(relayServerClient);
-
-      byteTransport = new LambdaByteTransport(
-        executorId, selector, initializer, executorAddressMap, channelGroup, relayServerAddress, relayServerPort, isSf);
-
-      final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
-
-      initializer.setByteTransfer(byteTransfer);
-      relayServerClientChannelInitializer.setByteTransfer(byteTransfer);
-
-      pipeManagerWorker =
-        new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient, isSf);
-
-      intermediateDataIOFactory =
-        new IntermediateDataIOFactory(pipeManagerWorker);
-    } else {
-
-      /*
-      try {
-        final String nameServerAddr = runtimeContext.getNameServerAddr();
-        final int nameServerPort = runtimeContext.getNameServerPort();
-        final String newExecutorId = runtimeContext.getNewExecutorId();
-        executorId = newExecutorId;
-
-        final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
-        jcb.bindNamedParameter(NameResolverNameServerAddr.class, nameServerAddr);
-        jcb.bindNamedParameter(NameResolverNameServerPort.class, nameServerPort + "");
-        final Injector injector = Tang.Factory.getTang().newInjector(jcb.build());
-        final NameResolver nameResolver = injector.getInstance(NameResolver.class);
-
-        // this executor is running on vm scaling worker
-        this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
-
-        byteTransport = new LambdaByteTransport(
-          newExecutorId, selector, initializer, executorAddressMap, channelGroup, relayServerAddress,
-          relayServerPort, nameResolver, isSf);
-
-        final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
-
-        initializer.setByteTransfer(byteTransfer);
-
-        pipeManagerWorker =
-          new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient, isSf);
-
-        intermediateDataIOFactory =
-          new IntermediateDataIOFactory(pipeManagerWorker);
-      } catch (final InjectionException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-      */
-    }
-
+    intermediateDataIOFactory =
+      new IntermediateDataIOFactory(pipeManagerWorker);
   }
 
   private TaskExecutor findTaskExecutor(final String taskId) {
@@ -443,10 +373,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
 
     byteTransport.close();
-
-    if (relayServerClient != null) {
-      relayServerClient.close();
-    }
 
     rendevousServerClient.close();
     LOG.info("End of byte transport");

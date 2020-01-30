@@ -201,8 +201,6 @@ public final class PipeManagerWorker {
           dstTaskIndex,
           getNumOfPipeToWait(runtimeEdge));
 
-
-
       final String myStage = ((StageEdge) runtimeEdge).getDst().getId();
       final String myTaskId = RuntimeIdManager.generateTaskId(myStage, dstTaskIndex, 0);
 

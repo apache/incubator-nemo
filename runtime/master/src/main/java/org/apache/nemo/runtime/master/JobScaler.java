@@ -1,13 +1,9 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ScalingPolicyParameters;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -85,11 +81,14 @@ public final class JobScaler {
 
   private final EvalConf evalConf;
 
+  private final VMWorkerManagerInMaster vmWorkerManagerInMaster;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
                     final TaskLocationMap taskLocationMap,
                     final TaskOffloadingManager taskOffloadingManager,
+                    final VMWorkerManagerInMaster vmWorkerManagerInMaster,
                     final EvalConf evalConf) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -99,6 +98,7 @@ public final class JobScaler {
     this.executorCpuUseMap = new HashMap<>();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
+    this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -724,6 +724,15 @@ public final class JobScaler {
   }
 
   private void scalingOutConsideringKeyAndComm(final long thp, final long input_rate) {
+
+    final double ratio = (1 - (thp * evalConf.scalingAlpha) / input_rate);
+    // # of vm scaling workers for each vm
+    final int numWorkers = (int) Math.ceil((1 / ratio));
+
+    // create vm workers
+    final List<CompletableFuture<VMScalingWorker>> workerList = vmWorkerManagerInMaster.createWorkers(numWorkers);
+    LOG.info("ratio {}, # of vm scaling workers: {}", ratio, numWorkers);
+
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
 
     int offloadingCnt = 0;
@@ -741,7 +750,6 @@ public final class JobScaler {
 
       LOG.info("Task stats of executor {}: {}", representer.getExecutorId(), taskStatInfos);
 
-      final double ratio = (1 - (thp * evalConf.scalingAlpha) / input_rate);
       final long totalOffloadComputation = (long) (totalComputation * ratio);
 
       LOG.info("Offloading ratio: {}, alpha: {}, input_rate: {}, thp: {}", ratio, evalConf.scalingAlpha, input_rate, thp);

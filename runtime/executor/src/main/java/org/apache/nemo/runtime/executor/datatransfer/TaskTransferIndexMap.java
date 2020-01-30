@@ -1,13 +1,8 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.TransferKey;
+import org.apache.nemo.common.TransferKey;
 
 import javax.inject.Inject;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 

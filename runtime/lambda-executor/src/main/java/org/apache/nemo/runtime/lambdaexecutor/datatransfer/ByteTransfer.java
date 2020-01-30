@@ -36,7 +36,7 @@ public final class ByteTransfer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransfer.class);
 
-  private final LambdaByteTransport byteTransport;
+  private final ScalingByteTransport byteTransport;
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Future, ContextManager> channelAndContextManagerMap =
     new ConcurrentHashMap<>();
@@ -47,7 +47,7 @@ public final class ByteTransfer {
    * Creates a byte transfer.
    * @param byteTransport provides channels to other executors
    */
-  public ByteTransfer(final LambdaByteTransport byteTransport,
+  public ByteTransfer(final ScalingByteTransport byteTransport,
                       final String localExecutorId) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;

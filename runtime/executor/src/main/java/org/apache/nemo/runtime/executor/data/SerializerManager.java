@@ -18,6 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.DecodeStreamChainer;
 import org.apache.nemo.runtime.executor.common.EncodeStreamChainer;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -31,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,11 +52,14 @@ public final class SerializerManager implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
   public final ConcurrentMap<String, Serializer> runtimeEdgeIdToSerializer = new ConcurrentHashMap<>();
 
+  private final PersistentConnectionToMasterMap toMaster;
+
   /**
    * Constructor.
    */
   @Inject
-  private SerializerManager() {
+  private SerializerManager(PersistentConnectionToMasterMap toMaster) {
+    this.toMaster = toMaster;
   }
 
   /**
@@ -99,6 +110,23 @@ public final class SerializerManager implements Serializable {
     final Serializer serializer =
         new Serializer(encoderFactory, decoderFactory, encodeStreamChainers, decodeStreamChainers);
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
+
+    try {
+      final byte[] b = SerializationUtils.serialize(serializer);
+
+      toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RegisterSerializerIndex)
+          .setRegisterSerializerMsg(ControlMessage.RegisterSerializerMessage.newBuilder()
+            .setRuntimeEdgeId(runtimeEdgeId)
+            .setSerializer(ByteString.copyFrom(b))
+            .build())
+          .build());
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

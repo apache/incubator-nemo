@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common.datatransfer;
+package org.apache.nemo.common;
 
 import java.io.Serializable;
 import java.util.Objects;

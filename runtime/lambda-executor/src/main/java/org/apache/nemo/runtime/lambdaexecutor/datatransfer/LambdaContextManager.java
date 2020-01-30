@@ -25,6 +25,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;

@@ -106,6 +106,15 @@ enum MessageType {
 
     Throttling = 33;
 
+    // for trasnfer index
+    RegisterTransferIndex = 34; // worker -> master
+    LookupTransferIndex = 35; // worker -> master
+    ReturnTransferIndex = 36; // master -> worker
+
+    // for serializer index
+    RegisterSerializerIndex = 37; // worker -> master
+    LookupSerializerIndex = 38; // worker -> master
+    ReturnSerializerIndex = 39; // master -> worker
 }
 
 message Message {
@@ -145,6 +154,14 @@ message Message {
     optional TaskStatMessage taskStatMsg = 33;
 
     optional BroadcastInfoMessage broadcastInfoMsg = 34;
+
+    optional RegisterTransferIndexMessage registerTransferIndexMsg = 35;
+    optional LookupTransferIndexMesssage lookupTransferIndexMsg = 36;
+    optional ReturnTransferIndexMessage returnTransferIndexMsg = 37;
+
+    optional RegisterSerializerMessage registerSerializerMsg = 38;
+    optional LookupSerializerMesssage lookupSerializerMsg = 39;
+    optional ReturnSerializerMessage returnSerializerMsg = 40;
 }
 
 message BroadcastInfoMessage {
@@ -420,4 +437,37 @@ message GlobalExecutorAddressInfoMessage {
   repeated LocalExecutorAddressInfoMessage infos = 1;
   repeated string vmAddresses = 2;
   repeated string vmIds = 3;
+}
+
+message TransferKeyProto {
+  required string edgeId = 1;
+  required int32 srcTaskIndex = 2;
+  required int32 dstTaskIndex = 3;
+  required bool isOutputTransfer = 4;
+}
+
+message RegisterTransferIndexMessage {
+  required TransferKeyProto key = 1;
+  required int32 index = 2;
+}
+
+message ReturnTransferIndexMessage {
+  required int32 index = 1;
+}
+
+message LookupTransferIndexMesssage {
+  required TransferKeyProto key = 1;
+}
+
+message RegisterSerializerMessage {
+  required string runtimeEdgeId = 1;
+  required bytes serializer = 2;
+}
+
+message ReturnSerializerMessage {
+  required bytes serializer = 1;
+}
+
+message LookupSerializerMesssage {
+  required string runtimeEdgeId = 1;
 }

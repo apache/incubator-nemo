@@ -1,5 +1,6 @@
 package org.apache.nemo.offloading.workers.vm;
 
+import com.google.protobuf.ByteString;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -11,18 +12,25 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.offloading.common.OffloadingHandler;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskLoc;
+import org.apache.nemo.common.TransferKey;
+import org.apache.nemo.common.VMWorkerConf;
 
+import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorInputDecoder;
+import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputEncoder;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class VMWorker {
   private static final Logger LOG = LoggerFactory.getLogger(VMWorker.class.getName());
@@ -37,67 +45,90 @@ public class VMWorker {
   private EventLoopGroup serverWorkerGroup;
   private Channel acceptor;
 
-  private final Map<String, OffloadingHandler.LambdaEventHandler> lambdaEventHandlerMap;
-
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
 
+  private final OffloadingDecoder decoder;
+  private final OffloadingEncoder outputEncoder;
 
-  private String nameServerAddr;
-  private int nameServerPort = 0;
-  private String newExecutorId;
-
-  private OffloadingHandler offloadingHandler;
+  private VmOffloadingExecutor executor;
 
   private VMWorker() {
 
-    this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
+    serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
+      new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
+    serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
+      new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
-      serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
-        new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-      serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-        new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
+    this.decoder = new OffloadingExecutorInputDecoder();
+    this.outputEncoder = new MiddleOffloadingOutputEncoder();
 
-      final BlockingQueue<OffloadingHandler> handlers = new LinkedBlockingQueue<>();
-
-    final BlockingQueue<OffloadingEvent> requestQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<OffloadingEvent, Channel>> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
       while (true) {
         try {
-          final OffloadingEvent event = requestQueue.take();
+          final Pair<OffloadingEvent, Channel> pair = requestQueue.take();
+          final OffloadingEvent event = pair.left();
+          final Channel c = pair.right();
           executorService.execute(() -> {
             switch (event.getType()) {
-              case CLIENT_HANDSHAKE: {
-                final OffloadingHandler handler = new OffloadingHandler(
-                  lambdaEventHandlerMap, false);
-                offloadingHandler = handler;
-                handlers.add(handler);
-                final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
-                event.getByteBuf().readBytes(bytes);
+              case CONNECT: {
+                // Initiated by master
 
-                final String str = new String(bytes);
-                System.out.println("Receive request " + str);
-                final JSONObject jsonObj = new JSONObject(str);
-                final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
-                handler.handleRequest(map);
-                break;
-              }
-              case DATA: {
-                // It receives data from upstream tasks
-                // We first retrieve taskId
+                System.out.println("Worker init... bytes: " + event.getByteBuf().readableBytes());
+                final long st = System.currentTimeMillis();
+                // load transforms
                 final ByteBuf byteBuf = event.getByteBuf();
-                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-                final DataInputStream dataInputStream = new DataInputStream(bis);
-                try {
-                  final String taskId = dataInputStream.readUTF();
-                  LOG.info("Receive data for task {}", taskId);
+                final VMWorkerConf vmWorkerConf = VMWorkerConf.decode(byteBuf);
 
-                  lambdaEventHandlerMap.get(taskId).onNext(event);
+                try {
+                  final Map<String, InetSocketAddress> executorAddrMap1 =
+                    vmWorkerConf.executorAddrMap.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> {
+                      final Pair<String, Integer> p = e.getValue();
+                      return new InetSocketAddress(p.left(), p.right());
+                    }));
+
+                  final Map<String, Serializer> serializerMap1 =
+                    vmWorkerConf.serializerMap.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> {
+                      final byte[] b = e.getValue();
+                      return SerializationUtils.deserialize(b);
+                    }));
+
+                  final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                  final String executorId = bis.readUTF();
+
+                  LOG.info("My executor id {}", executorId);
+
+                  executor =
+                    new VmOffloadingExecutor(vmWorkerConf.executorThreadNum,
+                      executorAddrMap1,
+                      serializerMap1,
+                      vmWorkerConf.taskExecutorIdMap,
+                      vmWorkerConf.taskTransferIndexMap,
+                      vmWorkerConf.rendevousServerAddr,
+                      vmWorkerConf.rendevousServerPort,
+                      vmWorkerConf.nameServerAddr,
+                      vmWorkerConf.nameServerPort,
+                      executorId,
+                      TaskLoc.VM_SCALING);
+
+                  byteBuf.release();
+
+                  executor.prepare(null, new VMOutputCollector(c));
+
+                  System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
+
+                  c.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CONNECT_DONE, new byte[0], 0));
                 } catch (IOException e) {
                   e.printStackTrace();
                   throw new RuntimeException(e);
                 }
                 break;
+              }
+              case DATA: {
+                throw new UnsupportedOperationException("data unsupported");
               }
               default:
                 throw new RuntimeException("unsupported type: " + event.getType());
@@ -142,10 +173,10 @@ public class VMWorker {
   final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
     private final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
     private final ChannelGroup channelGroup;
-    private final BlockingQueue<OffloadingEvent> requestQueue;
+    private final BlockingQueue<Pair<OffloadingEvent, Channel>> requestQueue;
 
     NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                  final BlockingQueue<OffloadingEvent> requestQueue) {
+                                  final BlockingQueue<Pair<OffloadingEvent, Channel>> requestQueue) {
       this.channelGroup = channelGroup;
       this.requestQueue = requestQueue;
     }
@@ -164,7 +195,7 @@ public class VMWorker {
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-      requestQueue.add((OffloadingEvent)msg);
+      requestQueue.add(Pair.of((OffloadingEvent)msg, ctx.channel()));
     }
 
     /**

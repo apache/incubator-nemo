@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.google.protobuf.ByteString;
+import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -30,7 +32,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.RegisterTransferIndex;
 
 /**
  * Master-side pipe manager.
@@ -43,6 +49,9 @@ public final class TransferIndexMaster {
   private final AtomicInteger contextIndex;
   //private final AtomicInteger outputContextIndex;
 
+  public final Map<TransferKey, Integer> transferIndexMap;
+  public final Map<String, byte[]> serializerMap;
+
   /**
    * Constructor.
    * @param masterMessageEnvironment the message environment.
@@ -53,6 +62,8 @@ public final class TransferIndexMaster {
       new TransferIndexReceiver());
 
     this.contextIndex = new AtomicInteger();
+    this.transferIndexMap = new ConcurrentHashMap<>();
+    this.serializerMap = new ConcurrentHashMap<>();
     //this.outputContextIndex = new AtomicInteger();
   }
 
@@ -62,7 +73,25 @@ public final class TransferIndexMaster {
   public final class TransferIndexReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      throw new RuntimeException("Exception " + message);
+      switch (message.getType()) {
+        case RegisterTransferIndex: {
+          final ControlMessage.RegisterTransferIndexMessage m = message.getRegisterTransferIndexMsg();
+          final ControlMessage.TransferKeyProto keyProto = m.getKey();
+          LOG.info("Registering key and index {}/{}", keyProto, m.getIndex());
+          transferIndexMap.put(new TransferKey(keyProto.getEdgeId(),
+            keyProto.getSrcTaskIndex(), keyProto.getDstTaskIndex(),
+            keyProto.getIsOutputTransfer()), m.getIndex());
+          break;
+        }
+        case RegisterSerializerIndex: {
+          final ControlMessage.RegisterSerializerMessage m = message.getRegisterSerializerMsg();
+          final String edgeId = m.getRuntimeEdgeId();
+          final ByteString v = m.getSerializer();
+          LOG.info("Registering serializer for {}", edgeId);
+          serializerMap.put(edgeId, v.toByteArray());
+          break;
+        }
+      }
     }
 
     @Override
@@ -89,6 +118,52 @@ public final class TransferIndexMaster {
               .build());
 
           break;
+
+        case LookupTransferIndex: {
+          final ControlMessage.LookupTransferIndexMesssage m = message.getLookupTransferIndexMsg();
+          final ControlMessage.TransferKeyProto key = m.getKey();
+
+          if (!transferIndexMap.containsKey(key)) {
+            throw new RuntimeException("No transfer key registered " + key);
+          }
+
+          final int keyIndex = transferIndexMap.get(key);
+
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ReturnTransferIndex)
+              .setReturnTransferIndexMsg(ControlMessage.ReturnTransferIndexMessage
+                .newBuilder()
+                .setIndex(keyIndex)
+                .build())
+              .build());
+          break;
+        }
+
+        /*
+        case LookupSerializerIndex: {
+          final ControlMessage.LookupSerializerMesssage m = message.getLookupSerializerMsg();
+          final String key = m.getRuntimeEdgeId();
+
+          if (!serializerMap.containsKey(key)) {
+            throw new RuntimeException("No serializer key registered " + key);
+          }
+
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ReturnSerializerIndex)
+              .setReturnSerializerMsg(ControlMessage.ReturnSerializerMessage
+                .newBuilder()
+                .setSerializer(serializerMap.get(key))
+                .build())
+              .build());
+          break;
+        }
+        */
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }

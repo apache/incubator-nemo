@@ -26,6 +26,7 @@ import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -126,7 +127,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     this.toMaster = toMaster;
     this.relayServer = relayServer;
   }
-
 
   private int requestTransferIndex(final boolean isInputContext) {
     final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
@@ -296,6 +296,21 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
                   (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
 
               taskTransferIndexMap.put(key, transferIndex);
+              toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.RegisterTransferIndex)
+                  .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
+                    .setKey(ControlMessage.TransferKeyProto.newBuilder()
+                      .setEdgeId(key.edgeId)
+                      .setSrcTaskIndex(key.srcTaskIndex)
+                      .setDstTaskIndex(key.dstTaskIndex)
+                      .setIsOutputTransfer(key.isOutputTransfer)
+                      .build())
+                    .setIndex(transferIndex)
+                    .build())
+                  .build());
 
               if (isPipe) {
                 try {
@@ -476,6 +491,21 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     final int transferIndex = requestTransferIndex(true);
     //LOG.info("Requesting input transferIndex: {}", transferIndex);
     taskTransferIndexMap.put(key, transferIndex);
+    toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+        .setType(ControlMessage.MessageType.RegisterTransferIndex)
+        .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
+          .setKey(ControlMessage.TransferKeyProto.newBuilder()
+            .setEdgeId(key.edgeId)
+            .setSrcTaskIndex(key.srcTaskIndex)
+            .setDstTaskIndex(key.dstTaskIndex)
+            .setIsOutputTransfer(key.isOutputTransfer)
+            .build())
+          .setIndex(transferIndex)
+          .build())
+        .build());
 
     return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
@@ -503,6 +533,22 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
 
     taskTransferIndexMap.put(key, transferIndex);
+
+    toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+        .setType(ControlMessage.MessageType.RegisterTransferIndex)
+        .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
+          .setKey(ControlMessage.TransferKeyProto.newBuilder()
+            .setEdgeId(key.edgeId)
+            .setSrcTaskIndex(key.srcTaskIndex)
+            .setDstTaskIndex(key.dstTaskIndex)
+            .setIsOutputTransfer(key.isOutputTransfer)
+            .build())
+          .setIndex(transferIndex)
+          .build())
+        .build());
 
     return newContext(outputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,

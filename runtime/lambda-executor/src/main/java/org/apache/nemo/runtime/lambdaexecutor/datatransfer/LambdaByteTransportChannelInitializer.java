@@ -21,9 +21,9 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
