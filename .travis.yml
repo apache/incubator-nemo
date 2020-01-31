@@ -17,43 +17,34 @@
 # under the License.
 
 # .travis.yml
-sudo: required
 dist: trusty
 
-matrix:
-  include:
-    # For maven builds
-    - language: java
-      jdk:
-        - oraclejdk8
-        - oraclejdk11
-        - openjdk8
-        - openjdk11
-      before_install:
-        - sudo apt update && sudo apt install -y libgif-dev
-      install: true
-      script:
-        # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis if it's not an external PR (It's to be supported later on)
-        - if [ "$TRAVIS_PULL_REQUEST" == false ]; then travis_retry mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent $GOAL sonar:sonar -Dsonar.host.url=https://sonarcloud.io $SONAR_PROJECT_KEY; fi
-        - if [ "$TRAVIS_PULL_REQUEST" != false ]; then travis_retry mvn clean $GOAL; fi
-      cache:
-        directories:
-        - '$HOME/.m2/repository'
-        - '$HOME/.sonar/cache'
-      env:
-        - HADOOP_HOME="/"
-        - GOAL="validate"
-        - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
-
-    # For web ui build
-    - language: node_js
-      node_js:
-        - node
-      before_install:
-        - pushd webui
-        - npm install
-      script:
-        - npm test && popd
+# For maven builds
+language: java
+jdk:
+  - oraclejdk8
+  - oraclejdk11
+  - openjdk8
+  - openjdk11
+env:
+  - HADOOP_HOME="/"
+  - GOAL="validate"
+  - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
+before_install:
+  - sudo apt update && sudo apt install -y libgif-dev
+  - nvm install node  # for Web UI build
+install: true
+script:
+  # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis if it's not an external PR (It's to be supported later on)
+  - if [ "$TRAVIS_PULL_REQUEST" == false ]; then travis_retry mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent $GOAL sonar:sonar -Dsonar.host.url=https://sonarcloud.io $SONAR_PROJECT_KEY; fi
+  - if [ "$TRAVIS_PULL_REQUEST" != false ]; then travis_retry mvn clean $GOAL; fi
+  # Web UI Build
+  - pushd webui && npm install && npm test && popd
+cache:
+  directories:
+  - '$HOME/.m2/repository'
+  - '$HOME/.sonar/cache'
+  - 'webui/node_modules'  # for Web UI build
 
 notifications:
   slack:
