@@ -27,9 +27,11 @@ jdk:
   - openjdk8
   - openjdk11
 env:
-  - HADOOP_HOME="/"
-  - GOAL="validate"
-  - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
+  global:
+    - HADOOP_HOME="/"
+  local:
+    - GOAL="validate"
+    - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
   - sudo apt update && sudo apt install -y libgif-dev
   - nvm install node  # for Web UI build
