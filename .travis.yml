@@ -23,7 +23,6 @@ dist: trusty
 language: java
 jdk:
   - oraclejdk11
-  - openjdk8
   - openjdk11
 env:
   global:
