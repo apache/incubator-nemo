@@ -29,7 +29,7 @@ jdk:
 env:
   global:
     - HADOOP_HOME="/"
-  local:
+  jobs:
     - GOAL="validate"
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
