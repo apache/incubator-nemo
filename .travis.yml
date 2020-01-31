@@ -30,7 +30,6 @@ env:
   global:
     - HADOOP_HOME="/"
   jobs:
-    - GOAL="validate"
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
   - sudo apt update && sudo apt install -y libgif-dev
