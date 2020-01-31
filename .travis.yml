@@ -24,7 +24,11 @@ matrix:
   include:
     # For maven builds
     - language: java
-      jdk: oraclejdk8
+      jdk:
+        - oraclejdk8
+        - oraclejdk11
+        - openjdk8
+        - openjdk11
       before_install:
         - sudo apt update && sudo apt install -y libgif-dev
       install: true

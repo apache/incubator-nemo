@@ -442,6 +442,12 @@ final class PipelineTranslator {
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
       final HasDisplayData displayData = (builder) -> builder.add(DisplayData.item("name", beamNode.getFullName()));
+      final DoFnSchemaInformation doFnSchemaInformation;
+      if (ctx.getCurrentTransform() != null) {
+        doFnSchemaInformation = ParDoTranslation.getSchemaInformation(ctx.getCurrentTransform());
+      } else {
+        doFnSchemaInformation = DoFnSchemaInformation.create();
+      }
 
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(
@@ -453,7 +459,7 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           DisplayData.from(displayData),
-          DoFnSchemaInformation.create(),
+          doFnSchemaInformation,
           Collections.emptyMap());
       } else {
         return new PushBackDoFnTransform(
@@ -466,7 +472,7 @@ final class PipelineTranslator {
           sideInputMap,
           ctx.getPipelineOptions(),
           DisplayData.from(displayData),
-          DoFnSchemaInformation.create(),
+          doFnSchemaInformation,
           Collections.emptyMap());
       }
     } catch (final IOException e) {
