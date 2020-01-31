@@ -120,7 +120,7 @@ public final class WindowedWordCountITCase {
       .addResourceJson(executorResourceFileName)
       .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testStreamingSchedulerAndPipeSlidingWindow")
       .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
-      .build())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedSlidingWindowOutputFileName);
