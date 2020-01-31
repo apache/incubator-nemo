@@ -144,9 +144,6 @@ under the License.
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven.compiler.version}</version>
-        <configuration>
-          <release>${java.version}</release>
-        </configuration>
         <executions>
           <execution>
             <phase>compile</phase>

@@ -77,7 +77,6 @@ under the License.
         <artifactId>scala-maven-plugin</artifactId>
         <version>3.3.2</version>
         <configuration>
-          <scalaVersion>${scala.version}</scalaVersion>
           <recompileMode>incremental</recompileMode>
           <javacArgs>
             <javacArg>-Xlint:unchecked</javacArg>
@@ -108,9 +107,6 @@ under the License.
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven.compiler.version}</version>
-        <configuration>
-          <release>${java.version}</release>
-        </configuration>
         <executions>
           <execution>
             <phase>compile</phase>
