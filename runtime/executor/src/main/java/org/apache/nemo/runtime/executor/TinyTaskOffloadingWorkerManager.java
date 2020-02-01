@@ -363,10 +363,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     throw new RuntimeException("No worker that handles task " + taskId);
   }
 
-  public synchronized boolean deleteTask(final String taskId) {
+  public synchronized boolean deleteTask(final String taskId,
+                                         final boolean mvToVm) {
     LOG.info("Delete task {}", taskId);
     final TinyTaskWorker worker = findWorkerThatHandleTask(taskId);
-    if (!worker.deleteTask(taskId)) {
+    if (!worker.deleteTask(taskId, mvToVm)) {
       worker.getDeletePending().getAndIncrement();
       deletePendingWorkers.put(taskId, worker);
       LOG.info("Put task {} to pending ... size: {}, deletePending: {}",

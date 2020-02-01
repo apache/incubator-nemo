@@ -21,7 +21,7 @@ public interface Offloader {
                       final long wm,
                       final String edgeId);
 
-  public void handleEndOffloadingEvent();
+  public void handleEndOffloadingEvent(boolean moveToVmScaling);
 
   public void handleStartOffloadingEvent(TinyTaskWorker worker);
 

@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
@@ -38,4 +39,9 @@ public final class StatelessOffloadingOutputDecoder implements OffloadingDecoder
       }
       return new OffloadingResultEvent(data, watermark);
     }
+
+  @Override
+  public OffloadingResultEvent decode(ByteBuf byteBuf) throws IOException {
+    throw new UnsupportedOperationException();
   }
+}

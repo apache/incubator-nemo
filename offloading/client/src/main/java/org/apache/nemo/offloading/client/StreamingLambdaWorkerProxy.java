@@ -95,7 +95,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                   final int hasInstance = bis.readByte();
                   if (hasInstance != 0) {
                     final long st = System.currentTimeMillis();
-                    final O data = outputDecoder.decode(bis);
+                    final O data = outputDecoder.decode(msg.getByteBuf());
                     final long et = System.currentTimeMillis();
 
                     eventHandler.onNext(data);

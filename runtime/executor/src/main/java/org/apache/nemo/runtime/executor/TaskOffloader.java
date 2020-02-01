@@ -118,7 +118,7 @@ public final class TaskOffloader {
               LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
               stageOffloadingWorkerManager.endOffloading(stageId);
               //sendOffloadingDoneEvent(pair.left().getId());
-            });
+            }, false);
             iterator.remove();
             deoffloadCnt += 1;
           }

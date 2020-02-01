@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.offloading.common;
 
+import io.netty.buffer.ByteBuf;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -40,4 +42,6 @@ public interface OffloadingDecoder<T> extends Serializable {
    * @throws IOException if fail to get the instance.
    */
   T decode(InputStream inputStream) throws IOException;
+
+  T decode(ByteBuf byteBuf) throws IOException;
 }

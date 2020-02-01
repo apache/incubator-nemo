@@ -417,7 +417,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     finished = true;
   }
 
-
   private Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>> getStateAndCoderMap() {
     final Map<String, GBKFinalState> stateMap = new HashMap<>();
     final Map<String, Coder<GBKFinalState>> coderMap = new HashMap<>();
@@ -476,16 +475,21 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
           final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
 
-          LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
-          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
-            checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+
+            LOG.info("Send checkpointmark of task {} move {}/ {}", offloadingTask.taskId,
+              deleteForMove,
+              checkpointMark);
+            resultCollector.collector.emit(new KafkaOffloadingOutput(deleteForMove,
+              offloadingTask.taskId, 1, checkpointMark,
+              checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+
         } else {
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
           final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
 
-          LOG.info("Send checkpointmark of task {}  / {} to vm",
-            offloadingTask.taskId, readyTask.checkpointMark);
-          resultCollector.collector.emit(new KafkaOffloadingOutput(
+          LOG.info("Send checkpointmark of task {} move {} / {} to vm",
+            offloadingTask.taskId,  deleteForMove, readyTask.checkpointMark);
+          resultCollector.collector.emit(new KafkaOffloadingOutput(deleteForMove,
             offloadingTask.taskId, 1, readyTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
         }
       }
@@ -498,7 +502,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         stateAndCoderMap = getStateAndCoderMap();
 
       final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap, stateAndCoderMap.right()));
+      resultCollector.collector.emit(new StateOutput(
+        deleteForMove,
+        offloadingTask.taskId, stateMap, stateAndCoderMap.right()));
     }
 
     pendingFutures.clear();
@@ -760,7 +766,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void endOffloading(EventHandler<Integer> m) {
+  public void endOffloading(EventHandler<Integer> m,
+                            boolean a) {
     throw new UnsupportedOperationException();
   }
 
@@ -797,6 +804,17 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
     }
     return false;
+  }
+
+  private boolean deleteForMove = false;
+  @Override
+  public boolean deleteForMoveToVmScaling() {
+    return deleteForMove;
+  }
+
+  @Override
+  public void setDeleteForMoveToVmScaling(boolean v) {
+    deleteForMove = v;
   }
 
   @Override

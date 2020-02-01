@@ -55,6 +55,11 @@ public interface TaskExecutor extends AutoCloseable {
     // do nothing
   };
 
+  // it is used for deleting the task in lambda to check
+  // whether it is deleted for moving to vm scaling or not
+  boolean deleteForMoveToVmScaling();
+  void setDeleteForMoveToVmScaling(boolean v);
+
   public int getNumKeys();
 
   TaskMetrics getTaskMetrics();
@@ -108,7 +113,8 @@ public interface TaskExecutor extends AutoCloseable {
                        final Object worker,
                        EventHandler<Integer> offloadingDoneHandler);
 
-  void endOffloading(final EventHandler<Integer> endOffloadingHandler);
+  void endOffloading(final EventHandler<Integer> endOffloadingHandler,
+                     boolean moveToVmScaling);
 
   void execute();
 

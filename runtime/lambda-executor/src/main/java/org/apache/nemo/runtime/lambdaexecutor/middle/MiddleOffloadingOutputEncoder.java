@@ -21,11 +21,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.*;
-
 public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
 
+  public static final char OFFLOADING_RESULT = 0;
+  public static final char KAFKA_CHECKPOINT = 1;
+  public static final char HEARTBEAT = 2;
+  public static final char STATE_OUTPUT = 3;
+  public static final char OFFLOADING_DONE = 4;
+  public static final char THP = 5;
 
   public MiddleOffloadingOutputEncoder() {
   }
@@ -72,7 +76,18 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(KAFKA_CHECKPOINT);
       final KafkaOffloadingOutput output = (KafkaOffloadingOutput) data;
-      dos.writeUTF(output.taskId);
+
+      if (output.moveToVMScaling) {
+        dos.writeBoolean(output.moveToVMScaling);
+        dos.writeUTF(output.taskId);
+
+        dos.writeBoolean(output.moveToVMScaling);
+        dos.writeUTF(output.taskId);
+      } else {
+        dos.writeBoolean(output.moveToVMScaling);
+        dos.writeUTF(output.taskId);
+      }
+
       dos.writeInt(output.id);
       SerializationUtils.serialize(output.checkpointMarkCoder, dos);
       output.checkpointMarkCoder.encode(output.checkpointMark, outputStream);
@@ -95,7 +110,17 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(STATE_OUTPUT);
       final StateOutput output = (StateOutput) data;
-      dos.writeUTF(output.taskId);
+
+      if (output.moveToVmScaling) {
+        dos.writeBoolean(output.moveToVmScaling);
+        dos.writeUTF(output.taskId);
+
+        dos.writeBoolean(output.moveToVmScaling);
+        dos.writeUTF(output.taskId);
+      } else {
+        dos.writeBoolean(output.moveToVmScaling);
+        dos.writeUTF(output.taskId);
+      }
 
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
         dos.writeInt(output.stateMap.size());

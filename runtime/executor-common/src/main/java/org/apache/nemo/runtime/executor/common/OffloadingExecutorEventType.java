@@ -5,6 +5,7 @@ public final class OffloadingExecutorEventType {
     TASK_START,
     TASK_READY,
     TASK_END,
+    TASK_MOVE,
     THROTTLE,
   }
 }

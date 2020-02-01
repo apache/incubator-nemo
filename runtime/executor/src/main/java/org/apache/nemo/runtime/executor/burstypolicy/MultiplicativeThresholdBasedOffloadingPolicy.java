@@ -204,7 +204,7 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
             LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
             elem.left().endOffloading((m) -> {
               // do sth
-            });
+            }, false);
             it.remove();
             prevDeOffloadingTime = System.currentTimeMillis();
           }
@@ -341,7 +341,7 @@ public final class MultiplicativeThresholdBasedOffloadingPolicy implements TaskO
                       // do sth
                       stageOffloadingWorkerManager.endOffloading(stageId);
                       deoffloadingPendingCnt.decrementAndGet();
-                    });
+                    }, false);
                     currCpuTimeSum += avgCpuTimeSum;
                     prevDeOffloadingTime = System.currentTimeMillis();
                   }

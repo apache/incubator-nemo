@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ExecutorThread {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
 
-  private final ConcurrentLinkedQueue<TaskExecutor> newTasks;
   private final ConcurrentLinkedQueue<TaskExecutor> deletedTasks;
 
   private volatile boolean finished = false;
@@ -45,7 +44,6 @@ public final class ExecutorThread {
                         final String executorId) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-    this.newTasks = new ConcurrentLinkedQueue<>();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
     this.finishedTasks = new ArrayList<>();
     this.finishWaitingTasks = new ArrayList<>();

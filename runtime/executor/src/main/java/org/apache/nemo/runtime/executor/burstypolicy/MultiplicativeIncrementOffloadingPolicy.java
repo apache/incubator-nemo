@@ -172,7 +172,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
             LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
             elem.left().endOffloading((m) -> {
               // do sth
-            });
+            }, false);
             it.remove();
             prevDeOffloadingTime = System.currentTimeMillis();
           }
@@ -290,7 +290,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
                   taskExecutor.endOffloading((m) -> {
                     // do sth
                     stageOffloadingWorkerManager.endOffloading(stageId);
-                  });
+                  }, false);
                   currCpuTimeSum += avgCpuTimeSum;
                   prevDeOffloadingTime = System.currentTimeMillis();
                 }

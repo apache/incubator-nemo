@@ -472,7 +472,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           LOG.info("Deoffloading done for {}", offloadedTask.getId());
           stageOffloadingWorkerManager.endOffloading(stageId);
           countDownLatch.countDown();
-        });
+        }, false);
       }
     }
 

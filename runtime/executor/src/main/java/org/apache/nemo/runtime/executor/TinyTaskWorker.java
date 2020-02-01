@@ -1,26 +1,20 @@
 package org.apache.nemo.runtime.executor;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
-import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
+import org.apache.nemo.runtime.lambdaexecutor.TaskMoveEvent;
+import org.apache.nemo.runtime.lambdaexecutor.TaskEndEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class TinyTaskWorker {
@@ -131,14 +125,20 @@ public final class TinyTaskWorker {
     return pendingTasks.size() + offloadedTasks.size() == 0;
   }
 
-  public synchronized boolean deleteTask(final String taskId) {
+  public synchronized boolean deleteTask(final String taskId, final boolean mvToVm) {
     int index = findTask(offloadedTasks, taskId);
     LOG.info("Delete task !! {} , index: {}", taskId, index);
 
     if (index >= 0) {
       // SEND end message of the task!
-      final TaskEndEvent endEvent = new TaskEndEvent(taskId);
-      final ByteBuf byteBuf = endEvent.encode();
+      final ByteBuf byteBuf;
+      if (mvToVm) {
+        final TaskMoveEvent moveEvent = new TaskMoveEvent(taskId);
+        byteBuf = moveEvent.encode();
+      } else {
+        final TaskEndEvent endEvent = new TaskEndEvent(taskId);
+        byteBuf = endEvent.encode();
+      }
       offloadingWorker.execute(byteBuf, 1, false);
       offloadedTasks.remove(index);
       return false;

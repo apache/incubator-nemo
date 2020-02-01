@@ -205,7 +205,7 @@ public final class SeepTaskOffloader {
         LOG.info("End task {}", endTask);
         endTask.endOffloading((m) -> {
           // do sth
-        });
+        }, false);
       }
     }, 40, 50, TimeUnit.SECONDS);
   }

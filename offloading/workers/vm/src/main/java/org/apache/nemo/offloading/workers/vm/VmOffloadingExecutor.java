@@ -1,18 +1,11 @@
 package org.apache.nemo.offloading.workers.vm;
 
 import com.sun.management.OperatingSystemMXBean;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.*;
-import org.apache.nemo.offloading.common.LambdaRuntimeContext;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
@@ -21,7 +14,7 @@ import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
-import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
+import org.apache.nemo.runtime.lambdaexecutor.TaskEndEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTaskExecutor;
 import org.apache.reef.io.network.naming.NameResolver;

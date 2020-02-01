@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambdaexecutor.downstream;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;

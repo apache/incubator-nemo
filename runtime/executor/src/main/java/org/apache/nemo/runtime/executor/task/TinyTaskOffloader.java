@@ -164,45 +164,51 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Invalid status: " + taskStatus);
     }
 
-    final int id = output.id;
-    final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
-    LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
-      , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
+    if (output.moveToVMScaling) {
 
-    LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
+      LOG.info("Receiving task for moving to VM scaling 111 {}", output.taskId);
 
-    final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
-    final UnboundedSource oSource = readable.getUnboundedSource();
+    } else {
+      final int id = output.id;
+      final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
+      LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
+        , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
-    LOG.info("Prepare source !!! {}", oSource);
+      LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
 
-    final UnboundedSourceReadable newReadable =
-      new UnboundedSourceReadable(oSource, null, checkpointMark);
+      final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
+      final UnboundedSource oSource = readable.getUnboundedSource();
 
-    sourceVertexDataFetcher.setReadable(newReadable);
+      LOG.info("Prepare source !!! {}", oSource);
 
-    // set state
-     if (output.stateMap != null) {
-      for (final String key : output.stateMap.keySet()) {
-        LOG.info("Reset state for operator {}", key);
-        final OperatorVertex statefulOp = getStateTransformVertex(key);
-        final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
-        transform.setState(output.stateMap.get(key));
+      final UnboundedSourceReadable newReadable =
+        new UnboundedSourceReadable(oSource, null, checkpointMark);
+
+      sourceVertexDataFetcher.setReadable(newReadable);
+
+      // set state
+      if (output.stateMap != null) {
+        for (final String key : output.stateMap.keySet()) {
+          LOG.info("Reset state for operator {}", key);
+          final OperatorVertex statefulOp = getStateTransformVertex(key);
+          final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
+          transform.setState(output.stateMap.get(key));
+        }
       }
+
+      outputWriters.forEach(writer -> {
+        LOG.info("Restarting writer {}", writer);
+        writer.restart(taskId);
+      });
+
+      for (final DataFetcher dataFetcher : allFetchers) {
+        dataFetcher.restart();
+      }
+
+      kafkaOffloadingOutputs.clear();
+
+      taskStatus.set(TaskExecutor.Status.RUNNING);
     }
-
-    outputWriters.forEach(writer -> {
-      LOG.info("Restarting writer {}", writer);
-      writer.restart(taskId);
-    });
-
-    for (final DataFetcher dataFetcher : allFetchers) {
-      dataFetcher.restart();
-    }
-
-    kafkaOffloadingOutputs.clear();
-
-    taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
   @Override
@@ -211,31 +217,35 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Invalid status: " + taskStatus);
     }
 
-    if (output.stateMap != null) {
-      for (final String key : output.stateMap.keySet()) {
-        LOG.info("Set state for operator {}", key);
-        final OperatorVertex statefulOp = getStateTransformVertex(key);
-        final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
-        transform.setState(output.stateMap.get(key));
+    if (output.moveToVmScaling) {
+      LOG.info("Receiving task for moving to VM scaling 222 {}", output.taskId);
+
+    } else {
+      if (output.stateMap != null) {
+        for (final String key : output.stateMap.keySet()) {
+          LOG.info("Set state for operator {}", key);
+          final OperatorVertex statefulOp = getStateTransformVertex(key);
+          final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
+          transform.setState(output.stateMap.get(key));
+        }
       }
+      // restart input context!
+      LOG.info("Restart input context  at {}!!!", output.taskId);
+
+      outputWriters.forEach(writer -> {
+        LOG.info("Restarting writer {}", writer);
+        writer.restart(taskId);
+      });
+
+      // Source stop!!
+      // Source stop!!
+      // Source stop!!
+      for (final DataFetcher dataFetcher : allFetchers) {
+        dataFetcher.restart();
+      }
+
+      taskStatus.set(TaskExecutor.Status.RUNNING);
     }
-
-    // restart input context!
-    LOG.info("Restart input context  at {}!!!", output.taskId);
-
-    outputWriters.forEach(writer -> {
-      LOG.info("Restarting writer {}", writer);
-      writer.restart(taskId);
-    });
-
-    // Source stop!!
-    // Source stop!!
-    // Source stop!!
-    for (final DataFetcher dataFetcher : allFetchers) {
-      dataFetcher.restart();
-    }
-
-    taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
   @Override
@@ -245,12 +255,12 @@ public final class TinyTaskOffloader implements Offloader {
   }
 
   @Override
-  public synchronized void handleEndOffloadingEvent() {
+  public synchronized void handleEndOffloadingEvent(final boolean mvToVmScaling) {
 
     prevOffloadEndTime.set(System.currentTimeMillis());
 
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
-      if (tinyWorkerManager.deleteTask(taskId)) {
+      if (tinyWorkerManager.deleteTask(taskId, mvToVmScaling)) {
         // removed immediately !!
         // restart
         LOG.info("{} is not offloaded.. just restart it", taskId);

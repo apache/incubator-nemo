@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -46,4 +47,9 @@ public final class MiddleOffloadingInputDecoder implements OffloadingDecoder<Obj
         return new MiddleOffloadingPrepEvent(taskIndex);
       }
     }
+
+  @Override
+  public Object decode(ByteBuf byteBuf) throws IOException {
+    throw new UnsupportedOperationException();
   }
+}

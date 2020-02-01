@@ -218,7 +218,7 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
                 // do sth
                 LOG.info("Deoffloading done for {}", offloadedTask.getId());
                 stageOffloadingWorkerManager.endOffloading(stageId);
-              });
+              }, false);
             }
           }
 

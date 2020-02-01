@@ -345,6 +345,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     });
   }
 
+  @Override
+  public boolean deleteForMoveToVmScaling() {
+    return false;
+  }
+
+  @Override
+  public void setDeleteForMoveToVmScaling(boolean v) {
+  }
+
   public TaskMetrics getTaskMetrics() {
     return taskMetrics;
   }
@@ -516,12 +525,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public void endOffloading(final EventHandler<Integer> handler) {
+  public void endOffloading(final EventHandler<Integer> handler,
+                            final boolean moveToVMScaling) {
     endOffloadingHandler = handler;
     executorThread.queue.add(() -> {
       if (offloader.isPresent()) {
         LOG.info("Start -- Receive end offloading event {}", taskId);
-        offloader.get().handleEndOffloadingEvent();
+        offloader.get().handleEndOffloadingEvent(moveToVMScaling);
         LOG.info("End -- Receive end offloading event {}", taskId);
       }
 

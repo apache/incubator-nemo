@@ -18,11 +18,12 @@ import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
+import org.apache.nemo.runtime.lambdaexecutor.TaskMoveEvent;
 import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
-import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
+import org.apache.nemo.runtime.lambdaexecutor.TaskEndEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -369,7 +370,17 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
       taskExecutorStartTimeMap.remove(deletedTask);
 
-      executorThread.deleteTask(deletedTask);
+    } else if (event instanceof TaskMoveEvent) {
+      final TaskMoveEvent endEvent = (TaskMoveEvent) event;
+      final TaskExecutor mvTask = findTask(endEvent.taskId);
+
+      LOG.info("Receive move task event {}", endEvent.taskId);
+
+      final ExecutorThread executorThread = taskAssignedMap.remove(mvTask);
+      taskExecutorStartTimeMap.remove(mvTask);
+
+      mvTask.setDeleteForMoveToVmScaling(true);
+      executorThread.deleteTask(mvTask);
 
     } else if (event instanceof ThrottlingEvent) {
 
