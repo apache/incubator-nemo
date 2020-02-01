@@ -151,10 +151,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final long threadId;
 
   private final List<DataFetcher> allFetchers = new ArrayList<>();
-  final Optional<Offloader> offloader;
+  public final Optional<Offloader> offloader;
 
   private EventHandler<Integer> offloadingDoneHandler;
-  private EventHandler<Integer> endOffloadingHandler;
+  private EventHandler<Object> endOffloadingHandler;
 
   private final TaskInputContextMap taskInputContextMap;
 
@@ -525,7 +525,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public void endOffloading(final EventHandler<Integer> handler,
+  public void endOffloading(final EventHandler<Object> handler,
                             final boolean moveToVMScaling) {
     endOffloadingHandler = handler;
     executorThread.queue.add(() -> {
@@ -1029,14 +1029,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       if (offloader.isPresent()) {
         offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
       }
-      endOffloadingHandler.onNext(1);
+      endOffloadingHandler.onNext(data);
 
     } else if (data instanceof StateOutput) {
 
       if (offloader.isPresent()) {
         offloader.get().handleStateOutput((StateOutput) data);
       }
-      endOffloadingHandler.onNext(1);
+      endOffloadingHandler.onNext(data);
 
     } else if (data instanceof OffloadingDoneEvent) {
       final OffloadingDoneEvent e = (OffloadingDoneEvent) data;

@@ -196,7 +196,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private synchronized void prepare() {
 
-    System.out.println("Stateless offloading transform prepare");
+    System.out.println("OffloadingTaskExecutor prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(offloadingTask.irDag.getTopologicalSort());
 
@@ -766,7 +766,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void endOffloading(EventHandler<Integer> m,
+  public void endOffloading(EventHandler<Object> m,
                             boolean a) {
     throw new UnsupportedOperationException();
   }

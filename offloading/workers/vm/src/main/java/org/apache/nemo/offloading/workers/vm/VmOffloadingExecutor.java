@@ -29,9 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -56,7 +54,6 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
   private transient ScalingByteTransport byteTransport;
   private transient IntermediateDataIOFactory intermediateDataIOFactory;
   private transient PipeManagerWorker pipeManagerWorker;
-  private transient OffloadingOutputCollector oc;
   private transient VMScalingClientTransport clientTransport;
   private transient AckScheduledService ackScheduledService;
 
@@ -127,6 +124,12 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
     }
   }
 
+  public void setExecutorInitInfo(final Map<String, TaskLoc> tlmap,
+                                  final Map<String, String> temap) {
+    taskLocationMap.locationMap.putAll(tlmap);
+    taskExecutorIdMap.putAll(temap);
+  }
+
   /**
    * Extracts task index from a task ID.
    *
@@ -148,7 +151,6 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
 
     this.executorStartService = Executors.newCachedThreadPool();
 
-    this.oc = outputCollector;
     this.ackScheduledService = new AckScheduledService();
     this.prepareService = Executors.newCachedThreadPool();
     this.executorGlobalInstances = new ExecutorGlobalInstances();
@@ -231,16 +233,19 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
       }
     }
 
-    throw new RuntimeException("Cannot find task executor " + taskId);
+    return null;
   }
 
+  private final Set<String> offloadingTaskDone = new HashSet<>();
+
   @Override
-  public void onData(Object event) {
+  public void onData(Object event, OffloadingOutputCollector oc) {
 
     if (event instanceof OffloadingTask) {
       final OffloadingTask task = (OffloadingTask) event;
 
       LOG.info("Start task {}", task.taskId);
+
 
       final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
       final ExecutorThread executorThread = executorThreads.get(executorIndex);
@@ -267,10 +272,12 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
           task.taskId));
       }
 
+      offloadingTaskDone.add(task.taskId);
+
     } else if (event instanceof ReadyTask) {
       LOG.info("Receive ready task {}", ((ReadyTask) event).taskId);
-      final ReadyTask readyTask = (ReadyTask) event;
 
+      final ReadyTask readyTask = (ReadyTask) event;
 
       for (final Map.Entry<String, TaskLoc> entry : readyTask.taskLocationMap.entrySet()) {
         taskLocMap.put(entry.getKey(), entry.getValue());
@@ -278,6 +285,13 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
 
       LOG.info("TaskLocMap: {}", taskLocMap);
 
+      while (!offloadingTaskDone.contains(readyTask.taskId)) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
 
       final OffloadingTaskExecutor taskExecutor = (OffloadingTaskExecutor) findTaskExecutor(readyTask.taskId);
       taskExecutor.start(readyTask);

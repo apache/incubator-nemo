@@ -40,52 +40,52 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class TinyTaskOffloader implements Offloader {
-  private static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloader.class.getName());
+  public static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloader.class.getName());
 
-  private final Map<String, List<String>> taskOutgoingEdges;
-  private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
-  private final String taskId;
+  public final Map<String, List<String>> taskOutgoingEdges;
+  public final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
+  public final String taskId;
 
-  private final AtomicReference<TaskExecutor.Status> taskStatus;
+  public final AtomicReference<TaskExecutor.Status> taskStatus;
 
-  private final ScheduledExecutorService logger = Executors.newSingleThreadScheduledExecutor();
+  public final ScheduledExecutorService logger = Executors.newSingleThreadScheduledExecutor();
 
-  private final AtomicLong prevOffloadStartTime;
-  private final AtomicLong prevOffloadEndTime;
+  public final AtomicLong prevOffloadStartTime;
+  public final AtomicLong prevOffloadEndTime;
 
-  private final String executorId;
+  public final String executorId;
 
-  private final EvalConf evalConf;
-  private final PersistentConnectionToMasterMap toMaster;
-  private final Collection<OutputWriter> outputWriters;
-  final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
+  public final EvalConf evalConf;
+  public final PersistentConnectionToMasterMap toMaster;
+  public final Collection<OutputWriter> outputWriters;
+  public final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
-  private final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
-  private final TaskExecutor taskExecutor;
+  public final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
+  public final TaskExecutor taskExecutor;
 
-  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
-  private final SourceVertexDataFetcher sourceVertexDataFetcher;
-  private final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag;
+  public final TinyTaskOffloadingWorkerManager tinyWorkerManager;
+  public final SourceVertexDataFetcher sourceVertexDataFetcher;
+  public final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag;
 
-  private final List<StageEdge> copyOutgoingEdges;
-  private final List<StageEdge> copyIncomingEdges;
+  public final List<StageEdge> copyOutgoingEdges;
+  public final List<StageEdge> copyIncomingEdges;
 
   final List<Future> inputStopPendingFutures = new ArrayList<>();
-  private final List<Future> outputStopPendingFutures = new ArrayList<>();
+  public final List<Future> outputStopPendingFutures = new ArrayList<>();
 
-  private final Set<DataFetcher> allFetchers = new HashSet<>();
+  public final Set<DataFetcher> allFetchers = new HashSet<>();
 
-  private final TaskLocationMap taskLocationMap;
+  public final TaskLocationMap taskLocationMap;
 
-  private TaskExecutor.PendingState pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
-  private TinyTaskWorker tinyTaskWorker;
+  public TaskExecutor.PendingState pendingStatus = TaskExecutor.PendingState.WORKER_PENDING;
+  public TinyTaskWorker tinyTaskWorker;
 
-  private final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
+  public final RemainingOffloadTasks remainingOffloadTasks = RemainingOffloadTasks.getInstance();
 
-  private final ExecutorThread executorThread;
-  private final ScheduledExecutorService scheduledExecutorService;
-  private final ScalingOutCounter scalingOutCounter;
-  private final Map<String, String> taskExecutorIdMap;
+  public final ExecutorThread executorThread;
+  public final ScheduledExecutorService scheduledExecutorService;
+  public final ScalingOutCounter scalingOutCounter;
+  public final Map<String, String> taskExecutorIdMap;
 
   public TinyTaskOffloader(final String executorId,
                            final TaskExecutor taskExecutor,

@@ -15,7 +15,7 @@ public interface OffloadingTransform<I, O> extends Serializable {
    * On data received.
    * @param element data received.
    */
-  void onData(I element);
+  void onData(I element, OffloadingOutputCollector oc);
 
   /**
    * Close the transform.

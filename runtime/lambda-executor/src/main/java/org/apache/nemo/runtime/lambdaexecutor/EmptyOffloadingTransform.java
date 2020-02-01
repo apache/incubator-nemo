@@ -19,7 +19,7 @@ public class EmptyOffloadingTransform implements OffloadingTransform {
   }
 
   @Override
-  public void onData(Object element) {
+  public void onData(Object element, OffloadingOutputCollector a) {
 
   }
 

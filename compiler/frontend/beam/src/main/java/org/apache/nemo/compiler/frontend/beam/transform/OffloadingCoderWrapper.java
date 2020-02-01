@@ -1,5 +1,6 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
@@ -24,5 +25,10 @@ public final class OffloadingCoderWrapper<T> implements OffloadingEncoder<T>, Of
   @Override
   public T decode(InputStream inputStream) throws IOException {
     return beamCoder.decode(inputStream);
+  }
+
+  @Override
+  public T decode(ByteBuf byteBuf) throws IOException {
+    throw new UnsupportedOperationException();
   }
 }

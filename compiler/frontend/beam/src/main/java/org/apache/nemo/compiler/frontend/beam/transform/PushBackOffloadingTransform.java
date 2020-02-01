@@ -221,7 +221,8 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
   }
 
   @Override
-  public void onData(final Pair<WindowedValue<SideInputElement>, List<WindowedValue>> data) {
+  public void onData(final Pair<WindowedValue<SideInputElement>, List<WindowedValue>> data,
+                     OffloadingOutputCollector a) {
     final WindowedValue<SideInputElement> sideData = data.left();
     final List<WindowedValue> mainData = data.right();
 

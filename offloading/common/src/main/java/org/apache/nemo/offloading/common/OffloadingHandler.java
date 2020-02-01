@@ -456,7 +456,7 @@ public final class OffloadingHandler {
             //System.out.println("Read data " + dataId);
 
             //System.out.println("Receive data: " + data);
-            offloadingTransform.onData(data);
+            offloadingTransform.onData(data, null);
 
             if (!outputCollector.hasDataReceived) {
               outputCollector.emit(NoResult.INSTANCE);

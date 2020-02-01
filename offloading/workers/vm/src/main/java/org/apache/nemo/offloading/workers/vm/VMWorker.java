@@ -12,24 +12,33 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.common.VMWorkerConf;
 
+import org.apache.nemo.common.coder.FSTSingleton;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorInputDecoder;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputEncoder;
 import org.json.JSONObject;
+import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class VMWorker {
@@ -53,6 +62,8 @@ public class VMWorker {
 
   private VmOffloadingExecutor executor;
 
+  private final AtomicBoolean executorInitalized = new AtomicBoolean(false);
+
   private VMWorker() {
 
     serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
@@ -70,7 +81,8 @@ public class VMWorker {
           final Pair<OffloadingEvent, Channel> pair = requestQueue.take();
           final OffloadingEvent event = pair.left();
           final Channel c = pair.right();
-          executorService.execute(() -> {
+          final VMOutputCollector oc = new VMOutputCollector(c);
+
             switch (event.getType()) {
               case CONNECT: {
                 // Initiated by master
@@ -127,14 +139,172 @@ public class VMWorker {
                 }
                 break;
               }
-              case DATA: {
-                throw new UnsupportedOperationException("data unsupported");
+              case EXECUTOR_INIT_INFO: {
+
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                final FSTConfiguration conf = FSTSingleton.getInstance();
+
+                try {
+                  final Map<String, TaskLoc> taskLocMap =
+                    (Map<String, TaskLoc>) conf.decodeFromStream(bis);
+                  final Map<String, String> taskExecutorIdMap =
+                    (Map<String, String>) conf.decodeFromStream(bis);
+
+
+                  LOG.info("Receiveing executor init info: " +
+                      "taskExecutorIdMap: {}, taskLocMap: {}",
+                    taskExecutorIdMap, taskLocMap);
+
+                  executor.setExecutorInitInfo(taskLocMap, taskExecutorIdMap);
+
+                  executorInitalized.set(true);
+                } catch (final Exception e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+                byteBuf.release();
+                break;
+              }
+              case OFFLOADING_TASK: {
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+
+                LOG.info("Readable byte of offloading task {}", byteBuf.readableBytes());
+
+                final int taskStartInt = byteBuf.readInt();
+
+                executorService.execute(() -> {
+                  try {
+                    final OffloadingTask offloadingTask = OffloadingTask.decode(bis);
+
+                    LOG.info("Receive offloading task {} / {}", offloadingTask.taskId, offloadingTask.executorId);
+
+                    while (!executorInitalized.get()) {
+                      Thread.sleep(500);
+                    }
+
+                    executor.onData(offloadingTask, oc);
+                    LOG.info("End of handling offloading task {} / {}", offloadingTask.taskId, offloadingTask.executorId);
+
+                    byteBuf.release();
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
+                });
+
+                break;
+              }
+              case MIDDLE_TASK: {
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                final DataInputStream dis = new DataInputStream(bis);
+
+                executorService.execute(() -> {
+                  try {
+                    final boolean mvToVmScaling = dis.readBoolean();
+                    final String taskId = dis.readUTF();
+                    final int mapSize = dis.readInt();
+                    final Map<String, GBKFinalState> stateMap = new HashMap<>();
+                    final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
+                    for (int i = 0; i < mapSize; i++) {
+                      final String key = dis.readUTF();
+                      final Coder<GBKFinalState> coder = SerializationUtils.deserialize(dis);
+                      final GBKFinalState state = coder.decode(dis);
+                      stateMap.put(key, state);
+                      stateCoderMap.put(key, coder);
+                    }
+
+                    final ReadyTask readyTask =
+                      new ReadyTask(taskId,
+                        new HashMap<>(),
+                        null,
+                        null,
+                        0,
+                        null,
+                        stateMap,
+                        stateCoderMap,
+                        new HashMap<>());
+
+                    while (!executorInitalized.get()) {
+                      Thread.sleep(500);
+                    }
+
+                    executor.onData(readyTask, oc);
+
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
+
+                  byteBuf.release();
+                });
+                break;
+              }
+              case SOURCE_TASK: {
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                final DataInputStream dis = new DataInputStream(bis);
+
+                executorService.execute(() -> {
+                  try {
+                    final long prevWatermark = dis.readLong();
+                    final FSTConfiguration conf = FSTSingleton.getInstance();
+                    final UnboundedSource s = (UnboundedSource) conf.decodeFromStream(dis);
+
+                    final boolean mvToScaling = dis.readBoolean();
+                    final String taskId = dis.readUTF();
+                    final int id = dis.readInt();
+
+                    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = SerializationUtils.deserialize(dis);
+                    final UnboundedSource.CheckpointMark checkpointMark = checkpointMarkCoder.decode(dis);
+
+                    final long e = System.currentTimeMillis();
+
+                    final int mapSize = dis.readInt();
+                    final Map<String, GBKFinalState> stateMap = new HashMap<>();
+                    final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
+                    for (int i = 0; i < mapSize; i++) {
+                      final String key = dis.readUTF();
+                      final Coder<GBKFinalState> coder = SerializationUtils.deserialize(dis);
+                      final GBKFinalState state = coder.decode(dis);
+                      stateMap.put(key, state);
+                      stateCoderMap.put(key, coder);
+                    }
+
+                    LOG.info("Map decoding time of {}: {}", taskId, System.currentTimeMillis() - e);
+
+                    final ReadyTask readyTask = new ReadyTask(
+                      taskId,
+                      new HashMap<>(),
+                      checkpointMark,
+                      checkpointMarkCoder,
+                      prevWatermark,
+                      s,
+                      stateMap,
+                      stateCoderMap,
+                      new HashMap<>());
+
+                    while (!executorInitalized.get()) {
+                      Thread.sleep(500);
+                    }
+
+                    executor.onData(readyTask, oc);
+
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
+
+                  byteBuf.release();
+                });
+                break;
               }
               default:
                 throw new RuntimeException("unsupported type: " + event.getType());
             }
 
-          });
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

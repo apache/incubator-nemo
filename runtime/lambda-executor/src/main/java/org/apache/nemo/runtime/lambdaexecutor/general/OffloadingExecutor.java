@@ -313,7 +313,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   @Override
-  public void onData(Object event) {
+  public void onData(Object event, OffloadingOutputCollector a) {
 
     if (event instanceof OffloadingTask) {
       final OffloadingTask task = (OffloadingTask) event;
@@ -369,6 +369,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final TaskExecutor deletedTask = findTask(endEvent.taskId);
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
       taskExecutorStartTimeMap.remove(deletedTask);
+
+      deletedTask.setDeleteForMoveToVmScaling(false);
+      executorThread.deleteTask(deletedTask);
 
     } else if (event instanceof TaskMoveEvent) {
       final TaskMoveEvent endEvent = (TaskMoveEvent) event;

@@ -70,7 +70,7 @@ public final class VMOffloadingRequester {
   /**
    * Netty client bootstrap.
    */
-  private Bootstrap clientBootstrap;
+  private final Bootstrap clientBootstrap;
 
   private boolean vmStarted = false;
 
@@ -210,7 +210,7 @@ public final class VMOffloadingRequester {
           final Channel openChannel = channelFuture.channel();
           vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
 
-          final VMScalingWorker worker = new VMScalingWorker(openChannel, vmWorkerInitByteBuf);
+          final VMScalingWorker worker = new VMScalingWorker(vmAddress, openChannel, vmWorkerInitByteBuf);
           map.put(openChannel, worker);
 
           LOG.info("Open channel for VM: {}/{}, {}", vmAddress, instanceId, openChannel);

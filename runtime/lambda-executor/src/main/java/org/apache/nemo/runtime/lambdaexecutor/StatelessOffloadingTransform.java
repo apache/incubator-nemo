@@ -123,7 +123,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
 
   // receive batch (list) data
   @Override
-  public void onData(final OffloadingDataEvent element) {
+  public void onData(final OffloadingDataEvent element, OffloadingOutputCollector a) {
     System.out.println("Received data size: " + element.data.size() + ", checkpoint watermark: " + element.watermark);
     for (final Pair<List<String>, Object> input : element.data) {
       final List<String> nextOps = input.left();

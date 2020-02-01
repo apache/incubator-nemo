@@ -113,7 +113,7 @@ public interface TaskExecutor extends AutoCloseable {
                        final Object worker,
                        EventHandler<Integer> offloadingDoneHandler);
 
-  void endOffloading(final EventHandler<Integer> endOffloadingHandler,
+  void endOffloading(final EventHandler<Object> endOffloadingHandler,
                      boolean moveToVmScaling);
 
   void execute();

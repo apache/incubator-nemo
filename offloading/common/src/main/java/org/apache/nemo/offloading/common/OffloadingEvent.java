@@ -24,6 +24,14 @@ public final class OffloadingEvent implements Serializable {
 
     /// for vm scaling info
     VM_SCALING_INFO,
+
+
+    // master -> worker
+    EXECUTOR_INIT_INFO,
+    // worker -> vm worker
+    OFFLOADING_TASK,
+    MIDDLE_TASK,
+    SOURCE_TASK,
   }
 
   private final Type type;

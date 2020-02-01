@@ -16,12 +16,15 @@ import org.slf4j.LoggerFactory;
 public class VMScalingWorker implements EventHandler<OffloadingEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(VMScalingWorker.class.getName());
 
+  private final String vmAddress;
   private final Channel channel;
   private final String executorId;
   private volatile boolean ready = false;
 
-  public VMScalingWorker(final Channel channel,
+  public VMScalingWorker(final String vmAddress,
+                         final Channel channel,
                          final ByteBuf initBuf) {
+    this.vmAddress = vmAddress;
     this.channel = channel;
     this.executorId = RuntimeIdManager.generateExecutorId();
 
@@ -46,13 +49,22 @@ public class VMScalingWorker implements EventHandler<OffloadingEvent> {
     }
   }
 
+  public String getVmAddress() {
+    return vmAddress;
+  }
+
+  public String getExecutorId() {
+    return executorId;
+  }
+
   public boolean isReady() {
     return ready;
   }
 
 
-  public void send(ByteBuf input) {
-
+  public void send(final OffloadingEvent event) {
+    LOG.info("Sending {} to {}", event.getType(), executorId);
+    channel.writeAndFlush(event);
   }
 
   @Override

@@ -117,6 +117,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "control_logging", default_value = "false")
   public static final class ControlLogging implements Name<Boolean> {}
 
+  @NamedParameter(short_name = "sf_to_vm", default_value = "false")
+  public static final class SftoVm implements Name<Boolean> {}
+
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -146,6 +149,7 @@ public final class EvalConf {
   public final boolean autoscaling;
   public final boolean randomSelection;
   public final double scalingAlpha;
+  public final boolean sfToVm;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -173,7 +177,8 @@ public final class EvalConf {
                    @Parameter(ControlLogging.class) final boolean controlLogging,
                    @Parameter(Autoscaling.class) final boolean autoscaling,
                    @Parameter(RandomSelection.class) final boolean randomSelection,
-                   @Parameter(ScalingAlpha.class) final double scalingAlpha) throws IOException {
+                   @Parameter(ScalingAlpha.class) final double scalingAlpha,
+                   @Parameter(SftoVm.class) final boolean sfToVm) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -200,6 +205,7 @@ public final class EvalConf {
     this.autoscaling = autoscaling;
     this.randomSelection = randomSelection;
     this.scalingAlpha = scalingAlpha;
+    this.sfToVm = sfToVm;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -237,6 +243,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(Autoscaling.class, Boolean.toString(autoscaling));
     jcb.bindNamedParameter(RandomSelection.class, Boolean.toString(randomSelection));
     jcb.bindNamedParameter(ScalingAlpha.class, Double.toString(scalingAlpha));
+    jcb.bindNamedParameter(SftoVm.class, Boolean.toString(sfToVm));
     return jcb.build();
   }
 
@@ -268,6 +275,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(Autoscaling.class);
     cl.registerShortNameOfClass(RandomSelection.class);
     cl.registerShortNameOfClass(ScalingAlpha.class);
+    cl.registerShortNameOfClass(SftoVm.class);
   }
 
   @Override

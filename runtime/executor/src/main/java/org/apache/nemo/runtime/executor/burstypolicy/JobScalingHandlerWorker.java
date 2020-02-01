@@ -1,12 +1,22 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.channel.Channel;
+import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -15,9 +25,16 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.task.TinyTaskOffloader;
+import org.apache.nemo.runtime.executor.vmscaling.VMScalingWorkerConnector;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
+import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.annotations.Parameter;
+import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +90,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   private final String nameServerAddr;
   private final int nameServerPort;
 
+  private final VMScalingWorkerConnector vmScalingWorkerConnector;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(NameResolverNameServerAddr.class) final String serverAddr,
@@ -95,7 +114,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final ExecutorThreads executorThreads,
     final ScalingOutCounter scalingOutCounter,
     final SFTaskMetrics sfTaskMetrics,
-    final PipeManagerWorker pipeManagerWorker) {
+    final PipeManagerWorker pipeManagerWorker,
+    final VMScalingWorkerConnector vmScalingWorkerConnector) {
     this.nameServerAddr = serverAddr;
     this.nameServerPort = serverPort;
     this.taskLocationMap = taskLocationMap;
@@ -111,6 +131,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.scalingOutCounter = scalingOutCounter;
     this.sfTaskMetrics = sfTaskMetrics;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.vmScalingWorkerConnector = vmScalingWorkerConnector;
     LOG.info("Start JobScalingHandlerWorker");
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
@@ -436,57 +457,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }
 
-  private synchronized void moveToVmScaling() {
+  private synchronized void scaleIn(final Map<String, String> newExecutorAddrMap) {
     // scale in
     LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
 
-    final CountDownLatch countDownLatch = new CountDownLatch(
-      offloadedTasksPerStage.stream()
-        .map(l -> l.size())
-        .reduce(0, (x,y) -> x+y));
-
-    LOG.info("Deoffloading size {}", countDownLatch.getCount());
-
-    for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
-      int offcnt = offloadedTasks.size();
-
-      for (final TaskExecutor offloadedTask : offloadedTasks) {
-        final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
-
-        while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-          // waiting for stage offloading
-          LOG.info("Waiting for stage deoffloading {}", stageId);
-          try {
-            Thread.sleep(1000);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
-
-        offcnt -= 1;
-        LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
-
-        offloadedTask.endOffloading((m) -> {
-          // do sth
-          LOG.info("Deoffloading done for {}", offloadedTask.getId());
-          stageOffloadingWorkerManager.endOffloading(stageId);
-          countDownLatch.countDown();
-        }, true);
-      }
-    }
-
-    offloadedTasksPerStage.clear();
-
-    // TODO: FIX
-    for (final String key : taskLocationMap.locationMap.keySet()) {
-      taskLocationMap.locationMap.put(key, VM);
-    }
-  }
-
-  private synchronized void scaleIn() {
-    // scale in
-    LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
+    final Map<String, TaskLoc> taskLocMap = taskLocationMap.locationMap;
 
     final CountDownLatch countDownLatch = new CountDownLatch(
       offloadedTasksPerStage.stream()
@@ -515,21 +490,100 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         offcnt -= 1;
         LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
 
-        offloadedTask.endOffloading((m) -> {
-          // do sth
-          LOG.info("Deoffloading done for {}", offloadedTask.getId());
-          stageOffloadingWorkerManager.endOffloading(stageId);
-          countDownLatch.countDown();
-        }, false);
+        final boolean mvToVmScaling = taskLocMap.get(offloadedTask.getId()).equals(VM_SCALING);
+
+        if (mvToVmScaling) {
+          // connect to executor id
+          final String newExecutorId = pipeManagerWorker
+            .getTaskExecutorIdMap().get(offloadedTask.getId());
+
+          final Channel workerChannel = vmScalingWorkerConnector
+            .connectTo(newExecutorId, newExecutorAddrMap.get(newExecutorId), offloadedTask);
+
+          offloadedTask.endOffloading((m) -> {
+            // do sth
+            LOG.info("Ready to move task {} to {}", offloadedTask.getId(),
+              newExecutorId);
+            stageOffloadingWorkerManager.endOffloading(stageId);
+            countDownLatch.countDown();
+
+            // move task to vm!!
+            // 1. offloading task
+            final TinyTaskOffloader offloader =
+              (TinyTaskOffloader) ((DefaultTaskExecutorImpl) offloadedTask).offloader.get();
+
+            final OffloadingTask offloadingTask = new OffloadingTask(
+              newExecutorId,
+              offloader.taskId,
+              RuntimeIdManager.getIndexFromTaskId(offloader.taskId),
+              evalConf.samplingJson,
+              offloader.copyDag,
+              offloader.taskOutgoingEdges,
+              offloader.copyOutgoingEdges,
+              offloader.copyIncomingEdges);
+
+
+            LOG.info("Sending offloading task {} to {}", offloader.taskId, newExecutorId);
+
+            workerChannel.writeAndFlush(
+              new OffloadingEvent(OffloadingEvent.Type.OFFLOADING_TASK, offloadingTask.encode()));
+
+            // 2. ready task
+            if (m instanceof StateOutput) {
+              final StateOutput stateOutput = (StateOutput) m;
+              workerChannel.writeAndFlush(
+                new OffloadingEvent(OffloadingEvent.Type.MIDDLE_TASK, stateOutput.byteBuf));
+
+              LOG.info("Sending middle task {} to {}", offloader.taskId, newExecutorId);
+
+            } else if (m instanceof KafkaOffloadingOutput) {
+              final KafkaOffloadingOutput output = (KafkaOffloadingOutput) m;
+
+              final long prev = offloader.sourceVertexDataFetcher.getPrevWatermarkTimestamp();
+              final UnboundedSourceReadable readable = (UnboundedSourceReadable)
+                offloader.sourceVertexDataFetcher.getReadable();
+              final KafkaUnboundedSource unboundedSource =
+                (KafkaUnboundedSource) readable.getUnboundedSource();
+
+              try {
+                final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+                final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+                bos.writeLong(prev);
+                final FSTConfiguration conf = FSTSingleton.getInstance();
+                conf.encodeToStream(bos, unboundedSource);
+
+                final CompositeByteBuf compositeByteBuf =
+                  ByteBufAllocator.DEFAULT.compositeBuffer(2)
+                    .addComponents(true, byteBuf, output.byteBuf);
+
+                workerChannel.writeAndFlush(
+                  new OffloadingEvent(OffloadingEvent.Type.SOURCE_TASK, compositeByteBuf));
+              } catch (final Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+              }
+
+              LOG.info("Sending source task {} to {}", offloader.taskId, newExecutorId);
+
+            } else {
+              throw new RuntimeException("Unsuported type " + m);
+            }
+          }, mvToVmScaling);
+
+
+        } else {
+
+          offloadedTask.endOffloading((m) -> {
+            // do sth
+            LOG.info("Deoffloading done for {}", offloadedTask.getId());
+            stageOffloadingWorkerManager.endOffloading(stageId);
+            countDownLatch.countDown();
+          }, mvToVmScaling);
+        }
       }
     }
 
     offloadedTasksPerStage.clear();
-
-    // TODO: FIX
-    for (final String key : taskLocationMap.locationMap.keySet()) {
-      taskLocationMap.locationMap.put(key, VM);
-    }
 
     // send done message
     LOG.info("Waiting for scaling in countdown latch");
@@ -732,7 +786,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
                 scalingTaskMap.put(entry.getStageId(), entry.getOffloadTasksList());
               }
 
+              final List<ControlMessage.LocalExecutorAddressInfoMessage> e2 = scalingMsg.getExecutorAddrInfosList();
+              final Map<String, String> newExecutorAddrMap = new HashMap<>();
+              for (final ControlMessage.LocalExecutorAddressInfoMessage m : e2) {
+                newExecutorAddrMap.put(m.getExecutorId(), m.getAddress());
+              }
+
               LOG.info("Receive RequestScalingOut... {}", scalingTaskMap);
+              LOG.info("New executor addr map... {}", newExecutorAddrMap);
 
               /*
               if (!GlobalOffloadDone.getInstance().getBoolean().compareAndSet(true, false)) {
@@ -746,46 +807,35 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               } else {
                 scaleOut(scalingTaskMap);
               }
-
-              /*
-              scalingService.execute(() -> {
-                while (RemainingOffloadTasks.getInstance().getRemainingCnt() > 0) {
-                  // waiting...
-                  LOG.info("Waiting until finish input stop... cnt: {}",
-                    RemainingOffloadTasks.getInstance().getRemainingCnt());
-
-                  try {
-                    Thread.sleep(1000);
-                  } catch (InterruptedException e) {
-                    e.printStackTrace();
-                  }
-                }
-
-                LOG.info("Send LocalScalingDone {}", executorId);
-
-                // Send local offloading done
-                toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
-                  .send(ControlMessage.Message.newBuilder()
-                    .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-                    .setType(ControlMessage.MessageType.LocalScalingReadyDone)
-                    .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
-                      .setExecutorId(executorId)
-                      .build())
-                    .build());
-
-              });
-              */
             }
           } else {
-            if (scalingMsg.getMoveToVmScaling()) {
-              LOG.info("Mv to vm scaling");
-              scalingService.execute(JobScalingHandlerWorker.this::moveToVmScaling);
-            } else {
-              // Scaling in
-              LOG.info("Receive ScalingIn");
-              scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
+
+            final Map<String, String> taskExecutorIdMap = pipeManagerWorker.getTaskExecutorIdMap();
+            final List<ControlMessage.TaskExecutorIdEntryMessage> taskExecutorIdEntryMessages =
+              scalingMsg.getTaskExecutorIdList();
+
+            for (final ControlMessage.TaskExecutorIdEntryMessage entry : taskExecutorIdEntryMessages) {
+              taskExecutorIdMap.put(entry.getTaskId(), entry.getExecutorId());
             }
+
+            final List<ControlMessage.TaskLocation> locations = scalingMsg.getTaskLocationList();
+            for (final ControlMessage.TaskLocation location : locations) {
+              final String taskId = location.getTaskId();
+              final TaskLoc loc = intToTaskLoc((int)location.getLocation());
+              taskLocationMap.locationMap.put(taskId, loc);
+            }
+
+            final List<ControlMessage.LocalExecutorAddressInfoMessage> e2 = scalingMsg.getExecutorAddrInfosList();
+            final Map<String, String> newExecutorAddrMap = new HashMap<>();
+            for (final ControlMessage.LocalExecutorAddressInfoMessage m : e2) {
+              newExecutorAddrMap.put(m.getExecutorId(), m.getAddress());
+            }
+
+            LOG.info("New executor addr map... {}", newExecutorAddrMap);
+
+            scalingService.execute(() -> {
+              scaleIn(newExecutorAddrMap);
+            });
           }
 
           break;

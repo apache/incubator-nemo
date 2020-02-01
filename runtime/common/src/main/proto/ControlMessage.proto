@@ -368,6 +368,7 @@ message RequestScalingMessage {
   repeated TaskExecutorIdEntryMessage taskExecutorId = 5;
   optional double divideNum = 6;
   optional bool moveToVmScaling = 7;
+  repeated LocalExecutorAddressInfoMessage executorAddrInfos = 8;
 }
 
 message TaskLocation {
