@@ -27,7 +27,8 @@ import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 public final class JobScaler {
 
   enum ExecutionStatus {
-    SCALE_OUT,
+    SF_SCALE_OUT,
+    VM_SCALE_OUT,
     NORMAL
   }
 
@@ -58,6 +59,8 @@ public final class JobScaler {
   private final ScheduledExecutorService scheduler;
 
   private final List<Integer> inputRates = new LinkedList<>();
+
+  private final List<CompletableFuture<VMScalingWorker>> vmScalingWorkers = new ArrayList<>();
 
   private final int WINDOW_SIZE = 5;
 
@@ -262,12 +265,18 @@ public final class JobScaler {
                       consecutive = 0;
                       isScaling.set(true);
 
-                      executionStatus = ExecutionStatus.SCALE_OUT;
+                      executionStatus = ExecutionStatus.SF_SCALE_OUT;
                     }
 
                     LOG.info("Consecutive {}", consecutive);
+                  } else if (executionStatus == ExecutionStatus.SF_SCALE_OUT
+                    && isVmScalingWorkerReady()) {
+                    // TODO: move tasks from sf to vm
+                    executionStatus = ExecutionStatus.VM_SCALE_OUT;
+                    moveToVmScalingWorkers();
+
                   } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
-                    && executionStatus == ExecutionStatus.SCALE_OUT && recentInputRate * 1.1 >= throughput) {
+                    && executionStatus == ExecutionStatus.SF_SCALE_OUT && recentInputRate * 1.1 >= throughput) {
 
                     scalingInConsecutive += 1;
 
@@ -299,6 +308,18 @@ public final class JobScaler {
     }, 1, 1, TimeUnit.SECONDS);
   }
 
+  private boolean isVmScalingWorkerReady() {
+    boolean ready = true;
+    for (final CompletableFuture<VMScalingWorker> w : vmScalingWorkers) {
+      if (!w.isDone()) {
+        ready = false;
+        break;
+      }
+    }
+
+    LOG.info("isVmScalingWorkerReady {}", ready);
+    return ready;
+  }
 
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
 
@@ -370,7 +391,8 @@ public final class JobScaler {
   private ControlMessage.RequestScalingMessage buildRequestScalingMessage(
     final Map<String, List<String>> offloadTaskMap,
     final List<ControlMessage.TaskLocation> locations,
-    final boolean isScaleOut) {
+    final boolean isScaleOut,
+    final boolean mvToVmScaling) {
 
     final ControlMessage.RequestScalingMessage.Builder builder =
     ControlMessage.RequestScalingMessage.newBuilder();
@@ -378,6 +400,7 @@ public final class JobScaler {
     builder.setRequestId(RuntimeIdManager.generateMessageId());
     builder.setIsScaleOut(isScaleOut);
     builder.addAllTaskLocation(locations);
+    builder.setMoveToVmScaling(mvToVmScaling);
 
     for (final Map.Entry<String, List<String>> entry : offloadTaskMap.entrySet()) {
       builder.addEntry(ControlMessage.RequestScalingEntryMessage
@@ -420,118 +443,6 @@ public final class JobScaler {
         .build());
     }
     return list;
-  }
-
-
-  private void scalingOutNumTasksToWorkers(final int num) {
-
-    // 1. update all task location
-    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
-
-    final int offloadPerExecutor = num / taskScheduledMap.getScheduledStageTasks().keySet().size();
-
-    int totalOffloading = 0;
-
-    for (final ExecutorRepresenter representer :
-      taskScheduledMap.getScheduledStageTasks().keySet()) {
-
-
-      workerOffloadTaskMap.put(representer, new HashMap<>());
-
-      final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
-      final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
-
-      final int numStages = tasks.size();
-
-
-      for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
-        // if query 5, do not move stage2 tasks
-
-        /*
-        if (queryNum == 5) {
-          if (entry.getKey().equals("Stage3")) {
-            LOG.info("Skip stage 3 offloading");
-            continue;
-          }
-        }
-        */
-
-        final int countToOffload = offloadPerExecutor / numStages;
-        final List<String> offloadTask = new ArrayList<>();
-        offloadTaskMap.put(entry.getKey(), offloadTask);
-
-        int offloadedCnt = 0;
-        for (final Task task : entry.getValue()) {
-          if (offloadedCnt < countToOffload) {
-            final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
-
-            if (loc == VM) {
-              offloadTask.add(task.getTaskId());
-              taskLocationMap.locationMap.put(task.getTaskId(), SF);
-              offloadedCnt += 1;
-              totalOffloading += 1;
-            }
-          }
-        }
-      }
-    }
-
-    LOG.info("Total offloading cnt: {}", totalOffloading);
-
-    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
-
-    for (final Map.Entry<ExecutorRepresenter,
-      Map<String, List<String>>> entry : workerOffloadTaskMap.entrySet()) {
-      scalingExecutorCnt.getAndIncrement();
-
-      final ExecutorRepresenter representer = entry.getKey();
-      final Map<String, List<String>> offloadTaskMap = entry.getValue();
-
-      // scaling out message
-      LOG.info("Send scaling out message {} to {}", entry.getValue(),
-        representer.getExecutorId());
-
-      executorService.execute(() -> {
-        representer.sendControlMessage(
-          ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
-            .build());
-      });
-    }
-  }
-
-  private void scalingOutToWorkerWithSimpleDecision(final double divide) {
-     // 1. update all task location
-    final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
-
-    final ControlMessage.RequestScalingMessage.Builder builder =
-      ControlMessage.RequestScalingMessage.newBuilder();
-
-    final List<ControlMessage.TaskLocation> taskLocations = encodeTaskLocationMap();
-
-    builder.setRequestId(RuntimeIdManager.generateMessageId());
-    builder.setIsScaleOut(true);
-    builder.setDivideNum(divide);
-    builder.addAllTaskLocation(taskLocations);
-
-    for (final ExecutorRepresenter representer :
-      taskScheduledMap.getScheduledStageTasks().keySet()) {
-
-      scalingExecutorCnt.getAndIncrement();
-
-      executorService.execute(() -> {
-        representer.sendControlMessage(
-          ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(builder.build())
-            .build());
-      });
-    }
   }
 
   private List<ControlMessage.TaskStatInfo> shuffle(final List<ControlMessage.TaskStatInfo> taskStatInfos) {
@@ -596,6 +507,48 @@ public final class JobScaler {
     //TODO: add overhead
     final long overhead = (long) (alpha * relayEvents);
     return overhead;
+  }
+
+  private void moveToVmScalingWorkers() {
+
+    final int numWorkers = vmScalingWorkers.size();
+    LOG.info("Moving task to {} vm workers", numWorkers);
+
+    final List<VMScalingWorker> workers = vmScalingWorkers.stream().map(future -> {
+      try {
+        return future.get();
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }).collect(Collectors.toList());
+
+    final Map<String, List<String>> unloadTaskMap = new HashMap<>();
+
+    for (final String key : taskLocationMap.locationMap.keySet()) {
+      if (taskLocationMap.locationMap.get(key) == SF) {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(key);
+        unloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
+        final List<String> unloadTasks = unloadTaskMap.get(stageId);
+        unloadTasks.add(key);
+        taskLocationMap.locationMap.put(key, VM_SCALING);
+      }
+    }
+
+    final List<ControlMessage.TaskLocation> locations = encodeTaskLocationMap();
+
+    for (final ExecutorRepresenter representer :
+      taskScheduledMap.getScheduledStageTasks().keySet()) {
+      executorService.execute(() -> {
+        representer.sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.RequestScaling)
+            .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false, true))
+            .build());
+      });
+    }
   }
 
   private void scalingOutToVms(final long thp, final long input_rate) {
@@ -702,24 +655,9 @@ public final class JobScaler {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false))
             .build());
       });
-
-
-      /*
-      if (i % 4 == 0) {
-        if (evalConf.offloadingType.equals("vm")) {
-          try {
-            LOG.info("Sleep for request limit");
-            Thread.sleep(7500);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      */
-
     }
   }
 
@@ -730,7 +668,7 @@ public final class JobScaler {
     final int numWorkers = (int) Math.ceil((1 / ratio));
 
     // create vm workers
-    final List<CompletableFuture<VMScalingWorker>> workerList = vmWorkerManagerInMaster.createWorkers(numWorkers);
+    vmScalingWorkers.addAll(vmWorkerManagerInMaster.createWorkers(numWorkers));
     LOG.info("ratio {}, # of vm scaling workers: {}", ratio, numWorkers);
 
     final Map<ExecutorRepresenter, Map<String, List<String>>> workerOffloadTaskMap = new HashMap<>();
@@ -832,24 +770,9 @@ public final class JobScaler {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false))
             .build());
       });
-
-
-      /*
-      if (i % 4 == 0) {
-        if (evalConf.offloadingType.equals("vm")) {
-          try {
-            LOG.info("Sleep for request limit");
-            Thread.sleep(7500);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      */
-
     }
   }
 
@@ -912,7 +835,7 @@ public final class JobScaler {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false))
             .build());
       });
     }
@@ -1011,7 +934,7 @@ public final class JobScaler {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true))
+            .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false))
             .build());
       });
     }
@@ -1053,7 +976,7 @@ public final class JobScaler {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RequestScaling)
-            .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false))
+            .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false, false))
             .build());
       });
     }

@@ -436,6 +436,54 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     LOG.info("Scale out method done {}", offloadedTasksPerStage);
   }
 
+  private synchronized void moveToVmScaling() {
+    // scale in
+    LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
+
+    final CountDownLatch countDownLatch = new CountDownLatch(
+      offloadedTasksPerStage.stream()
+        .map(l -> l.size())
+        .reduce(0, (x,y) -> x+y));
+
+    LOG.info("Deoffloading size {}", countDownLatch.getCount());
+
+    for (final List<TaskExecutor> offloadedTasks : offloadedTasksPerStage) {
+      int offcnt = offloadedTasks.size();
+
+      for (final TaskExecutor offloadedTask : offloadedTasks) {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
+
+        while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
+          // waiting for stage offloading
+          LOG.info("Waiting for stage deoffloading {}", stageId);
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }
+
+        offcnt -= 1;
+        LOG.info("Deoffloading task {}, remaining offload: {}", offloadedTask.getId(), offcnt);
+
+        offloadedTask.endOffloading((m) -> {
+          // do sth
+          LOG.info("Deoffloading done for {}", offloadedTask.getId());
+          stageOffloadingWorkerManager.endOffloading(stageId);
+          countDownLatch.countDown();
+        }, true);
+      }
+    }
+
+    offloadedTasksPerStage.clear();
+
+    // TODO: FIX
+    for (final String key : taskLocationMap.locationMap.keySet()) {
+      taskLocationMap.locationMap.put(key, VM);
+    }
+  }
+
   private synchronized void scaleIn() {
     // scale in
     LOG.info("Offload tasks per stage: {}", offloadedTasksPerStage);
@@ -506,7 +554,6 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-
   }
 
   @Override
@@ -731,9 +778,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
               */
             }
           } else {
-            // Scaling in
-            LOG.info("Receive ScalingIn");
-            scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
+            if (scalingMsg.getMoveToVmScaling()) {
+              LOG.info("Mv to vm scaling");
+              scalingService.execute(JobScalingHandlerWorker.this::moveToVmScaling);
+            } else {
+              // Scaling in
+              LOG.info("Receive ScalingIn");
+              scalingService.execute(JobScalingHandlerWorker.this::scaleIn);
+            }
           }
 
           break;
