@@ -78,6 +78,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final OutputWriterFlusher outputWriterFlusher;
   private final TaskLoc myLocation;
   private final TaskLocationMap taskLocationMap;
+  private final Map<String, String> taskExecutorIdMap;
+  private final RendevousServerClient rendevousServerClient;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -90,7 +92,9 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
                                                final OutputWriterFlusher outputWriterFlusher,
                                                final TaskLoc myLocation,
-                                               final TaskLocationMap taskLocationMap) {
+                                               final TaskLocationMap taskLocationMap,
+                                               final Map<String, String> taskExecutorIdMap,
+                                               final RendevousServerClient rendevousServerClient) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -104,6 +108,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.outputWriterFlusher = outputWriterFlusher;
     this.myLocation = myLocation;
     this.taskLocationMap = taskLocationMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
+    this.rendevousServerClient = rendevousServerClient;
   }
 
   public void setByteTransfer(final ByteTransfer bt) {
@@ -123,7 +129,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
       false, relayServerClient, byteTransfer, outputWriterFlusher,
-      myLocation, taskLocationMap);
+      myLocation, taskLocationMap, taskExecutorIdMap, rendevousServerClient);
 
     System.out.println("Init channel " + ch);
 

@@ -36,6 +36,8 @@ public final class TaskScheduledMap {
 
   private final Map<String, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
+  private Map<String, String> prevTaskExecutorIdMap = new ConcurrentHashMap<>();
+
   @Inject
   private TaskScheduledMap(final ExecutorRegistry executorRegistry,
                            final TaskLocationMap taskLocationMap) {
@@ -45,6 +47,20 @@ public final class TaskScheduledMap {
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.taskLocationMap = taskLocationMap;
+  }
+
+  private boolean copied = false;
+  public synchronized void keepOnceCurrentTaskExecutorIdMap() {
+    if (copied) {
+      return;
+    }
+    copied = true;
+    prevTaskExecutorIdMap.clear();
+    prevTaskExecutorIdMap.putAll(taskExecutorIdMap);
+  }
+
+  public Map<String, String> getPrevTaskExecutorIdMap() {
+    return prevTaskExecutorIdMap;
   }
 
   public void addTask(final ExecutorRepresenter representer, final Task task) {

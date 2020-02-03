@@ -29,12 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -127,6 +126,30 @@ public final class RendevousServerClient extends SimpleChannelInboundHandler {
         taskInputWatermarkMap.put(taskId, watermark);
       }
     }
+  }
+
+  private final Map<String, BlockingQueue<String>> taskExecutorIdResponseMap = new HashMap<>();
+
+  public String requestExecutorId(final String taskId) {
+
+    taskExecutorIdResponseMap.putIfAbsent(taskId, new LinkedBlockingQueue<>());
+    channel.writeAndFlush(new TaskExecutorIdRequest(taskId));
+
+    LOG.info("Request executor id of {}", taskId);
+    final BlockingQueue<String> queue = taskExecutorIdResponseMap.get(taskId);
+    try {
+      final String executorId = queue.take();
+      LOG.info("Request executor id of {} result {}", taskId, executorId);
+      return executorId;
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void registerExecutorIdResponse(final TaskExecutorIdResponse response) {
+    final BlockingQueue<String> queue = taskExecutorIdResponseMap.get(response.taskId);
+    queue.add(response.executorId);
   }
 
   public void registerResponse(final RendevousResponse response) {

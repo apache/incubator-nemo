@@ -37,6 +37,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
   private ByteTransfer byteTransfer;
   private final OutputWriterFlusher outputWriterFlusher;
   private final TaskLocationMap taskLocationMap;
+  private final Map<String, String> taskExecutorIdMap;
+  private final RendevousServerClient rendevousServerClient;
 
   public RelayServerClientChannelInitializer(final ChannelGroup channelGroup,
                                              final ControlFrameEncoder controlFrameEncoder,
@@ -48,7 +50,9 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
                                              final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
                                              final ConcurrentMap<Integer, ByteOutputContext> outputContextMap,
                                              final OutputWriterFlusher outputWriterFlusher,
-                                             final TaskLocationMap taskLocationMap) {
+                                             final TaskLocationMap taskLocationMap,
+                                             final Map<String, String> taskExecutorIdMap,
+                                             final RendevousServerClient rendevousServerClient) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -61,6 +65,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
     this.outputContextMap = outputContextMap;
     this.outputWriterFlusher = outputWriterFlusher;
     this.taskLocationMap = taskLocationMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
+    this.rendevousServerClient = rendevousServerClient;
   }
 
   public void setRelayServerClient(final RelayServerClient client) {
@@ -80,7 +86,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap, true,
-      relayServerClient, byteTransfer, outputWriterFlusher, TaskLoc.SF, taskLocationMap);
+      relayServerClient, byteTransfer, outputWriterFlusher, TaskLoc.SF, taskLocationMap, taskExecutorIdMap,
+      rendevousServerClient);
 
     ch.pipeline()
       // outbound

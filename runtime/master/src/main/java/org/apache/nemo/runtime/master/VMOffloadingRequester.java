@@ -16,6 +16,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.VMWorkerConf;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
@@ -96,11 +97,13 @@ public final class VMOffloadingRequester {
 
   private final VMWorkerConf vmWorkerConf;
   private ByteBuf vmWorkerInitByteBuf;
+  private final Map<String, Pair<Double, Double>> executorCpuUseMap;
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
                                final int port,
-                               final VMWorkerConf vmWorkerConf) {
+                               final VMWorkerConf vmWorkerConf,
+                               final Map<String, Pair<Double, Double>> executorCpuUseMap) {
     this.nemoEventHandler = nemoEventHandler;
     this.serverAddress = serverAddress;
     this.serverPort = port;
@@ -116,6 +119,7 @@ public final class VMOffloadingRequester {
       .option(ChannelOption.SO_KEEPALIVE, true);
 
     this.vmWorkerConf = vmWorkerConf;
+    this.executorCpuUseMap = executorCpuUseMap;
   }
 
 
@@ -210,7 +214,8 @@ public final class VMOffloadingRequester {
           final Channel openChannel = channelFuture.channel();
           vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
 
-          final VMScalingWorker worker = new VMScalingWorker(vmAddress, openChannel, vmWorkerInitByteBuf);
+          final VMScalingWorker worker = new VMScalingWorker(vmAddress, openChannel, vmWorkerInitByteBuf,
+            executorCpuUseMap);
           map.put(openChannel, worker);
 
           LOG.info("Open channel for VM: {}/{}, {}", vmAddress, instanceId, openChannel);

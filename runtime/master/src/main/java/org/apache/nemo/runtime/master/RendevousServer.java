@@ -37,11 +37,13 @@ public final class RendevousServer {
   private int bindingPort;
 
   private final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
+  private final TaskScheduledMap taskScheduledMap;
 
   @Inject
   private RendevousServer(final TcpPortProvider tcpPortProvider,
                           @Parameter(EvalConf.Ec2.class) final boolean ec2,
-                          final WatermarkManager watermarkManager) {
+                          final WatermarkManager watermarkManager,
+                          final TaskScheduledMap taskScheduledMap) {
 
     final String host;
     try {
@@ -66,8 +68,10 @@ public final class RendevousServer {
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RendevousServerChannelInitializer(channelMap, watermarkManager))
+      .childHandler(new RendevousServerChannelInitializer(channelMap, watermarkManager, taskScheduledMap))
       .option(ChannelOption.SO_REUSEADDR, true);
+
+    this.taskScheduledMap = taskScheduledMap;
 
     Channel listeningChannel = null;
 

@@ -220,18 +220,21 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
     final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
 
+    this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
+
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
         taskTransferIndexMap, inputContexts, outputContexts,
-        outputWriterFlusher, myLocation, taskLocationMap);
+        outputWriterFlusher, myLocation, taskLocationMap, taskExecutorIdMap, rendevousServerClient);
 
     if (isSf) {
       // this executor is running on sf worker
       final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
         new RelayServerClientChannelInitializer(channelGroup,
           controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-          taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, taskLocationMap);
+          taskTransferIndexMap, inputContexts, outputContexts, outputWriterFlusher, taskLocationMap, taskExecutorIdMap,
+          rendevousServerClient);
 
       final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
       final Bootstrap clientBootstrap = new Bootstrap()
@@ -240,8 +243,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         .handler(relayServerClientChannelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
 
-
-      this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
 
       this.relayServerClient = new RelayServerClient(
         clientGroup, clientBootstrap, relayServerAddress, relayServerPort, relayServerInfo, rendevousServerClient);

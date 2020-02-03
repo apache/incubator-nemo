@@ -36,7 +36,7 @@ public final class TaskOffloadingManager {
   private final Map<String, List<String>> taskOutputTasksMap = new HashMap<>();
   private final Map<String, List<String>> taskInputTasksMap = new HashMap<>();
 
-  private static final Logger LOG = LoggerFactory.getLogger(TransferIndexMaster.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(TaskOffloadingManager.class.getName());
 
   @Inject
   private TaskOffloadingManager(final MessageEnvironment masterMessageEnvironment) {

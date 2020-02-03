@@ -202,14 +202,16 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
     final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
     final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
 
+    // this executor is running on vm scaling worker
+    this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
+
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
         taskTransferIndexMap, inputContexts, outputContexts,
-        outputWriterFlusher, myLocation, taskLocationMap);
+        outputWriterFlusher, myLocation, taskLocationMap, taskExecutorIdMap, rendevousServerClient);
 
-    // this executor is running on vm scaling worker
-    this.rendevousServerClient = new RendevousServerClient(rendevousServerAddress, rendevousServerPort);
+
 
     byteTransport = new VMScalingLambdaByteTransport(
       executorId, selector, initializer, executorAddressMap, channelGroup, "none",
@@ -300,12 +302,13 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
       executorThread.addNewTask(taskExecutor);
 
     } else if (event instanceof TaskEndEvent) {
-      // TODO
       final TaskEndEvent endEvent = (TaskEndEvent) event;
       final TaskExecutor deletedTask = findTask(endEvent.taskId);
+
+      LOG.info("Finishing task {}", endEvent.taskId);
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
       taskExecutorStartTimeMap.remove(deletedTask);
-
+      deletedTask.setDeleteForMoveToVmScaling(false);
       executorThread.deleteTask(deletedTask);
 
     } else if (event instanceof ThrottlingEvent) {

@@ -42,6 +42,7 @@ public final class VMWorkerManagerInMaster {
   private final Map<String, Pair<String, Integer>> executorAddressMap;
   private final Map<TransferKey, Integer> taskTransferIndexMap;
   private final VMWorkerConf vmWorkerConf;
+  private final Map<String, Pair<Double, Double>> executorCpuUseMap;
 
   @Inject
   private VMWorkerManagerInMaster(
@@ -51,11 +52,14 @@ public final class VMWorkerManagerInMaster {
     final LocalAddressProvider localAddressProvider,
     final EvalConf evalConf,
     final TaskScheduledMap taskScheduledMap,
-    final TransferIndexMaster transferIndexMaster) {
+    final TransferIndexMaster transferIndexMaster,
+    final ExecutorCpuUseMap cpuMap) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
+
+    this.executorCpuUseMap = cpuMap.getExecutorCpuUseMap();
 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
@@ -76,7 +80,7 @@ public final class VMWorkerManagerInMaster {
 
     this.requestor = new VMOffloadingRequester(
       nemoEventHandler, nettyServerTransport.getLocalAddress(), nettyServerTransport.getPort(),
-      vmWorkerConf);
+      vmWorkerConf, executorCpuUseMap);
   }
 
   public List<CompletableFuture<VMScalingWorker>> createWorkers(final int num) {

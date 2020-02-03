@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.nemo.common.RendevousResponse;
 import org.apache.nemo.common.RendevousMessageEncoder;
+import org.apache.nemo.common.TaskExecutorIdResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,12 @@ public final class RendevousClientDecoder extends MessageToMessageDecoder<ByteBu
         final String  stageId = bis.readUTF();
         final long watermark = bis.readLong();
         client.registerWatermark(stageId, watermark);
+        break;
+      }
+      case RESPONSE_TASK_EXECUTOR_ID: {
+        final String taskId = bis.readUTF();
+        final String executorId = bis.readUTF();
+        client.registerExecutorIdResponse(new TaskExecutorIdResponse(taskId, executorId));
         break;
       }
       default:

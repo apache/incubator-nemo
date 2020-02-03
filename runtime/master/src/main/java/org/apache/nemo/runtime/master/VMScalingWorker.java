@@ -3,14 +3,15 @@ package org.apache.nemo.runtime.master;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 
 public class VMScalingWorker implements EventHandler<OffloadingEvent> {
@@ -20,13 +21,16 @@ public class VMScalingWorker implements EventHandler<OffloadingEvent> {
   private final Channel channel;
   private final String executorId;
   private volatile boolean ready = false;
+  private final Map<String, Pair<Double, Double>> executorCpuUseMap;
 
   public VMScalingWorker(final String vmAddress,
                          final Channel channel,
-                         final ByteBuf initBuf) {
+                         final ByteBuf initBuf,
+                         final Map<String, Pair<Double, Double>> executorCpuUseMap) {
     this.vmAddress = vmAddress;
     this.channel = channel;
     this.executorId = RuntimeIdManager.generateExecutorId();
+    this.executorCpuUseMap = executorCpuUseMap;
 
     final ByteBuf buf = initBuf.duplicate();
 
@@ -73,6 +77,14 @@ public class VMScalingWorker implements EventHandler<OffloadingEvent> {
       case CONNECT_DONE: {
         LOG.info("Worker {}/{} is ready", executorId, channel.remoteAddress());
         ready = true;
+        break;
+      }
+      case CPU_LOAD: {
+        final double use = msg.getByteBuf().readDouble();
+        msg.getByteBuf().release();
+        LOG.info("CPU load of {}: {}", executorId, use);
+        executorCpuUseMap.put(executorId,
+          Pair.of(use, 0.0));
         break;
       }
     }

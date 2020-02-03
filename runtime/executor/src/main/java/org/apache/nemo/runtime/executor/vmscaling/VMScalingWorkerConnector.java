@@ -9,8 +9,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.SFTaskMetrics;
+import org.apache.nemo.runtime.executor.StageOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputDecoder;
 import org.slf4j.Logger;
@@ -24,6 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
+import static org.apache.nemo.offloading.common.OffloadingEvent.Type.CPU_LOAD;
+import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
+import static org.apache.nemo.offloading.common.OffloadingEvent.Type.RESULT;
 
 public final class VMScalingWorkerConnector {
 
@@ -39,15 +44,20 @@ public final class VMScalingWorkerConnector {
   private final Map<String, Object> lockMap;
   private final OffloadingDecoder outputDecoder;
   private final SFTaskMetrics sfTaskMetrics;
+  private final Map<String, VMScalingWorkerEventHandler> taskEventHandlerMap;
+  private final StageOffloadingWorkerManager stageOffloadingWorkerManager;
 
   @Inject
-  private VMScalingWorkerConnector(final SFTaskMetrics sfTaskMetrics) {
+  private VMScalingWorkerConnector(
+    final SFTaskMetrics sfTaskMetrics,
+    final StageOffloadingWorkerManager stageOffloadingWorkerManager) {
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
     this.map = new ConcurrentHashMap<>();
     this.executorChannelMap = new ConcurrentHashMap<>();
     this.lockMap = new ConcurrentHashMap<>();
+    this.taskEventHandlerMap = new ConcurrentHashMap<>();
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
       .handler(new NettyChannelInitializer(new NettyLambdaInboundHandler(map)))
@@ -56,11 +66,17 @@ public final class VMScalingWorkerConnector {
 
     this.outputDecoder = new MiddleOffloadingOutputDecoder();
     this.sfTaskMetrics = sfTaskMetrics;
+    this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
   }
 
   public Channel connectTo(final String executorId,
+                           final String stageId,
                            final String address,
                            final TaskExecutor te) {
+
+    taskEventHandlerMap.put(te.getId(),
+      new VMScalingWorkerEventHandler(te, sfTaskMetrics,
+        executorId, stageId, stageOffloadingWorkerManager));
 
     if (executorChannelMap.containsKey(executorId)) {
       return executorChannelMap.get(executorId);
@@ -74,13 +90,10 @@ public final class VMScalingWorkerConnector {
         return executorChannelMap.get(executorId);
       }
 
-
       final ChannelFuture channelFuture = clientBootstrap.connect(new InetSocketAddress(address, VM_WORKER_PORT));
       channelFuture.awaitUninterruptibly();
       final Channel channel = channelFuture.channel();
       executorChannelMap.putIfAbsent(executorId, channel);
-      final VMScalingWorkerEventHandler eventHandler =
-        new VMScalingWorkerEventHandler(te, sfTaskMetrics, executorId);
 
       LOG.info("Connecting to executor {} / {}", executorId, channel);
 
@@ -91,8 +104,10 @@ public final class VMScalingWorkerConnector {
           case RESULT: {
             final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
             try {
-              final Object data = outputDecoder.decode(msg.getByteBuf());
-              eventHandler.onNext(data);
+              final Pair<String, Object> data =
+                (Pair<String, Object>) outputDecoder.decode(msg.getByteBuf());
+
+              taskEventHandlerMap.get(data.left()).onNext(data.right());
               msg.getByteBuf().release();
             } catch (IOException e) {
               e.printStackTrace();

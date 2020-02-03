@@ -93,19 +93,22 @@ public final class JobScaler {
 
   private final VMWorkerManagerInMaster vmWorkerManagerInMaster;
 
+  private long vmScalingTime = System.currentTimeMillis();
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
                     final TaskLocationMap taskLocationMap,
                     final TaskOffloadingManager taskOffloadingManager,
                     final VMWorkerManagerInMaster vmWorkerManagerInMaster,
-                    final EvalConf evalConf) {
+                    final EvalConf evalConf,
+                    final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
     this.prevScalingCountMap = new HashMap<>();
     this.executorTaskStatMap = new HashMap<>();
-    this.executorCpuUseMap = new HashMap<>();
+    this.executorCpuUseMap = m.getExecutorCpuUseMap();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
@@ -279,15 +282,36 @@ public final class JobScaler {
                   } else if (evalConf.sfToVm &&
                     executionStatus == ExecutionStatus.SF_SCALE_OUT &&
                     cpuSfPlusAvg < ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
-                    isVmScalingWorkerReady()) {
-                    // TODO: move tasks from sf to vm
+                    isVmScalingWorkerReady() &&
+                    System.currentTimeMillis() - scalingDoneTime >= 20000) {
+                    // SF to VM scaling out
                     executionStatus = ExecutionStatus.VM_SCALE_OUT;
                     moveToVmScalingWorkers();
+                    vmScalingTime = System.currentTimeMillis();
 
-                  } else if (cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
+                  } else if (evalConf.sfToVm &&
+                    executionStatus == ExecutionStatus.VM_SCALE_OUT &&
+                    cpuSfPlusAvg < ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
+                    System.currentTimeMillis() - vmScalingTime >= 30000) {
+
+                    // VM scaling -> VM scaling in
+                    scalingInConsecutive += 1;
+                    if (scalingInConsecutive > ScalingPolicyParameters.CONSECUTIVE + 2) {
+                      executionStatus = ExecutionStatus.NORMAL;
+                      //TODO: more sophisticaed algorihtm
+                      // Scaling in ...
+                      LOG.info("Scaling in from VM scaling worker !!! cpu {}, input rate {}, scalingThp: {}", cpuAvg, baseThp, scalingThp);
+                      scalingIn();
+                      isScalingIn.set(true);
+                      scalingInConsecutive = 0;
+                    }
+
+                  } else if (cpuAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD
                     && System.currentTimeMillis() - scalingDoneTime >=
                     TimeUnit.SECONDS.toMillis(ScalingPolicyParameters.SLACK_TIME * slackTimes)
                     && executionStatus == ExecutionStatus.SF_SCALE_OUT && recentInputRate * 1.1 >= throughput) {
+
+                    // SF scaling in
 
                     scalingInConsecutive += 1;
 
@@ -564,6 +588,8 @@ public final class JobScaler {
 
 
     // Task to VM worker mapping
+    taskScheduledMap.keepOnceCurrentTaskExecutorIdMap();
+
     int cnt = 0;
     final int tasksPerWorker = mvTasks.size() / workers.size();
     for (final String key : taskLocationMap.locationMap.keySet()) {
@@ -1029,13 +1055,45 @@ public final class JobScaler {
     final Map<String, List<String>> unloadTaskMap = new HashMap<>();
 
     for (final String key : taskLocationMap.locationMap.keySet()) {
-      if (taskLocationMap.locationMap.get(key) == SF) {
+      if (taskLocationMap.locationMap.get(key) == SF
+        || taskLocationMap.locationMap.get(key) == VM_SCALING) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(key);
         unloadTaskMap.putIfAbsent(stageId, new ArrayList<>());
         final List<String> unloadTasks = unloadTaskMap.get(stageId);
         unloadTasks.add(key);
         taskLocationMap.locationMap.put(key, VM);
       }
+    }
+
+    final Map<String, String> m = taskScheduledMap.getPrevTaskExecutorIdMap();
+    taskScheduledMap.getTaskExecutorIdMap().putAll(m);
+
+    // Send the task-executor id to the current vm scaling worker
+    final List<VMScalingWorker> workers = vmScalingWorkers.stream().map(f -> {
+      try {
+        return f.get();
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }).collect(Collectors.toList());
+
+    final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+    final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
+    final FSTConfiguration conf = FSTSingleton.getInstance();
+    try {
+      conf.encodeToStream(bos, taskExecutorIdMap);
+      bos.close();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    for (final VMScalingWorker worker : workers) {
+      final ByteBuf b = byteBuf.retainedDuplicate();
+      worker.send(new OffloadingEvent(OffloadingEvent.Type.EXECUTOR_FINISH_INFO, b));
     }
 
     final List<ControlMessage.TaskLocation> locations = encodeTaskLocationMap();

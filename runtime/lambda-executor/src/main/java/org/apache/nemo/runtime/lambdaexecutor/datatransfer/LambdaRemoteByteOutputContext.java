@@ -26,6 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+import java.util.Map;
+
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
 
@@ -40,6 +42,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
 
   private final RelayServerClient relayServerClient;
   private final TaskLoc myLocation;
+  private final RendevousServerClient rendevousServerClient;
 
   /**
    * Creates a output context.
@@ -57,13 +60,15 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
                                        final TaskLoc sendDataTo,
                                        final RelayServerClient relayServerClient,
                                        final TaskLoc myLocation,
-                                       final TaskLocationMap taskLocationMap) {
+                                       final TaskLocationMap taskLocationMap,
+                                       final RendevousServerClient rendevousServerClient) {
     super(remoteExecutorId, contextId, contextDescriptor,
       contextManager, myLocation, sendDataTo, relayDst, taskLocationMap);
     //LOG.info("RelayDst {} for remoteExecutor: {}, channel {}", relayDst, remoteExecutorId,
     //  relayChannel);
     this.relayServerClient = relayServerClient;
     this.myLocation = myLocation;
+    this.rendevousServerClient = rendevousServerClient;
   }
 
   @Override
@@ -85,7 +90,17 @@ public final class LambdaRemoteByteOutputContext extends AbstractRemoteByteOutpu
         relayServerClient.registerTask(myRelayServer, cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
       });
     } else if (sendDataTo.equals(VM)) {
-      cm.connectToVm(msg.getInitiatorExecutorId(), (vmContextManager) -> {
+
+      final String remoteTaskId = msg.getTaskId();
+
+      // we get the vm executor id if it is executed in lambda
+      // because the task will be executed in the vm
+      final String remoteExecutorId = myLocation.equals(SF) ?
+        msg.getTaskId() : rendevousServerClient.requestExecutorId(remoteTaskId);
+
+      LOG.info("Connecting to executor {} for task {}", remoteExecutorId, remoteTaskId);
+
+      cm.connectToVm(remoteExecutorId, (vmContextManager) -> {
         // We send ack to the vm channel to initialize it !!!
         final ByteTransferContextSetupMessage ackMessage =
           new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),

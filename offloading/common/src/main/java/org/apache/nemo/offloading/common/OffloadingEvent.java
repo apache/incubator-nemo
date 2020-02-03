@@ -28,10 +28,12 @@ public final class OffloadingEvent implements Serializable {
 
     // master -> worker
     EXECUTOR_INIT_INFO,
+    EXECUTOR_FINISH_INFO, // send task-executor id map
     // worker -> vm worker
     OFFLOADING_TASK,
     MIDDLE_TASK,
     SOURCE_TASK,
+    TASK_FINISH_EVENT,
   }
 
   private final Type type;

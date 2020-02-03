@@ -1,6 +1,7 @@
 package org.apache.nemo.offloading.workers.vm;
 
 import com.google.protobuf.ByteString;
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -63,6 +65,12 @@ public class VMWorker {
   private VmOffloadingExecutor executor;
 
   private final AtomicBoolean executorInitalized = new AtomicBoolean(false);
+  private final AtomicBoolean executorFinishInfo = new AtomicBoolean(false);
+
+
+  private Channel masterChannel;
+
+  private final ScheduledExecutorService scheduledExecutorService;
 
   private VMWorker() {
 
@@ -73,6 +81,21 @@ public class VMWorker {
 
     this.decoder = new OffloadingExecutorInputDecoder();
     this.outputEncoder = new MiddleOffloadingOutputEncoder();
+    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
+    final OperatingSystemMXBean operatingSystemMXBean =
+      (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+    // cpu heartbeat
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      if (masterChannel != null) {
+        final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+        System.out.println("CPU Load: " + cpuLoad);
+        final ByteBuf bb = masterChannel.alloc().buffer();
+        bb.writeDouble(cpuLoad);
+        masterChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+      }
+    }, 2, 2, TimeUnit.SECONDS);
 
     final BlockingQueue<Pair<OffloadingEvent, Channel>> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
@@ -86,7 +109,7 @@ public class VMWorker {
             switch (event.getType()) {
               case CONNECT: {
                 // Initiated by master
-
+                masterChannel = c;
                 System.out.println("Worker init... bytes: " + event.getByteBuf().readableBytes());
                 final long st = System.currentTimeMillis();
                 // load transforms
@@ -166,6 +189,26 @@ public class VMWorker {
                 byteBuf.release();
                 break;
               }
+              case EXECUTOR_FINISH_INFO: {
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                final FSTConfiguration conf = FSTSingleton.getInstance();
+
+                try {
+                  final Map<String, String> taskExecutorIdMap =
+                    (Map<String, String>) conf.decodeFromStream(bis);
+
+                  LOG.info("Receiveing taskExecutorIdMap: {}",
+                    taskExecutorIdMap);
+                  executor.setExecutorInitInfo(new HashMap<>(), taskExecutorIdMap);
+                } catch (final Exception e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+                byteBuf.release();
+                executorFinishInfo.set(true);
+                break;
+              }
               case OFFLOADING_TASK: {
                 final ByteBuf byteBuf = event.getByteBuf();
                 final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
@@ -200,6 +243,8 @@ public class VMWorker {
                 final ByteBuf byteBuf = event.getByteBuf();
                 final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
                 final DataInputStream dis = new DataInputStream(bis);
+
+                LOG.info("Readable byte of middle task {}", byteBuf.readableBytes());
 
                 executorService.execute(() -> {
                   try {
@@ -247,6 +292,7 @@ public class VMWorker {
                 final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
                 final DataInputStream dis = new DataInputStream(bis);
 
+                LOG.info("Readable byte of src task {}", byteBuf.readableBytes());
                 executorService.execute(() -> {
                   try {
                     final long prevWatermark = dis.readLong();
@@ -299,6 +345,25 @@ public class VMWorker {
 
                   byteBuf.release();
                 });
+                break;
+              }
+              case TASK_FINISH_EVENT: {
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                try {
+                  LOG.info("Receive task end event");
+                  final Object object = decoder.decode(bis);
+
+                  while (!executorFinishInfo.get()) {
+                    Thread.sleep(500);
+                  }
+
+                  executor.onData(object, oc);
+                } catch (IOException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+
                 break;
               }
               default:

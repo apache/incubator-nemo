@@ -161,12 +161,13 @@ public final class TinyTaskOffloader implements Offloader {
     //  dataFetcher.redirectTo(...);
 
     if (!taskStatus.get().equals(TaskExecutor.Status.DEOFFLOAD_PENDING)) {
-      throw new RuntimeException("Invalid status: " + taskStatus);
+      throw new RuntimeException("Invalid status: " + taskStatus + " for task " + output.taskId);
     }
 
     if (output.moveToVMScaling) {
 
-      LOG.info("Receiving task for moving to VM scaling 111 {}", output.taskId);
+      LOG.info("Receiving task for moving to VM scaling 111 {}, status {}",
+        output.taskId, taskStatus);
 
     } else {
       final int id = output.id;
@@ -207,18 +208,20 @@ public final class TinyTaskOffloader implements Offloader {
 
       kafkaOffloadingOutputs.clear();
 
+      LOG.info("Set statues running for task {} 111", taskId);
       taskStatus.set(TaskExecutor.Status.RUNNING);
     }
   }
 
   @Override
-  public void handleStateOutput(StateOutput output) {
+  public synchronized void handleStateOutput(StateOutput output) {
     if (!taskStatus.get().equals(TaskExecutor.Status.DEOFFLOAD_PENDING)) {
-      throw new RuntimeException("Invalid status: " + taskStatus);
+      throw new RuntimeException("Invalid status: " + taskStatus + " for task " + output.taskId);
     }
 
     if (output.moveToVmScaling) {
-      LOG.info("Receiving task for moving to VM scaling 222 {}", output.taskId);
+      LOG.info("Receiving task for moving to VM scaling 222 {}, status {}", output.taskId,
+        taskStatus);
 
     } else {
       if (output.stateMap != null) {
@@ -244,6 +247,7 @@ public final class TinyTaskOffloader implements Offloader {
         dataFetcher.restart();
       }
 
+      LOG.info("Set statues running for task {} 112", taskId);
       taskStatus.set(TaskExecutor.Status.RUNNING);
     }
   }
@@ -259,6 +263,9 @@ public final class TinyTaskOffloader implements Offloader {
 
     prevOffloadEndTime.set(System.currentTimeMillis());
 
+    LOG.info("Handle end offloading event for {}, status {}",
+      taskId, taskStatus);
+
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
       if (tinyWorkerManager.deleteTask(taskId, mvToVmScaling)) {
         // removed immediately !!
@@ -272,11 +279,12 @@ public final class TinyTaskOffloader implements Offloader {
         for (final DataFetcher dataFetcher : allFetchers) {
           dataFetcher.restart();
         }
+        LOG.info("Set statues running for task {} 333", taskId);
         taskStatus.set(TaskExecutor.Status.RUNNING);
       }
 
     } else {
-      throw new RuntimeException("Unsupported status: " + taskStatus);
+      throw new RuntimeException("Invalid status: " + taskStatus + " for task " + taskId);
     }
   }
 

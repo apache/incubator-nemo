@@ -17,7 +17,10 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
     REGISTER,
     WATERMARK_REQUEST,
     WATERMARK_RESPONSE,
-    WATERMARK_SEND
+    WATERMARK_SEND,
+
+    REQUEST_TASK_EXECUTOR_ID,
+    RESPONSE_TASK_EXECUTOR_ID,
   }
 
   public RendevousMessageEncoder() {
@@ -77,6 +80,19 @@ public final class RendevousMessageEncoder extends MessageToMessageEncoder<Objec
       final WatermarkResponse req = (WatermarkResponse) msg;
       bos.writeUTF(req.taskId);
       bos.writeLong(req.watermark);
+      out.add(bos.buffer());
+
+    } else if (msg instanceof TaskExecutorIdResponse) {
+      bos.writeInt(Type.RESPONSE_TASK_EXECUTOR_ID.ordinal());
+      final TaskExecutorIdResponse req = (TaskExecutorIdResponse) msg;
+      bos.writeUTF(req.taskId);
+      bos.writeUTF(req.executorId);
+      out.add(bos.buffer());
+    } else if (msg instanceof TaskExecutorIdRequest) {
+
+      bos.writeInt(Type.REQUEST_TASK_EXECUTOR_ID.ordinal());
+      final TaskExecutorIdRequest req = (TaskExecutorIdRequest) msg;
+      bos.writeUTF(req.taskId);
       out.add(bos.buffer());
 
     } else {

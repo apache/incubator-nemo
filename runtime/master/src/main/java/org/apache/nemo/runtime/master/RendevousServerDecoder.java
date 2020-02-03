@@ -7,6 +7,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.nemo.common.RendevousMessageEncoder;
 import org.apache.nemo.common.RendevousResponse;
+import org.apache.nemo.common.TaskExecutorIdResponse;
 import org.apache.nemo.common.WatermarkResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,15 +28,18 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
+  private final TaskScheduledMap taskScheduledMap;
 
   public RendevousServerDecoder(final ConcurrentMap<String, List<Channel>> dstRequestChannelMap,
                                 final ConcurrentMap<String, Channel> rendevousChannelMap,
                                 final ScheduledExecutorService scheduledExecutorService,
-                                final WatermarkManager watermarkManager) {
+                                final WatermarkManager watermarkManager,
+                                final TaskScheduledMap taskScheduledMap) {
     this.dstRequestChannelMap = dstRequestChannelMap;
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = scheduledExecutorService;
     this.watermarkManager = watermarkManager;
+    this.taskScheduledMap = taskScheduledMap;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
@@ -105,6 +109,12 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         //LOG.info("Registering dst {} address {}", dst, ctx.channel());
 
         rendevousChannelMap.put(dst, ctx.channel());
+        break;
+      }
+      case REQUEST_TASK_EXECUTOR_ID: {
+        final String taskId = bis.readUTF();
+        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(taskId);
+        ctx.channel().writeAndFlush(new TaskExecutorIdResponse(taskId, executorId));
         break;
       }
       case WATERMARK_SEND: {

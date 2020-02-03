@@ -65,6 +65,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final OutputWriterFlusher outputWriterFlusher;
   private final TaskLoc myLocation;
   private final TaskLocationMap taskLocationMap;
+  private final Map<String, String> taskExecutorIdMap;
+  private final RendevousServerClient rendevousServerClient;
 
   public LambdaContextManager(
     final ExecutorService channelExecutorService,
@@ -80,12 +82,15 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final ByteTransfer byteTransfer,
     final OutputWriterFlusher outputWriterFlusher,
     final TaskLoc myLocation,
-    final TaskLocationMap taskLocationMap) {
+    final TaskLocationMap taskLocationMap,
+    final Map<String, String> taskExecutorIdMap,
+    final RendevousServerClient rendevousServerClient) {
     //LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
     this.inputContexts = inputContexts;
     this.outputContexts = outputContexts;
     this.channelGroup = channelGroup;
+    this.rendevousServerClient = rendevousServerClient;
     this.localExecutorId = localExecutorId;
     this.channel = channel;
     this.ackScheduledService = ackScheduledService;
@@ -96,6 +101,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.outputWriterFlusher = outputWriterFlusher;
     this.myLocation = myLocation;
     this.taskLocationMap = taskLocationMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
 
     //LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
@@ -297,7 +303,10 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         */
       }
       default: {
-        throw new RuntimeException("Unsupported type: " + message.getMessageType());
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        throw new RuntimeException("Unsupported type: " + message.getMessageType() +
+          " channelRemote: " + channel.remoteAddress() +
+          " ," + message + ", descriptor: " + cd);
       }
     }
   }
@@ -395,14 +404,14 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, SF, relayServerClient, myLocation, taskLocationMap),
+          this, relayDst, SF, relayServerClient, myLocation, taskLocationMap, rendevousServerClient),
         executorId, isPipe, relayDst, false);
     } else {
       return newContext(outputContexts, transferIndex,
         INITIATOR_SENDS_DATA,
         ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor,
-          this, relayDst, VM, relayServerClient, myLocation, taskLocationMap),
+          this, relayDst, VM, relayServerClient, myLocation, taskLocationMap, rendevousServerClient),
         executorId, isPipe, relayDst, false);
     }
   }
