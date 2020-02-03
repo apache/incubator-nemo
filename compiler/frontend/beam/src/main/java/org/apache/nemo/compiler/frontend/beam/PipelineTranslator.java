@@ -442,12 +442,8 @@ final class PipelineTranslator {
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
       final HasDisplayData displayData = (builder) -> builder.add(DisplayData.item("name", beamNode.getFullName()));
-      final DoFnSchemaInformation doFnSchemaInformation;
-      if (ctx.getCurrentTransform() != null) {
-        doFnSchemaInformation = ParDoTranslation.getSchemaInformation(ctx.getCurrentTransform());
-      } else {
-        doFnSchemaInformation = DoFnSchemaInformation.create();
-      }
+      final DoFnSchemaInformation doFnSchemaInformation =
+        ParDoTranslation.getSchemaInformation(beamNode.toAppliedPTransform(ctx.getPipeline()));
 
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(

@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.frontend.beam;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ViewFn;
@@ -56,7 +55,6 @@ final class PipelineTranslationContext {
   private final Map<PValue, TupleTag<?>> pValueToTag;
   private final Stack<LoopVertex> loopVertexStack;
   private final Pipeline pipeline;
-  private AppliedPTransform<?, ?, ?> currentTransform;
 
   /**
    * @param pipeline        the pipeline to translate
@@ -71,7 +69,6 @@ final class PipelineTranslationContext {
     this.pValueToTag = new HashMap<>();
     this.loopVertexStack = new Stack<>();
     this.pipelineOptions = pipelineOptions;
-    this.currentTransform = null;
   }
 
   /**
@@ -93,24 +90,6 @@ final class PipelineTranslationContext {
     if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
       loopVertexStack.pop();
     }
-  }
-
-  /**
-   * @param treeNode transform that we have entered.
-   */
-  public void setCurrentTransform(final TransformHierarchy.Node treeNode) {
-    if (treeNode != null && treeNode.getTransform() != null) {
-      this.currentTransform = treeNode.toAppliedPTransform(pipeline);
-    } else {
-      this.currentTransform = null;
-    }
-  }
-
-  /**
-   * @return the current transform in the context.
-   */
-  public AppliedPTransform<?, ?, ?> getCurrentTransform() {
-    return currentTransform;
   }
 
   /**

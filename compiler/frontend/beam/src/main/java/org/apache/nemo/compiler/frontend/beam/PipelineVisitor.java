@@ -41,16 +41,12 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
-    context.setCurrentTransform(node);
     pipelineTranslator.translatePrimitive(context, node);
-    context.setCurrentTransform(null);
   }
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
-    context.setCurrentTransform(node);
     final CompositeBehavior compositeBehavior = pipelineTranslator.translateComposite(context, node);
-    context.setCurrentTransform(null);
 
     // this should come after the above translateComposite, since this composite is a child of a previous composite.
     context.enterCompositeTransform(node);
