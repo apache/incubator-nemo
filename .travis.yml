@@ -22,6 +22,7 @@ dist: trusty
 # For maven builds
 language: java
 jdk:
+  - openjdk8
   - oraclejdk11
   - openjdk11
 env:

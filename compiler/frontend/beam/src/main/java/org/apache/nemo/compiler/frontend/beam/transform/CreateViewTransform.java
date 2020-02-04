@@ -139,6 +139,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
     @Override
     public Iterable<Void> get() {
+      // as it is a iterable of voids, return null.
       return null;
     }
 
