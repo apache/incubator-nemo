@@ -82,8 +82,8 @@ under the License.
             <javacArg>-Xlint:unchecked</javacArg>
             <javacArg>-Xlint:deprecation</javacArg>
           </javacArgs>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
         </configuration>
         <executions>
           <execution>
