@@ -22,6 +22,7 @@ import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
@@ -79,7 +80,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       windowingStrategy,
       Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options,
-      displayData);
+      displayData,
+      DoFnSchemaInformation.create(),
+      Collections.emptyMap());
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
