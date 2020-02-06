@@ -69,7 +69,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
   private final class BeamEncoder<T2> implements Encoder<T2> {
 
     private final Coder<T2> beamCoder;
-    private final OutputStream outputStream;
+    private transient OutputStream outputStream;
 
     /**
      * Constructor.
@@ -100,7 +100,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
    */
   private final class BeamVoidEncoder<T2> implements Encoder<T2> {
 
-    private final OutputStream outputStream;
+    private transient OutputStream outputStream;
 
     /**
      * Constructor.
