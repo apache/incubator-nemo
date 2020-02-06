@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
-  private static final String TASK_METRIC_ID = "TaskMetric"
+  private static final String TASK_METRIC_ID = "TaskMetric";
 
   // Essential information
   private boolean isExecuted;
@@ -688,7 +688,7 @@ public final class TaskExecutor {
         outputWriter.close();
         final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
         writtenBytes.ifPresent(writtenBytesList::add);
-      });
+      })
     );
 
     long totalWrittenBytes = 0;
