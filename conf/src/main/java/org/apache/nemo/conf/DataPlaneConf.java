@@ -37,7 +37,6 @@ public final class DataPlaneConf {
   private final int serverBackLog;
   private final int listenThreads;
   private final int workThreads;
-  private final int maxOffHeapMb;
   private final int chunkSizeKb;
 
   @Inject
@@ -49,7 +48,6 @@ public final class DataPlaneConf {
                         @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBackLog,
                         @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int listenThreads,
                         @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int workThreads,
-                        @Parameter(JobConf.MaxOffheapMb.class) final int maxOffHeapMb,
                         @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
     this.numIOThreads = numIOThreads;
     this.maxNumDownloads = maxNumDownloads;
@@ -59,7 +57,6 @@ public final class DataPlaneConf {
     this.serverBackLog = serverBackLog;
     this.listenThreads = listenThreads;
     this.workThreads = workThreads;
-    this.maxOffHeapMb = maxOffHeapMb;
     this.chunkSizeKb = chunkSizeKb;
   }
 
@@ -73,7 +70,6 @@ public final class DataPlaneConf {
       .bindNamedParameter(JobConf.PartitionTransportServerBacklog.class, Integer.toString(serverBackLog))
       .bindNamedParameter(JobConf.PartitionTransportServerNumListeningThreads.class, Integer.toString(listenThreads))
       .bindNamedParameter(JobConf.PartitionTransportServerNumWorkingThreads.class, Integer.toString(workThreads))
-      .bindNamedParameter(JobConf.MaxOffheapMb.class, Integer.toString(maxOffHeapMb))
       .bindNamedParameter(JobConf.ChunkSizeKb.class, Integer.toString(chunkSizeKb))
       .build();
   }

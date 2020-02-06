@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.client;
 
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
@@ -149,8 +147,6 @@ public final class JobLauncher {
       + "{\"type\":\"Reserved\",\"memory_mb\":512,\"capacity\":5}]";
     final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
       JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
-    final Configuration offheapMemoryConfig = getMemoryConf(builtJobConf, executorResourceConfig,
-      JobConf.ExecutorJSONContents.class, JobConf.MaxOffheapRatio.class, JobConf.MaxOffheapMb.class);
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
     final Configuration clientConf = getClientConf();
@@ -158,8 +154,7 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfig,
-      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf,
-      offheapMemoryConfig);
+      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -180,6 +175,7 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
+  private static final String INTERRUPTED = "Interrupted: ";
   public static void shutdown() {
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -191,7 +187,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
+          LOG.warn(INTERRUPTED, e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -252,7 +248,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the driver to be ready");
       driverReadyLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
@@ -274,7 +270,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -342,9 +338,8 @@ public final class JobLauncher {
    * Get driver ncs configuration.
    *
    * @return driver ncs configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverNcsConf() throws InjectionException {
+  private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
       LocalNameResolverConfiguration.CONF.build(),
       TANG.newConfigurationBuilder()
@@ -356,9 +351,8 @@ public final class JobLauncher {
    * Get driver message configuration.
    *
    * @return driver message configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverMessageConf() throws InjectionException {
+  private static Configuration getDriverMessageConf()  {
     return TANG.newConfigurationBuilder()
       .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
       .build();
@@ -394,10 +388,9 @@ public final class JobLauncher {
    * @param args arguments to be processed as command line.
    * @return job configuration.
    * @throws IOException        exception while processing command line.
-   * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
-  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+  public static Configuration getJobConf(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
@@ -477,28 +470,6 @@ public final class JobLauncher {
         : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
         .bindNamedParameter(contentsParameter, contents)
-        .build();
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static Configuration getMemoryConf(final Configuration jobConf,
-                                             final Configuration executorConf,
-                                             final Class<? extends Name<String>> contentsParameter,
-                                             final Class<? extends Name<Double>> offHeapRatio,
-                                             final Class<? extends Name<Integer>> maxOffHeapMb)
-    throws InjectionException {
-    final Injector injector = TANG.newInjector(Configurations.merge(jobConf, executorConf));
-    try {
-      final String contents = injector.getNamedInstance(contentsParameter);
-      final ObjectMapper objectMapper = new ObjectMapper();
-      final TreeNode jsonRootNode = objectMapper.readTree(contents);
-      final TreeNode resourceNode = jsonRootNode.get(0);
-      final int executorMemory = resourceNode.get("memory_mb").traverse().getIntValue();
-      final int offHeapMemory =  (int) (executorMemory * injector.getNamedInstance(offHeapRatio));
-      return TANG.newConfigurationBuilder()
-        .bindNamedParameter(maxOffHeapMb, String.valueOf(offHeapMemory))
         .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);

@@ -19,7 +19,6 @@
 package org.apache.nemo.common.dag;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 
 import java.io.Serializable;
@@ -132,9 +131,8 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param srcVertexId the ID of the source vertex.
    * @param dstVertexId the ID of the destination vertex.
    * @return the edge if exists.
-   * @throws IllegalEdgeOperationException otherwise.
    */
-  E getEdgeBetween(String srcVertexId, String dstVertexId) throws IllegalEdgeOperationException;
+  E getEdgeBetween(String srcVertexId, String dstVertexId);
 
   /**
    * Gets the DAG's vertices in topologically sorted order.

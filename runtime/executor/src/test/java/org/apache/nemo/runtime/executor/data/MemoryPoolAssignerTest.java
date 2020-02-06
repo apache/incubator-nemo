@@ -42,7 +42,7 @@ public class MemoryPoolAssignerTest {
 
   @Before
   public void setUp() {
-    this.memoryPoolAssigner = new MemoryPoolAssigner(1, 32);
+    this.memoryPoolAssigner = new MemoryPoolAssigner(5, 0.2, 32);
   }
 
   @Test(expected = MemoryAllocationException.class)

@@ -68,13 +68,15 @@ final class SkewHandlingUtil {
 
   static EncoderProperty getEncoder(final IREdge irEdge) {
     return EncoderProperty.of(PairEncoderFactory
-      .of(irEdge.getPropertyValue(KeyEncoderProperty.class).orElseThrow(IllegalStateException::new),
+      .of(irEdge.getPropertyValue(KeyEncoderProperty.class)
+          .<IllegalStateException>orElseThrow(IllegalStateException::new),
         LongEncoderFactory.of()));
   }
 
   static DecoderProperty getDecoder(final IREdge irEdge) {
     return DecoderProperty.of(PairDecoderFactory
-      .of(irEdge.getPropertyValue(KeyDecoderProperty.class).orElseThrow(IllegalStateException::new),
+      .of(irEdge.getPropertyValue(KeyDecoderProperty.class).
+          <IllegalStateException>orElseThrow(IllegalStateException::new),
         LongDecoderFactory.of()));
   }
 }

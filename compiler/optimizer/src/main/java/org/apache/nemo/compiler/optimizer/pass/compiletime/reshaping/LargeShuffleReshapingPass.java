@@ -39,14 +39,14 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.topologicalDo(vertex -> {
+    dag.topologicalDo(vertex ->
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.SHUFFLE
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           dag.insert(new RelayVertex(), edge);
         }
-      });
-    });
+      })
+    );
     return dag;
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -49,7 +48,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    final Runnable batchMetricMessages = () -> flushMetricMessageQueueToMaster();
+    final Runnable batchMetricMessages = this::flushMetricMessageQueueToMaster;
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
       FLUSHING_PERIOD, TimeUnit.MILLISECONDS);
   }
@@ -102,7 +101,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
   }
 
   @Override
-  public void close() throws UnknownFailureCauseException {
+  public void close() {
     scheduledExecutorService.shutdownNow();
     flushMetricMessageQueueToMaster();
   }
