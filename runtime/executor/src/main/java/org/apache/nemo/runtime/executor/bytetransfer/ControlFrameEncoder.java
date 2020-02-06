@@ -19,13 +19,13 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import com.google.protobuf.ByteString;
-import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -58,12 +58,12 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferCont
                         final ByteTransferContext in,
                         final List out) {
     final ByteTransferContextSetupMessage message = ByteTransferContextSetupMessage.newBuilder()
-        .setInitiatorExecutorId(localExecutorId)
-        .setTransferIndex(in.getContextId().getTransferIndex())
-        .setDataDirection(in.getContextId().getDataDirection())
-        .setContextDescriptor(ByteString.copyFrom(in.getContextDescriptor()))
-        .setIsPipe(in.getContextId().isPipe())
-        .build();
+      .setInitiatorExecutorId(localExecutorId)
+      .setTransferIndex(in.getContextId().getTransferIndex())
+      .setDataDirection(in.getContextId().getDataDirection())
+      .setContextDescriptor(ByteString.copyFrom(in.getContextDescriptor()))
+      .setIsPipe(in.getContextId().isPipe())
+      .build();
     final byte[] frameBody = message.toByteArray();
     out.add(ZEROS.retain());
     out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH).writeInt(frameBody.length));

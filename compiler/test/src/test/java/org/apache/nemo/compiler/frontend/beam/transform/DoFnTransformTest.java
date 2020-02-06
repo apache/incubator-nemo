@@ -25,6 +25,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
@@ -43,9 +44,7 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 public final class DoFnTransformTest {
@@ -79,7 +78,9 @@ public final class DoFnTransformTest {
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        DisplayData.none());
+        DisplayData.none(),
+        DoFnSchemaInformation.create(),
+        Collections.emptyMap());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -113,7 +114,9 @@ public final class DoFnTransformTest {
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
         pipelineOptions,
-        DisplayData.none());
+        DisplayData.none(),
+        DoFnSchemaInformation.create(),
+        Collections.emptyMap());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -157,7 +160,9 @@ public final class DoFnTransformTest {
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
         pipelineOptions,
-        DisplayData.none());
+        DisplayData.none(),
+        DoFnSchemaInformation.create(),
+        Collections.emptyMap());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -209,7 +214,9 @@ public final class DoFnTransformTest {
         tags,
         WindowingStrategy.globalDefault(),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        DisplayData.none());
+        DisplayData.none(),
+        DoFnSchemaInformation.create(),
+        Collections.emptyMap());
 
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
@@ -269,7 +276,9 @@ public final class DoFnTransformTest {
         WindowingStrategy.globalDefault(),
         sideInputMap, /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        DisplayData.none());
+        DisplayData.none(),
+        DoFnSchemaInformation.create(),
+        Collections.emptyMap());
 
     final TestOutputCollector<String> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);
@@ -342,6 +351,7 @@ public final class DoFnTransformTest {
 
   /**
    * Identitiy do fn.
+   *
    * @param <T> type
    */
   private static class IdentityDoFn<T> extends DoFn<T, T> {
@@ -354,6 +364,7 @@ public final class DoFnTransformTest {
 
   /**
    * Side input do fn.
+   *
    * @param <T> type
    */
   private static class SimpleSideInputDoFn<T> extends DoFn<T, String> {

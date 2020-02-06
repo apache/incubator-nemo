@@ -29,7 +29,8 @@ public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcas
 
   /**
    * Constructor.
-   * @param tag broadcast id.
+   *
+   * @param tag       broadcast id.
    * @param classType class type.
    */
   SparkBroadcast(final long tag, final Class<T> classType) {

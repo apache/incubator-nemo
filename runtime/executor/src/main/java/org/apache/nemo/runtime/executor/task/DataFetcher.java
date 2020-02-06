@@ -32,7 +32,7 @@ abstract class DataFetcher implements AutoCloseable {
   private final OutputCollector outputCollector;
 
   /**
-   * @param dataSource to fetch from.
+   * @param dataSource      to fetch from.
    * @param outputCollector for the data fetched.
    */
   DataFetcher(final IRVertex dataSource,
@@ -43,8 +43,9 @@ abstract class DataFetcher implements AutoCloseable {
 
   /**
    * Can block until the next data element becomes available.
+   *
    * @return data element
-   * @throws IOException upon I/O error
+   * @throws IOException                      upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
    */
   abstract Object fetchDataElement() throws IOException, NoSuchElementException;

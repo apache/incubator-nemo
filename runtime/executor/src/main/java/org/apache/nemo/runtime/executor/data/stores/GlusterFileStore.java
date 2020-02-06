@@ -18,14 +18,16 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -52,12 +54,14 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @param volumeDirectory   the remote volume directory which will contain the files.
    * @param jobId             the job id.
    * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
-                           final SerializerManager serializerManager) {
-    super(serializerManager);
+                           final SerializerManager serializerManager,
+                           final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
     this.fileDirectory = volumeDirectory + "/" + jobId;
     new File(fileDirectory).mkdirs();
   }
@@ -68,21 +72,20 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
-        RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+      RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
+    return new FileBlock<>(blockId, serializer, filePath, metadata, getMemoryPoolAssigner());
   }
 
   /**
    * Writes a committed block to this store.
    *
    * @param block the block to write.
-   * @throws BlockWriteException if fail to write.
    */
   @Override
-  public void writeBlock(final Block block) throws BlockWriteException {
+  public void writeBlock(final Block block) {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + " only accept " + FileBlock.class.getName()));
+        this.toString() + " only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     }
@@ -94,10 +97,9 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    *
    * @param blockId of the target partition.
    * @return the target block (if it exists).
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
+  public Optional<Block> readBlock(final String blockId) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {
       return Optional.empty();
@@ -118,7 +120,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {
@@ -149,7 +151,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata<K> metadata =
-        RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+      RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
+    return new FileBlock<>(blockId, serializer, filePath, metadata, getMemoryPoolAssigner());
   }
 }

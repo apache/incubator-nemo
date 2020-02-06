@@ -23,10 +23,15 @@ import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Transform for group by key transformation.
+ * TODO #431: Handle states in Transforms better
+ *
  * @param <K> key type.
  * @param <V> value type.
  */
@@ -58,7 +63,7 @@ public final class GroupByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tu
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), (Iterable<V>) entry.getValue()))
-        .forEach(outputCollector::emit);
+      .forEach(outputCollector::emit);
     keyToValues.clear();
   }
 }

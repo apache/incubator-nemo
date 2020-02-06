@@ -39,7 +39,9 @@ import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.SideInputCoder;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
 /**
  * A collection of translators for the Beam PTransforms.
@@ -55,7 +57,7 @@ final class PipelineTranslationContext {
   private final Pipeline pipeline;
 
   /**
-   * @param pipeline the pipeline to translate
+   * @param pipeline        the pipeline to translate
    * @param pipelineOptions {@link PipelineOptions}
    */
   PipelineTranslationContext(final Pipeline pipeline,
@@ -101,13 +103,13 @@ final class PipelineTranslationContext {
 
   /**
    * Say the dstIRVertex consumes three views: view0, view1, and view2.
-   *
+   * <p>
    * We translate that as the following:
    * view0 -> SideInputTransform(index=0) ->
    * view1 -> SideInputTransform(index=1) -> dstIRVertex(with a map from indices to PCollectionViews)
    * view2 -> SideInputTransform(index=2) ->
    *
-   * @param dstVertex vertex.
+   * @param dstVertex  vertex.
    * @param sideInputs of the vertex.
    */
   void addSideInputEdges(final IRVertex dstVertex, final Map<Integer, PCollectionView<?>> sideInputs) {
@@ -123,12 +125,12 @@ final class PipelineTranslationContext {
 
       // First edge: view to transform
       final IREdge firstEdge =
-        new IREdge(CommunicationPatternProperty.Value.OneToOne, srcVertex, sideInputTransformVertex);
+        new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, srcVertex, sideInputTransformVertex);
       addEdge(firstEdge, viewCoder, windowCoder);
 
       // Second edge: transform to the dstIRVertex
       final IREdge secondEdge =
-        new IREdge(CommunicationPatternProperty.Value.BroadCast, sideInputTransformVertex, dstVertex);
+        new IREdge(CommunicationPatternProperty.Value.BROADCAST, sideInputTransformVertex, dstVertex);
       final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
         WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
 
@@ -145,7 +147,7 @@ final class PipelineTranslationContext {
   /**
    * Add IR edge to the builder.
    *
-   * @param dst the destination IR vertex.
+   * @param dst   the destination IR vertex.
    * @param input the {@link PValue} {@code dst} consumes
    */
   void addEdgeTo(final IRVertex dst, final PValue input) {
@@ -171,9 +173,9 @@ final class PipelineTranslationContext {
   }
 
   /**
-   * @param edge IR edge to add.
+   * @param edge         IR edge to add.
    * @param elementCoder element coder.
-   * @param windowCoder window coder.
+   * @param windowCoder  window coder.
    */
   void addEdge(final IREdge edge, final Coder elementCoder, final Coder windowCoder) {
     edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
@@ -192,9 +194,10 @@ final class PipelineTranslationContext {
 
   /**
    * Registers a {@link PValue} as a m.forEach(outputFromGbk -> ain output from the specified {@link IRVertex}.
-   * @param node node
+   *
+   * @param node     node
    * @param irVertex the IR vertex
-   * @param output the {@link PValue} {@code irVertex} emits as main output
+   * @param output   the {@link PValue} {@code irVertex} emits as main output
    */
   void registerMainOutputFrom(final TransformHierarchy.Node node,
                               final IRVertex irVertex,
@@ -206,10 +209,10 @@ final class PipelineTranslationContext {
   /**
    * Registers a {@link PValue} as an additional output from the specified {@link IRVertex}.
    *
-   * @param node node
+   * @param node     node
    * @param irVertex the IR vertex
-   * @param output the {@link PValue} {@code irVertex} emits as additional output
-   * @param tag the {@link TupleTag} associated with this additional output
+   * @param output   the {@link PValue} {@code irVertex} emits as additional output
+   * @param tag      the {@link TupleTag} associated with this additional output
    */
   void registerAdditionalOutputFrom(final TransformHierarchy.Node node,
                                     final IRVertex irVertex,
@@ -267,24 +270,25 @@ final class PipelineTranslationContext {
     final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.SHUFFLE;
     }
     if (srcTransform instanceof FlattenTransform) {
-      return CommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.ONE_TO_ONE;
     }
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.SHUFFLE;
     }
     if (dstTransform instanceof CreateViewTransform) {
-      return CommunicationPatternProperty.Value.BroadCast;
+      return CommunicationPatternProperty.Value.BROADCAST;
     }
-    return CommunicationPatternProperty.Value.OneToOne;
+    return CommunicationPatternProperty.Value.ONE_TO_ONE;
   }
 
   /**
    * Get appropriate coder for {@link PCollectionView}.
-   * @param view {@link PCollectionView}
+   *
+   * @param view    {@link PCollectionView}
    * @param context translation context.
    * @return appropriate {@link Coder} for {@link PCollectionView}
    */

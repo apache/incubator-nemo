@@ -31,14 +31,17 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Task thread -> fetchDataElement() -> (((QUEUE))) <- List of iterators <- queueInsertionThreads
- *
+ * <p>
  * Unlike {@link ParentTaskDataFetcher}, where the task thread directly consumes (and blocks on) iterators one by one,
  * this class spawns threads that each forwards elements from an iterator to a global queue.
- *
+ * <p>
  * This class should be used when dealing with unbounded data streams, as we do not want to be blocked on a
  * single unbounded iterator forever.
  */
@@ -107,7 +110,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
     }
 
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) ->
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
@@ -133,12 +136,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           countBytesSynchronized(iterator);
           elementQueue.offer(Finishmark.getInstance());
         } else {
-          exception.printStackTrace();
+          LOG.error(exception.getMessage());
           throw new RuntimeException(exception);
         }
-      });
-
-    }));
+      })));
   }
 
   final long getSerializedBytes() {
@@ -180,10 +181,12 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     public void emit(final Object output) {
       throw new IllegalStateException("Should not be called");
     }
+
     @Override
     public void emitWatermark(final Watermark watermark) {
       elementQueue.offer(watermark);
     }
+
     @Override
     public void emit(final String dstVertexId, final Object output) {
       throw new IllegalStateException("Should not be called");

@@ -22,13 +22,13 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.protobuf.ByteString;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import net.jcip.annotations.ThreadSafe;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public final class BroadcastManagerWorker {
    * remote executors or the master.
    *
    * @param executorId of the executor.
-   * @param toMaster connection.
+   * @param toMaster   connection.
    */
   @Inject
   private BroadcastManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -88,10 +88,11 @@ public final class BroadcastManagerWorker {
 
   /**
    * Get the variable with the id.
+   *
    * @param id of the variable.
    * @return the variable.
    */
-  public Object get(final Serializable id)  {
+  public Object get(final Serializable id) {
     LOG.info("get {}", id);
     try {
       return idToVariableCache.get(id);

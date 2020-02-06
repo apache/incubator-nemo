@@ -18,15 +18,14 @@
  */
 package org.apache.nemo.compiler.optimizer.examples;
 
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.policy.DisaggregationPolicy;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,10 +45,11 @@ public final class MapReduceDisaggregationOptimization {
 
   /**
    * Main function of the example MR program.
+   *
    * @param args arguments.
    * @throws Exception Exceptions on the way.
    */
-  public static void main(final String[] args) throws Exception {
+  public static void main(final String[] args) {
     final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
     final IRVertex map = new OperatorVertex(new EmptyComponents.EmptyTransform("MapVertex"));
     final IRVertex reduce = new OperatorVertex(new EmptyComponents.EmptyTransform("ReduceVertex"));
@@ -60,18 +60,18 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map);
+    final IREdge edge1 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, map, reduce);
+    final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map, reduce);
     builder.connectVertices(edge2);
 
-    final DAG<IRVertex, IREdge> dag = builder.build();
+    final IRDAG dag = new IRDAG(builder.build());
     LOG.info("Before Optimization");
     LOG.info(dag.toString());
 
     // Optimize
-    final DAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 
     // After
     LOG.info("After Optimization");

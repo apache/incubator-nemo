@@ -25,10 +25,10 @@ import java.util.List;
 /**
  * IRVertex that reads data from an external source.
  * It is to be implemented in the compiler frontend with source-specific data fetching logic.
+ *
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
-
   /**
    * Constructor for SourceVertex.
    */
@@ -49,6 +49,7 @@ public abstract class SourceVertex<O> extends IRVertex {
   public SourceVertex(final SourceVertex that) {
     super(that);
   }
+
   /**
    * Gets parallel readables.
    *
@@ -57,6 +58,13 @@ public abstract class SourceVertex<O> extends IRVertex {
    * @throws Exception if fail to get.
    */
   public abstract List<Readable<O>> getReadables(int desiredNumOfSplits) throws Exception;
+
+  /**
+   * Gets the estimated size of bytes. Returns 0L if not applicable.
+   *
+   * @return size of input bytes.
+   */
+  public abstract long getEstimatedSizeBytes();
 
   /**
    * Clears internal states, must be called after getReadables().

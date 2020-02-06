@@ -18,17 +18,13 @@
  */
 package org.apache.nemo.common.coder;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * A {@link EncoderFactory} which is used for an array of bytes.
  */
 public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
-  private static final Logger LOG = LoggerFactory.getLogger(BytesEncoderFactory.class.getName());
-
   private static final BytesEncoderFactory BYTES_ENCODER_FACTORY = new BytesEncoderFactory();
 
   /**
@@ -40,6 +36,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
 
   /**
    * Static initializer of the encoder.
+   *
    * @return the initializer.
    */
   public static BytesEncoderFactory of() {
@@ -51,12 +48,17 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
     return new BytesEncoder(outputStream);
   }
 
+  @Override
+  public String toString() {
+    return "BytesEncoderFactory{}";
+  }
+
   /**
    * BytesEncoder.
    */
   private final class BytesEncoder implements Encoder<byte[]> {
 
-    private final OutputStream outputStream;
+    private final transient OutputStream outputStream;
 
     /**
      * Constructor.

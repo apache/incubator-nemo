@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * This class sends messages to {@link MessageListener} with some defined semantics.
+ *
  * @param <T> message type
  */
 public interface MessageSender<T> {
@@ -39,14 +40,15 @@ public interface MessageSender<T> {
    * a reply message. If there was an exception, the returned future would be failed.
    *
    * @param message a message
-   * @param <U> reply message type.
+   * @param <U>     reply message type.
    * @return a future
    */
   <U> CompletableFuture<U> request(T message);
 
   /**
    * Closes the connection.
-   * @throws Exception while closing.
+   *
+   * @throws Throwable while closing.
    */
-  void close() throws Exception;
+  void close() throws Throwable;
 }

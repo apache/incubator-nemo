@@ -25,22 +25,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Transform for reduce by key transformation.
+ *
  * @param <K> key type.
  * @param <V> value type.
  */
 public final class ReduceByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
 
+  // TODO #431: Handle states in Transforms better
   private final Map<K, List<V>> keyToValues;
   private final Function2<V, V, V> func;
   private OutputCollector<Tuple2<K, V>> outputCollector;
 
   /**
    * Constructor.
+   *
    * @param func reduce function.
    */
   public ReduceByKeyTransform(final Function2<V, V, V> func) {

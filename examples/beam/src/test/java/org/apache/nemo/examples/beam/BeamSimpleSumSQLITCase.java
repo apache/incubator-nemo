@@ -41,14 +41,14 @@ public final class BeamSimpleSumSQLITCase {
   private static final String outputFileName = "test_output_simplesql";
   private static final String expectedOutputFileName = "outputs/expected_output_simplesql";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(SimpleSumSQL.class.getCanonicalName())
-        .addUserArgs(outputFilePath)
-        .addResourceJson(executorResourceFileName);
+      .addUserMain(SimpleSumSQL.class.getCanonicalName())
+      .addUserArgs(outputFilePath)
+      .addResourceJson(executorResourceFileName);
   }
 
   @After
@@ -60,11 +60,11 @@ public final class BeamSimpleSumSQLITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BeamSimpleSumSQLITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addJobId(BeamSimpleSumSQLITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 }

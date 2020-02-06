@@ -29,7 +29,7 @@ public final class AbsentBlockException extends Exception {
 
   /**
    * @param blockId id of the block
-   * @param state  state of the block
+   * @param state   state of the block
    */
   public AbsentBlockException(final String blockId, final BlockState.State state) {
     this.blockId = blockId;

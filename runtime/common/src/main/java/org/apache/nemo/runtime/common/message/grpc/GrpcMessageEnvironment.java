@@ -40,11 +40,11 @@ import java.util.concurrent.Future;
  * For each GrpcMessageEnvironment, there are a single {@link GrpcMessageServer} and multiple {@link GrpcMessageClient},
  * which are responsible for responding replies for messages from other clients, and for transferring messages
  * to other servers, respectively.
- *
+ * <p>
  * The {@link GrpcMessageServer} is started as soon as the environment is initialized, and registers the unique sender
  * id of the local node to name server, which is used for id-based communication. The {@link MessageListener}s should
  * be setup to correctly handle incoming messages.
- *
+ * <p>
  * The {@link GrpcMessageClient}s are created whenever there is a request to create a {@link MessageSender}, a component
  * to issue RPC calls to other servers. Like the {@link GrpcMessageServer} registers its id to the name server, the
  * {@link GrpcMessageClient} uses target receiver id to look up the name server to resolve the ip address of the target
@@ -61,10 +61,10 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
 
   @Inject
   private GrpcMessageEnvironment(
-      final LocalAddressProvider localAddressProvider,
-      final NameResolver nameResolver,
-      final IdentifierFactory idFactory,
-      @Parameter(MessageParameters.SenderId.class) final String localSenderId) {
+    final LocalAddressProvider localAddressProvider,
+    final NameResolver nameResolver,
+    final IdentifierFactory idFactory,
+    @Parameter(MessageParameters.SenderId.class) final String localSenderId) {
     this.nameResolver = nameResolver;
     this.idFactory = idFactory;
     this.grpcServer = new GrpcMessageServer(localAddressProvider, nameResolver, idFactory, localSenderId);
@@ -99,7 +99,7 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
     try {
       grpcClient.connect();
       final MessageSender<ControlMessage.Message> messageSender = new GrpcMessageSender(
-          receiverId, listenerId, grpcClient);
+        receiverId, listenerId, grpcClient);
       completableFuture.complete(messageSender);
     } catch (final Exception e) {
       LOG.warn("Failed to connect a receiver id=" + receiverId + ", listenerId=" + listenerId, e);

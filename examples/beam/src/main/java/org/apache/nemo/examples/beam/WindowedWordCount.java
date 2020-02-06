@@ -21,15 +21,12 @@ package org.apache.nemo.examples.beam;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
@@ -49,7 +46,7 @@ public final class WindowedWordCount {
 
 
   /**
-   * @param p pipeline.
+   * @param p    pipeline.
    * @param args arguments.
    * @return source.
    */
@@ -94,8 +91,10 @@ public final class WindowedWordCount {
       throw new RuntimeException("Unsupported input type: " + inputType);
     }
   }
+
   /**
    * Main function for the MR BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
@@ -110,8 +109,7 @@ public final class WindowedWordCount {
         .every(Duration.standardSeconds(5)));
     }
 
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("WindowedWordCount");
 
     final Pipeline p = Pipeline.create(options);

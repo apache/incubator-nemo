@@ -27,6 +27,7 @@ import java.util.List;
 /**
  * Bounded source vertex for cached data.
  * It does not have actual data but just wraps the cached input data.
+ *
  * @param <T> the type of data to emit.
  */
 public final class CachedSourceVertex<T> extends SourceVertex<T> {
@@ -47,17 +48,16 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
   /**
    * Constructor for cloning.
    *
-   * @param readables the list of Readables to set.
+   * @param that The original CachedSourceVertex.
    */
-  private CachedSourceVertex(final List<Readable<T>> readables) {
-    this.readables = readables;
+  private CachedSourceVertex(final CachedSourceVertex<T> that) {
+    super(that);
+    this.readables = that.readables;
   }
 
   @Override
   public CachedSourceVertex getClone() {
-    final CachedSourceVertex that = new CachedSourceVertex<>(this.readables);
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new CachedSourceVertex<>(this);
   }
 
   @Override
@@ -70,6 +70,11 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) {
     // Ignore the desired number of splits.
     return readables;
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return 0L;
   }
 
   @Override

@@ -30,6 +30,7 @@ import java.util.Optional;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
+ *
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
@@ -38,10 +39,10 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   /**
    * Constructs the edge given the below parameters.
    *
-   * @param runtimeEdgeId  the id of this edge.
+   * @param runtimeEdgeId       the id of this edge.
    * @param executionProperties to control the data flow on this edge.
-   * @param src            the source vertex.
-   * @param dst            the destination vertex.
+   * @param src                 the source vertex.
+   * @param dst                 the destination vertex.
    */
   public RuntimeEdge(final String runtimeEdgeId,
                      final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties,
@@ -59,13 +60,13 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @return the execution property.
    */
   public final <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
   /**
    * @param executionPropertyKey key
-   * @param <T> type
+   * @param <T>                  type
    * @return the value
    */
   public final <T extends Serializable> T getPropertyValueOrRuntimeException(

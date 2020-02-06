@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data.streamchainer;
 
+import net.jpountz.lz4.LZ4BlockOutputStream;
 import org.apache.nemo.common.exception.UnsupportedCompressionException;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,11 +44,11 @@ public class CompressionStreamChainer implements EncodeStreamChainer {
   @Override
   public final OutputStream chainOutput(final OutputStream out) throws IOException {
     switch (compression) {
-      case Gzip:
+      case GZIP:
         return new GZIPOutputStream(out);
       case LZ4:
         return new LZ4BlockOutputStream(out);
-      case None:
+      case NONE:
         return out;
       default:
         throw new UnsupportedCompressionException("Not supported compression method");

@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 
 /**
  * A dataset component: it represents relational data.
+ *
  * @param <T> type of the data.
  */
 public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements NemoSparkUserFacingClass {
@@ -90,18 +91,18 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
   /**
    * Create a {@link RDD} component from this data set.
    * To transparently give our RDD to user programs, this method have to be overridden.
-   *
+   * <p>
    * By overriding this method, if a method (such as reduce) of super ({@link org.apache.spark.sql.Dataset}) is called
    * and it uses super's rdd, the rdd will be our rdd returned by this method.
    * This is an intended behavior and the result will be calculated by our system.
    *
    * @return the new RDD component.
    */
-   @Override
-   public RDD<T> rdd() {
-     final JavaRDD<T> javaRDD = JavaRDD.of((SparkSession) super.sparkSession(), this);
-     return javaRDD.rdd();
-   }
+  @Override
+  public RDD<T> rdd() {
+    final JavaRDD<T> javaRDD = JavaRDD.of((SparkSession) super.sparkSession(), this);
+    return javaRDD.rdd();
+  }
 
   @Override
   public Dataset<Row> agg(final Column expr, final Column... exprs) {
@@ -444,8 +445,8 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   @Override
   public <U> Dataset<U> mapPartitions(
-      final scala.Function1<scala.collection.Iterator<T>, scala.collection.Iterator<U>> func,
-      final Encoder<U> evidence) {
+    final scala.Function1<scala.collection.Iterator<T>, scala.collection.Iterator<U>> func,
+    final Encoder<U> evidence) {
     final boolean userTriggered = initializeFunction(func, evidence);
     final Dataset<U> result = from(super.mapPartitions(func, evidence));
     this.setIsUserTriggered(userTriggered);
@@ -536,10 +537,10 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
     return result;
   }
 
-//  @Override
-//  public java.util.List<Dataset<T>> randomSplitAsList(double[] weights, long seed) {
-//    return super.randomSplitAsList(weights, seed).stream().map(ds -> from(ds)).collect(Collectors.toList());
-//  }
+  //  @Override
+  //  public java.util.List<Dataset<T>> randomSplitAsList(double[] weights, long seed) {
+  //    return super.randomSplitAsList(weights, seed).stream().map(ds -> from(ds)).collect(Collectors.toList());
+  //  }
 
   @Override
   public Dataset<T> repartition(final Column... partitionExprs) {
@@ -756,7 +757,7 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   @Override
   public <U> Dataset<U> transform(
-      final scala.Function1<org.apache.spark.sql.Dataset<T>, org.apache.spark.sql.Dataset<U>> t) {
+    final scala.Function1<org.apache.spark.sql.Dataset<T>, org.apache.spark.sql.Dataset<U>> t) {
     final boolean userTriggered = initializeFunction(t);
     final Dataset<U> result = from(super.transform(t));
     this.setIsUserTriggered(userTriggered);

@@ -53,6 +53,7 @@ public final class PipeManagerMaster {
 
   /**
    * Constructor.
+   *
    * @param masterMessageEnvironment the message environment.
    */
   @Inject
@@ -142,6 +143,7 @@ public final class PipeManagerMaster {
                     .build())
                   .build());
             } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
               throw new RuntimeException(e);
             } finally {
               lock.unlock();

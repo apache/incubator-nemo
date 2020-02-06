@@ -47,7 +47,7 @@ import java.util.concurrent.Executors;
  * (WARNING) This class is not thread-safe.
  * Only a single thread should use the methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
- *
+ * <p>
  * Encapsulates REEF's evaluator management for containers.
  * Serves as a single point of container management in Runtime.
  * We define a unit of resource a container (an evaluator in REEF), and launch a single executor on each container.
@@ -96,7 +96,8 @@ public final class ContainerManager {
 
   /**
    * Requests containers/evaluators with the given specifications.
-   * @param numToRequest number of containers to request
+   *
+   * @param numToRequest          number of containers to request
    * @param resourceSpecification containing the specifications of
    */
   public void requestContainer(final int numToRequest, final ResourceSpecification resourceSpecification) {
@@ -115,17 +116,17 @@ public final class ContainerManager {
       // Mark the request as pending with the given specifications.
       pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
       pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
-          .addAll(resourceSpecificationList);
+        .addAll(resourceSpecificationList);
 
       requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
-          new CountDownLatch(numToRequest));
+        new CountDownLatch(numToRequest));
 
       // Request the evaluators
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(numToRequest)
-          .setMemory(resourceSpecification.getMemory())
-          .setNumberOfCores(resourceSpecification.getCapacity())
-          .build());
+        .setNumber(numToRequest)
+        .setMemory(resourceSpecification.getMemory())
+        .setNumberOfCores(resourceSpecification.getCapacity())
+        .build());
     } else {
       LOG.info("Request {} containers", numToRequest);
     }
@@ -133,8 +134,9 @@ public final class ContainerManager {
 
   /**
    * Take the necessary actions in container manager once a container a is allocated.
-   * @param executorId of the executor to launch on this container.
-   * @param allocatedContainer the allocated container.
+   *
+   * @param executorId            of the executor to launch on this container.
+   * @param allocatedContainer    the allocated container.
    * @param executorConfiguration executor related configuration.
    */
   public void onContainerAllocated(final String executorId,
@@ -147,18 +149,39 @@ public final class ContainerManager {
     }
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
+    final List<Configuration> configurationsToMerge = new ArrayList<>();
+
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
-        + ") allocated, will be used for [" + executorId + "]");
+      + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    // Poison handling
-    final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
-        .build();
+    configurationsToMerge.add(executorConfiguration);
 
-    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
+    // ExecutorMemory handling
+    configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorMemoryMb.class, String.valueOf(resourceSpecification.getMemory()))
+        .build()
+    );
+
+    // MaxOffheapRatio handling
+    resourceSpecification.getMaxOffheapRatio().ifPresent(value ->
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(value))
+        .build()
+      )
+    );
+
+    // Poison handling
+    resourceSpecification.getPoisonSec().ifPresent(value ->
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorPoisonSec.class, String.valueOf(value))
+        .build()
+      )
+    );
+
+    allocatedContainer.submitContext(Configurations.merge(configurationsToMerge));
   }
 
   /**
@@ -183,16 +206,20 @@ public final class ContainerManager {
     MessageSender messageSender;
     try {
       messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final InterruptedException | ExecutionException e) {
+        messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      messageSender = new FailedMessageSender();
+    } catch (final ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
       messageSender = new FailedMessageSender();
     }
 
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
-            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+      new DefaultExecutorRepresenter(executorId, resourceSpec, messageSender,
+        activeContext, serializationExecutorService,
+        activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
@@ -201,6 +228,7 @@ public final class ContainerManager {
 
   /**
    * Re-acquire a new container using the failed container's resource spec.
+   *
    * @param failedEvaluatorId of the failed evaluator
    * @return the resource specification of the failed evaluator
    */
@@ -223,12 +251,13 @@ public final class ContainerManager {
   /**
    * Selects an executor specification for the executor to be launched on a container.
    * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
+   *
    * @return the selected executor specification.
    */
   private ResourceSpecification selectResourceSpecForContainer() {
     ResourceSpecification selectedResourceSpec = null;
     for (final Map.Entry<String, List<ResourceSpecification>> entry
-        : pendingContainerRequestsByContainerType.entrySet()) {
+      : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
         selectedResourceSpec = entry.getValue().remove(0);
         break;

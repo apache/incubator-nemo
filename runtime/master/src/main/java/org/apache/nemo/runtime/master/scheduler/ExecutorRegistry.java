@@ -26,7 +26,10 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -68,8 +71,8 @@ public final class ExecutorRegistry {
   }
 
   synchronized void updateExecutor(
-      final String executorId,
-      final BiFunction<ExecutorRepresenter, ExecutorState, Pair<ExecutorRepresenter, ExecutorState>> updater) {
+    final String executorId,
+    final BiFunction<ExecutorRepresenter, ExecutorState, Pair<ExecutorRepresenter, ExecutorState>> updater) {
     final Pair<ExecutorRepresenter, ExecutorState> pair = executors.get(executorId);
     if (pair == null) {
       throw new IllegalArgumentException("Unknown executor id " + executorId);
@@ -87,6 +90,7 @@ public final class ExecutorRegistry {
 
   /**
    * Retrieves the executor to which the given task was scheduled.
+   *
    * @param taskId of the task to search.
    * @return the {@link ExecutorRepresenter} of the executor the task was scheduled to.
    */
@@ -104,10 +108,10 @@ public final class ExecutorRegistry {
 
   private Set<ExecutorRepresenter> getRunningExecutors() {
     return executors.values()
-        .stream()
-        .filter(pair -> pair.right().equals(ExecutorState.RUNNING))
-        .map(Pair::left)
-        .collect(Collectors.toSet());
+      .stream()
+      .filter(pair -> pair.right().equals(ExecutorState.RUNNING))
+      .map(Pair::left)
+      .collect(Collectors.toSet());
   }
 
   @Override

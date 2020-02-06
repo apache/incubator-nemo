@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProperty.Value> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private DataStoreProperty(final Value value) {
@@ -34,6 +35,7 @@ public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProp
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
@@ -45,10 +47,10 @@ public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProp
    * Possible values of DataStore ExecutionProperty.
    */
   public enum Value {
-    Pipe,
-    MemoryStore,
-    SerializedMemoryStore,
-    LocalFileStore,
-    GlusterFileStore
+    PIPE,
+    MEMORY_STORE,
+    SERIALIZED_MEMORY_STORE,
+    LOCAL_FILE_STORE,
+    GLUSTER_FILE_STORE
   }
 }

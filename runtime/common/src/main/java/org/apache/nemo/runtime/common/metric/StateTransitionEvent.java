@@ -22,6 +22,7 @@ import java.io.Serializable;
 
 /**
  * Event of state transition. It contains timestamp and the state transition.
+ *
  * @param <T> class of state for the metric.
  */
 public final class StateTransitionEvent<T extends Serializable> extends Event {
@@ -36,6 +37,7 @@ public final class StateTransitionEvent<T extends Serializable> extends Event {
 
   /**
    * Get previous state.
+   *
    * @return previous state.
    */
   public T getPrevState() {
@@ -44,6 +46,7 @@ public final class StateTransitionEvent<T extends Serializable> extends Event {
 
   /**
    * Get new state.
+   *
    * @return new state.
    */
   public T getNewState() {

@@ -18,11 +18,9 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
@@ -40,20 +38,20 @@ public final class DefaultDataPersistencePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
-            final DataStoreProperty.Value dataStoreValue
-                = irEdge.getPropertyValue(DataStoreProperty.class).get();
-            if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
-                || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
-              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
-            } else {
-              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
-            }
+      dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+        if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
+          final DataStoreProperty.Value dataStoreValue
+            = irEdge.getPropertyValue(DataStoreProperty.class).get();
+          if (DataStoreProperty.Value.MEMORY_STORE.equals(dataStoreValue)
+            || DataStoreProperty.Value.SERIALIZED_MEMORY_STORE.equals(dataStoreValue)) {
+            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD));
+          } else {
+            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP));
           }
-        }));
+        }
+      }));
     return dag;
   }
 }

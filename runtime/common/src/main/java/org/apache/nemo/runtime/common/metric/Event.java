@@ -28,6 +28,7 @@ public class Event implements Serializable {
 
   /**
    * Constructor.
+   *
    * @param timestamp timestamp in millisecond.
    */
   public Event(final long timestamp) {
@@ -36,14 +37,16 @@ public class Event implements Serializable {
 
   /**
    * Get timestamp.
+   *
    * @return timestamp.
    */
   public final long getTimestamp() {
     return timestamp;
-  };
+  }
 
   /**
    * Set timestamp.
+   *
    * @param timestamp timestamp in millisecond.
    */
   public final void setTimestamp(final long timestamp) {

@@ -43,14 +43,14 @@ public final class PartitionWordsByLengthITCase {
   private static final String outputFileName = "test_output_tag";
   private static final String expectedOutputFileName = "outputs/expected_output_tag";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(PartitionWordsByLength.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
+      .addUserMain(PartitionWordsByLength.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -65,21 +65,21 @@ public final class PartitionWordsByLengthITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_largeshuffle")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_largeshuffle")
+      .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 }

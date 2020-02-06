@@ -41,11 +41,11 @@ public final class PlanState {
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
-        "Begin executing!");
+      "Begin executing!");
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "All stages complete, plan complete");
+      "All stages complete, plan complete");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
-        "Unrecoverable failure in a stage");
+      "Unrecoverable failure in a stage");
 
     stateMachineBuilder.setInitialState(State.READY);
 

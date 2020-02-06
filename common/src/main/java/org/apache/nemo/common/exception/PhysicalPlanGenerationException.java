@@ -27,6 +27,7 @@ package org.apache.nemo.common.exception;
 public final class PhysicalPlanGenerationException extends RuntimeException {
   /**
    * PhysicalPlanGenerationException.
+   *
    * @param message message
    */
   public PhysicalPlanGenerationException(final String message) {
@@ -35,6 +36,7 @@ public final class PhysicalPlanGenerationException extends RuntimeException {
 
   /**
    * PhysicalPlanGenerationException.
+   *
    * @param e throwable cause of the exception.
    */
   public PhysicalPlanGenerationException(final Throwable e) {

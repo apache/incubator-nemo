@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -40,12 +41,12 @@ import java.util.Map;
 /**
  * DoFn transform implementation with push backs for side inputs.
  *
- * @param <InputT> input type.
+ * @param <InputT>  input type.
  * @param <OutputT> output type.
  */
 public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
   private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
-
+@java.lang.SuppressWarnings("squid:S1948")
   private List<WindowedValue<InputT>> curPushedBacks;
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
@@ -53,15 +54,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   /**
    * PushBackDoFnTransform Constructor.
-   * @param doFn doFn
-   * @param inputCoder input coder
-   * @param outputCoders output coders
-   * @param mainOutputTag main output tag
+   *
+   * @param doFn                 doFn
+   * @param inputCoder           input coder
+   * @param outputCoders         output coders
+   * @param mainOutputTag        main output tag
    * @param additionalOutputTags additional output tags
-   * @param windowingStrategy windowing strategy
-   * @param sideInputs side inputs
-   * @param options pipeline options
-   * @param displayData display data.
+   * @param windowingStrategy    windowing strategy
+   * @param sideInputs           side inputs
+   * @param options              pipeline options
+   * @param displayData          display data.
    */
   public PushBackDoFnTransform(final DoFn<InputT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -71,9 +73,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
                                final PipelineOptions options,
-                               final DisplayData displayData) {
+                               final DisplayData displayData,
+                               final DoFnSchemaInformation doFnSchemaInformation,
+                               final Map<String, PCollectionView<?>> sideInputMapping) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData,
+      doFnSchemaInformation, sideInputMapping);
     this.curPushedBacks = new ArrayList<>();
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;

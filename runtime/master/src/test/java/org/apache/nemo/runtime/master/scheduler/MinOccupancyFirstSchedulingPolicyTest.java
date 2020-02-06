@@ -27,11 +27,15 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link MinOccupancyFirstSchedulingPolicy}
@@ -57,7 +61,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
   @Test
   public void test() throws InjectionException {
     final SchedulingPolicy schedulingPolicy = Tang.Factory.getTang().newInjector()
-        .getInstance(MinOccupancyFirstSchedulingPolicy.class);
+      .getInstance(MinOccupancyFirstSchedulingPolicy.class);
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(2);

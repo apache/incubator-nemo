@@ -17,71 +17,72 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.apache.nemo</groupId>
-        <artifactId>nemo-compiler</artifactId>
-        <version>0.2-SNAPSHOT</version>
-        <relativePath>../</relativePath>
-    </parent>
+  <parent>
+    <groupId>org.apache.nemo</groupId>
+    <artifactId>nemo-compiler</artifactId>
+    <version>0.2-SNAPSHOT</version>
+    <relativePath>../</relativePath>
+  </parent>
 
-    <artifactId>nemo-compiler-test</artifactId>
-    <name>Nemo Compiler Test</name>
+  <artifactId>nemo-compiler-test</artifactId>
+  <name>Nemo Compiler Test</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-conf</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-compiler-frontend-beam</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-examples-beam</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-module-junit4</artifactId>
-            <version>${powermock.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito2</artifactId>
-            <version>${powermock.version}</version>
-        </dependency>
-      <dependency>
-        <!--
-        This is needed to view the logs when running unit tests.
-        See https://dzone.com/articles/how-configure-slf4j-different for details.
-        -->
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-simple</artifactId>
-        <version>1.6.2</version>
-        <scope>test</scope>
-      </dependency>
-    </dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-conf</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-client</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-compiler-frontend-beam</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-examples-beam</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>${powermock.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito2</artifactId>
+      <version>${powermock.version}</version>
+    </dependency>
+    <dependency>
+      <!--
+      This is needed to view the logs when running unit tests.
+      See https://dzone.com/articles/how-configure-slf4j-different for details.
+      -->
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>1.6.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

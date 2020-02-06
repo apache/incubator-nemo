@@ -22,7 +22,7 @@ import org.apache.nemo.common.StateMachine;
 
 /**
  * Represents the states and their transitions of a stage.
- *
+ * <p>
  * Maintained as simple two (INCOMPLETE, COMPLETE) states to avoid ambiguity when the tasks are in different states.
  * For example it is not clear whether a stage should be EXECUTING or SHOULD_RESTART, if one of the tasks in the stage
  * is EXECUTING, and another is SHOULD_RESTART.
@@ -43,10 +43,10 @@ public final class StageState {
 
     // Add transitions
     stateMachineBuilder.addTransition(
-        State.INCOMPLETE, State.INCOMPLETE, "A task in the stage needs to be retried");
+      State.INCOMPLETE, State.INCOMPLETE, "A task in the stage needs to be retried");
     stateMachineBuilder.addTransition(State.INCOMPLETE, State.COMPLETE, "All tasks complete");
     stateMachineBuilder.addTransition(State.COMPLETE, State.INCOMPLETE,
-        "Completed before, but a task in this stage should be retried");
+      "Completed before, but a task in this stage should be retried");
     stateMachineBuilder.addTransition(State.COMPLETE, State.COMPLETE,
       "Completed before, but probably a cloned task has completed again");
 

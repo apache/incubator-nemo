@@ -34,20 +34,23 @@ import java.util.Iterator;
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private OutputCollector<T> outputCollector;
+  // TODO #431: Handle states in Transforms better
   private T result;
 
   /**
    * Constructor.
+   *
    * @param func function to run for the reduce transform.
    */
+  // TODO #432: ReduceTransform Unit Test
   public ReduceTransform(final Function2<T, T, T> func) {
     this.func = func;
-    this.result = null;
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
     this.outputCollector = oc;
+    this.result = null;
   }
 
   @Override
@@ -76,9 +79,10 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   /**
    * Reduce the iterator elements into a single object.
+   *
    * @param elements the iterator of elements.
-   * @param func function to apply for reduction.
-   * @param <T> type of the elements.
+   * @param func     function to apply for reduction.
+   * @param <T>      type of the elements.
    * @return the reduced element.
    */
   @Nullable
@@ -100,5 +104,6 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
+    // Nothing to do in a SparkTransform.
   }
 }

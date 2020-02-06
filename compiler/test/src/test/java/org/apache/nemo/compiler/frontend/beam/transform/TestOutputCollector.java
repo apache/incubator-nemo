@@ -28,7 +28,8 @@ import java.util.List;
 
 /**
  * Test output collector that collects data and watermarks.
- * @param <T>
+ *
+ * @param <T> type of the output.
  */
 final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
   public final List<WindowedValue<T>> outputs;
@@ -43,8 +44,8 @@ final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> 
 
   @Override
   public void emit(WindowedValue<T> output) {
-      outputs.add(output);
-    }
+    outputs.add(output);
+  }
 
   @Override
   public void emitWatermark(Watermark watermark) {
@@ -64,6 +65,6 @@ final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> 
   }
 
   public List<Tuple<String, WindowedValue<T>>> getTaggedOutputs() {
-      return taggedOutputs;
-    }
+    return taggedOutputs;
+  }
 }

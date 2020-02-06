@@ -22,12 +22,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.InvalidUserMainException;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Util;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -64,12 +68,12 @@ public final class JobLauncher {
 
   static {
     System.out.println(
-        "\nPowered by\n"
-          + "    _   __                   \n"
-          + "   / | / /__  ____ ___  ____ \n"
-          + "  /  |/ / _ \\/ __ `__ \\/ __ \\\n"
-          + " / /|  /  __/ / / / / / /_/ /\n"
-          + "/_/ |_/\\___/_/ /_/ /_/\\____/ \n"
+      "\nPowered by\n"
+        + "    _   __                   \n"
+        + "   / | / /__  ____ ___  ____ \n"
+        + "  /  |/ / _ \\/ __ `__ \\/ __ \\\n"
+        + " / /|  /  __/ / / / / / /_/ /\n"
+        + "/_/ |_/\\___/_/ /_/ /_/\\____/ \n"
     );
   }
 
@@ -113,14 +117,16 @@ public final class JobLauncher {
 
   /**
    * Set up the driver, etc. before the actual execution.
+   *
    * @param args arguments.
-   * @throws InjectionException injection exception from REEF.
+   * @throws InjectionException     injection exception from REEF.
    * @throws ClassNotFoundException class not found exception.
-   * @throws IOException IO exception.
+   * @throws IOException            IO exception.
    */
   public static void setup(final String[] args)
     throws InjectionException, ClassNotFoundException, IOException, InvalidUserMainException {
     // Get Job and Driver Confs
+    LOG.info("Project Root Path: {}", Util.fetchProjectRootPath());
     builtJobConf = getJobConf(args);
     validateJobConfig(builtJobConf);
 
@@ -134,6 +140,8 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
+      .registerHandler(ControlMessage.DriverToClientMessageType.LaunchOptimization, message ->
+        ClientUtils.handleOptimizationType(message, driverRPCServer))
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -171,6 +179,7 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
+  private static final String INTERRUPTED = "Interrupted: ";
   public static void shutdown() {
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -182,7 +191,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
+          LOG.warn(INTERRUPTED, e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -232,24 +241,26 @@ public final class JobLauncher {
    * @param dag the application DAG.
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
-  public static void launchDAG(final DAG dag) {
+  public static void launchDAG(final IRDAG dag) {
     launchDAG(dag, Collections.emptyMap(), "");
   }
 
   /**
-   * @param dag the application DAG.
+   * @param dag   the application DAG.
    * @param jobId job ID.
    */
-  public static void launchDAG(final DAG dag, final String jobId) {
+  public static void launchDAG(final IRDAG dag, final String jobId) {
     launchDAG(dag, Collections.emptyMap(), jobId);
   }
 
   /**
-   * @param dag the application DAG.
+   * @param dag                the application DAG.
    * @param broadcastVariables broadcast variables (can be empty).
-   * @param jobId job ID.
+   * @param jobId              job ID.
    */
-  public static void launchDAG(final DAG dag, final Map<Serializable, Object> broadcastVariables, final String jobId) {
+  public static void launchDAG(final IRDAG dag,
+                               final Map<Serializable, Object> broadcastVariables,
+                               final String jobId) {
     // launch driver if it hasn't been already
     if (driverReadyLatch == null) {
       try {
@@ -264,7 +275,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the driver to be ready");
       driverReadyLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: " + e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
@@ -272,20 +283,21 @@ public final class JobLauncher {
     LOG.info("Launching DAG...");
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
     jobDoneLatch = new CountDownLatch(1);
+
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-        .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
-        .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
-            .setDag(serializedDAG)
-            .setBroadcastVars(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariables)))
-            .build())
-        .build());
+      .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+      .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
+        .setDag(serializedDAG)
+        .setBroadcastVars(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariables)))
+        .build())
+      .build());
 
     // Wait for the ExecutionDone message from the driver
     try {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: " + e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -326,10 +338,11 @@ public final class JobLauncher {
 
   /**
    * Fetch scheduler configuration.
+   *
    * @param jobConf job configuration.
    * @return the scheduler configuration.
    * @throws ClassNotFoundException exception while finding the class.
-   * @throws InjectionException exception while injection (REEF Tang).
+   * @throws InjectionException     exception while injection (REEF Tang).
    */
   private static Configuration getSchedulerConf(final Configuration jobConf)
     throws ClassNotFoundException, InjectionException {
@@ -338,6 +351,7 @@ public final class JobLauncher {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     final Class schedulerImpl = ((Class<Scheduler>) Class.forName(classImplName));
     jcb.bindImplementation(Scheduler.class, schedulerImpl);
+    jcb.bindImplementation(PlanRewriter.class, NemoPlanRewriter.class);
     return jcb.build();
   }
 
@@ -345,26 +359,24 @@ public final class JobLauncher {
    * Get driver ncs configuration.
    *
    * @return driver ncs configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverNcsConf() throws InjectionException {
+  private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
-        LocalNameResolverConfiguration.CONF.build(),
-        TANG.newConfigurationBuilder()
-            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-            .build());
+      LocalNameResolverConfiguration.CONF.build(),
+      TANG.newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build());
   }
 
   /**
    * Get driver message configuration.
    *
    * @return driver message configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverMessageConf() throws InjectionException {
+  private static Configuration getDriverMessageConf()  {
     return TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
-        .build();
+      .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
+      .build();
   }
 
   /**
@@ -379,16 +391,16 @@ public final class JobLauncher {
     final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
     return DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NemoDriver.class))
-        .set(DriverConfiguration.ON_DRIVER_STARTED, NemoDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NemoDriver.AllocatedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NemoDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, NemoDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, NemoDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STOP, NemoDriver.DriverStopHandler.class)
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, jobId)
-        .set(DriverConfiguration.DRIVER_MEMORY, driverMemory)
-        .build();
+      .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars())
+      .set(DriverConfiguration.ON_DRIVER_STARTED, NemoDriver.StartHandler.class)
+      .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NemoDriver.AllocatedEvaluatorHandler.class)
+      .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NemoDriver.ActiveContextHandler.class)
+      .set(DriverConfiguration.ON_EVALUATOR_FAILED, NemoDriver.FailedEvaluatorHandler.class)
+      .set(DriverConfiguration.ON_CONTEXT_FAILED, NemoDriver.FailedContextHandler.class)
+      .set(DriverConfiguration.ON_DRIVER_STOP, NemoDriver.DriverStopHandler.class)
+      .set(DriverConfiguration.DRIVER_IDENTIFIER, jobId)
+      .set(DriverConfiguration.DRIVER_MEMORY, driverMemory)
+      .build();
   }
 
   /**
@@ -397,10 +409,9 @@ public final class JobLauncher {
    * @param args arguments to be processed as command line.
    * @return job configuration.
    * @throws IOException        exception while processing command line.
-   * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
-  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+  public static Configuration getJobConf(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
@@ -409,6 +420,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorType.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
     cl.registerShortNameOfClass(JobConf.BandwidthJSONPath.class);
@@ -424,6 +436,9 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
+    cl.registerShortNameOfClass(JobConf.ScheduleSerThread.class);
+    cl.registerShortNameOfClass(JobConf.MaxOffheapRatio.class);
+    cl.registerShortNameOfClass(JobConf.ChunkSizeKb.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }
@@ -441,12 +456,14 @@ public final class JobLauncher {
     switch (deployMode) {
       case "local":
         return LocalRuntimeConfiguration.CONF
-            .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, LOCAL_NUMBER_OF_EVALUATORS)
-            .build();
+          .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, LOCAL_NUMBER_OF_EVALUATORS)
+          .build();
       case "yarn":
         return YarnClientConfiguration.CONF
-            .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class))
-            .build();
+          .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class)
+            + injector.getNamedInstance(JobConf.MaxOffheapRatio.class))
+          // Off-heap memory size is added to memory slack so that JVM heap region does not invade the off-heap region.
+          .build();
       default:
         throw new UnsupportedOperationException(deployMode);
     }
@@ -466,15 +483,15 @@ public final class JobLauncher {
                                            final Class<? extends Name<String>> pathParameter,
                                            final Class<? extends Name<String>> contentsParameter,
                                            final String defaultContent)
-      throws InjectionException {
+    throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
     try {
       final String path = injector.getNamedInstance(pathParameter);
       final String contents = path.isEmpty() ? defaultContent
         : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
-          .bindNamedParameter(contentsParameter, contents)
-          .build();
+        .bindNamedParameter(contentsParameter, contents)
+        .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
