@@ -69,6 +69,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final String filePath;
   private final FileMetadata<K> metadata;
   private final MemoryPoolAssigner memoryPoolAssigner;
+  private static final String ALREADY_COMMITED = "The partition is already committed!";
 
   /**
    * Constructor.
@@ -128,7 +129,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public void write(final K key,
                     final Object element) throws BlockWriteException {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         SerializedPartition<K> partition = nonCommittedPartitionsMap.get(key);
@@ -154,7 +155,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
     throws BlockWriteException {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
@@ -177,7 +178,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
     throws BlockWriteException {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         writeToFile(partitions);

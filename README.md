@@ -17,7 +17,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## Nemo prerequisites and setup
 
 ### Prerequisites
-* Java 8
+* Java 8 or later (tested on Java 8 and Java 11)
 * Maven
 * YARN settings
     * Download Hadoop 2.7.2 at https://archive.apache.org/dist/hadoop/common/hadoop-2.7.2/
@@ -45,8 +45,13 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
     * On macOS:
 
       ```bash
-      $ brew tap homebrew/versions
-      $ brew install protobuf@2.5
+      $ wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.bz2
+      $ tar xvf protobuf-2.5.0.tar.bz2
+      $ pushd protobuf-2.5.0
+      $ ./configure CC=clang CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g' LDFLAGS='-stdlib=libc++' LIBS="-lc++ -lc++abi"
+      $ make -j 4
+      $ sudo make install
+      $ popd
       ```
 
     * Or build from source:
@@ -66,7 +71,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 
 ## Running Beam applications
 
-Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project. 
+Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project.
 The details of using NemoRunner from Beam is shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
 Below describes how Beam applications can be run directly on Nemo.
 
@@ -105,13 +110,13 @@ $ ./bin/run_beam.sh \
     -optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
     -user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
 
-## NEXMark streaming Q0 (query0) example 
+## NEXMark streaming Q0 (query0) example
 $ ./bin/run_nexmark.sh \
     -job_id nexmark-Q0 \
     -executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
     -user_main org.apache.beam.sdk.nexmark.Main \
     -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
-    -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \	
+    -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
     -user_args "--runner=NemoRunner --streaming=true --query=0 --numEventGenerators=1"
 
 ```
@@ -171,7 +176,7 @@ $ ./bin/run_beam.sh \
 * `-db_id` : ID of the DB from the given address.
 * `-db_password`: Credentials for the DB from the given address.
 
-## Speeding up builds 
+## Speeding up builds
 * To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
 * To exclude Beam related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/beam,\\!examples/beam
 * To exclude NEXMark related packages: mvn clean install -T 2C -DskipTests -pl \\!examples/nexmark

@@ -28,6 +28,7 @@ import java.util.UUID;
 
 /**
  * Transform which saves elements to a local text file for Spark.
+ * TODO #431: Handle states in Transforms better
  *
  * @param <I> input type.
  */

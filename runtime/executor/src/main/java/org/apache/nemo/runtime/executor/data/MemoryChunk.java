@@ -86,7 +86,7 @@ public class MemoryChunk {
    *
    * @return  {@link ByteBuffer}
    */
-  public ByteBuffer getBuffer() {
+  public final ByteBuffer getBuffer() {
     if (address > addressLimit) {
       throw new IllegalStateException(CHUNK_FREED);
     }
@@ -98,14 +98,14 @@ public class MemoryChunk {
    *
    * @return the MemoryChunk with the same content of the caller instance
    */
-  public MemoryChunk duplicate() {
+  public final MemoryChunk duplicate() {
     return new MemoryChunk(buffer.duplicate());
   }
 
   /**
    * Frees this MemoryChunk. No further operation possible after calling this method.
    */
-  public void release() {
+  public final void release() {
     buffer.clear();
     address = addressLimit + 1;
   }

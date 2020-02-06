@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -69,6 +70,15 @@ public final class AlternatingLeastSquareITCase {
       .addResourceJson(noPoisonResources)
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  public void testTransient() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(noPoisonResources)
+      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_transient")
+      .addOptimizationPolicy(TransientResourcePolicy.class.getCanonicalName())
       .build());
   }
 
