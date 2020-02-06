@@ -373,7 +373,7 @@ public final class JobLauncher {
    *
    * @return driver message configuration.
    */
-  private static Configuration getDriverMessageConf()  {
+  private static Configuration getDriverMessageConf() {
     return TANG.newConfigurationBuilder()
       .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
       .build();

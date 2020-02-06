@@ -230,7 +230,7 @@ public final class IRDAGChecker {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
       for (final IREdge inEdge : inEdges) {
         final Optional<Integer> keyRangeListSize = inEdge.getPropertyValue(PartitionSetProperty.class)
-          .map(keyRangeList -> keyRangeList.size());
+          .map(List::size);
         if (parallelism.isPresent() && keyRangeListSize.isPresent() && !parallelism.equals(keyRangeListSize)) {
           return failure("PartitionSet must contain all task offsets required for the dst parallelism",
             v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
@@ -384,7 +384,7 @@ public final class IRDAGChecker {
 
       for (final IRVertex v : irdag.getVertices()) {
         final MutableObject violatingReachableVertex = new MutableObject();
-        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup -> {
+        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup ->
           irdag.dfsDo(
             v,
             visited -> {
@@ -394,8 +394,7 @@ public final class IRDAGChecker {
               }
             },
             DAGInterface.TraversalOrder.PreOrder,
-            new HashSet<>());
-        });
+            new HashSet<>()));
         if (violatingReachableVertex.getValue() != null) {
           return failure(
             "A reachable vertex with a smaller schedule group ",
@@ -547,8 +546,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<VertexExecutionProperty<Serializable>>) ep)
-      .map(ep -> v.getPropertyValue(ep))
-      .collect(Collectors.toList());
+      .map(v::getPropertyValue).collect(Collectors.toList());
     return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
   }
 
@@ -557,7 +555,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<EdgeExecutionProperty<Serializable>>) ep)
-      .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
+      .map(e::getPropertyValue).collect(Collectors.toList());
     return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
       description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
   }
