@@ -60,7 +60,7 @@ public final class TaskState {
 
     // From SHOULD_RETRY
     stateMachineBuilder.addTransition(State.SHOULD_RETRY, State.SHOULD_RETRY,
-        "SHOULD_RETRY can be caused by multiple reasons");
+      "SHOULD_RETRY can be caused by multiple reasons");
 
     stateMachineBuilder.setInitialState(State.READY);
     return stateMachineBuilder.build();

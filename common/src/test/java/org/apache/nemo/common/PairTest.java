@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Test;

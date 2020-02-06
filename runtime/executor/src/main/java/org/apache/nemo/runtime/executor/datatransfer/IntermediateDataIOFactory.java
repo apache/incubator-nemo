@@ -19,13 +19,11 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -36,13 +34,10 @@ import java.util.Optional;
 public final class IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
-  private final int hashRangeMultiplier;
 
   @Inject
-  private IntermediateDataIOFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
-                                    final BlockManagerWorker blockManagerWorker,
+  private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
                                     final PipeManagerWorker pipeManagerWorker) {
-    this.hashRangeMultiplier = hashRangeMultiplier;
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
   }
@@ -57,11 +52,10 @@ public final class IntermediateDataIOFactory {
   public OutputWriter createWriter(final String srcTaskId,
                                    final RuntimeEdge<?> runtimeEdge) {
     if (isPipe(runtimeEdge)) {
-      return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, runtimeEdge, pipeManagerWorker);
+      return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker);
     } else {
       final StageEdge stageEdge = (StageEdge) runtimeEdge;
-      return new BlockOutputWriter(
-        hashRangeMultiplier, srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+      return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
     }
   }
 
@@ -85,6 +79,6 @@ public final class IntermediateDataIOFactory {
 
   private boolean isPipe(final RuntimeEdge runtimeEdge) {
     final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.Pipe);
+    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.PIPE);
   }
 }

@@ -19,14 +19,13 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.compiler.CompilerTestUtil;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourceDataStorePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourceDataTransferPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourcePriorityPass;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,12 +36,12 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link TransientResourcePriorityPass} and {@link TransientResourceDataStorePass}.
+ * Test {@link TransientResourcePriorityPass} and {@link TransientResourceDataTransferPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class TransientResourceCompositePassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -50,8 +49,8 @@ public class TransientResourceCompositePassTest {
   }
 
   @Test
-  public void testTransientResourcePass() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG = new TransientResourceCompositePass().apply(compiledDAG);
+  public void testTransientResourcePass() {
+    final IRDAG processedDAG = new TransientResourceCompositePass().apply(compiledDAG);
 
     final IRVertex vertexX = processedDAG.getTopologicalSort().get(0);
     assertEquals(ResourcePriorityProperty.TRANSIENT, vertexX.getPropertyValue(ResourcePriorityProperty.class).get());
@@ -59,8 +58,8 @@ public class TransientResourceCompositePassTest {
     final IRVertex vertexY = processedDAG.getTopologicalSort().get(5);
     assertEquals(ResourcePriorityProperty.TRANSIENT, vertexY.getPropertyValue(ResourcePriorityProperty.class).get());
     processedDAG.getIncomingEdgesOf(vertexY).forEach(irEdge -> {
-      assertEquals(DataStoreProperty.Value.MemoryStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
-      assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
+      assertEquals(DataStoreProperty.Value.MEMORY_STORE, irEdge.getPropertyValue(DataStoreProperty.class).get());
+      assertEquals(DataFlowProperty.Value.PUSH, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
   }
 }

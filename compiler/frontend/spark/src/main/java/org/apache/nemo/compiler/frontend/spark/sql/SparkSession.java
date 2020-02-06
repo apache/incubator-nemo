@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler.frontend.spark.sql;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.compiler.frontend.spark.core.SparkContext;
 import org.apache.nemo.conf.JobConf;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -33,6 +33,7 @@ import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.types.StructType;
+import scala.Serializable;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
@@ -46,7 +47,8 @@ import java.util.stream.Stream;
 /**
  * A simple version of the Spark session, containing SparkContext that contains SparkConf.
  */
-public final class SparkSession extends org.apache.spark.sql.SparkSession implements NemoSparkUserFacingClass {
+public final class SparkSession extends org.apache.spark.sql.SparkSession
+    implements NemoSparkUserFacingClass, Serializable {
   private final LinkedHashMap<String, Object[]> datasetCommandsList;
   private final Map<String, String> initialConf;
   private final AtomicBoolean isUserTriggered;
@@ -115,7 +117,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    */
   public static <T> Dataset<T> initializeDataset(final SparkSession spark,
                                                  final LinkedHashMap<String, Object[]> commandList)
-      throws OperationNotSupportedException {
+    throws OperationNotSupportedException {
     Object result = spark;
 
     for (Map.Entry<String, Object[]> command : commandList.entrySet()) {
@@ -126,8 +128,8 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       final Class<?>[] argTypes = Stream.of(args).map(Object::getClass).toArray(Class[]::new);
 
       if (!className.contains("SparkSession")
-          && !className.contains("DataFrameReader")
-          && !className.contains("Dataset")) {
+        && !className.contains("DataFrameReader")
+        && !className.contains("Dataset")) {
         throw new OperationNotSupportedException(command + " is not yet supported.");
       }
 
@@ -287,7 +289,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public Builder config(final SparkConf conf) {
+    public synchronized Builder config(final SparkConf conf) {
       for (Tuple2<String, String> kv : conf.getAll()) {
         this.options.put(kv._1, kv._2);
       }
@@ -300,7 +302,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
      * @param conf the conf.
      * @return the builder with the conf applied.
      */
-    public Builder config(final Map<String, String> conf) {
+    public synchronized Builder config(final Map<String, String> conf) {
       conf.forEach((k, v) -> {
         this.options.put(k, v);
         super.config(k, v);
@@ -309,7 +311,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public Builder config(final String key, final String value) {
+    public synchronized Builder config(final String key, final String value) {
       this.options.put(key, value);
       return (Builder) super.config(key, value);
     }
@@ -320,7 +322,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
     }
 
     @Override
-    public SparkSession getOrCreate() {
+    public synchronized SparkSession getOrCreate() {
       if (!options.containsKey("spark.master")) { // default spark_master option.
         return this.master("local[*]").getOrCreate();
       }

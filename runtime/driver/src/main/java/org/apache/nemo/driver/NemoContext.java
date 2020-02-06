@@ -44,16 +44,18 @@ public final class NemoContext {
 
   private final Clock clock;
   private final int crashTimeSec;
+  private final Random random;
 
   @Inject
   private NemoContext(final Executor executor,
-                      @Parameter(JobConf.ExecutorPosionSec.class) final int crashTimeSec,
+                      @Parameter(JobConf.ExecutorPoisonSec.class) final int crashTimeSec,
                       final Clock clock) {
     this.executor = executor; // To make Tang instantiate Executor
 
     // For poison handling
     this.clock = clock;
     this.crashTimeSec = crashTimeSec;
+    this.random = new Random();
   }
 
   /**
@@ -87,7 +89,6 @@ public final class NemoContext {
   }
 
   private int addNoise(final int number) {
-    final Random random = new Random();
     final int fiftyPercent = random.nextInt((int) (number * (50.0 / 100.0)));
     return random.nextBoolean() ? number + fiftyPercent : number - fiftyPercent; // -50% ~ +50%
   }

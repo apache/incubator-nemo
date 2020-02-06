@@ -29,7 +29,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Accumulates and provides side inputs in memory.
@@ -80,7 +83,8 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   /**
    * Stores the side input in memory to be used with main inputs.
-   * @param view of the side input.
+   *
+   * @param view             of the side input.
    * @param sideInputElement to add.
    */
   public void addSideInputElement(final PCollectionView<?> view,
@@ -92,8 +96,9 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   /**
    * Say a DoFn of this reader has 3 main inputs and 4 side inputs.
-   * {@link org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager} guarantees that the watermark here
+   * Nemo runtime guarantees that the watermark here
    * is the minimum of the all 7 input streams.
+   *
    * @param newWatermark to set.
    */
   public void setCurrentWatermarkOfAllMainAndSideInputs(final long newWatermark) {
@@ -104,8 +109,8 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
     this.curWatermark = newWatermark;
     // TODO #282: Handle late data
-    inMemorySideInputs.entrySet().removeIf(entry -> {
-      return entry.getKey().right().maxTimestamp().getMillis() <= this.curWatermark; // Discard old sideinputs.
-    });
+    inMemorySideInputs.entrySet().removeIf(entry ->
+      entry.getKey().right().maxTimestamp().getMillis() <= this.curWatermark // Discard old sideinputs.
+    );
   }
 }

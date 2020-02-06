@@ -38,8 +38,8 @@ public final class ContainerTypeAwareSchedulingConstraint implements SchedulingC
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
-        .orElse(ResourcePriorityProperty.NONE);
+      .orElse(ResourcePriorityProperty.NONE);
     return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
-        : executor.getContainerType().equals(executorPlacementPropertyValue);
+      : executor.getContainerType().equals(executorPlacementPropertyValue);
   }
 }

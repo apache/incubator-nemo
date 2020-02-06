@@ -22,6 +22,7 @@ import java.io.Serializable;
 
 /**
  * An abstract class for each execution factors.
+ *
  * @param <T> Type of the value.
  */
 public abstract class ExecutionProperty<T extends Serializable> implements Serializable {
@@ -29,6 +30,7 @@ public abstract class ExecutionProperty<T extends Serializable> implements Seria
 
   /**
    * Default constructor.
+   *
    * @param value value of the ExecutionProperty.
    */
   public ExecutionProperty(final T value) {
@@ -57,5 +59,15 @@ public abstract class ExecutionProperty<T extends Serializable> implements Seria
   @Override
   public final int hashCode() {
     return value != null ? value.hashCode() : 0;
+  }
+
+  @Override
+  public final String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(this.getClass().getSimpleName());
+    sb.append("(");
+    sb.append(value.toString());
+    sb.append(")");
+    return sb.toString();
   }
 }

@@ -18,14 +18,13 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +40,8 @@ import static org.junit.Assert.assertEquals;
  */
 public class LoopVertexTest {
   private final LoopVertex loopVertex = new LoopVertex("fakeTransform");
-  private DAG<IRVertex, IREdge> originalDAG;
-  private DAG<IRVertex, IREdge> newDAG;
+  private IRDAG originalDAG;
+  private IRDAG newDAG;
 
   private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
@@ -56,18 +55,18 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2));
-    loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1));
-    loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, map2, map1));
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, combine, map2));
+    loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map1));
+    loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, map2, map1));
 
-    originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
-        .build();
+    originalDAG = new IRDAG(builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, source, map1))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.SHUFFLE, map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, combine, map2))
+      .build());
   }
 
   @Test
@@ -78,13 +77,13 @@ public class LoopVertexTest {
     vertices1.next();
     final Iterator<IRVertex> vertices2 = loopVertex.getDAG().getTopologicalSort().iterator();
     final List<Pair<IRVertex, IRVertex>> list = new ArrayList<>();
-    while  (vertices1.hasNext() && vertices2.hasNext()) {
+    while (vertices1.hasNext() && vertices2.hasNext()) {
       list.add(Pair.of(vertices1.next(), vertices2.next()));
     }
     list.forEach(irVertexPair -> {
-        assertEquals(irVertexPair.left().getExecutionProperties(), irVertexPair.right().getExecutionProperties());
-        assertEquals(originalDAG.getOutgoingEdgesOf(irVertexPair.left()).size(),
-            loopVertex.getDAG().getOutgoingEdgesOf(irVertexPair.right()).size());
+      assertEquals(irVertexPair.left().getExecutionProperties(), irVertexPair.right().getExecutionProperties());
+      assertEquals(originalDAG.getOutgoingEdgesOf(irVertexPair.left()).size(),
+        loopVertex.getDAG().getOutgoingEdgesOf(irVertexPair.right()).size());
     });
 
     assertEquals(source, loopVertex.getDagIncomingEdges().values().iterator().next().iterator().next().getSrc());

@@ -22,11 +22,12 @@ import java.io.Serializable;
 
 /**
  * Represents the key range of data partitions within a block.
+ *
  * @param <K> the type of key to assign for each partition.
  */
 public interface KeyRange<K extends Serializable> extends Serializable {
 
- /**
+  /**
    * @return whether this instance represents the entire range or not.
    */
   boolean isAll();
@@ -45,7 +46,7 @@ public interface KeyRange<K extends Serializable> extends Serializable {
    * @param key the value to check
    * @return {@code true} if this key range includes the specified value, {@code false} otherwise
    */
-  boolean includes(final K key);
+  boolean includes(K key);
 
   /**
    * {@inheritDoc}
@@ -60,7 +61,7 @@ public interface KeyRange<K extends Serializable> extends Serializable {
    * This method should be overridden for KeyRange comparisons.
    */
   @Override
-  boolean equals(final Object o);
+  boolean equals(Object o);
 
   /**
    * {@inheritDoc}

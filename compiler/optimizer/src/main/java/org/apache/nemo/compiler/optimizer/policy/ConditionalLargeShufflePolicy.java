@@ -18,25 +18,22 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LargeShuffleCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 /**
  * A policy to demonstrate the large shuffle optimization, witch batches disk seek during data shuffle, conditionally.
  */
 public final class ConditionalLargeShufflePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
-          .registerCompileTimePass(new LoopOptimizationCompositePass())
-          .registerCompileTimePass(new DefaultCompositePass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
+      .registerCompileTimePass(new LoopOptimizationCompositePass())
+      .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**
@@ -48,22 +45,23 @@ public final class ConditionalLargeShufflePolicy implements Policy {
 
   /**
    * Returns the maximum parallelism of the vertices of a IR DAG.
+   *
    * @param dag dag to observe.
    * @return the maximum parallelism, or 1 by default.
    */
-  private static int getMaxParallelism(final DAG<IRVertex, IREdge> dag) {
+  private static int getMaxParallelism(final IRDAG dag) {
     return dag.getVertices().stream()
-        .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
-        .max().orElse(1);
+      .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
+      .max().orElse(1);
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
+  public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }

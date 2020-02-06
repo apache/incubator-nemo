@@ -19,11 +19,11 @@
 package org.apache.nemo.client;
 
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.MetricMessageHandler;
 import org.apache.nemo.runtime.master.PlanStateManager;
-import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
@@ -52,14 +52,14 @@ public class ClientEndpointTest {
     final StateTranslator stateTranslator = mock(StateTranslator.class);
     when(stateTranslator.translateState(any())).then(state -> state.getArgument(0));
     final ClientEndpoint clientEndpoint = new TestClientEndpoint(stateTranslator);
-    assertEquals(clientEndpoint.getPlanState(), PlanState.State.READY);
+    assertEquals(PlanState.State.READY, clientEndpoint.getPlanState());
 
     // Wait for connection but not connected.
-    assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.READY);
+    assertEquals(PlanState.State.READY, clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS));
 
     // Create a PlanStateManager of a dag and create a DriverEndpoint with it.
     final PhysicalPlan physicalPlan =
-        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+      TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     final PlanStateManager planStateManager = injector.getInstance(PlanStateManager.class);
@@ -68,15 +68,15 @@ public class ClientEndpointTest {
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 
     // Check the current state.
-    assertEquals(clientEndpoint.getPlanState(), PlanState.State.EXECUTING);
+    assertEquals(PlanState.State.EXECUTING, clientEndpoint.getPlanState());
 
     // Wait for the job to finish but not finished
-    assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.EXECUTING);
+    assertEquals(PlanState.State.EXECUTING, clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS));
 
     // Check finish.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
-        .collect(Collectors.toList());
+      .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
+      .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
     assertEquals(PlanState.State.COMPLETE, clientEndpoint.waitUntilJobFinish());

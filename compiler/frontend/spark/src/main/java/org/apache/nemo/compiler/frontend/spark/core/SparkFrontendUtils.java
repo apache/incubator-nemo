@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.spark.core;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -40,7 +41,10 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.serializer.*;
+import org.apache.spark.serializer.JavaSerializer;
+import org.apache.spark.serializer.KryoSerializer;
+import org.apache.spark.serializer.Serializer;
+import org.apache.spark.serializer.SerializerInstance;
 import scala.Function1;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -49,7 +53,9 @@ import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Stack;
 
 /**
  * Utility class for RDDs.
@@ -71,7 +77,7 @@ public final class SparkFrontendUtils {
    */
   public static Serializer deriveSerializerFrom(final org.apache.spark.SparkContext sparkContext) {
     if (sparkContext.conf().get("spark.serializer", "")
-        .equals("org.apache.spark.serializer.KryoSerializer")) {
+      .equals("org.apache.spark.serializer.KryoSerializer")) {
       return new KryoSerializer(sparkContext.conf());
     } else {
       return new JavaSerializer(sparkContext.conf());
@@ -98,16 +104,16 @@ public final class SparkFrontendUtils {
     builder.addVertex(collectVertex, loopVertexStack);
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, collectVertex),
-        lastVertex, collectVertex);
+      lastVertex, collectVertex);
     newEdge.setProperty(EncoderProperty.of(new SparkEncoderFactory(serializer)));
     newEdge.setProperty(DecoderProperty.of(new SparkDecoderFactory(serializer)));
     newEdge.setProperty(SPARK_KEY_EXTRACTOR_PROP);
     builder.connectVertices(newEdge);
 
     // launch DAG
-    JobLauncher.launchDAG(builder.build(), SparkBroadcastVariables.getAll(), "");
+    JobLauncher.launchDAG(new IRDAG(builder.build()), SparkBroadcastVariables.getAll(), "");
 
-    return (List<T>) JobLauncher.getCollectedData();
+    return JobLauncher.getCollectedData();
   }
 
   /**
@@ -120,17 +126,17 @@ public final class SparkFrontendUtils {
   public static CommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
                                                                                final IRVertex dst) {
     if (dst instanceof OperatorVertex
-        && (((OperatorVertex) dst).getTransform() instanceof ReduceByKeyTransform
-        || ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform)) {
-      return CommunicationPatternProperty.Value.Shuffle;
+      && (((OperatorVertex) dst).getTransform() instanceof ReduceByKeyTransform
+      || ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform)) {
+      return CommunicationPatternProperty.Value.SHUFFLE;
     } else {
-      return CommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.ONE_TO_ONE;
     }
   }
 
   /**
    * Converts a {@link Function1} to a corresponding {@link Function}.
-   *
+   * <p>
    * Here, we use the Spark 'JavaSerializer' to facilitate debugging in the future.
    * TODO #205: RDD Closure with Broadcast Variables Serialization Bug
    *
@@ -147,6 +153,7 @@ public final class SparkFrontendUtils {
     final byte[] serializedFunction = new JavaSerializer().newInstance().serialize(scalaFunction, classTag).array();
 
     return new Function<I, O>() {
+      @java.lang.SuppressWarnings("squid:S1948")
       private Function1<I, O> deserializedFunction;
 
       @Override
@@ -188,7 +195,7 @@ public final class SparkFrontendUtils {
    * @return the converted Java function.
    */
   public static <I, O> FlatMapFunction<I, O> toJavaFlatMapFunction(
-      final Function1<I, TraversableOnce<O>> scalaFunction) {
+    final Function1<I, TraversableOnce<O>> scalaFunction) {
     return new FlatMapFunction<I, O>() {
       @Override
       public Iterator<O> call(final I i) throws Exception {
@@ -207,7 +214,7 @@ public final class SparkFrontendUtils {
    * @return the converted map function.
    */
   public static <T, K, V> Function<T, Tuple2<K, V>> pairFunctionToPlainFunction(
-      final PairFunction<T, K, V> pairFunction) {
+    final PairFunction<T, K, V> pairFunction) {
     return new Function<T, Tuple2<K, V>>() {
       @Override
       public Tuple2<K, V> call(final T elem) throws Exception {

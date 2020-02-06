@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.common.plan;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
@@ -28,7 +29,6 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -39,24 +39,29 @@ import java.util.Optional;
  * Stage.
  */
 public final class Stage extends Vertex {
+  private final List<Integer> taskIndices;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
-  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final List<Map<String, Readable>> vertexIdToReadables;
+
+  private ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
 
   /**
    * Constructor.
    *
    * @param stageId             ID of the stage.
+   * @param taskIndices         indices of the tasks to execute.
    * @param irDag               the DAG of the task in this stage.
    * @param executionProperties set of {@link VertexExecutionProperty} for this stage
    * @param vertexIdToReadables the list of maps between vertex ID and {@link Readable}.
    */
   public Stage(final String stageId,
+               final List<Integer> taskIndices,
                final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
                final List<Map<String, Readable>> vertexIdToReadables) {
     super(stageId);
+    this.taskIndices = taskIndices;
     this.irDag = irDag;
     this.serializedIRDag = SerializationUtils.serialize(irDag);
     this.executionProperties = executionProperties;
@@ -78,11 +83,20 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the parallelism
+   * @return task indices of this stage to execute.
+   * For non-sampling vertices, returns [0, 1, 2, ..., parallelism-1].
+   * For sampling vertices, returns a list of size (parallelism * samplingRate).
+   */
+  public List<Integer> getTaskIndices() {
+    return taskIndices;
+  }
+
+  /**
+   * @return the parallelism.
    */
   public int getParallelism() {
     return executionProperties.get(ParallelismProperty.class)
-        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+      .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
   }
 
   /**
@@ -90,7 +104,7 @@ public final class Stage extends Vertex {
    */
   public int getScheduleGroup() {
     return executionProperties.get(ScheduleGroupProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
+      .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
   }
 
   /**
@@ -101,6 +115,13 @@ public final class Stage extends Vertex {
   }
 
   /**
+   * @param executionProperties to set.
+   */
+  public void setExecutionProperties(final ExecutionPropertyMap<VertexExecutionProperty> executionProperties) {
+    this.executionProperties = executionProperties;
+  }
+
+  /**
    * Get the executionProperty of the IREdge.
    *
    * @param <T>                  Type of the return value.
@@ -108,7 +129,7 @@ public final class Stage extends Vertex {
    * @return the execution property.
    */
   public <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
@@ -125,6 +146,7 @@ public final class Stage extends Vertex {
     node.put("scheduleGroup", getScheduleGroup());
     node.set("irDag", irDag.asJsonNode());
     node.put("parallelism", getParallelism());
+    node.put("num of task indices", getTaskIndices().size());
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }

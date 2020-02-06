@@ -22,7 +22,6 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.examples.beam.policy.StreamingPolicyParallelismFive;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -43,7 +42,7 @@ public final class WindowedBroadcastITCase {
   private static final String expectedOutputFileName = "expected_output_windowed_broadcast";
   private static final String expectedSlidingWindowOutputFileName = "expected_output_sliding_windowed_broadcast";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
-  private static final String outputFilePath =  fileBasePath + outputFileName;
+  private static final String outputFilePath = fileBasePath + outputFileName;
 
   // TODO #271: We currently disable this test because we cannot force close Nemo
   // @Test (timeout = TIMEOUT)

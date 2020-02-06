@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class ContainerException extends RuntimeException {
   /**
    * ContainerException.
+   *
    * @param cause cause
    */
   public ContainerException(final Throwable cause) {

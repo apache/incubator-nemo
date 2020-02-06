@@ -26,6 +26,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ import java.util.NoSuchElementException;
 
 /**
  * SourceVertex implementation for UnboundedSource.
+ *
  * @param <O> output type.
  * @param <M> checkpoint mark type.
  */
@@ -49,18 +51,19 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   /**
    * The default constructor for beam unbounded source.
-   * @param source unbounded source.
+   *
+   * @param source      unbounded source.
    * @param displayData static display data associated with a pipeline component.
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
                                    final DisplayData displayData) {
-    super();
     this.source = source;
     this.displayData = displayData;
   }
 
   /**
    * Copy constructor.
+   *
    * @param that the original vertex.
    */
   private BeamUnboundedSourceVertex(final BeamUnboundedSourceVertex<O, M> that) {
@@ -81,10 +84,22 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   @Override
   public List<Readable<Object>> getReadables(final int desiredNumOfSplits) throws Exception {
+
     final List<Readable<Object>> readables = new ArrayList<>();
-    source.split(desiredNumOfSplits, null)
-      .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
-    return readables;
+    if (source != null) {
+      source.split(desiredNumOfSplits, null)
+        .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
+      return readables;
+    } else {
+      // TODO #333: Remove SourceVertex#clearInternalStates
+      final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
+      return emptySourceVertex.getReadables(desiredNumOfSplits);
+    }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return 0L;
   }
 
   @Override
@@ -101,11 +116,12 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   /**
    * UnboundedSourceReadable class.
+   *
    * @param <O> output type.
    * @param <M> checkpoint mark type.
    */
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-      implements Readable<Object> {
+    implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
@@ -114,6 +130,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     /**
      * Constructor.
+     *
      * @param unboundedSource unbounded source.
      */
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {

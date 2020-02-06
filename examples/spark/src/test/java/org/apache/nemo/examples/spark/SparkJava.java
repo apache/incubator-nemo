@@ -21,7 +21,6 @@ package org.apache.nemo.examples.spark;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
-import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
 import org.apache.nemo.examples.spark.sql.JavaUserDefinedUntypedAggregation;
@@ -45,48 +44,48 @@ public final class SparkJava {
   @Before
   public void setUp() {
     builder = new ArgBuilder()
-        .addResourceJson(executorResourceFileName);
+      .addResourceJson(executorResourceFileName);
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkPi() throws Exception {
     final String numParallelism = "3";
 
     JobLauncher.main(builder
-        .addJobId(JavaSparkPi.class.getSimpleName() + "_test")
-        .addUserMain(JavaSparkPi.class.getCanonicalName())
-        .addUserArgs(numParallelism)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(JavaSparkPi.class.getSimpleName() + "_test")
+      .addUserMain(JavaSparkPi.class.getCanonicalName())
+      .addUserArgs(numParallelism)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
     final String inputFileName = "inputs/test_input_employees.json";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
 
     JobLauncher.main(builder
-        .addJobId(JavaUserDefinedTypedAggregation.class.getSimpleName() + "_test")
-        .addUserMain(JavaUserDefinedTypedAggregation.class.getCanonicalName())
-        .addUserArgs(inputFilePath)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(JavaUserDefinedTypedAggregation.class.getSimpleName() + "_test")
+      .addUserMain(JavaUserDefinedTypedAggregation.class.getCanonicalName())
+      .addUserArgs(inputFilePath)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
     final String inputFileName = "inputs/test_input_employees.json";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
 
     JobLauncher.main(builder
-        .addJobId(JavaUserDefinedUntypedAggregation.class.getSimpleName() + "_test")
-        .addUserMain(JavaUserDefinedUntypedAggregation.class.getCanonicalName())
-        .addUserArgs(inputFilePath)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(JavaUserDefinedUntypedAggregation.class.getSimpleName() + "_test")
+      .addUserMain(JavaUserDefinedUntypedAggregation.class.getCanonicalName())
+      .addUserArgs(inputFilePath)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testSparkSQLExample() throws Exception {
     final String peopleJson = "inputs/test_input_people.json";
     final String peopleTxt = "inputs/test_input_people.txt";

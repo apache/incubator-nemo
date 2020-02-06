@@ -21,10 +21,10 @@ package org.apache.nemo.common.ir;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
+ *
  * @param <O> output type.
  */
 public interface Readable<O> extends Serializable {
@@ -39,14 +39,13 @@ public interface Readable<O> extends Serializable {
    * The caller should check whether the Readable is finished or not by using isFinished() method
    * before calling this method.
    *
-   * It can throw NoSuchElementException although it is not finished in Unbounded source.
    * @return a data read by the readable.
-   * @throws NoSuchElementException when no element exists
    */
-  O readCurrent() throws NoSuchElementException;
+  O readCurrent();
 
   /**
    * Read watermark.
+   *
    * @return watermark
    */
   long readWatermark();
@@ -68,6 +67,7 @@ public interface Readable<O> extends Serializable {
 
   /**
    * Close.
+   *
    * @throws IOException if file-based reader throws any.
    */
   void close() throws IOException;

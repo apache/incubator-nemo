@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
@@ -44,7 +45,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private volatile ByteBufInputStream currentByteBufInputStream = null;
+  private final AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override
@@ -71,10 +72,11 @@ public final class ByteInputContext extends ByteTransferContext {
 
   /**
    * Creates an input context.
-   * @param remoteExecutorId    id of the remote executor
-   * @param contextId           identifier for this context
-   * @param contextDescriptor   user-provided context descriptor
-   * @param contextManager      {@link ContextManager} for the channel
+   *
+   * @param remoteExecutorId  id of the remote executor
+   * @param contextId         identifier for this context
+   * @param contextDescriptor user-provided context descriptor
+   * @param contextManager    {@link ContextManager} for the channel
    */
   ByteInputContext(final String remoteExecutorId,
                    final ContextId contextId,
@@ -86,6 +88,7 @@ public final class ByteInputContext extends ByteTransferContext {
   /**
    * Returns {@link Iterator} of {@link InputStream}s.
    * This method always returns the same {@link Iterator} instance.
+   *
    * @return {@link Iterator} of {@link InputStream}s.
    */
   public Iterator<InputStream> getInputStreams() {
@@ -94,6 +97,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   /**
    * Returns a future, which is completed when the corresponding transfer for this context gets done.
+   *
    * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
    */
   public CompletableFuture<Iterator<InputStream>> getCompletedFuture() {
@@ -104,23 +108,24 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when a punctuation for sub-stream incarnation is detected.
    */
   void onNewStream() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.close();
     }
-    currentByteBufInputStream = new ByteBufInputStream();
-    byteBufInputStreams.put(currentByteBufInputStream);
+    currentByteBufInputStream.set(new ByteBufInputStream());
+    byteBufInputStreams.put(currentByteBufInputStream.get());
   }
 
   /**
    * Called when {@link ByteBuf} is supplied to this context.
+   *
    * @param byteBuf the {@link ByteBuf} to supply
    */
   void onByteBuf(final ByteBuf byteBuf) {
-    if (currentByteBufInputStream == null) {
+    if (currentByteBufInputStream.get() == null) {
       throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
     }
     if (byteBuf.readableBytes() > 0) {
-      currentByteBufInputStream.byteBufQueue.put(byteBuf);
+      currentByteBufInputStream.get().byteBufQueue.put(byteBuf);
     } else {
       // ignore empty data frames
       byteBuf.release();
@@ -131,8 +136,8 @@ public final class ByteInputContext extends ByteTransferContext {
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
   void onContextClose() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.close();
     }
     byteBufInputStreams.close();
     completedFuture.complete(inputStreams);
@@ -143,8 +148,8 @@ public final class ByteInputContext extends ByteTransferContext {
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
 
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
+    if (currentByteBufInputStream.get() != null) {
+      currentByteBufInputStream.get().byteBufQueue.closeExceptionally(cause);
     }
     byteBufInputStreams.closeExceptionally(cause);
     completedFuture.completeExceptionally(cause);

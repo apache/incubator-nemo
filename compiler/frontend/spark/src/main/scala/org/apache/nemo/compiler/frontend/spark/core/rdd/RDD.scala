@@ -35,6 +35,7 @@ import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import org.apache.nemo.compiler.frontend.spark.transform._
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
+import org.apache.nemo.common.ir.IRDAG
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}
 import org.apache.spark.partial.{BoundedDouble, PartialResult}
 import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, PartitionCoalescer, SequenceFileRDDFunctions}
@@ -230,7 +231,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
-    JobLauncher.launchDAG(builder.build, SparkBroadcastVariables.getAll, "")
+    JobLauncher.launchDAG(new IRDAG(builder.build), SparkBroadcastVariables.getAll, "")
   }
 
   /////////////// CACHING ///////////////
@@ -289,20 +290,20 @@ final class RDD[T: ClassTag] protected[rdd] (
     ghostVertex.setProperty(IgnoreSchedulingTempDataReceiverProperty.of())
     builder.addVertex(ghostVertex, loopVertexStack)
 
-    val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)
+    val newEdge = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, lastVertex, ghostVertex)
     // Setup default properties
     newEdge.setProperty(encoderProperty)
     newEdge.setProperty(decoderProperty)
     newEdge.setProperty(keyExtractorProperty)
     // Setup cache-related properties
     if (actualUseDisk) {
-      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore))
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE))
     } else if (actualDeserialized) {
-      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore))
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE))
     } else {
-      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore))
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE))
     }
-    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep))
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP))
     newEdge.setProperty(CacheIDProperty.of(cacheID))
     val dupEdgeVal = new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)
     dupEdgeVal.setRepresentativeEdgeId(newEdge.getId)

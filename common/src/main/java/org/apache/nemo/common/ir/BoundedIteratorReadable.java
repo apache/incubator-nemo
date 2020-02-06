@@ -22,6 +22,7 @@ import java.util.Iterator;
 
 /**
  * An abstract readable class that retrieves data from iterator.
+ *
  * @param <O> output type.
  */
 public abstract class BoundedIteratorReadable<O> implements Readable<O> {
@@ -30,6 +31,7 @@ public abstract class BoundedIteratorReadable<O> implements Readable<O> {
 
   /**
    * Initialize iterator.
+   *
    * @return iterator
    */
   protected abstract Iterator<O> initializeIterator();

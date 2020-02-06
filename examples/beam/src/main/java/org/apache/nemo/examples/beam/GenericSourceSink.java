@@ -19,24 +19,30 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.*;
-import org.apache.beam.sdk.transforms.*;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.beam.sdk.values.*;
+import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.hadoop.format.HadoopFormatIO;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.fs.FileSystem;
-
-import java.io.*;
-import java.util.*;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapred.JobConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Helper class for handling source/sink in a generic way.
@@ -51,9 +57,10 @@ final class GenericSourceSink {
 
   /**
    * Read data.
-   * @param pipeline  beam pipeline
-   * @param path      path to read
-   * @return          returns the read value
+   *
+   * @param pipeline beam pipeline
+   * @param path     path to read
+   * @return returns the read value
    */
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
@@ -65,20 +72,20 @@ final class GenericSourceSink {
       hadoopConf.setClass("value.class", Text.class, Object.class);
 
       // Without translations, Beam internally does some weird cloning
-      final HadoopInputFormatIO.Read<Long, String> read = HadoopInputFormatIO.<Long, String>read()
-          .withConfiguration(hadoopConf)
-          .withKeyTranslation(new SimpleFunction<LongWritable, Long>() {
-            @Override
-            public Long apply(final LongWritable longWritable) {
-              return longWritable.get();
-            }
-          })
-          .withValueTranslation(new SimpleFunction<Text, String>() {
-            @Override
-            public String apply(final Text text) {
-              return text.toString();
-            }
-          });
+      final HadoopFormatIO.Read<Long, String> read = HadoopFormatIO.<Long, String>read()
+        .withConfiguration(hadoopConf)
+        .withKeyTranslation(new SimpleFunction<LongWritable, Long>() {
+          @Override
+          public Long apply(final LongWritable longWritable) {
+            return longWritable.get();
+          }
+        })
+        .withValueTranslation(new SimpleFunction<Text, String>() {
+          @Override
+          public String apply(final Text text) {
+            return text.toString();
+          }
+        });
       return pipeline.apply(read).apply(MapElements.into(TypeDescriptor.of(String.class)).via(KV::getValue));
     } else {
       return pipeline.apply(TextIO.read().from(path));
@@ -87,9 +94,11 @@ final class GenericSourceSink {
 
   /**
    * Write data.
+   * NEMO-365: This method could later be replaced using the HadoopFormatIO class.
+   *
    * @param dataToWrite data to write
    * @param path        path to write data
-   * @return            returns {@link PDone}
+   * @return returns {@link PDone}
    */
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
@@ -103,8 +112,9 @@ final class GenericSourceSink {
 
   /**
    * Check if given path is HDFS path.
+   *
    * @param path path to check
-   * @return     boolean value indicating whether the path is HDFS path or not
+   * @return boolean value indicating whether the path is HDFS path or not
    */
   private static boolean isHDFSPath(final String path) {
     return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
@@ -125,7 +135,7 @@ final class HDFSWrite extends DoFn<String, Void> {
   /**
    * Constructor.
    *
-   * @param path    HDFS path
+   * @param path HDFS path
    */
   HDFSWrite(final String path) {
     this.path = path;
@@ -151,7 +161,8 @@ final class HDFSWrite extends DoFn<String, Void> {
 
   /**
    * process element.
-   * @param c          context {@link ProcessContext}
+   *
+   * @param c context {@link ProcessContext}
    * @throws Exception exception.
    */
   @ProcessElement
@@ -167,7 +178,8 @@ final class HDFSWrite extends DoFn<String, Void> {
 
   /**
    * Teardown.
-   * @throws IOException  output stream exception
+   *
+   * @throws IOException output stream exception
    */
   @Teardown
   public void tearDown() throws IOException {

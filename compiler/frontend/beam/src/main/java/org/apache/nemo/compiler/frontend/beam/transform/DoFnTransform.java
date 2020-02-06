@@ -21,8 +21,10 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -37,7 +39,7 @@ import java.util.Map;
 /**
  * DoFn transform implementation when there is no side input.
  *
- * @param <InputT> input type.
+ * @param <InputT>  input type.
  * @param <OutputT> output type.
  */
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
@@ -45,14 +47,15 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   /**
    * DoFnTransform Constructor.
-   * @param doFn doFn
-   * @param inputCoder input coder
-   * @param outputCoders output coders
-   * @param mainOutputTag main output tag
+   *
+   * @param doFn                 doFn
+   * @param inputCoder           input coder
+   * @param outputCoders         output coders
+   * @param mainOutputTag        main output tag
    * @param additionalOutputTags additional output tags
-   * @param windowingStrategy windowing strategy
-   * @param options pipeline options
-   * @param displayData display data.
+   * @param windowingStrategy    windowing strategy
+   * @param options              pipeline options
+   * @param displayData          display data.
    */
   public DoFnTransform(final DoFn<InputT, OutputT> doFn,
                        final Coder<InputT> inputCoder,
@@ -61,9 +64,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
                        final List<TupleTag<?>> additionalOutputTags,
                        final WindowingStrategy<?, ?> windowingStrategy,
                        final PipelineOptions options,
-                       final DisplayData displayData) {
-    super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, Collections.emptyMap(), options, displayData);
+                       final DisplayData displayData,
+                       final DoFnSchemaInformation doFnSchemaInformation,
+                       final Map<String, PCollectionView<?>> sideInputMapping) {
+    super(doFn, inputCoder, outputCoders, mainOutputTag, additionalOutputTags, windowingStrategy,
+      Collections.emptyMap(), options, displayData, doFnSchemaInformation, sideInputMapping);
   }
 
   @Override

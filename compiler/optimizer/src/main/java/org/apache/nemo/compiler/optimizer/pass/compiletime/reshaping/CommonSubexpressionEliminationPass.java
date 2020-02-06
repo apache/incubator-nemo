@@ -20,6 +20,9 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -27,8 +30,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.*;
@@ -50,68 +51,69 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG inputDAG) {
     // find and collect vertices with equivalent transforms
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final Map<Transform, List<OperatorVertex>> operatorVerticesToBeMerged = new HashMap<>();
     final Map<OperatorVertex, Set<IREdge>> inEdges = new HashMap<>();
     final Map<OperatorVertex, Set<IREdge>> outEdges = new HashMap<>();
 
-    dag.topologicalDo(irVertex -> {
-      if (irVertex instanceof OperatorVertex) {
-        final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
-        operatorVerticesToBeMerged.putIfAbsent(operatorVertex.getTransform(), new ArrayList<>());
-        operatorVerticesToBeMerged.get(operatorVertex.getTransform()).add(operatorVertex);
+    inputDAG.reshapeUnsafely(dag -> {
+      dag.topologicalDo(irVertex -> {
+        if (irVertex instanceof OperatorVertex) {
+          final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
+          operatorVerticesToBeMerged.putIfAbsent(operatorVertex.getTransform(), new ArrayList<>());
+          operatorVerticesToBeMerged.get(operatorVertex.getTransform()).add(operatorVertex);
 
-        dag.getIncomingEdgesOf(operatorVertex).forEach(irEdge -> {
-          inEdges.putIfAbsent(operatorVertex, new HashSet<>());
-          inEdges.get(operatorVertex).add(irEdge);
-          if (irEdge.getSrc() instanceof OperatorVertex) {
-            final OperatorVertex source = (OperatorVertex) irEdge.getSrc();
-            outEdges.putIfAbsent(source, new HashSet<>());
-            outEdges.get(source).add(irEdge);
-          }
-        });
-      } else {
-        builder.addVertex(irVertex, dag);
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (irEdge.getSrc() instanceof OperatorVertex) {
-            final OperatorVertex source = (OperatorVertex) irEdge.getSrc();
-            outEdges.putIfAbsent(source, new HashSet<>());
-            outEdges.get(source).add(irEdge);
-          } else {
-            builder.connectVertices(irEdge);
-          }
-        });
-      }
-    });
-
-    // merge them if they are not dependent on each other, and add IRVertices to the builder.
-    operatorVerticesToBeMerged.forEach(((transform, operatorVertices) -> {
-      final Map<Set<IRVertex>, List<OperatorVertex>> verticesToBeMergedWithIdenticalSources = new HashMap<>();
-
-      operatorVertices.forEach(operatorVertex -> {
-        // compare if incoming vertices are identical.
-        final Set<IRVertex> incomingVertices = dag.getIncomingEdgesOf(operatorVertex).stream().map(IREdge::getSrc)
-            .collect(Collectors.toSet());
-        if (verticesToBeMergedWithIdenticalSources.keySet().stream()
-            .anyMatch(lst -> lst.containsAll(incomingVertices) && incomingVertices.containsAll(lst))) {
-          final Set<IRVertex> foundKey = verticesToBeMergedWithIdenticalSources.keySet().stream()
-              .filter(vs -> vs.containsAll(incomingVertices) && incomingVertices.containsAll(vs))
-              .findFirst().get();
-          verticesToBeMergedWithIdenticalSources.get(foundKey).add(operatorVertex);
+          dag.getIncomingEdgesOf(operatorVertex).forEach(irEdge -> {
+            inEdges.putIfAbsent(operatorVertex, new HashSet<>());
+            inEdges.get(operatorVertex).add(irEdge);
+            if (irEdge.getSrc() instanceof OperatorVertex) {
+              final OperatorVertex source = (OperatorVertex) irEdge.getSrc();
+              outEdges.putIfAbsent(source, new HashSet<>());
+              outEdges.get(source).add(irEdge);
+            }
+          });
         } else {
-          verticesToBeMergedWithIdenticalSources.putIfAbsent(incomingVertices, new ArrayList<>());
-          verticesToBeMergedWithIdenticalSources.get(incomingVertices).add(operatorVertex);
+          builder.addVertex(irVertex, dag);
+          dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+            if (irEdge.getSrc() instanceof OperatorVertex) {
+              final OperatorVertex source = (OperatorVertex) irEdge.getSrc();
+              outEdges.putIfAbsent(source, new HashSet<>());
+              outEdges.get(source).add(irEdge);
+            } else {
+              builder.connectVertices(irEdge);
+            }
+          });
         }
       });
 
-      verticesToBeMergedWithIdenticalSources.values().forEach(ovs ->
-          mergeAndAddToBuilder(ovs, builder, dag, inEdges, outEdges));
-    }));
+      // merge them if they are not dependent on each other, and add IRVertices to the builder.
+      operatorVerticesToBeMerged.forEach(((transform, operatorVertices) -> {
+        final Map<Set<IRVertex>, List<OperatorVertex>> verticesToBeMergedWithIdenticalSources = new HashMap<>();
 
-    // process IREdges
-    operatorVerticesToBeMerged.values().forEach(operatorVertices ->
+        operatorVertices.forEach(operatorVertex -> {
+          // compare if incoming vertices are identical.
+          final Set<IRVertex> incomingVertices = dag.getIncomingEdgesOf(operatorVertex).stream().map(IREdge::getSrc)
+            .collect(Collectors.toSet());
+          if (verticesToBeMergedWithIdenticalSources.keySet().stream()
+            .anyMatch(lst -> lst.containsAll(incomingVertices) && incomingVertices.containsAll(lst))) {
+            final Set<IRVertex> foundKey = verticesToBeMergedWithIdenticalSources.keySet().stream()
+              .filter(vs -> vs.containsAll(incomingVertices) && incomingVertices.containsAll(vs))
+              .findFirst().get();
+            verticesToBeMergedWithIdenticalSources.get(foundKey).add(operatorVertex);
+          } else {
+            verticesToBeMergedWithIdenticalSources.putIfAbsent(incomingVertices, new ArrayList<>());
+            verticesToBeMergedWithIdenticalSources.get(incomingVertices).add(operatorVertex);
+          }
+        });
+
+        verticesToBeMergedWithIdenticalSources.values().forEach(ovs ->
+          mergeAndAddToBuilder(ovs, builder, dag, inEdges, outEdges));
+      }));
+
+      // process IREdges
+      operatorVerticesToBeMerged.values().forEach(operatorVertices ->
         operatorVertices.forEach(operatorVertex -> {
           inEdges.getOrDefault(operatorVertex, new HashSet<>()).forEach(e -> {
             if (builder.contains(operatorVertex) && builder.contains(e.getSrc())) {
@@ -125,22 +127,26 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
           });
         }));
 
-    return builder.build();
+      return builder.build();
+    });
+
+    return inputDAG;
   }
 
   /**
    * merge equivalent operator vertices and add them to the provided builder.
-   * @param ovs operator vertices that are to be merged (if there are no dependencies between them).
-   * @param builder builder to add the merged vertices to.
-   * @param dag dag to observe while adding them.
-   * @param inEdges incoming edges information.
+   *
+   * @param ovs      operator vertices that are to be merged (if there are no dependencies between them).
+   * @param builder  builder to add the merged vertices to.
+   * @param dag      dag to observe while adding them.
+   * @param inEdges  incoming edges information.
    * @param outEdges outgoing edges information.
    */
   private static void mergeAndAddToBuilder(final List<OperatorVertex> ovs, final DAGBuilder<IRVertex, IREdge> builder,
                                            final DAG<IRVertex, IREdge> dag,
                                            final Map<OperatorVertex, Set<IREdge>> inEdges,
                                            final Map<OperatorVertex, Set<IREdge>> outEdges) {
-    if (ovs.size() > 0) {
+    if (!ovs.isEmpty()) {
       final OperatorVertex operatorVertexToUse = ovs.get(0);
       final List<OperatorVertex> dependencyFailedOperatorVertices = new ArrayList<>();
 
@@ -156,7 +162,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
             outEdges.getOrDefault(ov, new HashSet<>()).forEach(e -> {
               outListToModify.remove(e);
               final IREdge newIrEdge = new IREdge(e.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  operatorVertexToUse, e.getDst());
+                operatorVertexToUse, e.getDst());
               final Optional<EncoderFactory> encoderProperty = e.getPropertyValue(EncoderProperty.class);
               if (encoderProperty.isPresent()) {
                 newIrEdge.setProperty(EncoderProperty.of(encoderProperty.get()));

@@ -25,7 +25,8 @@ import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Captures the relationship between a non-source IRVertex's outputCollector, and mainTagChildren vertices.

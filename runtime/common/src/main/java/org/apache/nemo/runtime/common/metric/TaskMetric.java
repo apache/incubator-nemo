@@ -18,14 +18,13 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
@@ -124,7 +123,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   @Override
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
-    LOG.debug("metric {} is just arrived!", metricField);
+    LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
       case "serializedReadBytes":
         setSerializedReadBytes(SerializationUtils.deserialize(metricValue));
@@ -143,7 +142,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         break;
       case "stateTransitionEvent":
         final StateTransitionEvent<TaskState.State> newStateTransitionEvent =
-            SerializationUtils.deserialize(metricValue);
+          SerializationUtils.deserialize(metricValue);
         addEvent(newStateTransitionEvent);
         break;
       case "scheduleAttempt":

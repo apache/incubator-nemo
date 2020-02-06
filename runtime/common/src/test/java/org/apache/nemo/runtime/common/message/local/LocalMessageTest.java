@@ -45,18 +45,18 @@ public class LocalMessageTest {
     final String listenerIdBetweenExecutors = "BetweenExecutors";
 
     final Injector injector = TANG.newInjector(TANG.newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build());
+      .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build());
     injector.getInstance(LocalMessageDispatcher.class);
 
     final MessageEnvironment driverEnv = injector.forkInjector(TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, driverNodeId).build())
-        .getInstance(MessageEnvironment.class);
+      .bindNamedParameter(MessageParameters.SenderId.class, driverNodeId).build())
+      .getInstance(MessageEnvironment.class);
     final MessageEnvironment executorOneEnv = injector.forkInjector(TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, executorOneNodeId).build())
-        .getInstance(MessageEnvironment.class);
+      .bindNamedParameter(MessageParameters.SenderId.class, executorOneNodeId).build())
+      .getInstance(MessageEnvironment.class);
     final MessageEnvironment executorTwoEnv = injector.forkInjector(TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, executorTwoNodeId).build())
-        .getInstance(MessageEnvironment.class);
+      .bindNamedParameter(MessageParameters.SenderId.class, executorTwoNodeId).build())
+      .getInstance(MessageEnvironment.class);
 
     final AtomicInteger toDriverMessageUsingSend = new AtomicInteger();
 
@@ -86,12 +86,12 @@ public class LocalMessageTest {
     // Test sending message from executors to the driver.
 
     final Future<MessageSender<ToDriver>> messageSenderFuture1 = executorOneEnv.asyncConnect(
-        driverNodeId, listenerIdToDriver);
+      driverNodeId, listenerIdToDriver);
     Assert.assertTrue(messageSenderFuture1.isDone());
     final MessageSender<ToDriver> messageSender1 = messageSenderFuture1.get();
 
     final Future<MessageSender<ToDriver>> messageSenderFuture2 = executorTwoEnv.asyncConnect(
-        driverNodeId, listenerIdToDriver);
+      driverNodeId, listenerIdToDriver);
     Assert.assertTrue(messageSenderFuture2.isDone());
     final MessageSender<ToDriver> messageSender2 = messageSenderFuture2.get();
 
@@ -111,9 +111,9 @@ public class LocalMessageTest {
     executorTwoEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(executorTwoMessageCount));
 
     final MessageSender<BetweenExecutors> oneToTwo = executorOneEnv.<BetweenExecutors>asyncConnect(
-        executorTwoNodeId, listenerIdBetweenExecutors).get();
+      executorTwoNodeId, listenerIdBetweenExecutors).get();
     final MessageSender<BetweenExecutors> twoToOne = executorTwoEnv.<BetweenExecutors>asyncConnect(
-        executorOneNodeId, listenerIdBetweenExecutors).get();
+      executorOneNodeId, listenerIdBetweenExecutors).get();
 
     Assert.assertEquals("oneToTwo", oneToTwo.<String>request(new SimpleMessage("oneToTwo")).get());
     Assert.assertEquals("twoToOne", twoToOne.<String>request(new SimpleMessage("twoToOne")).get());
@@ -132,9 +132,9 @@ public class LocalMessageTest {
     executorTwoEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(newExecutorTwoMessageCount));
 
     final MessageSender<BetweenExecutors> newOneToTwo = executorOneEnv.<BetweenExecutors>asyncConnect(
-        executorTwoNodeId, listenerIdBetweenExecutors).get();
+      executorTwoNodeId, listenerIdBetweenExecutors).get();
     final MessageSender<BetweenExecutors> newTwoToOne = executorTwoEnv.<BetweenExecutors>asyncConnect(
-        executorOneNodeId, listenerIdBetweenExecutors).get();
+      executorOneNodeId, listenerIdBetweenExecutors).get();
 
     Assert.assertEquals("newOneToTwo", newOneToTwo.<String>request(new SimpleMessage("newOneToTwo")).get());
     Assert.assertEquals("newTwoToOne", newTwoToOne.<String>request(new SimpleMessage("newTwoToOne")).get());
@@ -178,6 +178,7 @@ public class LocalMessageTest {
 
   final class SimpleMessage implements BetweenExecutors {
     private final String data;
+
     SimpleMessage(final String data) {
       this.data = data;
     }

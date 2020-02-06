@@ -23,6 +23,7 @@ import java.io.IOException;
 /**
  * A collection of data elements.
  * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
+ *
  * @param <T> the type of the data stored in this {@link Partition}.
  * @param <K> the type of key used for {@link Partition}.
  */
@@ -38,6 +39,7 @@ public interface Partition<T, K> {
 
   /**
    * Commits a partition to prevent further data write.
+   *
    * @throws IOException if fail to commit partition.
    */
   void commit() throws IOException;

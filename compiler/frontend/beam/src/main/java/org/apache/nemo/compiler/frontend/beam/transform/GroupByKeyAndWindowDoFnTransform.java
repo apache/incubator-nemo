@@ -22,13 +22,14 @@ import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
@@ -39,7 +40,8 @@ import java.util.*;
 
 /**
  * Groups elements according to key and window.
- * @param <K> key type.
+ *
+ * @param <K>      key type.
  * @param <InputT> input type.
  */
 public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
@@ -52,15 +54,17 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
+  private boolean dataReceived = false;
 
   /**
    * GroupByKey constructor.
-   * @param outputCoders output coders
-   * @param mainOutputTag main output tag
+   *
+   * @param outputCoders      output coders
+   * @param mainOutputTag     main output tag
    * @param windowingStrategy windowing strategy
-   * @param options pipeline options
-   * @param reduceFn reduce function
-   * @param displayData display data.
+   * @param options           pipeline options
+   * @param reduceFn          reduce function
+   * @param displayData       display data.
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
@@ -76,7 +80,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       windowingStrategy,
       Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options,
-      displayData);
+      displayData,
+      DoFnSchemaInformation.create(),
+      Collections.emptyMap());
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
@@ -85,6 +91,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * This creates a new DoFn that groups elements by key and window.
+   *
    * @param doFn original doFn.
    * @return GroupAlsoByWindowViaWindowSetNewDoFn
    */
@@ -114,11 +121,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * It collects data for each key.
    * The collected data are emitted at {@link GroupByKeyAndWindowDoFnTransform#onWatermark(Watermark)}
+   *
    * @param element data element
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     checkAndInvokeBundle();
+    dataReceived = true;
 
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
@@ -134,8 +143,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Process the collected data and trigger timers.
-   * @param inputWatermark current input watermark
-   * @param processingTime processing time
+   *
+   * @param inputWatermark   current input watermark
+   * @param processingTime   processing time
    * @param synchronizedTime synchronized time
    */
   private void processElementsAndTriggerTimers(final Watermark inputWatermark,
@@ -166,13 +176,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Output watermark
    * = max(prev output watermark,
-   *          min(input watermark, watermark holds)).
+   * min(input watermark, watermark holds)).
+   *
    * @param inputWatermark input watermark
    */
   private void emitOutputWatermark(final Watermark inputWatermark) {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+      ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
+      // set this to MAX, in order not to emit input watermark when there are no outputs.
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
@@ -219,9 +231,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
-   * @param key key
-   * @param watermark watermark
-   * @param processingTime processing time
+   *
+   * @param key              key
+   * @param watermark        watermark
+   * @param processingTime   processing time
    * @param synchronizedTime synchronized time
    */
   private void triggerTimers(final K key,
@@ -252,6 +265,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Get timer data.
+   *
    * @param timerInternals in-memory timer internals.
    * @return list of timer datas.
    */
@@ -382,6 +396,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     public void emitWatermark(final Watermark watermark) {
       outputCollector.emitWatermark(watermark);
     }
+
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
       outputCollector.emit(dstVertexId, output);

@@ -28,6 +28,7 @@ import java.util.List;
 
 /**
  * EncoderFactory for side inputs.
+ *
  * @param <T> type of the side input value.
  */
 public final class SideInputCoder<T> extends StructuredCoder<SideInputElement<T>> {
@@ -35,6 +36,7 @@ public final class SideInputCoder<T> extends StructuredCoder<SideInputElement<T>
 
   /**
    * Private constructor.
+   *
    * @param valueCoder the coder for side input.
    */
   private SideInputCoder(final Coder<T> valueCoder) {

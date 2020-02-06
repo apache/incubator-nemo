@@ -28,6 +28,7 @@ import java.io.InputStream;
 
 /**
  * Spark DecoderFactory for serialization.
+ *
  * @param <T> type of the object to deserialize.
  */
 public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
@@ -47,8 +48,16 @@ public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
     return new SparkDecoder<>(inputStream, serializer.newInstance());
   }
 
+  @Override
+  public String toString() {
+    return "SparkDecoderFactory{"
+      + "serializer=" + serializer
+      + '}';
+  }
+
   /**
    * SparkDecoder.
+   *
    * @param <T2> type of the object to deserialize.
    */
   private final class SparkDecoder<T2> implements Decoder<T2> {

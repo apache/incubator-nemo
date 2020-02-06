@@ -38,6 +38,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
 
   /**
    * This just forwards watermarks to the next operator because it has one data stream.
+   *
    * @param edgeIndex edge index
    * @param watermark watermark
    */

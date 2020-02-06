@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -114,9 +114,9 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
      *
-     * @param contextId   the context id
-     * @param body        the body or {@code null}
-     * @param length      the length of the body, in bytes
+     * @param contextId      the context id
+     * @param body           the body or {@code null}
+     * @param length         the length of the body, in bytes
      * @param opensSubStream whether this frame opens a new sub-stream or not
      * @return the {@link DataFrame} object
      */
@@ -135,7 +135,8 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
 
     /**
      * Creates a {@link DataFrame} to close the whole context.
-     * @param contextId   the context id
+     *
+     * @param contextId the context id
      * @return the {@link DataFrame} object
      */
     static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {

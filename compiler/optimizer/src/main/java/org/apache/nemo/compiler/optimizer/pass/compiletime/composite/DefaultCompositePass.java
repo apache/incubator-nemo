@@ -33,18 +33,15 @@ public final class DefaultCompositePass extends CompositePass {
    */
   public DefaultCompositePass() {
     super(Arrays.asList(
-        new DefaultParallelismPass(),
-        new DefaultMetricPass(),
-        new DefaultEdgeEncoderPass(),
-        new DefaultEdgeDecoderPass(),
-        new DefaultDataStorePass(),
-        new DefaultDataPersistencePass(),
-        new DefaultScheduleGroupPass(),
-        new CompressionPass(),
-        new DecompressionPass(),
-        new ResourceLocalityPass(),
-        new ResourceSitePass(),
-        new ResourceSlotPass()
+      new DefaultParallelismPass(),
+      new DefaultEdgeEncoderPass(),
+      new DefaultEdgeDecoderPass(),
+      new DefaultDataStorePass(),
+      new DefaultDataPersistencePass(),
+      new DefaultScheduleGroupPass(),
+      new CompressionPass(),
+      new ResourceLocalityPass(),
+      new ResourceSlotPass()
     ));
   }
 }

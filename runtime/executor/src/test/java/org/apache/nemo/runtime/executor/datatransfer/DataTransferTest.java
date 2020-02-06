@@ -18,27 +18,30 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.*;
+import org.apache.commons.io.FileUtils;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.*;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -47,9 +50,10 @@ import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.master.*;
-import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -72,7 +76,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,41 +85,40 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
-import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.apache.nemo.runtime.common.RuntimeTestUtil.flatten;
+import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
- *
+ * <p>
  * Execute {@code mvn test -Dtest=DataTransferTest -Dio.netty.leakDetectionLevel=paranoid}
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
-    SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
+@PrepareForTest({PubSubEventHandlerWrapper.class, MetricMessageHandler.class,
+  SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =
-      DataStoreProperty.Value.MemoryStore;
+    DataStoreProperty.Value.MEMORY_STORE;
   private static final DataStoreProperty.Value SER_MEMORY_STORE =
-      DataStoreProperty.Value.SerializedMemoryStore;
+    DataStoreProperty.Value.SERIALIZED_MEMORY_STORE;
   private static final DataStoreProperty.Value LOCAL_FILE_STORE =
-      DataStoreProperty.Value.LocalFileStore;
+    DataStoreProperty.Value.LOCAL_FILE_STORE;
   private static final DataStoreProperty.Value REMOTE_FILE_STORE =
-      DataStoreProperty.Value.GlusterFileStore;
+    DataStoreProperty.Value.GLUSTER_FILE_STORE;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
   private static final EncoderFactory ENCODER_FACTORY =
-      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
+    PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
   private static final DecoderFactory DECODER_FACTORY =
-      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
+    PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
 
   private BlockManagerMaster master;
@@ -128,21 +130,24 @@ public final class DataTransferTest {
   @Before
   public void setUp() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
-        .build();
+      .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+      .build();
     final Injector baseInjector = Tang.Factory.getTang().newInjector(configuration);
     baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
+
+    final PlanRewriter planRewriter = mock(PlanRewriter.class);
+    injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
 
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
-    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     final AtomicInteger executorCount = new AtomicInteger(0);
     injector.bindVolatileInstance(ClientRPC.class, mock(ClientRPC.class));
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.JobId.class, "jobId");
 
     // Necessary for wiring up the message environments
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
@@ -154,11 +159,11 @@ public final class DataTransferTest {
 
     this.master = master;
     final Pair<BlockManagerWorker, IntermediateDataIOFactory> pair1 = createWorker(
-        EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
+      EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
-        nameClientInjector).left();
+      nameClientInjector).left();
   }
 
   @After
@@ -168,17 +173,19 @@ public final class DataTransferTest {
   }
 
   private Pair<BlockManagerWorker, IntermediateDataIOFactory> createWorker(
-      final String executorId,
-      final Injector dispatcherInjector,
-      final Injector nameClientInjector) throws InjectionException {
+    final String executorId,
+    final Injector dispatcherInjector,
+    final Injector nameClientInjector) throws InjectionException {
     final Injector messageEnvironmentInjector = LocalMessageEnvironment.forkInjector(dispatcherInjector, executorId);
     final MessageEnvironment messageEnvironment = messageEnvironmentInjector.getInstance(MessageEnvironment.class);
     final PersistentConnectionToMasterMap conToMaster = messageEnvironmentInjector
-        .getInstance(PersistentConnectionToMasterMap.class);
+      .getInstance(PersistentConnectionToMasterMap.class);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ExecutorId.class, executorId)
-        .bindNamedParameter(MessageParameters.SenderId.class, executorId)
-        .build();
+      .bindNamedParameter(JobConf.ExecutorId.class, executorId)
+      .bindNamedParameter(MessageParameters.SenderId.class, executorId)
+      .bindNamedParameter(JobConf.ExecutorMemoryMb.class, "640")
+      .bindNamedParameter(JobConf.MaxOffheapRatio.class, "0.2")
+      .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector.bindVolatileInstance(PersistentConnectionToMasterMap.class, conToMaster);
@@ -205,15 +212,15 @@ public final class DataTransferTest {
   private Injector createNameClientInjector() {
     try {
       final Configuration configuration = TANG.newConfigurationBuilder()
-          .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-          .build();
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
       final Injector injector = TANG.newInjector(configuration);
       final LocalAddressProvider localAddressProvider = injector.getInstance(LocalAddressProvider.class);
       final NameServer nameServer = injector.getInstance(NameServer.class);
       final Configuration nameClientConfiguration = NameResolverConfiguration.CONF
-          .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
-          .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
-          .build();
+        .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
+        .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+        .build();
       return injector.forkInjector(nameClientConfiguration);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
@@ -223,76 +230,76 @@ public final class DataTransferTest {
   @Test
   public void testWriteAndRead() {
     // test OneToOne same worker
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
 
     // test OneToOne different worker
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
 
     // test OneToMany same worker
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE);
 
     // test OneToMany different worker
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE);
 
     // test ManyToMany same worker (local file)
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE);
 
     // test ManyToMany different worker (local file)
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE);
 
     // test ManyToMany same worker (remote file)
-    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE);
 
     // test ManyToMany different worker (remote file)
-    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE);
 
     // test OneToOne same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
 
     // test OneToOne different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
 
     // test OneToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE);
 
     // test OneToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE);
 
     // test ManyToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE);
 
     // test ManyToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE);
 
     // test ManyToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE);
 
     // test ManyToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE);
 
     // test ManyToMany same worker (local file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE);
 
     // test ManyToMany different worker (local file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE);
 
     // test ManyToMany same worker (remote file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE);
 
     // test ManyToMany different worker (remote file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE);
   }
 
   private void writeAndRead(final BlockManagerWorker sender,
@@ -309,20 +316,11 @@ public final class DataTransferTest {
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
     dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
-    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH));
     dummyIREdge.setProperty(DataStoreProperty.of(store));
-    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
-    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
-      final Map<Integer, KeyRange> metric = new HashMap<>();
-      for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
-      }
-      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
-    }
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     final RuntimeEdge dummyEdge;
 
@@ -350,7 +348,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
@@ -366,7 +364,7 @@ public final class DataTransferTest {
     // Compare (should be the same)
     final List flattenedWrittenData = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
-    if (CommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
+    if (CommunicationPatternProperty.Value.BROADCAST.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
       assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());
@@ -395,23 +393,14 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
-    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH));
     dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
-        = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+      = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
-      final Map<Integer, KeyRange> metric = new HashMap<>();
-      for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
-      }
-      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
-    }
     dummyIREdge.setProperty(DataStoreProperty.of(store));
-    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP));
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 
@@ -445,9 +434,9 @@ public final class DataTransferTest {
     final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
       final InputReader reader2 =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
@@ -475,7 +464,7 @@ public final class DataTransferTest {
     final List flattenedWrittenData2 = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
     final List flattenedReadData2 = flatten(dataReadList2);
-    if (CommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
+    if (CommunicationPatternProperty.Value.BROADCAST.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
       final List broadcastedWrittenData2 = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
@@ -533,7 +522,12 @@ public final class DataTransferTest {
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
-    return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
+    return new Stage(
+      stageId,
+      IntStream.range(0, PARALLELISM_TEN).boxed().collect(Collectors.toList()),
+      emptyDag,
+      stageExecutionProperty,
+      Collections.emptyList());
   }
 
   /**

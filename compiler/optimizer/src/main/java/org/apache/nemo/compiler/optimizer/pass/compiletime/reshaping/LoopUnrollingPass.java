@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
@@ -38,12 +39,16 @@ public final class LoopUnrollingPass extends ReshapingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    return recursivelyUnroll(dag);
+  public IRDAG apply(final IRDAG inputDAG) {
+    inputDAG.reshapeUnsafely(dag -> {
+      return recursivelyUnroll(dag);
+    });
+    return inputDAG;
   }
 
   /**
    * A function that recursively calls Unroll until there are no more LoopVertex left.
+   *
    * @param dag DAG to process.
    * @return DAG without LoopVertex.
    */
@@ -67,7 +72,7 @@ public final class LoopUnrollingPass extends ReshapingPass {
       }
     });
 
-    if (builder.contains((vertex) -> vertex instanceof LoopVertex)) {
+    if (builder.contains(vertex -> vertex instanceof LoopVertex)) {
       return recursivelyUnroll(builder.build());
     } else {
       return builder.build();

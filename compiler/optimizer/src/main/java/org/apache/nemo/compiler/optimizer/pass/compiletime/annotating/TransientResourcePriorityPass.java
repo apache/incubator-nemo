@@ -18,10 +18,9 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -41,7 +40,7 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
@@ -59,25 +58,27 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
 
   /**
    * Checks whether the irEdges have M2M relationship.
+   *
    * @param irEdges irEdges to check.
    * @return whether of not any of them has M2M relationship.
    */
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
-        edge.getPropertyValue(CommunicationPatternProperty.class).get()
-          .equals(CommunicationPatternProperty.Value.Shuffle));
+      edge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.SHUFFLE));
   }
 
   /**
    * Checks whether the irEdges are all from reserved containers.
+   *
    * @param irEdges irEdges to check.
    * @return whether of not they are from reserved containers.
    */
   private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
-        .allMatch(edge -> CommunicationPatternProperty.Value.OneToOne.equals(
-            edge.getPropertyValue(CommunicationPatternProperty.class).get())
-            && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
-                ResourcePriorityProperty.RESERVED));
+      .allMatch(edge -> CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
+        edge.getPropertyValue(CommunicationPatternProperty.class).get())
+        && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
+        ResourcePriorityProperty.RESERVED));
   }
 }

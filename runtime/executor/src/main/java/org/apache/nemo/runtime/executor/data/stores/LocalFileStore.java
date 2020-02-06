@@ -18,19 +18,22 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Stores blocks in local files.
@@ -42,13 +45,15 @@ public final class LocalFileStore extends LocalBlockStore {
   /**
    * Constructor.
    *
-   * @param fileDirectory the directory which will contain the files.
-   * @param serializerManager  the serializer manager.
+   * @param fileDirectory     the directory which will contain the files.
+   * @param serializerManager the serializer manager.
+   * @param memoryPoolAssigner the memory pool assigner.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final SerializerManager serializerManager) {
-    super(serializerManager);
+                         final SerializerManager serializerManager,
+                         final MemoryPoolAssigner memoryPoolAssigner) {
+    super(serializerManager, memoryPoolAssigner);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }
@@ -60,7 +65,8 @@ public final class LocalFileStore extends LocalBlockStore {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
-    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory),
+                                                                  metadata, getMemoryPoolAssigner());
   }
 
   /**
@@ -70,10 +76,10 @@ public final class LocalFileStore extends LocalBlockStore {
    * @throws BlockWriteException if fail to write.
    */
   @Override
-  public void writeBlock(final Block block) throws BlockWriteException {
+  public void writeBlock(final Block block) {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + "only accept " + FileBlock.class.getName()));
+        this.toString() + "only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     } else {
@@ -88,7 +94,7 @@ public final class LocalFileStore extends LocalBlockStore {
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) {
     final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
     if (fileBlock == null) {
       return false;

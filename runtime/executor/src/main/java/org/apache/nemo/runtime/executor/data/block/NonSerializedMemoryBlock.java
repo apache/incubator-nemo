@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.data.block;
 
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
+import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -45,20 +47,24 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   private final Map<K, NonSerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;
   private volatile boolean committed;
+  private final MemoryPoolAssigner memoryPoolAssigner;
 
   /**
    * Constructor.
    *
    * @param blockId    the ID of this block.
    * @param serializer the {@link Serializer}.
+   * @param memoryPoolAssigner  the MemoryPoolAssigner for memory allocation.
    */
   public NonSerializedMemoryBlock(final String blockId,
-                                  final Serializer serializer) {
+                                  final Serializer serializer,
+                                  final MemoryPoolAssigner memoryPoolAssigner) {
     this.id = blockId;
     this.nonSerializedPartitions = new ArrayList<>();
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
     this.committed = false;
+    this.memoryPoolAssigner = memoryPoolAssigner;
   }
 
   /**
@@ -78,7 +84,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     } else {
       try {
         final NonSerializedPartition<K> partition =
-            nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
+          nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
         partition.write(element);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -118,7 +124,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     if (!committed) {
       try {
         final Iterable<NonSerializedPartition<K>> convertedPartitions =
-            DataUtil.convertToNonSerPartitions(serializer, partitions);
+          DataUtil.convertToNonSerPartitions(serializer, partitions);
         writePartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -166,8 +172,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   @Override
   public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
     try {
-      return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange));
-    } catch (final IOException e) {
+      return DataUtil.convertToSerPartitions(serializer, readPartitions(keyRange), memoryPoolAssigner);
+    } catch (final IOException | MemoryAllocationException e) {
       throw new BlockFetchException(e);
     }
   }

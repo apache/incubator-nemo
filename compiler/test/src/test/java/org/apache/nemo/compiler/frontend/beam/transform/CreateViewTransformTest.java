@@ -21,18 +21,19 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.transforms.Materialization;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
-import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -132,11 +133,16 @@ public final class CreateViewTransformTest {
     assertEquals(0, oc.outputs.size());
   }
 
-  final class SumViewFn extends ViewFn<Materializations.MultimapView<Void, String>, Integer> {
+  final static class SumViewFn extends ViewFn<Materializations.MultimapView<Void, String>, Integer> {
 
     @Override
     public Materialization<Materializations.MultimapView<Void, String>> getMaterialization() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TypeDescriptor<Integer> getTypeDescriptor() {
+      return TypeDescriptors.integers();
     }
 
     @Override
