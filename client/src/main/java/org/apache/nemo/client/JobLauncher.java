@@ -20,7 +20,6 @@ package org.apache.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.InvalidUserMainException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Util;
