@@ -80,10 +80,9 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * Writes a committed block to this store.
    *
    * @param block the block to write.
-   * @throws BlockWriteException if fail to write.
    */
   @Override
-  public void writeBlock(final Block block) throws BlockWriteException {
+  public void writeBlock(final Block block) {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + " only accept " + FileBlock.class.getName()));
@@ -98,10 +97,9 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    *
    * @param blockId of the target partition.
    * @return the target block (if it exists).
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
+  public Optional<Block> readBlock(final String blockId) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {
       return Optional.empty();
@@ -122,7 +120,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {

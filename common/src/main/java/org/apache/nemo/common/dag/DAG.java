@@ -153,7 +153,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
   }
 
   @Override
-  public E getEdgeBetween(final String srcVertexId, final String dstVertexId) throws IllegalEdgeOperationException {
+  public E getEdgeBetween(final String srcVertexId, final String dstVertexId) {
     for (E e : incomingEdges.get(dstVertexId)) {
       if (e.getSrc().getId().equals(srcVertexId)) {
         return e;

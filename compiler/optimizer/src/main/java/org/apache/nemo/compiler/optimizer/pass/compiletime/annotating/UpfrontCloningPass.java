@@ -45,7 +45,7 @@ public final class UpfrontCloningPass extends AnnotatingPass {
         // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)
         .anyMatch(edge ->
           edge.getPropertyValue(CommunicationPatternProperty.class)
-            .orElseThrow(() -> new IllegalStateException())
+            .orElseThrow(IllegalStateException::new)
             .equals(CommunicationPatternProperty.Value.SHUFFLE))
       )
       .forEach(vertex -> vertex.setProperty(

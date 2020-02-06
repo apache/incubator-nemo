@@ -48,6 +48,8 @@ public final class TaskStateManager {
   private final MetricMessageSender metricMessageSender;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
+  private static final String METRIC = "TaskMetric";
+
   public TaskStateManager(final Task task,
                           final String executorId,
                           final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -58,9 +60,9 @@ public final class TaskStateManager {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
 
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(METRIC, taskId,
       "containerId", SerializationUtils.serialize(executorId));
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(METRIC, taskId,
       "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
   }
 

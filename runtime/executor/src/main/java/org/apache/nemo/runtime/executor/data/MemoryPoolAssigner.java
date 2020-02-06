@@ -47,8 +47,11 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MaxOffheapMb.class) final int maxOffheapMb,
+  public MemoryPoolAssigner(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
+                            @Parameter(JobConf.MaxOffheapRatio.class) final double maxOffheapRatio,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
+
+    int maxOffheapMb = (int) (memory * maxOffheapRatio);
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }
