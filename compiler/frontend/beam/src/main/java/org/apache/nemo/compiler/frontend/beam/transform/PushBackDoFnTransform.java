@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -68,9 +69,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
                                final PipelineOptions options,
-                               final DisplayData displayData) {
+                               final DisplayData displayData,
+                               final DoFnSchemaInformation doFnSchemaInformation,
+                               final Map<String, PCollectionView<?>> sideInputMapping) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData,
+      doFnSchemaInformation, sideInputMapping);
     this.curPushedBacks = new ArrayList<>();
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;

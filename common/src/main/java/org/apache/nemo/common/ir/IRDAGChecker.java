@@ -38,6 +38,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -228,7 +230,7 @@ public final class IRDAGChecker {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
       for (final IREdge inEdge : inEdges) {
         final Optional<Integer> keyRangeListSize = inEdge.getPropertyValue(PartitionSetProperty.class)
-          .map(keyRangeList -> keyRangeList.size());
+          .map(List::size);
         if (parallelism.isPresent() && keyRangeListSize.isPresent() && !parallelism.equals(keyRangeListSize)) {
           return failure("PartitionSet must contain all task offsets required for the dst parallelism",
             v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
@@ -349,8 +351,8 @@ public final class IRDAGChecker {
 
   void addLoopVertexCheckers() {
     final NeighborChecker duplicateEdgeGroupId = ((v, inEdges, outEdges) -> {
-      final Map<Optional<String>, List<IREdge>> tagToOutEdges = groupOutEdgesByAdditionalOutputTag(outEdges);
-      for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
+      // In loop vertices, different edges with empty output tag must be distinguished separately.
+      for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges, true)) {
         if (sameTagOutEdges.stream()
           .map(e -> e.getPropertyValue(DuplicateEdgeGroupProperty.class)
             .map(DuplicateEdgeGroupPropertyValue::getGroupId))
@@ -382,7 +384,7 @@ public final class IRDAGChecker {
 
       for (final IRVertex v : irdag.getVertices()) {
         final MutableObject violatingReachableVertex = new MutableObject();
-        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup -> {
+        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup ->
           irdag.dfsDo(
             v,
             visited -> {
@@ -392,8 +394,7 @@ public final class IRDAGChecker {
               }
             },
             DAGInterface.TraversalOrder.PreOrder,
-            new HashSet<>());
-        });
+            new HashSet<>()));
         if (violatingReachableVertex.getValue() != null) {
           return failure(
             "A reachable vertex with a smaller schedule group ",
@@ -429,7 +430,7 @@ public final class IRDAGChecker {
 
   void addEncodingCompressionCheckers() {
     final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
-      for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges).values()) {
+      for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges, false)) {
         final List<IREdge> nonStreamVertexEdge = sameTagOutEdges.stream()
           .filter(stoe -> !isConnectedToStreamVertex(stoe))
           .collect(Collectors.toList());
@@ -464,17 +465,28 @@ public final class IRDAGChecker {
     singleEdgeCheckerList.add(compressAndDecompress);
   }
 
+  /**
+   * Group outgoing edges by the additional output tag property.
+   * @param outEdges the outedges to group.
+   * @param distinguishEmpty whether or not to distinguish empty tags separately or not.
+   * @return the edges grouped by the additional output tag property value.
+   */
+  private Collection<List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges,
+                                                                      final boolean distinguishEmpty) {
+    final AtomicInteger distinctIntegerForEmptyOutputTag = new AtomicInteger(0);
+    final IntSupplier tagValueSupplier = distinguishEmpty
+      ? distinctIntegerForEmptyOutputTag::getAndIncrement : distinctIntegerForEmptyOutputTag::get;
+
+    return outEdges.stream().collect(Collectors.groupingBy(
+      outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)
+        .orElse(String.valueOf(tagValueSupplier.getAsInt())),
+      Collectors.toList())).values();
+  }
 
   ///////////////////////////// Private helper methods
 
   private boolean isConnectedToStreamVertex(final IREdge irEdge) {
     return irEdge.getDst() instanceof RelayVertex || irEdge.getSrc() instanceof RelayVertex;
-  }
-
-  private Map<Optional<String>, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
-    return outEdges.stream().collect(Collectors.groupingBy(
-      (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)),
-      Collectors.toList()));
   }
 
   private Set<Integer> getZeroToNSet(final int n) {
@@ -534,8 +546,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<VertexExecutionProperty<Serializable>>) ep)
-      .map(ep -> v.getPropertyValue(ep))
-      .collect(Collectors.toList());
+      .map(v::getPropertyValue).collect(Collectors.toList());
     return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
   }
 
@@ -544,7 +555,7 @@ public final class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<EdgeExecutionProperty<Serializable>>) ep)
-      .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
+      .map(e::getPropertyValue).collect(Collectors.toList());
     return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
       description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
   }
