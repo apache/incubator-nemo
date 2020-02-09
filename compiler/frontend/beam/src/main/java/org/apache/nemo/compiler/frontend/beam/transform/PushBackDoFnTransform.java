@@ -44,8 +44,6 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
-  private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
-@java.lang.SuppressWarnings("squid:S1948")
   private List<WindowedValue<InputT>> curPushedBacks;
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
