@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.nemo.common.exception.SchedulingException;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -46,7 +47,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {
-      throw new RuntimeException("Cannot find min occupancy");
+      throw new SchedulingException(new Exception("Cannot find min occupancy"));
     }
 
     return executors.stream()

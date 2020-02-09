@@ -28,6 +28,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.nemo.common.exception.InvalidParameterException;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.netlib.util.intW;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public final class AlternatingLeastSquare {
      * @throws Exception Exception on the way.
      */
     @ProcessElement
-    public void processElement(final ProcessContext c) throws Exception {
+    public void processElement(final ProcessContext c) {
       final String text = c.element().trim();
       if (text.startsWith("#") || text.length() == 0) {
         // comments and empty lines
@@ -113,13 +114,13 @@ public final class AlternatingLeastSquare {
      * @throws Exception Exception on the way.
      */
     @ProcessElement
-    public void processElement(final ProcessContext c) throws Exception {
+    public void processElement(final ProcessContext c) {
       final KV<Integer, Iterable<float[]>> element = c.element();
       final Iterator<float[]> floatIterator = element.getValue().iterator();
       final float[] floatList = floatIterator.next();
 
       if (floatIterator.hasNext()) {
-        throw new RuntimeException("Only a single vector list is expected");
+        throw new InvalidParameterException("Only a single vector list is expected");
       }
 
       // Output the ungrouped single vector list
@@ -212,7 +213,7 @@ public final class AlternatingLeastSquare {
      * @throws Exception Exception on the way.
      */
     @ProcessElement
-    public void processElement(final ProcessContext c) throws Exception {
+    public void processElement(final ProcessContext c) {
       final double[] upperTriangularLeftMatrix = new double[numFeatures * (numFeatures + 1) / 2];
       final Map<Integer, float[]> fixedMatrix = c.sideInput(fixedMatrixView);
 
@@ -227,9 +228,9 @@ public final class AlternatingLeastSquare {
       for (int i = 0; i < size; i++) {
         final int ratingIndex = indexArr[i];
         final float rating = ratingArr[i];
-        for (int j = 0; j < numFeatures; j++) {
-          tmp[j] = fixedMatrix.get(ratingIndex)[j];
-        }
+
+        System.arraycopy(fixedMatrix.get(ratingIndex), 0, tmp, 0, numFeatures);
+
         NETLIB_BLAS.dspr("U", numFeatures, 1.0, tmp, 1, upperTriangularLeftMatrix);
         if (rating != 0.0) {
           NETLIB_BLAS.daxpy(numFeatures, rating, tmp, 1, rightSideVector, 1);
@@ -249,7 +250,7 @@ public final class AlternatingLeastSquare {
 
       NETLIB_LAPACK.dppsv("U", numFeatures, 1, upperTriangularLeftMatrix, rightSideVector, numFeatures, info);
       if (info.val != 0) {
-        throw new RuntimeException("returned info value : " + info.val);
+        throw new InvalidParameterException("returned info value : " + info.val);
       }
 
       for (int i = 0; i < vector.length; i++) {
@@ -326,7 +327,6 @@ public final class AlternatingLeastSquare {
      * ProcessElement method for BEAM.
      *
      * @param c ProcessContext.
-     * @throws Exception Exception on the way.
      */
     @ProcessElement
     public void processElement(final ProcessContext c) {
@@ -354,11 +354,9 @@ public final class AlternatingLeastSquare {
    * Main function for the ALS BEAM program.
    *
    * @param args arguments.
-   * @throws ClassNotFoundException exception.
    */
   public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
-    LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
@@ -424,6 +422,8 @@ public final class AlternatingLeastSquare {
     }
 
     p.run();
-    LOG.info("JCT " + (System.currentTimeMillis() - start));
+
+    long jct = System.currentTimeMillis() - start;
+    LOG.info(String.format("ALS JCT: %l", jct));
   }
 }
