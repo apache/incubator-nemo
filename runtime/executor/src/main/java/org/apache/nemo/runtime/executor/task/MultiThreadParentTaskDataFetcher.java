@@ -78,7 +78,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException, NoSuchElementException {
+  Object fetchDataElement() throws IOException {
     if (firstFetch) {
       fetchDataLazily();
       firstFetch = false;

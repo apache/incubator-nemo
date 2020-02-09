@@ -81,11 +81,10 @@ public final class PolicyImpl implements Policy {
         // Apply the pass to the DAG.
         processedDAG = passToApply.apply(dag);
 
-        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> {
+        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) ->
           // Ensure AnnotatingPass and ReshapingPass functions as intended.
-          return !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
-            || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass)));
-        });
+          !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
+            || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass))));
 
         if (!advanced) {
           throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
@@ -96,9 +95,9 @@ public final class PolicyImpl implements Policy {
         final IRDAGChecker.CheckerResult integrity = processedDAG.checkIntegrity();
         if (!integrity.isPassed()) {
           final long curTime = System.currentTimeMillis();
-          processedDAG.storeJSON("debug", String.valueOf(curTime), "integrity failure");
+          processedDAG.storeJSON(dagDirectory, String.valueOf(curTime), "integrity failure");
           throw new CompileTimeOptimizationException(integrity.getFailReason()
-            + " / For DAG visualization, check out debug/" + curTime + ".json");
+            + " / For DAG visualization, check out " + dagDirectory + curTime + ".json");
         }
 
         // Save the processed JSON DAG.

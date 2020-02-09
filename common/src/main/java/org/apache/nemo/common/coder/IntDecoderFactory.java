@@ -60,7 +60,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
    */
   private final class IntDecoder implements Decoder<Integer> {
 
-    private final DataInputStream inputStream;
+    private transient DataInputStream inputStream;
 
     /**
      * Constructor.

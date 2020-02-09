@@ -90,7 +90,7 @@ final class GrpcMessageClient {
    */
   private void setupChannel(final InetSocketAddress ipAddress) throws Exception {
     this.managedChannel = ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
-      .usePlaintext(true)
+      .usePlaintext()
       .build();
     this.blockingStub = MessageServiceGrpc.newBlockingStub(managedChannel);
     this.asyncStub = MessageServiceGrpc.newStub(managedChannel);
