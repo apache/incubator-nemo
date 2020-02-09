@@ -19,8 +19,8 @@
 package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaPairRDD;
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaPairRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 
@@ -64,15 +64,15 @@ public final class JavaMapReduce {
 
     // Run MR
     final JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
-    final JavaRDD<String> data = jsc.textFile(input, parallelism);
-    final JavaPairRDD<String, Long> documentToCount = data
+    final SparkJavaRDD<String> data = jsc.textFile(input, parallelism);
+    final SparkJavaPairRDD<String, Long> documentToCount = data
       .mapToPair(line -> {
         final String[] words = line.split(" +");
         final String documentId = words[0] + "#" + words[1];
         final long count = Long.parseLong(words[2]);
         return new Tuple2<>(documentId, count);
       });
-    final JavaRDD<String> documentToSum = documentToCount
+    final SparkJavaRDD<String> documentToSum = documentToCount
       .reduceByKey((i1, i2) -> i1 + i2)
       .map(t -> t._1() + ": " + t._2());
     documentToSum.saveAsTextFile(output);

@@ -27,8 +27,6 @@ import java.util.Iterator;
  */
 public abstract class BoundedIteratorReadable<O> implements Readable<O> {
 
-  // NOSONAR
-  // Iterator is standard library and it is gauranteed serializable
   private Iterator<O> iterator;
 
   /**
