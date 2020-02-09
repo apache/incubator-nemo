@@ -59,9 +59,7 @@ public final class LongEncoderFactory implements EncoderFactory<Long> {
    * LongEncoder.
    */
   private final class LongEncoder implements Encoder<Long> {
-
-    @java.lang.SuppressWarnings("squid:S1948")
-    private final DataOutputStream outputStream;
+    private final transient DataOutputStream outputStream;
 
     /**
      * Constructor.

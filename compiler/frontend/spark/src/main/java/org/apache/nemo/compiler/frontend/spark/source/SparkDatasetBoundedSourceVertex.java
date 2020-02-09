@@ -103,7 +103,6 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    * A Readable wrapper for Spark Dataset.
    */
   private final class SparkDatasetBoundedSourceReadable extends BoundedIteratorReadable<T> {
-    @java.lang.SuppressWarnings("squid:S1948")
     private final LinkedHashMap<String, Object[]> commands;
     private final Map<String, String> sessionInitialConf;
     private final int partitionIndex;

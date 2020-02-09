@@ -32,8 +32,7 @@ import java.io.InputStream;
  * @param <T> type of the object to deserialize.
  */
 public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
-  @java.lang.SuppressWarnings("squid:S1948");
-  private final Serializer serializer;
+  private final transient Serializer serializer;
 
   /**
    * Default constructor.
@@ -62,8 +61,7 @@ public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
    * @param <T2> type of the object to deserialize.
    */
   private final class SparkDecoder<T2> implements Decoder<T2> {
-    @java.lang.SuppressWarnings("squid:S1948")
-    private final DeserializationStream in;
+    private final transient DeserializationStream in;
 
     /**
      * Constructor.
