@@ -50,7 +50,7 @@ under the License.
 
     <dependency>
       <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
+      <artifactId>beam-sdks-java-io-hadoop-format</artifactId>
       <version>${beam.version}</version>
     </dependency>
 
