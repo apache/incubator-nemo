@@ -21,8 +21,10 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -62,9 +64,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
                        final List<TupleTag<?>> additionalOutputTags,
                        final WindowingStrategy<?, ?> windowingStrategy,
                        final PipelineOptions options,
-                       final DisplayData displayData) {
-    super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, Collections.emptyMap(), options, displayData);
+                       final DisplayData displayData,
+                       final DoFnSchemaInformation doFnSchemaInformation,
+                       final Map<String, PCollectionView<?>> sideInputMapping) {
+    super(doFn, inputCoder, outputCoders, mainOutputTag, additionalOutputTags, windowingStrategy,
+      Collections.emptyMap(), options, displayData, doFnSchemaInformation, sideInputMapping);
   }
 
   @Override

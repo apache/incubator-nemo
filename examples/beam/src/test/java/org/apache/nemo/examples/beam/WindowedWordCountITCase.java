@@ -109,7 +109,6 @@ public final class WindowedWordCountITCase {
     }
   }
 
-
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
@@ -129,7 +128,6 @@ public final class WindowedWordCountITCase {
       ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
-
 
   // TODO #271: We currently disable this test because we cannot force close Nemo
   // @Test (timeout = TIMEOUT)
