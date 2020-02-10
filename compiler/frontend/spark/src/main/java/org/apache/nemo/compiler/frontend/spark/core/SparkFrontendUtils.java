@@ -153,7 +153,6 @@ public final class SparkFrontendUtils {
     final byte[] serializedFunction = new JavaSerializer().newInstance().serialize(scalaFunction, classTag).array();
 
     return new Function<I, O>() {
-      @java.lang.SuppressWarnings("squid:S1948")
       private Function1<I, O> deserializedFunction;
 
       @Override
