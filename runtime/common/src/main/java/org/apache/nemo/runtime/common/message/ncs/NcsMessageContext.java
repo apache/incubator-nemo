@@ -54,6 +54,7 @@ final class NcsMessageContext implements MessageContext {
     try {
       connection.open();
       connection.write(replyMessage);
+      // We do not call connection.close since NCS caches connection.
     } catch (final NetworkException e) {
       // TODO #140: Properly classify and handle each RPC failure
       // Not logging the stacktrace here, as it's not very useful.

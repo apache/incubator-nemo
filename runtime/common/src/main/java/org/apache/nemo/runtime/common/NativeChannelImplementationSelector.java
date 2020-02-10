@@ -47,10 +47,8 @@ public final class NativeChannelImplementationSelector implements NettyChannelIm
   }
 
   // We may want to add selection of KQueue (for BSD). This requires higher version of netty.
-
   private static final BiFunction<Integer, ThreadFactory, EventLoopGroup> EVENT_LOOP_GROUP_FUNCTION =
-    Epoll.isAvailable() ? (numThreads, threadFactory) -> new EpollEventLoopGroup(numThreads, threadFactory)
-      : (numThreads, threadFactory) -> new NioEventLoopGroup(numThreads, threadFactory);
+    Epoll.isAvailable() ? EpollEventLoopGroup::new : NioEventLoopGroup::new;
   private static final Class<? extends ServerChannel> SERVER_CHANNEL_CLASS =
     Epoll.isAvailable() ? EpollServerSocketChannel.class
       : NioServerSocketChannel.class;
