@@ -31,8 +31,6 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +43,6 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
-  private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
-@java.lang.SuppressWarnings("squid:S1948")
   private List<WindowedValue<InputT>> curPushedBacks;
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
