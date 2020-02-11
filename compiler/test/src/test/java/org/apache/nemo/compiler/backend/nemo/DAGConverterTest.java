@@ -96,7 +96,7 @@ public final class DAGConverterTest {
     final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
     final Stage physicalStage1 = sortedPhysicalDAG.get(0);
     final Stage physicalStage2 = sortedPhysicalDAG.get(1);
-    assertEquals(physicalDAG.getVertices().size(), 2);
+    assertEquals(2, physicalDAG.getVertices().size());
     assertEquals(0, physicalDAG.getIncomingEdgesOf(physicalStage1).size());
     assertEquals(1, physicalDAG.getIncomingEdgesOf(physicalStage2).size());
     assertEquals(1, physicalDAG.getOutgoingEdgesOf(physicalStage1).size());

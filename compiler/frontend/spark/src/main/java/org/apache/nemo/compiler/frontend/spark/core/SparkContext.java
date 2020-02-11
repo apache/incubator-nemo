@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.core;
 
 import org.apache.nemo.compiler.frontend.spark.SparkBroadcastVariables;
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
@@ -55,19 +55,19 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   }
 
   /**
-   * Initiate a JavaRDD with the number of parallelism.
+   * Initiate a SparkJavaRDD with the number of parallelism.
    *
    * @param seq       input data as list.
    * @param numSlices number of slices (parallelism).
    * @param evidence  type of the initial element.
-   * @return the newly initiated JavaRDD.
+   * @return the newly initiated SparkJavaRDD.
    */
   @Override
   public <T> RDD<T> parallelize(final Seq<T> seq,
                                 final int numSlices,
                                 final ClassTag<T> evidence) {
     final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
-    return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
+    return SparkJavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
   }
 
   @Override

@@ -151,7 +151,7 @@ final class GrpcMessageServer {
    *
    * @throws Exception exception while closing.
    */
-  void close() throws Exception {
+  void close() {
     server.shutdown();
   }
 

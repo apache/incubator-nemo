@@ -16,26 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
-
-import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
+package org.apache.nemo.common.exception;
 
 /**
- * Lambda Pass.
- * Description: A part of lambda executor, assigning LambdaResourceProperty
+ * InvalidUserMainException.
+ * Thrown when an application's main class is invalid.
  */
-@Annotates(ResourceLambdaProperty.class)
-public final class LambdaPass extends AnnotatingPass {
+public final class InvalidUserMainException extends Exception {
 
-  public LambdaPass() {
-    super(LambdaPass.class);
+  /**
+   * InvalidUserMainException.
+   * @param cause cause
+   */
+  public InvalidUserMainException(final Throwable cause) {
+    super(cause);
   }
 
-  @Override
-  public IRDAG apply(final IRDAG dag) {
-    dag.getVertices().forEach(vertex ->
-      vertex.setPropertyPermanently(ResourceLambdaProperty.of(ResourceLambdaProperty.Value.ON)));
-    return dag;
+  /**
+   * InvalidUserMainException.
+   * @param message message
+   */
+  public InvalidUserMainException(final String message) {
+    super(message);
   }
 }

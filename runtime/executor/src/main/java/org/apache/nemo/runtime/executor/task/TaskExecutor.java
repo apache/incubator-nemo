@@ -62,6 +62,7 @@ import java.util.stream.Collectors;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
+  private static final String TASK_METRIC_ID = "TaskMetric";
 
   // Essential information
   private boolean isExecuted;
@@ -339,11 +340,11 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
 
     // Phase 2: Finalize task-internal states and elements
@@ -501,6 +502,7 @@ public final class TaskExecutor {
         try {
           Thread.sleep(pollingInterval);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           e.printStackTrace();
           throw new RuntimeException(e);
         }
@@ -681,13 +683,13 @@ public final class TaskExecutor {
     });
 
     // finalize OutputWriters for additional tagged children
-    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriters -> {
+    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriters ->
       outputWriters.forEach(outputWriter -> {
         outputWriter.close();
         final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
         writtenBytes.ifPresent(writtenBytesList::add);
-      });
-    });
+      })
+    );
 
     long totalWrittenBytes = 0;
     for (final Long writtenBytes : writtenBytesList) {
@@ -695,7 +697,7 @@ public final class TaskExecutor {
     }
 
     // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send("TaskMetric", taskId,
+    metricMessageSender.send(TASK_METRIC_ID, taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }

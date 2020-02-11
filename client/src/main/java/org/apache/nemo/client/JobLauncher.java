@@ -18,10 +18,9 @@
  */
 package org.apache.nemo.client;
 
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.exception.InvalidUserMainException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.IRDAG;
@@ -123,10 +122,12 @@ public final class JobLauncher {
    * @throws ClassNotFoundException class not found exception.
    * @throws IOException            IO exception.
    */
-  public static void setup(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
+  public static void setup(final String[] args)
+    throws InjectionException, ClassNotFoundException, IOException, InvalidUserMainException {
     // Get Job and Driver Confs
     LOG.info("Project Root Path: {}", Util.fetchProjectRootPath());
     builtJobConf = getJobConf(args);
+    validateJobConfig(builtJobConf);
 
     // Registers actions for launching the DAG.
     LOG.info("Launching RPC Server");
@@ -149,8 +150,6 @@ public final class JobLauncher {
       + "{\"type\":\"Reserved\",\"memory_mb\":512,\"capacity\":5}]";
     final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
       JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
-    final Configuration offheapMemoryConfig = getMemoryConf(builtJobConf, executorResourceConfig,
-      JobConf.ExecutorJSONContents.class, JobConf.MaxOffheapRatio.class, JobConf.MaxOffheapMb.class);
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
     final Configuration clientConf = getClientConf();
@@ -158,8 +157,7 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfig,
-      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf,
-      offheapMemoryConfig);
+      executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -181,6 +179,7 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
+  private static final String INTERRUPTED = "Interrupted: ";
   public static void shutdown() {
     // Trigger driver shutdown afterwards
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -192,7 +191,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
+          LOG.warn(INTERRUPTED, e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -210,6 +209,29 @@ public final class JobLauncher {
       LOG.info("Job cancelled");
     } else {
       LOG.info("Job successfully completed");
+    }
+  }
+
+  /**
+   * Validate the configuration of the application's main method.
+   * @param jobConf Configuration of the application.
+   * @throws InvalidUserMainException when the user main is invalid (e.g., non-existing class/method).
+   */
+  private static void validateJobConfig(final Configuration jobConf) throws InvalidUserMainException {
+    final Injector injector = TANG.newInjector(jobConf);
+    try {
+      final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+      final Class userCode = Class.forName(className);
+      final Method method = userCode.getMethod("main", String[].class);
+      if (!Modifier.isStatic(method.getModifiers())) {
+        throw new InvalidUserMainException("User Main Method not static");
+      }
+      if (!Modifier.isPublic(userCode.getModifiers())) {
+        throw new InvalidUserMainException("User Main Class not public");
+      }
+
+    } catch (final InjectionException | ClassNotFoundException | NoSuchMethodException e) {
+      throw new InvalidUserMainException(e);
     }
   }
 
@@ -255,7 +277,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the driver to be ready");
       driverReadyLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
@@ -279,7 +301,7 @@ public final class JobLauncher {
       LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
-      LOG.warn("Interrupted: ", e);
+      LOG.warn(INTERRUPTED, e);
       // clean up state...
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -303,12 +325,6 @@ public final class JobLauncher {
     final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
-    if (!Modifier.isStatic(method.getModifiers())) {
-      throw new RuntimeException("User Main Method not static");
-    }
-    if (!Modifier.isPublic(userCode.getModifiers())) {
-      throw new RuntimeException("User Main Class not public");
-    }
 
     LOG.info("User program started");
     method.invoke(null, (Object) args);
@@ -347,9 +363,8 @@ public final class JobLauncher {
    * Get driver ncs configuration.
    *
    * @return driver ncs configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverNcsConf() throws InjectionException {
+  private static Configuration getDriverNcsConf() {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
       LocalNameResolverConfiguration.CONF.build(),
       TANG.newConfigurationBuilder()
@@ -361,9 +376,8 @@ public final class JobLauncher {
    * Get driver message configuration.
    *
    * @return driver message configuration.
-   * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverMessageConf() throws InjectionException {
+  private static Configuration getDriverMessageConf() {
     return TANG.newConfigurationBuilder()
       .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
       .build();
@@ -399,10 +413,9 @@ public final class JobLauncher {
    * @param args arguments to be processed as command line.
    * @return job configuration.
    * @throws IOException        exception while processing command line.
-   * @throws InjectionException exception while injection.
    */
   @VisibleForTesting
-  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+  public static Configuration getJobConf(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
@@ -482,28 +495,6 @@ public final class JobLauncher {
         : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
         .bindNamedParameter(contentsParameter, contents)
-        .build();
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static Configuration getMemoryConf(final Configuration jobConf,
-                                             final Configuration executorConf,
-                                             final Class<? extends Name<String>> contentsParameter,
-                                             final Class<? extends Name<Double>> offHeapRatio,
-                                             final Class<? extends Name<Integer>> maxOffHeapMb)
-    throws InjectionException {
-    final Injector injector = TANG.newInjector(Configurations.merge(jobConf, executorConf));
-    try {
-      final String contents = injector.getNamedInstance(contentsParameter);
-      final ObjectMapper objectMapper = new ObjectMapper();
-      final TreeNode jsonRootNode = objectMapper.readTree(contents);
-      final TreeNode resourceNode = jsonRootNode.get(0);
-      final int executorMemory = resourceNode.get("memory_mb").traverse().getIntValue();
-      final int offHeapMemory =  (int) (executorMemory * injector.getNamedInstance(offHeapRatio));
-      return TANG.newConfigurationBuilder()
-        .bindNamedParameter(maxOffHeapMb, String.valueOf(offHeapMemory))
         .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);

@@ -29,11 +29,8 @@ import org.apache.nemo.runtime.executor.data.FileArea;
 import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
 import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -62,13 +59,14 @@ import java.util.Optional;
  */
 @NotThreadSafe
 public final class FileBlock<K extends Serializable> implements Block<K> {
-  private static final Logger LOG = LoggerFactory.getLogger(FileBlock.class.getName());
   private final String id;
   private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
   private final MemoryPoolAssigner memoryPoolAssigner;
+  private static final String ALREADY_COMMITED = "The partition is already committed!";
+  private static final String CANNOT_RETRIEVE_BEFORE_COMMITED = "Cannot retrieve elements before a block is committed!";
 
   /**
    * Constructor.
@@ -126,9 +124,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void write(final K key,
-                    final Object element) throws BlockWriteException {
+                    final Object element) {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         SerializedPartition<K> partition = nonCommittedPartitionsMap.get(key);
@@ -151,10 +149,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-    throws BlockWriteException {
+  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
@@ -174,10 +171,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-    throws BlockWriteException {
+  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) {
     if (metadata.isCommitted()) {
-      throw new BlockWriteException(new Throwable("The partition is already committed!"));
+      throw new BlockWriteException(new Throwable(ALREADY_COMMITED));
     } else {
       try {
         writeToFile(partitions);
@@ -195,9 +191,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) {
     if (!metadata.isCommitted()) {
-      throw new BlockFetchException(new Throwable("Cannot retrieve elements before a block is committed"));
+      throw new BlockFetchException(new Throwable(CANNOT_RETRIEVE_BEFORE_COMMITED));
     } else {
       // Deserialize the data
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
@@ -241,9 +237,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    */
   @Override
-  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws BlockFetchException {
+  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) {
     if (!metadata.isCommitted()) {
-      throw new BlockFetchException(new Throwable("Cannot retrieve elements before a block is committed"));
+      throw new BlockFetchException(new Throwable(CANNOT_RETRIEVE_BEFORE_COMMITED));
     } else {
       // Deserialize the data
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
@@ -302,7 +298,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   public List<FileArea> asFileAreas(final KeyRange keyRange) throws IOException {
     if (!metadata.isCommitted()) {
-      throw new IOException("Cannot retrieve elements before a block is committed");
+      throw new IOException(CANNOT_RETRIEVE_BEFORE_COMMITED);
     } else {
       final List<FileArea> fileAreas = new ArrayList<>();
       for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
@@ -334,7 +330,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws BlockWriteException for any error occurred while trying to write a block.
    */
   @Override
-  public synchronized Optional<Map<K, Long>> commit() throws BlockWriteException {
+  public synchronized Optional<Map<K, Long>> commit() {
     try {
       if (!metadata.isCommitted()) {
         commitPartitions();
@@ -363,12 +359,12 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * The committed partitions will be flushed to the storage.
    */
   @Override
-  public synchronized void commitPartitions() throws BlockWriteException {
+  public synchronized void commitPartitions() {
     final List<SerializedPartition<K>> partitions = new ArrayList<>();
     try {
-      for (final Partition<?, K> partition : nonCommittedPartitionsMap.values()) {
+      for (final SerializedPartition<K> partition : nonCommittedPartitionsMap.values()) {
         partition.commit();
-        partitions.add((SerializedPartition<K>) partition);
+        partitions.add(partition);
       }
       writeToFile(partitions);
       nonCommittedPartitionsMap.clear();

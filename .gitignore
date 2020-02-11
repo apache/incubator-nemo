@@ -13,6 +13,7 @@ generated
 build
 docs/
 debug/*
+.factorypath
 #
 # ----------------------------------------------------------------------
 # DB Files

@@ -20,8 +20,6 @@ package org.apache.nemo.runtime.executor.data;
 
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.nemo.conf.JobConf;
 
 import javax.inject.Inject;
@@ -42,9 +40,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @ThreadSafe
 public class MemoryPoolAssigner {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MemoryPoolAssigner.class.getName());
-
   private final int chunkSize;
 
   private static final int MIN_CHUNK_SIZE_KB = 4;
@@ -52,8 +47,11 @@ public class MemoryPoolAssigner {
   private final MemoryPool memoryPool;
 
   @Inject
-  public MemoryPoolAssigner(@Parameter(JobConf.MaxOffheapMb.class) final int maxOffheapMb,
+  public MemoryPoolAssigner(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
+                            @Parameter(JobConf.MaxOffheapRatio.class) final double maxOffheapRatio,
                             @Parameter(JobConf.ChunkSizeKb.class) final int chunkSizeKb) {
+
+    int maxOffheapMb = (int) (memory * maxOffheapRatio);
     if (chunkSizeKb < MIN_CHUNK_SIZE_KB) {
       throw new IllegalArgumentException("Chunk size too small. Minimum chunk size is 4KB");
     }

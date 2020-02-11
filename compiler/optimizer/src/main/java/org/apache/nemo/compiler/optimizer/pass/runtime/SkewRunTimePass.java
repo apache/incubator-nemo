@@ -59,14 +59,15 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
     final Set<IREdge> edges = message.getExaminedEdges();
-    LOG.info("Examined edges {}", edges.stream().map(e -> e.getId()).collect(Collectors.toList()));
+    LOG.info("Examined edges {}", edges.stream().map(IREdge::getId).collect(Collectors.toList()));
 
     final IREdge representativeEdge = edges.iterator().next();
 
     // Use the following execution properties.
     final Pair<PartitionerProperty.Type, Integer> partitionerProperty =
-      representativeEdge.getPropertyValue(PartitionerProperty.class).get();
-    final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
+      representativeEdge.getPropertyValue(PartitionerProperty.class).orElseThrow(IllegalStateException::new);
+    final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(IllegalStateException::new);
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();

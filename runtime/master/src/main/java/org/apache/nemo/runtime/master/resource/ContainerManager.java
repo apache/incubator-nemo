@@ -149,18 +149,39 @@ public final class ContainerManager {
     }
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
+    final List<Configuration> configurationsToMerge = new ArrayList<>();
+
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
       + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    // Poison handling
-    final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
-      .build();
+    configurationsToMerge.add(executorConfiguration);
 
-    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
+    // ExecutorMemory handling
+    configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorMemoryMb.class, String.valueOf(resourceSpecification.getMemory()))
+        .build()
+    );
+
+    // MaxOffheapRatio handling
+    resourceSpecification.getMaxOffheapRatio().ifPresent(value ->
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.MaxOffheapRatio.class, String.valueOf(value))
+        .build()
+      )
+    );
+
+    // Poison handling
+    resourceSpecification.getPoisonSec().ifPresent(value ->
+      configurationsToMerge.add(Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorPoisonSec.class, String.valueOf(value))
+        .build()
+      )
+    );
+
+    allocatedContainer.submitContext(Configurations.merge(configurationsToMerge));
   }
 
   /**
@@ -186,7 +207,10 @@ public final class ContainerManager {
     try {
       messageSender =
         messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      messageSender = new FailedMessageSender();
+    } catch (final ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
       messageSender = new FailedMessageSender();
     }

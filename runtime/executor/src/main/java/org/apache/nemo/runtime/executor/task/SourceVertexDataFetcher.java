@@ -23,11 +23,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.NoSuchElementException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,8 +32,6 @@ import java.util.concurrent.TimeUnit;
  * Fetches data from a data source.
  */
 class SourceVertexDataFetcher extends DataFetcher {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceVertexDataFetcher.class.getName());
-
   private final Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PERIOD = 1000; // ms
@@ -55,9 +49,9 @@ class SourceVertexDataFetcher extends DataFetcher {
 
     if (!bounded) {
       this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
-      this.watermarkTriggerService.scheduleAtFixedRate(() -> {
-        watermarkTriggered = true;
-      }, WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
+      this.watermarkTriggerService.scheduleAtFixedRate(() ->
+        watermarkTriggered = true,
+        WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
     } else {
       this.watermarkTriggerService = null;
     }
@@ -67,10 +61,9 @@ class SourceVertexDataFetcher extends DataFetcher {
    * This is non-blocking operation.
    *
    * @return current data
-   * @throws NoSuchElementException if the current data is not available
    */
   @Override
-  Object fetchDataElement() throws NoSuchElementException, IOException {
+  Object fetchDataElement() {
     if (readable.isFinished()) {
       return Finishmark.getInstance();
     } else {
@@ -102,14 +95,13 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
-  private Object retrieveElement() throws NoSuchElementException, IOException {
+  private Object retrieveElement() {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       return new Watermark(readable.readWatermark());
     }
 
     // Data
-    final Object element = readable.readCurrent();
-    return element;
+    return readable.readCurrent();
   }
 }

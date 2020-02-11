@@ -58,7 +58,7 @@ public final class MultinomialLogisticRegression {
     private Map<Integer, List<Double>> model;
 
     // TODO #274: Use bundles properly in Beam MultinomialLogisticRegression
-    private ProcessContext savedContextHack;
+    private transient ProcessContext savedContextHack;
 
     /**
      * Constructor for CalculateGradient DoFn class.

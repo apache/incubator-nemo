@@ -33,9 +33,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.sql.*;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
@@ -72,11 +74,26 @@ public final class MetricUtils {
   public static final String POSTGRESQL_METADATA_DB_NAME =
     "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
   private static final String METADATA_TABLE_NAME = "nemo_optimization_meta";
+  private static final String SAVING_METADATA_FAIL_MSG = "Saving of Metadata to DB failed: ";
 
   /**
    * Private constructor.
    */
   private MetricUtils() {
+  }
+
+  /**
+   * Method to derive db credentials. This method is not for real authentication. Please change the method accordingly.
+   * @return db credentials.
+   */
+  private static String getCreds() {
+    try {
+      final String str = "ZmFrZV9wYXNzd29yZA==";
+      byte[] decodedBytes = Base64.getDecoder().decode(str.getBytes("UTF-8"));
+      return new String(decodedBytes);
+    } catch (UnsupportedEncodingException e) {
+      throw new MetricException(e);
+    }
   }
 
   /**
@@ -86,7 +103,7 @@ public final class MetricUtils {
    */
   public static Boolean loadMetaData() {
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
-      "postgres", "fake_password")) {
+      "postgres", getCreds())) {
       try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
@@ -95,23 +112,23 @@ public final class MetricUtils {
             + " (type TEXT NOT NULL, key INT NOT NULL UNIQUE, value BYTEA NOT NULL, "
             + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
 
-        final ResultSet rsl = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';");
-        LOG.info("Metadata can be successfully loaded.");
-        while (rsl.next()) {
-          EP_KEY_METADATA.put(rsl.getInt("key"),
-            SerializationUtils.deserialize(rsl.getBytes("value")));
+        try (ResultSet rsl = statement.executeQuery(
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';")) {
+          LOG.info("Metadata can be successfully loaded.");
+          while (rsl.next()) {
+            EP_KEY_METADATA.put(rsl.getInt("key"),
+              SerializationUtils.deserialize(rsl.getBytes("value")));
+          }
         }
-        rsl.close();
 
-        final ResultSet rsr = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';");
-        while (rsr.next()) {
-          final Integer l = rsr.getInt("key");
-          EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
-            SerializationUtils.deserialize(rsr.getBytes("value")));
+        try (ResultSet rsr = statement.executeQuery(
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';")) {
+          while (rsr.next()) {
+            final Integer l = rsr.getInt("key");
+            EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
+              SerializationUtils.deserialize(rsr.getBytes("value")));
+          }
         }
-        rsr.close();
         METADATA_LOADED.countDown();
         LOG.info("Metadata successfully loaded from DB.");
       } catch (Exception e) {
@@ -141,7 +158,7 @@ public final class MetricUtils {
     LOG.info("Saving Metadata..");
 
     try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
-      "postgres", "fake_password")) {
+      "postgres", getCreds())) {
       try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
@@ -150,7 +167,7 @@ public final class MetricUtils {
             try {
               insertOrUpdateMetadata(c, "EP_KEY_METADATA", l, r);
             } catch (SQLException e) {
-              LOG.warn("Saving of Metadata to DB failed: ", e);
+              LOG.warn(SAVING_METADATA_FAIL_MSG, e);
             }
           });
           LOG.info("EP Key Metadata saved to DB.");
@@ -161,14 +178,14 @@ public final class MetricUtils {
             try {
               insertOrUpdateMetadata(c, "EP_METADATA", l.left() * 10000 + l.right(), r);
             } catch (SQLException e) {
-              LOG.warn("Saving of Metadata to DB failed: ", e);
+              LOG.warn(SAVING_METADATA_FAIL_MSG, e);
             }
           });
           LOG.info("EP Metadata saved to DB.");
         }
       }
     } catch (SQLException e) {
-      LOG.warn("Saving of Metadata to DB failed: ", e);
+      LOG.warn(SAVING_METADATA_FAIL_MSG, e);
     }
   }
 

@@ -78,7 +78,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException, NoSuchElementException {
+  Object fetchDataElement() throws IOException {
     if (firstFetch) {
       fetchDataLazily();
       firstFetch = false;
@@ -110,7 +110,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
     }
 
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) ->
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
@@ -136,12 +136,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           countBytesSynchronized(iterator);
           elementQueue.offer(Finishmark.getInstance());
         } else {
-          exception.printStackTrace();
+          LOG.error(exception.getMessage());
           throw new RuntimeException(exception);
         }
-      });
-
-    }));
+      })));
   }
 
   final long getSerializedBytes() {
