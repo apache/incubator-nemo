@@ -20,7 +20,12 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 import static org.apache.nemo.examples.beam.WordCount.generateWordCountPipeline;
 
@@ -28,6 +33,7 @@ import static org.apache.nemo.examples.beam.WordCount.generateWordCountPipeline;
  * WordCount application, but with a timeout of 1 second.
  */
 public final class WordCountTimeOut1Sec {
+  private static final Logger LOG = LoggerFactory.getLogger(WordCountTimeOut1Sec.class.getName());
 
   /**
    * Private constructor.
@@ -47,6 +53,12 @@ public final class WordCountTimeOut1Sec {
     options.setJobName("WordCountTimeOut1Sec");
 
     final Pipeline p = generateWordCountPipeline(options, inputFilePath, outputFilePath);
-    p.run().waitUntilFinish(org.joda.time.Duration.standardSeconds(1));
+    final PipelineResult pr = p.run();
+    final PipelineResult.State running = pr.waitUntilFinish(org.joda.time.Duration.standardSeconds(1));
+    try {
+      final PipelineResult.State cancelled = pr.cancel();
+    } catch (final IOException e) {
+      LOG.info("job cancelled");
+    }
   }
 }
