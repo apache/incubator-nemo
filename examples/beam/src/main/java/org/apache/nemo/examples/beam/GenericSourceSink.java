@@ -38,8 +38,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.nemo.common.exception.DataSourceException;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -125,12 +124,10 @@ final class GenericSourceSink {
  * Write output to HDFS according to the parallelism.
  */
 final class HDFSWrite extends DoFn<String, Void> {
-  private static final Logger LOG = LoggerFactory.getLogger(HDFSWrite.class.getName());
-
   private final String path;
-  private Path fileName;
-  private FileSystem fileSystem;
-  private FSDataOutputStream outputStream;
+  private transient Path fileName;
+  private transient FileSystem fileSystem;
+  private transient FSDataOutputStream outputStream;
 
   /**
    * Constructor.
@@ -145,17 +142,17 @@ final class HDFSWrite extends DoFn<String, Void> {
    * Writes to exactly one file.
    * (The number of total output files are determined according to the parallelism.)
    * i.e. if parallelism is 2, then there are total 2 output files.
+   * TODO #273: Our custom HDFSWrite should implement WriteOperation
    */
   @Setup
   public void setup() {
     // Creating a side-effect in Setup is discouraged, but we do it anyways for now as we're extending DoFn.
-    // TODO #273: Our custom HDFSWrite should implement WriteOperation
     fileName = new Path(path + UUID.randomUUID().toString());
     try {
       fileSystem = fileName.getFileSystem(new JobConf());
       outputStream = fileSystem.create(fileName, false);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new DataSourceException(new Exception("File system setup failed " + e));
     }
   }
 
@@ -166,13 +163,13 @@ final class HDFSWrite extends DoFn<String, Void> {
    * @throws Exception exception.
    */
   @ProcessElement
-  public void processElement(final ProcessContext c) throws Exception {
+  public void processElement(final ProcessContext c) throws DataSourceException, IOException {
     try {
       outputStream.writeBytes(c.element() + "\n");
     } catch (Exception e) {
       outputStream.close();
       fileSystem.delete(fileName, true);
-      throw new RuntimeException(e);
+      throw new DataSourceException(new Exception("Processing data from source failed " + e));
     }
   }
 

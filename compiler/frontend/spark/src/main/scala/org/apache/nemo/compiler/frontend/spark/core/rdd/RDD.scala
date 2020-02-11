@@ -81,10 +81,10 @@ final class RDD[T: ClassTag] protected[rdd] (
   }
 
   /**
-   * @return converted JavaRDD.
+   * @return converted SparkJavaRDD.
    */
-  override def toJavaRDD() : JavaRDD[T] = {
-    new JavaRDD[T](this)
+  override def toJavaRDD() : SparkJavaRDD[T] = {
+    new SparkJavaRDD[T](this)
   }
 
   /**
