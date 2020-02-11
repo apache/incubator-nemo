@@ -166,6 +166,14 @@ ws://<DRIVER>:10101/api/websocket
 
 where `<DRIVER>` is the hostname that Nemo driver runs.
 
+OR, you can directly run the WebUI on the driver using `bin/run_webserver.sh`,
+where it looks for the websocket on its local machine,
+which, by default, provides the address at
+
+```
+http://<DRIVER>:3333
+```
+
 ### Post-job analysis
 
 On job completion, the Nemo driver creates `metric.json` at the directory specified by `-dag_dir` option. At your frontend, add the JSON file to do post-job analysis.
