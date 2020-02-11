@@ -54,9 +54,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <T> type of the final element.
  */
-public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
+public final class SparkJavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   private final RDD<T> rdd;
+  private static final String NOT_YET_SUPPORTED = "Operation not yet supported.";
 
   /**
    * Static method to create a RDD object from an iterable object.
@@ -65,11 +66,11 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    * @param initialData  initial data.
    * @param parallelism  parallelism information.
    * @param <T>          type of the resulting object.
-   * @return the new JavaRDD object.
+   * @return the new SparkJavaRDD object.
    */
-  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
-                                  final Iterable<T> initialData,
-                                  final Integer parallelism) {
+  public static <T> SparkJavaRDD<T> of(final SparkContext sparkContext,
+                                       final Iterable<T> initialData,
+                                       final Integer parallelism) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final IRVertex initializedSourceVertex = new InMemorySourceVertex<>(initialData);
@@ -79,20 +80,20 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     final RDD<T> nemoRdd = new RDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(),
       initializedSourceVertex, Option.empty(), ClassTag$.MODULE$.apply(Object.class));
 
-    return new JavaRDD<>(nemoRdd);
+    return new SparkJavaRDD<>(nemoRdd);
   }
 
   /**
-   * Static method to create a JavaRDD object from an text file.
+   * Static method to create a SparkJavaRDD object from an text file.
    *
    * @param sparkContext  the spark context containing configurations.
    * @param minPartitions the minimum number of partitions.
    * @param inputPath     the path of the input text file.
-   * @return the new JavaRDD object
+   * @return the new SparkJavaRDD object
    */
-  public static JavaRDD<String> of(final SparkContext sparkContext,
-                                   final int minPartitions,
-                                   final String inputPath) {
+  public static SparkJavaRDD<String> of(final SparkContext sparkContext,
+                                        final int minPartitions,
+                                        final String inputPath) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final org.apache.spark.rdd.RDD<String> textRdd = sparkContext.textFile(inputPath, minPartitions);
@@ -101,19 +102,19 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     textSourceVertex.setProperty(ParallelismProperty.of(numPartitions));
     builder.addVertex(textSourceVertex);
 
-    return new JavaRDD<>(textRdd, sparkContext, builder.buildWithoutSourceSinkCheck(), textSourceVertex);
+    return new SparkJavaRDD<>(textRdd, sparkContext, builder.buildWithoutSourceSinkCheck(), textSourceVertex);
   }
 
   /**
-   * Static method to create a JavaRDD object from a Dataset.
+   * Static method to create a SparkJavaRDD object from a Dataset.
    *
    * @param sparkSession spark session containing configurations.
    * @param dataset      dataset to read initial data from.
    * @param <T>          type of the resulting object.
-   * @return the new JavaRDD object.
+   * @return the new SparkJavaRDD object.
    */
-  public static <T> JavaRDD<T> of(final SparkSession sparkSession,
-                                  final Dataset<T> dataset) {
+  public static <T> SparkJavaRDD<T> of(final SparkSession sparkSession,
+                                       final Dataset<T> dataset) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final IRVertex sparkBoundedSourceVertex = new SparkDatasetBoundedSourceVertex<>(sparkSession, dataset);
@@ -121,23 +122,23 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(sparkRDD.getNumPartitions()));
     builder.addVertex(sparkBoundedSourceVertex);
 
-    return new JavaRDD<>(
+    return new SparkJavaRDD<>(
       sparkRDD, sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
   }
 
   /**
-   * Static method to create a JavaRDD object from {@link RDD}.
+   * Static method to create a SparkJavaRDD object from {@link RDD}.
    *
    * @param rddFrom the RDD to parse.
    * @param <T>     type of the resulting object.
-   * @return the parsed JavaRDD object.
+   * @return the parsed SparkJavaRDD object.
    */
-  public static <T> JavaRDD<T> fromRDD(final RDD<T> rddFrom) {
-    return new JavaRDD<>(rddFrom);
+  public static <T> SparkJavaRDD<T> fromRDD(final RDD<T> rddFrom) {
+    return new SparkJavaRDD<>(rddFrom);
   }
 
   @Override
-  public JavaRDD<T> wrapRDD(final org.apache.spark.rdd.RDD<T> rddFrom) {
+  public SparkJavaRDD<T> wrapRDD(final org.apache.spark.rdd.RDD<T> rddFrom) {
     if (!(rddFrom instanceof RDD)) {
       throw new UnsupportedOperationException("Cannot wrap Spark RDD as Nemo RDD!");
     }
@@ -154,7 +155,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    *
    * @param rdd the Nemo rdd to wrap.
    */
-  JavaRDD(final RDD<T> rdd) {
+  SparkJavaRDD(final RDD<T> rdd) {
     super(rdd, ClassTag$.MODULE$.apply(Object.class));
     this.rdd = rdd;
   }
@@ -167,10 +168,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    * @param dag          the IR DAG in construction.
    * @param lastVertex   the last vertex of the DAG in construction.
    */
-  JavaRDD(final org.apache.spark.rdd.RDD<T> sparkRDD,
-          final SparkContext sparkContext,
-          final DAG<IRVertex, IREdge> dag,
-          final IRVertex lastVertex) {
+  SparkJavaRDD(final org.apache.spark.rdd.RDD<T> sparkRDD,
+               final SparkContext sparkContext,
+               final DAG<IRVertex, IREdge> dag,
+               final IRVertex lastVertex) {
     super(sparkRDD, ClassTag$.MODULE$.apply(Object.class));
 
     this.rdd = new RDD<>(sparkContext, dag, lastVertex, Option.apply(sparkRDD), ClassTag$.MODULE$.apply(Object.class));
@@ -183,10 +184,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    *
    * @param func function to apply.
    * @param <O>  output type.
-   * @return the JavaRDD with the extended DAG.
+   * @return the SparkJavaRDD with the extended DAG.
    */
   @Override
-  public <O> JavaRDD<O> map(final Function<T, O> func) {
+  public <O> SparkJavaRDD<O> map(final Function<T, O> func) {
     return rdd.map(func, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 
@@ -195,10 +196,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    *
    * @param func function to apply.
    * @param <O>  output type.
-   * @return the JavaRDD with the extended DAG.
+   * @return the SparkJavaRDD with the extended DAG.
    */
   @Override
-  public <O> JavaRDD<O> flatMap(final FlatMapFunction<T, O> func) {
+  public <O> SparkJavaRDD<O> flatMap(final FlatMapFunction<T, O> func) {
     return rdd.flatMap(func, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 
@@ -208,10 +209,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    * @see org.apache.spark.api.java.JavaRDD#mapToPair : PairFunction.
    */
   @Override
-  public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
+  public <K2, V2> SparkJavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
     final RDD<Tuple2<K2, V2>> pairRdd =
       rdd.map(SparkFrontendUtils.pairFunctionToPlainFunction(f), ClassTag$.MODULE$.apply(Object.class));
-    return JavaPairRDD.fromRDD(pairRdd);
+    return SparkJavaPairRDD.fromRDD(pairRdd);
   }
 
   /////////////// ACTIONS ///////////////
@@ -251,386 +252,385 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   /////////////// CACHING ///////////////
 
   @Override
-  public JavaRDD<T> persist(final StorageLevel newLevel) {
+  public SparkJavaRDD<T> persist(final StorageLevel newLevel) {
     return rdd.persist(newLevel).toJavaRDD();
   }
 
   @Override
-  public JavaRDD<T> cache() {
+  public SparkJavaRDD<T> cache() {
     return rdd.cache().toJavaRDD();
   }
 
-  /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
-  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
+  /**
+   * TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
+   */
 
   @Override
-  public JavaRDD<T> coalesce(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> coalesce(final int numPartitions) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> coalesce(final int numPartitions, final boolean shuffle) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> coalesce(final int numPartitions, final boolean shuffle) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> distinct() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> distinct() {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> distinct(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> distinct(final int numPartitions) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> filter(final Function<T, Boolean> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> filter(final Function<T, Boolean> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<List<T>> glom() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<List<T>> glom() {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <U> JavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <U> SparkJavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <U> JavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f, final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <U> SparkJavaRDD<U> mapPartitions(final FlatMapFunction<Iterator<T>, U> f,
+                                           final boolean preservesPartitioning) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <R> JavaRDD<R> mapPartitionsWithIndex(final Function2<Integer, Iterator<T>, Iterator<R>> f,
-                                               final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <R> SparkJavaRDD<R> mapPartitionsWithIndex(final Function2<Integer, Iterator<T>, Iterator<R>> f,
+                                                    final boolean preservesPartitioning) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T>[] randomSplit(final double[] weights) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T>[] randomSplit(final double[] weights) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T>[] randomSplit(final double[] weights, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T>[] randomSplit(final double[] weights, final long seed) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> repartition(final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> repartition(final int numPartitions) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> sample(final boolean withReplacement, final double fraction) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> sample(final boolean withReplacement, final double fraction) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> sample(final boolean withReplacement, final double fraction, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> sample(final boolean withReplacement, final double fraction, final long seed) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> setName(final String name) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> setName(final String name) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <S> JavaRDD<T> sortBy(final Function<T, S> f, final boolean ascending, final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <S> SparkJavaRDD<T> sortBy(final Function<T, S> f, final boolean ascending, final int numPartitions) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> unpersist() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> unpersist() {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaRDD<T> unpersist(final boolean blocking) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
-
-  /////////////// UNSUPPORTED TRANSFORMATION TO PAIR RDD ///////////////
-  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
-
-  @Override
-  public <K2, V2> JavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaRDD<T> unpersist(final boolean blocking) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <K2, V2> SparkJavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <U> SparkJavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <U> JavaPairRDD<U, T> keyBy(final Function<T, U> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <U> SparkJavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<Iterator<T>, K2, V2> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <U> SparkJavaPairRDD<U, T> keyBy(final Function<T, U> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<java.util.Iterator<T>, K2, V2> f,
-                                                          final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <K2, V2> SparkJavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<Iterator<T>, K2, V2> f) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaPairRDD<T, Long> zipWithIndex() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public <K2, V2> SparkJavaPairRDD<K2, V2> mapPartitionsToPair(
+    final PairFlatMapFunction<java.util.Iterator<T>, K2, V2> f,
+    final boolean preservesPartitioning) {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
-  public JavaPairRDD<T, Long> zipWithUniqueId() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+  public SparkJavaPairRDD<T, Long> zipWithIndex() {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
-  /////////////// UNSUPPORTED ACTIONS ///////////////
-  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
+  @Override
+  public SparkJavaPairRDD<T, Long> zipWithUniqueId() {
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
+  }
+
+  /////////////// ACTIONS ///////////////
 
   @Override
   public <U> U aggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public void checkpoint() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
 
   @Override
   public JavaFutureAction<List<T>> collectAsync() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T>[] collectPartitions(final int[] partitionIds) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public long count() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public PartialResult<BoundedDouble> countApprox(final long timeout) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public PartialResult<BoundedDouble> countApprox(final long timeout, final double confidence) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public long countApproxDistinct(final double relativeSD) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public JavaFutureAction<Long> countAsync() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public Map<T, Long> countByValue() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public PartialResult<Map<T, BoundedDouble>> countByValueApprox(final long timeout) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public PartialResult<Map<T, BoundedDouble>> countByValueApprox(final long timeout, final double confidence) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T first() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T fold(final T zeroValue, final Function2<T, T, T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public void foreach(final VoidFunction<T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public JavaFutureAction<Void> foreachAsync(final VoidFunction<T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public void foreachPartition(final VoidFunction<Iterator<T>> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public JavaFutureAction<Void> foreachPartitionAsync(final VoidFunction<Iterator<T>> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public Optional<String> getCheckpointFile() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public int getNumPartitions() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public StorageLevel getStorageLevel() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public int id() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public boolean isCheckpointed() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public boolean isEmpty() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public Iterator<T> iterator(final Partition split, final TaskContext taskContext) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T max(final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T min(final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public String name() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public org.apache.spark.api.java.Optional<Partitioner> partitioner() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<Partition> partitions() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public void saveAsObjectFile(final String path) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public void saveAsTextFile(final String path,
                              final Class<? extends org.apache.hadoop.io.compress.CompressionCodec> codec) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> take(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public JavaFutureAction<List<T>> takeAsync(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> takeOrdered(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> takeOrdered(final int num, final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> takeSample(final boolean withReplacement, final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> takeSample(final boolean withReplacement, final int num, final long seed) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public String toDebugString() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public Iterator<T> toLocalIterator() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> top(final int num) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public List<T> top(final int num, final Comparator<T> comp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public <U> U treeAggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public <U> U treeAggregate(final U zeroValue, final Function2<U, T, U> seqOp,
                              final Function2<U, U, U> combOp, final int depth) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T treeReduce(final Function2<T, T, T> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 
   @Override
   public T treeReduce(final Function2<T, T, T> f, final int depth) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    throw new UnsupportedOperationException(NOT_YET_SUPPORTED);
   }
 }

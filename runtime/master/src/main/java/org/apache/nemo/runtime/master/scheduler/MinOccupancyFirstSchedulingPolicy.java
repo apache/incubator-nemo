@@ -42,7 +42,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final OptionalInt minOccupancy =
       executors.stream()
-        .map(executor -> executor.getNumOfRunningTasks())
+        .map(ExecutorRepresenter::getNumOfRunningTasks)
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {

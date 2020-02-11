@@ -16,26 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
-
-import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
+package org.apache.nemo.common.exception;
 
 /**
- * Lambda Pass.
- * Description: A part of lambda executor, assigning LambdaResourceProperty
+ * DataSourceException
+ * Thrown when any exception occurs in data sources. ex. processing data from file systems.
  */
-@Annotates(ResourceLambdaProperty.class)
-public final class LambdaPass extends AnnotatingPass {
-
-  public LambdaPass() {
-    super(LambdaPass.class);
-  }
-
-  @Override
-  public IRDAG apply(final IRDAG dag) {
-    dag.getVertices().forEach(vertex ->
-      vertex.setPropertyPermanently(ResourceLambdaProperty.of(ResourceLambdaProperty.Value.ON)));
-    return dag;
+public final class DataSourceException extends RuntimeException {
+  /**
+   * DataSourceException.
+   *
+   * @param throwable the throwable to throw.
+   */
+  public DataSourceException(final Throwable throwable) {
+    super(throwable);
   }
 }

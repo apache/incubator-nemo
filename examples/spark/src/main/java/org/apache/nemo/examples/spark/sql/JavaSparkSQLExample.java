@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.examples.spark.sql;
 
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import org.apache.spark.api.java.function.Function;
@@ -44,6 +44,8 @@ import static org.apache.spark.sql.functions.col;
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaSparkSQLExample {
+  private static final String PEOPLE = "people";
+  private static final String NAME = "Name: ";
 
   /**
    * Private constructor.
@@ -182,7 +184,7 @@ public final class JavaSparkSQLExample {
     // +----+-----+
 
     // Register the DataFrame as a SQL temporary view
-    df.createOrReplaceTempView("people");
+    df.createOrReplaceTempView(PEOPLE);
 
     Dataset<Row> sqlDF = spark.sql("SELECT * FROM people");
     sqlDF.show();
@@ -195,7 +197,7 @@ public final class JavaSparkSQLExample {
     // +----+-------+
 
     // Register the DataFrame as a global temporary view
-    df.createGlobalTempView("people");
+    df.createGlobalTempView(PEOPLE);
 
     // Global temporary view is tied to a system preserved database `global_temp`
     spark.sql("SELECT * FROM global_temp.people").show();
@@ -274,7 +276,7 @@ public final class JavaSparkSQLExample {
    */
   private static void runInferSchemaExample(final SparkSession spark, final String peopleTxt) {
     // Create an RDD of Person objects from a text file
-    JavaRDD<Person> peopleRDD = spark.read()
+    SparkJavaRDD<Person> peopleRDD = spark.read()
       .textFile(peopleTxt)
       .javaRDD()
       .map(line -> {
@@ -288,7 +290,7 @@ public final class JavaSparkSQLExample {
     // Apply a schema to an RDD of JavaBeans to get a DataFrame
     Dataset<Row> peopleDF = spark.createDataFrame(peopleRDD, Person.class);
     // Register the DataFrame as a temporary view
-    peopleDF.createOrReplaceTempView("people");
+    peopleDF.createOrReplaceTempView(PEOPLE);
 
     // SQL statements can be run by using the sql methods provided by spark
     Dataset<Row> teenagersDF = spark.sql("SELECT name FROM people WHERE age BETWEEN 13 AND 19");
@@ -296,7 +298,7 @@ public final class JavaSparkSQLExample {
     // The columns of a row in the result can be accessed by field index
     Encoder<String> stringEncoder = Encoders.STRING();
     Dataset<String> teenagerNamesByIndexDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> NAME + row.getString(0),
       stringEncoder);
     teenagerNamesByIndexDF.show();
     // +------------+
@@ -307,7 +309,7 @@ public final class JavaSparkSQLExample {
 
     // or by field name
     Dataset<String> teenagerNamesByFieldDF = teenagersDF.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.<String>getAs("name"),
+      (MapFunction<Row, String>) row -> NAME + row.<String>getAs("name"),
       stringEncoder);
     teenagerNamesByFieldDF.show();
     // +------------+
@@ -325,7 +327,7 @@ public final class JavaSparkSQLExample {
    */
   private static void runProgrammaticSchemaExample(final SparkSession spark, final String peopleTxt) {
     // Create an RDD
-    JavaRDD<String> peopleRDD = spark.read()
+    SparkJavaRDD<String> peopleRDD = spark.read()
       .textFile(peopleTxt)
       .toJavaRDD();
 
@@ -341,7 +343,7 @@ public final class JavaSparkSQLExample {
     StructType schema = DataTypes.createStructType(fields);
 
     // Convert records of the RDD (people) to Rows
-    JavaRDD<Row> rowRDD = peopleRDD.map((Function<String, Row>) record -> {
+    SparkJavaRDD<Row> rowRDD = peopleRDD.map((Function<String, Row>) record -> {
       String[] attributes = record.split(",");
       return RowFactory.create(attributes[0], attributes[1].trim());
     });
@@ -350,7 +352,7 @@ public final class JavaSparkSQLExample {
     Dataset<Row> peopleDataFrame = spark.createDataFrame(rowRDD, schema);
 
     // Creates a temporary view using the DataFrame
-    peopleDataFrame.createOrReplaceTempView("people");
+    peopleDataFrame.createOrReplaceTempView(PEOPLE);
 
     // SQL can be run over a temporary view created using DataFrames
     Dataset<Row> results = spark.sql("SELECT name FROM people");
@@ -358,7 +360,7 @@ public final class JavaSparkSQLExample {
     // The results of SQL queries are DataFrames and support all the normal RDD operations
     // The columns of a row in the result can be accessed by field index or by field name
     Dataset<String> namesDS = results.map(
-      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      (MapFunction<Row, String>) row -> NAME + row.getString(0),
       Encoders.STRING());
     namesDS.show();
     // +-------------+

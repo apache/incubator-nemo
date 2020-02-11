@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.sql;
 
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.MapPartitionsFunction;
@@ -69,13 +69,13 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
    * @return the new javaRDD component.
    */
   @Override
-  public JavaRDD<T> javaRDD() {
+  public SparkJavaRDD<T> javaRDD() {
     return this.toJavaRDD();
   }
 
   @Override
-  public JavaRDD<T> toJavaRDD() {
-    return JavaRDD.of((SparkSession) super.sparkSession(), this);
+  public SparkJavaRDD<T> toJavaRDD() {
+    return SparkJavaRDD.of((SparkSession) super.sparkSession(), this);
   }
 
   /**
@@ -100,8 +100,8 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
    */
   @Override
   public RDD<T> rdd() {
-    final JavaRDD<T> javaRDD = JavaRDD.of((SparkSession) super.sparkSession(), this);
-    return javaRDD.rdd();
+    final SparkJavaRDD<T> sparkJavaRDD = SparkJavaRDD.of((SparkSession) super.sparkSession(), this);
+    return sparkJavaRDD.rdd();
   }
 
   @Override

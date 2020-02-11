@@ -19,7 +19,7 @@
 package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 
 import java.util.ArrayList;
@@ -58,7 +58,7 @@ public final class JavaSparkPi {
       l.add(i);
     }
 
-    JavaRDD<Integer> dataSet = jsc.parallelize(l, slices);
+    SparkJavaRDD<Integer> dataSet = jsc.parallelize(l, slices);
 
     int count = dataSet.map(integer -> {
       double x = Math.random() * 2 - 1;

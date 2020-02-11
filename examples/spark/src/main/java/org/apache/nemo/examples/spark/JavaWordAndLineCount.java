@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.examples.spark;
 
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaPairRDD;
-import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaPairRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.SparkJavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 
@@ -60,19 +60,19 @@ public final class JavaWordAndLineCount {
       .appName("JavaWordAndLineCount")
       .getOrCreate();
 
-    JavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
+    SparkJavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
 
-    JavaPairRDD<String, Integer> lineOnes = lines.mapToPair(s -> new Tuple2<>("line count", 1));
+    SparkJavaPairRDD<String, Integer> lineOnes = lines.mapToPair(s -> new Tuple2<>("line count", 1));
 
-    JavaPairRDD<String, Integer> lineCounts = lineOnes.reduceByKey((i1, i2) -> i1 + i2);
+    SparkJavaPairRDD<String, Integer> lineCounts = lineOnes.reduceByKey((i1, i2) -> i1 + i2);
 
     List<Tuple2<String, Integer>> lineOutput = lineCounts.collect();
 
-    JavaRDD<String> words = lines.flatMap(s -> Arrays.asList(SPACE.split(s)).iterator());
+    SparkJavaRDD<String> words = lines.flatMap(s -> Arrays.asList(SPACE.split(s)).iterator());
 
-    JavaPairRDD<String, Integer> wordOnes = words.mapToPair(s -> new Tuple2<>(s, 1));
+    SparkJavaPairRDD<String, Integer> wordOnes = words.mapToPair(s -> new Tuple2<>(s, 1));
 
-    JavaPairRDD<String, Integer> wordCounts = wordOnes.reduceByKey((i1, i2) -> i1 + i2);
+    SparkJavaPairRDD<String, Integer> wordCounts = wordOnes.reduceByKey((i1, i2) -> i1 + i2);
 
     List<Tuple2<String, Integer>> wordOutput = wordCounts.collect();
 

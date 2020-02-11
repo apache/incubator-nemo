@@ -32,7 +32,7 @@ import java.io.OutputStream;
  * @param <T> type of the object to serialize.
  */
 public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
-  private final Serializer serializer;
+  private final transient Serializer serializer;
 
   /**
    * Default constructor.
@@ -61,8 +61,7 @@ public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
    * @param <T2> type of the object to serialize.
    */
   private final class SparkEncoder<T2> implements Encoder<T2> {
-
-    private final SerializationStream out;
+    private final transient SerializationStream out;
 
     /**
      * Constructor.
