@@ -20,6 +20,7 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.exception.OutputMismatchException;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
@@ -29,8 +30,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-
-import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Test WordCount program with JobLauncher, but with a timeout.
@@ -54,7 +53,7 @@ public class TimeoutITCase {
       .addUserArgs(inputFilePath, outputFilePath);
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = RejectedExecutionException.class)
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = OutputMismatchException.class)
   public void testTimeout() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)

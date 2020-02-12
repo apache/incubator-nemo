@@ -61,7 +61,6 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
   public State cancel() throws IOException {
     try {
       JobLauncher.shutdown();
-      this.jobDone.await();
       return State.CANCELLED;
     } catch (Exception e) {
       throw new RuntimeException(e);

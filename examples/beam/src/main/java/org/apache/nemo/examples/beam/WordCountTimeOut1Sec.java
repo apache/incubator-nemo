@@ -58,7 +58,7 @@ public final class WordCountTimeOut1Sec {
     try {
       final PipelineResult.State cancelled = pr.cancel();
     } catch (final IOException e) {
-      LOG.info("job cancelled");
+      LOG.info("IOException while cancelling job");
     }
   }
 }
