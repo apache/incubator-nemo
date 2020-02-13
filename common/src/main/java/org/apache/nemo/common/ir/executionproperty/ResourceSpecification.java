@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.resource;
+package org.apache.nemo.common.ir.executionproperty;
 
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.IdManager;
 
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
@@ -46,7 +46,7 @@ public final class ResourceSpecification {
                                final int memory,
                                final OptionalDouble maxOffheapRatio,
                                final OptionalInt poisonSec) {
-    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
+    this.resourceSpecId = IdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;

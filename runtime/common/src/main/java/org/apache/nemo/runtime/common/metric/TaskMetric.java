@@ -32,6 +32,8 @@ import java.util.List;
 public class TaskMetric implements StateMetric<TaskState.State> {
   private String id;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
+  private long taskDuration = -1;
+  private long schedulingOverhead = -1;
   private long serializedReadBytes = -1;
   private long encodedReadBytes = -1;
   private long writtenBytes = -1;
@@ -44,6 +46,22 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   public TaskMetric(final String id) {
     this.id = id;
+  }
+
+  public final long getTaskDuration() {
+    return taskDuration;
+  }
+
+  public final void setTaskDuration(final long taskDuration) {
+    this.taskDuration = taskDuration;
+  }
+
+  public final long getSchedulingOverhead() {
+    return schedulingOverhead;
+  }
+
+  public final void setSchedulingOverhead(final long schedulingOverhead) {
+    this.schedulingOverhead = schedulingOverhead;
   }
 
   public final long getSerializedReadBytes() {
@@ -125,6 +143,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
+      case "taskDuration":
+        setTaskDuration(SerializationUtils.deserialize(metricValue));
+        break;
+      case "schedulingOverhead":
+        setSchedulingOverhead(SerializationUtils.deserialize(metricValue));
+        break;
       case "serializedReadBytes":
         setSerializedReadBytes(SerializationUtils.deserialize(metricValue));
         break;

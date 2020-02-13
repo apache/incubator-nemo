@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * ID manager.
@@ -38,6 +39,7 @@ public final class IdManager {
 
   private static AtomicInteger vertexId = new AtomicInteger(1);
   private static AtomicInteger edgeId = new AtomicInteger(1);
+  private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
   private static volatile boolean isDriver = false;
 
   // Vertex ID Map to be used upon cloning in loop vertices.
@@ -86,6 +88,15 @@ public final class IdManager {
    */
   public static String newEdgeId() {
     return "edge" + (isDriver ? "(d)" : "") + edgeId.getAndIncrement();
+  }
+
+  /**
+   * Generates the ID for a resource specification.
+   *
+   * @return the generated ID
+   */
+  public static String generateResourceSpecId() {
+    return "ResourceSpec" + resourceSpecIdGenerator.getAndIncrement();
   }
 
   /**

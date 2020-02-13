@@ -76,6 +76,24 @@ final class TaskDispatcher {
   }
 
   /**
+   * Static constructor for manual usage.
+   * @param schedulingConstraintRegistry Registry for the scheduling constraints.
+   * @param schedulingPolicy The Scheduling Policy to use.
+   * @param pendingTaskCollectionPointer A pointer to the pending tasks to be executed later on.
+   * @param executorRegistry Registry for the list of executors available.
+   * @param planStateManager Manager for the state of the plan being executed.
+   * @return a new instance of task dispatcher.
+   */
+  public static TaskDispatcher newInstance(final SchedulingConstraintRegistry schedulingConstraintRegistry,
+                                           final SchedulingPolicy schedulingPolicy,
+                                           final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                                           final ExecutorRegistry executorRegistry,
+                                           final PlanStateManager planStateManager) {
+    return new TaskDispatcher(schedulingConstraintRegistry, schedulingPolicy, pendingTaskCollectionPointer,
+      executorRegistry, planStateManager);
+  }
+
+  /**
    * A separate thread is run to dispatch tasks to executors.
    * See comments in the {@link Scheduler} for avoiding race conditions.
    */
@@ -115,6 +133,7 @@ final class TaskDispatcher {
 
       executorRegistry.viewExecutors(executors -> {
         final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+        // Filter out the candidate executors that do not meet scheduling constraints.
         task.getExecutionProperties().forEachProperties(property -> {
           final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
           if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {

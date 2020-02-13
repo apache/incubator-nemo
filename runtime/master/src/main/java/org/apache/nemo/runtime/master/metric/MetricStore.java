@@ -79,6 +79,14 @@ public final class MetricStore {
   }
 
   /**
+   * Static class for creating a new instance.
+   * @return a new MetricStore instance.
+   */
+  public static MetricStore newInstance() {
+    return new MetricStore();
+  }
+
+  /**
    * Get the metric class by its name.
    *
    * @param className the name of the class.

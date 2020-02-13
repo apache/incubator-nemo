@@ -34,6 +34,7 @@ import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricStore;
+import org.apache.nemo.runtime.master.scheduler.SimulationScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -115,6 +116,17 @@ public final class PlanStateManager {
     this.dagDirectory = dagDirectory;
     this.metricStore = MetricStore.getStore();
     this.initialized = false;
+  }
+
+  /**
+   * Static constructor for manual usage.
+   * @param dagDirectory the DAG directory to store the JSON to.
+   * @return a new PlanStateManager instance.
+   */
+  public static PlanStateManager newInstance(final String dagDirectory) {
+    final PlanStateManager newInstance = new PlanStateManager(dagDirectory);
+    newInstance.metricStore = SimulationScheduler.getSimulationMetricStore();
+    return newInstance;
   }
 
   /**

@@ -89,6 +89,13 @@ public final class Task implements Serializable {
   }
 
   /**
+   * @return the Stage ID of the task.
+   */
+  public String getStageId() {
+    return RuntimeIdManager.getStageIdFromTaskId(this.getTaskId());
+  }
+
+  /**
    * @return the incoming edges of the task.
    */
   public List<StageEdge> getTaskIncomingEdges() {
