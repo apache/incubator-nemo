@@ -19,12 +19,11 @@ under the License.
 <template>
   <el-card>
     <el-table
-      v-if="columnArray.length !== 0"
       border
       :data="taskMetric"
       empty-text="No data">
-      <el-table-column label="id" prop="id" sortable/>
-      <el-table-column label="state" align="center">
+      <el-table-column label="ID" prop="id"/>
+      <el-table-column label="State" align="center">
         <template slot-scope="scope">
           <el-tag :type="toStateType(scope.row.stateTransitionEvents)">
             {{ toStateText(scope.row.stateTransitionEvents) }}
@@ -32,129 +31,55 @@ under the License.
         </template>
       </el-table-column>
       <el-table-column
-        v-for="col in columnArray"
-        sortable
-        :sort-method="(a, b) => _sortFunc(a, b, col)"
-        :label="col"
+        v-for="col in Object.keys(columns)"
+        :label="columns[col]"
         :key="col"
         :prop="col"/>
     </el-table>
-    <p v-if="taskMetric.length !== 0">
-      Duration sum: <b>{{taskMetric.map(t => t.duration).reduce((a, b) => a + b)}}</b>ms
-    </p>
+    <el-pagination :page-size="pageSize" :total="total" :current-page.sync="currentPage"></el-pagination>
   </el-card>
 </template>
 
 <script>
 import { STATE } from '../assets/constants';
 
-export const EXCLUDE_COLUMN = [
-  'id',
-  'state',
-  'group',
-  'start',
-  'end',
-  'stateTransitionEvents',
-  'content',
-  'metricId',
-];
+const COLUMNS = {
+  'serializedReadBytes': 'Bytes read (compressed)',
+  'encodedReadBytes': 'Bytes read',
+  'writtenBytes': 'Bytes written',
+  'boundedSourceReadTime': 'Source read time',
+  'containerId': 'Container ID',
+}
 
-const NOT_AVAILABLE = -1;
-
-const _bytesToHumanReadable = function(bytes) {
-  var i = bytes === 0 ? 0 :
-    Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(2) * 1
-    + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
-};
-
-// this function will preprocess TaskMetric metric array.
-const _preprocessMetric = function(metric) {
-  let newMetric = Object.assign({}, metric);
-
-  Object.keys(newMetric).forEach(key => {
-    // replace NOT_AVAILBLE to 'N/A'
-    if (newMetric[key] === NOT_AVAILABLE) {
-      newMetric[key] = 'N/A';
-    }
-
-    if (newMetric[key] !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
-      newMetric[key] = _bytesToHumanReadable(newMetric[key]);
-    }
-  });
-
-  if (newMetric.stateTransitionEvents) {
-    const ste = newMetric.stateTransitionEvents;
-    if (ste.length > 2) {
-      const firstEvent = ste[0], lastEvent = ste[ste.length - 1];
-      if (_isDoneTaskEvent(lastEvent)) {
-        newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
-      } else {
-        newMetric.duration = 'N/A';
-      }
-    } else {
-      newMetric.duration = 'N/A';
-    }
-  }
-
-  return newMetric;
-};
-
-const _isDoneTaskEvent = function(event) {
-  if (event.newState === STATE.COMPLETE
-    || event.newState === STATE.FAILED) {
-    return true;
-  }
-  return false;
-};
+const TASKS_PER_PAGE = 20
 
 export default {
-  props: ['metricLookupMap'],
+  props: ['taskStatistics'],
+
+  data: function() {
+    return {
+      columns: COLUMNS,
+      pageSize: TASKS_PER_PAGE,
+      currentPage: 1.
+    };
+  },
 
   //COMPUTED
   computed: {
+    total() {
+      return this.taskStatistics.tableView.length
+    },
+
     /**
      * Computed property which consists table data.
      */
     taskMetric() {
-      return Object.keys(this.metricLookupMap)
-        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
-        .map(key => _preprocessMetric(this.metricLookupMap[key]));
-    },
-
-    /**
-     * Computed property of column string array.
-     * This property will look first element of `taskMetric` array and
-     * extract object keys and filter by EXECLUDE_COLUMN.
-     */
-    columnArray() {
-      if (!this.taskMetric[0]) {
-        return [];
-      }
-
-      return Object.keys(this.taskMetric[0])
-        .filter(k => !EXCLUDE_COLUMN.includes(k));
+      return this.taskStatistics.tableView.slice((this.currentPage - 1) * TASKS_PER_PAGE, this.currentPage * TASKS_PER_PAGE)
     },
   },
 
   //METHODS
   methods: {
-    _sortFunc(_a, _b, column) {
-      let a = _a[column], b = _b[column];
-      if (a === 'N/A') {
-        return -1;
-      } else if (b === 'N/A') {
-        return 1;
-      } else if (a === b) {
-        return 0;
-      } else if (a > b) {
-        return 1;
-      } else if (a < b) {
-        return -1;
-      }
-      return 0;
-    },
-
     /**
      * Fetch last stateTransitionEvents element and extract
      * newState property. See STATE constant.

@@ -17,15 +17,12 @@ specific language governing permissions and limitations
 under the License.
 -->
 <template>
-  <el-card>
+  <el-card shadow="never">
     <!--Title-->
     <h1>Nemo Jobs</h1>
 
     <!--Jobs information-->
     <p>
-      <b>User: </b><span>{ TODO }</span><br>
-      <b>Total Uptime: </b><span>{ TODO }</span><br>
-      <b>Scheduling Mode: </b><span>{ TODO }</span><br>
       <b @click="jump($event, JOB_STATUS.RUNNING)"><a>
         Active Jobs: </a></b><el-badge type="primary" :value="activeJobsData.length"></el-badge><br>
       <b @click="jump($event, JOB_STATUS.COMPLETE)"><a>
@@ -35,29 +32,37 @@ under the License.
     </p>
 
     <!--Stage Timeline-->
+    <!--
     <el-collapse>
       <el-collapse-item title="Event Timeline" name="1">
         { TODO: JOBS TIMELINE }
       </el-collapse-item>
     </el-collapse>
+    -->
 
     <!--Jobs list-->
     <h2 ref="activeJobs">Active Jobs
       <el-badge type="primary" :value="activeJobsData.length"></el-badge></h2>
     <div v-if="activeJobsData.length !== 0">
-      <!--TODO: 이거 component로 refactor 하기-->
-      <el-table class="active-jobs-table" :data="activeJobsData"
+      <!--TODO: Refactor this as component-->
+      <el-table key="aTable" class="active-jobs-table" :data="activeJobsData"
                 @row-click="handleSelect" stripe>
-        <el-table-column label="Job id" width="100">
+        <el-table-column label="Job id">
           <template slot-scope="scope">
             {{ _getFrom(scope.row.jobId) }}
           </template>
         </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Progress">
+          <template slot-scope="scope">
+            <el-progress :text-inside="true" :stroke-width="18" :percentage="jobs[scope.row.jobId].taskStatistics.progress"></el-progress>
+          </template>
+        </el-table-column>
+        <!--el-table-column label="Description" width="180"></el-table-column>
         <el-table-column label="Submitted" width="180"></el-table-column>
         <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column-->
+        <!--el-table-column label="Tasks (for all stages): Succeeded/Total">
+        </el-table-column-->
         <!--<el-table-column label="Status">-->
         <!--<template slot-scope="scope">-->
         <!--<el-tag :type="_fromJobStatusToType(scope.row.status)">-->
@@ -93,18 +98,18 @@ under the License.
     <h2 ref="completedJobs">Completed Jobs
       <el-badge type="success" :value="completedJobsData.length"></el-badge></h2>
     <div v-if="completedJobsData.length !== 0">
-      <el-table class="completed-jobs-table" :data="completedJobsData"
+      <el-table key="aTable" class="completed-jobs-table" :data="completedJobsData"
                 @row-click="handleSelect" stripe>
-        <el-table-column label="Job id" width="100">
+        <el-table-column label="Job id">
           <template slot-scope="scope">
             {{ _getFrom(scope.row.jobId) }}
           </template>
         </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+        <el-table-column label="Progress">
+          <template slot-scope="scope">
+            <el-progress :text-inside="true" :stroke-width="18" :percentage="100" status="success"></el-progress>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -181,7 +186,7 @@ under the License.
     <br><br><br>
 
     <!--Selected Job-->
-    <job-view :selected-job-status="selectedJobStatus" :selected-job-metric-data-set="selectedJobMetricDataSet"/>
+    <job-view :selected-job-status="selectedJobStatus" :selected-job-metric-data-set="selectedJobMetricDataSet" :selectedTaskStatistics="selectedTaskStatistics"/>
     <!--<job-view :selectedJobId="selectedJobId"/>-->
   </el-card>
 </template>
@@ -192,11 +197,63 @@ import JobView from './detail/JobView';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
 import { STATE, JOB_STATUS } from '../../assets/constants';
+import TaskStatisticsVue from '../TaskStatistics.vue';
+
+const NOT_AVAILABLE = -1;
 
 function _isDone(status) {
   return status === JOB_STATUS.COMPLETE ||
     status === JOB_STATUS.FAILED;
 }
+
+const _bytesToHumanReadable = function(bytes) {
+  var i = bytes === 0 ? 0 :
+    Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(2) * 1
+    + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+};
+
+// this function will preprocess TaskMetric metric array.
+const _preprocessMetric = function(metric) {
+  let newMetric = Object.assign({}, metric);
+  newMetric.isCompleted = false
+
+  Object.keys(newMetric).forEach(key => {
+    // replace NOT_AVAILBLE to 'N/A'
+    if (newMetric[key] === NOT_AVAILABLE) {
+      newMetric[key] = '';
+    }
+
+    if (newMetric[key] !== '' && key.toLowerCase().endsWith('bytes')) {
+      newMetric[key] = _bytesToHumanReadable(newMetric[key]);
+    }
+  });
+
+  if (newMetric.stateTransitionEvents) {
+    const ste = newMetric.stateTransitionEvents;
+    if (ste.length > 2) {
+      const firstEvent = ste[0], lastEvent = ste[ste.length - 1];
+      if (_isDoneTaskEvent(lastEvent)) {
+        newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
+      } else {
+        newMetric.duration = '';
+      }
+      newMetric.isCompleted = lastEvent.newState === STATE.COMPLETE
+    } else {
+      newMetric.duration = '';
+    }
+  }
+
+  return newMetric;
+};
+
+const _isDoneTaskEvent = function(event) {
+  if (event.newState === STATE.COMPLETE
+    || event.newState === STATE.FAILED) {
+    return true;
+  }
+  return false;
+};
 
 export default {
   components: {
@@ -219,6 +276,11 @@ export default {
 
       wsEndpointInput: '',
     };
+  },
+
+  //HOOKS
+  mounted() {
+    this.addJobFromWebSocketEndpoint('ws://localhost:10101/api/websocket');
   },
 
   //COMPUTED
@@ -256,7 +318,14 @@ export default {
       } else {
         return '';
       }
-    }
+    },
+    selectedTaskStatistics() {
+      if (this.selectedJobId !== '') {
+        return this.jobs[this.selectedJobId].taskStatistics;
+      } else {
+        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0, progress: 0, stageState: {}};
+      }
+    },
   },
 
   //METHODS
@@ -415,6 +484,14 @@ export default {
         metricDataSet: new DataSet([]),
         dagStageState: {},
         status: '',
+        taskStatistics: {
+          metricItems: {}, // id to metric object
+          tableView: [], // array of metric objects
+          totalTasks: 0,
+          completedTasks: 0,
+          progress: 0,
+          stageState: {},
+        },
       });
     },
 
@@ -604,6 +681,7 @@ export default {
                 break;
             }
           } else if (metricType === 'StageMetric') {
+            job.taskStatistics.stageState[data.id] = newState
             // INCOMPLETE -> COMPLETE
             switch (newState) {
               case STATE.COMPLETE:
@@ -643,6 +721,7 @@ export default {
           states: job.dagStageState,
         });
         this.buildMetricLookupMapWithDAG(jobId);
+        this.updateTotalTasksWithDAG(jobId, data.dag)
       }
       newItem.metricId = data.id;
 
@@ -722,6 +801,12 @@ export default {
       return newMetric;
     },
 
+    updateTotalTasksWithDAG(jobId, dag) {
+      const job = this.jobs[jobId]
+      const stages = dag.vertices
+      job.taskStatistics.totalTasks = stages.map(stage => parseInt(stage.properties.executionProperties['org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty'])).reduce((a, b) => a + b, 0)
+    },
+
     /**
      * Build metricLookupMap based on DAG.
      * @param jobId id of job.
@@ -751,10 +836,27 @@ export default {
      */
     addMetricToMetricLookupMap(metric, jobId) {
       const job = this.jobs[jobId];
+      const ts = job.taskStatistics
       if (metric.group === 'JobMetric') {
         Vue.set(job.metricLookupMap, metric.id, metric);
       } else if (metric.group === 'TaskMetric') {
         Vue.set(job.metricLookupMap, metric.id, metric);
+        const processedMetric = _preprocessMetric(metric)
+        if (!(metric.id in job.taskStatistics.metricItems)) {
+          job.taskStatistics.tableView.push(processedMetric)
+          job.taskStatistics.metricItems[metric.id] = processedMetric
+          if (processedMetric.isCompleted) {
+            ts.completedTasks += 1
+          }
+        } else {
+          const oldCompleted = ts.metricItems[metric.id].isCompleted
+          Object.assign(ts.metricItems[metric.id], processedMetric)
+          const newCompleted = ts.metricItems[metric.id].isCompleted
+          if ((!oldCompleted) && newCompleted) {
+            ts.completedTasks += 1
+          }
+        }
+        ts.progress = ts.totalTasks === 0 ? 0 : Math.round((ts.completedTasks / ts.totalTasks) * 10000) / 100
       }
       this.$eventBus.$emit('build-table-data', {
         metricId: metric.id,
