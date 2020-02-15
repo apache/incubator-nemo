@@ -20,7 +20,7 @@ under the License.
   <el-container>
     <el-header>
       <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
-        <el-menu-item index="0" disabled><a href="/">LOGO</a></el-menu-item>
+        <el-menu-item index="0"><a href="/"><img src="~assets/NemoLogo.png" alt="" style="height: 100%"></a></el-menu-item>
         <el-menu-item index="1">Jobs</el-menu-item>
         <el-menu-item index="2">Stages</el-menu-item>
         <el-menu-item index="3">Storage</el-menu-item>
