@@ -47,6 +47,7 @@ public final class MapReduceDisaggregationOptimization {
    * Main function of the example MR program.
    *
    * @param args arguments.
+   * @throws Exception Exceptions on the way.
    */
   public static void main(final String[] args) {
     final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
