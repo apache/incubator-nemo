@@ -95,7 +95,7 @@ public final class SimulationSchedulerTest {
 
     resultingMetricStore.getMetricMap(TaskMetric.class).forEach((id, taskMetric) -> {
       assertTrue(0 <= ((TaskMetric) taskMetric).getTaskDuration());
-      assertTrue(100 > ((TaskMetric) taskMetric).getTaskDuration());
+      assertTrue(1000 > ((TaskMetric) taskMetric).getTaskDuration());
     });
 
     final LongStream l = resultingMetricStore.getMetricMap(JobMetric.class).values().stream().mapToLong(jobMetric ->
