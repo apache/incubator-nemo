@@ -31,7 +31,6 @@ import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.message.MessageUtils;
 import org.apache.nemo.runtime.common.metric.JobMetric;
@@ -77,20 +76,24 @@ public final class SimulationScheduler implements Scheduler {
    * Run-time optimizations.
    */
   private final PlanRewriter planRewriter;
-  private final ClientRPC clientRPC;
 
   /**
    * Components related to scheduling the given plan.
    */
-  private final TaskDispatcher taskDispatcher;
+  private TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private final ExecutorRegistry executorRegistry;
-  private final PlanStateManager planStateManager;
+  private ExecutorRegistry executorRegistry;
+  private PlanStateManager planStateManager;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
   private final BlockManagerMaster blockManagerMaster;
   private final MetricStore actualMetricStore;
-  private final MetricStore metricStore;
-  private final CountDownLatch metricCountDownLatch;
+  private MetricStore metricStore;
+  private CountDownLatch metricCountDownLatch;
+
+  private final SchedulingConstraintRegistry schedulingConstraintRegistry;
+  private final SchedulingPolicy schedulingPolicy;
+  private final String resourceSpecificationString;
+  private final String dagDirectory;
 
   private final Map<String, SimulatedTaskExecutor> simulatedTaskExecutorMap;
 
@@ -102,9 +105,7 @@ public final class SimulationScheduler implements Scheduler {
   @Inject
   private SimulationScheduler(final PlanRewriter planRewriter,
                               final SchedulingConstraintRegistry schedulingConstraintRegistry,
-                              final SchedulingPolicy schedulingPolicy,
                               final BlockManagerMaster blockManagerMaster,
-                              final ClientRPC clientRPC,
                               @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                               @Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                               @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
@@ -112,16 +113,25 @@ public final class SimulationScheduler implements Scheduler {
     this.blockManagerMaster = blockManagerMaster;
     this.pendingTaskCollectionPointer = PendingTaskCollectionPointer.newInstance();
     this.executorRegistry = ExecutorRegistry.newInstance();
+    this.schedulingConstraintRegistry = schedulingConstraintRegistry;
+    this.schedulingPolicy = new SimulationSchedulingPolicy();
+    this.resourceSpecificationString = resourceSpecificationString;
+    this.dagDirectory = dagDirectory;
     this.planStateManager = PlanStateManager.newInstance(dagDirectory);
     this.taskDispatcher = TaskDispatcher.newInstance(schedulingConstraintRegistry, schedulingPolicy,
       pendingTaskCollectionPointer, executorRegistry, planStateManager);
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
-    this.clientRPC = clientRPC;
     this.actualMetricStore = MetricStore.getStore();
-    this.metricStore = getSimulationMetricStore();
+    this.metricStore = MetricStore.newInstance();
+    this.planStateManager.setMetricStore(this.metricStore);
     this.simulatedTaskExecutorMap = new HashMap<>();
+    setUpExecutors();
+  }
 
-    // Simulate launch of executors.
+  /**
+   * Simulate the launch of executors.
+   */
+  private void setUpExecutors() {
     final List<Pair<Integer, ResourceSpecification>> resourceSpecs =
       Util.parseResourceSpecificationString(resourceSpecificationString);
     // Role of ActiveContextHandler + RuntimeMaster.onExecuterLaunched.
@@ -139,19 +149,19 @@ public final class SimulationScheduler implements Scheduler {
   }
 
   /**
-   * Instance holder for metric store.
+   * Reset the instance to its initial state.
    */
-  private static class MetricStoreInstanceHolder {
-    private static final MetricStore INSTANCE = MetricStore.newInstance();
-  }
-
-  /**
-   * Get the static metric store instance of the simulation scheduler.
-   *
-   * @return the metric store of the simulation.
-   */
-  public static MetricStore getSimulationMetricStore() {
-    return MetricStoreInstanceHolder.INSTANCE;
+  public void reset() {
+    this.terminate();
+    this.executorRegistry = ExecutorRegistry.newInstance();
+    this.planStateManager = PlanStateManager.newInstance(dagDirectory);
+    this.pendingTaskCollectionPointer.getAndSetNull();
+    this.taskDispatcher = TaskDispatcher.newInstance(schedulingConstraintRegistry, schedulingPolicy,
+      pendingTaskCollectionPointer, executorRegistry, planStateManager);
+    this.metricStore = MetricStore.newInstance();
+    this.planStateManager.setMetricStore(metricStore);
+    this.simulatedTaskExecutorMap.clear();
+    setUpExecutors();
   }
 
   @VisibleForTesting
@@ -190,9 +200,10 @@ public final class SimulationScheduler implements Scheduler {
       planStateManager.storeJSON("final");
     }
 
-    LOG.info("Simulation of {} is complete!", submittedPhysicalPlan.getPlanId());
-    final Long jobDuration = this.simulatedTaskExecutorMap.values().stream().mapToLong(e ->
-      System.currentTimeMillis() - e.getExecutorInitializationTime()).max().orElse(0);
+    final Long jobDuration = this.simulatedTaskExecutorMap.values().stream()
+      .mapToLong(SimulatedTaskExecutor::getElapsedTime)
+      .max().orElse(0);
+    LOG.info("Simulation of {} is complete with job duration of {}!", submittedPhysicalPlan.getPlanId(), jobDuration);
     this.metricStore.getOrCreateMetric(JobMetric.class, submittedPhysicalPlan.getPlanId()).setJobDuration(jobDuration);
     executorRegistry.viewExecutors(executors -> executors.forEach(executor -> metricCountDownLatch.countDown()));
   }
@@ -291,16 +302,17 @@ public final class SimulationScheduler implements Scheduler {
    * @param data   of the message.
    */
   public void onRunTimePassMessage(final String taskId, final Object data) {
+    // TODO #436: Dynamic task resizing.
     SchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
   }
 
   @Override
   public synchronized void onTaskStateReportFromExecutor(final String executorId,
-                                            final String taskId,
-                                            final int attemptIdx,
-                                            final TaskState.State newState,
-                                            @Nullable final String taskPutOnHold,
-                                            final TaskState.RecoverableTaskFailureCause failureCause) {
+                                                         final String taskId,
+                                                         final int attemptIdx,
+                                                         final TaskState.State newState,
+                                                         @Nullable final String taskPutOnHold,
+                                                         final TaskState.RecoverableTaskFailureCause failureCause) {
     // Role of MasterControlMessageReceiver + handleControlMessage --> onTaskStateChanged.
     // Do change state, as this notification is for the current task attempt.
     planStateManager.onTaskStateChanged(taskId, newState);
@@ -384,7 +396,7 @@ public final class SimulationScheduler implements Scheduler {
    * The endpoint of the simulator. Collect the metric store, and terminate the simulator.
    * @return the metrics of the simulation.
    */
-  public MetricStore collectMetricStoreAndTerminate() {
+  public MetricStore collectMetricStore() {
     try {
       // wait for metric flush
       if (!metricCountDownLatch.await(10000, TimeUnit.MILLISECONDS)) {
@@ -396,8 +408,9 @@ public final class SimulationScheduler implements Scheduler {
       Thread.currentThread().interrupt();
     }
 
-    this.terminate();
-    return this.metricStore;
+    final MetricStore res = this.metricStore;
+    this.reset();
+    return res;
   }
 
   @Override
@@ -480,6 +493,11 @@ public final class SimulationScheduler implements Scheduler {
     private final String executorId;
     private final SimulationScheduler scheduler;
 
+    /**
+     * Constructor for the message sender that simply passes on the messages, instead of sending actual messages.
+     * @param executorId the simulated executor id of where the message sender communicates from.
+     * @param scheduler the simulation scheduler to communicate with.
+     */
     SimulationMessageSender(final String executorId, final SimulationScheduler scheduler) {
       this.executorId = executorId;
       this.scheduler = scheduler;
@@ -508,6 +526,7 @@ public final class SimulationScheduler implements Scheduler {
           throw new SimulationException(exception);
         case RunTimePassMessage:
           scheduler.onRunTimePassMessage(
+            // TODO #436: Dynamic task resizing.
             message.getRunTimePassMessageMsg().getTaskId(),
             message.getRunTimePassMessageMsg().getEntryList());
           break;
@@ -517,14 +536,6 @@ public final class SimulationScheduler implements Scheduler {
             scheduler.handleMetricMessage(
               metric.getMetricType(), metric.getMetricId(),
               metric.getMetricField(), metric.getMetricValue().toByteArray()));
-          break;
-        case ExecutorDataCollected:
-          final String serializedData = message.getDataCollected().getData();
-          // Unsure.
-          scheduler.clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.DataCollected)
-            .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
-            .build());
           break;
         //  Messages sent to the executor
         case ScheduleTask:
@@ -551,6 +562,18 @@ public final class SimulationScheduler implements Scheduler {
     @Override
     public void close() {
       // do nothing.
+    }
+  }
+
+
+  /**
+   * Scheduling policy for simulations.
+   */
+  private final class SimulationSchedulingPolicy implements SchedulingPolicy {
+    @Override
+    public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
+      return Collections.min(executors,
+        Comparator.comparing(e -> simulatedTaskExecutorMap.get(e.getExecutorId()).getElapsedTime().intValue()));
     }
   }
 }

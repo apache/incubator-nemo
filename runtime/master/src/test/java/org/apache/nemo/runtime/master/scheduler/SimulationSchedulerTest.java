@@ -89,7 +89,9 @@ public final class SimulationSchedulerTest {
       physicalPlan2,
       SCHEDULE_ATTEMPT_INDEX);
 
-    final MetricStore resultingMetricStore = scheduler.collectMetricStoreAndTerminate();
+    LOG.info("Wait for plan termination after sending stage completion events");
+    final MetricStore resultingMetricStore = scheduler.collectMetricStore();
+    scheduler.terminate();
 
     resultingMetricStore.getMetricMap(TaskMetric.class).forEach((id, taskMetric) -> {
       assertTrue(0 <= ((TaskMetric) taskMetric).getTaskDuration());
@@ -99,8 +101,5 @@ public final class SimulationSchedulerTest {
     final LongStream l = resultingMetricStore.getMetricMap(JobMetric.class).values().stream().mapToLong(jobMetric ->
       ((JobMetric) jobMetric).getJobDuration());
     LOG.info("Simulated duration: {}ms", l.findFirst().orElse(0));
-
-    LOG.info("Wait for plan termination after sending stage completion events");
-    assertTrue(scheduler.getPlanStateManager().isPlanDone());
   }
 }

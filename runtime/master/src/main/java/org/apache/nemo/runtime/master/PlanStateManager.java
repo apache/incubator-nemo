@@ -34,7 +34,6 @@ import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.nemo.runtime.master.scheduler.SimulationScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -124,9 +123,14 @@ public final class PlanStateManager {
    * @return a new PlanStateManager instance.
    */
   public static PlanStateManager newInstance(final String dagDirectory) {
-    final PlanStateManager newInstance = new PlanStateManager(dagDirectory);
-    newInstance.metricStore = SimulationScheduler.getSimulationMetricStore();
-    return newInstance;
+    return new PlanStateManager(dagDirectory);
+  }
+
+  /**
+   * @param metricStore set the metric store of the paln state manager.
+   */
+  public void setMetricStore(final MetricStore metricStore) {
+    this.metricStore = metricStore;
   }
 
   /**
@@ -159,16 +163,13 @@ public final class PlanStateManager {
   private void initializeStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      if (!stageIdToState.containsKey(stage.getId())) {
-        stageIdToState.put(stage.getId(), new StageState());
-        stageIdToTaskIdxToAttemptStates.put(stage.getId(), new HashMap<>());
+      stageIdToState.putIfAbsent(stage.getId(), new StageState());
+      stageIdToTaskIdxToAttemptStates.putIfAbsent(stage.getId(), new HashMap<>());
 
-        // for each task idx of this stage
-        for (final int taskIndex : stage.getTaskIndices()) {
-          stageIdToTaskIdxToAttemptStates.get(stage.getId()).put(taskIndex, new ArrayList<>());
-          // task states will be initialized lazily in getTaskAttemptsToSchedule()
-        }
-      }
+      // for each task idx of this stage
+      stage.getTaskIndices().forEach(taskIndex ->
+        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>()));
+        // task states will be initialized lazily in getTaskAttemptsToSchedule()
     });
   }
 

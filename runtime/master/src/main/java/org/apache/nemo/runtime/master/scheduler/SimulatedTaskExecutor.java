@@ -22,7 +22,6 @@ package org.apache.nemo.runtime.master.scheduler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Streams;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -41,12 +40,10 @@ import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalDouble;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -61,8 +58,9 @@ public final class SimulatedTaskExecutor {
    */
   private final SimulationScheduler scheduler;
   private final ExecutorRepresenter executorRepresenter;
-  private final Long executorInitializationTime;
-  private final MutableLong currentTime;
+  private Long executorInitializationTime;
+  private final AtomicLong currentTime;
+  private Long timeCheckpoint;
   private final MetricStore actualMetricStore;
   private final ConcurrentMap<String, DAG<IRVertex, RuntimeEdge<IRVertex>>> stageIDToStageIRDAG;
 
@@ -74,12 +72,11 @@ public final class SimulatedTaskExecutor {
                         final ExecutorRepresenter executorRepresenter,
                         final MetricStore actualMetricStore) {
     this.scheduler = scheduler;
-    this.executorInitializationTime = System.currentTimeMillis();
-    this.currentTime = new MutableLong(System.currentTimeMillis());
     this.executorRepresenter = executorRepresenter;
     this.actualMetricStore = actualMetricStore;
     this.stageIDToStageIRDAG = new ConcurrentHashMap<>();
-    // derive task distribution
+    this.currentTime = new AtomicLong(-1L);
+    this.executorInitializationTime = -1L;
   }
 
   /**
@@ -119,9 +116,9 @@ public final class SimulatedTaskExecutor {
       .filter(e -> stageIdsToGatherMetricsFrom.contains(RuntimeIdManager.getStageIdFromTaskId(e.getKey())))
       .map(Map.Entry::getValue)  // stream of TaskMetric.
       .mapToLong(tm -> ((TaskMetric) tm).getTaskDuration())
+      .filter(l -> l > 0)
       .average();
 
-    LOG.debug("average time to simulated task is {}", average.orElse(0));
     // convert to long and save.
     return (long) (average.orElse(0) + 0.5);  // 0 to indicate something went wrong
   }
@@ -132,13 +129,20 @@ public final class SimulatedTaskExecutor {
    * @param task the task to execute.
    */
   public void onTaskReceived(final Task task) {
+    if (executorInitializationTime < 0) {
+      executorInitializationTime = System.currentTimeMillis();
+      currentTime.set(executorInitializationTime);
+      timeCheckpoint = executorInitializationTime;
+    }
     final String taskId = task.getTaskId();
     final int attemptIdx = task.getAttemptIdx();
     String idOfVertexPutOnHold = null;
-    final long executionStartTime = System.currentTimeMillis();
+
+    final long schedulingOverhead = System.currentTimeMillis() - this.timeCheckpoint;
+    this.timeCheckpoint = System.currentTimeMillis();
     this.sendMetric(TASK_METRIC_ID, taskId, "schedulingOverhead",
-      SerializationUtils.serialize(executionStartTime - this.currentTime.getValue()));
-    this.currentTime.setValue(executionStartTime);
+      SerializationUtils.serialize(schedulingOverhead));
+    final long executionStartTime = this.currentTime.getAndAdd(schedulingOverhead);
 
     // Prepare (constructor of TaskExecutor)
 
@@ -147,7 +151,7 @@ public final class SimulatedTaskExecutor {
     // Connect incoming / outgoing edges.
 
     // Execute
-    LOG.info("{} started", taskId);
+    LOG.debug("{} started", taskId);
 
     // Fetch external data (Read) and process them
     // this.sendMetric(TASK_METRIC_ID, taskId,
@@ -161,27 +165,29 @@ public final class SimulatedTaskExecutor {
     // this.sendMetric(TASK_METRIC_ID, taskId,
     //   "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
 
-    this.currentTime.add(this.calculateExpectedTaskDuration(task));
+    final long expectedTaskDuration = this.calculateExpectedTaskDuration(task);
+    this.currentTime.getAndAdd(expectedTaskDuration);
 
     this.sendMetric(TASK_METRIC_ID, taskId, "taskDuration",
-      SerializationUtils.serialize(this.currentTime.getValue() - executionStartTime));
+      SerializationUtils.serialize(this.currentTime.get() - executionStartTime));
+    this.timeCheckpoint = System.currentTimeMillis();
     if (idOfVertexPutOnHold == null) {
       this.onTaskStateChanged(taskId, attemptIdx, TaskState.State.COMPLETE,
         Optional.empty(), Optional.empty());
-      LOG.info("{} completed", taskId);
+      LOG.debug("{} completed", taskId);
     } else {
       this.onTaskStateChanged(taskId, attemptIdx, TaskState.State.ON_HOLD,
         Optional.of(idOfVertexPutOnHold), Optional.empty());
-      LOG.info("{} on hold", taskId);
+      LOG.debug("{} on hold", taskId);
     }
   }
 
   /**
    *
-   * @return the time of the construction of the class.
+   * @return the elapsed time for the executor.
    */
-  public Long getExecutorInitializationTime() {
-    return executorInitializationTime;
+  public Long getElapsedTime() {
+    return currentTime.get() - executorInitializationTime;
   }
 
   /**
@@ -200,7 +206,7 @@ public final class SimulatedTaskExecutor {
                                   final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     this.sendMetric("TaskMetric", taskId,
       "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
-        this.currentTime.getValue(), null, newState
+        this.currentTime.get(), null, newState
       )));
 
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
