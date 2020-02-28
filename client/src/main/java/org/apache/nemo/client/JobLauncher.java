@@ -264,7 +264,7 @@ public final class JobLauncher {
                                final Map<Serializable, Object> broadcastVariables,
                                final String jobId) {
     // launch driver if it hasn't been already
-    if (driverReadyLatch == null) {
+    if (driverReadyLatch == null || jobDoneLatch == null) {
       try {
         setup(new String[]{"-job_id", jobId});
       } catch (Exception e) {
@@ -284,7 +284,7 @@ public final class JobLauncher {
 
     LOG.info("Launching DAG...");
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-    if (jobDoneLatch == null || jobDoneLatch.getCount() == 0) {
+    if (jobDoneLatch.getCount() == 0) {  // when this is not the first execution.
       jobDoneLatch = new CountDownLatch(1);
     }
 

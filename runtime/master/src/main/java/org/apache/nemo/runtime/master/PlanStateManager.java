@@ -445,7 +445,7 @@ public final class PlanStateManager {
    * @return the final state of this plan.
    */
   public PlanState.State waitUntilFinish() {
-    return waitUntilFinish(0, TimeUnit.MILLISECONDS);
+    return waitUntilFinish(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -460,15 +460,9 @@ public final class PlanStateManager {
     finishLock.lock();
     try {
       if (!isPlanDone()) {
-        if (timeout < 1) {
-          while (!isPlanDone()) {
-            planFinishedCondition.await();
-          }
-        } else {
-          while (!planFinishedCondition.await(timeout, unit)) {
-            LOG.warn("Timeout during waiting the finish of Plan ID {}", planId);
-            Thread.currentThread().interrupt();
-          }
+        while (!planFinishedCondition.await(timeout, unit)) {
+          LOG.warn("Timeout during waiting the finish of Plan ID {}", planId);
+          Thread.currentThread().interrupt();
         }
       }
     } catch (final InterruptedException e) {

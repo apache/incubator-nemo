@@ -90,12 +90,7 @@ public abstract class ClientEndpoint {
     try {
       if (driverEndpoint.get() == null) {
         // If the driver endpoint is not connected, wait.
-        if (timeout < 1) {
-          driverConnected.await();
-          return true;
-        } else {
-          return driverConnected.await(timeout, unit);
-        }
+        return driverConnected.await(timeout, unit);
       } else {
         return true;
       }
@@ -114,7 +109,7 @@ public abstract class ClientEndpoint {
    * @return {@code true} if the manager set.
    */
   private boolean waitUntilConnected() {
-    return waitUntilConnected(0, TimeUnit.MILLISECONDS);
+    return waitUntilConnected(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -145,12 +140,8 @@ public abstract class ClientEndpoint {
     } else {
       // The driver endpoint is not connected yet.
       final long currentNano = System.nanoTime();
-      final boolean driverIsConnected;
-      if (timeout > 0 && DEFAULT_DRIVER_WAIT_IN_MILLIS < unit.toMillis(timeout)) {
-        driverIsConnected = waitUntilConnected(DEFAULT_DRIVER_WAIT_IN_MILLIS, TimeUnit.MILLISECONDS);
-      } else {
-        driverIsConnected = waitUntilConnected(timeout, unit);
-      }
+      final boolean driverIsConnected =
+        waitUntilConnected(Math.min(DEFAULT_DRIVER_WAIT_IN_MILLIS, unit.toMillis(timeout)), TimeUnit.MILLISECONDS);
 
       if (driverIsConnected) {
         final long consumedTime = System.nanoTime() - currentNano;
@@ -169,6 +160,6 @@ public abstract class ClientEndpoint {
    * @return the final state of this job.
    */
   public final Enum waitUntilJobFinish() {
-    return waitUntilJobFinish(0, TimeUnit.MILLISECONDS);
+    return waitUntilJobFinish(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
   }
 }

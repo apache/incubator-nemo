@@ -83,6 +83,6 @@ public final class DriverEndpoint {
    * @return the final state of this plan.
    */
   PlanState.State waitUntilFinish() {
-    return waitUntilFinish(0, TimeUnit.MILLISECONDS);
+    return waitUntilFinish(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
   }
 }
