@@ -188,11 +188,9 @@ public final class JobScaler {
 
         LOG.info(sb.toString());
 
-
         final double cpuAvg = executorCpuUseMap.values().stream()
           .map(pair -> pair.left())
           .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
-
 
         // 60초 이후에 scaling
         LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
@@ -283,7 +281,7 @@ public final class JobScaler {
                     executionStatus == ExecutionStatus.SF_SCALE_OUT &&
                     cpuSfPlusAvg < ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
                     isVmScalingWorkerReady() &&
-                    System.currentTimeMillis() - scalingDoneTime >= 20000) {
+                    recentInputRate * 1.1 >= throughput) {
                     // SF to VM scaling out
                     executionStatus = ExecutionStatus.VM_SCALE_OUT;
                     moveToVmScalingWorkers();
@@ -291,7 +289,8 @@ public final class JobScaler {
 
                   } else if (evalConf.sfToVm &&
                     executionStatus == ExecutionStatus.VM_SCALE_OUT &&
-                    cpuSfPlusAvg < ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&
+                    cpuSfPlusAvg < ScalingPolicyParameters.CPU_LOW_THRESHOLD &&
+                    recentInputRate * 1.1 >= throughput &&
                     System.currentTimeMillis() - vmScalingTime >= 30000) {
 
                     // VM scaling -> VM scaling in
@@ -755,6 +754,10 @@ public final class JobScaler {
             .build());
       });
     }
+  }
+
+  private void createVmWorkers() {
+
   }
 
   private void scalingOutConsideringKeyAndComm(final long thp, final long input_rate) {
