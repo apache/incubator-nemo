@@ -24,9 +24,11 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.EnableDynamicTaskSizingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 
@@ -99,6 +101,19 @@ public final class Stage extends Vertex {
       .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
   }
 
+  /**
+   * @return the enable property of dynamic task sizing. If not exists, return false.
+   */
+  public boolean getEnableDynamicTaskSizing() {
+    return executionProperties.get(EnableDynamicTaskSizingProperty.class).orElse(false);
+  }
+
+  /**
+   * @return the number of partitions.
+   */
+  public int getPartitionerProperty() {
+    return executionProperties.get(PartitionerProperty.class).get().right();
+  }
   /**
    * @return the schedule group.
    */
