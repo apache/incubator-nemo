@@ -54,8 +54,9 @@ under the License.
 
   <!-- Checks whether files end with a new line.                        -->
   <!-- See http://checkstyle.sf.net/config_misc.html#NewlineAtEndOfFile -->
-  <module name="NewlineAtEndOfFile"/>
-
+  <module name="NewlineAtEndOfFile">
+    <property name="lineSeparator" value="lf" />
+  </module>
   <!-- Checks that property files contain the same keys.         -->
   <!-- See http://checkstyle.sf.net/config_misc.html#Translation -->
   <module name="Translation"/>
@@ -71,7 +72,7 @@ under the License.
   <!-- Miscellaneous other checks.                   -->
   <!-- See http://checkstyle.sf.net/config_misc.html -->
   <module name="RegexpSingleline">
-    <property name="format" value="\s+$"/>
+    <property name="format" value="(?<!\*)\s+$|\*\s\s+$"/>
     <property name="minimum" value="0"/>
     <property name="maximum" value="0"/>
     <property name="message" value="Line has trailing spaces."/>
