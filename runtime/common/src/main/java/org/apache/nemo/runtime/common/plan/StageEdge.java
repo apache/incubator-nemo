@@ -156,7 +156,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   /**
-   * get keyRanges for shuffle edge
+   * get keyRanges for shuffle edge.
    * If the destination vertex is enabled for dynamic task sizing,
    * @return {@link org.apache.nemo.common.ir.edge.executionproperty.SubPartitionSetProperty} value.
    * Else,
