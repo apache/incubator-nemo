@@ -252,7 +252,8 @@ public final class SimulationScheduler implements Scheduler {
 
     if (earliest.isPresent()) {
       final List<Task> tasksToSchedule = earliest.get().stream()
-        .flatMap(stage -> BatchSchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
+        .flatMap(stage ->
+          BatchSchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
         .collect(Collectors.toList());
       if (!tasksToSchedule.isEmpty()) {
         LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
@@ -357,7 +358,8 @@ public final class SimulationScheduler implements Scheduler {
         break;
       case ON_HOLD:
         final java.util.Optional<PhysicalPlan> optionalPhysicalPlan =
-          BatchSchedulerUtils.onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
+          BatchSchedulerUtils
+            .onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
         optionalPhysicalPlan.ifPresent(this::updatePlan);
         break;
       case FAILED:
