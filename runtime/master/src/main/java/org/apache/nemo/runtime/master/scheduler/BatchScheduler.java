@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
  * (i.e., runtimeMasterThread in RuntimeMaster)
  * <p>
  * BatchScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
+ *
+ * Note: When modifying this class, take a look at {@link SimulationScheduler}.
  */
 @DriverSide
 @NotThreadSafe
@@ -60,20 +62,20 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Components related to scheduling the given plan.
    */
-  private final TaskDispatcher taskDispatcher;
-  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private final ExecutorRegistry executorRegistry;
-  private final PlanStateManager planStateManager;
+  private final TaskDispatcher taskDispatcher;  // Class for dispatching tasks.
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;  // A 'pointer' to the list of pending tasks.
+  private final ExecutorRegistry executorRegistry;  // A registry for executors available for the job.
+  private final PlanStateManager planStateManager;  // A component that manages the state of the plan.
 
   /**
    * Other necessary components of this {@link org.apache.nemo.runtime.master.RuntimeMaster}.
    */
-  private final BlockManagerMaster blockManagerMaster;
+  private final BlockManagerMaster blockManagerMaster;  // A component that manages data blocks.
 
   /**
    * The below variables depend on the submitted plan to execute.
    */
-  private List<List<Stage>> sortedScheduleGroups;
+  private List<List<Stage>> sortedScheduleGroups;  // Stages, sorted in the order to be scheduled.
 
   @Inject
   private BatchScheduler(final PlanRewriter planRewriter,
@@ -124,7 +126,7 @@ public final class BatchScheduler implements Scheduler {
    * @param data             of the message.
    */
   public void onRunTimePassMessage(final String taskId, final Object data) {
-    SchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
+    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
   }
 
   ////////////////////////////////////////////////////////////////////// Methods for scheduling.
@@ -180,16 +182,16 @@ public final class BatchScheduler implements Scheduler {
     planStateManager.onTaskStateChanged(taskId, newState);
     switch (newState) {
       case COMPLETE:
-        SchedulerUtils.onTaskExecutionComplete(executorRegistry, executorId, taskId);
+        BatchSchedulerUtils.onTaskExecutionComplete(executorRegistry, executorId, taskId);
         break;
       case SHOULD_RETRY:
         // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
-        SchedulerUtils.onTaskExecutionFailedRecoverable(planStateManager, blockManagerMaster, executorRegistry,
+        BatchSchedulerUtils.onTaskExecutionFailedRecoverable(planStateManager, blockManagerMaster, executorRegistry,
           executorId, taskId, failureCause);
         break;
       case ON_HOLD:
         final Optional<PhysicalPlan> optionalPhysicalPlan =
-          SchedulerUtils.onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
+          BatchSchedulerUtils.onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
         optionalPhysicalPlan.ifPresent(this::updatePlan);
         break;
       case FAILED:
@@ -238,7 +240,7 @@ public final class BatchScheduler implements Scheduler {
   public void onSpeculativeExecutionCheck() {
     MutableBoolean isNewCloneCreated = new MutableBoolean(false);
 
-    SchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager).ifPresent(scheduleGroup ->
+    BatchSchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager).ifPresent(scheduleGroup ->
       scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
         final Stage stage = planStateManager.getPhysicalPlan().getStageDAG().getVertexById(stageId);
 
@@ -279,7 +281,7 @@ public final class BatchScheduler implements Scheduler {
     interruptedTasks.forEach(blockManagerMaster::onProducerTaskFailed);
 
     // Retry the interrupted tasks (and required parents)
-    SchedulerUtils.retryTasksAndRequiredParents(planStateManager, blockManagerMaster, interruptedTasks);
+    BatchSchedulerUtils.retryTasksAndRequiredParents(planStateManager, blockManagerMaster, interruptedTasks);
 
     // Trigger the scheduling of SHOULD_RETRY tasks in the earliest scheduleGroup
     doSchedule();
@@ -303,11 +305,11 @@ public final class BatchScheduler implements Scheduler {
    */
   private void doSchedule() {
     final Optional<List<Stage>> earliest =
-      SchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
+      BatchSchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
 
     if (earliest.isPresent()) {
       final List<Task> tasksToSchedule = earliest.get().stream()
-        .flatMap(stage -> SchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
+        .flatMap(stage -> BatchSchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
         .collect(Collectors.toList());
       if (!tasksToSchedule.isEmpty()) {
         LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()

@@ -145,25 +145,14 @@ public final class SimulatedTaskExecutor {
     final long executionStartTime = this.currentTime.getAndAdd(schedulingOverhead);
 
     // Prepare (constructor of TaskExecutor)
-
     // Deserialize task
-
     // Connect incoming / outgoing edges.
 
     // Execute
     LOG.debug("{} started", taskId);
 
     // Fetch external data (Read) and process them
-    // this.sendMetric(TASK_METRIC_ID, taskId,
-    //   "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
-    // this.sendMetric(TASK_METRIC_ID, taskId,
-    //   "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
-    // this.sendMetric(TASK_METRIC_ID, taskId,
-    //   "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
-
     // Finalize vertex and write
-    // this.sendMetric(TASK_METRIC_ID, taskId,
-    //   "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
 
     final long expectedTaskDuration = this.calculateExpectedTaskDuration(task);
     this.currentTime.getAndAdd(expectedTaskDuration);

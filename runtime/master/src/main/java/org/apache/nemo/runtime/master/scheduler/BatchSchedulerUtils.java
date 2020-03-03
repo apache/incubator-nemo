@@ -44,13 +44,13 @@ import java.util.stream.Collectors;
 /**
  * Utlity methods regarding schedulers.
  */
-public final class SchedulerUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(SchedulerUtils.class.getName());
+public final class BatchSchedulerUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerUtils.class.getName());
 
   /**
    * Private constructor for utility class.
    */
-  private SchedulerUtils() {
+  private BatchSchedulerUtils() {
   }
 
 
@@ -92,7 +92,7 @@ public final class SchedulerUtils {
     final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      final Set<String> blockIds = SchedulerUtils.getOutputBlockIds(planStateManager, taskId);
+      final Set<String> blockIds = BatchSchedulerUtils.getOutputBlockIds(planStateManager, taskId);
       blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
@@ -254,8 +254,8 @@ public final class SchedulerUtils {
    */
   public static void onRunTimePassMessage(final PlanStateManager planStateManager, final PlanRewriter planRewriter,
                                           final String taskId, final Object data) {
-    final Set<StageEdge> targetEdges = SchedulerUtils.getEdgesToOptimize(planStateManager, taskId);
-    planRewriter.accumulate(SchedulerUtils.getMessageId(targetEdges), data);
+    final Set<StageEdge> targetEdges = BatchSchedulerUtils.getEdgesToOptimize(planStateManager, taskId);
+    planRewriter.accumulate(BatchSchedulerUtils.getMessageId(targetEdges), data);
   }
 
   static int getMessageId(final Set<StageEdge> stageEdges) {

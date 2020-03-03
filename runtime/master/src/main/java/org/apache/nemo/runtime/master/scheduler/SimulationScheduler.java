@@ -65,7 +65,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * Scheduler for simulating an execution, not controlled by the runtime master.
+ * Scheduler for simulating an execution not controlled by the runtime master. This class follows the structure of
+ * {@link BatchScheduler}, so when a change has to be made on BatchScheduler, it also means that it should be
+ * reflected in this class as well.
  */
 @DriverSide
 @NotThreadSafe
@@ -78,23 +80,51 @@ public final class SimulationScheduler implements Scheduler {
   private final PlanRewriter planRewriter;
 
   /**
-   * Components related to scheduling the given plan.
+   * Components related to scheduling the given plan. The role of each class can be found in {@link BatchScheduler}.
    */
   private TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private ExecutorRegistry executorRegistry;
   private PlanStateManager planStateManager;
-  private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
+
+  /**
+   * Executor service for scheduling message serialization.
+   */
+  private final ExecutorService serializationExecutorService;
+
+  /**
+   *  A component that manages data blocks. We actually don't call for the real data in simulations,
+   *  so it's just here to prevent errors.
+   */
   private final BlockManagerMaster blockManagerMaster;
+
+  /**
+   * The actual metric store, from the actual job that's running, which calls for the simulation to occur.
+   */
   private final MetricStore actualMetricStore;
+  /**
+   * The metric store for the simulation. This adds up the metrics for the simulated task executions.
+   */
   private MetricStore metricStore;
+  /**
+   * A latch to confirm that the job has finished and all metrics has been flushed.
+   */
   private CountDownLatch metricCountDownLatch;
 
+  /**
+   * Components that tell how to schedule the given tasks.
+   */
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
+  /**
+   * String to generate simulated executors from.
+   */
   private final String resourceSpecificationString;
   private final String dagDirectory;
 
+  /**
+   * A map from executor ID to the simulated task executor object.
+   */
   private final Map<String, SimulatedTaskExecutor> simulatedTaskExecutorMap;
 
   /**
@@ -218,11 +248,11 @@ public final class SimulationScheduler implements Scheduler {
    */
   private void doSchedule() {
     final java.util.Optional<List<Stage>> earliest =
-      SchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
+      BatchSchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
 
     if (earliest.isPresent()) {
       final List<Task> tasksToSchedule = earliest.get().stream()
-        .flatMap(stage -> SchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
+        .flatMap(stage -> BatchSchedulerUtils.selectSchedulableTasks(planStateManager, blockManagerMaster, stage).stream())
         .collect(Collectors.toList());
       if (!tasksToSchedule.isEmpty()) {
         LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
@@ -289,7 +319,7 @@ public final class SimulationScheduler implements Scheduler {
     });
 
     // Retry the interrupted tasks (and required parents)
-    SchedulerUtils.retryTasksAndRequiredParents(planStateManager, blockManagerMaster, interruptedTasks);
+    BatchSchedulerUtils.retryTasksAndRequiredParents(planStateManager, blockManagerMaster, interruptedTasks);
 
     // Trigger the scheduling of SHOULD_RETRY tasks in the earliest scheduleGroup
     doSchedule();
@@ -303,7 +333,7 @@ public final class SimulationScheduler implements Scheduler {
    */
   public void onRunTimePassMessage(final String taskId, final Object data) {
     // TODO #436: Dynamic task resizing.
-    SchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
+    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
   }
 
   @Override
@@ -318,16 +348,16 @@ public final class SimulationScheduler implements Scheduler {
     planStateManager.onTaskStateChanged(taskId, newState);
     switch (newState) {
       case COMPLETE:
-        SchedulerUtils.onTaskExecutionComplete(executorRegistry, executorId, taskId);
+        BatchSchedulerUtils.onTaskExecutionComplete(executorRegistry, executorId, taskId);
         break;
       case SHOULD_RETRY:
         // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
-        SchedulerUtils.onTaskExecutionFailedRecoverable(planStateManager, blockManagerMaster, executorRegistry,
+        BatchSchedulerUtils.onTaskExecutionFailedRecoverable(planStateManager, blockManagerMaster, executorRegistry,
           executorId, taskId, failureCause);
         break;
       case ON_HOLD:
         final java.util.Optional<PhysicalPlan> optionalPhysicalPlan =
-          SchedulerUtils.onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
+          BatchSchedulerUtils.onTaskExecutionOnHold(planStateManager, executorRegistry, planRewriter, executorId, taskId);
         optionalPhysicalPlan.ifPresent(this::updatePlan);
         break;
       case FAILED:
