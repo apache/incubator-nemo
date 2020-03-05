@@ -266,7 +266,6 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         break;
       case "schedulingOverhead":
         setSchedulingOverhead(SerializationUtils.deserialize(metricValue));
-        setSchedulingOverhead(SerializationUtils.deserialize(metricValue));
         break;
       case "serializedReadBytes":
         setSerializedReadBytes(SerializationUtils.deserialize(metricValue));
@@ -299,7 +298,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         break;
       case "taskSerializationTime":
         setTaskSerializationTime(SerializationUtils.deserialize(metricValue));
-      break;
+        break;
       case "peakExecutionMemory":
         setPeakExecutionMemory(SerializationUtils.deserialize(metricValue));
         break;
@@ -318,7 +317,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
       case "shuffleWriteTime":
         setShuffleWriteTime(SerializationUtils.deserialize(metricValue));
         break;
-        default:
+      default:
         LOG.warn("metricField {} is not supported.", metricField);
         return false;
     }

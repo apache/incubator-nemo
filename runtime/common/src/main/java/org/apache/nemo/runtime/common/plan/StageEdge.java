@@ -156,12 +156,12 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   /**
-   * get keyRanges for shuffle edge.
+   * Get keyRanges for shuffle edge.
    * If the destination vertex is enabled for dynamic task sizing,
    * @return {@link org.apache.nemo.common.ir.edge.executionproperty.SubPartitionSetProperty} value.
    * Else,
    * @return {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty} value.
-   * If both not exists, return default partition set made from parallelism.
+   * If both doesn't exist, return default partition set made from parallelism.
    */
   public List<KeyRange> getKeyRanges() {
     final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>();
@@ -171,7 +171,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     }
     if (getDst().getEnableDynamicTaskSizing()) {
       keyRanges = getExecutionProperties()
-        .get(SubPartitionSetProperty.class).orElse(defaultPartitionSet); // orElseThrow?
+        .get(SubPartitionSetProperty.class).orElse(defaultPartitionSet);
     } else {
       keyRanges = getExecutionProperties()
         .get(PartitionSetProperty.class).orElse(defaultPartitionSet);

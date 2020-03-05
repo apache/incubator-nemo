@@ -46,7 +46,6 @@ public final class JobMetric implements StateMetric<PlanState.State> {
   private String vertexProperties;
   private String edgeProperties;
   private JsonNode irDagJson;
-  private volatile DAG<Stage, StageEdge> stageDAG;
   private JsonNode stageDagJson;
   private Long jobDuration;
 

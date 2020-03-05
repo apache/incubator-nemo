@@ -463,9 +463,6 @@ public final class DataTransferTest {
       }
       dataReadList2.add(dataRead2);
     });
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-
-    });
 
     // Compare (should be the same)
     final List flattenedWrittenData = flatten(dataWrittenList);
