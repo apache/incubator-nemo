@@ -40,7 +40,7 @@ import java.util.function.IntPredicate;
 /**
  * IRVertex that contains a partial DAG that is iterative.
  */
-public final class LoopVertex extends IRVertex {
+public class LoopVertex extends IRVertex {
 
   private final AtomicInteger duplicateEdgeGroupId = new AtomicInteger(0);
   // Contains DAG information
@@ -95,7 +95,7 @@ public final class LoopVertex extends IRVertex {
   }
 
   @Override
-  public LoopVertex getClone() {
+  public final LoopVertex getClone() {
     return new LoopVertex(this);
   }
 
