@@ -22,7 +22,7 @@ under the License.
   <parent>
     <artifactId>nemo-project</artifactId>
     <groupId>org.apache.nemo</groupId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
