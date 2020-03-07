@@ -60,10 +60,8 @@ public final class TaskStateManager {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
 
-    metricMessageSender.send(METRIC, taskId,
-      "containerId", SerializationUtils.serialize(executorId));
-    metricMessageSender.send(METRIC, taskId,
-      "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
+    metricMessageSender.send(METRIC, taskId, "containerId", SerializationUtils.serialize(executorId));
+    metricMessageSender.send(METRIC, taskId, "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
   }
 
   /**
@@ -76,8 +74,8 @@ public final class TaskStateManager {
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableTaskFailureCause> cause) {
-    metricMessageSender.send("TaskMetric", taskId,
-      "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
+    metricMessageSender.send("TaskMetric", taskId, "stateTransitionEvent",
+      SerializationUtils.serialize(new StateTransitionEvent<>(
         System.currentTimeMillis(), null, newState
       )));
 

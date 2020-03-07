@@ -23,7 +23,9 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
@@ -38,6 +40,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class PipeInputReader implements InputReader {
   private final PipeManagerWorker pipeManagerWorker;
+  private final MetricMessageSender metricMessageSender;
 
   private final int dstTaskIndex;
 
@@ -47,14 +50,16 @@ public final class PipeInputReader implements InputReader {
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
-  PipeInputReader(final int dstTaskIdx,
+  PipeInputReader(final String dstTaskId,
                   final IRVertex srcIRVertex,
                   final RuntimeEdge runtimeEdge,
-                  final PipeManagerWorker pipeManagerWorker) {
-    this.dstTaskIndex = dstTaskIdx;
+                  final PipeManagerWorker pipeManagerWorker,
+                  final MetricMessageSender metricMessageSender) {
+    this.dstTaskIndex = RuntimeIdManager.getIndexFromTaskId(dstTaskId);
     this.srcVertex = srcIRVertex;
     this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.metricMessageSender = metricMessageSender;
   }
 
   @Override

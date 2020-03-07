@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.beam.repackaged.core.org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
@@ -25,12 +26,14 @@ import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 
@@ -46,7 +49,8 @@ import java.util.function.Predicate;
  */
 public final class BlockInputReader implements InputReader {
   private final BlockManagerWorker blockManagerWorker;
-
+  private final MetricMessageSender metricMessageSender;
+  private final String dstTaskId;
   private final int dstTaskIndex;
 
   /**
@@ -55,14 +59,17 @@ public final class BlockInputReader implements InputReader {
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
-  BlockInputReader(final int dstTaskIndex,
+  BlockInputReader(final String dstTaskId,
                    final IRVertex srcVertex,
                    final RuntimeEdge runtimeEdge,
-                   final BlockManagerWorker blockManagerWorker) {
-    this.dstTaskIndex = dstTaskIndex;
+                   final BlockManagerWorker blockManagerWorker,
+                   final MetricMessageSender metricMessageSender) {
+    this.dstTaskId = dstTaskId;
+    this.dstTaskIndex = RuntimeIdManager.getIndexFromTaskId(dstTaskId);
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
+    this.metricMessageSender = metricMessageSender;
   }
 
   @Override
@@ -168,6 +175,11 @@ public final class BlockInputReader implements InputReader {
       throw new BlockFetchException(
         new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
+    final int partitionerProperty = ((StageEdge) runtimeEdge).getPropertyValue(PartitionerProperty.class).get().right();
+    final int taskSize = ((HashRange) hashRangeToRead).rangeEndExclusive()
+      - ((HashRange) hashRangeToRead).rangeBeginInclusive();
+    metricMessageSender.send("TaskMetric", dstTaskId, "taskSizeRatio",
+      SerializationUtils.serialize(partitionerProperty / taskSize));
     final int numSrcTasks = InputReader.getSourceParallelism(this);
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
