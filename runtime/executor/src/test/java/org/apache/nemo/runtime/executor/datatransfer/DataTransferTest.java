@@ -46,6 +46,7 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.Executor;
+import org.apache.nemo.runtime.executor.MetricManagerWorker;
 import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -126,6 +127,7 @@ public final class DataTransferTest {
   private IntermediateDataIOFactory transferFactory;
   private BlockManagerWorker worker2;
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
+  private MetricManagerWorker metricMessageSender;
 
   @Before
   public void setUp() throws InjectionException {
@@ -153,6 +155,7 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
     injector.getInstance(RuntimeMaster.class);
     final BlockManagerMaster master = injector.getInstance(BlockManagerMaster.class);
+    final MetricManagerWorker metricMessageSender = injector.getInstance(MetricManagerWorker.class);
 
     final Injector nameClientInjector = createNameClientInjector();
     nameClientInjector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
@@ -164,6 +167,8 @@ public final class DataTransferTest {
     this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
       nameClientInjector).left();
+
+    this.metricMessageSender = metricMessageSender;
   }
 
   @After
@@ -346,10 +351,9 @@ public final class DataTransferTest {
 
     // Read
     final List<List> dataReadList = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+    TestUtil.generateTaskIds(dstStage).forEach(dstTaskId -> {
       final InputReader reader =
-        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
-
+        new BlockInputReader(dstTaskId, srcVertex, dummyEdge, receiver, metricMessageSender);
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
       final List dataRead = new ArrayList<>();
@@ -432,11 +436,12 @@ public final class DataTransferTest {
     // Read
     final List<List> dataReadList = new ArrayList<>();
     final List<List> dataReadList2 = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+
+    TestUtil.generateTaskIds(dstStage).forEach(dstTaskId -> {
       final InputReader reader =
-        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+        new BlockInputReader(dstTaskId, srcVertex, dummyEdge, receiver, metricMessageSender);
       final InputReader reader2 =
-        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+        new BlockInputReader(dstTaskId, srcVertex, dummyEdge2, receiver, metricMessageSender);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 

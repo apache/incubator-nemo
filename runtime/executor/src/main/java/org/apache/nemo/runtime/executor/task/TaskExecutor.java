@@ -265,7 +265,7 @@ public final class TaskExecutor {
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge ->
           Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))
+            .createReader(task.getTaskId(), incomingEdge.getSrcIRVertex(), incomingEdge)))
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
             final StageEdge edge = pair.left();
@@ -629,13 +629,13 @@ public final class TaskExecutor {
     }
   }
 
-  private List<InputReader> getParentTaskReaders(final int taskIndex,
+  private List<InputReader> getParentTaskReaders(final String dstTaskId,
                                                  final List<StageEdge> inEdgesFromParentTasks,
                                                  final IntermediateDataIOFactory intermediateDataIOFactory) {
     return inEdgesFromParentTasks
       .stream()
       .map(inEdgeForThisVertex -> intermediateDataIOFactory
-        .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
+        .createReader(dstTaskId, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
       .collect(Collectors.toList());
   }
 
@@ -706,7 +706,7 @@ public final class TaskExecutor {
     }
 
     // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "writtenBytes",
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskOutputBytes",
       SerializationUtils.serialize(totalWrittenBytes));
   }
 }
