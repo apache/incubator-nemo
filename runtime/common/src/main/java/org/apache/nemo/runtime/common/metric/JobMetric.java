@@ -47,6 +47,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
   private String edgeProperties;
   private JsonNode irDagJson;
   private JsonNode stageDagJson;
+  private Long jobDuration;
 
   /**
    * Constructor.
@@ -134,6 +135,14 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     } catch (final IOException e) {
       throw new MetricException(e);
     }
+  }
+
+  public Long getJobDuration() {
+    return jobDuration;
+  }
+
+  public void setJobDuration(final Long jobDuration) {
+    this.jobDuration = jobDuration;
   }
 
   @Override
