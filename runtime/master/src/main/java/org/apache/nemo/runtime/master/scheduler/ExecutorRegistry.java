@@ -57,6 +57,14 @@ public final class ExecutorRegistry {
     this.executors = new HashMap<>();
   }
 
+  /**
+   * Static constructor for manual usage.
+   * @return a new instance of ExecutorRegistry.
+   */
+  public static ExecutorRegistry newInstance() {
+    return new ExecutorRegistry();
+  }
+
   synchronized void registerExecutor(final ExecutorRepresenter executor) {
     final String executorId = executor.getExecutorId();
     if (executors.containsKey(executorId)) {

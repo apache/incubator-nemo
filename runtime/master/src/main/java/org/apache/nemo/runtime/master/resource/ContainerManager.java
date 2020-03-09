@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
+import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.FailedMessageSender;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;

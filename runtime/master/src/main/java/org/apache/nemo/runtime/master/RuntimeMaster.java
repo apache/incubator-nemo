@@ -18,31 +18,28 @@
  */
 package org.apache.nemo.runtime.master;
 
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.exception.*;
+import org.apache.nemo.common.Util;
+import org.apache.nemo.common.exception.ContainerException;
+import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.ClientRPC;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.message.*;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.servlet.*;
@@ -60,12 +57,12 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.Serializable;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
-import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
@@ -305,33 +302,14 @@ public final class RuntimeMaster {
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
-        final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+        final List<Pair<Integer, ResourceSpecification>> resourceSpecificationList =  // pair of (# of executors, specs)
+          Util.parseResourceSpecificationString(resourceSpecificationString);
 
-        for (int i = 0; i < jsonRootNode.size(); i++) {
-          final TreeNode resourceNode = jsonRootNode.get(i);
-          final String type = resourceNode.get("type").traverse().nextTextValue();
-          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
-          final OptionalDouble maxOffheapRatio;
-          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
-          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          final OptionalInt poisonSec;
-
-          if (resourceNode.path("max_offheap_ratio").traverse().nextToken() == JsonToken.VALUE_NUMBER_FLOAT) {
-            maxOffheapRatio = OptionalDouble.of(resourceNode.path("max_offheap_ratio").traverse().getDoubleValue());
-          } else {
-            maxOffheapRatio = OptionalDouble.empty();
-          }
-
-          if (resourceNode.path("poison_sec").traverse().nextToken() == JsonToken.VALUE_NUMBER_INT) {
-            poisonSec = OptionalInt.of(resourceNode.path("poison_sec").traverse().getIntValue());
-          } else {
-            poisonSec = OptionalInt.empty();
-          }
-
-          resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory,
-            maxOffheapRatio, poisonSec));
+        for (final Pair<Integer, ResourceSpecification> resourceSpecification: resourceSpecificationList) {
+          resourceRequestCount.getAndAdd(resourceSpecification.left());
+          containerManager.requestContainer(resourceSpecification.left(), resourceSpecification.right());
         }
+
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
         throw new ContainerException(e);
@@ -454,9 +432,9 @@ public final class RuntimeMaster {
         scheduler.onTaskStateReportFromExecutor(taskStateChangedMsg.getExecutorId(),
           taskStateChangedMsg.getTaskId(),
           taskStateChangedMsg.getAttemptIdx(),
-          convertTaskState(taskStateChangedMsg.getState()),
+          MessageUtils.convertTaskState(taskStateChangedMsg.getState()),
           taskStateChangedMsg.getVertexPutOnHoldId(),
-          convertFailureCause(taskStateChangedMsg.getFailureCause()));
+          MessageUtils.convertFailureCause(taskStateChangedMsg.getFailureCause()));
         break;
       case ExecutorFailed:
         // Executor failed due to user code.
@@ -490,38 +468,6 @@ public final class RuntimeMaster {
       default:
         throw new IllegalMessageException(
           new Exception("This message should not be received by Master :" + message.getType()));
-    }
-  }
-
-  private static TaskState.State convertTaskState(final ControlMessage.TaskStateFromExecutor state) {
-    switch (state) {
-      case READY:
-        return TaskState.State.READY;
-      case EXECUTING:
-        return TaskState.State.EXECUTING;
-      case COMPLETE:
-        return COMPLETE;
-      case FAILED_RECOVERABLE:
-        return TaskState.State.SHOULD_RETRY;
-      case FAILED_UNRECOVERABLE:
-        return TaskState.State.FAILED;
-      case ON_HOLD:
-        return ON_HOLD;
-      default:
-        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + state));
-    }
-  }
-
-  private TaskState.RecoverableTaskFailureCause convertFailureCause(
-    final ControlMessage.RecoverableFailureCause cause) {
-    switch (cause) {
-      case InputReadFailure:
-        return TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE;
-      case OutputWriteFailure:
-        return TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE;
-      default:
-        throw new UnknownFailureCauseException(
-          new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 
