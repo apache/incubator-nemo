@@ -23,7 +23,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;

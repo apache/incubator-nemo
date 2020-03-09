@@ -30,7 +30,7 @@ import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
