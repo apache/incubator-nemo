@@ -22,9 +22,9 @@ dist: trusty
 # For maven builds
 language: java
 jdk:
-  - oraclejdk8
   - oraclejdk11
   - openjdk11
+  - openjdk13
 env:
   global:
     - HADOOP_HOME="/"
