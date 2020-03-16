@@ -24,7 +24,6 @@ language: java
 jdk:
   - oraclejdk11
   - openjdk11
-  - openjdk12
 env:
   global:
     - HADOOP_HOME="/"
