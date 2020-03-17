@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.utility;
+package org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;

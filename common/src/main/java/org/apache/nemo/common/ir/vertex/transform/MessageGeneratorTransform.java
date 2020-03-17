@@ -20,7 +20,7 @@ package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageGeneratorVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
