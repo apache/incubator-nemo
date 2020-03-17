@@ -160,14 +160,14 @@ public class LoopVertex extends IRVertex {
   }
 
   /**
-   * Getter method for edgeWithLoopToEdgeWithInternalVertex
+   * Getter method for edgeWithLoopToEdgeWithInternalVertex.
    */
   public Map<IREdge, IREdge> getEdgeWithLoopToEdgeWithInternalVertex() {
     return this.edgeWithLoopToEdgeWithInternalVertex;
   }
 
   /**
-   * Getter method for edgeWithInternalVertexToEdgeWithLoop
+   * Getter method for edgeWithInternalVertexToEdgeWithLoop.
    */
   public Map<IREdge, IREdge> getEdgeWithInternalVertexToEdgeWithLoop() {
     return this.edgeWithInternalVertexToEdgeWithLoop;
@@ -247,7 +247,7 @@ public class LoopVertex extends IRVertex {
   }
 
   /**
-   * Removes non iterative incoming edge
+   * Removes non iterative incoming edge.
    * @param edge edge to remove.
    */
   public void removeNonIterativeIncomingEdge(final IREdge edge) {

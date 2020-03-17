@@ -22,6 +22,9 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class evokes run-time pass when there's no need to transfer any run-time information.
+ */
 public final class SignalTransform extends NoWatermarkEmitTransform<Void, Void> {
   private static final Logger LOG = LoggerFactory.getLogger(SignalTransform.class.getName());
   private transient Void elementHolder;
