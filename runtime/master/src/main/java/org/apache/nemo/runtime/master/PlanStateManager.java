@@ -118,6 +118,22 @@ public final class PlanStateManager {
   }
 
   /**
+   * Static constructor for manual usage.
+   * @param dagDirectory the DAG directory to store the JSON to.
+   * @return a new PlanStateManager instance.
+   */
+  public static PlanStateManager newInstance(final String dagDirectory) {
+    return new PlanStateManager(dagDirectory);
+  }
+
+  /**
+   * @param metricStore set the metric store of the paln state manager.
+   */
+  public void setMetricStore(final MetricStore metricStore) {
+    this.metricStore = metricStore;
+  }
+
+  /**
    * Update the physical plan and maximum attempt.
    *
    * @param physicalPlanToUpdate    the physical plan to manage.
@@ -147,16 +163,13 @@ public final class PlanStateManager {
   private void initializeStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      if (!stageIdToState.containsKey(stage.getId())) {
-        stageIdToState.put(stage.getId(), new StageState());
-        stageIdToTaskIdxToAttemptStates.put(stage.getId(), new HashMap<>());
+      stageIdToState.putIfAbsent(stage.getId(), new StageState());
+      stageIdToTaskIdxToAttemptStates.putIfAbsent(stage.getId(), new HashMap<>());
 
-        // for each task idx of this stage
-        for (final int taskIndex : stage.getTaskIndices()) {
-          stageIdToTaskIdxToAttemptStates.get(stage.getId()).put(taskIndex, new ArrayList<>());
-          // task states will be initialized lazily in getTaskAttemptsToSchedule()
-        }
-      }
+      // for each task idx of this stage
+      stage.getTaskIndices().forEach(taskIndex ->
+        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>()));
+        // task states will be initialized lazily in getTaskAttemptsToSchedule()
     });
   }
 

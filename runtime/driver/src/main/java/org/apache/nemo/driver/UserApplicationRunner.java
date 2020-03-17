@@ -25,10 +25,12 @@ import org.apache.nemo.compiler.backend.Backend;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.compiler.optimizer.Optimizer;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +83,7 @@ public final class UserApplicationRunner {
    */
   public synchronized void run(final String dagString) {
     try {
+      final long startTime = System.currentTimeMillis();
       LOG.info("##### Nemo Compiler Start #####");
 
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
@@ -104,7 +107,10 @@ public final class UserApplicationRunner {
         planStateManager.storeJSON("final");
       }
 
+      final long endTime = System.currentTimeMillis();
       LOG.info("{} is complete!", physicalPlan.getPlanId());
+      MetricStore.getStore().getOrCreateMetric(JobMetric.class, physicalPlan.getPlanId())
+        .setJobDuration(endTime - startTime);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

@@ -39,6 +39,14 @@ public final class PendingTaskCollectionPointer {
   }
 
   /**
+   * Static constructor for manual usage.
+   * @return a new instance of PendingTaskCollectionPointer.
+   */
+  public static PendingTaskCollectionPointer newInstance() {
+    return new PendingTaskCollectionPointer();
+  }
+
+  /**
    * This collection of tasks should take precedence over any previous collection of tasks.
    *
    * @param newCollection to schedule.

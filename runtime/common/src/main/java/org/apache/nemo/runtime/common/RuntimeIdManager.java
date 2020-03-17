@@ -28,7 +28,6 @@ public final class RuntimeIdManager {
   private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(0);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
-  private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
   private static final String SPLITTER = "-";
 
   /**
@@ -121,15 +120,6 @@ public final class RuntimeIdManager {
    */
   public static long generateMessageId() {
     return messageIdGenerator.getAndIncrement();
-  }
-
-  /**
-   * Generates the ID for a resource specification.
-   *
-   * @return the generated ID
-   */
-  public static String generateResourceSpecId() {
-    return "ResourceSpec" + resourceSpecIdGenerator.getAndIncrement();
   }
 
   //////////////////////////////////////////////////////////////// Parse IDs
