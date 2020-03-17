@@ -31,7 +31,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.test.EmptyComponents;
@@ -293,7 +293,7 @@ public class IRDAGTest {
   }
 
   private MessageAggregatorVertex insertNewTriggerVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
-    final TriggerVertex mb = new TriggerVertex<>((l, r) -> null);
+    final MessageGeneratorVertex mb = new MessageGeneratorVertex<>((l, r) -> null);
     final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(() -> new Object(), (l, r) -> null);
     dag.insert(
       mb,

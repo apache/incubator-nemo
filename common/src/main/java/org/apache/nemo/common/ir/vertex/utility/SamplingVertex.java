@@ -38,7 +38,7 @@ public final class SamplingVertex extends IRVertex {
    */
   public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
     super();
-    if (!(originalVertex instanceof TriggerVertex) && (Util.isUtilityVertex(originalVertex))) {
+    if (!(originalVertex instanceof MessageGeneratorVertex) && (Util.isUtilityVertex(originalVertex))) {
       throw new IllegalArgumentException(
         "Cannot sample non-Trigger utility vertices: " + originalVertex.toString());
     }

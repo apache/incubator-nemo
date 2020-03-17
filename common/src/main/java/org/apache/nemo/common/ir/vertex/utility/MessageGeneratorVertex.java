@@ -19,27 +19,27 @@
 package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.TriggerTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageGeneratorTransform;
 
 import java.io.Serializable;
 import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
- * Produces a message and triggers a run-time pass.
+ * Produces a message for run-time pass.
  *
  * @param <I> input type
  * @param <K> of the output pair.
  * @param <V> of the output pair.
  */
-public final class TriggerVertex<I, K, V> extends OperatorVertex {
+public final class MessageGeneratorVertex<I, K, V> extends OperatorVertex {
   private final MessageGeneratorFunction<I, K, V> messageFunction;
 
   /**
    * @param messageFunction for producing a message.
    */
-  public TriggerVertex(final MessageGeneratorFunction<I, K, V> messageFunction) {
-    super(new TriggerTransform<>(messageFunction));
+  public MessageGeneratorVertex(final MessageGeneratorFunction<I, K, V> messageFunction) {
+    super(new MessageGeneratorTransform<>(messageFunction));
     this.messageFunction = messageFunction;
   }
 

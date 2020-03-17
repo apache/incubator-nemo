@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
@@ -112,7 +112,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
 
           final KeyExtractor keyExtractor = e.getPropertyValue(KeyExtractorProperty.class).get();
           dag.insert(
-            new TriggerVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor)),
+            new MessageGeneratorVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor)),
             new MessageAggregatorVertex(HashMap::new, SkewHandlingUtil.getMessageAggregator()),
             SkewHandlingUtil.getEncoder(e),
             SkewHandlingUtil.getDecoder(e),

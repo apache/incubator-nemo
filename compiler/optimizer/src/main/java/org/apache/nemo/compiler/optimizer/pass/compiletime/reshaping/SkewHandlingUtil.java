@@ -29,7 +29,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyDecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyEncoderProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 
 import java.util.Map;
 
@@ -40,7 +40,7 @@ final class SkewHandlingUtil {
   private SkewHandlingUtil() {
   }
 
-  static TriggerVertex.MessageGeneratorFunction<Object, Object, Long> getMessageGenerator(
+  static MessageGeneratorVertex.MessageGeneratorFunction<Object, Object, Long> getMessageGenerator(
     final KeyExtractor keyExtractor) {
     return (element, dynOptData) -> {
       Object key = keyExtractor.extractKey(element);

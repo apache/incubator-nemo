@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 /**
  * Pass to reshape the IR DAG for skew handling.
- * We insert a {@link TriggerVertex} for each shuffle edge,
+ * We insert a {@link MessageGeneratorVertex} for each shuffle edge,
  * and aggregate messages for multiple same-destination shuffle edges.
  */
 @Requires(CommunicationPatternProperty.class)
@@ -73,7 +73,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         final KeyExtractor keyExtractor = representativeEdge.getPropertyValue(KeyExtractorProperty.class).get();
 
         // Insert the vertices
-        final TriggerVertex trigger = new TriggerVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor));
+        final MessageGeneratorVertex trigger = new MessageGeneratorVertex<>(SkewHandlingUtil.getMessageGenerator(keyExtractor));
         final MessageAggregatorVertex mav =
           new MessageAggregatorVertex(HashMap::new, SkewHandlingUtil.getMessageAggregator());
         dag.insert(trigger, mav, SkewHandlingUtil.getEncoder(representativeEdge),

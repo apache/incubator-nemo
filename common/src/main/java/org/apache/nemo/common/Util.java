@@ -23,7 +23,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 
@@ -192,7 +192,7 @@ public final class Util {
   public static boolean isUtilityVertex(final IRVertex v) {
     return v instanceof SamplingVertex
       || v instanceof MessageAggregatorVertex
-      || v instanceof TriggerVertex
+      || v instanceof MessageGeneratorVertex
       || v instanceof RelayVertex;
   }
 

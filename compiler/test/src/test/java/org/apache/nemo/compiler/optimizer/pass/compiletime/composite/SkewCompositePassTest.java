@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
-import org.apache.nemo.common.ir.vertex.transform.TriggerTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageGeneratorTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
@@ -74,7 +74,7 @@ public class SkewCompositePassTest {
 
   /**
    * Test for {@link SkewCompositePass} with MR workload.
-   * It should have inserted vertex with {@link TriggerTransform}
+   * It should have inserted vertex with {@link MessageGeneratorTransform}
    * and vertex with {@link MessageAggregatorTransform} for each shuffle edge.
    *
    * @throws Exception exception on the way.
@@ -95,7 +95,7 @@ public class SkewCompositePassTest {
     assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
 
     processedDAG.filterVertices(v -> v instanceof OperatorVertex
-      && ((OperatorVertex) v).getTransform() instanceof TriggerTransform)
+      && ((OperatorVertex) v).getTransform() instanceof MessageGeneratorTransform)
       .forEach(metricV -> {
         final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
         reducerV.forEach(rV -> {

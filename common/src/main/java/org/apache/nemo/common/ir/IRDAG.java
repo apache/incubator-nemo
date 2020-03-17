@@ -35,7 +35,7 @@ import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.slf4j.Logger;
@@ -152,7 +152,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         converted.add(sv); // explicit conversion to IRVertex is needed.. otherwise the compiler complains :(
       }
       return converted;
-    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof TriggerVertex) {
+    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageGeneratorVertex) {
       return messageVertexToGroup.get(vertexToDelete);
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
@@ -213,7 +213,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             .forEach(srcVertex -> builder.connectVertices(
               Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex))));
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
-    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof TriggerVertex) {
+    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageGeneratorVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
       final Optional<Integer> deletedMessageIdOptional = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
@@ -339,20 +339,20 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * <p>
    * TODO #345: Simplify insert(TriggerVertex)
    *
-   * @param triggerVertex    to insert.
+   * @param messageGeneratorVertex    to insert.
    * @param messageAggregatorVertex to insert.
    * @param triggerOutputEncoder        to use.
    * @param triggerOutputDecoder        to use.
    * @param edgesToGetStatisticsOf  to examine.
    * @param edgesToOptimize         to optimize.
    */
-  public void insert(final TriggerVertex triggerVertex,
+  public void insert(final MessageGeneratorVertex messageGeneratorVertex,
                      final MessageAggregatorVertex messageAggregatorVertex,
                      final EncoderProperty triggerOutputEncoder,
                      final DecoderProperty triggerOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf,
                      final Set<IREdge> edgesToOptimize) {
-    assertNonExistence(triggerVertex);
+    assertNonExistence(messageGeneratorVertex);
     assertNonExistence(messageAggregatorVertex);
     edgesToGetStatisticsOf.forEach(this::assertNonControlEdge);
     edgesToOptimize.forEach(this::assertNonControlEdge);
@@ -379,7 +379,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final List<IRVertex> triggerList = new ArrayList<>();
     for (final IREdge edge : edgesToGetStatisticsOf) {
       final IRVertex triggerToAdd = wrapSamplingVertexIfNeeded(
-        new TriggerVertex<>(triggerVertex.getMessageFunction()), edge.getSrc());
+        new MessageGeneratorVertex<>(messageGeneratorVertex.getMessageFunction()), edge.getSrc());
       builder.addVertex(triggerToAdd);
       triggerList.add(triggerToAdd);
       edge.getSrc().getPropertyValue(ParallelismProperty.class)

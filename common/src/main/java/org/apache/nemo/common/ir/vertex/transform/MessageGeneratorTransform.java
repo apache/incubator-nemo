@@ -20,7 +20,7 @@ package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageGeneratorVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,26 +28,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A {@link Transform} for the trigger vertex.
+ * A {@link Transform} for the message generator vertex.
  *
  * @param <I> input type.
  * @param <K> output key type.
  * @param <V> output value type.
  */
-public final class TriggerTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
-  private static final Logger LOG = LoggerFactory.getLogger(TriggerTransform.class.getName());
+public final class MessageGeneratorTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
+  private static final Logger LOG = LoggerFactory.getLogger(MessageGeneratorTransform.class.getName());
 
   private transient OutputCollector<Pair<K, V>> outputCollector;
   private transient Map<K, V> holder;
 
-  private final TriggerVertex.MessageGeneratorFunction<I, K, V> userFunction;
+  private final MessageGeneratorVertex.MessageGeneratorFunction<I, K, V> userFunction;
 
   /**
    * TriggerTransform constructor.
    *
    * @param userFunction that analyzes the data.
    */
-  public TriggerTransform(final TriggerVertex.MessageGeneratorFunction<I, K, V> userFunction) {
+  public MessageGeneratorTransform(final MessageGeneratorVertex.MessageGeneratorFunction<I, K, V> userFunction) {
     this.userFunction = userFunction;
   }
 
@@ -73,7 +73,7 @@ public final class TriggerTransform<I, K, V> extends NoWatermarkEmitTransform<I,
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(TriggerTransform.class);
+    sb.append(MessageGeneratorTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();
