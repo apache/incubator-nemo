@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
+import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
@@ -231,7 +232,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
     if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
-      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)
+      || (v instanceof TaskSizeSplitterVertex && ((TaskSizeSplitterVertex) v).getOriginalVertices().stream()
+      .anyMatch(irVertex -> irVertex instanceof SourceVertex))
+    ))) {
       final String problematicVertices = verticesToObserve.get()
         .filter(v -> !(v instanceof SourceVertex))
         .map(V::getId)

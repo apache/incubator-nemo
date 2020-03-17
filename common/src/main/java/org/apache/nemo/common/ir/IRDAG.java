@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
@@ -526,6 +527,36 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     toInsert.forEach(tiv -> samplingVertexToGroup.put(tiv, toInsert));
     modifiedDAG = builder.build(); // update the DAG.
+  }
+
+  /**
+   * Insert TaskSizeSplitterVertex in dag.
+   * @param toInsert                          TaskSizeSplitterVertex to insert.
+   * @param incomingEdgesOfOriginalVertices   Edges which goes into original vertices wrapped by Splitter Vertex.
+   * @param outgoingEdgesOfOriginalVertices   Edges which goes out from original vertices wrapped by Splitter Vertex.
+   * @param edgesWithSplitterVertex           Edges which will be inserted to the dag with Splitter Vertex.
+   */
+  public void insert(final TaskSizeSplitterVertex toInsert,
+                     final Set<IREdge> incomingEdgesOfOriginalVertices,
+                     final Set<IREdge> outgoingEdgesOfOriginalVertices,
+                     final Set<IREdge> edgesWithSplitterVertex) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    //insert vertex and edges irrelevant to splitter vertex
+    modifiedDAG.topologicalDo(v -> {
+      if (!toInsert.getOriginalVertices().contains(v)) {
+        builder.addVertex(v);
+        for (IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+          if (!incomingEdgesOfOriginalVertices.contains(edge) && !outgoingEdgesOfOriginalVertices.contains(edge)) {
+            builder.connectVertices(edge);
+          }
+        }
+      }
+    });
+    //insert splitter vertices
+    builder.addVertex(toInsert);
+    //connect splitter to outside world
+    edgesWithSplitterVertex.forEach(builder::connectVertices);
+    modifiedDAG = builder.build();
   }
 
   /**
