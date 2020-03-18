@@ -18,13 +18,11 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.EnableDynamicTaskSizingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -50,8 +48,8 @@ import java.util.stream.Collectors;
  * PARTITIONER_PROPERTY_FOR_MEDIUM_JOB: PartitionerProperty for jobs in range of [10GB, 100GB) size.
  * PARTITIONER_PROPERTY_FOR_BIG_JOB:    PartitionerProperty for jobs in range of [100GB, - ) size(No upper limit).
  *
- * source stage - non o2o edge - current stage
- * -> source stage - trigger - message aggregator - [curr stage - trigger - message aggregator]
+ * source stage - shuffle edge - current stage - next stage
+ * -> source stage - [curr stage - signal vertex] - next stage
  * where [] is a splitter vertex
  */
 @Annotates({EnableDynamicTaskSizingProperty.class, PartitionerProperty.class, SubPartitionSetProperty.class,
@@ -73,7 +71,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    /* Step 1. check DTS launch by job size*/
+    /* Step 1. check DTS launch by job size */
     boolean enableDynamicTaskSizing = getEnableFromJobSize(dag);
     if (!enableDynamicTaskSizing) {
       dag.topologicalDo(v -> {
@@ -128,25 +126,6 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
         }
       }
     });
-
-    /* Step 2-4. Change stage outgoing edges with communication property of 1-1 to shuffle edge */
-    //need to delete here i guess
-    IREdge referenceShuffleEdge = shuffleEdgesForDTS.iterator().next();
-    dag.topologicalDo(v -> {
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
-        // if this is a one-to-one stage edge
-        if (stageIdsToInsertSplitter.contains(vertexToStageId.get(edge.getSrc()))
-          && !vertexToStageId.get(edge.getDst()).equals(vertexToStageId.get(edge.getSrc()))
-          && CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
-          edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          LOG.error("[HWARIM] edge to change execution property: {}", edge);
-          IREdge newEdge = changeOneToOneEdgeToShuffleEdge(edge, referenceShuffleEdge, partitionerProperty);
-          newEdge.copyExecutionPropertiesTo(edge);
-          LOG.error("[HWARIM] change complete: {}", edge.getExecutionProperties());
-        }
-      }
-    });
-
     /* Step 3. Insert Splitter Vertex */
     List<IRVertex> reverseTopologicalOrder = dag.getTopologicalSort();
     Collections.reverse(reverseTopologicalOrder);
@@ -334,6 +313,13 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
     return fromOutsideToSplitter;
   }
 
+  /**
+   * Set edges which go out from splitter vertex to other stages.
+   * @param dag                             dag to modify
+   * @param toInsert                        splitter vertex to check
+   * @param verticesWithStageOutgoingEdges  vertices with stage outgoing edges
+   * @return
+   */
   private Set<IREdge> setEdgesFromSplitterToOutside(final IRDAG dag,
                                                     final TaskSizeSplitterVertex toInsert,
                                                     final Set<IRVertex> verticesWithStageOutgoingEdges) {
@@ -355,6 +341,16 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
     return fromSplitterToOutside;
   }
 
+  /**
+   * Make splitter vertex and insert it in the dag.
+   * @param dag                              dag to insert splitter vertex
+   * @param stageVertices                    stage vertices which will be grouped to be inserted into splitter vertex
+   * @param stageStartingVertices            subset of stage vertices which have incoming edge from other stages
+   * @param verticesWithStageOutgoingEdges   subset of stage vertices which have outgoing edge to other stages
+   * @param stageEndingVertices              subset of staae vertices which does not have outgoing edge to other
+   *                                         vertices in this stage
+   * @param partitionerProperty              partitioner property
+   */
   private void makeAndInsertSplitterVertex(final IRDAG dag,
                                            final Set<IRVertex> stageVertices,
                                            final Set<IRVertex> stageStartingVertices,
