@@ -423,46 +423,4 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
 
     toInsert.printLogs();
   }
-
-  /**
-   * Changes stage outgoing edges' execution property from one-to-one to shuffle when stage incoming edge became the
-   * target of DTS.
-   * Need to be careful about referenceShuffleEdge because this code does not check whether it is a valid shuffle edge
-   * or not.
-   * @param edge                   edge to change execution property.
-   * @param referenceShuffleEdge  reference shuffle edge to copy key related execution properties
-   * @param partitionerProperty   partitioner property of shuffle
-   */
-  private IREdge changeOneToOneEdgeToShuffleEdge(final IREdge edge,
-                                                 final IREdge referenceShuffleEdge,
-                                                 final int partitionerProperty) {
-    //double check
-    if (!CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
-      edge.getPropertyValue(CommunicationPatternProperty.class).get())
-      || !CommunicationPatternProperty.Value.SHUFFLE.equals(
-      referenceShuffleEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-      return edge;
-    }
-
-    // properties related to data
-    edge.setProperty(CommunicationPatternProperty.of(CommunicationPatternProperty.Value.SHUFFLE));
-    edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
-    edge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.HASH, partitionerProperty));
-    edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
-
-    // properties related to key
-    if (edge.getPropertyValue(KeyExtractorProperty.class).isEmpty()) {
-      edge.setProperty(KeyExtractorProperty.of(
-        referenceShuffleEdge.getPropertyValue(KeyExtractorProperty.class).get()));
-    }
-    if (edge.getPropertyValue(KeyEncoderProperty.class).isEmpty()) {
-      edge.setProperty(KeyEncoderProperty.of(
-        referenceShuffleEdge.getPropertyValue(KeyEncoderProperty.class).get()));
-    }
-    if (edge.getPropertyValue(KeyDecoderProperty.class).isEmpty()) {
-      edge.setProperty(KeyDecoderProperty.of(
-        referenceShuffleEdge.getPropertyValue(KeyDecoderProperty.class).get()));
-    }
-    return edge;
-  }
 }
