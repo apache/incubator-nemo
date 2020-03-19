@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -232,8 +233,14 @@ public final class TaskExecutor {
 
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
+        outputCollector = new RunTimeMessageOutputCollector<Map<String, Long>>(
+          taskId, irVertex, persistentConnectionToMasterMap, this,
+          ControlMessage.RunTimePassType.DataSkewPass);
+      } else if (irVertex instanceof OperatorVertex
+      && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
         outputCollector = new RunTimeMessageOutputCollector(
-          taskId, irVertex, persistentConnectionToMasterMap, this);
+          taskId, irVertex, persistentConnectionToMasterMap, this,
+          ControlMessage.RunTimePassType.DynamicTaskSizingPass);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,

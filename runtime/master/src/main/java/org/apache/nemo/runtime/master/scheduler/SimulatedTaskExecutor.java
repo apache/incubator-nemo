@@ -106,15 +106,19 @@ public final class SimulatedTaskExecutor {
       .filter(s -> s.get("properties").get("irDag").get("edges").size()
         == stageIRDAG.getEdges().size())  // same # of edges.
       .filter(s -> s.get("properties").get("executionProperties")
-        .get("org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty").asInt(0)
-        == task.getPropertyValue(ParallelismProperty.class).orElse(0))  // same parallelism.
+        .get("org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty").asInt(1)
+        == 32)  // sampling vertices have parallelism of 32
+      .filter(s -> s.get("properties").get("executionProperties")
+        .get("org.apache.nemo.common.ir.vertex.executionproperty.EnableDynamicTaskSizingProperty").asBoolean())
       .map(s -> s.get("id").asText())
       .collect(Collectors.toSet());
 
+    final int simulationTaskParallelism = task.getPropertyValue(ParallelismProperty.class).orElse(1);
     // Derive the average task duration from the stages.
     final OptionalDouble average = this.actualMetricStore.getMetricMap(TaskMetric.class).entrySet().stream()
       .filter(e -> stageIdsToGatherMetricsFrom.contains(RuntimeIdManager.getStageIdFromTaskId(e.getKey())))
       .map(Map.Entry::getValue)  // stream of TaskMetric.
+      .filter(tm -> ((TaskMetric) tm).getTaskSizeRatio() == simulationTaskParallelism)
       .mapToLong(tm -> ((TaskMetric) tm).getTaskDuration())
       .filter(l -> l > 0)
       .average();

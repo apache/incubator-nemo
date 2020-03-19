@@ -24,6 +24,7 @@ import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.exception.UnrecoverableFailureException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
@@ -121,12 +122,13 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Process the RuntimePassMessage.
-   *
+   * @param runTimePassType  type of run time pass to launch.
    * @param taskId           that generated the message.
    * @param data             of the message.
    */
-  public void onRunTimePassMessage(final String taskId, final Object data) {
-    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
+  public void onRunTimePassMessage(final ControlMessage.RunTimePassType runTimePassType,
+                                   final String taskId, final Object data) {
+    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, runTimePassType, taskId, data);
   }
 
   ////////////////////////////////////////////////////////////////////// Methods for scheduling.

@@ -90,6 +90,7 @@ public final class UserApplicationRunner {
       final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
       ((NemoPlanRewriter) planRewriter).setCurrentIRDAG(optimizedDAG);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
+      ((NemoPlanRewriter) planRewriter).setCurrentPhysicalPlan(physicalPlan);
       LOG.info("##### Nemo Compiler Finish #####");
 
       // Execute!

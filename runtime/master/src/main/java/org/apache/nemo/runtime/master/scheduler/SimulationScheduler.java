@@ -332,9 +332,10 @@ public final class SimulationScheduler implements Scheduler {
    * @param taskId that generated the message.
    * @param data   of the message.
    */
-  public void onRunTimePassMessage(final String taskId, final Object data) {
+  public void onRunTimePassMessage(final ControlMessage.RunTimePassType runTimePassType,
+                                   final String taskId, final Object data) {
     // TODO #436: Dynamic task resizing.
-    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, taskId, data);
+    BatchSchedulerUtils.onRunTimePassMessage(planStateManager, planRewriter, runTimePassType, taskId, data);
   }
 
   @Override
@@ -559,6 +560,7 @@ public final class SimulationScheduler implements Scheduler {
         case RunTimePassMessage:
           scheduler.onRunTimePassMessage(
             // TODO #436: Dynamic task resizing.
+            message.getRunTimePassMessageMsg().getRunTimePassType(),
             message.getRunTimePassMessageMsg().getTaskId(),
             message.getRunTimePassMessageMsg().getEntryList());
           break;

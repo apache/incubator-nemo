@@ -445,13 +445,13 @@ public final class RuntimeMaster {
         throw new RuntimeException(exception);
       case RunTimePassMessage:
         ((BatchScheduler) scheduler).onRunTimePassMessage(
+          message.getRunTimePassMessageMsg().getRunTimePassType(),
           message.getRunTimePassMessageMsg().getTaskId(),
           message.getRunTimePassMessageMsg().getEntryList());
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
-        metricList.forEach(metric ->
-          metricMessageHandler.onMetricMessageReceived(
+        metricList.forEach(metric -> metricMessageHandler.onMetricMessageReceived(
             metric.getMetricType(), metric.getMetricId(),
             metric.getMetricField(), metric.getMetricValue().toByteArray()));
         break;
