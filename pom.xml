@@ -176,10 +176,9 @@ under the License.
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${maven.compiler.version}</version>
-<!--          Uncomment when dropping support for Java 8 -->
-<!--          <configuration>-->
-<!--            <release>${java.version}</release>-->
-<!--          </configuration>-->
+          <configuration>
+            <release>${java.version}</release>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
