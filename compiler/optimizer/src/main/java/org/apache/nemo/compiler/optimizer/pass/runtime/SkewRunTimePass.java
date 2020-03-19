@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  * this RunTimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
+public final class SkewRunTimePass extends RunTimePass<Map<String, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
   private static final int DEFAULT_NUM_SKEWED_TASKS = 1;
 
@@ -56,7 +56,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   }
 
   @Override
-  public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
+  public IRDAG apply(final IRDAG irdag, final Message<Map<String, Long>> message) {
     // The message was produced to examine this edge.
     final Set<IREdge> edges = message.getExaminedEdges();
     LOG.info("Examined edges {}", edges.stream().map(IREdge::getId).collect(Collectors.toList()));
@@ -70,7 +70,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
       .orElseThrow(IllegalStateException::new);
 
     // Compute the optimal partition distribution, using the message value.
-    final Map<Object, Long> messageValue = message.getMessageValue();
+    final Map<String, Long> messageValue = message.getMessageValue();
     final Pair<PartitionSetProperty, ResourceAntiAffinityProperty> pair = analyzeMessage(
       messageValue,
       (HashPartitioner) Partitioner.getPartitioner(
@@ -109,7 +109,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * @param dstParallelism  of the destination vertex.
    * @return an optimal PartitionSetProperty and a ResourceAntiAffinityProperty.
    */
-  Pair<PartitionSetProperty, ResourceAntiAffinityProperty> analyzeMessage(final Map<Object, Long> keyToCountMap,
+  Pair<PartitionSetProperty, ResourceAntiAffinityProperty> analyzeMessage(final Map<String, Long> keyToCountMap,
                                                                           final HashPartitioner partitioner,
                                                                           final int numOfPartitions,
                                                                           final int dstParallelism) {
@@ -117,7 +117,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     int lastKey = numOfPartitions - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.
 
-    for (final Map.Entry<Object, Long> entry : keyToCountMap.entrySet()) {
+    for (final Map.Entry<String, Long> entry : keyToCountMap.entrySet()) {
       final int partitionKey = partitioner.partition(entry.getKey());
       partitionKeyToPartitionCount.compute(partitionKey,
         (existPartitionKey, prevCount) -> (prevCount == null) ? entry.getValue() : prevCount + entry.getValue());
