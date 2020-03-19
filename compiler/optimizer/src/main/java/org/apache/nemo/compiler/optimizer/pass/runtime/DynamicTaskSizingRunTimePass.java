@@ -36,7 +36,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DynamicTaskSizingRunTimePass extends RunTimePass<Map<String, Long>>{
+/**
+ * Runtime pass for Dynamic Task Sizing policy.
+ */
+public final class DynamicTaskSizingRunTimePass extends RunTimePass<Map<String, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(DynamicTaskSizingRunTimePass.class.getName());
   private final String mapKey = "opt.parallelism";
 
@@ -44,7 +47,7 @@ public class DynamicTaskSizingRunTimePass extends RunTimePass<Map<String, Long>>
   }
 
   @Override
-  public IRDAG apply(IRDAG irdag, Message<Map<String, Long>> mapMessage) {
+  public IRDAG apply(final IRDAG irdag, final Message<Map<String, Long>> mapMessage) {
     final Set<IREdge> edgesToOptimize = mapMessage.getExaminedEdges();
     final Set<IRVertex> stageVertices = edgesToOptimize.stream().map(IREdge::getDst).collect(Collectors.toSet());
     irdag.topologicalDo(v -> {
