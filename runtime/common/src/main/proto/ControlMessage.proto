@@ -146,13 +146,13 @@ message BlockStateChangedMsg {
 
 message RunTimePassMessageMsg {
     required string taskId = 1;
-    repeated RunTimePassMessageEntry entry = 2;
+    required RunTimePassType runTimePassType = 2;
+    repeated RunTimePassMessageEntry entry = 3;
 }
 
 message RunTimePassMessageEntry {
-    repeated RunTimePassType runTimePassType = 1;
-    required string key = 2;
-    required int64 value = 3;
+    required string key = 1;
+    required int64 value = 2;
 }
 
 enum RunTimePassType {

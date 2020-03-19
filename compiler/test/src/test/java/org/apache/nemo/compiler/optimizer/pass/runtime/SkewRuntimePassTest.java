@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
  * Test {@link SkewRunTimePass}.
  */
 public class SkewRuntimePassTest {
-  private final Map<Object, Long> testMetricData = new HashMap<>();
+  private final Map<String, Long> testMetricData = new HashMap<>();
   private final static int DST_PARALLELISM = 2;
   private final static int NUM_PARTITIONS = 10;
 
@@ -80,12 +80,12 @@ public class SkewRuntimePassTest {
    * @return the partition size metrics.
    */
   private void buildPartitionSizeList(final List<Long> partitionSizes) {
-    int key = 0;
+    Integer key = 0;
     for (final long partitionSize : partitionSizes) {
-      if (testMetricData.containsKey(key)) {
-        testMetricData.compute(key, (existingKey, existingValue) -> existingValue + partitionSize);
+      if (testMetricData.containsKey(key.toString())) {
+        testMetricData.compute(key.toString(), (existingKey, existingValue) -> existingValue + partitionSize);
       } else {
-        testMetricData.put(key, partitionSize);
+        testMetricData.put(key.toString(), partitionSize);
       }
       key++;
     }
