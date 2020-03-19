@@ -150,8 +150,14 @@ message RunTimePassMessageMsg {
 }
 
 message RunTimePassMessageEntry {
-    required string key = 1;
-    required int64 value = 2;
+    repeated RunTimePassType runTimePassType = 1;
+    required string key = 2;
+    required int64 value = 3;
+}
+
+enum RunTimePassType {
+  DataSkewPass = 1;
+  DynamicTaskSizingPass = 2;
 }
 
 message RequestBlockLocationMsg {
