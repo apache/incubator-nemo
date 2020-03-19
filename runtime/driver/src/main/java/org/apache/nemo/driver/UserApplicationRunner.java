@@ -88,7 +88,7 @@ public final class UserApplicationRunner {
 
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
-      ((NemoPlanRewriter) planRewriter).setIRDAG(optimizedDAG);
+      ((NemoPlanRewriter) planRewriter).setCurrentIRDAG(optimizedDAG);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
       LOG.info("##### Nemo Compiler Finish #####");
 
