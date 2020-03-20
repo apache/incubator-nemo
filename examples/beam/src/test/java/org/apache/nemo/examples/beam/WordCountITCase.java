@@ -104,7 +104,7 @@ public final class WordCountITCase {
   public void testDTS() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WordCountITCase.class.getSimpleName() + "_DTS")
+      .addJobId(WordCountITCase.class.getSimpleName() + "_dts")
       .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
       .build());
   }

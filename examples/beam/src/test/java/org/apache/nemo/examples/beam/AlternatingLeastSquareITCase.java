@@ -78,7 +78,7 @@ public final class AlternatingLeastSquareITCase {
   public void testDTS() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(noPoisonResources)
-      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_DTS")
+      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_dts")
       .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
       .build());
   }
