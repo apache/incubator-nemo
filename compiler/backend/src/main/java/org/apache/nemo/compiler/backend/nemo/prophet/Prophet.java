@@ -22,11 +22,13 @@ import java.util.Map;
 
 /**
  * A prophet class for dynamic optimization.
+ * @param <K> key type of the optimized value
+ * @param <V> type of optimized value
  */
-public interface Prophet {
+public interface Prophet<K, V> {
   /**
    * Calculate the optimized values based on runtime messages.
    * @return A map containing the optimized values.
    */
-  Map<String, Long> calculate();
+  Map<K, V> calculate();
 }

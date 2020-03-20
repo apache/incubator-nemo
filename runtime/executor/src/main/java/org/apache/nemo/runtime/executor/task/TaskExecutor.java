@@ -233,12 +233,12 @@ public final class TaskExecutor {
 
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
-        outputCollector = new RunTimeMessageOutputCollector<Map<String, Long>>(
+        outputCollector = new RunTimeMessageOutputCollector<Map<Object, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this,
           ControlMessage.RunTimePassType.DataSkewPass);
       } else if (irVertex instanceof OperatorVertex
       && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
-        outputCollector = new RunTimeMessageOutputCollector(
+        outputCollector = new RunTimeMessageOutputCollector<Map<String, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this,
           ControlMessage.RunTimePassType.DynamicTaskSizingPass);
       } else {

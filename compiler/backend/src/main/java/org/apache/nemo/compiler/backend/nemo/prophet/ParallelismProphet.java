@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /**
  * A prophet for Parallelism.
  */
-public final class ParallelismProphet implements Prophet {
+public final class ParallelismProphet implements Prophet<String, Long> {
   private static final Logger LOG = LoggerFactory.getLogger(ParallelismProphet.class.getName());
   private final SimulationScheduler simulationScheduler;
   private final PhysicalPlanGenerator physicalPlanGenerator;

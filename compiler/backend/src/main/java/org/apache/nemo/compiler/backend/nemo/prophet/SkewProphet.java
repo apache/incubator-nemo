@@ -27,20 +27,20 @@ import java.util.Map;
 /**
  * Prophet class for skew handling.
  */
-public final class SkewProphet implements Prophet {
+public final class SkewProphet implements Prophet<Object, Long> {
   private final List<ControlMessage.RunTimePassMessageEntry> messageEntries;
   public SkewProphet(final List<ControlMessage.RunTimePassMessageEntry> messageEntries) {
     this.messageEntries = messageEntries;
   }
 
   @Override
-  public Map<String, Long> calculate() {
-    final Map<String, Long> aggregatedData = new HashMap<>();
+  public Map<Object, Long> calculate() {
+    final Map<Object, Long> aggregatedData = new HashMap<>();
     messageEntries.forEach(entry -> {
       final String key = entry.getKey();
       final long partitionSize = entry.getValue();
       if (aggregatedData.containsKey(key)) {
-        aggregatedData.compute(key, (originalKey, originalValue) -> (long) originalValue + partitionSize);
+        aggregatedData.compute(key, (originalKey, originalValue) -> originalValue + partitionSize);
       } else {
         aggregatedData.put(key, partitionSize);
       }

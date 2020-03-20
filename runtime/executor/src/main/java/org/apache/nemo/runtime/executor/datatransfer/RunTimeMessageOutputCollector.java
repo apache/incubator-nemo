@@ -65,7 +65,7 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
     final List<ControlMessage.RunTimePassMessageEntry> entries = new ArrayList<>();
     switch (runTimePassType) {
       case DataSkewPass:
-        final Map<String, Long> aggregatedMessage = (Map<String, Long>) output;
+        final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
         aggregatedMessage.forEach((key, size) ->
           entries.add(
             ControlMessage.RunTimePassMessageEntry.newBuilder()
