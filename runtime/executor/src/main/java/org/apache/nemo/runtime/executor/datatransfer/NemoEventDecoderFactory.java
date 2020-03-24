@@ -85,7 +85,7 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
       } else {
-        throw new RuntimeException("Watermark decoding failure: " + isWatermark);
+        throw new IOException("Watermark decoding failure: " + isWatermark);
       }
     }
 
