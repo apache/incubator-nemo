@@ -86,6 +86,7 @@ public final class JobLauncher {
   private static DriverLauncher driverLauncher;
   private static DriverRPCServer driverRPCServer;
 
+  private static boolean isSetUp = false;
   private static CountDownLatch driverReadyLatch;
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
@@ -171,6 +172,7 @@ public final class JobLauncher {
     LOG.info("Launching driver");
     driverReadyLatch = new CountDownLatch(1);
     jobDoneLatch = new CountDownLatch(1);
+    isSetUp = true;
     driverLauncher = DriverLauncher.getLauncher(deployModeConf);
     driverLauncher.submit(jobAndDriverConf, 500);
     // When the driver is up and the resource is ready, the DriverReady message is delivered.
@@ -202,6 +204,7 @@ public final class JobLauncher {
     // Close everything that's left
     driverRPCServer.shutdown();
     driverLauncher.close();
+    isSetUp = false;
     final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
     if (possibleError.isPresent()) {
       throw new RuntimeException(possibleError.get());
@@ -264,7 +267,7 @@ public final class JobLauncher {
                                final Map<Serializable, Object> broadcastVariables,
                                final String jobId) {
     // launch driver if it hasn't been already
-    if (driverReadyLatch == null || jobDoneLatch == null) {
+    if (!isSetUp) {
       try {
         setup(new String[]{"-job_id", jobId});
       } catch (Exception e) {
