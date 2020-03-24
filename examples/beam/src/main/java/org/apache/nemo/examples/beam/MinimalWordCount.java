@@ -82,6 +82,6 @@ public final class MinimalWordCount {
       //
       // By default, it will write to a set of files with names like wordcounts-00001-of-00005
       .apply(TextIO.write().to(outputFilePath));
-    p.run();
+    p.run().waitUntilFinish();
   }
 }

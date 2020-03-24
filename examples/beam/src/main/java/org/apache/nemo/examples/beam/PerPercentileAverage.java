@@ -93,7 +93,7 @@ public final class PerPercentileAverage {
       GenericSourceSink.write(results[i], outputFilePath + "_" + i);
     }
 
-    p.run();
+    p.run().waitUntilFinish();
   }
 
   /**

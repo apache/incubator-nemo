@@ -80,7 +80,7 @@ public final class PerKeyMedian {
         }
       }));
     GenericSourceSink.write(result, outputFilePath);
-    p.run();
+    p.run().waitUntilFinish();
 
     LOG.info("*******END*******");
     LOG.info("JCT(ms): " + (System.currentTimeMillis() - start));
