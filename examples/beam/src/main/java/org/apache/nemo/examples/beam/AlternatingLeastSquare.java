@@ -406,6 +406,19 @@ public final class AlternatingLeastSquare {
     for (int i = 0; i < numItr; i++) {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
+
+      final PCollection<String> res = itemMatrix.apply(MapElements.<KV<Integer, float[]>, String>via(
+        new SimpleFunction<KV<Integer, float[]>, String>() {
+          @Override
+          public String apply(final KV<Integer, float[]> elem) {
+            final List<String> values = Stream.of(ArrayUtils.toObject(elem.getValue()))
+              .map(String::valueOf)
+              .collect(Collectors.toList());
+            return elem.getKey() + "," + String.join(",", values);
+          }
+        }));
+
+      GenericSourceSink.write(res, outputFilePath + "_itr" + i);
     }
 
     if (checkOutput) {

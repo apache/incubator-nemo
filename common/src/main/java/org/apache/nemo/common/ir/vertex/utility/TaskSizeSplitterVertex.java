@@ -34,7 +34,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexPropert
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.SignalVertex;
-import org.apache.nemo.common.test.EmptyComponents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +127,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
   public void insertSignalVertex(final SignalVertex toInsert) {
     getBuilder().addVertex(toInsert);
     for (IRVertex lastVertex : lastVerticesInStage) {
-      IREdge edgeToSignal = EmptyComponents.newDummyShuffleEdge(lastVertex, toInsert);
+      IREdge edgeToSignal = Util.createControlEdge(lastVertex, toInsert);
       getBuilder().connectVertices(edgeToSignal);
       for (IRVertex firstVertex : firstVerticesInStage) {
         IREdge controlEdgeToBeginning = Util.createControlEdge(toInsert, firstVertex);

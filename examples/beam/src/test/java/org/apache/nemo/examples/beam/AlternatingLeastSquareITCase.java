@@ -76,7 +76,9 @@ public final class AlternatingLeastSquareITCase {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testDTS() throws Exception {
-    JobLauncher.main(builder
+    JobLauncher.main(new ArgBuilder()
+      .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
+      .addUserArgs(input, numFeatures, numIteration, lambda, "file:///" + output)
       .addResourceJson(noPoisonResources)
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_dts")
       .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
