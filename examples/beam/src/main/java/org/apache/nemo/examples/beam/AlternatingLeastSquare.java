@@ -436,7 +436,7 @@ public final class AlternatingLeastSquare {
       GenericSourceSink.write(result, outputFilePath);
     }
 
-    p.run();
+    p.run().waitUntilFinish();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

@@ -459,7 +459,7 @@ public final class MultinomialLogisticRegression {
       model = model.apply(new UpdateModel(numFeatures, numClasses, i, readInput));
     }
 
-    p.run();
+    p.run().waitUntilFinish();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

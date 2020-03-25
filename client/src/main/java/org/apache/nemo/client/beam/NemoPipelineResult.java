@@ -21,20 +21,35 @@ package org.apache.nemo.client.beam;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResults;
 import org.apache.nemo.client.ClientEndpoint;
+import org.apache.nemo.client.JobLauncher;
 import org.joda.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Beam result.
  */
 public final class NemoPipelineResult extends ClientEndpoint implements PipelineResult {
+  private static final Logger LOG = LoggerFactory.getLogger(NemoPipelineResult.class.getName());
+  private final CountDownLatch jobDone;
 
   /**
    * Default constructor.
    */
   public NemoPipelineResult() {
     super(new BeamStateTranslator());
+    this.jobDone = new CountDownLatch(1);
+  }
+
+  /**
+   * Signal that the job is finished to the NemoPipelineResult object.
+   */
+  public void setJobDone() {
+    this.jobDone.countDown();
   }
 
   @Override
@@ -44,14 +59,35 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public State cancel() throws IOException {
-    throw new UnsupportedOperationException("cancel() in frontend.beam.NemoPipelineResult");
+    try {
+      JobLauncher.shutdown();
+      return State.CANCELLED;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public State waitUntilFinish(final Duration duration) {
-    throw new UnsupportedOperationException();
-    // TODO #208: NemoPipelineResult#waitUntilFinish hangs
-    // Previous code that hangs the job:
+    try {
+      if (duration.getMillis() < 1) {
+        this.jobDone.await();
+        return State.DONE;
+      } else {
+        final boolean finished = this.jobDone.await(duration.getMillis(), TimeUnit.MILLISECONDS);
+        if (finished) {
+          LOG.info("Job successfully finished before timeout of {}ms, while waiting until finish",
+            duration.getMillis());
+          return State.DONE;
+        } else {
+          LOG.warn("Job timed out before {}ms, while waiting until finish. Call 'cancel' to cancel the job.",
+            duration.getMillis());
+          return State.RUNNING;
+        }
+      }
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
     // return (State) super.waitUntilJobFinish(duration.getMillis(), TimeUnit.MILLISECONDS);
   }
 

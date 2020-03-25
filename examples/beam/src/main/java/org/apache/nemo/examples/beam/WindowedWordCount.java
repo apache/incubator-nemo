@@ -125,6 +125,6 @@ public final class WindowedWordCount {
       }))
       .apply(new WriteOneFilePerWindow(outputFilePath, 1));
 
-    p.run();
+    p.run().waitUntilFinish();
   }
 }

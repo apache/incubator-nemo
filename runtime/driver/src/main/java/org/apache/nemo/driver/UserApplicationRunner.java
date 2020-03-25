@@ -28,6 +28,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.nemo.runtime.master.metric.MetricStore;
@@ -101,15 +102,16 @@ public final class UserApplicationRunner {
       // Wait for the job to finish and stop logging
       final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
+      final PlanState.State state;
       try {
-        planStateManager.waitUntilFinish();
+        state = planStateManager.waitUntilFinish();
         dagLoggingExecutor.shutdown();
       } finally {
         planStateManager.storeJSON("final");
       }
 
       final long endTime = System.currentTimeMillis();
-      LOG.info("{} is complete!", physicalPlan.getPlanId());
+      LOG.info("{} is complete, with final status {}!", physicalPlan.getPlanId(), state);
       MetricStore.getStore().getOrCreateMetric(JobMetric.class, physicalPlan.getPlanId())
         .setJobDuration(endTime - startTime);
     } catch (final Exception e) {
