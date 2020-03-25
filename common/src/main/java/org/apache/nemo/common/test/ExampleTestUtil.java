@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.test;
 
+import org.apache.nemo.common.exception.OutputMismatchException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -63,7 +65,7 @@ public final class ExampleTestUtil {
           try {
             return Files.lines(path);
           } catch (final IOException e) {
-            throw new RuntimeException(e);
+            throw new OutputMismatchException(e);
           }
         })
         .sorted()
@@ -87,7 +89,7 @@ public final class ExampleTestUtil {
           + "\n=============" + testResourceFileName + "=================="
           + resourceOutput
           + "\n===============================";
-      throw new RuntimeException(outputMsg);
+      throw new OutputMismatchException(outputMsg);
     }
   }
 

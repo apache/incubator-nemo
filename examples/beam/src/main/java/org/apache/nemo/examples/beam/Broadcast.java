@@ -70,6 +70,6 @@ public final class Broadcast {
     );
 
     GenericSourceSink.write(result, outputFilePath);
-    p.run();
+    p.run().waitUntilFinish();
   }
 }

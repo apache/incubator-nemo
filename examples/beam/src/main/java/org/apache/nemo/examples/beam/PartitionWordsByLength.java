@@ -95,7 +95,7 @@ public final class PartitionWordsByLength {
     GenericSourceSink.write(longWords, outputFilePath + "_long");
     GenericSourceSink.write(veryLongWords, outputFilePath + "_very_long");
     GenericSourceSink.write(veryVeryLongWords, outputFilePath + "_very_very_long");
-    p.run();
+    p.run().waitUntilFinish();
   }
 
   /**

@@ -88,6 +88,6 @@ public final class SimpleSumSQL {
       }
     })), outputFilePath);
 
-    p.run();
+    p.run().waitUntilFinish();
   }
 }

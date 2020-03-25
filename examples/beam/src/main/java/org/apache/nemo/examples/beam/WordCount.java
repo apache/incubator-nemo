@@ -47,6 +47,19 @@ public final class WordCount {
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("WordCount");
 
+    final Pipeline p = generateWordCountPipeline(options, inputFilePath, outputFilePath);
+    p.run().waitUntilFinish();
+  }
+
+  /**
+   * Static method to generate the word count Beam pipeline.
+   * @param options options for the pipeline.
+   * @param inputFilePath the input file path.
+   * @param outputFilePath the output file path.
+   * @return the generated pipeline.
+   */
+  static Pipeline generateWordCountPipeline(final PipelineOptions options,
+                                                   final String inputFilePath, final String outputFilePath) {
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
       .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
@@ -66,6 +79,6 @@ public final class WordCount {
         }
       }));
     GenericSourceSink.write(result, outputFilePath);
-    p.run();
+    return p;
   }
 }

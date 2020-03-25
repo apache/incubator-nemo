@@ -121,7 +121,7 @@ public final class NetworkTraceAnalysis {
         }
       }));
     GenericSourceSink.write(result, outputFilePath);
-    p.run();
+    p.run().waitUntilFinish();
   }
 
   /**
