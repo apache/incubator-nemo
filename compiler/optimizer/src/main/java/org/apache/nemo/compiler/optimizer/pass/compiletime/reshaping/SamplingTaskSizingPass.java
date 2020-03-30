@@ -87,10 +87,6 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
         }
       });
       return dag;
-    } else {
-      dag.topologicalDo(v -> {
-        v.setProperty(EnableDynamicTaskSizingProperty.of(enableDynamicTaskSizing));
-      });
     }
 
     final int partitionerProperty = setPartitionerProperty(dag);
@@ -127,6 +123,15 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
         }
       }
     });
+
+    dag.topologicalDo(v -> {
+      if (stageIdsToInsertSplitter.contains(vertexToStageId.get(v))) {
+        v.setProperty(EnableDynamicTaskSizingProperty.of(true));
+      } else {
+        v.setProperty(EnableDynamicTaskSizingProperty.of(false));
+      }
+    });
+
     /* Step 3. Insert Splitter Vertex */
     List<IRVertex> reverseTopologicalOrder = dag.getTopologicalSort();
     Collections.reverse(reverseTopologicalOrder);

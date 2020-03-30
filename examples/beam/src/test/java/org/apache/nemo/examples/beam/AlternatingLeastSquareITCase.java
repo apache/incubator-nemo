@@ -61,7 +61,7 @@ public final class AlternatingLeastSquareITCase {
     try {
       ExampleTestUtil.ensureALSOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
     } finally {
-      //ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
