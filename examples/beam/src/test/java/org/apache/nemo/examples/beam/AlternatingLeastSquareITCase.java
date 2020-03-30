@@ -74,7 +74,7 @@ public final class AlternatingLeastSquareITCase {
       .build());
   }
 
-  @Test
+  @Test(timeout = 2400000)
   public void testDTS() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(noPoisonResources)
