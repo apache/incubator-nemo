@@ -61,7 +61,7 @@ public final class AlternatingLeastSquareITCase {
     try {
       ExampleTestUtil.ensureALSOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
+      //ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
@@ -74,11 +74,9 @@ public final class AlternatingLeastSquareITCase {
       .build());
   }
 
-  @Test(timeout = ExampleTestArgs.TIMEOUT)
+  @Test
   public void testDTS() throws Exception {
-    JobLauncher.main(new ArgBuilder()
-      .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration, lambda, "file:///" + output)
+    JobLauncher.main(builder
       .addResourceJson(noPoisonResources)
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_dts")
       .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
