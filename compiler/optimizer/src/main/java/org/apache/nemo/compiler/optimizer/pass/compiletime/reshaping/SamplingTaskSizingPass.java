@@ -72,8 +72,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     /* Step 1. check DTS launch by job size */
-    boolean enableDynamicTaskSizing = true;
-    //getEnableFromJobSize(dag);
+    boolean enableDynamicTaskSizing = getEnableFromJobSize(dag);
     if (!enableDynamicTaskSizing) {
       dag.topologicalDo(v -> {
         v.setProperty(EnableDynamicTaskSizingProperty.of(enableDynamicTaskSizing));
