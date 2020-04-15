@@ -17,7 +17,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## Nemo prerequisites and setup
 
 ### Prerequisites
-* Java 8 or later (tested on Java 8 and Java 11)
+* Java 11
 * Maven
 * YARN settings
     * Download Hadoop 2.7.2 at https://archive.apache.org/dist/hadoop/common/hadoop-2.7.2/
