@@ -42,8 +42,8 @@ under the License.
 
   <properties>
     <java.version>11</java.version>
-    <maven.compiler.source>${java.version}</maven.compiler.source>
-    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
     <maven.compiler.version>3.8.1</maven.compiler.version>
     <maven.shade.version>3.2.1</maven.shade.version>
     <maven.deploy.version>3.0.0-M1</maven.deploy.version>
@@ -176,10 +176,6 @@ under the License.
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>${maven.compiler.version}</version>
-          <configuration>
-            <source>11</source>
-            <target>11</target>
-          </configuration>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
