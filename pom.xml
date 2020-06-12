@@ -283,6 +283,7 @@ under the License.
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>${maven.javadoc.version}</version>
         <configuration>
+          <doclint>none</doclint>
           <excludePackageNames>*.org.apache.nemo.runtime.common.comm</excludePackageNames>
           <outputDirectory>docs/apidocs</outputDirectory>
           <reportOutputDirectory>docs/apidocs</reportOutputDirectory>
