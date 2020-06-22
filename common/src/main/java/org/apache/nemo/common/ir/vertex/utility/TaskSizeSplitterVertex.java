@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex.utility;
 
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Util;
@@ -33,7 +34,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.SignalVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
   private final int partitionerProperty;
 
   // Information about splitter vertex's iteration
-  private int testingTrial;
+  private final MutableInt testingTrial;
 
   private final Map<IRVertex, IRVertex> mapOfOriginalVertexToClone = new HashMap<>();
 
@@ -83,7 +84,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
                                 final Set<IRVertex> lastVerticesInStage,
                                 final int partitionerProperty) {
     super(splitterVertexName); // need to take care of here
-    this.testingTrial = 0;
+    testingTrial = new MutableInt(0);
     this.originalVertices = originalVertices;
     this.partitionerProperty = partitionerProperty;
     for (IRVertex original : originalVertices) {
@@ -138,7 +139,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
   }
 
   public void increaseTestingTrial() {
-    testingTrial++;
+    testingTrial.add(1);
   }
 
   /**
@@ -280,7 +281,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    * @param irVertex    vertex to set parallelism property.
    */
   private void setParallelismPropertyByTestingTrial(final IRVertex irVertex) {
-    if (testingTrial == 0 && !(irVertex instanceof OperatorVertex
+    if (testingTrial.intValue() == 0 && !(irVertex instanceof OperatorVertex
       && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform)) {
       irVertex.setPropertyPermanently(ParallelismProperty.of(32));
     } else {
@@ -295,7 +296,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
   private void setSubPartitionSetPropertyByTestingTrial(final IREdge edge) {
     final ArrayList<KeyRange> partitionSet = new ArrayList<>();
     int taskIndex = 0;
-    if (testingTrial == 0) {
+    if (testingTrial.intValue() == 0) {
       for (int i = 0; i < 4; i++) {
         partitionSet.add(taskIndex, HashRange.of(i, i + 1));
         taskIndex++;
@@ -320,7 +321,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    * @param edgesToOptimize   Edges to mark for DTS
    */
   private void markEdgesToOptimize(final List<OperatorVertex> toAssign, final Set<IREdge> edgesToOptimize) {
-    if (testingTrial > 0) {
+    if (testingTrial.intValue() > 0) {
       edgesToOptimize.forEach(edge -> {
         if (!edge.getDst().getPropertyValue(ParallelismProperty.class).get().equals(1)) {
           throw new IllegalArgumentException("Target edges should begin with Parallelism of 1.");

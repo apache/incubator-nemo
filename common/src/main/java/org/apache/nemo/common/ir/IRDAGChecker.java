@@ -35,7 +35,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

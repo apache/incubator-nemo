@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
 import java.io.Serializable;

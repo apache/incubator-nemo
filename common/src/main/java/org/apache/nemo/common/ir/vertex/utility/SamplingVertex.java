@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageGeneratorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 
 /**
  * Executes the original IRVertex using a subset of input data partitions.

@@ -28,8 +28,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyDecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyEncoderProperty;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageGeneratorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 
 import java.util.Map;
 
