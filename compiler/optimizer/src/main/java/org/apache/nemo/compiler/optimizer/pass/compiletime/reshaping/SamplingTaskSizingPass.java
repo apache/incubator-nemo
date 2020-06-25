@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -426,7 +425,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
    * @param referenceShuffleEdge  reference shuffle edge to copy key related execution properties
    * @param partitionerProperty   partitioner property of shuffle
    */
-  //TODO: Change 1-1 stage edge to shuffle edge.
+  //to do: Change 1-1 stage edge to shuffle edge.
   private IREdge changeOneToOneEdgeToShuffleEdge(final IREdge edge,
                                                  final IREdge referenceShuffleEdge,
                                                  final int partitionerProperty) {
