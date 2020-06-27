@@ -27,6 +27,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Signal vertex holding signal transform.
+ * It triggers runtime pass without examining related edge's data.
+ *
+ * e.g) suppose that we want to change vertex 2's property by using runtime pass, but the related data is not gained
+ * directly from the incoming edge of vertex 2 (for example, the data is gained from using simulation).
+ * In this case, it is unnecessary to insert message generator vertex and message aggregator vertex to launch runtime
+ * pass.
+ *
+ * Original case: (vertex1) -- shuffle edge -- (vertex 2)
+ *
+ * After inserting signal Vertex:
+ * (vertex 1) -------------------- shuffle edge ------------------- (vertex 2)
+ *            -- control edge -- (signal vertex) -- control edge --
+ *
+ * Therefore, the shuffle edge to vertex 2 is executed after signal vertex is executed.
+ * Since signal vertex only 'signals' the launch of runtime pass, its parallelism is sufficient to be only 1.
  */
 public final class SignalVertex extends OperatorVertex {
   private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);

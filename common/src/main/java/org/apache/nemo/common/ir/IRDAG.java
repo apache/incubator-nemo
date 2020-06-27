@@ -43,6 +43,7 @@ import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVer
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -203,6 +204,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       return converted;
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageGeneratorVertex) {
       return messageVertexToGroup.get(vertexToDelete);
+    } else if (vertexToDelete instanceof SignalVertex) {
+      return Sets.newHashSet(vertexToDelete);
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
@@ -276,6 +279,17 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             hashSet -> hashSet.remove(deletedMessageId))));
     } else if (vertexToDelete instanceof SamplingVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
+    } else if (vertexToDelete instanceof SignalVertex) {
+      modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
+      final Optional<Integer> deletedMessageIdOptional = vertexGroupToDelete.stream()
+        .map(vtd -> vtd.getPropertyValue(MessageIdVertexProperty.class).<IllegalArgumentException>orElseThrow(
+          () -> new IllegalArgumentException(
+            "SignalVertex " + vtd.getId() + " does not have MessageIdVertexProperty.")))
+        .findAny();
+      deletedMessageIdOptional.ifPresent(deletedMessageId ->
+        modifiedDAG.getEdges().forEach(e ->
+          e.getPropertyValue(MessageIdEdgeProperty.class).ifPresent(
+            hashSet -> hashSet.remove(deletedMessageId))));
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
@@ -483,6 +497,41 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     messageVertexToGroup.put(messageAggregatorVertex, insertedVertices);
 
     modifiedDAG = builder.build(); // update the DAG.
+  }
+
+  public void insert(SignalVertex toInsert,
+                     IREdge edgeToOptimize) {
+
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // All of the existing vertices and edges remain intact
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v);
+      modifiedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
+    });
+
+    // insert Signal Vertex in DAG.
+    builder.addVertex(toInsert);
+
+    final IREdge controlEdgeToSV = Util.createControlEdge(edgeToOptimize.getSrc(), toInsert);
+    final IREdge controlEdgeFromSV = Util.createControlEdge(toInsert, edgeToOptimize.getDst());
+
+    builder.connectVertices(controlEdgeToSV);
+    builder.connectVertices(controlEdgeFromSV);
+
+    modifiedDAG.topologicalDo(v ->
+      modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
+        if (edgeToOptimize.equals(inEdge)) {
+          final HashSet<Integer> msgEdgeIds =
+            inEdge.getPropertyValue(MessageIdEdgeProperty.class).orElse(new HashSet<>(0));
+          msgEdgeIds.add(toInsert.getPropertyValue(MessageIdVertexProperty.class).get());
+          inEdge.setProperty(MessageIdEdgeProperty.of(msgEdgeIds));
+        }
+      })
+    );
+    // update the DAG.
+    modifiedDAG = builder.build();
   }
 
   /**

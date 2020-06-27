@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVer
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
@@ -275,6 +276,21 @@ public class IRDAGTest {
   }
 
   @Test
+  public void testSignalVertex() {
+    final SignalVertex sg1 = insertNewSignalVertex(irdag, oneToOneEdge);
+    mustPass();
+
+    final SignalVertex sg2 = insertNewSignalVertex(irdag, shuffleEdge);
+    mustPass();
+
+    irdag.delete(sg1);
+    mustPass();
+
+    irdag.delete(sg2);
+    mustPass();
+  }
+
+  @Test
   public void testSamplingVertex() {
     final SamplingVertex svOne = new SamplingVertex(sourceVertex, 0.1f);
     irdag.insert(Sets.newHashSet(svOne), Sets.newHashSet(sourceVertex));
@@ -305,6 +321,12 @@ public class IRDAGTest {
     return ma;
   }
 
+  private SignalVertex insertNewSignalVertex(final IRDAG dag, final IREdge edgeToOptimize) {
+    final SignalVertex sg = new SignalVertex();
+    dag.insert(sg, edgeToOptimize);
+    return sg;
+  }
+
   ////////////////////////////////////////////////////// Random generative tests
 
   private Random random = new Random(0); // deterministic seed for reproducibility
@@ -315,7 +337,7 @@ public class IRDAGTest {
     final int thousandConfigs = 1000;
     for (int i = 0; i < thousandConfigs; i++) {
       // LOG.info("Doing {}", i);
-      final int numOfTotalMethods = 11;
+      final int numOfTotalMethods = 12;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
         // Annotation methods
@@ -360,6 +382,9 @@ public class IRDAGTest {
           irdag.insert(Sets.newHashSet(samplingVertex), Sets.newHashSet(vertexToSample));
           break;
         case 10:
+          insertNewSignalVertex(irdag, selectRandomEdge());
+          break;
+        case 11:
           // the last index must be (numOfTotalMethods - 1)
           selectRandomUtilityVertex().ifPresent(irdag::delete);
           break;
