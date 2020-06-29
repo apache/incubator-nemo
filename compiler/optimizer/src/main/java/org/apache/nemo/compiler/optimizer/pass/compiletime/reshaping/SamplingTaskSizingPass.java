@@ -71,7 +71,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     /* Step 1. check DTS launch by job size */
-    boolean enableDynamicTaskSizing = isDTSEnabledByJobSize(dag);
+    boolean enableDynamicTaskSizing = true; //isDTSEnabledByJobSize(dag);
     if (!enableDynamicTaskSizing) {
       return dag;
     } else {
@@ -426,6 +426,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
    * @param partitionerProperty   partitioner property of shuffle
    */
   //to do: Change 1-1 stage edge to shuffle edge.
+  /*
   private IREdge changeOneToOneEdgeToShuffleEdge(final IREdge edge,
                                                  final IREdge referenceShuffleEdge,
                                                  final int partitionerProperty) {
@@ -458,4 +459,6 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
     }
     return edge;
   }
+
+   */
 }

@@ -140,4 +140,8 @@ public final class IREdge extends Edge<IRVertex> {
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }
+
+  public String toString() {
+    return this.getId();
+  }
 }
