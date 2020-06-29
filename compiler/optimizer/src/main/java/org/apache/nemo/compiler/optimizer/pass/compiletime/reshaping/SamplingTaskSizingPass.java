@@ -26,7 +26,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.EnableDynamicTaskSizingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
-import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.Annotates;
 import org.apache.nemo.runtime.common.plan.StagePartitioner;
 import org.slf4j.Logger;

@@ -355,7 +355,7 @@ public class IRDAGTest {
     final int thousandConfigs = 1000;
     for (int i = 0; i < thousandConfigs; i++) {
       // LOG.info("Doing {}", i);
-      final int numOfTotalMethods = 12;
+      final int numOfTotalMethods = 13;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
         // Annotation methods
@@ -403,6 +403,9 @@ public class IRDAGTest {
           insertNewSignalVertex(irdag, selectRandomEdge());
           break;
         case 11:
+          final IREdge edgeToInsertSplitter = selectRandomEdge();
+          break;
+        case 12:
           // the last index must be (numOfTotalMethods - 1)
           selectRandomUtilityVertex().ifPresent(irdag::delete);
           break;
@@ -452,6 +455,21 @@ public class IRDAGTest {
     return utilityVertices.isEmpty()
       ? Optional.empty()
       : Optional.of(utilityVertices.get(random.nextInt(utilityVertices.size())));
+  }
+
+  private boolean isAppropriateForInsertingSplitterVertex(IREdge observingEdge) {
+    // If communication property of observing Edge is not shuffle, return false.
+    if (!CommunicationPatternProperty.Value.SHUFFLE.equals(
+      observingEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+      return false;
+    }
+
+    // If one of the source and destination of observingEdge has multiple outgoing / incoming edges, return false.
+    if (irdag.getOutgoingEdgesOf(observingEdge.getSrc()).size() > 1 ||
+    irdag.getIncomingEdgesOf(observingEdge.getDst()).size() > 1) {
+      return false;
+    }
+    return true;
   }
 
   ///////////////// Random vertex EP

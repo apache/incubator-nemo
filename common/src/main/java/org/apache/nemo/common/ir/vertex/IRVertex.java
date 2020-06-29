@@ -119,8 +119,4 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }
-
-  public String toString() {
-    return this.getId();
-  }
 }

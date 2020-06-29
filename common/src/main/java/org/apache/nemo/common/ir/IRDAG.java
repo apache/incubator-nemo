@@ -46,7 +46,6 @@ import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.Signal;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
@@ -562,8 +561,27 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build(); // update the DAG.
   }
 
-  public void insert(SignalVertex toInsert,
-                     IREdge edgeToOptimize) {
+  /**
+   * Inserts new vertex which calls for runtime pass.
+   *
+   * e.g) suppose that we want to change vertex 2's property by using runtime pass, but the related data is not gained
+   * directly from the incoming edge of vertex 2 (for example, the data is gained from using simulation).
+   * In this case, it is unnecessary to insert message generator vertex and message aggregator vertex to launch runtime
+   * pass.
+   *
+   * Original case: (vertex1) -- shuffle edge -- (vertex 2)
+   *
+   * After inserting signal Vertex:
+   * (vertex 1) -------------------- shuffle edge ------------------- (vertex 2)
+   *            -- control edge -- (signal vertex) -- control edge --
+   *
+   * Therefore, the shuffle edge to vertex 2 is executed after signal vertex is executed.
+   * Since signal vertex only 'signals' the launch of runtime pass, its parallelism is sufficient to be only 1.
+   * @param toInsert        Signal vertex to optimize.
+   * @param edgeToOptimize  Original edge to optimize(in the above example, shuffle edge).
+   */
+  public void insert(final SignalVertex toInsert,
+                     final IREdge edgeToOptimize) {
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -691,7 +709,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Insert TaskSizeSplitterVertex in dag.
-   * @param toInsert                          TaskSizeSplitterVertex to insert.
+   * @param toInsert          TaskSizeSplitterVertex to insert.
    */
   public void insert(final TaskSizeSplitterVertex toInsert) {
     final Set<IRVertex> originalVertices = toInsert.getOriginalVertices();
