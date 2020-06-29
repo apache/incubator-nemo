@@ -30,6 +30,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
@@ -297,7 +298,6 @@ public class IRDAGTest {
     mustPass();
 
     final SamplingVertex svTwo = new SamplingVertex(firstOperatorVertex, 0.1f);
-    ;
     irdag.insert(Sets.newHashSet(svTwo), Sets.newHashSet(firstOperatorVertex));
     mustPass();
 
@@ -305,6 +305,24 @@ public class IRDAGTest {
     mustPass();
 
     irdag.delete(svOne);
+    mustPass();
+  }
+
+  @Test
+  public void testSplitterVertex() {
+    final TaskSizeSplitterVertex sp = new TaskSizeSplitterVertex(
+      "splitter_1",
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(),
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(),
+      1024
+    );
+    irdag.insert(sp);
+    mustPass();
+
+    irdag.delete(sp);
     mustPass();
   }
 

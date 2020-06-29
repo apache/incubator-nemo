@@ -46,6 +46,7 @@ import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.Signal;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
@@ -206,6 +207,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       return messageVertexToGroup.get(vertexToDelete);
     } else if (vertexToDelete instanceof SignalVertex) {
       return Sets.newHashSet(vertexToDelete);
+    } else if (vertexToDelete instanceof TaskSizeSplitterVertex) {
+      return Sets.newHashSet(vertexToDelete);
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
@@ -290,6 +293,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         modifiedDAG.getEdges().forEach(e ->
           e.getPropertyValue(MessageIdEdgeProperty.class).ifPresent(
             hashSet -> hashSet.remove(deletedMessageId))));
+    } else if (vertexToDelete instanceof TaskSizeSplitterVertex) {
+      modifiedDAG = rebuildExcludingSplitter(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
@@ -303,6 +308,64 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     dag.getVertices().stream().filter(v -> !excluded.contains(v)).forEach(builder::addVertex);
     dag.getEdges().stream().filter(e -> !excluded.contains(e.getSrc()) && !excluded.contains(e.getDst()))
       .forEach(builder::connectVertices);
+    return builder;
+  }
+
+  /**
+   * helper method in deleting splitter vertex.
+   * @param dag       dag to get information.
+   * @param excluded  Set of Splitter vertex to delete. Always a singleton set.
+   * @return
+   */
+  private DAGBuilder<IRVertex, IREdge> rebuildExcludingSplitter(final DAG<IRVertex, IREdge> dag,
+                                                                final Set<IRVertex> excluded) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    dag.getVertices().stream().filter(v -> !excluded.contains(v)).forEach(builder::addVertex);
+    dag.getEdges().stream()
+      .filter(e -> !(excluded.contains(e.getSrc()) || excluded.contains(e.getDst())))
+      .forEach(builder::connectVertices);
+
+    for (IRVertex vertex : excluded) {
+      if (!(vertex instanceof TaskSizeSplitterVertex)) {
+        break;
+      }
+      final TaskSizeSplitterVertex splitter = (TaskSizeSplitterVertex) vertex;
+      //first, restore original vertices
+      DAG<IRVertex, IREdge> internalDag = splitter.getDAG();
+      internalDag.getVertices().stream().filter(v -> !(v instanceof SignalVertex)).forEach(builder::addVertex);
+      internalDag.getEdges().stream()
+        .filter(e -> !(e.getSrc() instanceof SignalVertex || e.getDst() instanceof SignalVertex))
+        .forEach(builder::connectVertices);
+
+      //second, take care of edges connected to splitter vertex
+      for (IREdge edgeToSplitter : dag.getIncomingEdgesOf(splitter)) {
+        if (edgeToSplitter.getSrc() instanceof TaskSizeSplitterVertex) {
+          final TaskSizeSplitterVertex prevSp = (TaskSizeSplitterVertex) edgeToSplitter.getSrc();
+          final IREdge internalEdge = prevSp.getEdgeWithInternalVertex(edgeToSplitter);
+          final IREdge newEdgeToPrevSp = Util.cloneEdge(internalEdge, prevSp, internalEdge.getDst());
+          prevSp.mapEdgeWithLoop(newEdgeToPrevSp, internalEdge);
+
+          builder.connectVertices(newEdgeToPrevSp);
+        } else {
+          final IREdge internalEdge = splitter.getEdgeWithInternalVertex(edgeToSplitter);
+          builder.connectVertices(internalEdge);
+        }
+      }
+
+      for (IREdge edgeFromSplitter : dag.getOutgoingEdgesOf(splitter)) {
+        if (edgeFromSplitter.getDst() instanceof TaskSizeSplitterVertex) {
+          final TaskSizeSplitterVertex nextSp = (TaskSizeSplitterVertex) edgeFromSplitter.getDst();
+          final IREdge internalEdge = nextSp.getEdgeWithInternalVertex(edgeFromSplitter);
+          final IREdge newEdgeToNextSp = Util.cloneEdge(internalEdge, internalEdge.getSrc(), nextSp);
+          nextSp.mapEdgeWithLoop(newEdgeToNextSp, internalEdge);
+
+          builder.connectVertices(newEdgeToNextSp);
+        } else {
+          final IREdge internalEdge = splitter.getEdgeWithInternalVertex(edgeFromSplitter);
+          builder.connectVertices(internalEdge);
+        }
+      }
+    }
     return builder;
   }
 
@@ -629,18 +692,65 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   /**
    * Insert TaskSizeSplitterVertex in dag.
    * @param toInsert                          TaskSizeSplitterVertex to insert.
-   * @param incomingEdgesOfOriginalVertices   Edges which goes into original vertices wrapped by Splitter Vertex.
-   * @param outgoingEdgesOfOriginalVertices   Edges which goes out from original vertices wrapped by Splitter Vertex.
-   * @param edgesWithSplitterVertex           Edges which will be inserted to the dag with Splitter Vertex.
    */
-  public void insert(final TaskSizeSplitterVertex toInsert,
-                     final Set<IREdge> incomingEdgesOfOriginalVertices,
-                     final Set<IREdge> outgoingEdgesOfOriginalVertices,
-                     final Set<IREdge> edgesWithSplitterVertex) {
+  public void insert(final TaskSizeSplitterVertex toInsert) {
+    final Set<IRVertex> originalVertices = toInsert.getOriginalVertices();
+    final Set<IRVertex> startingVertices = toInsert.getFirstVerticesInStage();
+    final Set<IRVertex> verticesWithGroupOutgoingEdge = toInsert.getVerticesWithStageOutgoingEdges();
+
+    final Set<IREdge> incomingEdgesOfOriginalVertices = originalVertices
+      .stream()
+      .flatMap(ov -> modifiedDAG.getIncomingEdgesOf(ov).stream())
+      .collect(Collectors.toSet());
+
+    final Set<IREdge> outgoingEdgesOfOriginalVertices = originalVertices
+      .stream()
+      .flatMap(ov -> modifiedDAG.getOutgoingEdgesOf(ov).stream())
+      .collect(Collectors.toSet());
+
+    final Set<IREdge> fromOutsideToOriginal = getEdgesFromOutsideToOriginal(startingVertices);
+    final Set<IREdge> fromOriginalToOutside = getEdgesFromOriginalToOutside(originalVertices,
+      verticesWithGroupOutgoingEdge);
+
+    // make edges connected to splitter vertex
+    final Set<IREdge> fromOutsideToSplitter = getEdgesFromOutsideToSplitter(toInsert, startingVertices);
+    final Set<IREdge> fromSplitterToOutside = getEdgesFromSplitterToOutside(toInsert,
+      verticesWithGroupOutgoingEdge);
+
+    //map splitter vertex connection to corresponding internal vertex connection
+    for (IREdge splitterEdge : fromSplitterToOutside) {
+      for (IREdge internalEdge : fromOriginalToOutside) {
+        if (splitterEdge.getDst() instanceof TaskSizeSplitterVertex) {
+          TaskSizeSplitterVertex nextSplitter = (TaskSizeSplitterVertex) splitterEdge.getDst();
+          if (nextSplitter.getOriginalVertices().contains(internalEdge.getDst())) {
+            toInsert.mapEdgeWithLoop(splitterEdge, internalEdge);
+          }
+        } else {
+          if (splitterEdge.getDst().equals(internalEdge.getDst())) {
+            toInsert.mapEdgeWithLoop(splitterEdge, internalEdge);
+          }
+        }
+      }
+    }
+
+    for (IREdge splitterEdge : fromOutsideToSplitter) {
+      for (IREdge internalEdge : fromOutsideToOriginal) {
+        if (splitterEdge.getSrc().equals(internalEdge.getSrc())) {
+          toInsert.mapEdgeWithLoop(splitterEdge, internalEdge);
+        }
+      }
+    }
+
+    fromOutsideToOriginal.forEach(toInsert::addDagIncomingEdge);
+    fromOutsideToOriginal.forEach(toInsert::addNonIterativeIncomingEdge);
+    fromOriginalToOutside.forEach(toInsert::addDagOutgoingEdge);
+
+    // All preparation done. Insert splitter vertex.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
     //insert vertex and edges irrelevant to splitter vertex
     modifiedDAG.topologicalDo(v -> {
-      if (!toInsert.getOriginalVertices().contains(v)) {
+      if (!originalVertices.contains(v)) {
         builder.addVertex(v);
         for (IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
           if (!incomingEdgesOfOriginalVertices.contains(edge) && !outgoingEdgesOfOriginalVertices.contains(edge)) {
@@ -651,8 +761,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
     //insert splitter vertices
     builder.addVertex(toInsert);
+
     //connect splitter to outside world
-    edgesWithSplitterVertex.forEach(builder::connectVertices);
+    fromOutsideToSplitter.forEach(builder::connectVertices);
+    fromSplitterToOutside.forEach(builder::connectVertices);
+
     modifiedDAG = builder.build();
   }
 
@@ -728,6 +841,112 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setPropertyPermanently(KeyDecoderProperty.of(decoder.getValue()));
 
     return newEdge;
+  }
+
+  // These similar four helper methods are for inserting TaskSizeSplitterVertex
+
+  /**
+   * get and set edges which come to stage vertices from outer sources by observing the dag. This will be the
+   * 'dagIncomingEdges' in Splitter vertex.
+   * Edge case: Happens when previous vertex(i.e. outer source) is also a splitter vertex. In this case, we need to get
+   *            original edges which is invisible from the dag by hacking into previous splitter vertex.
+   * @param groupStartingVertices  vertices which are executed first. i.e. has an incoming edge from outside of the
+   *                               given vertex group
+   * @return                       edges from outside to stage vertices
+   */
+  private Set<IREdge> getEdgesFromOutsideToOriginal(final Set<IRVertex> groupStartingVertices) {
+    // if previous vertex is splitter vertex, add the last vertex of that splitter vertex in map
+    Set<IREdge> fromOutsideToOriginal = new HashSet<>();
+    for (IRVertex startingVertex : groupStartingVertices) {
+      for (IREdge edge : modifiedDAG.getIncomingEdgesOf(startingVertex)) {
+        if (edge.getSrc() instanceof TaskSizeSplitterVertex) {
+          for (IRVertex originalInnerSource : ((TaskSizeSplitterVertex) edge.getSrc())
+            .getVerticesWithStageOutgoingEdges()) {
+            Set<IREdge> candidates = ((TaskSizeSplitterVertex) edge.getSrc()).
+              getDagOutgoingEdges().get(originalInnerSource);
+            candidates.stream().filter(edge2 -> edge2.getDst().equals(startingVertex))
+              .forEach(fromOutsideToOriginal::add);
+          }
+        } else {
+          fromOutsideToOriginal.add(edge);
+        }
+      }
+    }
+    return fromOutsideToOriginal;
+  }
+
+  private Set<IREdge> getEdgesFromOriginalToOutside(final Set<IRVertex> stageVertices,
+                                                    final Set<IRVertex> verticesWithGroupOutgoingEdges) {
+    Set<IREdge> fromOriginalToOutside = new HashSet<>();
+    for (IRVertex vertex : verticesWithGroupOutgoingEdges) {
+      for (IREdge edge : modifiedDAG.getOutgoingEdgesOf(vertex)) {
+        if (edge.getDst() instanceof TaskSizeSplitterVertex) {
+          Set<IRVertex> originalInnerDstVertices = ((TaskSizeSplitterVertex) edge.getDst()).getFirstVerticesInStage();
+          for (IRVertex innerVertex : originalInnerDstVertices) {
+            Set<IREdge> candidates = ((TaskSizeSplitterVertex) edge.getDst()).
+              getDagIncomingEdges().get(innerVertex);
+            candidates.stream().filter(edge2 -> edge2.getSrc().equals(vertex))
+              .forEach(fromOriginalToOutside::add);
+          }
+        } else if (!stageVertices.contains(edge.getDst())) {
+          fromOriginalToOutside.add(edge);
+        }
+      }
+    }
+    return fromOriginalToOutside;
+  }
+
+  /**
+   * set edges which come to splitter from outside sources. These edges have a one-to-one relationship with
+   * edgesFromOutsideToOriginal.
+   * @param toInsert              splitter vertex to insert
+   * @param groupStartingVertices  stage opening vertices
+   * @return                      set of edges pointing at splitter vertex
+   */
+  private Set<IREdge> getEdgesFromOutsideToSplitter(final TaskSizeSplitterVertex toInsert,
+                                                    final Set<IRVertex> groupStartingVertices) {
+    HashSet<IREdge> fromOutsideToSplitter = new HashSet<>();
+    for (IRVertex stageOpeningVertex : groupStartingVertices) {
+      for (IREdge incomingEdge : modifiedDAG.getIncomingEdgesOf(stageOpeningVertex)) {
+        if (incomingEdge.getSrc() instanceof TaskSizeSplitterVertex) {
+          TaskSizeSplitterVertex prevSplitter = (TaskSizeSplitterVertex) incomingEdge.getSrc();
+          IREdge internalEdge = prevSplitter.getEdgeWithInternalVertex(incomingEdge);
+          IREdge newIrEdge = Util.cloneEdge(incomingEdge, incomingEdge.getSrc(), toInsert);
+          prevSplitter.mapEdgeWithLoop(newIrEdge, internalEdge);
+          fromOutsideToSplitter.add(newIrEdge);
+        } else {
+          IREdge cloneOfIncomingEdge = Util.cloneEdge(incomingEdge, incomingEdge.getSrc(), toInsert);
+          fromOutsideToSplitter.add(cloneOfIncomingEdge);
+        }
+      }
+    }
+    return fromOutsideToSplitter;
+  }
+
+  /**
+   * Get edges which go out from splitter vertex to other stages.
+   * @param toInsert                        splitter vertex to check
+   * @param verticesWithGroupOutgoingEdges  vertices with stage outgoing edges
+   * @return
+   */
+  private Set<IREdge> getEdgesFromSplitterToOutside(final TaskSizeSplitterVertex toInsert,
+                                                    final Set<IRVertex> verticesWithGroupOutgoingEdges) {
+    HashSet<IREdge> fromSplitterToOutside = new HashSet<>();
+    for (IRVertex vertex : verticesWithGroupOutgoingEdges) {
+      for (IREdge outgoingEdge : modifiedDAG.getOutgoingEdgesOf(vertex)) {
+        if (outgoingEdge.getDst() instanceof TaskSizeSplitterVertex) {
+          TaskSizeSplitterVertex nextSplitter = (TaskSizeSplitterVertex) outgoingEdge.getDst();
+          IREdge internalEdge = nextSplitter.getEdgeWithInternalVertex(outgoingEdge);
+          IREdge newIrEdge = Util.cloneEdge(outgoingEdge, toInsert, outgoingEdge.getDst());
+          nextSplitter.mapEdgeWithLoop(newIrEdge, internalEdge);
+          fromSplitterToOutside.add(newIrEdge);
+        } else if (!toInsert.getOriginalVertices().contains(outgoingEdge.getDst())) {
+          IREdge cloneOfOutgoingEdge = Util.cloneEdge(outgoingEdge, toInsert, outgoingEdge.getDst());
+          fromSplitterToOutside.add(cloneOfOutgoingEdge);
+        }
+      }
+    }
+    return fromSplitterToOutside;
   }
 
   ////////////////////////////////////////////////// DAGInterface methods - forward calls to the underlying DAG.

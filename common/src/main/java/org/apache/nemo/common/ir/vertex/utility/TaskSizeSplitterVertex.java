@@ -74,6 +74,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    *                                        this set has only one element (guaranteed by stage partitioner logic)
    * @param verticesWithStageOutgoingEdges  Vertices which has outgoing edges to other stage.
    * @param lastVerticesInStage             Vertices which has only outgoing edges to other stage.
+   * @param edgesBetweenOriginalVertices    Edges which connects original vertices.
    * @param partitionerProperty             PartitionerProperty of incoming stage edge regarding to job data size.
    *                                        For more information, check
    */
@@ -82,6 +83,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
                                 final Set<IRVertex> firstVerticesInStage,
                                 final Set<IRVertex> verticesWithStageOutgoingEdges,
                                 final Set<IRVertex> lastVerticesInStage,
+                                final Set<IREdge> edgesBetweenOriginalVertices,
                                 final int partitionerProperty) {
     super(splitterVertexName); // need to take care of here
     testingTrial = new MutableInt(0);
@@ -93,6 +95,9 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     this.firstVerticesInStage = firstVerticesInStage;
     this.verticesWithStageOutgoingEdges = verticesWithStageOutgoingEdges;
     this.lastVerticesInStage = lastVerticesInStage;
+
+    insertWorkingVertices(originalVertices, edgesBetweenOriginalVertices);
+    insertSignalVertex(new SignalVertex());
   }
 
   // Getters of attributes
@@ -108,6 +113,10 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     return verticesWithStageOutgoingEdges;
   }
 
+  public Set<IRVertex> getLastVerticesInStage() {
+    return lastVerticesInStage;
+  }
+
   /**
    * Insert vertices from original dag. This does not harm their topological order.
    * @param stageVertices   vertices to insert. can be same as OriginalVertices.
@@ -115,7 +124,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    *                        that are connected to vertices other than those in stageVertices.
    *                        (Both ends need to be the element of stageVertices)
    */
-  public void insertWorkingVertices(final Set<IRVertex> stageVertices, final Set<IREdge> edgesInBetween) {
+  private void insertWorkingVertices(final Set<IRVertex> stageVertices, final Set<IREdge> edgesInBetween) {
     stageVertices.forEach(vertex -> getBuilder().addVertex(vertex));
     edgesInBetween.forEach(edge -> getBuilder().connectVertices(edge));
   }
@@ -126,7 +135,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    * SignalVertex - ControlEdge - (stage starting vertices)
    * @param toInsert              SignalVertex to insert.
    */
-  public void insertSignalVertex(final SignalVertex toInsert) {
+  private void insertSignalVertex(final SignalVertex toInsert) {
     getBuilder().addVertex(toInsert);
     for (IRVertex lastVertex : lastVerticesInStage) {
       IREdge edgeToSignal = EmptyComponents.newDummyShuffleEdge(lastVertex, toInsert);
