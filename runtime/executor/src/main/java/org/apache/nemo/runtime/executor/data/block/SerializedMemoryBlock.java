@@ -27,6 +27,8 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
@@ -41,6 +43,7 @@ import java.util.*;
  */
 @NotThreadSafe
 public final class SerializedMemoryBlock<K extends Serializable> implements Block<K> {
+  private static final Logger LOG = LoggerFactory.getLogger(SerializedMemoryBlock.class.getName());
 
   private final String id;
   private final List<SerializedPartition<K>> serializedPartitions;
@@ -79,6 +82,11 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   @Override
   public void write(final K key,
                     final Object element) {
+    LOG.info("dongjoo, SerMemBlock write key {}, blockId {}  element {}", key, id, element);
+    LOG.info("dongoo, ser memblock write, measure jvm max {}, total {}, free{}",
+      java.lang.Runtime.getRuntime().maxMemory(), java.lang.Runtime.getRuntime().totalMemory(),
+      java.lang.Runtime.getRuntime().freeMemory());
+
     if (committed) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {

@@ -23,7 +23,8 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * A collection of data elements. The data is stored as an iterable of elements.
  * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
@@ -31,6 +32,8 @@ import java.util.List;
  * @param <K> the key type of its partitions.
  */
 public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
+  private static final Logger LOG = LoggerFactory.getLogger(NonSerializedPartition.class.getName());
+
   private final K key;
   private final List nonSerializedData;
   private final long numSerializedBytes;
@@ -79,6 +82,7 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
    */
   @Override
   public void write(final Object element) throws IOException {
+    LOG.info("dongjoo: NonSerPartition write key {}, element {}", key, element);
     if (committed) {
       throw new IOException("The partition is already committed!");
     } else {

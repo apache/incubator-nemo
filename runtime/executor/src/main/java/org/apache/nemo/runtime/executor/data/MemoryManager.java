@@ -18,19 +18,17 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
-import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
-import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+//import org.apache.nemo.common.exception.BlockWriteException;
+//import org.apache.nemo.runtime.executor.data.block.Block;
+//import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
+//import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+//import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 //import javax.inject.Inject;
 
 /**
- * MemoryManager for sharing the storage between Execution and Storage(caching)
+ * MemoryManager for sharing the storage between Execution and Storage(caching).
  * writing to Partitions through MemoryStore must go through MemoryManager
  * to ensure that there is enough memory. If not, logic to handle spill to disk
  */

@@ -282,6 +282,8 @@ public final class BlockManagerWorker {
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();
+    LOG.info("dongjoo: BlockManagerWorker, writeBlock, blockId {}, expectedReadTotal {}, Persistence {}, BlockStore {}",
+      blockId, expectedReadTotal, persistence, blockStore);
     LOG.info("CommitBlock: {}", blockId);
 
     switch (persistence) {
@@ -367,6 +369,7 @@ public final class BlockManagerWorker {
    * @throws InvalidProtocolBufferException from errors during parsing context descriptor
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
+    LOG.info("dongjoo: BMW onOutputContext, outputcontext {}", outputContext);
     final ControlMessage.BlockTransferContextDescriptor descriptor =
       ControlMessage.BlockTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
     final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
@@ -442,6 +445,8 @@ public final class BlockManagerWorker {
     final String blockId,
     final DataStoreProperty.Value blockStore,
     final KeyRange keyRange) {
+    LOG.info("dongjoo: BMW, getDataFromLocalBlock, blockId {}, blockStore {}, keyRange {}",
+      blockId, blockStore, keyRange);
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.

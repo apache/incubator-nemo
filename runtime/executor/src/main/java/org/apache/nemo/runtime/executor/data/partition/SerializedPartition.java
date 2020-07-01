@@ -24,6 +24,8 @@ import org.apache.nemo.runtime.executor.data.MemoryChunk;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -31,6 +33,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+
 
 import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 
@@ -43,6 +46,9 @@ import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
+  private static final Logger LOG = LoggerFactory.getLogger(SerializedPartition.class.getName());
+
+
   private final K key;
   private volatile byte[] serializedData; // intentionally volatilize the reference
   private volatile int length;
@@ -139,6 +145,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    */
   @Override
   public void write(final Object element) throws IOException {
+    LOG.info("dongjoo SerPartition write, key: {} element {}", key, element);
     if (committed) {
       throw new IOException("The partition is already committed!");
     } else {
@@ -168,7 +175,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   }
 
   /**
-   * @return the key value.
+   * @return the key val
    */
   @Override
   public K getKey() {

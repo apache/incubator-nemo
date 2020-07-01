@@ -74,6 +74,8 @@ public final class BlockOutputWriter implements OutputWriter {
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
     blockToWrite = blockManagerWorker.createBlock(
       RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
+    LOG.info("dongjoo, BlockOutputWriter constructor, stageEdge {}, runtimeEdge {}, blockToWrite {}",
+      stageEdge, runtimeEdge, blockToWrite);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     nonDummyBlock = !duplicateDataProperty.isPresent()
@@ -84,6 +86,7 @@ public final class BlockOutputWriter implements OutputWriter {
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
+      LOG.info("Block output writer write, blocktoWrite {}, element {},", blockToWrite, element);
       blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =
@@ -100,12 +103,13 @@ public final class BlockOutputWriter implements OutputWriter {
   }
 
   /**
-   * Notifies that all writes for a block is end.
-   * Further write about a committed block will throw an exception.
+   * Notifies that all writes for a block have ended.
+   * Further write to a committed block will throw an exception.
    */
   @Override
   public void close() {
     // Commit block.
+    LOG.info("dongjoo BlockOutputWriter close block, closing {}", blockToWrite);
     final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
       .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
 

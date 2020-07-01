@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
+//import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -25,6 +26,8 @@ import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -34,6 +37,8 @@ import javax.inject.Inject;
  */
 @ThreadSafe
 public final class MemoryStore extends LocalBlockStore {
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryStore.class.getName());
+
 
   /**
    * Constructor.
@@ -53,6 +58,7 @@ public final class MemoryStore extends LocalBlockStore {
   @Override
   public NonSerializedMemoryBlock createBlock(final String blockId) {
     final Serializer serializer = getSerializerFromWorker(blockId);
+    LOG.info("dongjoo MemoryStore, createBlock serializer {}, blockId {}", serializer, blockId);
     return new NonSerializedMemoryBlock(blockId, serializer, getMemoryPoolAssigner());
   }
 
