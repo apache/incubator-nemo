@@ -46,6 +46,7 @@ import java.util.*;
  * It covers both sampling vertices and optimized vertices known from sampling by iterating same vertices, giving
  * different properties in each iteration.
  */
+//TODO 454: Change dependency between LoopVertex and TaskSizeSplitterVertex.
 public final class TaskSizeSplitterVertex extends LoopVertex {
   // Information about original(before splitting) vertices
   private static final Logger LOG = LoggerFactory.getLogger(TaskSizeSplitterVertex.class.getName());

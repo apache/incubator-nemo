@@ -42,6 +42,7 @@ import java.util.function.IntPredicate;
 /**
  * IRVertex that contains a partial DAG that is iterative.
  */
+//TODO 454: Change dependency between LoopVertex and TaskSizeSplitterVertex.
 public class LoopVertex extends IRVertex {
   private static final Logger LOG = LoggerFactory.getLogger(LoopVertex.class.getName());
   private final AtomicInteger duplicateEdgeGroupId = new AtomicInteger(0);
