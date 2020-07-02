@@ -271,8 +271,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
    * @param referenceShuffleEdge  reference shuffle edge to copy key related execution properties
    * @param partitionerProperty   partitioner property of shuffle
    */
-  //to do: Change 1-1 stage edge to shuffle edge.
-  /*
+  //TODO #452: Allow changing Communication Property of Edge from one-to-one to shuffle.
   private IREdge changeOneToOneEdgeToShuffleEdge(final IREdge edge,
                                                  final IREdge referenceShuffleEdge,
                                                  final int partitionerProperty) {
@@ -291,20 +290,18 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
     edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
 
     // properties related to key
-    if (edge.getPropertyValue(KeyExtractorProperty.class).isEmpty()) {
+    if (!edge.getPropertyValue(KeyExtractorProperty.class).isPresent()) {
       edge.setProperty(KeyExtractorProperty.of(
         referenceShuffleEdge.getPropertyValue(KeyExtractorProperty.class).get()));
     }
-    if (edge.getPropertyValue(KeyEncoderProperty.class).isEmpty()) {
+    if (!edge.getPropertyValue(KeyEncoderProperty.class).isPresent()) {
       edge.setProperty(KeyEncoderProperty.of(
         referenceShuffleEdge.getPropertyValue(KeyEncoderProperty.class).get()));
     }
-    if (edge.getPropertyValue(KeyDecoderProperty.class).isEmpty()) {
+    if (!edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
       edge.setProperty(KeyDecoderProperty.of(
         referenceShuffleEdge.getPropertyValue(KeyDecoderProperty.class).get()));
     }
     return edge;
   }
-
-   */
 }
