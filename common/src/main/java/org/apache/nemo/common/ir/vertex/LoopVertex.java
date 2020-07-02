@@ -156,7 +156,8 @@ public class LoopVertex extends IRVertex {
    * @return the corresponding edge with internal vertex for the specified edge with loop
    */
   public IREdge getEdgeWithInternalVertex(final IREdge edgeWithLoop) {
-    return this.edgeWithLoopToEdgeWithInternalVertex.get(edgeWithLoop);
+    return this.edgeWithLoopToEdgeWithInternalVertex.getOrDefault(edgeWithLoop,
+      new HashMap<>(this.edgeWithLoopToEdgeWithInternalVertex).get(edgeWithLoop));
   }
 
   /**

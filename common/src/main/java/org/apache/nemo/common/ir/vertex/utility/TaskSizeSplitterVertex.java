@@ -97,7 +97,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     this.lastVerticesInStage = lastVerticesInStage;
 
     insertWorkingVertices(originalVertices, edgesBetweenOriginalVertices);
-    insertSignalVertex(new SignalVertex());
+    //insertSignalVertex(new SignalVertex());
   }
 
   // Getters of attributes
@@ -160,6 +160,10 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     final HashMap<IRVertex, IRVertex> originalToNewIRVertex = new HashMap<>();
     final HashSet<IRVertex> originalUtilityVertices = new HashSet<>();
     final HashSet<IREdge> edgesToOptimize = new HashSet<>();
+
+    if (testingTrial.intValue() == 0) {
+      insertSignalVertex(new SignalVertex());
+    }
 
     final List<OperatorVertex> previousSignalVertex = new ArrayList<>(1);
     final DAG<IRVertex, IREdge> dagToAdd = getDAG();

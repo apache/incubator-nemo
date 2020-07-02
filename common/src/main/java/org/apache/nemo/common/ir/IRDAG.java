@@ -393,6 +393,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       throw new CompileTimeOptimizationException(edgeToStreamize.getId() + " has a MessageId, and cannot be removed");
     }
 
+    if (edgeToStreamize.getDst() instanceof TaskSizeSplitterVertex) {
+      return;
+    }
+
     // Insert the vertex.
     final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(relayVertex, edgeToStreamize.getSrc());
     builder.addVertex(vertexToInsert);
@@ -477,6 +481,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                      final DecoderProperty triggerOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf,
                      final Set<IREdge> edgesToOptimize) {
+    //edge case: when the destination of mav is splitter, do not insert!
     assertNonExistence(messageGeneratorVertex);
     assertNonExistence(messageAggregatorVertex);
     edgesToGetStatisticsOf.forEach(this::assertNonControlEdge);
@@ -521,7 +526,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
       final IREdge clone = Util.cloneEdge(
         CommunicationPatternProperty.Value.ONE_TO_ONE, edgeToClone, edge.getSrc(), triggerToAdd);
-      builder.connectVertices(clone);
+      if (edge.getSrc() instanceof TaskSizeSplitterVertex) {
+        builder.connectSplitterVertexWithReplacing(edgeToClone, clone);
+      } else {
+        builder.connectVertices(clone);
+      }
     }
 
     // Add agg (no need to wrap inside sampling vertices)
@@ -536,8 +545,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // From agg to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
-    builder.connectVertices(
-      Util.createControlEdge(messageAggregatorVertex, edgesToGetStatisticsOf.iterator().next().getDst()));
+    IREdge aggToDst = Util.createControlEdge(
+      messageAggregatorVertex, edgesToGetStatisticsOf.iterator().next().getDst());
+    if (edgesToGetStatisticsOf.iterator().next().getDst() instanceof TaskSizeSplitterVertex) {
+      builder.connectSplitterVertexWithoutReplacing(edgesToGetStatisticsOf.iterator().next(), aggToDst);
+    } else {
+      builder.connectVertices(aggToDst);
+    }
+
 
     ////////////////////////////////// STEP 2: Annotate the MessageId on optimization target edges
 

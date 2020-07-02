@@ -69,7 +69,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     /* Step 1. check DTS launch by job size */
-    boolean enableDynamicTaskSizing = true; //isDTSEnabledByJobSize(dag);
+    boolean enableDynamicTaskSizing = isDTSEnabledByJobSize(dag);
     if (!enableDynamicTaskSizing) {
       return dag;
     } else {

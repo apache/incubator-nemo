@@ -18,8 +18,11 @@
  */
 package org.apache.nemo.common.dag;
 
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -28,6 +31,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexPropert
 import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
@@ -43,6 +48,7 @@ import java.util.stream.Stream;
  * @param <E> the edge type.
  */
 public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
   private final Set<V> vertices;
   private final Map<V, Set<E>> incomingEdges;
   private final Map<V, Set<E>> outgoingEdges;
@@ -159,6 +165,94 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     if (vertices.contains(src) && vertices.contains(dst)) {
       incomingEdges.get(dst).add(edge);
       outgoingEdges.get(src).add(edge);
+    } else {
+      this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
+      throw new IllegalVertexOperationException("The DAG does not contain"
+        + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
+        + " of the edge: [" + (src == null ? null : src.getId())
+        + "]->[" + (dst == null ? null : dst.getId()) + "] in "
+        + vertices.stream().map(V::getId).collect(Collectors.toSet()));
+    }
+    return this;
+  }
+
+  /**
+   * Use this method when there are no edges to be replaced.
+   * @param edgeToReference edge to reference.
+   * @param edgeToInsert  edge to insert.
+   * @return  itself.
+   */
+  public DAGBuilder<V, E> connectSplitterVertexWithoutReplacing(final E edgeToReference, final E edgeToInsert) {
+    final V src = edgeToInsert.getSrc();
+    final V dst = edgeToInsert.getDst();
+    LOG.error("edgeToReference: {} {} {}", edgeToReference.getId(), edgeToReference.getSrc().getId(),
+      edgeToReference.getDst().getId());
+
+    if (vertices.contains(src) && vertices.contains(dst)) {
+      if (!(edgeToInsert instanceof IREdge)) {
+        return this;
+      }
+
+      if (src instanceof TaskSizeSplitterVertex) {
+        TaskSizeSplitterVertex spSrc = (TaskSizeSplitterVertex) src;
+        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) edgeToReference);
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge, internalEdge.getSrc(), (IRVertex) dst);
+        spSrc.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
+      }
+      if (dst instanceof TaskSizeSplitterVertex) {
+        TaskSizeSplitterVertex spDst = (TaskSizeSplitterVertex) dst;
+        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) edgeToReference);
+        LOG.error("internal edge: {} {} {}", internalEdge.getId(), internalEdge.getSrc().getId(),
+          internalEdge.getDst().getId());
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge,
+          (IRVertex) src,
+          internalEdge.getDst());
+        spDst.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
+      }
+      incomingEdges.get(dst).add(edgeToInsert);
+      outgoingEdges.get(src).add(edgeToInsert);
+    } else {
+      this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
+      throw new IllegalVertexOperationException("The DAG does not contain"
+        + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
+        + " of the edge: [" + (src == null ? null : src.getId())
+        + "]->[" + (dst == null ? null : dst.getId()) + "] in "
+        + vertices.stream().map(V::getId).collect(Collectors.toSet()));
+    }
+    return this;
+  }
+
+  /**
+   * TaskSizeSplitterVertex only appears in IRDAG.
+   * @param originalEdge     edge to be replaced.
+   * @param edgeToInsert     edge to insert
+   * @return  itself.
+   */
+  public DAGBuilder<V, E> connectSplitterVertexWithReplacing(final E originalEdge, final E edgeToInsert) {
+    final V src = edgeToInsert.getSrc();
+    final V dst = edgeToInsert.getDst();
+
+    if (vertices.contains(src) && vertices.contains(dst)) {
+      if (!(edgeToInsert instanceof IREdge)) {
+        return this;
+      }
+
+      if (src instanceof TaskSizeSplitterVertex) {
+        TaskSizeSplitterVertex spSrc = (TaskSizeSplitterVertex) src;
+        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) originalEdge);
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge, internalEdge.getSrc(), (IRVertex) dst);
+        spSrc.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
+        spSrc.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
+      }
+      if (dst instanceof TaskSizeSplitterVertex) {
+        TaskSizeSplitterVertex spDst = (TaskSizeSplitterVertex) dst;
+        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) originalEdge);
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge, (IRVertex) src, internalEdge.getDst());
+        spDst.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
+        spDst.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
+      }
+      incomingEdges.get(dst).add(edgeToInsert);
+      outgoingEdges.get(src).add(edgeToInsert);
     } else {
       this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
       throw new IllegalVertexOperationException("The DAG does not contain"
