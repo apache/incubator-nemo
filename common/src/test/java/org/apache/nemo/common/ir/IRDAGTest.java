@@ -396,7 +396,7 @@ public class IRDAGTest {
     // Thousand random configurations (some duplicate configurations possible)
     final int thousandConfigs = 1000;
     for (int i = 0; i < thousandConfigs; i++) {
-      //LOG.error("Doing {}", i);
+      //LOG.info("Doing {}", i);
       final int numOfTotalMethods = 13;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {

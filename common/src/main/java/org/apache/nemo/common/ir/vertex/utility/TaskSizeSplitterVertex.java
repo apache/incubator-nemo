@@ -51,12 +51,12 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
   // Information about original(before splitting) vertices
   private static final Logger LOG = LoggerFactory.getLogger(TaskSizeSplitterVertex.class.getName());
   private final Set<IRVertex> originalVertices;
-  // Vertex which has incoming edge from other stages. Guaranteed to be only one in each stage by stage partitioner
-  private final Set<IRVertex> firstVerticesInStage;
-  // vertices which has outgoing edge to other stages. Can be more than one in one stage
-  private final Set<IRVertex> verticesWithStageOutgoingEdges;
-  // vertices which does not have any outgoing edge to vertices in same stage
-  private final Set<IRVertex> lastVerticesInStage;
+  // Vertex which has incoming edge from other groups. Guaranteed to be only one in each group by stage partitioner
+  private final Set<IRVertex> groupStartingVertices;
+  // vertices which has outgoing edge to other groups. Can be more than one in one groups
+  private final Set<IRVertex> verticesWithGroupOutgoingEdges;
+  // vertices which does not have any outgoing edge to vertices in same group
+  private final Set<IRVertex> groupEndingVertices;
 
   // Information about partition sizes
   private final int partitionerProperty;
@@ -71,19 +71,19 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    * @param splitterVertexName              for now, this doesn't do anything. This is inserted to enable extension
    *                                        from LoopVertex.
    * @param originalVertices                Set of vertices which form one stage and which splitter will wrap up.
-   * @param firstVerticesInStage            The first vertex in stage. Although it is given as a Set, we assert that
+   * @param groupStartingVertices            The first vertex in stage. Although it is given as a Set, we assert that
    *                                        this set has only one element (guaranteed by stage partitioner logic)
-   * @param verticesWithStageOutgoingEdges  Vertices which has outgoing edges to other stage.
-   * @param lastVerticesInStage             Vertices which has only outgoing edges to other stage.
+   * @param verticesWithGroupOutgoingEdges  Vertices which has outgoing edges to other stage.
+   * @param groupEndingVertices             Vertices which has only outgoing edges to other stage.
    * @param edgesBetweenOriginalVertices    Edges which connects original vertices.
    * @param partitionerProperty             PartitionerProperty of incoming stage edge regarding to job data size.
    *                                        For more information, check
    */
   public TaskSizeSplitterVertex(final String splitterVertexName,
                                 final Set<IRVertex> originalVertices,
-                                final Set<IRVertex> firstVerticesInStage,
-                                final Set<IRVertex> verticesWithStageOutgoingEdges,
-                                final Set<IRVertex> lastVerticesInStage,
+                                final Set<IRVertex> groupStartingVertices,
+                                final Set<IRVertex> verticesWithGroupOutgoingEdges,
+                                final Set<IRVertex> groupEndingVertices,
                                 final Set<IREdge> edgesBetweenOriginalVertices,
                                 final int partitionerProperty) {
     super(splitterVertexName); // need to take care of here
@@ -93,9 +93,9 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     for (IRVertex original : originalVertices) {
       mapOfOriginalVertexToClone.putIfAbsent(original, original.getClone());
     }
-    this.firstVerticesInStage = firstVerticesInStage;
-    this.verticesWithStageOutgoingEdges = verticesWithStageOutgoingEdges;
-    this.lastVerticesInStage = lastVerticesInStage;
+    this.groupStartingVertices = groupStartingVertices;
+    this.verticesWithGroupOutgoingEdges = verticesWithGroupOutgoingEdges;
+    this.groupEndingVertices = groupEndingVertices;
 
     insertWorkingVertices(originalVertices, edgesBetweenOriginalVertices);
     //insertSignalVertex(new SignalVertex());
@@ -106,16 +106,16 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
     return originalVertices;
   }
 
-  public Set<IRVertex> getFirstVerticesInStage() {
-    return firstVerticesInStage;
+  public Set<IRVertex> getGroupStartingVertices() {
+    return groupStartingVertices;
   }
 
-  public Set<IRVertex> getVerticesWithStageOutgoingEdges() {
-    return verticesWithStageOutgoingEdges;
+  public Set<IRVertex> getVerticesWithGroupOutgoingEdges() {
+    return verticesWithGroupOutgoingEdges;
   }
 
-  public Set<IRVertex> getLastVerticesInStage() {
-    return lastVerticesInStage;
+  public Set<IRVertex> getGroupEndingVertices() {
+    return groupEndingVertices;
   }
 
   /**
@@ -138,10 +138,10 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
    */
   private void insertSignalVertex(final SignalVertex toInsert) {
     getBuilder().addVertex(toInsert);
-    for (IRVertex lastVertex : lastVerticesInStage) {
+    for (IRVertex lastVertex : groupEndingVertices) {
       IREdge edgeToSignal = EmptyComponents.newDummyShuffleEdge(lastVertex, toInsert);
       getBuilder().connectVertices(edgeToSignal);
-      for (IRVertex firstVertex : firstVerticesInStage) {
+      for (IRVertex firstVertex : groupStartingVertices) {
         IREdge controlEdgeToBeginning = Util.createControlEdge(toInsert, firstVertex);
         addIterativeIncomingEdge(controlEdgeToBeginning);
       }
@@ -331,6 +331,7 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
 
   /**
    * Mark edges for DTS (i.e. incoming edges of second iteration vertices).
+   *
    * @param toAssign          Signal Vertex to get MessageIdVertexProperty
    * @param edgesToOptimize   Edges to mark for DTS
    */
@@ -346,6 +347,128 @@ public final class TaskSizeSplitterVertex extends LoopVertex {
         edge.setProperty(MessageIdEdgeProperty.of(msgEdgeIds));
       });
     }
+  }
+
+  // These similar four methods are for inserting TaskSizeSplitterVertex in DAG
+
+  /**
+   * Get edges which come to original vertices from outer sources by observing the dag. This will be the
+   * 'dagIncomingEdges' in Splitter vertex.
+   * Edge case: Happens when previous vertex(i.e. outer source) is also a splitter vertex. In this case, we need to get
+   *            original edges which is invisible from the dag by hacking into previous splitter vertex.
+   *
+   * @param dag     dag to insert Splitter Vertex.
+   * @return        a set of edges from outside to original vertices.
+   */
+  public Set<IREdge> getEdgesFromOutsideToOriginal(final DAG<IRVertex, IREdge> dag) {
+    // if previous vertex is splitter vertex, add the last vertex of that splitter vertex in map
+    Set<IREdge> fromOutsideToOriginal = new HashSet<>();
+    for (IRVertex startingVertex : this.groupStartingVertices) {
+      for (IREdge edge : dag.getIncomingEdgesOf(startingVertex)) {
+        if (edge.getSrc() instanceof TaskSizeSplitterVertex) {
+          for (IRVertex originalInnerSource : ((TaskSizeSplitterVertex) edge.getSrc())
+            .getVerticesWithGroupOutgoingEdges()) {
+            Set<IREdge> candidates = ((TaskSizeSplitterVertex) edge.getSrc()).
+              getDagOutgoingEdges().get(originalInnerSource);
+            candidates.stream().filter(edge2 -> edge2.getDst().equals(startingVertex))
+              .forEach(fromOutsideToOriginal::add);
+          }
+        } else {
+          fromOutsideToOriginal.add(edge);
+        }
+      }
+    }
+    return fromOutsideToOriginal;
+  }
+
+  /**
+   * Get edges which come from original vertices to outer destinations by observing the dag. This will be the
+   * 'dagOutgoingEdges' in Splitter vertex.
+   * Edge case: Happens when the vertex to be executed after the splitter vertex (i.e. outer destination)
+   *            is also a splitter vertex. In this case, we need to get original edges which is invisible from the dag
+   *            by hacking into next splitter vertex.
+   *
+   * @param dag     dag to insert Splitter Vertex.
+   * @return        a set of edges from original vertices to outside.
+   */
+  public Set<IREdge> getEdgesFromOriginalToOutside(final DAG<IRVertex, IREdge> dag) {
+    Set<IREdge> fromOriginalToOutside = new HashSet<>();
+    for (IRVertex vertex : verticesWithGroupOutgoingEdges) {
+      for (IREdge edge : dag.getOutgoingEdgesOf(vertex)) {
+        if (edge.getDst() instanceof TaskSizeSplitterVertex) {
+          Set<IRVertex> originalInnerDstVertices = ((TaskSizeSplitterVertex) edge.getDst()).getGroupStartingVertices();
+          for (IRVertex innerVertex : originalInnerDstVertices) {
+            Set<IREdge> candidates = ((TaskSizeSplitterVertex) edge.getDst()).
+              getDagIncomingEdges().get(innerVertex);
+            candidates.stream().filter(candidate -> candidate.getSrc().equals(vertex))
+              .forEach(fromOriginalToOutside::add);
+          }
+        } else if (!originalVertices.contains(edge.getDst())) {
+          fromOriginalToOutside.add(edge);
+        }
+      }
+    }
+    return fromOriginalToOutside;
+  }
+
+  /**
+   * Get edges which come to splitter from outside sources. These edges have a one-to-one relationship with
+   * edgesFromOutsideToOriginal.
+   * Edge case: Happens when previous vertex(i.e. outer source) is also a splitter vertex.
+   *            In this case, we need to modify the prevSplitter's LoopEdge - InternalEdge mapping relationship,
+   *            since inserting this Splitter Vertex changes the destination of prevSplitter's LoopEdge
+   *            from the original vertex to this Splitter Vertex
+   *
+   * @param dag     dag to insert Splitter Vertex
+   * @return        a set of edges pointing at Splitter Vertex
+   */
+  public Set<IREdge> getEdgesFromOutsideToSplitter(final DAG<IRVertex, IREdge> dag) {
+    HashSet<IREdge> fromOutsideToSplitter = new HashSet<>();
+    for (IRVertex groupStartingVertex : groupStartingVertices) {
+      for (IREdge incomingEdge : dag.getIncomingEdgesOf(groupStartingVertex)) {
+        if (incomingEdge.getSrc() instanceof TaskSizeSplitterVertex) {
+          TaskSizeSplitterVertex prevSplitter = (TaskSizeSplitterVertex) incomingEdge.getSrc();
+          IREdge internalEdge = prevSplitter.getEdgeWithInternalVertex(incomingEdge);
+          IREdge newIrEdge = Util.cloneEdge(incomingEdge, incomingEdge.getSrc(), this);
+          prevSplitter.mapEdgeWithLoop(newIrEdge, internalEdge);
+          fromOutsideToSplitter.add(newIrEdge);
+        } else {
+          IREdge cloneOfIncomingEdge = Util.cloneEdge(incomingEdge, incomingEdge.getSrc(), this);
+          fromOutsideToSplitter.add(cloneOfIncomingEdge);
+        }
+      }
+    }
+    return fromOutsideToSplitter;
+  }
+
+  /**
+   * Get edges which come out from splitter to outside destinations. These edges have a one-to-one relationship with
+   * edgesFromOriginalToOutside.
+   * Edge case: Happens when vertex to be executed after this Splitter Vertex(i.e. outer destination)
+   *            is also a Splitter Vertex. In this case, we need to modify the nextSplitter's LoopEdge - InternalEdge
+   *            mapping relationship, since inserting this Splitter Vertex changes the source of prevSplitter's
+   *            LoopEdge from the original vertex to this Splitter Vertex.
+   *
+   * @param dag     dag to insert Splitter Vertex.
+   * @return        a set of edges coming out from Splitter Vertex.
+   */
+  public Set<IREdge> getEdgesFromSplitterToOutside(final DAG<IRVertex, IREdge> dag) {
+    HashSet<IREdge> fromSplitterToOutside = new HashSet<>();
+    for (IRVertex vertex : verticesWithGroupOutgoingEdges) {
+      for (IREdge outgoingEdge : dag.getOutgoingEdgesOf(vertex)) {
+        if (outgoingEdge.getDst() instanceof TaskSizeSplitterVertex) {
+          TaskSizeSplitterVertex nextSplitter = (TaskSizeSplitterVertex) outgoingEdge.getDst();
+          IREdge internalEdge = nextSplitter.getEdgeWithInternalVertex(outgoingEdge);
+          IREdge newIrEdge = Util.cloneEdge(outgoingEdge, this, outgoingEdge.getDst());
+          nextSplitter.mapEdgeWithLoop(newIrEdge, internalEdge);
+          fromSplitterToOutside.add(newIrEdge);
+        } else if (!originalVertices.contains(outgoingEdge.getDst())) {
+          IREdge cloneOfOutgoingEdge = Util.cloneEdge(outgoingEdge, this, outgoingEdge.getDst());
+          fromSplitterToOutside.add(cloneOfOutgoingEdge);
+        }
+      }
+    }
+    return fromSplitterToOutside;
   }
 
   public void printLogs() {

@@ -176,37 +176,60 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     return this;
   }
 
+  // The below similar two methods are for connecting SplitterVertex in DAG
+
   /**
-   * Use this method when there are no edges to be replaced.
-   * @param edgeToReference edge to reference.
-   * @param edgeToInsert  edge to insert.
-   * @return  itself.
+   * This method replaces current SplitterVertex's LoopEdge - InternalEdge relationship with the new relationship
+   * and connects the Edge.
+   * The changes which invokes this method should not be caused by SplitterVertex itself. Therefore, this method
+   * should be used when there are changes in vertices before / after SplitterVertex.
+   *
+   * CAUTION: TaskSizeSplitterVertex must only appear in IRDAG.
+   *          {@param originalEdge} and {@param edgeToInsert} should have same source and destination.
+   *
+   * Relation to be Erased:   originalEdge - internalEdge
+   * Relation to insert:      edgeToInsert - newInternalEdge
+   *
+   * @param originalEdge     edge connected to SplitterVertex, and is to be replaced.
+   * @param edgeToInsert     edge connected to SplitterVertex, and is to be inserted.
+   * @return                 itself.
    */
-  public DAGBuilder<V, E> connectSplitterVertexWithoutReplacing(final E edgeToReference, final E edgeToInsert) {
+  public DAGBuilder<V, E> connectSplitterVertexWithReplacing(final E originalEdge, final E edgeToInsert) {
     final V src = edgeToInsert.getSrc();
     final V dst = edgeToInsert.getDst();
-    LOG.error("edgeToReference: {} {} {}", edgeToReference.getId(), edgeToReference.getSrc().getId(),
-      edgeToReference.getDst().getId());
 
     if (vertices.contains(src) && vertices.contains(dst)) {
+      // integrity check: TaskSizeSplitterVertex should only appear in IRDAG.
       if (!(edgeToInsert instanceof IREdge)) {
         return this;
       }
 
+      if (!originalEdge.getSrc().equals(src)) {
+        throw new IllegalVertexOperationException(originalEdge.getId()
+          + " and" + edgeToInsert.getId() + " should have same source, but founded\n edge : source"
+          + originalEdge.getId() + " : " + originalEdge.getSrc().getId()
+          + edgeToInsert.getId() + " : " + edgeToInsert.getSrc().getId());
+      }
+
+      if (!originalEdge.getDst().equals(dst)) {
+        throw new IllegalVertexOperationException(originalEdge.getId()
+          + " and" + edgeToInsert.getId() + " should have same destination, but founded\n edge : dest"
+          + originalEdge.getId() + " : " + originalEdge.getDst().getId()
+          + edgeToInsert.getId() + " : " + edgeToInsert.getDst().getId());
+      }
+
       if (src instanceof TaskSizeSplitterVertex) {
         TaskSizeSplitterVertex spSrc = (TaskSizeSplitterVertex) src;
-        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) edgeToReference);
+        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) originalEdge);
         IREdge newInternalEdge = Util.cloneEdge(internalEdge, internalEdge.getSrc(), (IRVertex) dst);
+        spSrc.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
         spSrc.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
       }
       if (dst instanceof TaskSizeSplitterVertex) {
         TaskSizeSplitterVertex spDst = (TaskSizeSplitterVertex) dst;
-        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) edgeToReference);
-        LOG.error("internal edge: {} {} {}", internalEdge.getId(), internalEdge.getSrc().getId(),
-          internalEdge.getDst().getId());
-        IREdge newInternalEdge = Util.cloneEdge(internalEdge,
-          (IRVertex) src,
-          internalEdge.getDst());
+        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) originalEdge);
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge, (IRVertex) src, internalEdge.getDst());
+        spDst.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
         spDst.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
       }
       incomingEdges.get(dst).add(edgeToInsert);
@@ -223,32 +246,47 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   }
 
   /**
-   * TaskSizeSplitterVertex only appears in IRDAG.
-   * @param originalEdge     edge to be replaced.
-   * @param edgeToInsert     edge to insert
-   * @return  itself.
+   * This method adds a information in SplitterVertex's LoopEdge - InternalEdge relationship and connects the Edge
+   * without replacing existing mapping relationships.
+   * The changes which invokes this method should not be caused by SplitterVertex itself. Therefore, this method
+   * should be used when there are changes in vertices before / after SplitterVertex.
+   * Since {@param edgeToInsert} should also have a mapping relationship to originalVertices of SplitterVertex,
+   * we give {@param edgeToReference} together to copy the mapping information. Therefore, these two parameters must
+   * have at least one common source or destination.
+   *
+   * Relation to reference:   edgeToReference - internalEdge
+   * Relation to add:         edgeToInsert - newInternalEdge
+   *
+   * CAUTION: TaskSizeSplitterVertex must only appear in IRDAG.
+   *
+   * Use case example: when inserting trigger vertices before / after splitterVertex.
+   *
+   * @param edgeToReference edge connected to SplitterVertex, and to reference.
+   * @param edgeToInsert    edge connected to SplitterVertex, and to insert.
+   * @return                itself.
    */
-  public DAGBuilder<V, E> connectSplitterVertexWithReplacing(final E originalEdge, final E edgeToInsert) {
+  public DAGBuilder<V, E> connectSplitterVertexWithoutReplacing(final E edgeToReference, final E edgeToInsert) {
     final V src = edgeToInsert.getSrc();
     final V dst = edgeToInsert.getDst();
 
     if (vertices.contains(src) && vertices.contains(dst)) {
+      // integrity check: TaskSizeSplitterVertex should only appear in IRDAG.
       if (!(edgeToInsert instanceof IREdge)) {
         return this;
       }
 
-      if (src instanceof TaskSizeSplitterVertex) {
+      if (src instanceof TaskSizeSplitterVertex && edgeToReference.getSrc().equals(src)) {
         TaskSizeSplitterVertex spSrc = (TaskSizeSplitterVertex) src;
-        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) originalEdge);
-        IREdge newInternalEdge = Util.cloneEdge(internalEdge, internalEdge.getSrc(), (IRVertex) dst);
-        spSrc.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
+        IREdge internalEdge = spSrc.getEdgeWithInternalVertex((IREdge) edgeToReference);
+        IREdge newInternalEdge = Util.cloneEdge((IREdge) edgeToInsert, internalEdge.getSrc(), (IRVertex) dst);
         spSrc.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
       }
-      if (dst instanceof TaskSizeSplitterVertex) {
+      if (dst instanceof TaskSizeSplitterVertex && edgeToReference.getDst().equals(dst)) {
         TaskSizeSplitterVertex spDst = (TaskSizeSplitterVertex) dst;
-        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) originalEdge);
-        IREdge newInternalEdge = Util.cloneEdge(internalEdge, (IRVertex) src, internalEdge.getDst());
-        spDst.mapEdgeWithLoop((IREdge) originalEdge, newInternalEdge);
+        IREdge internalEdge = spDst.getEdgeWithInternalVertex((IREdge) edgeToReference);
+        IREdge newInternalEdge = Util.cloneEdge(internalEdge,
+          (IRVertex) src,
+          internalEdge.getDst());
         spDst.mapEdgeWithLoop((IREdge) edgeToInsert, newInternalEdge);
       }
       incomingEdges.get(dst).add(edgeToInsert);
