@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 
 /**
  * Executes the original IRVertex using a subset of input data partitions.
@@ -38,7 +39,7 @@ public final class SamplingVertex extends IRVertex {
    */
   public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
     super();
-    if (!(originalVertex instanceof TriggerVertex) && (Util.isUtilityVertex(originalVertex))) {
+    if (!(originalVertex instanceof MessageGeneratorVertex) && (Util.isUtilityVertex(originalVertex))) {
       throw new IllegalArgumentException(
         "Cannot sample non-Trigger utility vertices: " + originalVertex.toString());
     }

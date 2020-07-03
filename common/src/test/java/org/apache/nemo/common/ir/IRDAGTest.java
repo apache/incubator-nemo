@@ -24,16 +24,19 @@ import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
@@ -275,13 +278,27 @@ public class IRDAGTest {
   }
 
   @Test
+  public void testSignalVertex() {
+    final SignalVertex sg1 = insertNewSignalVertex(irdag, oneToOneEdge);
+    mustPass();
+
+    final SignalVertex sg2 = insertNewSignalVertex(irdag, shuffleEdge);
+    mustPass();
+
+    irdag.delete(sg1);
+    mustPass();
+
+    irdag.delete(sg2);
+    mustPass();
+  }
+
+  @Test
   public void testSamplingVertex() {
     final SamplingVertex svOne = new SamplingVertex(sourceVertex, 0.1f);
     irdag.insert(Sets.newHashSet(svOne), Sets.newHashSet(sourceVertex));
     mustPass();
 
     final SamplingVertex svTwo = new SamplingVertex(firstOperatorVertex, 0.1f);
-    ;
     irdag.insert(Sets.newHashSet(svTwo), Sets.newHashSet(firstOperatorVertex));
     mustPass();
 
@@ -292,8 +309,26 @@ public class IRDAGTest {
     mustPass();
   }
 
+  @Test
+  public void testSplitterVertex() {
+    final TaskSizeSplitterVertex sp = new TaskSizeSplitterVertex(
+      "splitter_1",
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(),
+      Sets.newHashSet(secondOperatorVertex),
+      Sets.newHashSet(),
+      1024
+    );
+    irdag.insert(sp);
+    mustPass();
+
+    irdag.delete(sp);
+    mustPass();
+  }
+
   private MessageAggregatorVertex insertNewTriggerVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
-    final TriggerVertex mb = new TriggerVertex<>((l, r) -> null);
+    final MessageGeneratorVertex mb = new MessageGeneratorVertex<>((l, r) -> null);
     final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(() -> new Object(), (l, r) -> null);
     dag.insert(
       mb,
@@ -305,6 +340,53 @@ public class IRDAGTest {
     return ma;
   }
 
+  private Optional<TaskSizeSplitterVertex> insertNewSplitterVertex(final IRDAG dag,
+                                                                   final IREdge edgeToSplitterVertex) {
+    final Set<IRVertex> vertexGroup = getVertexGroupToInsertSplitter(irdag, edgeToSplitterVertex);
+    if (vertexGroup.isEmpty()) {
+      return Optional.empty();
+    }
+    Set<IRVertex> verticesWithGroupOutgoingEdges = new HashSet<>();
+    for (IRVertex vertex : vertexGroup) {
+      Set<IRVertex> nextVertices = irdag.getOutgoingEdgesOf(vertex).stream().map(Edge::getDst)
+        .collect(Collectors.toSet());
+      for (IRVertex nextVertex : nextVertices) {
+        if (!vertexGroup.contains(nextVertex)) {
+          verticesWithGroupOutgoingEdges.add(vertex);
+        }
+      }
+    }
+    Set<IRVertex> groupEndingVertices = vertexGroup.stream()
+      .filter(stageVertex -> irdag.getOutgoingEdgesOf(stageVertex).isEmpty()
+        || !irdag.getOutgoingEdgesOf(stageVertex).stream().map(Edge::getDst).anyMatch(vertexGroup::contains))
+      .collect(Collectors.toSet());
+
+    final Set<IREdge> edgesBetweenOriginalVertices = vertexGroup
+      .stream()
+      .flatMap(ov -> dag.getIncomingEdgesOf(ov).stream())
+      .filter(edge -> vertexGroup.contains(edge.getSrc()))
+      .collect(Collectors.toSet());
+
+    TaskSizeSplitterVertex sp = new TaskSizeSplitterVertex(
+      "sp" + edgeToSplitterVertex.getId(),
+      vertexGroup,
+      Sets.newHashSet(edgeToSplitterVertex.getDst()),
+      verticesWithGroupOutgoingEdges,
+      groupEndingVertices,
+      edgesBetweenOriginalVertices,
+      1024);
+
+    dag.insert(sp);
+
+    return Optional.of(sp);
+  }
+
+  private SignalVertex insertNewSignalVertex(final IRDAG dag, final IREdge edgeToOptimize) {
+    final SignalVertex sg = new SignalVertex();
+    dag.insert(sg, edgeToOptimize);
+    return sg;
+  }
+
   ////////////////////////////////////////////////////// Random generative tests
 
   private Random random = new Random(0); // deterministic seed for reproducibility
@@ -314,8 +396,8 @@ public class IRDAGTest {
     // Thousand random configurations (some duplicate configurations possible)
     final int thousandConfigs = 1000;
     for (int i = 0; i < thousandConfigs; i++) {
-      // LOG.info("Doing {}", i);
-      final int numOfTotalMethods = 11;
+      //LOG.info("Doing {}", i);
+      final int numOfTotalMethods = 13;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
         // Annotation methods
@@ -360,6 +442,12 @@ public class IRDAGTest {
           irdag.insert(Sets.newHashSet(samplingVertex), Sets.newHashSet(vertexToSample));
           break;
         case 10:
+          insertNewSignalVertex(irdag, selectRandomEdge());
+          break;
+        case 11:
+          insertNewSplitterVertex(irdag, selectRandomEdge());
+          break;
+        case 12:
           // the last index must be (numOfTotalMethods - 1)
           selectRandomUtilityVertex().ifPresent(irdag::delete);
           break;
@@ -374,7 +462,7 @@ public class IRDAGTest {
 
       if (methodIndex >= 7) {
         // Uncomment to visualize DAG snapshots after reshaping (insert, delete)
-        // irdag.storeJSON("test_reshaping_snapshots", i + "(methodIndex_" + methodIndex + ")", "test");
+        //irdag.storeJSON("test_reshaping_snapshots", i + "(methodIndex_" + methodIndex + ")", "test");
       }
 
       // Must always pass
@@ -409,6 +497,105 @@ public class IRDAGTest {
     return utilityVertices.isEmpty()
       ? Optional.empty()
       : Optional.of(utilityVertices.get(random.nextInt(utilityVertices.size())));
+  }
+
+  /**
+   * Private helper method to check if the parameter observingEdge is appropriate for inserting Splitter Vertex.
+   * Specifically, this edge is considered to be the incoming edge of splitter vertex.
+   * This edge should have communication property of shuffle, and should be the only edge coming out from/coming in to
+   * its source/dest.
+   * @param dag           dag to observe.
+   * @param observingEdge observing edge.
+   * @return              true if this edge is appropriate for inserting splitter vertex.
+   */
+  private boolean isThisEdgeAppropriateForInsertingSplitterVertex(IRDAG dag, IREdge observingEdge) {
+    // If communication property of observing Edge is not shuffle, return false.
+    if (!CommunicationPatternProperty.Value.SHUFFLE.equals(
+      observingEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+      return false;
+    }
+
+    // If destination of observingEdge has multiple incoming edges, return false.
+    if (dag.getIncomingEdgesOf(observingEdge.getDst()).size() > 1) {
+      return false;
+    }
+
+    // If source of observingEdge has multiple outgoing edges, return false.
+    if (dag.getOutgoingEdgesOf(observingEdge.getSrc()).size() > 1) {
+      return false;
+    }
+    return true;
+  }
+
+  private Set<IRVertex> getVertexGroupToInsertSplitter(IRDAG dag, IREdge observingEdge) {
+    final Set<IRVertex> vertexGroup = new HashSet<>();
+
+    // If this edge is not appropriate to be the incoming edge of splitter vertex, return empty set.
+    if (!isThisEdgeAppropriateForInsertingSplitterVertex(dag, observingEdge)) {
+      return new HashSet<>();
+    }
+
+    if (observingEdge.getDst() instanceof MessageGeneratorVertex
+      || observingEdge.getDst() instanceof MessageAggregatorVertex) {
+      return new HashSet<>();
+    }
+    // Get the vertex group.
+    vertexGroup.add(observingEdge.getDst());
+    for (IREdge edge : dag.getOutgoingEdgesOf(observingEdge.getDst())) {
+      vertexGroup.addAll(recursivelyAddVertexGroup(dag, edge, vertexGroup));
+    }
+
+    // Check if this vertex group is appropriate for inserting splitter vertex
+    Set<IREdge> stageOutgoingEdges = vertexGroup
+      .stream()
+      .flatMap(vertex -> dag.getOutgoingEdgesOf(vertex).stream())
+      .filter(edge -> !vertexGroup.contains(edge.getDst()))
+      .collect(Collectors.toSet());
+    if (stageOutgoingEdges.isEmpty()) {
+      return vertexGroup;
+    } else {
+      for (IREdge edge : stageOutgoingEdges) {
+        if (CommunicationPatternProperty.Value.ONE_TO_ONE.equals(
+          edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          return new HashSet<>();
+        }
+      }
+    }
+    return vertexGroup;
+  }
+
+  /**
+   * Check of the destination of the observing edge can be added in vertex group.
+   * @param dag             dag to observe.
+   * @param observingEdge   edge to observe.
+   * @param vertexGroup     vertex group to add.
+   * @return                updated vertex group.
+   */
+  private Set<IRVertex> recursivelyAddVertexGroup(IRDAG dag, IREdge observingEdge, Set<IRVertex> vertexGroup) {
+    // do not update.
+    if (dag.getIncomingEdgesOf(observingEdge.getDst()).size() > 1) {
+      return vertexGroup;
+    }
+    // do not update.
+    if (observingEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(IllegalStateException::new)
+      != CommunicationPatternProperty.Value.ONE_TO_ONE) {
+      return vertexGroup;
+    }
+    // do not update.
+    if (!observingEdge.getSrc().getExecutionProperties().equals(observingEdge.getDst().getExecutionProperties())) {
+      return vertexGroup;
+    }
+    // do not update.
+    if (observingEdge.getDst() instanceof MessageGeneratorVertex
+      || observingEdge.getDst() instanceof MessageAggregatorVertex) {
+      return vertexGroup;
+    }
+    // do update.
+    vertexGroup.add(observingEdge.getDst());
+    for (IREdge edge : dag.getOutgoingEdgesOf(observingEdge.getDst())) {
+     vertexGroup.addAll(recursivelyAddVertexGroup(dag, edge, vertexGroup));
+    }
+    return vertexGroup;
   }
 
   ///////////////// Random vertex EP
