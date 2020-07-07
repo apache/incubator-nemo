@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.data;
-import io.opencensus.common.ServerStatsFieldEnums;
 import org.apache.nemo.common.Pair;
 
 import java.util.ArrayList;
@@ -30,7 +29,7 @@ import java.util.LinkedList;
  */
 public class SizeTrackingVector {
   private ArrayList<Object> vector;
-  // rate of sampling growth rate
+  // rate of nextSampleNum growth rate, grow nextSampleNum to prevent excessive sampling
   private double sampleGrowthRate;
   private LinkedList<Pair<Long, Long>> samples;
   // number of updates/insertions since last update
@@ -41,10 +40,10 @@ public class SizeTrackingVector {
   private long nextSampleNum;
 
 
-  SizeTrackingVector() {
-
-  }
-
+//  SizeTrackingVector() {
+//
+//  }
+//
 
   private void resetSamples() {
     numUpdates = 1;
@@ -69,10 +68,17 @@ public class SizeTrackingVector {
   }
 
   private void takeSample() {
-//    Pair pair = Pair< SizeEstimator.estimate(1), numUpdates >;
-    samples.add(Pair.of(SizeEstimator.estimate(4), numUpdates));
-//    long bytesDelta = samples.getFirst() - samples.getLast();
-
+    // add the current size of vector and the number of updates made to end of samples
+    samples.add(Pair.of(SizeEstimator.estimate(this), numUpdates));
+    if (samples.size() > 2) {
+      samples.removeFirst();
+    }
+    // average change in bytes since last numUpdates
+    long bytesDelta = (samples.getLast().left() - samples.getFirst().left())
+      - (samples.getLast().right() - samples.getFirst().right());
+    bytesPerUpdate = Math.max(0, bytesDelta);
+    // grow nextSampleNum
+    nextSampleNum = (long) Math.ceil(nextSampleNum * sampleGrowthRate);
   }
 
 
@@ -81,14 +87,8 @@ public class SizeTrackingVector {
    * @return size in bytes
    */
   public long estimateSize() {
-    long size = 0;
-
-    return size;
+    long currentlyTrackedSize = samples.getFirst().left();
+    long mostRecentUpdate = bytesPerUpdate * (numUpdates - samples.getLast().right());
+    return currentlyTrackedSize + mostRecentUpdate;
   }
-
-
-
-
-
-
 }
