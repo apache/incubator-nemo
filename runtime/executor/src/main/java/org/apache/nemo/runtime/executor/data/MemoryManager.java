@@ -24,7 +24,12 @@ package org.apache.nemo.runtime.executor.data;
 //import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 //import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
+//import java.util.concurrent.atomic.AtomicInteger;
 //import javax.inject.Inject;
 
 /**
@@ -34,14 +39,34 @@ import javax.annotation.concurrent.ThreadSafe;
  */
 @ThreadSafe
 public final class MemoryManager {
-//  public final long
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryManager.class.getName());
+  // for testing purposes only
+  private static int uniqueId = 42;
+
+  private static long testStorageMemoryLimit;
+  private StorageMemoryPool storageMemoryPool = new StorageMemoryPool();
 
   /**
    * Constructor.
    */
-  private MemoryManager() {
-
+  public MemoryManager(final long testStorageMemoryLimit) {
+    this.testStorageMemoryLimit = testStorageMemoryLimit;
   }
 
+  @Inject
+  public MemoryManager() {
+    this.testStorageMemoryLimit = 10000;
+  }
+
+  public boolean acquireStorageMemory(final long mem) {
+    LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.testStorageMemoryLimit);
+    this.testStorageMemoryLimit -= mem;
+    LOG.info("MemoryManager, testStorageMemoryLimit is now {}", this.testStorageMemoryLimit);
+    return this.testStorageMemoryLimit > 0;
+  }
+
+  public int getUniqueId() {
+    return this.uniqueId;
+  }
 }
 

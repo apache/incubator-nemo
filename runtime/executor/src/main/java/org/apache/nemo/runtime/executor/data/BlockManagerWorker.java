@@ -78,6 +78,7 @@ public final class BlockManagerWorker {
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
 
+
   // To-Master connections
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final LoadingCache<String, CompletableFuture<ControlMessage.Message>> blockLocationResponseCache;
@@ -88,6 +89,8 @@ public final class BlockManagerWorker {
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final BlockTransferThrottler blockTransferThrottler;
 
+  //dongjoo
+  private final MemoryManager memoryManager;
   /**
    * Constructor.
    *
@@ -112,7 +115,8 @@ public final class BlockManagerWorker {
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
                              final SerializerManager serializerManager,
-                             final BlockTransferThrottler blockTransferThrottler) {
+                             final BlockTransferThrottler blockTransferThrottler,
+                             final MemoryManager memoryManager) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -149,6 +153,8 @@ public final class BlockManagerWorker {
         }
       });
     this.blockTransferThrottler = blockTransferThrottler;
+    // dongjoo
+    this.memoryManager = memoryManager;
   }
 
   //////////////////////////////////////////////////////////// Main public methods

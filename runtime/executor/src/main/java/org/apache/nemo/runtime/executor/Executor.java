@@ -43,6 +43,7 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
@@ -81,6 +82,9 @@ public final class Executor {
 
   private final BroadcastManagerWorker broadcastManagerWorker;
 
+  //dongjoo
+  private final MemoryManager memoryManager;
+
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final MetricMessageSender metricMessageSender;
@@ -92,7 +96,8 @@ public final class Executor {
                    final SerializerManager serializerManager,
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
-                   final MetricManagerWorker metricMessageSender) {
+                   final MetricManagerWorker metricMessageSender,
+                   final MemoryManager memoryManager) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
       .namingPattern("TaskExecutor thread-%d")
@@ -102,7 +107,15 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
+    // dongjoo: one memory manager per executor
+//    this.memoryManager = new MemoryManager();
+    this.memoryManager = memoryManager;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
+  }
+
+  //dongjoo
+  public MemoryManager getMemoryManager() {
+    return memoryManager;
   }
 
   public String getExecutorId() {
@@ -148,8 +161,9 @@ public final class Executor {
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null))));
 
+
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-        metricMessageSender, persistentConnectionToMasterMap).execute();
+        metricMessageSender, memoryManager, persistentConnectionToMasterMap).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()

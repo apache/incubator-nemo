@@ -83,9 +83,9 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   public void write(final K key,
                     final Object element) {
     LOG.info("dongjoo, SerMemBlock write key {}, blockId {}  element {}", key, id, element);
-    LOG.info("dongoo, ser memblock write, measure jvm max {}, total {}, free{}",
-      java.lang.Runtime.getRuntime().maxMemory(), java.lang.Runtime.getRuntime().totalMemory(),
-      java.lang.Runtime.getRuntime().freeMemory());
+//    LOG.info("dongjoo, SerMemBlock write, measure jvm max {}, total {}, free{}",
+//      java.lang.Runtime.getRuntime().maxMemory(), java.lang.Runtime.getRuntime().totalMemory(),
+//      java.lang.Runtime.getRuntime().freeMemory());
 
     if (committed) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
@@ -113,6 +113,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    */
   @Override
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) {
+    LOG.info("dongjoo, SerMemblock writePartitions id: {} partitions {}, ", id, partitions);
     if (!committed) {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
@@ -136,6 +137,8 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    */
   @Override
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) {
+    LOG.info("dongjoo, SerMemblock writePartitions id: {} partitions {}, ", id, partitions);
+
     if (!committed) {
       partitions.forEach(serializedPartitions::add);
     } else {

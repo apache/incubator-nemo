@@ -48,6 +48,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
@@ -96,6 +97,8 @@ public final class TaskExecutorTest {
   private BroadcastManagerWorker broadcastManagerWorker;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
+  //dongjoo
+  private MemoryManager memoryManager;
   private PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private AtomicInteger stageId;
 
@@ -898,6 +901,6 @@ public final class TaskExecutorTest {
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
     return new TaskExecutor(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-      metricMessageSender, persistentConnectionToMasterMap);
+      metricMessageSender, memoryManager, persistentConnectionToMasterMap);
   }
 }

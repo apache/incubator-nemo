@@ -46,6 +46,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,8 @@ public final class TaskExecutor {
   private final List<DataFetcher> dataFetchers;
   private final BroadcastManagerWorker broadcastManagerWorker;
   private final List<VertexHarness> sortedHarnesses;
+  //dongjoo
+  private final MemoryManager memoryManager;
 
   // Metrics information
   private long boundedSourceReadTime = 0;
@@ -93,6 +96,7 @@ public final class TaskExecutor {
    * @param intermediateDataIOFactory       For reading from/writing to data to other tasks.
    * @param broadcastManagerWorker          For broadcasts.
    * @param metricMessageSender             For sending metric with execution stats to the master.
+   * @param memoryManager                   addition, testing
    * @param persistentConnectionToMasterMap For sending messages to the master.
    */
   public TaskExecutor(final Task task,
@@ -101,12 +105,16 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
+                      //dongjoo
+                      final MemoryManager memoryManager,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    // dongjoo
+    this.memoryManager = memoryManager;
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;

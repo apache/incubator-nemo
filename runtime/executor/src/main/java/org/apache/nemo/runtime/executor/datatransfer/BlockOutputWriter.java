@@ -28,6 +28,9 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+//import org.apache.nemo.runtime.executor.data.MemoryManager;
+import org.apache.nemo.runtime.executor.data.MemoryManager;
+import org.apache.nemo.runtime.executor.data.SizeEstimator;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +55,9 @@ public final class BlockOutputWriter implements OutputWriter {
 
   private long writtenBytes;
 
+  //dongjoo
+  private final MemoryManager memoryManager;
+
   /**
    * Constructor.
    *
@@ -63,7 +69,8 @@ public final class BlockOutputWriter implements OutputWriter {
   BlockOutputWriter(final String srcTaskId,
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
-                    final BlockManagerWorker blockManagerWorker) {
+                    final BlockManagerWorker blockManagerWorker,
+                    final MemoryManager memoryManager) {
     final StageEdge stageEdge = (StageEdge) runtimeEdge;
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
@@ -81,12 +88,20 @@ public final class BlockOutputWriter implements OutputWriter {
     nonDummyBlock = !duplicateDataProperty.isPresent()
       || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
       || duplicateDataProperty.get().getGroupSize() <= 1;
+
+    //dongjoo
+    this.memoryManager = memoryManager;
   }
+
 
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
-      LOG.info("Block output writer write, blocktoWrite {}, element {},", blockToWrite, element);
+      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, element {},",
+        blockToWrite.getId(), blockToWrite, element);
+      LOG.info("estimated size of element is : {}", SizeEstimator.estimate(element));
+      memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
+      LOG.info("unique id of memeory manager  {}", memoryManager.getUniqueId());
       blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =
@@ -109,7 +124,7 @@ public final class BlockOutputWriter implements OutputWriter {
   @Override
   public void close() {
     // Commit block.
-    LOG.info("dongjoo BlockOutputWriter close block, closing {}", blockToWrite);
+    LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.getId());
     final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
       .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
 

@@ -25,7 +25,11 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.MetricManagerWorker;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+//import org.apache.nemo.runtime.executor.data.MemoryManager;
+import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -34,17 +38,24 @@ import java.util.Optional;
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
  */
 public final class IntermediateDataIOFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(IntermediateDataIOFactory.class.getName());
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
   private final MetricMessageSender metricMessageSender;
+  // dongjoo
+  private final MemoryManager memoryManager;
 
   @Inject
   private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
                                     final PipeManagerWorker pipeManagerWorker,
-                                    final MetricManagerWorker metricMessageSender) {
+                                    final MetricManagerWorker metricMessageSender,
+                                    final MemoryManager memoryManager) {
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
     this.metricMessageSender = metricMessageSender;
+    LOG.info("dongjoo, IntermediateDataIOFactory constructor called");
+    //dongjoo
+    this.memoryManager = memoryManager;
   }
 
   /**
@@ -60,7 +71,8 @@ public final class IntermediateDataIOFactory {
       return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker);
     } else {
       final StageEdge stageEdge = (StageEdge) runtimeEdge;
-      return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+      return new BlockOutputWriter(
+        srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker, memoryManager);
     }
   }
 

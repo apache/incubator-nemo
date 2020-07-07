@@ -110,6 +110,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    */
   @Override
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) throws BlockWriteException {
+    LOG.info("dongjoo, NonSerMemblock writePartitions id: {} partitions {}, ", id, partitions);
     if (!committed) {
       partitions.forEach(nonSerializedPartitions::add);
     } else {
@@ -129,6 +130,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    */
   @Override
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws BlockWriteException {
+    LOG.info("dongjoo, NonSerMemblock writeSerializedPartitions id: {} partitions {}, ", id, partitions);
+
     if (!committed) {
       try {
         final Iterable<NonSerializedPartition<K>> convertedPartitions =
