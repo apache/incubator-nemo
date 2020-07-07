@@ -31,6 +31,7 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 //import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.SizeEstimator;
+import org.apache.nemo.runtime.executor.data.SizeTrackingVector;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   //dongjoo
   private final MemoryManager memoryManager;
+  private SizeTrackingVector sizeTrackingVector;
 
   /**
    * Constructor.
@@ -91,6 +93,8 @@ public final class BlockOutputWriter implements OutputWriter {
 
     //dongjoo
     this.memoryManager = memoryManager;
+    this.sizeTrackingVector = new SizeTrackingVector();
+
   }
 
 
@@ -100,6 +104,9 @@ public final class BlockOutputWriter implements OutputWriter {
       LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, element {},",
         blockToWrite.getId(), blockToWrite, element);
       LOG.info("estimated size of element is : {}", SizeEstimator.estimate(element));
+      LOG.info("appending to sizeTrakcingVector");
+      sizeTrackingVector.append(element);
+      LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
       memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
       LOG.info("unique id of memeory manager  {}", memoryManager.getUniqueId());
       blockToWrite.write(partitioner.partition(element), element);
