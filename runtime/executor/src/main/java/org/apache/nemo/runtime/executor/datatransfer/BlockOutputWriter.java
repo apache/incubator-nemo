@@ -101,14 +101,17 @@ public final class BlockOutputWriter implements OutputWriter {
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
-      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, element {},",
-        blockToWrite.getId(), blockToWrite, element);
+      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}",
+        blockToWrite.getId(), blockToWrite);
+      LOG.info("written element {}", element);
+
       LOG.info("estimated size of element is : {}", SizeEstimator.estimate(element));
-      LOG.info("appending to sizeTrakcingVector");
+      LOG.info("appending to sizeTrackingVector");
       sizeTrackingVector.append(element);
       LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
+      LOG.info("STV INFO {}", sizeTrackingVector.getInfo());
       memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
-      LOG.info("unique id of memeory manager  {}", memoryManager.getUniqueId());
+      LOG.info("unique id of memory manager  {}", memoryManager.getUniqueId());
       blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =

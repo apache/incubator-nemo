@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data;
 import org.apache.nemo.common.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -28,9 +30,11 @@ import java.util.LinkedList;
  * needed for storing the elements while tracking their size, to acquireMemory form MemoryManager
  */
 public class SizeTrackingVector {
+  private static final Logger LOG = LoggerFactory.getLogger(SizeTrackingVector.class.getName());
+
   private ArrayList<Object> vector;
   // rate of nextSampleNum growth rate, grow nextSampleNum to prevent excessive sampling
-  private double sampleGrowthRate;
+  private double sampleGrowthRate = 1.1;
   private LinkedList<Pair<Long, Long>> samples;
   // number of updates/insertions since last update
   private long numUpdates;
@@ -40,16 +44,33 @@ public class SizeTrackingVector {
   private long nextSampleNum;
 
 
-//  SizeTrackingVector() {
-//
-//  }
-//
+  public SizeTrackingVector() {
+    LOG.info("SizeTrackingVector constructor called ");
+    this.vector = new ArrayList<Object>();
+    this.samples = new LinkedList<Pair<Long, Long>>();
+    this.resetSamples();
+    LOG.info("Constructor, getInfo {}", getInfo());
+  }
+
+  /**
+   * something.
+   */
+  public String getInfo() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("numUpdates:");
+    sb.append(this.numUpdates);
+    sb.append("\n");
+    sb.append("nextSampleNum:");
+    sb.append(this.nextSampleNum);
+    sb.append("\n");
+    return sb.toString();
+  }
 
   private void resetSamples() {
-    numUpdates = 1;
-    nextSampleNum = 1;
-    samples.clear();
-    takeSample();
+    this.numUpdates = 1;
+    this.nextSampleNum = 1;
+    this.samples.clear();
+    this.takeSample();
   }
 
   private void afterUpdate() {
@@ -65,9 +86,13 @@ public class SizeTrackingVector {
    */
   public void append(final Object element) {
     this.vector.add(element);
+    LOG.info("append called, vector size {}", this.vector.size());
+    LOG.info("size of object being appended {}", SizeEstimator.estimate(element));
+    this.afterUpdate();
   }
 
   private void takeSample() {
+    LOG.info("BEGIN, take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
     // add the current size of vector and the number of updates made to end of samples
     samples.add(Pair.of(SizeEstimator.estimate(this), numUpdates));
     if (samples.size() > 2) {
@@ -78,7 +103,8 @@ public class SizeTrackingVector {
       - (samples.getLast().right() - samples.getFirst().right());
     bytesPerUpdate = Math.max(0, bytesDelta);
     // grow nextSampleNum
-    nextSampleNum = (long) Math.ceil(nextSampleNum * sampleGrowthRate);
+    nextSampleNum = (long) Math.ceil(numUpdates * sampleGrowthRate);
+    LOG.info("END take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
   }
 
 
@@ -87,6 +113,10 @@ public class SizeTrackingVector {
    * @return size in bytes
    */
   public long estimateSize() {
+    LOG.info("samples {}", this.samples);
+    if (samples.isEmpty()) {
+      return 0;
+    }
     long currentlyTrackedSize = samples.getFirst().left();
     long mostRecentUpdate = bytesPerUpdate * (numUpdates - samples.getLast().right());
     return currentlyTrackedSize + mostRecentUpdate;
