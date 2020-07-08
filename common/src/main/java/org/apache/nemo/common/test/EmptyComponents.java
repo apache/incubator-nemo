@@ -58,8 +58,6 @@ public final class EmptyComponents {
     edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
     edge.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
     edge.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
-    edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
     return edge;
   }
 

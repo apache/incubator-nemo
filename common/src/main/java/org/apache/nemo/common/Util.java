@@ -27,10 +27,12 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.TriggerVertex;
+import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.SignalVertex;
 
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
@@ -196,8 +198,10 @@ public final class Util {
   public static boolean isUtilityVertex(final IRVertex v) {
     return v instanceof SamplingVertex
       || v instanceof MessageAggregatorVertex
-      || v instanceof TriggerVertex
-      || v instanceof RelayVertex;
+      || v instanceof MessageGeneratorVertex
+      || v instanceof RelayVertex
+      || v instanceof SignalVertex
+      || v instanceof TaskSizeSplitterVertex;
   }
 
   /**

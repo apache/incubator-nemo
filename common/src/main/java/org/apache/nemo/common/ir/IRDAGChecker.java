@@ -29,9 +29,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -311,7 +313,8 @@ public final class IRDAGChecker {
     final GlobalDAGChecker messageIds = (dag -> {
       final long numMessageAggregatorVertices = dag.getVertices()
         .stream()
-        .filter(v -> v instanceof MessageAggregatorVertex)
+        .filter(v -> v instanceof MessageAggregatorVertex
+        || (v instanceof OperatorVertex && ((OperatorVertex) v).getTransform() instanceof SignalTransform))
         .count();
 
       // Triggering ids, must be unique
