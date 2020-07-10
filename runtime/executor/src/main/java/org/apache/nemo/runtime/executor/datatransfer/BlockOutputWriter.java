@@ -104,14 +104,11 @@ public final class BlockOutputWriter implements OutputWriter {
       LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}",
         blockToWrite.getId(), blockToWrite);
       LOG.info("written element {}", element);
-
-      LOG.info("estimated size of element is : {}", SizeEstimator.estimate(element));
-      LOG.info("appending to sizeTrackingVector");
       sizeTrackingVector.append(element);
       LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
-      LOG.info("STV INFO {}", sizeTrackingVector.getInfo());
       memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
       LOG.info("unique id of memory manager  {}", memoryManager.getUniqueId());
+      // dongjoo: partioner.partition returns key of the partition
       blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =

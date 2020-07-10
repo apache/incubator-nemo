@@ -24,6 +24,8 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -33,6 +35,7 @@ import javax.inject.Inject;
  */
 @ThreadSafe
 public final class SerializedMemoryStore extends LocalBlockStore {
+  private static final Logger LOG = LoggerFactory.getLogger(SerializedMemoryStore.class.getName());
 
   /**
    * Constructor.
@@ -51,6 +54,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
    */
   @Override
   public Block createBlock(final String blockId) {
+    LOG.info("SerializedMemoryStore createBlock, block {}", blockId);
     final Serializer serializer = getSerializerFromWorker(blockId);
     return new SerializedMemoryBlock(blockId, serializer, getMemoryPoolAssigner());
   }
@@ -63,6 +67,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
    */
   @Override
   public void writeBlock(final Block block) {
+    LOG.info("SerializedMemoryStore writeBlock, block {}", block);
     if (!(block instanceof SerializedMemoryBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + "only accept " + SerializedMemoryBlock.class.getName()));

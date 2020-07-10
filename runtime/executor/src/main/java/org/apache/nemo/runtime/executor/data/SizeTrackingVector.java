@@ -49,22 +49,21 @@ public class SizeTrackingVector {
     this.vector = new ArrayList<Object>();
     this.samples = new LinkedList<Pair<Long, Long>>();
     this.resetSamples();
-    LOG.info("Constructor, getInfo {}", getInfo());
   }
 
-  /**
-   * something.
-   */
-  public String getInfo() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("numUpdates:");
-    sb.append(this.numUpdates);
-    sb.append("\n");
-    sb.append("nextSampleNum:");
-    sb.append(this.nextSampleNum);
-    sb.append("\n");
-    return sb.toString();
-  }
+//  /**
+//   * something.
+//   */
+//  public String getInfo() {
+//    StringBuilder sb = new StringBuilder();
+//    sb.append("numUpdates:");
+//    sb.append(this.numUpdates);
+//    sb.append("\n");
+//    sb.append("nextSampleNum:");
+//    sb.append(this.nextSampleNum);
+//    sb.append("\n");
+//    return sb.toString();
+//  }
 
   private void resetSamples() {
     this.numUpdates = 1;

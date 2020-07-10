@@ -70,6 +70,7 @@ public final class MemoryStore extends LocalBlockStore {
    */
   @Override
   public void writeBlock(final Block block) {
+    LOG.info("MemoryStore, writeBlock block {}", block);
     if (!(block instanceof NonSerializedMemoryBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + "only accept " + NonSerializedPartition.class.getName()));

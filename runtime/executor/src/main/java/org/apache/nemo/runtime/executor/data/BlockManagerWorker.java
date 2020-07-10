@@ -168,6 +168,7 @@ public final class BlockManagerWorker {
    */
   public Block createBlock(final String blockId,
                            final DataStoreProperty.Value blockStore) {
+    LOG.info("BlockManagerWorker, createBlock blockId {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
     return store.createBlock(blockId);
   }
@@ -290,7 +291,7 @@ public final class BlockManagerWorker {
     final String blockId = block.getId();
     LOG.info("dongjoo: BlockManagerWorker, writeBlock, blockId {}, expectedReadTotal {}, Persistence {}, BlockStore {}",
       blockId, expectedReadTotal, persistence, blockStore);
-    LOG.info("CommitBlock: {}", blockId);
+    LOG.info("BlockManagerWorker.writeBlock: {}", blockId);
 
     switch (persistence) {
       case DISCARD:
