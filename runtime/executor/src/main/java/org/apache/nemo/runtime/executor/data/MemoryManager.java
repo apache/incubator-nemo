@@ -45,33 +45,31 @@ public final class MemoryManager {
   private static final Logger LOG = LoggerFactory.getLogger(MemoryManager.class.getName());
   // for testing purposes only
   private UUID uniqueId = UUID.randomUUID();
-
-  private static long testStorageMemoryLimit;
-  private StorageMemoryPool storageMemoryPool = new StorageMemoryPool();
+  private StorageMemoryPool storageMemoryPool;
   // maintains a hash map of blockIDs to size of the block,
   // used to release memory back when blocks are no longer needed
   private HashMap<String, Long> blockIdtoSize;
 
-  /**
-   * Constructor.
-   */
-  public MemoryManager(final long testStorageMemoryLimit) {
-    this.testStorageMemoryLimit = testStorageMemoryLimit;
-  }
 
   @Inject
   public MemoryManager(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
                        @Parameter(JobConf.StoragePoolRatio.class) final double storagePoolRatio) {
-    this.testStorageMemoryLimit = (long) (memory * storagePoolRatio) * 1024;
+    long storageMemory = (long) (memory * storagePoolRatio) * 1024;
+    this.storageMemoryPool = new StorageMemoryPool(storageMemory);
     LOG.info("MemoryManage Executor memory mb {}", memory);
-    LOG.info("MemoryManager inject constructor called, storageMemoryLimit is {}", this.testStorageMemoryLimit);
-    }
+    LOG.info("MemoryManager inject constructor called, storageMemoryLimit is {}",
+      this.storageMemoryPool.getPoolSize());
+  }
 
-  public boolean acquireStorageMemory(final long mem) {
-    LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.testStorageMemoryLimit);
-    this.testStorageMemoryLimit -= mem;
-    LOG.info("MemoryManager, testStorageMemoryLimit is now {}", this.testStorageMemoryLimit);
-    return this.testStorageMemoryLimit > 0;
+  public long getRemainingStorageMemory() {
+    return this.storageMemoryPool.getRemainingMemory();
+  }
+
+  public boolean acquireStorageMemory(final String blockId, final long mem) {
+    LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.storageMemoryPool.getRemainingMemory());
+    this.storageMemoryPool.acquireMemory(blockId, mem);
+    LOG.info("MemoryManager, testStorageMemoryLimit is now {}", this.storageMemoryPool.getRemainingMemory());
+    return this.storageMemoryPool.getRemainingMemory() > 0;
   }
 
   public UUID getUniqueId() {

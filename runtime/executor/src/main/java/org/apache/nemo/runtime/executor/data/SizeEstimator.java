@@ -34,6 +34,10 @@ public final class SizeEstimator {
     // not called
   }
 
+//  static {
+//    initialize();
+//  }
+
 
   // Sizes of primitive types
   private static final int BOOLEAN_SIZE = 1;
@@ -62,6 +66,7 @@ public final class SizeEstimator {
     objectSize = is64Bit ? 16 : 8;
     pointerSize = is64Bit ? 8 : 4;
     classInfos.clear();
+    LOG.info("Size Estimator initizlied {} ", System.getProperty("sun.arch.data.model"));
     isCompressedOops = getIsCompressedOops();
   }
 
@@ -76,38 +81,7 @@ public final class SizeEstimator {
     LOG.info("Architecture {}", architecture);
     LOG.info("beansClazz {}", beanClazz);
     return true;
-//    if (System.getProperty(TEST_USE_COMPRESSED_OOPS_KEY) != null) {
-//      return System.getProperty(TEST_USE_COMPRESSED_OOPS_KEY).toBoolean
-//    }
-//
-//    // java.vm.info provides compressed ref info for IBM and OpenJ9 JDKs
-//    val javaVendor = System.getProperty("java.vendor")
-//    if (javaVendor.contains("IBM") || javaVendor.contains("OpenJ9")) {
-//      return System.getProperty("java.vm.info").contains("Compressed Ref")
-//    }
-//
-//    try {
-//      val hotSpotMBeanName = "com.sun.management:type=HotSpotDiagnostic"
-//      val server = ManagementFactory.getPlatformMBeanServer()
-//
-//      // NOTE: This should throw an exception in non-Sun JVMs
-//      // scalastyle:off classforname
-//      val hotSpotMBeanClass = Class.forName("com.sun.management.HotSpotDiagnosticMXBean")
-//      val getVMMethod = hotSpotMBeanClass.getDeclaredMethod("getVMOption",
-//        Class.forName("java.lang.String"))
-//      // scalastyle:on classforname
-//
-//      val bean = ManagementFactory.newPlatformMXBeanProxy(server,
-//        hotSpotMBeanName, hotSpotMBeanClass)
-//      getVMMethod.invoke(bean, "UseCompressedOops").toString.contains("true")
-//    } catch {
-//      case e: Exception =>
-//        // Guess whether they've enabled UseCompressedOops based on whether maxMemory < 32 GB
-//        val guess = Runtime.getRuntime.maxMemory < (32L*1024*1024*1024)
-//        val guessInWords = if (guess) "yes" else "not"
-//        logWarning("Failed to check whether UseCompressedOops is set; assuming " + guessInWords)
-//        return guess
-//    }
+
   }
 
   public static long estimate(final Object obj) {
@@ -115,6 +89,7 @@ public final class SizeEstimator {
   }
 
   public static long estimate(final Object obj, final IdentityHashMap map) {
+    LOG.info("SizeEstimator Estimate called");
     SearchState state = new SearchState(map);
     state.enqueue(obj);
     while (!state.isFinished()) {

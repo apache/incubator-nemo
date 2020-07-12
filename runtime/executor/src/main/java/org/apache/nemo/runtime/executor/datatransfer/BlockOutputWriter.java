@@ -28,9 +28,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-//import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.MemoryManager;
-import org.apache.nemo.runtime.executor.data.SizeEstimator;
 import org.apache.nemo.runtime.executor.data.SizeTrackingVector;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.slf4j.Logger;
@@ -102,29 +100,29 @@ public final class BlockOutputWriter implements OutputWriter {
   public void write(final Object element) {
     if (nonDummyBlock) {
       // logging
-      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
-        blockToWrite.getId(), blockToWrite, blockStoreValue);
-      LOG.info("written element {}", element);
+//      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
+//        blockToWrite.getId(), blockToWrite, blockStoreValue);
+//      LOG.info("written element {}", element);
       // loggin common end
       // if blockStore is caching to Memory, write to temporary SizeTrackingVector to ensure OOM doesn't occur,
       // actual "writing" will occur in { close }
       if (blockStoreValue == DataStoreProperty.Value.MEMORY_STORE
         || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_STORE) {
-        LOG.info("only for memory store append to STV");
+//        LOG.info("only for memory store append to STV");
         sizeTrackingVector.append(element);
-        LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
-        memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
+//        LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
+//        memoryManager.acquireStorageMemory(blockToWrite.getId(), SizeEstimator.estimate(element));
       } else {
         // original logic
         // dongjoo: partioner.partition returns key of the partition
-        LOG.info("not a memory store block, just write");
+//        LOG.info("not a memory store block, just write");
         blockToWrite.write(partitioner.partition(element), element);
       }
       // other logic, not write or append to SizeTrackingVector, common operation?
       final DedicatedKeyPerElement dedicatedKeyPerElement =
         partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
-        LOG.info("COMMITPARTITIONS CALLED BECAUE OF DEDICATED KEY");
+//        LOG.info("COMMITPARTITIONS CALLED BECAUE OF DEDICATED KEY");
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
@@ -145,8 +143,14 @@ public final class BlockOutputWriter implements OutputWriter {
     if (blockStoreValue == DataStoreProperty.Value.MEMORY_STORE
       || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_STORE) {
       LOG.info("BOW close called, iterating over STV and writing to block");
-      for (Object element : sizeTrackingVector) {
-        blockToWrite.write(partitioner.partition(element), element);
+      if (memoryManager.acquireStorageMemory(blockToWrite.getId(), sizeTrackingVector.estimateSize())) {
+        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
+//        for (Object element : sizeTrackingVector) {
+//          blockToWrite.write(partitioner.partition(element), element);
+//        }
+      } else { // block does not fit in memory
+        LOG.info("Block Does not fit in memory, remaing StoragePool Memory is: {}, while size of block is {}",
+          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize());
       }
     }
     // Commit block.

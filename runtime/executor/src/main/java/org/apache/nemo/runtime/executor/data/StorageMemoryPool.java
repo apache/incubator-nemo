@@ -22,4 +22,41 @@ package org.apache.nemo.runtime.executor.data;
  * Pool to keep track of Storage Memory.
  */
 public class StorageMemoryPool {
+  private long poolSize;
+  private long memoryUsed;
+
+  /**
+   * Acquire memory from pool for caching.
+   * @param blockId The id of the block to be cached
+   * @param numBytestoAcquire size of block
+   * @return successfully acquired or not
+   */
+  public boolean acquireMemory(final String blockId, final long numBytestoAcquire) {
+    if (this.poolSize - this.memoryUsed > 0) {
+      this.memoryUsed += numBytestoAcquire;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Checkout how much memory is remaining.
+   * @return the remaining amount of memory
+   */
+  public long getRemainingMemory() {
+    return this.poolSize - this.memoryUsed;
+  }
+
+  /**
+   * Get the total pool size.
+   * @return the pool size
+   */
+  public long getPoolSize() {
+    return this.poolSize;
+  }
+
+  StorageMemoryPool(final long storageMemoryLimit) {
+    this.poolSize = storageMemoryLimit;
+  }
+
 }
