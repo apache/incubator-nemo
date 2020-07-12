@@ -79,7 +79,7 @@ public final class LocalFileStore extends LocalBlockStore {
   public void writeBlock(final Block block) {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-        this.toString() + "only accept " + FileBlock.class.getName()));
+        this.toString() + " only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     } else {
