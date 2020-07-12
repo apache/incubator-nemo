@@ -44,10 +44,12 @@ public final class SizeEstimator {
   private static final int FLOAT_SIZE = 4;
   private static final int BYTE_SIZE = 1;
   private static final int DOUBLE_SIZE = 8;
+  // architecture dependent sizes
   private static final int ALIGN_SIZE = 8;
   private static boolean is64Bit = true;
   private static int objectSize = 16; // 12 bytes with 8 byte offset
   private static int pointerSize = 8;
+  private static boolean isCompressedOops = false;
 
 
   // cache of classInfos
@@ -60,6 +62,52 @@ public final class SizeEstimator {
     objectSize = is64Bit ? 16 : 8;
     pointerSize = is64Bit ? 8 : 4;
     classInfos.clear();
+    isCompressedOops = getIsCompressedOops();
+  }
+
+  public static boolean getIsCompressedOops() {
+    final String architecture = System.getProperty("sun.arch.data.model");
+    Class<?> beanClazz = Long.class;
+    try {
+      beanClazz = Class.forName("com.sun.management.HotSpotDiagnosticMXBean");
+    } catch (Exception e) {
+      LOG.info("some exception");
+    }
+    LOG.info("Architecture {}", architecture);
+    LOG.info("beansClazz {}", beanClazz);
+    return true;
+//    if (System.getProperty(TEST_USE_COMPRESSED_OOPS_KEY) != null) {
+//      return System.getProperty(TEST_USE_COMPRESSED_OOPS_KEY).toBoolean
+//    }
+//
+//    // java.vm.info provides compressed ref info for IBM and OpenJ9 JDKs
+//    val javaVendor = System.getProperty("java.vendor")
+//    if (javaVendor.contains("IBM") || javaVendor.contains("OpenJ9")) {
+//      return System.getProperty("java.vm.info").contains("Compressed Ref")
+//    }
+//
+//    try {
+//      val hotSpotMBeanName = "com.sun.management:type=HotSpotDiagnostic"
+//      val server = ManagementFactory.getPlatformMBeanServer()
+//
+//      // NOTE: This should throw an exception in non-Sun JVMs
+//      // scalastyle:off classforname
+//      val hotSpotMBeanClass = Class.forName("com.sun.management.HotSpotDiagnosticMXBean")
+//      val getVMMethod = hotSpotMBeanClass.getDeclaredMethod("getVMOption",
+//        Class.forName("java.lang.String"))
+//      // scalastyle:on classforname
+//
+//      val bean = ManagementFactory.newPlatformMXBeanProxy(server,
+//        hotSpotMBeanName, hotSpotMBeanClass)
+//      getVMMethod.invoke(bean, "UseCompressedOops").toString.contains("true")
+//    } catch {
+//      case e: Exception =>
+//        // Guess whether they've enabled UseCompressedOops based on whether maxMemory < 32 GB
+//        val guess = Runtime.getRuntime.maxMemory < (32L*1024*1024*1024)
+//        val guessInWords = if (guess) "yes" else "not"
+//        logWarning("Failed to check whether UseCompressedOops is set; assuming " + guessInWords)
+//        return guess
+//    }
   }
 
   public static long estimate(final Object obj) {

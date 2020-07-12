@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.HashMap;
+import java.util.UUID;
 //import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -43,7 +44,7 @@ import java.util.HashMap;
 public final class MemoryManager {
   private static final Logger LOG = LoggerFactory.getLogger(MemoryManager.class.getName());
   // for testing purposes only
-  private static int uniqueId = 42;
+  private UUID uniqueId = UUID.randomUUID();
 
   private static long testStorageMemoryLimit;
   private StorageMemoryPool storageMemoryPool = new StorageMemoryPool();
@@ -73,7 +74,7 @@ public final class MemoryManager {
     return this.testStorageMemoryLimit > 0;
   }
 
-  public int getUniqueId() {
+  public UUID getUniqueId() {
     return this.uniqueId;
   }
 }
