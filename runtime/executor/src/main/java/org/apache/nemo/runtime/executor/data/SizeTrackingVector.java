@@ -95,13 +95,13 @@ public class SizeTrackingVector implements Iterable {
    */
   public void append(final Object element) {
     this.vector.add(element);
-    LOG.info("append called, vector size {}", this.vector.size());
-    LOG.info("size of object being appended {}", SizeEstimator.estimate(element));
+//    LOG.info("append called, vector size {}", this.vector.size());
+//    LOG.info("size of object being appended {}", SizeEstimator.estimate(element));
     this.afterUpdate();
   }
 
   private void takeSample() {
-    LOG.info("BEGIN, take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
+//    LOG.info("BEGIN, take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
     // add the current size of vector and the number of updates made to end of samples
     samples.add(Pair.of(SizeEstimator.estimate(this), numUpdates));
     if (samples.size() > 2) {
@@ -113,7 +113,7 @@ public class SizeTrackingVector implements Iterable {
     bytesPerUpdate = Math.max(0, bytesDelta);
     // grow nextSampleNum
     nextSampleNum = (long) Math.ceil(numUpdates * sampleGrowthRate);
-    LOG.info("END take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
+//    LOG.info("END take sample, nextSampleNum {}, numUpdates {}", nextSampleNum, numUpdates);
   }
 
 

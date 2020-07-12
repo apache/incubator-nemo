@@ -520,7 +520,7 @@ public final class BlockManagerWorker {
    * @param blockStore the annotated value of {@link DataStoreProperty}.
    * @return the block store.
    */
-  private BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
+  public BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
       case MEMORY_STORE:
         return memoryStore;

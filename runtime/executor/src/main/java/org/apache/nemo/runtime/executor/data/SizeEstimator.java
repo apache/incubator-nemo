@@ -89,7 +89,7 @@ public final class SizeEstimator {
   }
 
   public static long estimate(final Object obj, final IdentityHashMap map) {
-    LOG.info("SizeEstimator Estimate called");
+//    LOG.info("SizeEstimator Estimate called");
     SearchState state = new SearchState(map);
     state.enqueue(obj);
     while (!state.isFinished()) {
