@@ -24,13 +24,15 @@ package org.apache.nemo.runtime.executor.data;
 //import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 //import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 
+import org.apache.nemo.conf.JobConf;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.HashMap;
 //import java.util.concurrent.atomic.AtomicInteger;
-//import javax.inject.Inject;
 
 /**
  * MemoryManager for sharing the storage between Execution and Storage(caching).
@@ -45,6 +47,9 @@ public final class MemoryManager {
 
   private static long testStorageMemoryLimit;
   private StorageMemoryPool storageMemoryPool = new StorageMemoryPool();
+  // maintains a hash map of blockIDs to size of the block,
+  // used to release memory back when blocks are no longer needed
+  private HashMap<String, Long> blockIdtoSize;
 
   /**
    * Constructor.
@@ -54,9 +59,12 @@ public final class MemoryManager {
   }
 
   @Inject
-  public MemoryManager() {
-    this.testStorageMemoryLimit = 10000;
-  }
+  public MemoryManager(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
+                       @Parameter(JobConf.StoragePoolRatio.class) final double storagePoolRatio) {
+    this.testStorageMemoryLimit = (long) (memory * storagePoolRatio) * 1024;
+    LOG.info("MemoryManage Executor memory mb {}", memory);
+    LOG.info("MemoryManager inject constructor called, storageMemoryLimit is {}", this.testStorageMemoryLimit);
+    }
 
   public boolean acquireStorageMemory(final long mem) {
     LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.testStorageMemoryLimit);

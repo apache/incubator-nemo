@@ -212,6 +212,16 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * The size of total memory in the executor.
+   * (Max off-heap memory) = (executor memory) * (max off-heap ratio)
+   * We assume that the size of memory per executor is always given as input (therefore, no default value).
+   */
+  @NamedParameter(doc = "The size of raito of memory used for storage (caching).",
+    short_name = "storage_ratio", default_value = "0.2")
+  public final class StoragePoolRatio implements Name<Double> {
+  }
+
+  /**
    * Used for fault-injected tests.
    */
   @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",

@@ -101,19 +101,30 @@ public final class BlockOutputWriter implements OutputWriter {
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
-      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}",
-        blockToWrite.getId(), blockToWrite);
+      // logging
+      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
+        blockToWrite.getId(), blockToWrite, blockStoreValue);
       LOG.info("written element {}", element);
-      sizeTrackingVector.append(element);
-      LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
-      memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
-      LOG.info("unique id of memory manager  {}", memoryManager.getUniqueId());
-      // dongjoo: partioner.partition returns key of the partition
-      blockToWrite.write(partitioner.partition(element), element);
-
+      // loggin common end
+      // if blockStore is caching to Memory, write to temporary SizeTrackingVector to ensure OOM doesn't occur,
+      // actual "writing" will occur in { close }
+      if (blockStoreValue == DataStoreProperty.Value.MEMORY_STORE
+        || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_STORE) {
+        LOG.info("only for memory store append to STV");
+        sizeTrackingVector.append(element);
+        LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
+        memoryManager.acquireStorageMemory(SizeEstimator.estimate(element));
+      } else {
+        // original logic
+        // dongjoo: partioner.partition returns key of the partition
+        LOG.info("not a memory store block, just write");
+        blockToWrite.write(partitioner.partition(element), element);
+      }
+      // other logic, not write or append to SizeTrackingVector, common operation?
       final DedicatedKeyPerElement dedicatedKeyPerElement =
         partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
+        LOG.info("COMMITPARTITIONS CALLED BECAUE OF DEDICATED KEY");
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
@@ -130,6 +141,14 @@ public final class BlockOutputWriter implements OutputWriter {
    */
   @Override
   public void close() {
+    // for MemoryStore blocks
+    if (blockStoreValue == DataStoreProperty.Value.MEMORY_STORE
+      || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_STORE) {
+      LOG.info("BOW close called, iterating over STV and writing to block");
+      for (Object element : sizeTrackingVector) {
+        blockToWrite.write(partitioner.partition(element), element);
+      }
+    }
     // Commit block.
     LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.getId());
     final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
