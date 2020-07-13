@@ -48,7 +48,7 @@ public final class BlockOutputWriter implements OutputWriter {
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
 
-  private DataStoreProperty.Value blockStoreValue;
+  private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private Block blockToWrite;
   private final boolean nonDummyBlock;
@@ -150,19 +150,22 @@ public final class BlockOutputWriter implements OutputWriter {
 //          blockToWrite.write(partitioner.partition(element), element);
 //        }
       } else { // block does not fit in memory
-        LOG.info("Not enough storage memory, remaing StoragePool Memory is: {}, while size of block is {}, blockID: {}",
-          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.getId());
-        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
+//        LOG.info("Not enough storage memory, remaing StoragePool Memory: {}, size of block is {}, blockID: {}",
+//          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.getId());
+//        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
         // create new file block
-        String newBlockId = blockToWrite.getId();
-        BlockStore previousBlockStore = blockManagerWorker.getBlockStore(blockStoreValue);
-        LOG.info("try to delete old block");
-        previousBlockStore.deleteBlock(blockToWrite.getId());
-        BlockStore newBlockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
-        Block newBlock = newBlockStore.createBlock(newBlockId);
-        LOG.info("writing to new block, newblockid {}", newBlock.getId());
-        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
-        blockToWrite = newBlock;
+//        String newBlockId = blockToWrite.getId();
+//        BlockStore previousBlockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
+//        LOG.info("try to delete old block");
+//        previousBlockStore.deleteBlock(blockToWrite.getId());
+//        BlockStore newBlockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
+//        Block newBlock = newBlockStore.createBlock(newBlockId);
+//        LOG.info("writing to new block, newblockid {}", newBlock.getId());
+//        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
+//        blockToWrite = newBlock;
+//        runtimeEdge.changeDataStoreProperty(DataStoreProperty.Value.LOCAL_FILE_STORE);
+        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
+
       }
     }
     // Commit block.

@@ -52,6 +52,15 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     this.executionProperties = executionProperties;
   }
 
+//  /**
+//   * change the data store property of an edge, used for caching when there is not enough memory.
+//   * (ex: MEMORY_STORE -> LOCAL_FILE_STORE)
+//   * @param value the new DataStoreProperty.Value
+//   */
+//  public void changeDataStoreProperty(final DataStoreProperty.Value value) {
+//    this.executionProperties.put((DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE)), true);
+//  }
+
   /**
    * Get the execution property of the Runtime Edge.
    *

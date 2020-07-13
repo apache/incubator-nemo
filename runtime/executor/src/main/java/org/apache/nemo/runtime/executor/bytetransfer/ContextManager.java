@@ -27,6 +27,8 @@ import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirect
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext.ContextId;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -37,6 +39,8 @@ import java.util.function.Function;
  * Manages multiple transport contexts for one channel.
  */
 final class ContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
+  private static final Logger LOG = LoggerFactory.getLogger(SimpleChannelInboundHandler.class.getName());
+
 
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
@@ -109,6 +113,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   @Override
   protected void channelRead0(final ChannelHandlerContext ctx, final ByteTransferContextSetupMessage message)
     throws Exception {
+    LOG.info("Channel REad 0 bytetransfercontextmessage {}", message);
     setRemoteExecutorId(message.getInitiatorExecutorId());
     byteTransfer.onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
     final ByteTransferDataDirection dataDirection = message.getDataDirection();
