@@ -31,7 +31,7 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.SizeTrackingVector;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.stores.BlockStore;
+//import org.apache.nemo.runtime.executor.data.stores.BlockStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +44,11 @@ import java.util.Optional;
 public final class BlockOutputWriter implements OutputWriter {
   private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
 
-  private final RuntimeEdge<?> runtimeEdge;
+  private RuntimeEdge<?> runtimeEdge;
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
 
-  private final DataStoreProperty.Value blockStoreValue;
+  private DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private Block blockToWrite;
   private final boolean nonDummyBlock;
@@ -123,7 +123,7 @@ public final class BlockOutputWriter implements OutputWriter {
       final DedicatedKeyPerElement dedicatedKeyPerElement =
         partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
-//        LOG.info("COMMITPARTITIONS CALLED BECAUE OF DEDICATED KEY");
+//        LOG.info("COMMITPARTITIONS CALLED BECAUSE OF DEDICATED KEY");
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
@@ -150,10 +150,10 @@ public final class BlockOutputWriter implements OutputWriter {
 //          blockToWrite.write(partitioner.partition(element), element);
 //        }
       } else { // block does not fit in memory
-//        LOG.info("Not enough storage memory, remaing StoragePool Memory: {}, size of block is {}, blockID: {}",
-//          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.getId());
+        LOG.info("Not enough storage memory, remaing StoragePool Memory: {}, size of block is {}, blockID: {}",
+          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.getId());
 //        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
-        // create new file block
+//        create new file block
 //        String newBlockId = blockToWrite.getId();
 //        BlockStore previousBlockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
 //        LOG.info("try to delete old block");
@@ -164,8 +164,31 @@ public final class BlockOutputWriter implements OutputWriter {
 //        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
 //        blockToWrite = newBlock;
 //        runtimeEdge.changeDataStoreProperty(DataStoreProperty.Value.LOCAL_FILE_STORE);
-        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
+//        BlockStore fileBLockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
+        Block newBlock = blockManagerWorker.createBlock(blockToWrite.getId() + "-spilled",
+          DataStoreProperty.Value.LOCAL_FILE_STORE);
+        // populate newly created block
+        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
+        blockManagerWorker.putSpilledBlock(blockToWrite, newBlock);
+          // create new block with runtime id manager?
+//        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
 
+        // write to memblock (debug)
+//        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
+        // commit the file block
+        LOG.info("dongjoo BlockOutputWriter close NEW block, closing {} id {}", newBlock, newBlock.getId());
+        final DataPersistenceProperty.Value persistence = DataPersistenceProperty.Value.KEEP;
+        final Optional<Map<Integer, Long>> newpartitionSizeMap = newBlock.commit();
+        // Return the total size of the committed block.
+        if (newpartitionSizeMap.isPresent()) {
+          long blockSizeTotal = 0;
+          for (final long partitionSize : newpartitionSizeMap.get().values()) {
+            blockSizeTotal += partitionSize;
+          }
+          writtenBytes = blockSizeTotal;
+        } else {
+          writtenBytes = -1; // no written bytes info.
+        }
       }
     }
     // Commit block.
@@ -180,7 +203,7 @@ public final class BlockOutputWriter implements OutputWriter {
       for (final long partitionSize : partitionSizeMap.get().values()) {
         blockSizeTotal += partitionSize;
       }
-      writtenBytes = blockSizeTotal;
+      writtenBytes = Math.max(blockSizeTotal, writtenBytes);
     } else {
       writtenBytes = -1; // no written bytes info.
     }

@@ -54,10 +54,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -91,6 +88,8 @@ public final class BlockManagerWorker {
 
   //dongjoo
   private final MemoryManager memoryManager;
+  // a map of memoryStore blocks to newly created spilled blocks
+  private final HashMap<String, Block> spilledBlocks;
   /**
    * Constructor.
    *
@@ -155,6 +154,17 @@ public final class BlockManagerWorker {
     this.blockTransferThrottler = blockTransferThrottler;
     // dongjoo
     this.memoryManager = memoryManager;
+    this.spilledBlocks = new HashMap<>();
+
+  }
+
+  public void putSpilledBlock(final Block spilledBlock, final Block newBlock) {
+    this.spilledBlocks.put(spilledBlock.getId(), newBlock);
+  }
+
+  public Optional<Block> getSpilledBlock(final String blockId) {
+    Block block = this.spilledBlocks.get(blockId);
+    return block == null ? Optional.empty() : Optional.of(block);
   }
 
   //////////////////////////////////////////////////////////// Main public methods
@@ -382,22 +392,40 @@ public final class BlockManagerWorker {
     final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
     final String blockId = descriptor.getBlockId();
     final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());
-
+    LOG.info("Dongjoo, descriptor, blockstore, blockid keyrange finalized, before run");
     backgroundExecutorService.submit(new Runnable() {
       @Override
       public void run() {
         try {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
+          final Optional<Block> optionalSpilledBlock = getSpilledBlock(blockId);
+
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LOCAL_FILE_STORE.equals(blockStore)
               || DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
+              LOG.info("DataStoreProperty is a local file store, optionalLBock is present {}",
+                optionalBlock.isPresent());
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
                   os.writeFileArea(fileArea);
                 }
               }
+            } else if (optionalSpilledBlock.isPresent()) {
+              LOG.info("successfully found spilled block of block: {}, found block is {}",
+                blockId, optionalSpilledBlock.get().getId());
+              final List<FileArea> fileAreas = ((FileBlock) optionalSpilledBlock.get()).asFileAreas(keyRange);
+              for (final FileArea fileArea : fileAreas) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeFileArea(fileArea);
+                } catch (Exception e) {
+                  LOG.info("dongjooals, exception occured when writing a spilled block exception was {}", e);
+                }
+              }
+
             } else {
+              LOG.info("DataStoreProperty is a memory store, optionalLBock is present {}",
+                optionalBlock.isPresent());
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -416,6 +444,7 @@ public final class BlockManagerWorker {
 
           } else {
             // We don't have the block here...
+            LOG.info("no block ");
             throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
           }
         } catch (final IOException | BlockFetchException e) {

@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 
@@ -52,14 +53,15 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     this.executionProperties = executionProperties;
   }
 
-//  /**
-//   * change the data store property of an edge, used for caching when there is not enough memory.
-//   * (ex: MEMORY_STORE -> LOCAL_FILE_STORE)
-//   * @param value the new DataStoreProperty.Value
-//   */
-//  public void changeDataStoreProperty(final DataStoreProperty.Value value) {
-//    this.executionProperties.put((DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE)), true);
-//  }
+  /**
+   * change the data store property of an edge, used for caching when there is not enough memory.
+   * (ex: MEMORY_STORE -> LOCAL_FILE_STORE)
+   * @param value the new DataStoreProperty.Value
+   */
+  public void changeDataStoreProperty(final DataStoreProperty.Value value) {
+    this.executionProperties.remove((DataStoreProperty.class));
+    this.executionProperties.put((DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE)), true);
+  }
 
   /**
    * Get the execution property of the Runtime Edge.

@@ -83,7 +83,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   @Override
   public void write(final K key,
                     final Object element) throws BlockWriteException {
-    LOG.info("dongjoo, NonSerMemBlock write key {}, blockId {}  element {}", key, id, element);
+//    LOG.info("dongjoo, NonSerMemBlock write key {}, blockId {}  element {}", key, id, element);
 //    LOG.info("dongoo, NonSerMemBlock write, measure jvm max {}, total {}, free{}",
 //      java.lang.Runtime.getRuntime().maxMemory(), java.lang.Runtime.getRuntime().totalMemory(),
 //      java.lang.Runtime.getRuntime().freeMemory());

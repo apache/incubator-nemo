@@ -82,7 +82,7 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
    */
   @Override
   public void write(final Object element) throws IOException {
-    LOG.info("dongjoo: NonSerPartition write key {}, element {}", key, element);
+//    LOG.info("dongjoo: NonSerPartition write key {}, element {}", key, element);
     if (committed) {
       throw new IOException("The partition is already committed!");
     } else {
