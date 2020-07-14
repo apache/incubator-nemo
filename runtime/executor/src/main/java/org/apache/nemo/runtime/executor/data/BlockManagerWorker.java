@@ -199,6 +199,7 @@ public final class BlockManagerWorker {
     final String runtimeEdgeId,
     final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
     final KeyRange keyRange) {
+    LOG.info("BOW read block, blockidwild {}, runtimeedge {}, keyrange {}", blockIdWildcard, runtimeEdgeId, keyRange);
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture;
     try {
@@ -212,6 +213,9 @@ public final class BlockManagerWorker {
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
+      LOG.info("dongjoo, BOW, blocklocationfuture respose from master {}", responseFromMaster);
+      LOG.info("readblock, getblocklocation info msg {}", responseFromMaster.getBlockLocationInfoMsg());
+
 
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
         responseFromMaster.getBlockLocationInfoMsg();
@@ -220,11 +224,17 @@ public final class BlockManagerWorker {
           "Block " + blockIdWildcard + " location unknown: "
             + "The block state is " + blockLocationInfoMsg.getState()));
       }
+      LOG.info("readblock, msg. get block id {}", blockLocationInfoMsg.getBlockId());
 
       // This is the executor id that we wanted to know
       final String blockId = blockLocationInfoMsg.getBlockId();
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
-      final DataStoreProperty.Value blockStore = edgeProperties.get(DataStoreProperty.class).get();
+      DataStoreProperty.Value blockStore = edgeProperties.get(DataStoreProperty.class).get();
+      if (this.spilledBlocks.containsKey(blockId)) {
+        LOG.info(" block {} is actually spilled", blockId);
+        blockStore = DataStoreProperty.Value.LOCAL_FILE_STORE;
+      }
+
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
@@ -414,6 +424,7 @@ public final class BlockManagerWorker {
             } else if (optionalSpilledBlock.isPresent()) {
               LOG.info("successfully found spilled block of block: {}, found block is {}",
                 blockId, optionalSpilledBlock.get().getId());
+              LOG.info("block looks like {}", optionalSpilledBlock.get());
               final List<FileArea> fileAreas = ((FileBlock) optionalSpilledBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -445,7 +456,7 @@ public final class BlockManagerWorker {
           } else {
             // We don't have the block here...
             LOG.info("no block ");
-            throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
+            throw new RuntimeException(String.format("459 Block %s not found in local BlockManagerWorker", blockId));
           }
         } catch (final IOException | BlockFetchException e) {
           LOG.error("Closing a block request exceptionally", e);
@@ -487,6 +498,8 @@ public final class BlockManagerWorker {
 
     // First, try to fetch the block from local BlockStore.
     final Optional<Block> optionalBlock = store.readBlock(blockId);
+    // also try to fetch from spilled blocks
+    final Optional<Block> optionalSpilledBlock = getSpilledBlock(blockId);
 
     if (optionalBlock.isPresent()) {
       final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
@@ -509,6 +522,30 @@ public final class BlockManagerWorker {
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
         }
       } catch (final IOException e) {
+        throw new BlockFetchException(e);
+      }
+    } else if (optionalSpilledBlock.isPresent()) {
+      final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
+      handleDataPersistence(blockStore, blockId);
+      LOG.info("getDatafromLocalBLock is reading from a spilled block!!!!!!");
+      // Block is spilled to a file block
+      try {
+        final Iterator innerIterator = DataUtil.concatNonSerPartitions(partitions).iterator();
+        long numSerializedBytes = 0;
+        long numEncodedBytes = 0;
+        try {
+          for (final NonSerializedPartition partition : partitions) {
+            numSerializedBytes += partition.getNumSerializedBytes();
+            numEncodedBytes += partition.getNumEncodedBytes();
+          }
+
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
+            numEncodedBytes));
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
+        }
+      } catch (final IOException e) {
+        LOG.info("exception in trying to read a file store spilled block in BMW, get datafrom local block");
         throw new BlockFetchException(e);
       }
     } else {

@@ -51,6 +51,7 @@ public final class BlockOutputWriter implements OutputWriter {
   private DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private Block blockToWrite;
+  private Block potentialSpilledBlocktoWrite;
   private final boolean nonDummyBlock;
 
   private long writtenBytes;
@@ -82,6 +83,8 @@ public final class BlockOutputWriter implements OutputWriter {
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
     blockToWrite = blockManagerWorker.createBlock(
       RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
+    potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(
+      RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), DataStoreProperty.Value.LOCAL_FILE_STORE);
     LOG.info("dongjoo, BlockOutputWriter constructor, stageEdge {}, runtimeEdge {}, blockToWrite {}",
       stageEdge, runtimeEdge, blockToWrite);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
@@ -99,7 +102,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
-    LOG.info("type of partitioner, key: {} and type of block {}", partitioner.partition(element), blockStoreValue);
+//    LOG.info("type of partitioner, key: {} and type of block {}", partitioner.partition(element), blockStoreValue);
     if (nonDummyBlock) {
       // logging
 //      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
@@ -166,11 +169,20 @@ public final class BlockOutputWriter implements OutputWriter {
 //        blockToWrite = newBlock;
 //        runtimeEdge.changeDataStoreProperty(DataStoreProperty.Value.LOCAL_FILE_STORE);
 //        BlockStore fileBLockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
-        Block newBlock = blockManagerWorker.createBlock(blockToWrite.getId() + "-spilled",
+        /// dongjoo: change id + spilled
+        Block newBlock = blockManagerWorker.createBlock(blockToWrite.getId(),
           DataStoreProperty.Value.LOCAL_FILE_STORE);
+//        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
+//        block
+//        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
         // populate newly created block
+        sizeTrackingVector.forEach(element ->
+          potentialSpilledBlocktoWrite.write(partitioner.partition(element), element));
         sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
-        blockManagerWorker.putSpilledBlock(blockToWrite, newBlock);
+        blockManagerWorker.putSpilledBlock(blockToWrite, potentialSpilledBlocktoWrite);
+        runtimeEdge.changeDataStoreProperty(blockStoreValue);
+        // replace original block with new block
+//        blockToWrite = newBlock;
           // create new block with runtime id manager?
 //        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
 
@@ -178,8 +190,9 @@ public final class BlockOutputWriter implements OutputWriter {
 //        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
         // commit the file block
         LOG.info("dongjoo BlockOutputWriter close NEW block, closing {} id {}", newBlock, newBlock.getId());
-        final DataPersistenceProperty.Value persistence = DataPersistenceProperty.Value.KEEP;
-        final Optional<Map<Integer, Long>> newpartitionSizeMap = newBlock.commit();
+        final DataPersistenceProperty.Value persistence = DataPersistenceProperty.Value.KEEP; // hardcode as keep?
+        final Optional<Map<Integer, Long>> newpartitionSizeMap =
+          potentialSpilledBlocktoWrite.commit(); // switched from newblock to psnb
         // Return the total size of the committed block.
         if (newpartitionSizeMap.isPresent()) {
           long blockSizeTotal = 0;
@@ -190,6 +203,8 @@ public final class BlockOutputWriter implements OutputWriter {
         } else {
           writtenBytes = -1; // no written bytes info.
         }
+        blockManagerWorker.writeBlock(potentialSpilledBlocktoWrite,
+          DataStoreProperty.Value.LOCAL_FILE_STORE, getExpectedRead(), persistence);
       }
     }
     // Commit block.

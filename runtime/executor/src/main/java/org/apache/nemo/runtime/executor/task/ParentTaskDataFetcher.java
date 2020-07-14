@@ -64,6 +64,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   @Override
   Object fetchDataElement() throws IOException {
     try {
+      LOG.info("fetchDataElement entered, dongjoo");
       if (firstFetch) {
         fetchDataLazily();
         advanceIterator();

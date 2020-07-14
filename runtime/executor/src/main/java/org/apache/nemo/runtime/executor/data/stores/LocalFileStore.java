@@ -29,6 +29,8 @@ import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -40,6 +42,8 @@ import java.io.IOException;
  */
 @ThreadSafe
 public final class LocalFileStore extends LocalBlockStore {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalFileStore.class.getName());
+
   private final String fileDirectory;
 
   /**
@@ -77,6 +81,7 @@ public final class LocalFileStore extends LocalBlockStore {
    */
   @Override
   public void writeBlock(final Block block) {
+    LOG.info("localfile store write block {}", block);
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + " only accept " + FileBlock.class.getName()));

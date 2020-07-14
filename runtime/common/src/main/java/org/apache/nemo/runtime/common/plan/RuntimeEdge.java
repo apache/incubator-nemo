@@ -35,7 +35,8 @@ import java.util.Optional;
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
+  /// drop final in executionProperties
+  private ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
 
   /**
    * Constructs the edge given the below parameters.
@@ -60,7 +61,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    */
   public void changeDataStoreProperty(final DataStoreProperty.Value value) {
     this.executionProperties.remove((DataStoreProperty.class));
-    this.executionProperties.put((DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE)), true);
+    this.executionProperties.put((DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE)), true);
   }
 
   /**
