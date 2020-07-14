@@ -44,14 +44,14 @@ import java.util.Optional;
 public final class BlockOutputWriter implements OutputWriter {
   private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
 
-  private RuntimeEdge<?> runtimeEdge;
+  private final RuntimeEdge<?> runtimeEdge;
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
 
-  private DataStoreProperty.Value blockStoreValue;
+  private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
-  private Block blockToWrite;
-  private Block potentialSpilledBlocktoWrite;
+  private final Block blockToWrite;
+  private final Block potentialSpilledBlocktoWrite;
   private final boolean nonDummyBlock;
 
   private long writtenBytes;
@@ -170,17 +170,17 @@ public final class BlockOutputWriter implements OutputWriter {
 //        runtimeEdge.changeDataStoreProperty(DataStoreProperty.Value.LOCAL_FILE_STORE);
 //        BlockStore fileBLockStore = blockManagerWorker.getBlockStore(DataStoreProperty.Value.LOCAL_FILE_STORE);
         /// dongjoo: change id + spilled
-        Block newBlock = blockManagerWorker.createBlock(blockToWrite.getId(),
-          DataStoreProperty.Value.LOCAL_FILE_STORE);
+//        Block newBlock = blockManagerWorker.createBlock(blockToWrite.getId(),
+//          DataStoreProperty.Value.LOCAL_FILE_STORE);
 //        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
 //        block
 //        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
         // populate newly created block
         sizeTrackingVector.forEach(element ->
           potentialSpilledBlocktoWrite.write(partitioner.partition(element), element));
-        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
+//        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
         blockManagerWorker.putSpilledBlock(blockToWrite, potentialSpilledBlocktoWrite);
-        runtimeEdge.changeDataStoreProperty(blockStoreValue);
+//        runtimeEdge.changeDataStoreProperty(blockStoreValue);
         // replace original block with new block
 //        blockToWrite = newBlock;
           // create new block with runtime id manager?
@@ -189,7 +189,7 @@ public final class BlockOutputWriter implements OutputWriter {
         // write to memblock (debug)
 //        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
         // commit the file block
-        LOG.info("dongjoo BlockOutputWriter close NEW block, closing {} id {}", newBlock, newBlock.getId());
+//        LOG.info("dongjoo BlockOutputWriter close NEW block, closing {} id {}", newBlock, newBlock.getId());
         final DataPersistenceProperty.Value persistence = DataPersistenceProperty.Value.KEEP; // hardcode as keep?
         final Optional<Map<Integer, Long>> newpartitionSizeMap =
           potentialSpilledBlocktoWrite.commit(); // switched from newblock to psnb
@@ -203,6 +203,7 @@ public final class BlockOutputWriter implements OutputWriter {
         } else {
           writtenBytes = -1; // no written bytes info.
         }
+        // commit the spilled block
         blockManagerWorker.writeBlock(potentialSpilledBlocktoWrite,
           DataStoreProperty.Value.LOCAL_FILE_STORE, getExpectedRead(), persistence);
       }

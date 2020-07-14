@@ -48,6 +48,15 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
   private final Set<Class<? extends ExecutionProperty>> finalizedProperties = new HashSet<>();
 
+  // only change an execution property from a memoryStore to a local file store
+  public void changeExecutionPropertyMap() {
+    this.properties.remove(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    this.finalizedProperties.remove(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    this.properties.put(
+      DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE).getClass(),
+      (T) DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE));
+    this.finalizedProperties.add(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE).getClass());
+  }
   /**
    * Constructor for ExecutionPropertyMap class.
    *
