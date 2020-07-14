@@ -99,6 +99,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
+    LOG.info("type of partitioner, key: {} and type of block {}", partitioner.partition(element), blockStoreValue);
     if (nonDummyBlock) {
       // logging
 //      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
@@ -123,7 +124,7 @@ public final class BlockOutputWriter implements OutputWriter {
       final DedicatedKeyPerElement dedicatedKeyPerElement =
         partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
-//        LOG.info("COMMITPARTITIONS CALLED BECAUSE OF DEDICATED KEY");
+        LOG.info("COMMITPARTITIONS CALLED BECAUSE OF DEDICATED KEY");
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
