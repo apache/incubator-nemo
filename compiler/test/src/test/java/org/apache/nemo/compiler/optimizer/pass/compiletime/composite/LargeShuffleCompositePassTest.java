@@ -61,7 +61,7 @@ public class LargeShuffleCompositePassTest {
               edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
             assertEquals(DataPersistenceProperty.Value.DISCARD,
               edgeToMerger.getPropertyValue(DataPersistenceProperty.class).get());
-            assertEquals(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE,
+            assertEquals(DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE,
               edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
             assertEquals(BytesDecoderFactory.of(),
               edgeToMerger.getPropertyValue(DecoderProperty.class).get());

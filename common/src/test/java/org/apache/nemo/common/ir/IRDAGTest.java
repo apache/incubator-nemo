@@ -637,9 +637,9 @@ public class IRDAGTest {
   private DataStoreProperty randomDSP() {
     switch (random.nextInt(4)) {
       case 0:
-        return DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE);
+        return DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE);
       case 1:
-        return DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE);
+        return DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE);
       case 2:
         return DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE);
       case 3:

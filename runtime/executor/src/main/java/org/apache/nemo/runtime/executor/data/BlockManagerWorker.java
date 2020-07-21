@@ -180,6 +180,7 @@ public final class BlockManagerWorker {
                            final DataStoreProperty.Value blockStore) {
     LOG.info("BlockManagerWorker, createBlock blockId {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
+    LOG.info("the block store created is {}, {}", store.toString(), store);
     return store.createBlock(blockId);
   }
 
@@ -588,9 +589,9 @@ public final class BlockManagerWorker {
    */
   public BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
-      case MEMORY_STORE:
+      case MEMORY_FILE_STORE:
         return memoryStore;
-      case SERIALIZED_MEMORY_STORE:
+      case SERIALIZED_MEMORY_FILE_STORE:
         return serializedMemoryStore;
       case LOCAL_FILE_STORE:
         return localFileStore;
@@ -611,9 +612,9 @@ public final class BlockManagerWorker {
   private static ControlMessage.BlockStore convertBlockStore(
     final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
-      case MEMORY_STORE:
+      case MEMORY_FILE_STORE:
         return ControlMessage.BlockStore.MEMORY;
-      case SERIALIZED_MEMORY_STORE:
+      case SERIALIZED_MEMORY_FILE_STORE:
         return ControlMessage.BlockStore.SER_MEMORY;
       case LOCAL_FILE_STORE:
         return ControlMessage.BlockStore.LOCAL_FILE;
@@ -635,9 +636,9 @@ public final class BlockManagerWorker {
     final ControlMessage.BlockStore blockStoreType) {
     switch (blockStoreType) {
       case MEMORY:
-        return DataStoreProperty.Value.MEMORY_STORE;
+        return DataStoreProperty.Value.MEMORY_FILE_STORE;
       case SER_MEMORY:
-        return DataStoreProperty.Value.SERIALIZED_MEMORY_STORE;
+        return DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE;
       case LOCAL_FILE:
         return DataStoreProperty.Value.LOCAL_FILE_STORE;
       case REMOTE_FILE:

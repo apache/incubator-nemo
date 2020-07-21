@@ -70,6 +70,7 @@ public final class StateMachine {
       throw new RuntimeException("Unknown state " + state);
     }
 
+
     final State toState = stateMap.get(state);
     if (!currentState.isLegalTransition(state)) {
       throw new IllegalStateTransitionException(new Exception(String.format("Illegal transition from %s to %s\n%s",

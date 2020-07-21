@@ -119,7 +119,7 @@ public final class BlockManagerMaster {
    */
   public Set<String> removeWorker(final String executorId) {
     final Set<String> tasksToRecompute = new HashSet<>();
-
+    LOG.info("state changed BMM, remove worker, executor id {}", executorId);
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
@@ -206,6 +206,7 @@ public final class BlockManagerMaster {
    * @param failedTaskId the ID of the task that failed.
    */
   public void onProducerTaskFailed(final String failedTaskId) {
+    LOG.info("state changed BMM on producer task failed called, failed task id {} ", failedTaskId);
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
@@ -278,6 +279,8 @@ public final class BlockManagerMaster {
   public void onBlockStateChanged(final String blockId,
                                   final BlockState.State newState,
                                   @Nullable final String location) {
+    LOG.info("state changed BMM, on block state changed, block id {}, new state {}, location {}",
+      blockId, newState, location);
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
@@ -343,6 +346,8 @@ public final class BlockManagerMaster {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
+      LOG.info("state changed BMM on message, message {}, block id {}",
+        message, message.getBlockStateChangedMsg().getBlockId());
       try {
         switch (message.getType()) {
           case BlockStateChanged:
@@ -351,6 +356,8 @@ public final class BlockManagerMaster {
             final String blockId = blockStateChangedMsg.getBlockId();
             onBlockStateChanged(blockId, convertBlockState(blockStateChangedMsg.getState()),
               blockStateChangedMsg.getLocation());
+            LOG.info("MBB, on message blockstatechanged, blockid {},bscmsg.getstate() {}, state block id {}",
+              blockId, blockStateChangedMsg.getState(), blockStateChangedMsg.getBlockId());
             break;
           default:
             throw new IllegalMessageException(

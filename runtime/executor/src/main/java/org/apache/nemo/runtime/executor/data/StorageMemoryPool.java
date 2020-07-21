@@ -26,6 +26,14 @@ public class StorageMemoryPool {
   private long memoryUsed;
 
   /**
+   * release memory back into the storage pool.
+   * @param memory the amount of memory to release.
+   */
+  public void releaseMemory(final long memory) {
+    this.memoryUsed -= memory;
+  }
+
+  /**
    * Acquire memory from pool for caching.
    * @param blockId The id of the block to be cached
    * @param numBytestoAcquire size of block

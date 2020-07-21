@@ -150,19 +150,19 @@ public final class DAGConverterTest {
     irDAGBuilder.addVertex(v8);
 
     final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v1, v2);
-    e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE));
     e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
 
     final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v1, v3);
-    e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE));
     e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PULL));
 
     final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
-    e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE));
     e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
 
     final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v3, v5);
-    e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE));
     e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
 
     final IREdge e5 = new IREdge(CommunicationPatternProperty.Value.ONE_TO_ONE, v4, v6);

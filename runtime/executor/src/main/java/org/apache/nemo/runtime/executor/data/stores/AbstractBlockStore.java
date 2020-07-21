@@ -22,12 +22,16 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This abstract class represents a default {@link BlockStore},
  * which contains other components used in each implementation of {@link BlockStore}.
  */
 public abstract class AbstractBlockStore implements BlockStore {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractBlockStore.class.getName());
+
   private final SerializerManager serializerManager;
   private final MemoryPoolAssigner memoryPoolAssigner;
 
@@ -51,6 +55,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    */
   final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(blockId);
+    LOG.info("getSerializerFromWorker, dongjoo, runtimedge id {}, blockid {}", runtimeEdgeId, blockId);
     return serializerManager.getSerializer(runtimeEdgeId);
   }
 

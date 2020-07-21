@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * An implementation of plan appender which append two plans regarding to caching.
+ * An implementation of plan appender which appends two plans regarding caching.
  */
 public final class PlanAppender {
 
@@ -51,7 +51,7 @@ public final class PlanAppender {
   }
 
   /**
-   * Append to plans regarding to caching.
+   * Append to plans regarding caching.
    * For more information about caching part, check {@link IgnoreSchedulingTempDataReceiverProperty}.
    *
    * @param originalPlan the original plan.

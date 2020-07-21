@@ -299,9 +299,9 @@ final class RDD[T: ClassTag] protected[rdd] (
     if (actualUseDisk) {
       newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LOCAL_FILE_STORE))
     } else if (actualDeserialized) {
-      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE))
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE))
     } else {
-      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE))
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE))
     }
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP))
     newEdge.setProperty(CacheIDProperty.of(cacheID))

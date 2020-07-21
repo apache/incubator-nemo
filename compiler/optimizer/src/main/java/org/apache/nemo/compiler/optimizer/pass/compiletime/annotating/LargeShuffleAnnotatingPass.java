@@ -63,7 +63,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           // Data transfers
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
           edge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD));
-          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_STORE));
+          edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE));
 
           // Resource slots
           edge.getDst().setPropertyPermanently(ResourceSlotProperty.of(false));

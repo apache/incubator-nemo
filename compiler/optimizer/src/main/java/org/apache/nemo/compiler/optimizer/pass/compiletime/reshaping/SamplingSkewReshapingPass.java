@@ -131,7 +131,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
     for (final IREdge inEdge : dag.getIncomingEdgesOf(curVertex)) {
       if (CommunicationPatternProperty.Value.ONE_TO_ONE
         .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(IllegalStateException::new))
-        && DataStoreProperty.Value.MEMORY_STORE
+        && DataStoreProperty.Value.MEMORY_FILE_STORE
         .equals(inEdge.getPropertyValue(DataStoreProperty.class).orElseThrow(IllegalStateException::new))
         && dag.getIncomingEdgesOf(curVertex).size() == 1) {
         unionSet.addAll(recursivelyBuildPartition(inEdge.getSrc(), dag));

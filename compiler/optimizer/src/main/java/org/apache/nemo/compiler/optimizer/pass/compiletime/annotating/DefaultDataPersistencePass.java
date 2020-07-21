@@ -44,8 +44,8 @@ public final class DefaultDataPersistencePass extends AnnotatingPass {
         if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
           final DataStoreProperty.Value dataStoreValue
             = irEdge.getPropertyValue(DataStoreProperty.class).get();
-          if (DataStoreProperty.Value.MEMORY_STORE.equals(dataStoreValue)
-            || DataStoreProperty.Value.SERIALIZED_MEMORY_STORE.equals(dataStoreValue)) {
+          if (DataStoreProperty.Value.MEMORY_FILE_STORE.equals(dataStoreValue)
+            || DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE.equals(dataStoreValue)) {
             irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD));
           } else {
             irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.KEEP));

@@ -48,8 +48,10 @@ public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProp
    */
   public enum Value {
     PIPE,
-    MEMORY_STORE,
-    SERIALIZED_MEMORY_STORE,
+//    MEMORY_FILE_STORE, // default DataStoreProperty for potential caching.
+//    SER_MEMORY_FILE_STORE, // default DataStoreProperty for potential caching.
+    MEMORY_FILE_STORE,
+    SERIALIZED_MEMORY_FILE_STORE,
     LOCAL_FILE_STORE,
     GLUSTER_FILE_STORE
   }

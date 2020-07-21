@@ -72,7 +72,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -549,7 +548,7 @@ public final class TaskExecutorTest {
                                            final IRVertex dst,
                                            final String runtimeIREdgeId) {
     ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
-    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_STORE));
+    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MEMORY_FILE_STORE));
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 
   }

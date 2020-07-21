@@ -104,9 +104,9 @@ import static org.mockito.Mockito.mock;
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =
-    DataStoreProperty.Value.MEMORY_STORE;
+    DataStoreProperty.Value.MEMORY_FILE_STORE;
   private static final DataStoreProperty.Value SER_MEMORY_STORE =
-    DataStoreProperty.Value.SERIALIZED_MEMORY_STORE;
+    DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE;
   private static final DataStoreProperty.Value LOCAL_FILE_STORE =
     DataStoreProperty.Value.LOCAL_FILE_STORE;
   private static final DataStoreProperty.Value REMOTE_FILE_STORE =

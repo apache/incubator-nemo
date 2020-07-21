@@ -50,6 +50,9 @@ public final class MemoryManager {
   // used to release memory back when blocks are no longer needed
   private HashMap<String, Long> blockIdtoSize;
 
+  public void releaseStorageMemory(final long memory) {
+    this.storageMemoryPool.releaseMemory(memory);
+  }
 
   @Inject
   public MemoryManager(@Parameter(JobConf.ExecutorMemoryMb.class) final int memory,
