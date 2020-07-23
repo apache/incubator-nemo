@@ -176,11 +176,31 @@ public final class BlockManagerWorker {
    * @param blockStore the store to place the block.
    * @return the created block.
    */
-  public Block createBlock(final String blockId,
+  public Optional<Block> createBlock(final String blockId,
                            final DataStoreProperty.Value blockStore) {
     LOG.info("BlockManagerWorker, createBlock blockId {}", blockId);
+    // actually create the block when we know for sure the data can be stored in memory
+    if (blockStore == DataStoreProperty.Value.MEMORY_FILE_STORE
+        || blockStore == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
+      LOG.info("createblock returning an empty block!!!!!!!!");
+      return Optional.empty();
+    }
     final BlockStore store = getBlockStore(blockStore);
-    LOG.info("the block store created is {}, {}", store.toString(), store);
+    LOG.info("optional is not empty, the block store created is {}, {}", store.toString(), store);
+    return Optional.of(store.createBlock(blockId));
+  }
+
+
+  /**
+   * Finalize the DataStoreProperty of a Data or File Store (spillable) block.
+   * @param blockId    the ID of the block to create.
+   * @param blockStore the store to place the block.
+   * @return the created block.
+   */
+  public Block finalizeStoreProperty(final String blockId,
+                                     final DataStoreProperty.Value blockStore) {
+    LOG.info(" block store property of block {} finalized as {}", blockId, blockStore);
+    final BlockStore store = getBlockStore(blockStore);
     return store.createBlock(blockId);
   }
 

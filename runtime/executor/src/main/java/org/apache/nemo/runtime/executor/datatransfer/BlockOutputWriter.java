@@ -50,8 +50,8 @@ public final class BlockOutputWriter implements OutputWriter {
 
   private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
-  private final Block blockToWrite;
-  private final Block potentialSpilledBlocktoWrite;
+  private final Optional<Block> blockToWrite;
+  private final Optional<Block> potentialSpilledBlocktoWrite;
   private final boolean nonDummyBlock;
 
   private long writtenBytes;
@@ -84,21 +84,19 @@ public final class BlockOutputWriter implements OutputWriter {
     blockToWrite = blockManagerWorker.createBlock(
       RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
     // potential file block to spill to
-    if (blockStoreValue == DataStoreProperty.Value.MEMORY_FILE_STORE
-      || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
-      potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(
-        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId),
-        DataStoreProperty.Value.LOCAL_FILE_STORE);
-    } else {
-      potentialSpilledBlocktoWrite = null; // null is bad, how to change?
-    }
-//    potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(
-//      RuntimeIdManager.generateBlockId(runtimeEdge.getId() + "spilled", srcTaskId),
-//      DataStoreProperty.Value.LOCAL_FILE_STORE);
-//    potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(blockToWrite.getId() + "spilled",
-//      DataStoreProperty.Value.LOCAL_FILE_STORE);
-    LOG.info("dongjoo, BlockOutputWriter constructor, stageEdge {}, runtimeEdge {}, blockToWrite {}",
-      stageEdge, runtimeEdge, blockToWrite);
+    potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(
+      RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId),
+      DataStoreProperty.Value.LOCAL_FILE_STORE);
+//    if (blockStoreValue == DataStoreProperty.Value.MEMORY_FILE_STORE
+//      || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
+//      potentialSpilledBlocktoWrite = blockManagerWorker.createBlock(
+//        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId),
+//        DataStoreProperty.Value.LOCAL_FILE_STORE).get();
+//    } else {
+//      potentialSpilledBlocktoWrite = null; // null is bad, how to change?
+//    }
+//    LOG.info("dongjoo, BlockOutputWriter constructor, stageEdge {}, runtimeEdge {}, blockToWrite {}",
+//      stageEdge, runtimeEdge, blockToWrite);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     nonDummyBlock = !duplicateDataProperty.isPresent()
@@ -115,7 +113,8 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
-//    LOG.info("type of partitioner, key: {} and type of block {}", partitioner.partition(element), blockStoreValue);
+//    LOG.info("type of partitioner, key: {} and type of block {}, block id {}",
+//      partitioner.partition(element), blockStoreValue, blockToWrite.get().getId());
     if (nonDummyBlock) {
       // logging
 //      LOG.info("BlockOutPutWriter write, blockid {},blocktoWrite {}, blockStoreValue {}",
@@ -130,18 +129,18 @@ public final class BlockOutputWriter implements OutputWriter {
         sizeTrackingVector.append(element);
 //        LOG.info("sizeTrackingVector size: {}", sizeTrackingVector.estimateSize());
 //        memoryManager.acquireStorageMemory(blockToWrite.getId(), SizeEstimator.estimate(element));
-      } else {
+      } else { // if blockToWrite.isPresent()
         // original logic
         // dongjoo: partioner.partition returns key of the partition
 //        LOG.info("not a memory store block, just write");
-        blockToWrite.write(partitioner.partition(element), element);
+        blockToWrite.get().write(partitioner.partition(element), element);
       }
       // other logic, not write or append to SizeTrackingVector, common operation?
       final DedicatedKeyPerElement dedicatedKeyPerElement =
         partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
         LOG.info("COMMITPARTITIONS CALLED BECAUSE OF DEDICATED KEY");
-        blockToWrite.commitPartitions();
+        blockToWrite.get().commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
   }
@@ -157,15 +156,17 @@ public final class BlockOutputWriter implements OutputWriter {
    */
   @Override
   public void close() {
+    LOG.info("close called on block {}, potential {}, blockstorevlue {}",
+      blockToWrite.get().getId(), potentialSpilledBlocktoWrite.get().getId(), blockStoreValue);
     // for MemoryStore blocks
     if (blockStoreValue == DataStoreProperty.Value.MEMORY_FILE_STORE
       || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
       LOG.info("BOW close called, iterating over STV and writing to block");
-      if (memoryManager.acquireStorageMemory(blockToWrite.getId(), sizeTrackingVector.estimateSize())) {
-        LOG.info("IMPORTANT! enough size in memeory to write block {} to memory", blockToWrite.getId());
+      if (memoryManager.acquireStorageMemory(blockToWrite.get().getId(), sizeTrackingVector.estimateSize())) {
+        LOG.info("IMPORTANT! enough size in memeory to write block {} to memory", blockToWrite.get().getId());
 //        blockManagerWorker.removeBlock(potentialSpilledBlocktoWrite.getId(),
 //        DataStoreProperty.Value.LOCAL_FILE_STORE);
-        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
+        sizeTrackingVector.forEach(element -> blockToWrite.get().write(partitioner.partition(element), element));
 //        for (Object element : sizeTrackingVector) {
 //          blockToWrite.write(partitioner.partition(element), element);
 //        }
@@ -173,7 +174,7 @@ public final class BlockOutputWriter implements OutputWriter {
         this.outputSpilled = true;
         LOG.info("outputSpilled is {}", this.outputSpilled);
         LOG.info("Not enough storage memory, remaing StoragePool Memory: {}, size of block is {}, blockID: {}",
-          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.getId());
+          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.get().getId());
 //        blockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
 //        create new file block
 //        String newBlockId = blockToWrite.getId();
@@ -195,9 +196,9 @@ public final class BlockOutputWriter implements OutputWriter {
 //        sizeTrackingVector.forEach(element -> blockToWrite.write(partitioner.partition(element), element));
         // populate newly created block
         sizeTrackingVector.forEach(element ->
-          potentialSpilledBlocktoWrite.write(partitioner.partition(element), element));
+          potentialSpilledBlocktoWrite.get().write(partitioner.partition(element), element));
 //        sizeTrackingVector.forEach(element -> newBlock.write(partitioner.partition(element), element));
-        blockManagerWorker.putSpilledBlock(blockToWrite, potentialSpilledBlocktoWrite);
+        blockManagerWorker.putSpilledBlock(blockToWrite.get(), potentialSpilledBlocktoWrite.get());
 //        runtimeEdge.changeDataStoreProperty(blockStoreValue);
         // replace original block with new block
 //        blockToWrite = newBlock;
@@ -210,7 +211,7 @@ public final class BlockOutputWriter implements OutputWriter {
         // commit the file block
         final DataPersistenceProperty.Value persistence = DataPersistenceProperty.Value.KEEP; // hardcode as keep?
         final Optional<Map<Integer, Long>> newpartitionSizeMap =
-          potentialSpilledBlocktoWrite.commit(); // switched from newblock to psnb
+          potentialSpilledBlocktoWrite.get().commit(); // switched from newblock to psnb
 
         /// delete sizeTrackingVector and release memory back into StoragePool
         this.memoryManager.releaseStorageMemory(this.sizeTrackingVector.estimateSize());
@@ -226,27 +227,28 @@ public final class BlockOutputWriter implements OutputWriter {
           writtenBytes = -1; // no written bytes info.
         }
         // commit the spilled block
-        blockManagerWorker.writeBlock(potentialSpilledBlocktoWrite,
+        blockManagerWorker.writeBlock(potentialSpilledBlocktoWrite.get(),
           DataStoreProperty.Value.LOCAL_FILE_STORE, getExpectedRead(), persistence);
       }
-    }
-    // Commit block.
-    LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.getId());
-    final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
-      .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
-
-    final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
-    // Return the total size of the committed block.
-    if (partitionSizeMap.isPresent()) {
-      long blockSizeTotal = 0;
-      for (final long partitionSize : partitionSizeMap.get().values()) {
-        blockSizeTotal += partitionSize;
-      }
-      writtenBytes = Math.max(blockSizeTotal, writtenBytes);
     } else {
-      writtenBytes = -1; // no written bytes info.
+      // Commit block.
+      LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.get().getId());
+      final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
+        .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
+
+      final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.get().commit();
+      // Return the total size of the committed block.
+      if (partitionSizeMap.isPresent()) {
+        long blockSizeTotal = 0;
+        for (final long partitionSize : partitionSizeMap.get().values()) {
+          blockSizeTotal += partitionSize;
+        }
+        writtenBytes = Math.max(blockSizeTotal, writtenBytes);
+      } else {
+        writtenBytes = -1; // no written bytes info.
+      }
+      blockManagerWorker.writeBlock(blockToWrite.get(), blockStoreValue, getExpectedRead(), persistence);
     }
-    blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
     if (!this.outputSpilled) {
 //      blockManagerWorker.removeBlock(potentialSpilledBlocktoWrite.getId(), DataStoreProperty.Value.LOCAL_FILE_STORE);
 //      potentialSpilledBlocktoWrite
