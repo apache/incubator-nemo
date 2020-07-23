@@ -81,7 +81,7 @@ public final class LocalFileStore extends LocalBlockStore {
    */
   @Override
   public void writeBlock(final Block block) {
-    LOG.info("localfile store write block {}", block);
+//    LOG.info("localfile store write block {}", block);
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
         this.toString() + " only accept " + FileBlock.class.getName()));

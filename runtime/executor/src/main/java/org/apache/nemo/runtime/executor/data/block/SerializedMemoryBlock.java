@@ -82,7 +82,6 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   @Override
   public void write(final K key,
                     final Object element) {
-    LOG.info("dongjoo, SerMemBlock write key {}, blockId {}  element {}", key, id, element);
 //    LOG.info("dongjoo, SerMemBlock write, measure jvm max {}, total {}, free{}",
 //      java.lang.Runtime.getRuntime().maxMemory(), java.lang.Runtime.getRuntime().totalMemory(),
 //      java.lang.Runtime.getRuntime().freeMemory());
