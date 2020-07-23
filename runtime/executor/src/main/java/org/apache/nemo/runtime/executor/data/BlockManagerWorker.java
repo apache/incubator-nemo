@@ -26,6 +26,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
+import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
 import org.apache.nemo.common.exception.UnsupportedExecutionPropertyException;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
@@ -197,11 +198,16 @@ public final class BlockManagerWorker {
    * @param blockStore the store to place the block.
    * @return the created block.
    */
-  public Block finalizeStoreProperty(final String blockId,
+  public Optional<Block> createAndfinalizeStoreProperty(final String blockId,
                                      final DataStoreProperty.Value blockStore) {
+    if (!(blockStore == DataStoreProperty.Value.MEMORY_FILE_STORE
+      || blockStore == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE)) {
+      throw new BlockWriteException(new Throwable(
+        this.toString() + "only accept memory store blocks can be finalized"));
+    }
     LOG.info(" block store property of block {} finalized as {}", blockId, blockStore);
     final BlockStore store = getBlockStore(blockStore);
-    return store.createBlock(blockId);
+    return Optional.of(store.createBlock(blockId));
   }
 
   /**
@@ -234,8 +240,8 @@ public final class BlockManagerWorker {
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
-      LOG.info("dongjoo, BOW, blocklocationfuture respose from master {}", responseFromMaster);
-      LOG.info("readblock, getblocklocation info msg {}", responseFromMaster.getBlockLocationInfoMsg());
+//      LOG.info("dongjoo, BOW, blocklocationfuture respose from master {}", responseFromMaster);
+//      LOG.info("readblock, getblocklocation info msg {}", responseFromMaster.getBlockLocationInfoMsg());
 
 
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
@@ -431,7 +437,7 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           final Optional<Block> optionalSpilledBlock = getSpilledBlock(blockId);
 
-          if (optionalBlock.isPresent()) {
+          if (optionalBlock.isPresent() || optionalSpilledBlock.isPresent()) {
             if (DataStoreProperty.Value.LOCAL_FILE_STORE.equals(blockStore)
               || DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
               LOG.info("DataStoreProperty is a local file store, optionalLBock is present {}",
@@ -451,7 +457,7 @@ public final class BlockManagerWorker {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
                   os.writeFileArea(fileArea);
                 } catch (Exception e) {
-                  LOG.info("dongjooals, exception occured when writing a spilled block exception was {}", e);
+                  LOG.info("dongjooals, exception occured when writing a spilled block, exception was {}", e);
                 }
               }
 
@@ -476,7 +482,9 @@ public final class BlockManagerWorker {
 
           } else {
             // We don't have the block here...
-            LOG.info("no block ");
+            LOG.info("DataStoreProperty {}, optinalblock present {}, spilled block present {}",
+              blockStore, optionalBlock.isPresent(), optionalSpilledBlock.isPresent());
+            LOG.info("no block {}", blockId);
             throw new RuntimeException(String.format("459 Block %s not found in local BlockManagerWorker", blockId));
           }
         } catch (final IOException | BlockFetchException e) {
@@ -519,8 +527,10 @@ public final class BlockManagerWorker {
 
     // First, try to fetch the block from local BlockStore.
     final Optional<Block> optionalBlock = store.readBlock(blockId);
+    LOG.info("optionalBlock is present {}", optionalBlock.isPresent());
     // also try to fetch from spilled blocks
     final Optional<Block> optionalSpilledBlock = getSpilledBlock(blockId);
+    LOG.info("optionalSpilledBlock is present {}", optionalBlock.isPresent());
 
     if (optionalBlock.isPresent()) {
       final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
