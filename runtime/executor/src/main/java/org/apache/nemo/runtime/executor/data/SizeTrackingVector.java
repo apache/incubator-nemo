@@ -49,7 +49,6 @@ public class SizeTrackingVector implements Iterable {
     this.samples = new LinkedList<Pair<Long, Long>>();
     this.resetSamples();
     this.uniqueID = UUID.randomUUID();
-    LOG.info("SizeTrackingVector constructor called, unique ID is {} ", this.uniqueID);
   }
 
   /**
@@ -89,8 +88,6 @@ public class SizeTrackingVector implements Iterable {
    */
   public void append(final Object element) {
     this.vector.add(element);
-//    LOG.info("append called, vector size {}", this.vector.size());
-//    LOG.info("size of object being appended {}", SizeEstimator.estimate(element));
     this.afterUpdate();
   }
 
@@ -116,7 +113,7 @@ public class SizeTrackingVector implements Iterable {
    * @return size in bytes
    */
   public long estimateSize() {
-    LOG.info("estimateSize called: samples {}, unique ID {} ", this.samples, this.uniqueID);
+//    LOG.info("estimateSize called: samples {}, unique ID {} ", this.samples, this.uniqueID);
     if (samples.isEmpty()) {
       return 0;
     }

@@ -59,9 +59,9 @@ public final class MemoryManager {
                        @Parameter(JobConf.StoragePoolRatio.class) final double storagePoolRatio) {
     long storageMemory = (long) (memory * storagePoolRatio) * 1024;
     this.storageMemoryPool = new StorageMemoryPool(storageMemory);
-    LOG.info("MemoryManage Executor memory mb {}", memory);
-    LOG.info("MemoryManager inject constructor called, storageMemoryLimit is {}",
-      this.storageMemoryPool.getPoolSize());
+//    LOG.info("MemoryManage Executor memory mb {}", memory);
+//    LOG.info("MemoryManager inject constructor called, storageMemoryLimit is {}",
+//      this.storageMemoryPool.getPoolSize());
   }
 
   public long getRemainingStorageMemory() {
@@ -69,9 +69,9 @@ public final class MemoryManager {
   }
 
   public boolean acquireStorageMemory(final String blockId, final long mem) {
-    LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.storageMemoryPool.getRemainingMemory());
+//    LOG.info("MemoryManager, testStorageMemoryLimit used to be {}", this.storageMemoryPool.getRemainingMemory());
     this.storageMemoryPool.acquireMemory(blockId, mem);
-    LOG.info("MemoryManager, testStorageMemoryLimit is now {}", this.storageMemoryPool.getRemainingMemory());
+//    LOG.info("MemoryManager, testStorageMemoryLimit is now {}", this.storageMemoryPool.getRemainingMemory());
     return this.storageMemoryPool.getRemainingMemory() > 0;
   }
 

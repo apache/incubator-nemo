@@ -117,7 +117,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
-    LOG.info("dongjoo BlockOutputWriter write element {}", element);
+//    LOG.info("dongjoo BlockOutputWriter write element {}", element);
 //    LOG.info("type of partitioner, key: {} and type of block {}, block id {}",
 //      partitioner.partition(element), blockStoreValue, blockToWrite.get().getId());
     if (nonDummyBlock) {
@@ -179,7 +179,7 @@ public final class BlockOutputWriter implements OutputWriter {
         blockManagerWorker.writeBlock(blockToWrite.get(), blockStoreValue, getExpectedRead(), persistence);
       } else { // block does not fit in memory
         this.outputSpilled = true;
-        LOG.info("outputSpilled is {}", this.outputSpilled);
+//        LOG.info("outputSpilled is {}", this.outputSpilled);
         blockToWrite = blockManagerWorker.createBlock(
           RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), DataStoreProperty.Value.LOCAL_FILE_STORE);
         LOG.info("Not enough storage memory, remaing StoragePool Memory: {}, size of block is {}, blockID: {}",
@@ -212,7 +212,7 @@ public final class BlockOutputWriter implements OutputWriter {
       }
     } else { //caching does not need to be considered since the block is a local file store block
       // Commit block.
-      LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.get().getId());
+//      LOG.info("dongjoo BlockOutputWriter close block, closing {} id {}", blockToWrite, blockToWrite.get().getId());
       final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
         .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
 
@@ -234,8 +234,8 @@ public final class BlockOutputWriter implements OutputWriter {
 //      potentialSpilledBlocktoWrite
       String a = "do nothing";
     }
-    LOG.info("end of close, blockid {}, block contents {}, datastoreProperty {}",
-      blockToWrite.get().getId(), blockToWrite.get(), blockStoreValue);
+//    LOG.info("end of close, blockid {}, block contents {}, datastoreProperty {}",
+//      blockToWrite.get().getId(), blockToWrite.get(), blockStoreValue);
   }
 
   public Optional<Long> getWrittenBytes() {

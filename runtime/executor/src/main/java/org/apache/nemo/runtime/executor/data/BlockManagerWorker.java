@@ -179,15 +179,15 @@ public final class BlockManagerWorker {
    */
   public Optional<Block> createBlock(final String blockId,
                            final DataStoreProperty.Value blockStore) {
-    LOG.info("BlockManagerWorker, createBlock blockId {}", blockId);
+//    LOG.info("BlockManagerWorker, createBlock blockId {}", blockId);
     // actually create the block when we know for sure the data can be stored in memory
     if (blockStore == DataStoreProperty.Value.MEMORY_FILE_STORE
         || blockStore == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
-      LOG.info("createblock returning an empty block!!!!!!!!");
+//      LOG.info("createblock returning an empty block!!!!!!!!");
       return Optional.empty();
     }
     final BlockStore store = getBlockStore(blockStore);
-    LOG.info("optional is not empty, the block store created is {}, {}", store.toString(), store);
+//    LOG.info("optional is not empty, the block store created is {}, {}", store.toString(), store);
     return Optional.of(store.createBlock(blockId));
   }
 
@@ -226,37 +226,25 @@ public final class BlockManagerWorker {
     final String runtimeEdgeId,
     final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
     final KeyRange keyRange)  {
-    LOG.info("BMW read block, blockidwild {}, runtimeedge {}, keyrange {}", blockIdWildcard, runtimeEdgeId, keyRange);
+//    LOG.info("BMW read block, blockidwild {}, runtimeedge {}, keyrange {}", blockIdWildcard, runtimeEdgeId, keyRange);
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture;
     try {
       blockLocationFuture = blockLocationResponseCache.get(blockIdWildcard);
     } catch (ExecutionException e) {
-      LOG.info("dongjoo runtime exception");
       throw new RuntimeException(e); // This should never happen, since we're only getting a "future"
     }
-    LOG.info("block location future 1");
-    LOG.info("block location future == null {}", blockLocationFuture == null);
-    LOG.info("block location future is {}", blockLocationFuture);
-    try {
-      LOG.info("block id wildcard is in blocklocation response cache {}",
-        blockLocationResponseCache.get(blockIdWildcard));
-    } catch (ExecutionException e) {
-      LOG.info("some exception {}", e);
-    }
+//    try {
+//      LOG.info("block id wildcard is in blocklocation response cache {}",
+//        blockLocationResponseCache.get(blockIdWildcard));
+//    } catch (ExecutionException e) {
+//      LOG.info("some exception {}", e);
+//    }
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
-      LOG.info("response from master {}", responseFromMaster);
-        LOG.info("something about response {}, {}, {}",
-          responseFromMaster.getType(), ControlMessage.MessageType.BlockLocationInfo, responseFromMaster);
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
-//      LOG.info("dongjoo, BOW, blocklocationfuture respose from master {}", responseFromMaster);
-//      LOG.info("readblock, getblocklocation info msg {}", responseFromMaster.getBlockLocationInfoMsg());
-      LOG.info("block location future 2");
-
-
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
         responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
@@ -264,7 +252,6 @@ public final class BlockManagerWorker {
           "Block " + blockIdWildcard + " location unknown: "
             + "The block state is " + blockLocationInfoMsg.getState()));
       }
-      LOG.info("readblock, msg. get block id {}", blockLocationInfoMsg.getBlockId());
 
       // This is the executor id that we wanted to know
       final String blockId = blockLocationInfoMsg.getBlockId();
@@ -274,8 +261,6 @@ public final class BlockManagerWorker {
         LOG.info(" block {} is actually spilled", blockId);
         blockStore = DataStoreProperty.Value.LOCAL_FILE_STORE;
       }
-      LOG.info("block location future 3");
-
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
@@ -350,10 +335,6 @@ public final class BlockManagerWorker {
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();
-    LOG.info("dongjoo: BlockManagerWorker, writeBlock, blockId {}, expectedReadTotal {}, Persistence {}, BlockStore {}",
-      blockId, expectedReadTotal, persistence, blockStore);
-    LOG.info("BlockManagerWorker.writeBlock: {}", blockId);
-
     switch (persistence) {
       case DISCARD:
         blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
@@ -437,13 +418,11 @@ public final class BlockManagerWorker {
    * @throws InvalidProtocolBufferException from errors during parsing context descriptor
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
-    LOG.info("dongjoo: BMW onOutputContext, outputcontext {}", outputContext);
     final ControlMessage.BlockTransferContextDescriptor descriptor =
       ControlMessage.BlockTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
     final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
     final String blockId = descriptor.getBlockId();
     final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());
-    LOG.info("Dongjoo, descriptor, blockstore, blockid keyrange finalized, before run");
     backgroundExecutorService.submit(new Runnable() {
       @Override
       public void run() {
@@ -454,8 +433,6 @@ public final class BlockManagerWorker {
           if (optionalBlock.isPresent() || optionalSpilledBlock.isPresent()) {
             if (DataStoreProperty.Value.LOCAL_FILE_STORE.equals(blockStore)
               || DataStoreProperty.Value.GLUSTER_FILE_STORE.equals(blockStore)) {
-              LOG.info("DataStoreProperty is a local file store, optionalLBock is present {}",
-                optionalBlock.isPresent());
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -463,21 +440,16 @@ public final class BlockManagerWorker {
                 }
               }
             } else if (optionalSpilledBlock.isPresent()) {
-              LOG.info("successfully found spilled block of block: {}, found block is {}",
-                blockId, optionalSpilledBlock.get().getId());
-              LOG.info("block looks like {}", optionalSpilledBlock.get());
               final List<FileArea> fileAreas = ((FileBlock) optionalSpilledBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
                   os.writeFileArea(fileArea);
                 } catch (Exception e) {
-                  LOG.info("dongjooals, exception occured when writing a spilled block, exception was {}", e);
+                  LOG.info("Exception occured when writing a spilled block {}", e);
                 }
               }
 
             } else {
-              LOG.info("DataStoreProperty is a memory store, optionalLBock is present {}",
-                optionalBlock.isPresent());
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -496,9 +468,9 @@ public final class BlockManagerWorker {
 
           } else {
             // We don't have the block here...
-            LOG.info("DataStoreProperty {}, optinalblock present {}, spilled block present {}",
-              blockStore, optionalBlock.isPresent(), optionalSpilledBlock.isPresent());
-            LOG.info("no block {}", blockId);
+//            LOG.info("DataStoreProperty {}, optinalblock present {}, spilled block present {}",
+//              blockStore, optionalBlock.isPresent(), optionalSpilledBlock.isPresent());
+//            LOG.info("no block {}", blockId);
             throw new RuntimeException(String.format("459 Block %s not found in local BlockManagerWorker", blockId));
           }
         } catch (final IOException | BlockFetchException e) {
@@ -535,16 +507,16 @@ public final class BlockManagerWorker {
     final String blockId,
     final DataStoreProperty.Value blockStore,
     final KeyRange keyRange) {
-    LOG.info("dongjoo: BMW, getDataFromLocalBlock, blockId {}, blockStore {}, keyRange {}",
-      blockId, blockStore, keyRange);
+//    LOG.info("dongjoo: BMW, getDataFromLocalBlock, blockId {}, blockStore {}, keyRange {}",
+//      blockId, blockStore, keyRange);
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.
     final Optional<Block> optionalBlock = store.readBlock(blockId);
-    LOG.info("optionalBlock is present {}", optionalBlock.isPresent());
+//    LOG.info("optionalBlock is present {}", optionalBlock.isPresent());
     // also try to fetch from spilled blocks
     final Optional<Block> optionalSpilledBlock = getSpilledBlock(blockId);
-    LOG.info("optionalSpilledBlock is present {}", optionalBlock.isPresent());
+//    LOG.info("optionalSpilledBlock is present {}", optionalBlock.isPresent());
 
     if (optionalBlock.isPresent()) {
       final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
@@ -572,7 +544,7 @@ public final class BlockManagerWorker {
     } else if (optionalSpilledBlock.isPresent()) {
       final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
       handleDataPersistence(blockStore, blockId);
-      LOG.info("getDatafromLocalBLock is reading from a spilled block!!!!!!");
+//      LOG.info("getDatafromLocalBLock is reading from a spilled block!");
       // Block is spilled to a file block
       try {
         final Iterator innerIterator = DataUtil.concatNonSerPartitions(partitions).iterator();
