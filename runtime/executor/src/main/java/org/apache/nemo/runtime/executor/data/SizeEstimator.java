@@ -80,7 +80,7 @@ public final class SizeEstimator {
     }
     LOG.info("Architecture {}", architecture);
     LOG.info("beansClazz {}", beanClazz);
-    return true;
+    return false;
 
   }
 
@@ -148,6 +148,7 @@ public final class SizeEstimator {
     } else if (!cls.getName().startsWith("java.lang.reflect")
       && !(obj instanceof ClassLoader || obj instanceof  Class)) {
       ClassInfo classInfo = getClassInfo(cls);
+      LOG.info("dongjoo, visitSingleObject, for cls {}", cls);
       state.size += classInfo.shellSize;
       for (Field field : classInfo.pointerFields) {
         try {
@@ -246,6 +247,7 @@ public final class SizeEstimator {
     Class<?> superClass = cls.getSuperclass();
     ClassInfo parent = getClassInfo(superClass);
     long shellSize = parent.shellSize;
+    LOG.info("dongjoo, getClassInfo, changing to parent's pointerFields for cls {}", cls);
     List<Field> pointerFields = parent.pointerFields;
 
     // iterate through the fields of this class and gather information.

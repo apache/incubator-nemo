@@ -198,8 +198,8 @@ public final class BlockManagerWorker {
    * @param blockStore the store to place the block.
    * @return the created block.
    */
-  public Optional<Block> createAndfinalizeStoreProperty(final String blockId,
-                                     final DataStoreProperty.Value blockStore) {
+  public Optional<Block> createAndFinalizeStoreProperty(final String blockId,
+                                                        final DataStoreProperty.Value blockStore) {
     if (!(blockStore == DataStoreProperty.Value.MEMORY_FILE_STORE
       || blockStore == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE)) {
       throw new BlockWriteException(new Throwable(
@@ -225,23 +225,36 @@ public final class BlockManagerWorker {
     final String blockIdWildcard,
     final String runtimeEdgeId,
     final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
-    final KeyRange keyRange) {
-    LOG.info("BOW read block, blockidwild {}, runtimeedge {}, keyrange {}", blockIdWildcard, runtimeEdgeId, keyRange);
+    final KeyRange keyRange)  {
+    LOG.info("BMW read block, blockidwild {}, runtimeedge {}, keyrange {}", blockIdWildcard, runtimeEdgeId, keyRange);
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture;
     try {
       blockLocationFuture = blockLocationResponseCache.get(blockIdWildcard);
     } catch (ExecutionException e) {
+      LOG.info("dongjoo runtime exception");
       throw new RuntimeException(e); // This should never happen, since we're only getting a "future"
     }
-
+    LOG.info("block location future 1");
+    LOG.info("block location future == null {}", blockLocationFuture == null);
+    LOG.info("block location future is {}", blockLocationFuture);
+    try {
+      LOG.info("block id wildcard is in blocklocation response cache {}",
+        blockLocationResponseCache.get(blockIdWildcard));
+    } catch (ExecutionException e) {
+      LOG.info("some exception {}", e);
+    }
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
+      LOG.info("response from master {}", responseFromMaster);
+        LOG.info("something about response {}, {}, {}",
+          responseFromMaster.getType(), ControlMessage.MessageType.BlockLocationInfo, responseFromMaster);
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
 //      LOG.info("dongjoo, BOW, blocklocationfuture respose from master {}", responseFromMaster);
 //      LOG.info("readblock, getblocklocation info msg {}", responseFromMaster.getBlockLocationInfoMsg());
+      LOG.info("block location future 2");
 
 
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
@@ -261,6 +274,7 @@ public final class BlockManagerWorker {
         LOG.info(" block {} is actually spilled", blockId);
         blockStore = DataStoreProperty.Value.LOCAL_FILE_STORE;
       }
+      LOG.info("block location future 3");
 
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator

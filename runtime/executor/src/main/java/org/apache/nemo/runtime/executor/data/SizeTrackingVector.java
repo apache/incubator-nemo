@@ -52,7 +52,6 @@ public class SizeTrackingVector implements Iterable {
     LOG.info("SizeTrackingVector constructor called, unique ID is {} ", this.uniqueID);
   }
 
-
   /**
    * clear the contents of SizeTrackingVector.
    */
@@ -68,20 +67,6 @@ public class SizeTrackingVector implements Iterable {
   public Iterator iterator() {
     return this.vector.iterator();
   }
-
-//  /**
-//   * something.
-//   */
-//  public String getInfo() {
-//    StringBuilder sb = new StringBuilder();
-//    sb.append("numUpdates:");
-//    sb.append(this.numUpdates);
-//    sb.append("\n");
-//    sb.append("nextSampleNum:");
-//    sb.append(this.nextSampleNum);
-//    sb.append("\n");
-//    return sb.toString();
-//  }
 
   private void resetSamples() {
 //    this.vector.c

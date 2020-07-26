@@ -217,7 +217,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * We assume that the size of memory per executor is always given as input (therefore, no default value).
    */
   @NamedParameter(doc = "The size of raito of memory used for storage (caching).",
-    short_name = "storage_ratio", default_value = "0.2")
+    short_name = "storage_ratio", default_value = "0.3")
   public final class StoragePoolRatio implements Name<Double> {
   }
 

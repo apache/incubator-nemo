@@ -117,6 +117,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
+    LOG.info("dongjoo BlockOutputWriter write element {}", element);
 //    LOG.info("type of partitioner, key: {} and type of block {}, block id {}",
 //      partitioner.partition(element), blockStoreValue, blockToWrite.get().getId());
     if (nonDummyBlock) {
@@ -164,11 +165,18 @@ public final class BlockOutputWriter implements OutputWriter {
       || blockStoreValue == DataStoreProperty.Value.SERIALIZED_MEMORY_FILE_STORE) {
       LOG.info("BOW close called, iterating over STV and writing to block");
 //      if (memoryManager.acquireStorageMemory(blockToWrite.get().getId(), sizeTrackingVector.estimateSize())) {
-      if (memoryManager.acquireStorageMemory("asdf", sizeTrackingVector.estimateSize())) {
-        blockToWrite = blockManagerWorker.createAndfinalizeStoreProperty(
+      if (memoryManager.acquireStorageMemory(RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId),
+        sizeTrackingVector.estimateSize())) {
+        blockToWrite = blockManagerWorker.createAndFinalizeStoreProperty(
           RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
         LOG.info("IMPORTANT! enough size in memeory to write block {} to memory", blockToWrite.get().getId());
         sizeTrackingVector.forEach(element -> blockToWrite.get().write(partitioner.partition(element), element));
+        final Optional<Map<Integer, Long>> newpartitionSizeMap =
+          blockToWrite.get().commit();
+        // need common operation after commit for partition size and writeBlock
+        final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
+          .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
+        blockManagerWorker.writeBlock(blockToWrite.get(), blockStoreValue, getExpectedRead(), persistence);
       } else { // block does not fit in memory
         this.outputSpilled = true;
         LOG.info("outputSpilled is {}", this.outputSpilled);
