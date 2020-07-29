@@ -35,7 +35,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Tes {@link CommonSubexpressionEliminationPass}.
+ * Test {@link CommonSubexpressionEliminationPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)

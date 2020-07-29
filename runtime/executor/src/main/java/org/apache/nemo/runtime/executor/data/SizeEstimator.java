@@ -149,6 +149,7 @@ public final class SizeEstimator {
       && !(obj instanceof ClassLoader || obj instanceof  Class)) {
       ClassInfo classInfo = getClassInfo(cls);
       state.size += classInfo.shellSize;
+
       for (Field field : classInfo.pointerFields) {
         try {
           state.enqueue(field.get(obj));
@@ -246,7 +247,7 @@ public final class SizeEstimator {
     Class<?> superClass = cls.getSuperclass();
     ClassInfo parent = getClassInfo(superClass);
     long shellSize = parent.shellSize;
-    List<Field> pointerFields = parent.pointerFields;
+    List<Field> pointerFields = new ArrayList<>(parent.pointerFields); // changed
 
     // iterate through the fields of this class and gather information.
     for (Field field : cls.getDeclaredFields()) {

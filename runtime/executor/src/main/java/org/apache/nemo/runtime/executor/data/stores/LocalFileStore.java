@@ -64,9 +64,9 @@ public final class LocalFileStore extends LocalBlockStore {
 
   @Override
   public Block createBlock(final String blockId) {
-    LOG.info("local file block important, create block blockId {}", blockId);
+//    LOG.info("local file block important, create block blockId {}", blockId);
     deleteBlock(blockId);
-    LOG.info("after deletion");
+//    LOG.info("after deletion");
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
     return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory),
@@ -100,15 +100,15 @@ public final class LocalFileStore extends LocalBlockStore {
    */
   @Override
   public boolean deleteBlock(final String blockId) {
-    LOG.info("LocalFileStore, deleteblock {}", blockId);
+//    LOG.info("LocalFileStore, deleteblock {}", blockId);
     final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
-    LOG.info("fileblock is null, {}", fileBlock == null);
+//    LOG.info("fileblock is null, {}", fileBlock == null);
     if (fileBlock == null) {
       return false;
     }
     try {
       fileBlock.deleteFile();
-      LOG.info("dongjoo, fileBlock, deleteFile for block {}", blockId);
+//      LOG.info("dongjoo, fileBlock, deleteFile for block {}", blockId);
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     }
