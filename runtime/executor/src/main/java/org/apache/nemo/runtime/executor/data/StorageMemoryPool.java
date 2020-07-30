@@ -39,7 +39,7 @@ public class StorageMemoryPool {
    * @param numBytestoAcquire size of block
    * @return successfully acquired or not
    */
-  public boolean acquireMemory(final String blockId, final long numBytestoAcquire) {
+  public synchronized boolean acquireMemory(final String blockId, final long numBytestoAcquire) {
     if (this.poolSize - this.memoryUsed > 0) {
       this.memoryUsed += numBytestoAcquire;
       return true;

@@ -142,40 +142,35 @@ public final class BlockOutputWriter implements OutputWriter {
       // if MemoryBlock fits in StoragePool
       if (memoryManager.acquireStorageMemory(blockId, sizeTrackingVector.estimateSize())) {
         blockToWrite = blockManagerWorker.createAndFinalizeStoreProperty(blockId, blockStoreValue);
-        LOG.info("Enough size in StoragePool to write block {} to memory", blockToWrite.get().getId());
+//        LOG.info("Enough size in StoragePool to write block {} to memory", blockToWrite.get().getId());
         sizeTrackingVector.forEach(element -> blockToWrite.get().write(partitioner.partition(element), element));
+        sizeTrackingVector.clear();
       } else { // block does not fit in memory
         this.outputSpilled = true;
         newBlockStoreValue = DataStoreProperty.Value.LOCAL_FILE_STORE;
         persistence = DataPersistenceProperty.Value.KEEP;
         blockToWrite = blockManagerWorker.createBlock(blockId, newBlockStoreValue);
-        LOG.info("Not enough memory in StoragePool: {}, size of block is {}, blockID: {}",
-          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.get().getId());
+//        LOG.info("Not enough memory in StoragePool: {}, size of block is {}, blockID: {}",
+//          memoryManager.getRemainingStorageMemory(), sizeTrackingVector.estimateSize(), blockToWrite.get().getId());
         sizeTrackingVector.forEach(element ->
           blockToWrite.get().write(partitioner.partition(element), element));
+        sizeTrackingVector.clear();
         blockManagerWorker.putSpilledBlock(blockToWrite.get(), blockToWrite.get());
       }
-      // common operation for memoryStore blocks
-        /// delete sizeTrackingVector and release memory back into StoragePool
-//        this.memoryManager.releaseStorageMemory(this.sizeTrackingVector.estimateSize());
-//        this.sizeTrackingVector.clear();
-    } else { //caching does not need to be considered since the block is a local file store block
-      // proceed with original logic
-//      blockManagerWorker.writeBlock(blockToWrite.get(), blockStoreValue, getExpectedRead(), persistence);
-      String a = "asdf";
     }
-      partitionSizeMap = blockToWrite.get().commit();
-      // Return the total size of the committed block.
-      if (partitionSizeMap.isPresent()) {
-        long blockSizeTotal = 0;
-        for (final long partitionSize : partitionSizeMap.get().values()) {
-          blockSizeTotal += partitionSize;
-        }
-        writtenBytes = blockSizeTotal;
-      } else {
-        writtenBytes = -1; // no written bytes info.
+    // If the Block is not a memory store block, just commit the block since it is already written
+    partitionSizeMap = blockToWrite.get().commit();
+    // Return the total size of the committed block.
+    if (partitionSizeMap.isPresent()) {
+      long blockSizeTotal = 0;
+      for (final long partitionSize : partitionSizeMap.get().values()) {
+        blockSizeTotal += partitionSize;
       }
-      blockManagerWorker.writeBlock(blockToWrite.get(), newBlockStoreValue, getExpectedRead(), persistence);
+      writtenBytes = blockSizeTotal;
+    } else {
+      writtenBytes = -1; // no written bytes info.
+    }
+    blockManagerWorker.writeBlock(blockToWrite.get(), newBlockStoreValue, getExpectedRead(), persistence);
 //    LOG.info("end of close, blockid {}, block contents {}, datastoreProperty {}",
 //      blockToWrite.get().getId(), blockToWrite.get(), blockStoreValue);
   }
