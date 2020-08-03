@@ -37,13 +37,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntPredicate;
 
 /**
  * IRVertex that contains a partial DAG that is iterative.
  */
+//TODO 454: Change dependency between LoopVertex and TaskSizeSplitterVertex.
 public class LoopVertex extends IRVertex {
   private static final Logger LOG = LoggerFactory.getLogger(LoopVertex.class.getName());
+  private final AtomicInteger duplicateEdgeGroupId = new AtomicInteger(0);
   // Contains DAG information
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private final String compositeTransformFullName;
@@ -155,7 +158,8 @@ public class LoopVertex extends IRVertex {
    * @return the corresponding edge with internal vertex for the specified edge with loop
    */
   public IREdge getEdgeWithInternalVertex(final IREdge edgeWithLoop) {
-    return this.edgeWithLoopToEdgeWithInternalVertex.get(edgeWithLoop);
+    return this.edgeWithLoopToEdgeWithInternalVertex.getOrDefault(edgeWithLoop,
+      new HashMap<>(this.edgeWithLoopToEdgeWithInternalVertex).get(edgeWithLoop));
   }
 
   /**

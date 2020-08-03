@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex;
+package org.apache.nemo.common.ir.vertex.utility.runtimepass;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -27,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -40,7 +40,6 @@ import java.util.function.Supplier;
  */
 public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   private static final Logger LOG = LoggerFactory.getLogger(MessageAggregatorVertex.class.getName());
-  private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);
 
   /**
    * @param initialStateSupplier for producing the initial state.
@@ -49,7 +48,7 @@ public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   public MessageAggregatorVertex(final InitialStateSupplier<O> initialStateSupplier,
                                  final MessageAggregatorFunction<K, V, O> userFunction) {
     super(new MessageAggregatorTransform<>(initialStateSupplier, userFunction));
-    this.setPropertyPermanently(MessageIdVertexProperty.of(MESSAGE_ID_GENERATOR.incrementAndGet()));
+    this.setPropertyPermanently(MessageIdVertexProperty.of(IdManager.generateMessageId()));
     this.setProperty(ParallelismProperty.of(1));
   }
 

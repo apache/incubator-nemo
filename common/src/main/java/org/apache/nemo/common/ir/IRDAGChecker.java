@@ -22,8 +22,6 @@ import org.apache.commons.lang.mutable.MutableObject;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGInterface;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -35,7 +33,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
-import org.apache.nemo.common.ir.vertex.utility.runtimepasstriggervertex.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -441,23 +439,13 @@ public final class IRDAGChecker {
           .collect(Collectors.toList());
 
         if (!nonStreamVertexEdge.isEmpty()) {
-          Set<? extends Class<? extends EncoderFactory>> encoderProperties = nonStreamVertexEdge.stream().map(e
-            -> e.getPropertyValue(EncoderProperty.class).get().getClass()).collect(Collectors.toSet());
           if (1 != nonStreamVertexEdge.stream()
             .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
-            if (!encoderProperties.contains(EncoderFactory.DummyEncoderFactory.class)
-              || encoderProperties.size() != 2) {
-              return failure("Incompatible encoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
-            }
+            return failure("Incompatible encoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
           }
-          Set<? extends Class<? extends DecoderFactory>> decoderProperties = nonStreamVertexEdge.stream().map(e
-            -> e.getPropertyValue(DecoderProperty.class).get().getClass()).collect(Collectors.toSet());
           if (1 != nonStreamVertexEdge.stream()
             .map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass()).distinct().count()) {
-            if (!decoderProperties.contains(DecoderFactory.DummyDecoderFactory.class)
-              || encoderProperties.size() != 2) {
-              return failure("Incompatible decoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
-            }
+            return failure("Incompatible decoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
           }
         }
       }

@@ -66,4 +66,6 @@ public final class MultinomialLogisticRegressionITCase {
       .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
       .build());
   }
+
+  // TODO #453: Add test methods related to Dynamic Task Sizing in Nemo.
 }

@@ -22,6 +22,7 @@ dist: trusty
 # For maven builds
 language: java
 jdk:
+  - oraclejdk8
   - oraclejdk11
   - openjdk11
 env:
@@ -30,7 +31,6 @@ env:
   jobs:
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
-  - sudo apt update && sudo apt install -y libgif-dev
   - nvm install node  # for Web UI build
 install: true
 script:
