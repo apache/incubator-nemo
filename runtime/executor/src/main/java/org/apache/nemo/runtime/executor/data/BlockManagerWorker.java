@@ -159,6 +159,10 @@ public final class BlockManagerWorker {
 
   }
 
+  public MemoryManager getMemoryManager() {
+    return this.memoryManager;
+  }
+
   public void putSpilledBlock(final Block spilledBlock, final Block newBlock) {
     this.spilledBlocks.put(spilledBlock.getId(), newBlock);
   }

@@ -50,6 +50,7 @@ import org.apache.nemo.runtime.executor.MetricManagerWorker;
 import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+//import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -73,8 +74,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -104,6 +105,8 @@ import static org.mockito.Mockito.mock;
 @PrepareForTest({PubSubEventHandlerWrapper.class, MetricMessageHandler.class,
   SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
+//  private static final Logger LOG = LoggerFactory.getLogger(DataTransferTest.class.getName());
+
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =
     DataStoreProperty.Value.MEMORY_FILE_STORE;
@@ -131,16 +134,26 @@ public final class DataTransferTest {
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
   private MetricManagerWorker metricMessageSender;
 
+//  // Memory Manager
+//  private MemoryManager memoryManager;
+
   @Before
   public void setUp() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+//      .bindNamedParameter(JobConf.ExecutorMemoryMb.class, "512")
       .build();
     final Injector baseInjector = Tang.Factory.getTang().newInjector(configuration);
     baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
       MessageEnvironment.MASTER_COMMUNICATION_ID);
+
+//    LOG.info("before memoryManager is null {}", memoryManager == null);
+
+//    final MemoryManager testMemoryManager = injector.getInstance(MemoryManager.class);
+//    this.memoryManager = testMemoryManager;
+//    LOG.info("memoryManager is null {}", memoryManager == null);
 
     final PlanRewriter planRewriter = mock(PlanRewriter.class);
     injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
@@ -155,10 +168,12 @@ public final class DataTransferTest {
 
     // Necessary for wiring up the message environments
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
+//    LOG.info("injector is null{}", injector == null);
+//    System.out.println("injector");
+//    LOG.info("injecter.getInstanse( master is null {}", injector.getInstance(RuntimeMaster.class) == null);
     injector.getInstance(RuntimeMaster.class);
     final BlockManagerMaster master = injector.getInstance(BlockManagerMaster.class);
     final MetricManagerWorker metricMessageSender = injector.getInstance(MetricManagerWorker.class);
-
     final Injector nameClientInjector = createNameClientInjector();
     nameClientInjector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
@@ -237,7 +252,7 @@ public final class DataTransferTest {
   @Test
   public void testWriteAndRead() {
     // test OneToOne same worker
-//    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
 
     // test OneToOne different worker
     writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE);
@@ -308,6 +323,128 @@ public final class DataTransferTest {
     // test ManyToMany different worker (remote file) with duplicate data
     writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE);
   }
+//
+//  @Test
+//  public void testWriteAndReadWithSpill() {
+//    // test OneToOne same worker
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE, true);
+//
+//    // test OneToOne different worker, spill first
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.ONE_TO_ONE, MEMORY_STORE, true);
+//
+//    // test OneToMany same worker
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE, true);
+//
+//    // test OneToMany different worker
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.BROADCAST, MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE, true);
+//
+//    // test ManyToMany different worker
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE, true);
+//
+//    // test ManyToMany different worker
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, SER_MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker (local file)
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE, true);
+//
+//    // test ManyToMany different worker (local file)
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, LOCAL_FILE_STORE, true);
+//
+//    // test ManyToMany same worker (remote file)
+//    writeAndReadWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE, true);
+//
+//    // test ManyToMany different worker (remote file)
+//    writeAndReadWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE, true);
+//
+//    // test OneToOne same worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.ONE_TO_ONE,
+//                                           MEMORY_STORE, true);
+//
+//    // test OneToOne different worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker2, CommunicationPatternProperty.Value.ONE_TO_ONE,
+//                                           MEMORY_STORE, true);
+//
+//    // test OneToMany same worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.BROADCAST,
+//                                           MEMORY_STORE, true);
+//
+//    // test OneToMany different worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker2, CommunicationPatternProperty.Value.BROADCAST,
+//                                           MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           MEMORY_STORE, true);
+//
+//    // test ManyToMany different worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           SER_MEMORY_STORE, true);
+//
+//    // test ManyToMany different worker with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           SER_MEMORY_STORE, true);
+//
+//    // test ManyToMany same worker (local file) with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           LOCAL_FILE_STORE, true);
+//
+//    // test ManyToMany different worker (local file) with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker2, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           LOCAL_FILE_STORE, true);
+//
+//    // test ManyToMany same worker (remote file) with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1, worker1, CommunicationPatternProperty.Value.SHUFFLE,
+//                                           REMOTE_FILE_STORE, true);
+//
+//    // test ManyToMany different worker (remote file) with duplicate data
+//    writeAndReadWithDuplicateDataWithSpill(worker1,
+//      worker2, CommunicationPatternProperty.Value.SHUFFLE, REMOTE_FILE_STORE, true);
+//  }
+//
+//  /**
+//   * Wrapper over testWriteAndRead with options to spill.
+//   */
+//  private void writeAndReadWithSpill(final BlockManagerWorker sender,
+//                            final BlockManagerWorker receiver,
+//                            final CommunicationPatternProperty.Value commPattern,
+//                            final DataStoreProperty.Value store,
+//                            final boolean spill) throws RuntimeException {
+////    LOG.info("write/read regular, remaining memory {}", sender.getMemoryManager().getRemainingStorageMemory());
+////
+////    if (spill) {
+////      MemoryManager memoryManager = sender.getMemoryManager();
+////      long memoryToDelete = memoryManager.getRemainingStorageMemory();
+////      memoryManager.acquireStorageMemory("test", memoryToDelete);
+////    }
+//    writeAndRead(sender, receiver, commPattern, store);
+//  }
+//
+//  /**
+//   * Wrapper over writeAndReadWithDuplicateDataWithSpill with options to spill.
+//   */
+//  private void writeAndReadWithDuplicateDataWithSpill(final BlockManagerWorker sender,
+//                                                      final BlockManagerWorker receiver,
+//                                                      final CommunicationPatternProperty.Value commPattern,
+//                                                      final DataStoreProperty.Value store,
+//                                                      final boolean spill) throws RuntimeException {
+////    LOG.info("write/read with duplicate, remaining memory {}", sender.getMemoryManager().getRemainingStorageMemory());
+////    if (spill) {
+////      MemoryManager memoryManager = sender.getMemoryManager();
+////      long memoryToDelete = memoryManager.getRemainingStorageMemory();
+////      memoryManager.acquireStorageMemory("test", memoryToDelete);
+////    }
+//    writeAndReadWithDuplicateData(sender, receiver, commPattern, store);
+//  }
 
   private void writeAndRead(final BlockManagerWorker sender,
                             final BlockManagerWorker receiver,

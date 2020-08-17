@@ -72,8 +72,7 @@ public final class BlockOutputWriter implements OutputWriter {
   BlockOutputWriter(final String srcTaskId,
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
-                    final BlockManagerWorker blockManagerWorker,
-                    final MemoryManager memoryManager) {
+                    final BlockManagerWorker blockManagerWorker) {
     final StageEdge stageEdge = (StageEdge) runtimeEdge;
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
@@ -90,10 +89,12 @@ public final class BlockOutputWriter implements OutputWriter {
     nonDummyBlock = !duplicateDataProperty.isPresent()
       || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
       || duplicateDataProperty.get().getGroupSize() <= 1;
-    this.memoryManager = memoryManager;
+    this.memoryManager = blockManagerWorker.getMemoryManager();
     this.sizeTrackingVector = new SizeTrackingVector();
     this.outputSpilled = false;
   }
+
+
 
 
   @Override

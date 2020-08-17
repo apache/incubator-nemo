@@ -25,7 +25,6 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.MetricManagerWorker;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-//import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.MemoryManager;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.slf4j.Logger;
@@ -72,7 +71,7 @@ public final class IntermediateDataIOFactory {
     } else {
       final StageEdge stageEdge = (StageEdge) runtimeEdge;
       return new BlockOutputWriter(
-        srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker, memoryManager);
+        srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
     }
   }
 

@@ -38,7 +38,7 @@ import java.util.UUID;
 /**
  * MemoryManager for sharing the storage between Execution and Storage(caching).
  * writing to Partitions through MemoryStore must go through MemoryManager
- * to ensure that there is enough memory. If not, logic to handle spill to disk
+ * to ensure that there is enough memory, if not, BlockOutputWriter will spill the data to disk
  */
 @ThreadSafe
 public final class MemoryManager {
