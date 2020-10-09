@@ -219,11 +219,12 @@ under the License.
               <headerLocation>checkstyle.license</headerLocation>
               <encoding>UTF-8</encoding>
               <consoleOutput>true</consoleOutput>
-              <failsOnError>false</failsOnError>
+              <failsOnError>true</failsOnError>
               <excludes>**/org/apache/reef/**/*</excludes>
             </configuration>
             <goals>
-
+              <goal>check</goal>
+              <goal>checkstyle</goal>
             </goals>
           </execution>
         </executions>
@@ -305,7 +306,7 @@ under the License.
           <execution>
             <phase>verify</phase>
             <goals>
-
+              <goal>check</goal>
             </goals>
           </execution>
         </executions>
