@@ -361,7 +361,6 @@ public class InMemoryStateInternals<K> implements StateInternals {
     public void clear() {
       // Even though we're clearing we can't remove this from the in-memory state map, since
       // other users may already have a handle on this CombiningValue.
-      //LOG.info("Clear value: {}", accum);
       accum = combineFn.createAccumulator();
       isCleared = true;
     }

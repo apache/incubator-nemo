@@ -196,6 +196,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime,
                                                final Watermark triggerWatermark) {
+    LOG.error("Triggered");
     triggerTimers(processingTime, synchronizedTime, triggerWatermark);
   }
 
@@ -241,7 +242,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
    */
   @Override
   public void onWatermark(final Watermark watermark) {
-
+    LOG.error("Watermark received");
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
       LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
         new Instant(inputWatermark.getTimestamp()));
@@ -269,6 +270,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   @Override
   protected void beforeClose() {
     // Finish any pending windows by advancing the input watermark to infinity.
+    LOG.error("beforeclose called");
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
   }

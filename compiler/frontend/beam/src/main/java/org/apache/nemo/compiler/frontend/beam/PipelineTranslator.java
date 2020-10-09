@@ -363,6 +363,7 @@ final class PipelineTranslator {
       TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
     final KvCoder inputCoder = (KvCoder) inputs.getCoder();
     final Coder accumulatorCoder;
+    final Coder intermediateCoder;
 
     // Check if accumulator coder exists
     try {
@@ -383,6 +384,7 @@ final class PipelineTranslator {
       // Batch data processing, using CombinePartialTransform and CombineFinalTransform
       partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
       finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
+      intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder);
     }
     // Stream data processing, using CombineStreamTransform
     else {
@@ -417,6 +419,8 @@ final class PipelineTranslator {
 
       partialCombine = new OperatorVertex(partialCombineStreamTransform);
       finalCombine = new OperatorVertex(finalCombineStreamTransform);
+      intermediateCoder = inputs.getCoder();
+
     }
 
     // (Step 1) Partial Combine
@@ -424,17 +428,15 @@ final class PipelineTranslator {
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
 
 
-    // (Step 3) Final Combine
+    // (Step 2) Final Combine
     ctx.addVertex(finalCombine);
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
 
 
-    // (Step 2) From Partial Combine to Final Combine
+    // (Step 3) From Partial Combine to Final Combine
+
     final IREdge edge = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, partialCombine, finalCombine);
-    ctx.addEdge(
-      edge,
-      KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
-      mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+    ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
     // This composite transform has been translated in its entirety.
     return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
