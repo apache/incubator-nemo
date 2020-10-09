@@ -399,8 +399,8 @@ final class PipelineTranslator {
           AppliedCombineFn.withInputCoder(finalCombineFn, ctx.getPipeline().getCoderRegistry(), KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder), null, mainInput.getWindowingStrategy()));
       final TupleTag mainOutputTag = new TupleTag<>();
 
-      final GBKFinalTransform partialCombineStreamTransform =
-        new GBKFinalTransform(
+      final CombineStreamTransform partialCombineStreamTransform =
+        new CombineStreamTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
@@ -410,8 +410,8 @@ final class PipelineTranslator {
           DoFnSchemaInformation.create(),
           DisplayData.from(beamNode.getTransform()));
 
-      final GBKFinalTransform finalCombineStreamTransform =
-        new GBKFinalTransform(
+      final CombineStreamTransform finalCombineStreamTransform =
+        new CombineStreamTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,

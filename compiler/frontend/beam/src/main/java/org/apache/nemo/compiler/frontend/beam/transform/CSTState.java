@@ -4,7 +4,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Map;
 
-public final class GBKFinalState<K> {
+public final class CSTState<K> {
 
   public final Watermark prevOutputWatermark;
   public final Map<K, Watermark> keyAndWatermarkHoldMap;
@@ -12,7 +12,7 @@ public final class GBKFinalState<K> {
   public final InMemoryTimerInternalsFactory<K> timerInternalsFactory;
   public final InMemoryStateInternalsFactory<K> stateInternalsFactory;
 
-  public GBKFinalState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory,
+  public CSTState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory,
                        final InMemoryStateInternalsFactory<K> stateInternalsFactory,
                        final Watermark prevOutputWatermark,
                        final Map<K, Watermark> keyAndWatermarkHoldMap,

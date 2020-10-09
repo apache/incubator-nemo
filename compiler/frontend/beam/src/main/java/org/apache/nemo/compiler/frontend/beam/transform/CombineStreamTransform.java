@@ -34,7 +34,8 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCoder;
+import org.apache.nemo.compiler.frontend.beam.transform.coders.CSTStateCoder;
+import org.apache.nemo.compiler.frontend.beam.transform.CSTState;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +49,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class GBKFinalTransform<K, InputT, OutputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> implements StatefulTransform<GBKFinalState<K>> {
-  private static final Logger LOG = LoggerFactory.getLogger(GBKFinalTransform.class.getName());
+public final class CombineStreamTransform<K, InputT, OutputT>
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> implements StatefulTransform<CSTState<K>> {
+  private static final Logger LOG = LoggerFactory.getLogger(CombineStreamTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
@@ -65,7 +66,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   /**
    * GroupByKey constructor.
    */
-  public GBKFinalTransform(final Coder<K> keyCoder,
+  public CombineStreamTransform(final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, OutputT>> mainOutputTag,
                            final WindowingStrategy<?, ?> windowingStrategy,
@@ -77,13 +78,13 @@ public final class GBKFinalTransform<K, InputT, OutputT>
       null, /* inputCoder */
       outputCoders,
       mainOutputTag,
-      Collections.emptyList(),  /*  GBK does not have additional outputs */
+      Collections.emptyList(),  /* does not have additional outputs */
       windowingStrategy,
-      Collections.emptyMap(), /*  GBK does not have additional side inputs */
+      Collections.emptyMap(), /* does not have additional side inputs */
       options,
       displayData,
       DoFnSchemaInformation.create(),
-      Collections.<String, PCollectionView<?>>emptyMap()); /* GBK does not have side inputs */
+      Collections.<String, PCollectionView<?>>emptyMap()); /* does not have side inputs */
     this.windowCoder = windowingStrategy.getWindowFn().windowCoder();
     this.keyCoder = keyCoder;
     this.reduceFn = reduceFn;
@@ -119,7 +120,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
         getWindowingStrategy(),
         inMemoryStateInternalsFactory,
         inMemoryTimerInternalsFactory,
-        null, // GBK does not have side input.
+        null, // does not have side input.
         reduceFn,
         getOutputManager(),
         getMainOutputTag());
@@ -133,12 +134,12 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
     originOc = oc;
-    return new GBKWOutputCollector(oc);
+    return new CSTOutputCollector(oc);
   }
 
   /**
    * Process a single element
-   * The collected data are emitted at {@link GBKFinalTransform#onWatermark(Watermark)}
+   * The collected data are emitted at {@link CombineStreamTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
   @Override
@@ -196,8 +197,6 @@ public final class GBKFinalTransform<K, InputT, OutputT>
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
-
-      //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -289,13 +288,13 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
   @Override
-  public Coder<GBKFinalState<K>> getStateCoder() {
-    return new GBKFinalStateCoder<>(keyCoder, windowCoder);
+  public Coder<CSTState<K>> getStateCoder() {
+    return new CSTStateCoder<>(keyCoder, windowCoder);
   }
 
   @Override
-  public GBKFinalState<K> getState() {
-    return new GBKFinalState<>(inMemoryTimerInternalsFactory,
+  public CSTState<K> getState() {
+    return new CSTState<>(inMemoryTimerInternalsFactory,
       inMemoryStateInternalsFactory,
       prevOutputWatermark,
       keyAndWatermarkHoldMap,
@@ -303,7 +302,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
   @Override
-  public void setState(GBKFinalState<K> state) {
+  public void setState(CSTState<K> state) {
 
     if (inMemoryStateInternalsFactory == null) {
       inMemoryStateInternalsFactory = state.stateInternalsFactory;
@@ -321,10 +320,10 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
 
-  public class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
+  public class CSTOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
     OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
 
-    public GBKWOutputCollector(OutputCollector oc) {
+    public CSTOutputCollector(OutputCollector oc) {
       this.oc = oc;
     }
 

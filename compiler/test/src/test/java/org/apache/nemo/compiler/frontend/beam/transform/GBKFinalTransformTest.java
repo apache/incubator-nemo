@@ -121,8 +121,8 @@ public class GBKFinalTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES)
       );
 
-    final GBKFinalTransform<String, Integer, Integer> combine_transform =
-      new GBKFinalTransform(
+    final CombineStreamTransform<String, Integer, Integer> combine_transform =
+      new CombineStreamTransform(
         key_coder,
         null_coder,
         outputTag,
@@ -249,8 +249,8 @@ public class GBKFinalTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness)
       );
 
-    final GBKFinalTransform<String, Integer, Integer> combine_transform =
-      new GBKFinalTransform(
+    final CombineStreamTransform<String, Integer, Integer> combine_transform =
+      new CombineStreamTransform(
         key_coder,
         null_coder,
         outputTag,
