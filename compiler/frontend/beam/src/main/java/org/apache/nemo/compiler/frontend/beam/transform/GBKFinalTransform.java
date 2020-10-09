@@ -26,7 +26,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
-import org.apache.beam.sdk.util.AppliedCombineFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -114,7 +113,6 @@ public final class GBKFinalTransform<K, InputT, OutputT>
       LOG.info("InMemoryTimerInternalsFactory is already set");
     }
 
-
     // This function performs group by key and window operation.
     return
       GroupAlsoByWindowViaWindowSetNewDoFn.create(
@@ -139,37 +137,12 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
   /**
-   * It collects data for each key.
+   * Process a single element
    * The collected data are emitted at {@link GBKFinalTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-
-    // Drop late data iff current inputWatermark > end of window + allowed Lateness
-    // Uncomment the following code block to drop late data
-    /**
-    if (!inputWatermark.equals(new Watermark(Long.MIN_VALUE))) {
-      Instant ts = new Instant(inputWatermark.getTimestamp() - getWindowingStrategy().getAllowedLateness().getMillis());
-      if (element.isSingleWindowedValue()) {
-        WindowedValue.SingleWindowedValue value_singlewindow = (WindowedValue.SingleWindowedValue) element;
-        if (ts.isAfter(value_singlewindow.getWindow().maxTimestamp())) {
-          return;
-        }
-      }
-      else {
-        ArrayList<BoundedWindow> removed = new ArrayList<>();
-        for (Iterator<? extends BoundedWindow> iter = element.getWindows().iterator(); iter.hasNext();) {
-          BoundedWindow curr = iter.next();
-          if (ts.isAfter(curr.maxTimestamp())) {
-            removed.add(curr);
-          }
-        }
-        element.getWindows().removeAll(removed);
-      }
-    }
-     */
-
     if (!element.getWindows().isEmpty()) {
       try {
         checkAndInvokeBundle();
@@ -196,7 +169,6 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime,
                                                final Watermark triggerWatermark) {
-    LOG.error("Triggered");
     triggerTimers(processingTime, synchronizedTime, triggerWatermark);
   }
 
@@ -237,12 +209,11 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
   /**
-   * Trigger timers that need to be fired at watermark
+   * Trigger timers that need to be fired
    * @param watermark watermark
    */
   @Override
   public void onWatermark(final Watermark watermark) {
-    LOG.error("Watermark received");
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
       LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
         new Instant(inputWatermark.getTimestamp()));
@@ -295,6 +266,7 @@ public final class GBKFinalTransform<K, InputT, OutputT>
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
     }
 
+    // Next timer that needs to be processed
     Pair<K, TimerInternals.TimerData> timer = inMemoryTimerInternalsFactory.getNextTimer();
 
     int count = 0;
@@ -314,26 +286,6 @@ public final class GBKFinalTransform<K, InputT, OutputT>
       timer = inMemoryTimerInternalsFactory.getNextTimer();
     }
     return count;
-  }
-
-  /**
-   * Get timer data.
-   */
-  private List<Pair<K, TimerInternals.TimerData>> getEligibleTimers() {
-    final List<Pair<K, TimerInternals.TimerData>> timerData = new LinkedList<>();
-
-    Pair<K, TimerInternals.TimerData> timer;
-
-    while ((timer = inMemoryTimerInternalsFactory.removeNextEventTimer()) != null) {
-        timerData.add(timer);
-    }
-    while ((timer = inMemoryTimerInternalsFactory.removeNextProcessingTimer()) != null) {
-        timerData.add(timer);
-    }
-    while ((timer = inMemoryTimerInternalsFactory.removeNextSynchronizedProcessingTimer()) != null) {
-        timerData.add(timer);
-    }
-    return timerData;
   }
 
   @Override
@@ -369,21 +321,19 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   }
 
 
-  /**
-   * This class wraps the output collector to track the watermark hold of each key.
-   */
-  final class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
-    private final OutputCollector<WindowedValue<KV<K, OutputT>>> outputCollector;
-    GBKWOutputCollector(final OutputCollector<WindowedValue<KV<K, OutputT>>> outputCollector) {
-      this.outputCollector = outputCollector;
+  public class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
+    OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
+
+    public GBKWOutputCollector(OutputCollector oc) {
+      this.oc = oc;
     }
 
     @Override
-    public void emit(final WindowedValue<KV<K, OutputT>> output) {
-
+    public void emit(final WindowedValue<KV<K,OutputT>> output) {
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
-        final K key = output.getValue().getKey();
+        KV<K, OutputT> value = output.getValue();
+        final K key = value.getKey();
         final NemoTimerInternals timerInternals = (NemoTimerInternals)
           inMemoryTimerInternalsFactory.timerInternalsForKey(key);
         keyAndWatermarkHoldMap.put(key,
@@ -392,18 +342,17 @@ public final class GBKFinalTransform<K, InputT, OutputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
-      // originOc.setInputTimestamp(output.getTimestamp().getMillis());
-      outputCollector.emit(output);
+      oc.emit(output);
     }
 
     @Override
     public void emitWatermark(final Watermark watermark) {
-      outputCollector.emitWatermark(watermark);
+      oc.emitWatermark(watermark);
     }
 
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
-      outputCollector.emit(dstVertexId, output);
+      oc.emit(dstVertexId, output);
     }
   }
 }

@@ -141,36 +141,19 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
-  public Pair<K, TimerInternals.TimerData> getNextTimerforKey(K key) {
-    Pair<K, TimerInternals.TimerData> timer;
-    NemoTimerInternals timerInternal = timerInternalsMap.get(key);
-    for (TimeDomain timedomain : TimeDomain.values()) {
-      NavigableSet<Pair<K, TimerInternals.TimerData>> timers = timerInternal.timersForDomain(timedomain);
-      Instant currentTime = timerInternal.currentInputWatermarkTime();
-      if (!timers.isEmpty() && !currentTime.isBefore(timers.first().right().getTimestamp())) {
-        timer = timers.pollFirst();
-        final NemoTimerInternals<K> timerInternals = timerInternalsMap.get(timer.left());
-        timerInternals.deleteTimer(timer.right());
-        return timer;
-      }
+  /** Returns the next eligible event time timer, if none returns null. */
+  @Nullable
+  public Pair<K, TimerInternals.TimerData> removeNextEventTimer() {
+    Pair<K, TimerInternals.TimerData> timer = removeNextTimer(inputWatermarkTime, TimeDomain.EVENT_TIME);
+    if (timer != null) {
+      WindowTracing.trace(
+        "{}.removeNextEventTimer: firing {} at {}",
+        getClass().getSimpleName(),
+        timer,
+        inputWatermarkTime);
     }
-    return null;
+    return timer;
   }
-
-
-    /** Returns the next eligible event time timer, if none returns null. */
-    @Nullable
-    public Pair<K, TimerInternals.TimerData> removeNextEventTimer() {
-      Pair<K, TimerInternals.TimerData> timer = removeNextTimer(inputWatermarkTime, TimeDomain.EVENT_TIME);
-      if (timer != null) {
-        WindowTracing.trace(
-          "{}.removeNextEventTimer: firing {} at {}",
-          getClass().getSimpleName(),
-          timer,
-          inputWatermarkTime);
-      }
-      return timer;
-    }
 
     /** Returns the next eligible processing time timer, if none returns null. */
     @Nullable
