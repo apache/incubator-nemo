@@ -27,7 +27,7 @@ import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.DISC
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
-public class GBKFinalTransformTest extends TestCase {
+public class CombineStreamTransformTest extends TestCase {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransformTest.class.getName());
   private final static Coder key_coder = StringUtf8Coder.of();
   private final static Coder input_coder = BigEndianIntegerCoder.of();
