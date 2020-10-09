@@ -54,7 +54,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
-  private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
+  private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
@@ -75,7 +75,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
                                           final PipelineOptions options,
                                           final SystemReduceFn reduceFn,
                                           final DisplayData displayData) {
-    super(null, /* doFn */
+    super(null, /* GBK doesn't have doFn */
       null, /* inputCoder */
       outputCoders,
       mainOutputTag,

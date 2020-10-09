@@ -27,25 +27,21 @@ public final class PartialCombineFn<InputT, AccumT> extends Combine.CombineFn<In
 
   @Override
   public AccumT addInput(AccumT accumulator, InputT input) {
-    //LOG.info("Add partial input: {}, {}", accumulator, input);
     return originFn.addInput(accumulator, input);
   }
 
   @Override
   public AccumT mergeAccumulators(Iterable<AccumT> accumulators) {
-    //LOG.info("Merge partial accum: {}, {}", accumulators);
     return originFn.mergeAccumulators(accumulators);
   }
 
   @Override
   public AccumT extractOutput(AccumT accumulator) {
-    //LOG.info("Extract output: {}", accumulator);
     return accumulator;
   }
 
   @Override
   public Coder<AccumT> getAccumulatorCoder(CoderRegistry registry, Coder<InputT> inputCoder) throws CannotProvideCoderException {
     return accumCoder;
-    //return originFn.getAccumulatorCoder(registry, inputCoder);
   }
 }

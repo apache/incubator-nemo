@@ -26,9 +26,7 @@ public final class FinalCombineFn<AccumT, Output> extends Combine.CombineFn<Accu
 
   @Override
   public AccumT addInput(AccumT accumulator, AccumT input) {
-    //LOG.info("Add input!! {}, {}", accumulator, input);
     final AccumT result = originFn.mergeAccumulators(Arrays.asList(accumulator, input));
-    //LOG.info("Result!! {}", result);
     return result;
   }
 
@@ -46,7 +44,6 @@ public final class FinalCombineFn<AccumT, Output> extends Combine.CombineFn<Accu
   @Override
   public Output extractOutput(AccumT accumulator) {
     final Output result = originFn.extractOutput(accumulator);
-    //LOG.info("Extract output {}: {}", accumulator, result);
     return result;
   }
 }
