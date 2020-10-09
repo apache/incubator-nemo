@@ -357,9 +357,11 @@ final class PipelineTranslator {
     }
 
     final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
-    final PCollection mainInput = (PCollection) Iterables.getOnlyElement(
+    final PCollection<?> mainInput = (PCollection<?>) Iterables.getOnlyElement(
       TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
-    final KvCoder inputCoder = (KvCoder) mainInput.getCoder();
+    final PCollection inputs = (PCollection) Iterables.getOnlyElement(
+      TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+    final KvCoder inputCoder = (KvCoder) inputs.getCoder();
     final Coder accumulatorCoder;
 
     // Check if accumulator coder exists
@@ -389,12 +391,13 @@ final class PipelineTranslator {
         SystemReduceFn.combining(
           inputCoder.getKeyCoder(),
           AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
+      final TupleTag mainOutputTag = new TupleTag<>();
 
       final GBKFinalTransform partialCombineStreamTransform =
         new GBKFinalTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
-          new TupleTag<>(),
+          mainOutputTag,
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           systemReduceFn,
@@ -405,7 +408,7 @@ final class PipelineTranslator {
         new GBKFinalTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
-          new TupleTag<>(),
+          mainOutputTag,
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           systemReduceFn,
