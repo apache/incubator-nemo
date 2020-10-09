@@ -157,13 +157,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
-
-    // Trigger timers
-
     triggerTimers(processingTime, synchronizedTime);
-
-//    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
-//      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
   }
 
   /**
@@ -205,24 +199,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark watermark) {
-
-    //LOG.info("Watermark at GBKW: {}", watermark);
-
     checkAndInvokeBundle();
     inputWatermark = watermark;
-
-    final long st = System.currentTimeMillis();
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
-    // Emit watermark to downstream operators
-
     emitOutputWatermark();
-    final long et1 = System.currentTimeMillis();
     checkAndFinishBundle();
-
-    final long et = System.currentTimeMillis();
-//    LOG.info("{}/{} latency {}, watermark: {}, emitOutputWatermarkTime: {}",
-//      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
-//      new Instant(watermark.getInputTimestamp()), (et - et1));
   }
 
   /**
@@ -249,8 +230,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
-    for (final Pair<K, TimerInternals.TimerData> timer : timers) {
+    Pair<K, TimerInternals.TimerData> timer = inMemoryTimerInternalsFactory.getNextTimer();
+    while (timer != null) {
       final NemoTimerInternals timerInternals = (NemoTimerInternals)
         inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
       timerInternals.setCurrentInputWatermarkTime(new Instant(inputWatermark.getTimestamp()));
@@ -263,39 +244,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+      timer = inMemoryTimerInternalsFactory.getNextTimer();
     }
-    return timers.size();
-  }
-
-  /**
-   * Get timer data.
-   */
-  private List<Pair<K, TimerInternals.TimerData>> getEligibleTimers() {
-    final List<Pair<K, TimerInternals.TimerData>> timerData = new LinkedList<>();
-
-    while (true) {
-      Pair<K, TimerInternals.TimerData> timer;
-      boolean hasFired = false;
-
-      while ((timer = inMemoryTimerInternalsFactory.removeNextEventTimer()) != null) {
-        hasFired = true;
-        timerData.add(timer);
-      }
-
-      while ((timer = inMemoryTimerInternalsFactory.removeNextProcessingTimer()) != null) {
-        hasFired = true;
-        timerData.add(timer);
-      }
-      while ((timer = inMemoryTimerInternalsFactory.removeNextSynchronizedProcessingTimer()) != null) {
-        hasFired = true;
-        timerData.add(timer);
-      }
-      if (!hasFired) {
-        break;
-      }
-    }
-
-    return timerData;
+    return 0;
   }
 
   /**

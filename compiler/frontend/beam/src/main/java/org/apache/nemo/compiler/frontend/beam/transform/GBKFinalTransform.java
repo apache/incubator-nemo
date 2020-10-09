@@ -26,6 +26,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.util.AppliedCombineFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -144,7 +145,10 @@ public final class GBKFinalTransform<K, InputT, OutputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    // Drop late data when current inputWatermark > end of window + allowed Lateness
+
+    // Drop late data iff current inputWatermark > end of window + allowed Lateness
+    // Uncomment the following code block to drop late data
+    /**
     if (!inputWatermark.equals(new Watermark(Long.MIN_VALUE))) {
       Instant ts = new Instant(inputWatermark.getTimestamp() - getWindowingStrategy().getAllowedLateness().getMillis());
       if (element.isSingleWindowedValue()) {
@@ -164,6 +168,8 @@ public final class GBKFinalTransform<K, InputT, OutputT>
         element.getWindows().removeAll(removed);
       }
     }
+     */
+
     if (!element.getWindows().isEmpty()) {
       try {
         checkAndInvokeBundle();
@@ -190,7 +196,6 @@ public final class GBKFinalTransform<K, InputT, OutputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime,
                                                final Watermark triggerWatermark) {
-
     triggerTimers(processingTime, synchronizedTime, triggerWatermark);
   }
 

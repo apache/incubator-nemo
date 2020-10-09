@@ -124,6 +124,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
+
   public Pair<K, TimerInternals.TimerData> getNextTimer() {
     Pair<K, TimerInternals.TimerData> timer;
     if ((timer = removeNextEventTimer()) != null) {
