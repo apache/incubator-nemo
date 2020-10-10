@@ -223,8 +223,7 @@ under the License.
               <excludes>**/org/apache/reef/**/*</excludes>
             </configuration>
             <goals>
-              <goal>check</goal>
-              <goal>checkstyle</goal>
+
             </goals>
           </execution>
         </executions>

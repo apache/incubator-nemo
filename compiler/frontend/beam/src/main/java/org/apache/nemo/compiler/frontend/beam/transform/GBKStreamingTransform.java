@@ -140,7 +140,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-      LOG.error("{} : ondata : {}", Thread.currentThread(), element);
       dataReceived = true;
       try {
         checkAndInvokeBundle();
@@ -151,7 +150,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
         numProcessedData += 1;
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         checkAndFinishBundle();
-        LOG.error("{} : ondata : new or not? : {}", Thread.currentThread(), inMemoryTimerInternalsFactory.timerInternalsMap.size());
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException("exception trigggered element " + element.toString());
@@ -178,9 +176,8 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
-    LOG.error("{} : emitOutputWatermark - intputwatermark : {}", Thread.currentThread(), inputWatermark);
     Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MAX_VALUE)
+      ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
 
     Watermark outputWatermarkCandidate = new Watermark(
@@ -191,8 +188,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
-
-      LOG.error("{} : emitOutputwatermark - outputwatermark : {}", Thread.currentThread(), outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -216,13 +211,9 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
    */
   @Override
   public void onWatermark(final Watermark watermark) {
-    LOG.error("{} : On watermark called - watermark received : {}", Thread.currentThread(), watermark);
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
-      LOG.error("{} : Input watermark {} is before the prev watermark: {}", Thread.currentThread(), new Instant(watermark.getTimestamp()),
-        new Instant(inputWatermark.getTimestamp()));
       return;
     }
-
     checkAndInvokeBundle();
     inputWatermark = watermark;
     // Triggering timers
@@ -242,11 +233,9 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
    */
   @Override
   protected void beforeClose() {
-    LOG.error("{} : beforeclose method start", Thread.currentThread());
     // Finish any pending windows by advancing the input watermark to infinity.
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
-    LOG.error("{} : beforeclose method end", Thread.currentThread());
   }
 
   /**
@@ -338,14 +327,12 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
         final K key = value.getKey();
         final NemoTimerInternals timerInternals = (NemoTimerInternals)
           inMemoryTimerInternalsFactory.timerInternalsForKey(key);
-
           keyAndWatermarkHoldMap.put(key,
             // adds the output timestamp to the watermark hold of each key
             // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
             new Watermark(output.getTimestamp().getMillis() + 1));
           timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
-      LOG.error("{} : output : {}, {}", Thread.currentThread(), output, output.getValue().getValue());
       oc.emit(output);
     }
 

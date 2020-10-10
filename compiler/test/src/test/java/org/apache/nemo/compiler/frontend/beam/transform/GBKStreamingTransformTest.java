@@ -45,8 +45,8 @@ import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.DISC
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
-public class CombineStreamTransformTest extends TestCase {
-  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransformTest.class.getName());
+public class GBKStreamingTransformTest extends TestCase {
+  private static final Logger LOG = LoggerFactory.getLogger(GBKStreamingTransformTest.class.getName());
   private final static Coder key_coder = StringUtf8Coder.of();
   private final static Coder input_coder = BigEndianIntegerCoder.of();
   private final static KvCoder<String, Integer> kv_coder = KvCoder.of(key_coder, input_coder);
@@ -139,8 +139,8 @@ public class CombineStreamTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES)
       );
 
-    final CombineStreamTransform<String, Integer, Integer> combine_transform =
-      new CombineStreamTransform(
+    final GBKStreamingTransform<String, Integer, Integer> combine_transform =
+      new GBKStreamingTransform(
         key_coder,
         null_coder,
         outputTag,
@@ -267,8 +267,8 @@ public class CombineStreamTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness)
       );
 
-    final CombineStreamTransform<String, Integer, Integer> combine_transform =
-      new CombineStreamTransform(
+    final GBKStreamingTransform<String, Integer, Integer> combine_transform =
+      new GBKStreamingTransform(
         key_coder,
         null_coder,
         outputTag,

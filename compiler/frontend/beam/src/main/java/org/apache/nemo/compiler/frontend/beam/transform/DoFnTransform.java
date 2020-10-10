@@ -79,7 +79,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onData(final WindowedValue<InputT> data) {
     // Do not need any push-back logic.
-    LOG.error("{} : ondata : {}", Thread.currentThread(), data);
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
     checkAndFinishBundle();
@@ -87,7 +86,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    LOG.error("{} : onwatermarked called - watermark : {}", Thread.currentThread(), watermark);
     checkAndInvokeBundle();
     getOutputCollector().emitWatermark(watermark);
     checkAndFinishBundle();
@@ -95,7 +93,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   protected void beforeClose() {
-    LOG.error("{} : beforeclose called. DONE", Thread.currentThread());
   }
 
   @Override

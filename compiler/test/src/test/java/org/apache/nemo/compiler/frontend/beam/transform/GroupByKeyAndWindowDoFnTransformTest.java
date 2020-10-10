@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -88,13 +89,15 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     final SlidingWindows slidingWindows = SlidingWindows.of(Duration.standardSeconds(2))
       .every(Duration.standardSeconds(1));
 
-    final GroupByKeyAndWindowDoFnTransform<String, String> doFnTransform =
-      new GroupByKeyAndWindowDoFnTransform(
+    final GBKStreamingTransform<String, String, Iterable<String>> doFnTransform =
+      new GBKStreamingTransform(
+        NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DoFnSchemaInformation.create(),
         DisplayData.none());
 
     final Instant ts1 = new Instant(1);
@@ -157,7 +160,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     checkOutput(KV.of("2", Arrays.asList("hello")), oc.outputs.get(1).getValue());
 
     assertEquals(2, oc.outputs.size());
-    assertEquals(1, oc.watermarks.size());
+    assertEquals(2, oc.watermarks.size());
 
     // check output watermark
     assertEquals(1000,
@@ -270,8 +273,10 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       .accumulatingFiredPanes().getWindowFn();
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
-    final GroupByKeyAndWindowDoFnTransform<String, String> doFnTransform =
-      new GroupByKeyAndWindowDoFnTransform(
+
+    final GBKStreamingTransform<String, String, Iterable<String>> doFnTransform =
+      new GBKStreamingTransform(
+        NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(window).withTrigger(trigger)
@@ -279,6 +284,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
           .withAllowedLateness(lateness),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DoFnSchemaInformation.create(),
         DisplayData.none());
 
 

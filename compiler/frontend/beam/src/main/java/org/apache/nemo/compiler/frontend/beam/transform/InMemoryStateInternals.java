@@ -43,6 +43,10 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ *
+ * @param <K> key type.
+ */
 public class InMemoryStateInternals<K> implements StateInternals {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternals.class.getName());
   public static <K> InMemoryStateInternals<K> forKey(@Nullable K key,
