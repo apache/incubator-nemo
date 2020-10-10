@@ -22,7 +22,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.transform.CSTState;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKState;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternalsFactory;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
 import org.joda.time.Instant;
@@ -34,15 +34,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class CSTStateCoder<K> extends Coder<CSTState<K>> {
-  private static final Logger LOG = LoggerFactory.getLogger(CSTStateCoder.class.getName());
+public final class GBKStateCoder<K> extends Coder<GBKState<K>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GBKStateCoder.class.getName());
 
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
   private final InMemoryTimerInternalsFactoryCoder<K> timerCoder;
   private final InMemoryStateInternalsFactoryCoder<K> stateCoder;
 
-  public CSTStateCoder(final Coder<K> keyCoder,
+  public GBKStateCoder(final Coder<K> keyCoder,
                             final Coder windowCoder) {
     this.timerCoder = new InMemoryTimerInternalsFactoryCoder<>(keyCoder, windowCoder);
     this.stateCoder = new InMemoryStateInternalsFactoryCoder<>(keyCoder, windowCoder);
@@ -51,7 +51,7 @@ public final class CSTStateCoder<K> extends Coder<CSTState<K>> {
   }
 
   @Override
-  public void encode(CSTState<K> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(GBKState<K> value, OutputStream outStream) throws CoderException, IOException {
     final DataOutputStream dos = new DataOutputStream(outStream);
 
     final long st = System.currentTimeMillis();
@@ -73,7 +73,7 @@ public final class CSTStateCoder<K> extends Coder<CSTState<K>> {
 
 
   @Override
-  public CSTState<K> decode(InputStream inStream) throws CoderException, IOException {
+  public GBKState<K> decode(InputStream inStream) throws CoderException, IOException {
 
 
     final long st = System.currentTimeMillis();
@@ -95,7 +95,7 @@ public final class CSTStateCoder<K> extends Coder<CSTState<K>> {
 
     LOG.info("Decoding time: timer: {}, state: {}, keyWatermark: {}", (st1 - st), (st2 - st1), (st3 - st2));
 
-    final CSTState finalState = new CSTState(
+    final GBKState finalState = new GBKState(
       timerInternalsFactory,
       stateInternalsFactory,
       prevOutputWatermark,

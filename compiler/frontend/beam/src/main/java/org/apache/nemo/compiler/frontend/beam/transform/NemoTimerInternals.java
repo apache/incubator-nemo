@@ -44,7 +44,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   public Table<StateNamespace, String, TimerData> existingTimers;
 
   /** Pending input watermark timers, in timestamp order. */
-  private final NavigableSet<Pair<K, TimerData>> watermarkTimers;
+  public final NavigableSet<Pair<K, TimerData>> watermarkTimers;
 
   /** Pending processing time timers, in timestamp order. */
   private final NavigableSet<Pair<K, TimerData>> processingTimers;

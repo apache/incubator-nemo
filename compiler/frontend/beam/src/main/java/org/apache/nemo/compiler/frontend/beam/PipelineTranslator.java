@@ -399,8 +399,8 @@ final class PipelineTranslator {
           AppliedCombineFn.withInputCoder(finalCombineFn, ctx.getPipeline().getCoderRegistry(), KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder), null, mainInput.getWindowingStrategy()));
       final TupleTag mainOutputTag = new TupleTag<>();
 
-      final CombineStreamTransform partialCombineStreamTransform =
-        new CombineStreamTransform(
+      final GBKStreamingTransform partialCombineStreamTransform =
+        new GBKStreamingTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
@@ -410,11 +410,11 @@ final class PipelineTranslator {
           DoFnSchemaInformation.create(),
           DisplayData.from(beamNode.getTransform()));
 
-      final CombineStreamTransform finalCombineStreamTransform =
-        new CombineStreamTransform(
+      final GBKStreamingTransform finalCombineStreamTransform =
+        new GBKStreamingTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
-          mainOutputTag,
+          new TupleTag<>(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           finalSystemReduceFn,
@@ -558,13 +558,17 @@ final class PipelineTranslator {
       // GroupByKey Transform for batch data
       return new GroupByKeyTransform();
     } else {
+      final PCollection inputs = (PCollection) Iterables.getOnlyElement(
+        TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+      final KvCoder inputCoder = (KvCoder) inputs.getCoder();
       // GroupByKey for streaming data
-      return new GroupByKeyAndWindowDoFnTransform(
+      return new GBKStreamingTransform<>(inputCoder.getKeyCoder(),
         getOutputCoders(pTransform),
         mainOutputTag,
         mainInput.getWindowingStrategy(),
         ctx.getPipelineOptions(),
         SystemReduceFn.buffering(mainInput.getCoder()),
+        DoFnSchemaInformation.create(),
         DisplayData.from(beamNode.getTransform()));
     }
   }

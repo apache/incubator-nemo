@@ -58,8 +58,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
-  private final Map<K, Watermark> keyAndWatermarkHoldMap;
-  private final WindowingStrategy windowingStrategy;
+  private Map<K, Watermark> keyAndWatermarkHoldMap;
+  private WindowingStrategy windowingStrategy;
   private Watermark inputWatermark;
 
   int numProcessedData = 0;
@@ -100,8 +100,17 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
-    this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory();
-    this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory();
+    if (inMemoryStateInternalsFactory == null) {
+      this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
+    } else {
+      LOG.info("InMemoryStateInternalFactroy is already set");
+    }
+
+    if (inMemoryTimerInternalsFactory == null) {
+      this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
+    } else {
+      LOG.info("InMemoryTimerInternalsFactory is already set");
+    }
 
     // This function performs group by key and window operation
     return
@@ -133,6 +142,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     dataReceived = true;
+    LOG.error("{} : ondata : {}", Thread.currentThread(), element);
     final KV<K, InputT> kv = element.getValue();
     checkAndInvokeBundle();
     final KeyedWorkItem<K, InputT> keyedWorkItem =
@@ -153,6 +163,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
     triggerTimers(processingTime, synchronizedTime);
+    emitOutputWatermark();
   }
 
   /**
@@ -162,28 +173,35 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
-    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+    LOG.error("{} : emitOutputWatermark - intputwatermark : {}", Thread.currentThread(), inputWatermark);
+    Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
       ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
-    final Watermark outputWatermarkCandidate = new Watermark(
+
+    Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
         Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Watermark hold: {}, "
-        + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
-    }
-
-    if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
-      // Progress
+    while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
+      // progress!
       prevOutputWatermark = outputWatermarkCandidate;
-      // Emit watermark
+      // emit watermark
+
+      LOG.error("{} : emitOutputwatermark - outputwatermark : {}", Thread.currentThread(), outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
+        final long minWatermarkTimestamp = minWatermarkHold.getTimestamp();
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp());
+          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkTimestamp);
       }
+
+      minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+        ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
+
+      outputWatermarkCandidate = new Watermark(
+        Math.max(prevOutputWatermark.getTimestamp(),
+          Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
     }
   }
 
@@ -193,10 +211,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   public void onWatermark(final Watermark watermark) {
+    LOG.error("{} : onwatermarked called - watermark : {}", Thread.currentThread(), watermark);
     checkAndInvokeBundle();
     inputWatermark = watermark;
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
-    emitOutputWatermark();
     checkAndFinishBundle();
   }
 
@@ -206,9 +224,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   protected void beforeClose() {
+    LOG.error("{} : beforeclose called", Thread.currentThread());
     // Finish any pending windows by advancing the input watermark to infinity.
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+    LOG.error("{} : beforeclose ended", Thread.currentThread());
   }
 
   /**
@@ -262,6 +282,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
+      LOG.error("{} : output : {}", Thread.currentThread(), output);
       oc.emit(output);
     }
 

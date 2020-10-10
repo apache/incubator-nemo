@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.state.State;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -34,39 +33,38 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.transform.coders.CSTStateCoder;
-import org.apache.nemo.compiler.frontend.beam.transform.CSTState;
+import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKStateCoder;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Combine streaming data according to key and window. When combining, it applies user-defined combine function.
+ * This transform performs GroupByKey or CombinePerKey operation for streaming data.
  * @param <K> key type.
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class CombineStreamTransform<K, InputT, OutputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> implements StatefulTransform<CSTState<K>> {
-  private static final Logger LOG = LoggerFactory.getLogger(CombineStreamTransform.class.getName());
+public final class GBKStreamingTransform<K, InputT, OutputT>
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> implements StatefulTransform<GBKState<K>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GBKStreamingTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
-  private Watermark prevOutputWatermark;
-  private final Map<K, Watermark> keyAndWatermarkHoldMap;
-  private Watermark inputWatermark;
+  private volatile Watermark prevOutputWatermark;
+  private volatile Map<K, Watermark> keyAndWatermarkHoldMap;
+  private volatile Watermark inputWatermark;
   int numProcessedData = 0;
   private transient OutputCollector originOc;
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
+  private volatile boolean dataReceived = false;
 
   /**
    * Constructor
    */
-  public CombineStreamTransform(final Coder<K> keyCoder,
+  public GBKStreamingTransform(final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, OutputT>> mainOutputTag,
                            final WindowingStrategy<?, ?> windowingStrategy,
@@ -83,7 +81,7 @@ public final class CombineStreamTransform<K, InputT, OutputT>
       Collections.emptyMap(), /* does not have additional side inputs */
       options,
       displayData,
-      DoFnSchemaInformation.create(),
+      doFnSchemaInformation,
       Collections.<String, PCollectionView<?>>emptyMap()); /* does not have side inputs */
     this.windowCoder = windowingStrategy.getWindowFn().windowCoder();
     this.keyCoder = keyCoder;
@@ -132,17 +130,18 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
     originOc = oc;
-    return new CSTOutputCollector(oc);
+    return new GBKOutputCollector(oc);
   }
 
   /**
    * Invoke runner to process a single element.
-   * The collected data are emitted at {@link CombineStreamTransform#onWatermark(Watermark)}
+   * The collected data are emitted at {@link GBKStreamingTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    if (!element.getWindows().isEmpty()) {
+      LOG.error("{} : ondata : {}", Thread.currentThread(), element);
+      dataReceived = true;
       try {
         checkAndInvokeBundle();
         final KV<K, InputT> kv = element.getValue();
@@ -152,15 +151,15 @@ public final class CombineStreamTransform<K, InputT, OutputT>
         numProcessedData += 1;
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         checkAndFinishBundle();
+        LOG.error("{} : ondata : new or not? : {}", Thread.currentThread(), inMemoryTimerInternalsFactory.timerInternalsMap.size());
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException("exception trigggered element " + element.toString());
       }
-    }
   }
 
   /**
-   * Process the collected data and trigger timers.
+   * Process the collected data, trigger timers, and emit outputwatermark.
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    * @param triggerWatermark watermark
@@ -169,6 +168,7 @@ public final class CombineStreamTransform<K, InputT, OutputT>
                                                final Instant synchronizedTime,
                                                final Watermark triggerWatermark) {
     triggerTimers(processingTime, synchronizedTime, triggerWatermark);
+    emitOutputWatermark();
   }
 
   /**
@@ -178,23 +178,21 @@ public final class CombineStreamTransform<K, InputT, OutputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
+    LOG.error("{} : emitOutputWatermark - intputwatermark : {}", Thread.currentThread(), inputWatermark);
     Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
+      ? new Watermark(Long.MAX_VALUE)
+      : Collections.min(keyAndWatermarkHoldMap.values());
 
     Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
         Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Watermark hold: {}, "
-        + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
-    }
-
-    // keep going if the watermark increases
-    if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
+    while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
+
+      LOG.error("{} : emitOutputwatermark - outputwatermark : {}", Thread.currentThread(), outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -202,6 +200,13 @@ public final class CombineStreamTransform<K, InputT, OutputT>
         keyAndWatermarkHoldMap.entrySet()
           .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkTimestamp);
       }
+
+      minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+        ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
+
+      outputWatermarkCandidate = new Watermark(
+        Math.max(prevOutputWatermark.getTimestamp(),
+          Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
     }
   }
 
@@ -211,8 +216,9 @@ public final class CombineStreamTransform<K, InputT, OutputT>
    */
   @Override
   public void onWatermark(final Watermark watermark) {
+    LOG.error("{} : On watermark called - watermark received : {}", Thread.currentThread(), watermark);
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
-      LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
+      LOG.error("{} : Input watermark {} is before the prev watermark: {}", Thread.currentThread(), new Instant(watermark.getTimestamp()),
         new Instant(inputWatermark.getTimestamp()));
       return;
     }
@@ -227,7 +233,6 @@ public final class CombineStreamTransform<K, InputT, OutputT>
       throw new RuntimeException(e);
     }
     // Emit watermark to downstream operators
-    emitOutputWatermark();
     checkAndFinishBundle();
   }
 
@@ -237,10 +242,11 @@ public final class CombineStreamTransform<K, InputT, OutputT>
    */
   @Override
   protected void beforeClose() {
+    LOG.error("{} : beforeclose method start", Thread.currentThread());
     // Finish any pending windows by advancing the input watermark to infinity.
-    LOG.error("beforeclose called");
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
+    LOG.error("{} : beforeclose method end", Thread.currentThread());
   }
 
   /**
@@ -257,18 +263,17 @@ public final class CombineStreamTransform<K, InputT, OutputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    for (NemoTimerInternals timerInternals : inMemoryTimerInternalsFactory.timerInternalsMap.values()) {
-      timerInternals.setCurrentInputWatermarkTime(new Instant(triggerWatermark.getTimestamp()));
-      timerInternals.setCurrentProcessingTime(processingTime);
-      timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
-    }
-
     // Next timer that needs to be processed
     Pair<K, TimerInternals.TimerData> timer = inMemoryTimerInternalsFactory.getNextTimer();
 
     int count = 0;
     while (timer != null) {
       count += 1;
+      final NemoTimerInternals timerInternals = (NemoTimerInternals)
+        inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
+      timerInternals.setCurrentInputWatermarkTime(new Instant(inputWatermark.getTimestamp()));
+      timerInternals.setCurrentProcessingTime(processingTime);
+      timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(timer.left(), Collections.singletonList(timer.right()));
@@ -286,13 +291,13 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   }
 
   @Override
-  public Coder<CSTState<K>> getStateCoder() {
-    return new CSTStateCoder<>(keyCoder, windowCoder);
+  public Coder<GBKState<K>> getStateCoder() {
+    return new GBKStateCoder<>(keyCoder, windowCoder);
   }
 
   @Override
-  public CSTState<K> getState() {
-    return new CSTState<>(inMemoryTimerInternalsFactory,
+  public GBKState<K> getState() {
+    return new GBKState<>(inMemoryTimerInternalsFactory,
       inMemoryStateInternalsFactory,
       prevOutputWatermark,
       keyAndWatermarkHoldMap,
@@ -300,7 +305,7 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   }
 
   @Override
-  public void setState(CSTState<K> state) {
+  public void setState(GBKState<K> state) {
 
     if (inMemoryStateInternalsFactory == null) {
       inMemoryStateInternalsFactory = state.stateInternalsFactory;
@@ -318,10 +323,10 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   }
 
 
-  public class CSTOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
+  public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
     OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
 
-    public CSTOutputCollector(OutputCollector oc) {
+    public GBKOutputCollector(OutputCollector oc) {
       this.oc = oc;
     }
 
@@ -333,12 +338,14 @@ public final class CombineStreamTransform<K, InputT, OutputT>
         final K key = value.getKey();
         final NemoTimerInternals timerInternals = (NemoTimerInternals)
           inMemoryTimerInternalsFactory.timerInternalsForKey(key);
-        keyAndWatermarkHoldMap.put(key,
-          // adds the output timestamp to the watermark hold of each key
-          // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-          new Watermark(output.getTimestamp().getMillis() + 1));
-        timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
+
+          keyAndWatermarkHoldMap.put(key,
+            // adds the output timestamp to the watermark hold of each key
+            // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+            new Watermark(output.getTimestamp().getMillis() + 1));
+          timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
+      LOG.error("{} : output : {}, {}", Thread.currentThread(), output, output.getValue().getValue());
       oc.emit(output);
     }
 
