@@ -44,7 +44,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Groups elements according to key and window.
+ * Combine streaming data according to key and window. When combining, it applies user-defined combine function.
  * @param <K> key type.
  * @param <InputT> input type.
  * @param <OutputT> output type.
@@ -64,7 +64,7 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   private final Coder windowCoder;
 
   /**
-   * GroupByKey constructor.
+   * Constructor
    */
   public CombineStreamTransform(final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
@@ -100,8 +100,6 @@ public final class CombineStreamTransform<K, InputT, OutputT>
    */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
-    final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
-
     if (inMemoryStateInternalsFactory == null) {
       this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
     } else {
@@ -138,7 +136,7 @@ public final class CombineStreamTransform<K, InputT, OutputT>
   }
 
   /**
-   * Process a single element
+   * Invoke runner to process a single element.
    * The collected data are emitted at {@link CombineStreamTransform#onWatermark(Watermark)}
    * @param element input data element.
    */

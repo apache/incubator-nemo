@@ -175,9 +175,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
-      // progress!
+      // Progress
       prevOutputWatermark = outputWatermarkCandidate;
-      // emit watermark.
+      // Emit watermark
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -188,7 +188,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
-   * Receives watermark and process timers
+   * Receive watermark and process timers
    * @param watermark watermark
    */
   @Override

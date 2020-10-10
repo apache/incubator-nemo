@@ -50,7 +50,6 @@ public final class FinalCombineFn<AccumT, Output> extends Combine.CombineFn<Accu
 
   @Override
   public Coder<AccumT> getAccumulatorCoder(CoderRegistry registry, Coder<AccumT> ac) {
-    LOG.info("Get accumCoder: {}", accumCoder);
     return accumCoder;
   }
 
