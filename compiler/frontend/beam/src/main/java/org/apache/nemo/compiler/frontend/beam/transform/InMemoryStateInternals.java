@@ -88,9 +88,9 @@ public class InMemoryStateInternals<K> implements StateInternals {
         @Override
         protected StateTag.StateBinder binderForNamespace(final StateNamespace namespace, final StateContext<?> c) {
           final Map<StateTag, Pair<State, Coder>> map =
-            nemoStateBackend.map.getOrDefault(namespace, new ConcurrentHashMap<>());
-          nemoStateBackend.map.putIfAbsent(namespace, map);
-          final Map<StateTag, Pair<State, Coder>> m = nemoStateBackend.map.get(namespace);
+            nemoStateBackend.getMap().getOrDefault(namespace, new ConcurrentHashMap<>());
+          nemoStateBackend.getMap().putIfAbsent(namespace, map);
+          final Map<StateTag, Pair<State, Coder>> m = nemoStateBackend.getMap().get(namespace);
           return new InMemoryStateBinder(namespace, m, c);
         }
       };

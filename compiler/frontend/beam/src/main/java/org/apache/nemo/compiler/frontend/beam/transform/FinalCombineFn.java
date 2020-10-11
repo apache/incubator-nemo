@@ -26,12 +26,18 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+/**
+ * Wrapper class for {@link Combine.CombineFn}.
+ * When adding input, it merges its accumulator and input accumulator into a single accumulator.
+ * @param <AccumT> accumulator type
+ * @param <Output> output type
+ */
 public final class FinalCombineFn<AccumT, Output> extends Combine.CombineFn<AccumT, AccumT, Output> {
   private static final Logger LOG = LoggerFactory.getLogger(FinalCombineFn.class.getName());
   private final Combine.CombineFn<?, AccumT, Output> originFn;
   private final Coder<AccumT> accumCoder;
 
-  public FinalCombineFn(Combine.CombineFn<?, AccumT, Output> originFn,
+  public FinalCombineFn(final Combine.CombineFn<?, AccumT, Output> originFn,
                         final Coder<AccumT> accumCoder) {
     this.originFn = originFn;
     this.accumCoder = accumCoder;
@@ -43,23 +49,23 @@ public final class FinalCombineFn<AccumT, Output> extends Combine.CombineFn<Accu
   }
 
   @Override
-  public AccumT addInput(AccumT accumulator, AccumT input) {
+  public AccumT addInput(final AccumT accumulator, final AccumT input) {
     final AccumT result = originFn.mergeAccumulators(Arrays.asList(accumulator, input));
     return result;
   }
 
   @Override
-  public Coder<AccumT> getAccumulatorCoder(CoderRegistry registry, Coder<AccumT> ac) {
+  public Coder<AccumT> getAccumulatorCoder(final CoderRegistry registry, final Coder<AccumT> ac) {
     return accumCoder;
   }
 
   @Override
-  public AccumT mergeAccumulators(Iterable<AccumT> accumulators) {
+  public AccumT mergeAccumulators(final Iterable<AccumT> accumulators) {
     return originFn.mergeAccumulators(accumulators);
   }
 
   @Override
-  public Output extractOutput(AccumT accumulator) {
+  public Output extractOutput(final AccumT accumulator) {
     final Output result = originFn.extractOutput(accumulator);
     return result;
   }

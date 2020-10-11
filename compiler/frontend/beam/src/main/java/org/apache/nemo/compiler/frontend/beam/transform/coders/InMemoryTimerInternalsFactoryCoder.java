@@ -61,16 +61,15 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     final DataOutputStream dos = new DataOutputStream(outStream);
 
-    encodeNavigableSet(value.watermarkTimers, dos);
-    encodeNavigableSet(value.processingTimers, dos);
-    encodeNavigableSet(value.synchronizedProcessingTimers, dos);
+    encodeNavigableSet(value.getWatermarkTimers(), dos);
+    encodeNavigableSet(value.getProcessingTimers(), dos);
+    encodeNavigableSet(value.getSynchronizedProcessingTimers(), dos);
 
-    dos.writeLong(value.inputWatermarkTime.getMillis());
-    dos.writeLong(value.processingTime.getMillis());
-    dos.writeLong(value.synchronizedProcessingTime.getMillis());
+    dos.writeLong(value.getInputWatermarkTime().getMillis());
+    dos.writeLong(value.getProcessingTime().getMillis());
+    dos.writeLong(value.getSynchronizedProcessingTime().getMillis());
 
-    LOG.info("Encoding timer key size: {}", value.timerInternalsMap.size());
-    encodeTimerInternalsMap(value.timerInternalsMap, dos);
+    encodeTimerInternalsMap(value.getTimerInternalsMap(), dos);
   }
 
   @Override
@@ -155,7 +154,8 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
       keyCoder.encode(key, dos);
 
       final NemoTimerInternals nemoTimerInternals = entry.getValue();
-      final Table<StateNamespace, String, TimerInternals.TimerData> existingTimers = nemoTimerInternals.existingTimers;
+      final Table<StateNamespace, String, TimerInternals.TimerData> existingTimers =
+        nemoTimerInternals.getExistingTimers();
       final Instant inputWatermarkTime = nemoTimerInternals.currentInputWatermarkTime();
       final Instant processingTime = nemoTimerInternals.currentProcessingTime();
       final Instant synchronizedProcessingTime = nemoTimerInternals.currentSynchronizedProcessingTime();

@@ -23,14 +23,12 @@ import org.apache.beam.runners.core.StateTag;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.state.State;
 import org.apache.nemo.common.Pair;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Backend of State
-
+/** Keep track of states in {@link InMemoryStateInternals}. */
 public final class NemoStateBackend {
-  public final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map;
+  private final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map;
 
   public NemoStateBackend() {
     this.map = new ConcurrentHashMap<>();
@@ -42,6 +40,10 @@ public final class NemoStateBackend {
 
   public void clear() {
     map.clear();
+  }
+
+  public Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> getMap() {
+    return map;
   }
 
   @Override

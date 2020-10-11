@@ -25,14 +25,18 @@ import org.apache.beam.sdk.transforms.Combine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-
+/**
+ * Wrapper class for {@link Combine.CombineFn}.
+ * When invoked to output, it outputs its accumulator, instead of the output from its original combine function.
+ * @param <InputT> input type
+ * @param <AccumT> accumulator type
+ */
 public final class PartialCombineFn<InputT, AccumT> extends Combine.CombineFn<InputT, AccumT, AccumT> {
   private static final Logger LOG = LoggerFactory.getLogger(PartialCombineFn.class.getName());
   private final Combine.CombineFn<InputT, AccumT, ?> originFn;
   private final Coder<AccumT> accumCoder;
 
-  public PartialCombineFn(Combine.CombineFn<InputT, AccumT, ?> originFn,
+  public PartialCombineFn(final Combine.CombineFn<InputT, AccumT, ?> originFn,
                           final Coder<AccumT> accumCoder) {
     this.originFn = originFn;
     this.accumCoder = accumCoder;
@@ -44,22 +48,23 @@ public final class PartialCombineFn<InputT, AccumT> extends Combine.CombineFn<In
   }
 
   @Override
-  public AccumT addInput(AccumT accumulator, InputT input) {
+  public AccumT addInput(final AccumT accumulator, final InputT input) {
     return originFn.addInput(accumulator, input);
   }
 
   @Override
-  public AccumT mergeAccumulators(Iterable<AccumT> accumulators) {
+  public AccumT mergeAccumulators(final Iterable<AccumT> accumulators) {
     return originFn.mergeAccumulators(accumulators);
   }
 
   @Override
-  public AccumT extractOutput(AccumT accumulator) {
+  public AccumT extractOutput(final AccumT accumulator) {
     return accumulator;
   }
 
   @Override
-  public Coder<AccumT> getAccumulatorCoder(CoderRegistry registry, Coder<InputT> inputCoder) throws CannotProvideCoderException {
+  public Coder<AccumT> getAccumulatorCoder(final CoderRegistry registry, final Coder<InputT> inputCoder)
+    throws CannotProvideCoderException {
     return accumCoder;
   }
 }

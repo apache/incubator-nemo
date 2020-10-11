@@ -19,16 +19,44 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.nemo.common.punctuation.Watermark;
-
 import java.util.Map;
 
+/**
+ * State during {@link GBKStreamingTransform}.
+ * @param <K> key type
+ */
 public final class GBKState<K> {
 
-  public final Watermark prevOutputWatermark;
-  public final Map<K, Watermark> keyAndWatermarkHoldMap;
-  public final Watermark inputWatermark;
-  public final InMemoryTimerInternalsFactory<K> timerInternalsFactory;
-  public final InMemoryStateInternalsFactory<K> stateInternalsFactory;
+  private final Watermark prevOutputWatermark;
+  private final Map<K, Watermark> keyAndWatermarkHoldMap;
+  private final Watermark inputWatermark;
+  private final InMemoryTimerInternalsFactory<K> timerInternalsFactory;
+  private final InMemoryStateInternalsFactory<K> stateInternalsFactory;
+
+  public Watermark getPrevOutputWatermark() {
+    return prevOutputWatermark;
+  }
+
+  public Map<K, Watermark> getKeyAndWatermarkHoldMap() {
+    return keyAndWatermarkHoldMap;
+  }
+
+  public Watermark getInputWatermark() {
+    return inputWatermark;
+  }
+
+  public InMemoryTimerInternalsFactory<K> getTimerInternalsFactory() {
+    return timerInternalsFactory;
+  }
+
+  public InMemoryStateInternalsFactory<K> getStateInternalsFactory() {
+    return stateInternalsFactory;
+  }
+
+
+
+
+
 
   public GBKState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory,
                        final InMemoryStateInternalsFactory<K> stateInternalsFactory,

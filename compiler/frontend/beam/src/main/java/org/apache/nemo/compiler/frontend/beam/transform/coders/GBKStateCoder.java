@@ -56,17 +56,17 @@ public final class GBKStateCoder<K> extends Coder<GBKState<K>> {
     final DataOutputStream dos = new DataOutputStream(outStream);
 
     final long st = System.currentTimeMillis();
-    timerCoder.encode(value.timerInternalsFactory, outStream);
+    timerCoder.encode(value.getTimerInternalsFactory(), outStream);
 
     final long st1 = System.currentTimeMillis();
-    stateCoder.encode(value.stateInternalsFactory, outStream);
+    stateCoder.encode(value.getStateInternalsFactory(), outStream);
 
     final long st2 = System.currentTimeMillis();
 
-    dos.writeLong(value.prevOutputWatermark.getTimestamp());
-    dos.writeLong(value.inputWatermark.getTimestamp());
+    dos.writeLong(value.getPrevOutputWatermark().getTimestamp());
+    dos.writeLong(value.getInputWatermark().getTimestamp());
 
-    encodeKeyAndWatermarkMap(value.keyAndWatermarkHoldMap, dos);
+    encodeKeyAndWatermarkMap(value.getKeyAndWatermarkHoldMap(), dos);
     final long st3 = System.currentTimeMillis();
 
     LOG.info("Encoding time: timer: {}, state: {}, keyWatermark: {}", (st1 - st), (st2 - st1), (st3 - st2));

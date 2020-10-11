@@ -47,7 +47,8 @@ import java.util.*;
  * @param <OutputT> output type.
  */
 public final class GBKStreamingTransform<K, InputT, OutputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> implements StatefulTransform<GBKState<K>> {
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>>
+  implements StatefulTransform<GBKState<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKStreamingTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
@@ -55,15 +56,11 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   private volatile Watermark prevOutputWatermark;
   private volatile Map<K, Watermark> keyAndWatermarkHoldMap;
   private volatile Watermark inputWatermark;
-  int numProcessedData = 0;
   private transient OutputCollector originOc;
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
   private volatile boolean dataReceived = false;
 
-  /**
-   * Constructor
-   */
   public GBKStreamingTransform(final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, OutputT>> mainOutputTag,
@@ -122,11 +119,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
         getMainOutputTag());
   }
 
-  /**
-   * Wrapper function of output collector
-   * @param oc the original outputCollector.
-   * @return GBKWOutputCollector
-   */
+  /** Wrapper function of output collector. */
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
     originOc = oc;
@@ -147,7 +140,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
         final KeyedWorkItem<K, InputT> keyedWorkItem =
           KeyedWorkItems.elementsWorkItem(kv.getKey(),
             Collections.singletonList(element.withValue(kv.getValue())));
-        numProcessedData += 1;
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         checkAndFinishBundle();
       } catch (final Exception e) {
@@ -206,7 +198,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   /**
-   * Trigger timers that need to be fired
+   * Trigger timers that need to be fired.
    * @param watermark watermark
    */
   @Override
@@ -235,7 +227,8 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   protected void beforeClose() {
     // Finish any pending windows by advancing the input watermark to infinity.
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
-    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
+    processElementsAndTriggerTimers(
+      BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
   }
 
   /**
@@ -243,40 +236,70 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
    * When triggering, it emits the windowed data to downstream operators.
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
+   * @param triggerWatermark watermark
    */
-  private int triggerTimers(final Instant processingTime,
+  private void triggerTimers(final Instant processingTime,
                             final Instant synchronizedTime,
                             final Watermark triggerWatermark) {
 
-    inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(triggerWatermark.getTimestamp());
-    inMemoryTimerInternalsFactory.processingTime = processingTime;
-    inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
+    inMemoryTimerInternalsFactory.setInputWatermarkTime(new Instant(triggerWatermark.getTimestamp()));
+    inMemoryTimerInternalsFactory.setProcessingTime(processingTime);
+    inMemoryTimerInternalsFactory.setSynchronizedProcessingTime(synchronizedTime);
 
     // Next timer that needs to be processed
-    Pair<K, TimerInternals.TimerData> timer = inMemoryTimerInternalsFactory.getNextTimer();
+    Iterable<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
-    int count = 0;
-    while (timer != null) {
-      count += 1;
+    for (Pair<K, TimerInternals.TimerData> curr : timers) {
       final NemoTimerInternals timerInternals = (NemoTimerInternals)
-        inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
+        inMemoryTimerInternalsFactory.getTimerInternalsMap().get(curr.left());
       timerInternals.setCurrentInputWatermarkTime(new Instant(inputWatermark.getTimestamp()));
       timerInternals.setCurrentProcessingTime(processingTime);
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
-        KeyedWorkItems.timersWorkItem(timer.left(), Collections.singletonList(timer.right()));
+        KeyedWorkItems.timersWorkItem(curr.left(), Collections.singletonList(curr.right()));
 
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
-      inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(timer.left());
-      // Remove states
-      inMemoryStateInternalsFactory.removeNamespaceForKey(timer.left(), timer.right().getNamespace(), timer.right().getTimestamp(), getWindowingStrategy());
-      timer = inMemoryTimerInternalsFactory.getNextTimer();
+      inMemoryTimerInternalsFactory.removeTimer(curr);
+      inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(curr.left());
+      inMemoryStateInternalsFactory.removeNamespaceForKey(
+        curr.left(), curr.right().getNamespace(), curr.right().getTimestamp());
     }
-    return count;
+    return;
+  }
+
+  /**
+   * Get timers that need to be processed.
+   */
+  private List<Pair<K, TimerInternals.TimerData>> getEligibleTimers() {
+    final List<Pair<K, TimerInternals.TimerData>> timerData = new LinkedList<>();
+
+    while (true) {
+      Pair<K, TimerInternals.TimerData> timer;
+      boolean hasFired = false;
+
+      while ((timer = inMemoryTimerInternalsFactory.getNextEventTimer()) != null) {
+        hasFired = true;
+        timerData.add(timer);
+      }
+
+      while ((timer = inMemoryTimerInternalsFactory.getNextProcessingTimer()) != null) {
+        hasFired = true;
+        timerData.add(timer);
+      }
+      while ((timer = inMemoryTimerInternalsFactory.getNextSynchronizedProcessingTimer()) != null) {
+        hasFired = true;
+        timerData.add(timer);
+      }
+      if (!hasFired) {
+        break;
+      }
+    }
+
+    return timerData;
   }
 
   @Override
@@ -294,53 +317,56 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   @Override
-  public void setState(GBKState<K> state) {
+  public void setState(final GBKState<K> state) {
 
     if (inMemoryStateInternalsFactory == null) {
-      inMemoryStateInternalsFactory = state.stateInternalsFactory;
-      inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+      inMemoryStateInternalsFactory = state.getStateInternalsFactory();
+      inMemoryTimerInternalsFactory = state.getTimerInternalsFactory();
     } else {
-      inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
-      inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+      inMemoryStateInternalsFactory.setState(state.getStateInternalsFactory());
+      inMemoryTimerInternalsFactory.setState(state.getTimerInternalsFactory());
     }
 
-    inputWatermark = state.inputWatermark;
-    prevOutputWatermark = state.prevOutputWatermark;
+    inputWatermark = state.getInputWatermark();
+    prevOutputWatermark = state.getPrevOutputWatermark();
 
     keyAndWatermarkHoldMap.clear();
-    keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
+    keyAndWatermarkHoldMap.putAll(state.getKeyAndWatermarkHoldMap());
   }
 
-
+  /** Wrapper class for {@link OutputCollector}. */
   public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
-    OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
+    private final OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
 
-    public GBKOutputCollector(OutputCollector oc) {
+    public GBKOutputCollector(final OutputCollector oc) {
       this.oc = oc;
     }
 
+    /** Emit output value. If value is emitted on-time, add output timestamp to watermark hold map. */
     @Override
-    public void emit(final WindowedValue<KV<K,OutputT>> output) {
+    public void emit(final WindowedValue<KV<K, OutputT>> output) {
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
         KV<K, OutputT> value = output.getValue();
         final K key = value.getKey();
         final NemoTimerInternals timerInternals = (NemoTimerInternals)
           inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+        // Add the output timestamp to the watermark hold of each key.
+        // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999.
           keyAndWatermarkHoldMap.put(key,
-            // adds the output timestamp to the watermark hold of each key
-            // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
             new Watermark(output.getTimestamp().getMillis() + 1));
           timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
       oc.emit(output);
     }
 
+    /** Emit watermark. */
     @Override
     public void emitWatermark(final Watermark watermark) {
       oc.emitWatermark(watermark);
     }
 
+    /** Emit output value to {@param dstVertexId}. */
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
       oc.emit(dstVertexId, output);

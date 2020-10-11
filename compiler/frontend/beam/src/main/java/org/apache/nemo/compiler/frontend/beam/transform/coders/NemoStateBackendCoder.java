@@ -55,7 +55,7 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
                      final OutputStream outStream,
                      final Map<Coder, Integer> coderIndexMap) throws CoderException, IOException {
 
-    final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = value.map;
+    final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = value.getMap();
     final int size = map.size();
     final DataOutputStream dos = new DataOutputStream(outStream);
     dos.writeInt(size);
@@ -148,6 +148,5 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
 
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
-
   }
 }

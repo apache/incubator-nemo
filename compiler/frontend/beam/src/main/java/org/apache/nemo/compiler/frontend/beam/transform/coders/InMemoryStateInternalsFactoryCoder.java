@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 
 /**
  * Coder for {@link InMemoryStateInternalsFactory}.
- * @param <K>
+ * @param <K> key type
  */
 public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryStateInternalsFactory<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternalsFactoryCoder.class.getName());
@@ -56,7 +56,7 @@ public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryS
   public void encode(final InMemoryStateInternalsFactory<K> value, final OutputStream outStream)
     throws CoderException, IOException {
 
-    final Map<K, NemoStateBackend> stateBackendMap = value.stateBackendMap;
+    final Map<K, NemoStateBackend> stateBackendMap = value.getStateBackendMap();
 
     final int size = stateBackendMap.size();
     final DataOutputStream dos = new DataOutputStream(outStream);
@@ -64,7 +64,7 @@ public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryS
 
     final Set<Coder> coderSet =
       stateBackendMap.values().stream()
-        .flatMap(stateBackend -> stateBackend.map.values().stream())
+        .flatMap(stateBackend -> stateBackend.getMap().values().stream())
         .flatMap(m -> m.values().stream())
         .map(Pair::right)
         .collect(Collectors.toSet());
