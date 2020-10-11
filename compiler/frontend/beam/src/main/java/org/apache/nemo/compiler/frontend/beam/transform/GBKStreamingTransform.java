@@ -69,13 +69,13 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
                            final SystemReduceFn reduceFn,
                            final DoFnSchemaInformation doFnSchemaInformation,
                            final DisplayData displayData) {
-    super(null, /* doFn */
-      null, /* inputCoder */
+    super(null,
+      null,
       outputCoders,
       mainOutputTag,
-      Collections.emptyList(),  /* does not have additional outputs */
+      Collections.emptyList(),  /* no additional outputs */
       windowingStrategy,
-      Collections.emptyMap(), /* does not have additional side inputs */
+      Collections.emptyMap(), /* no additional side inputs */
       options,
       displayData,
       doFnSchemaInformation,
@@ -127,7 +127,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   /**
-   * Invoke runner to process a single element.
+   * Every time a single element arrives, this method invokes runner to process a single element.
    * The collected data are emitted at {@link GBKStreamingTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
@@ -149,7 +149,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   /**
-   * Process the collected data, trigger timers, and emit outputwatermark.
+   * Process the collected data, trigger timers, and emit watermark to downstream operators.
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    * @param triggerWatermark watermark
@@ -162,9 +162,8 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   /**
-   * Output watermark
-   * = max(prev output watermark,
-   *          min(input watermark, watermark holds)).
+   * Emit watermark to downstream operators.
+   * Output watermark = max(prev output watermark, min(input watermark, watermark holds)).
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
@@ -177,9 +176,9 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
         Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
-      // progress!
+      // Progress
       prevOutputWatermark = outputWatermarkCandidate;
-      // emit watermark
+      // Emit watermark
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -232,8 +231,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   }
 
   /**
-   * Trigger timers for current key.
-   * When triggering, it emits the windowed data to downstream operators.
+   * Trigger timers. When triggering, it emits the windowed data to downstream operators.
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    * @param triggerWatermark watermark
@@ -246,7 +244,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
     inMemoryTimerInternalsFactory.setProcessingTime(processingTime);
     inMemoryTimerInternalsFactory.setSynchronizedProcessingTime(synchronizedTime);
 
-    // Next timer that needs to be processed
+    // Get timers that need to be processed.
     Iterable<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
     for (Pair<K, TimerInternals.TimerData> curr : timers) {
@@ -255,6 +253,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       timerInternals.setCurrentInputWatermarkTime(new Instant(inputWatermark.getTimestamp()));
       timerInternals.setCurrentProcessingTime(processingTime);
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
+
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(curr.left(), Collections.singletonList(curr.right()));
@@ -262,7 +261,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
-
       inMemoryTimerInternalsFactory.removeTimer(curr);
       inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(curr.left());
       inMemoryStateInternalsFactory.removeNamespaceForKey(
@@ -342,7 +340,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       this.oc = oc;
     }
 
-    /** Emit output value. If value is emitted on-time, add output timestamp to watermark hold map. */
+    /** Emit output. If an output value is emitted on-time, add output timestamp to watermark hold map. */
     @Override
     public void emit(final WindowedValue<KV<K, OutputT>> output) {
       // The watermark advances only in ON_TIME
