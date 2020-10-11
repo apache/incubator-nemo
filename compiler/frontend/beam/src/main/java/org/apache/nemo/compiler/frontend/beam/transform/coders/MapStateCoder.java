@@ -29,6 +29,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Coder for {@link MapState}.
+ * @param <KeyT> key type
+ * @param <ValueT> value type
+ */
 public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, ValueT>> {
 
   private final Coder<KeyT> keyCoder;
@@ -41,7 +46,8 @@ public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, Valu
   }
 
   @Override
-  public void encode(MapState<KeyT, ValueT> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final MapState<KeyT, ValueT> value, final OutputStream outStream)
+    throws CoderException, IOException {
     final Iterable<Map.Entry<KeyT, ValueT>> iterable = value.entries().read();
 
     if (iterable == null) {
@@ -65,7 +71,7 @@ public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, Valu
   }
 
   @Override
-  public MapState<KeyT, ValueT> decode(InputStream inStream) throws CoderException, IOException {
+  public MapState<KeyT, ValueT> decode(final InputStream inStream) throws CoderException, IOException {
     final int b = inStream.read();
     final MapState<KeyT, ValueT> state = new InMemoryStateInternals.InMemoryMap<>(keyCoder, valueCoder);
 
@@ -95,12 +101,16 @@ public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, Valu
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     MapStateCoder<?, ?> that = (MapStateCoder<?, ?>) o;
-    return Objects.equals(keyCoder, that.keyCoder) &&
-      Objects.equals(valueCoder, that.valueCoder);
+    return Objects.equals(keyCoder, that.keyCoder)
+      && Objects.equals(valueCoder, that.valueCoder);
   }
 
   @Override

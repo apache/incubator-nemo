@@ -34,6 +34,10 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Coder for {@link InMemoryStateInternalsFactory}.
+ * @param <K>
+ */
 public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryStateInternalsFactory<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternalsFactoryCoder.class.getName());
 
@@ -49,7 +53,8 @@ public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryS
   }
 
   @Override
-  public void encode(InMemoryStateInternalsFactory<K> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final InMemoryStateInternalsFactory<K> value, final OutputStream outStream)
+    throws CoderException, IOException {
 
     final Map<K, NemoStateBackend> stateBackendMap = value.stateBackendMap;
 
@@ -72,7 +77,6 @@ public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryS
       indexCoderMap.put(coderList.get(i), i);
     }
 
-    LOG.info("# of keys for state internals: {}, coder size: {}", stateBackendMap.size(), coderList.size());
     dos.writeInt(coderList.size());
 
     // encoding coders
@@ -91,18 +95,14 @@ public final class InMemoryStateInternalsFactoryCoder<K> extends Coder<InMemoryS
   }
 
   @Override
-  public InMemoryStateInternalsFactory<K> decode(InputStream inStream) throws CoderException, IOException {
+  public InMemoryStateInternalsFactory<K> decode(final InputStream inStream) throws CoderException, IOException {
 
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
     final Map<K, NemoStateBackend> map = new HashMap<>();
     final Map<K, StateInternals> map2 = new HashMap<>();
-
     final int coderSize = dis.readInt();
-    LOG.info("Coder size: {}", coderSize);
-
     final List<Coder> coderList = new ArrayList<>(coderSize);
-
     final FSTConfiguration conf = FSTSingleton.getInstance();
     for (int i = 0; i < coderSize; i++) {
       final Coder coder;

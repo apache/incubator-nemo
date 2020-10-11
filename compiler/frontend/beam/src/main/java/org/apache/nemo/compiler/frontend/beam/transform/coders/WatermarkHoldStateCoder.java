@@ -22,7 +22,6 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.state.WatermarkHoldState;
 import org.apache.beam.sdk.transforms.windowing.TimestampCombiner;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
 import org.joda.time.Instant;
@@ -32,6 +31,9 @@ import java.io.*;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Coder for {@link WatermarkHoldState}.
+ */
 public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
 
 
@@ -45,7 +47,7 @@ public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
   }
 
   @Override
-  public void encode(WatermarkHoldState value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final WatermarkHoldState value, final OutputStream outStream) throws CoderException, IOException {
     final FSTConfiguration conf = FSTSingleton.getInstance();
     final DataOutputStream dos = new DataOutputStream(outStream);
 
@@ -64,7 +66,7 @@ public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
   }
 
   @Override
-  public WatermarkHoldState decode(InputStream inStream) throws CoderException, IOException {
+  public WatermarkHoldState decode(final InputStream inStream) throws CoderException, IOException {
     final FSTConfiguration conf = FSTSingleton.getInstance();
     final DataInputStream dis = new DataInputStream(inStream);
 
@@ -80,7 +82,8 @@ public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
       }
 
       final TimestampCombiner timestampCombiner = (TimestampCombiner) conf.decodeFromStream(inStream);
-      final WatermarkHoldState watermarkHoldState = new InMemoryStateInternals.InMemoryWatermarkHold<>(timestampCombiner);
+      final WatermarkHoldState watermarkHoldState =
+        new InMemoryStateInternals.InMemoryWatermarkHold<>(timestampCombiner);
 
       if (instant != null) {
         watermarkHoldState.add(instant);

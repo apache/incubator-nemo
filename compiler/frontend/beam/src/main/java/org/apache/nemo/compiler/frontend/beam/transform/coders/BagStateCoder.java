@@ -29,14 +29,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Coder for {@link BagState}.
+ * @param <T> element type
+ */
 public final class BagStateCoder<T> extends Coder<BagState<T>> {
 
   private final Coder<T> coder;
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     BagStateCoder<?> that = (BagStateCoder<?>) o;
     return Objects.equals(coder, that.coder);
   }
@@ -56,7 +64,7 @@ public final class BagStateCoder<T> extends Coder<BagState<T>> {
   }
 
   @Override
-  public void encode(BagState<T> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final BagState<T> value, final OutputStream outStream) throws CoderException, IOException {
     final Iterable<T> iterable = value.read();
     final List<T> list = new ArrayList<>();
     iterable.forEach(elem -> list.add(elem));
@@ -69,7 +77,7 @@ public final class BagStateCoder<T> extends Coder<BagState<T>> {
   }
 
   @Override
-  public BagState<T> decode(InputStream inStream) throws CoderException, IOException {
+  public BagState<T> decode(final InputStream inStream) throws CoderException, IOException {
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
     final BagState<T> state = new InMemoryStateInternals.InMemoryBag<>(coder);

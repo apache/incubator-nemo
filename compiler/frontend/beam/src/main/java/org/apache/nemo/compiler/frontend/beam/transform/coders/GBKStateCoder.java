@@ -20,12 +20,10 @@ package org.apache.nemo.compiler.frontend.beam.transform.coders;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKState;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternalsFactory;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +32,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Coder for {@link GBKState}.
+ * @param <K> key type
+ */
 public final class GBKStateCoder<K> extends Coder<GBKState<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKStateCoder.class.getName());
-
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
   private final InMemoryTimerInternalsFactoryCoder<K> timerCoder;
@@ -51,7 +52,7 @@ public final class GBKStateCoder<K> extends Coder<GBKState<K>> {
   }
 
   @Override
-  public void encode(GBKState<K> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final GBKState<K> value, final OutputStream outStream) throws CoderException, IOException {
     final DataOutputStream dos = new DataOutputStream(outStream);
 
     final long st = System.currentTimeMillis();
@@ -73,7 +74,7 @@ public final class GBKStateCoder<K> extends Coder<GBKState<K>> {
 
 
   @Override
-  public GBKState<K> decode(InputStream inStream) throws CoderException, IOException {
+  public GBKState<K> decode(final InputStream inStream) throws CoderException, IOException {
 
 
     final long st = System.currentTimeMillis();

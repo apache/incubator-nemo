@@ -34,18 +34,28 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Coder for {@link CombiningState}.
+ * @param <InputT> input type
+ * @param <AccumT> accumulator type
+ * @param <OutputT> output type
+ */
 public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<CombiningState<InputT, AccumT, OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(CombiningStateCoder.class.getName());
   private final Coder<AccumT> coder;
   private final Combine.CombineFn<InputT, AccumT, OutputT> combineFn;
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CombiningStateCoder<?, ?, ?> that = (CombiningStateCoder<?, ?, ?>) o;
-    return Objects.equals(coder, that.coder) &&
-      Objects.equals(combineFn, that.combineFn);
+    return Objects.equals(coder, that.coder)
+      && Objects.equals(combineFn, that.combineFn);
   }
 
   @Override
@@ -61,7 +71,8 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
   }
 
   @Override
-  public void encode(CombiningState<InputT, AccumT, OutputT> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final CombiningState<InputT, AccumT, OutputT> value, final OutputStream outStream)
+    throws CoderException, IOException {
     final AccumT state = value.getAccum();
     //LOG.info("Combining state: {}", state);
 
@@ -69,11 +80,10 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
   }
 
   @Override
-  public CombiningState<InputT, AccumT, OutputT> decode(InputStream inStream) throws CoderException, IOException {
+  public CombiningState<InputT, AccumT, OutputT> decode(final InputStream inStream) throws CoderException, IOException {
     final AccumT accum = coder.decode(inStream);
     final CombiningState<InputT, AccumT, OutputT> state =
       new InMemoryStateInternals.InMemoryCombiningState<>(combineFn, coder);
-
     state.addAccum(accum);
     return state;
   }

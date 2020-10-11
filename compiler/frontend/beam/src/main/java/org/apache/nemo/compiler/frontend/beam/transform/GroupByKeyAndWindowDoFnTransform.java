@@ -21,13 +21,11 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
-import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
@@ -39,11 +37,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 import java.util.*;
-
-import static java.util.Collections.emptyMap;
 
 /**
  * Groups elements according to key and window.
@@ -61,9 +55,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private Map<K, Watermark> keyAndWatermarkHoldMap;
   private WindowingStrategy windowingStrategy;
   private Watermark inputWatermark;
-
-  int numProcessedData = 0;
-
   private boolean dataReceived = false;
 
   /**
@@ -125,7 +116,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
-   * Wrapper function of output collector
+   * Wrapper function of output collector.
    * @param oc the original outputCollector.
    * @return GBKWOutputCollector
    */
@@ -148,7 +139,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final KeyedWorkItem<K, InputT> keyedWorkItem =
       KeyedWorkItems.elementsWorkItem(kv.getKey(),
         Collections.singletonList(element.withValue(kv.getValue())));
-    numProcessedData += 1;
     // The DoFnRunner interface requires WindowedValue,
     // but this windowed value is actually not used in the ReduceFnRunner internal.
     getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
@@ -167,9 +157,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
-   * Output watermark
-   * = max(prev output watermark,
-   *          min(input watermark, watermark holds)).
+   * Emit watermark.
+   * Output watermark = max(prev output watermark, min(input watermark, watermark holds)).
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
@@ -206,7 +195,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
-   * Receive watermark and process timers
+   * Receive watermark and process timers.
    * @param watermark watermark
    */
   @Override
@@ -219,8 +208,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
-   * This advances the input watermark and processing time to the timestamp max value
-   * in order to emit all data.
+   * This advances the input watermark and processing time to the timestamp max value in order to emit all data.
    */
   @Override
   protected void beforeClose() {
@@ -261,6 +249,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
   }
 
+  /** Wrapper class of OutputCollector for {@link GroupByKeyAndWindowDoFnTransform}. */
   public class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> {
     OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> oc;
 

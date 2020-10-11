@@ -25,7 +25,6 @@ import org.apache.beam.runners.core.StateNamespaces;
 import org.apache.beam.runners.core.TimerInternals;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
@@ -38,6 +37,10 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Coder for {@link InMemoryTimerInternalsFactory}.
+ * @param <K> key type
+ */
 public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryTimerInternalsFactory<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactoryCoder.class.getName());
 
@@ -53,15 +56,14 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
   }
 
   @Override
-  public void encode(InMemoryTimerInternalsFactory<K> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final InMemoryTimerInternalsFactory<K> value, final OutputStream outStream)
+    throws CoderException, IOException {
 
     final DataOutputStream dos = new DataOutputStream(outStream);
 
     encodeNavigableSet(value.watermarkTimers, dos);
     encodeNavigableSet(value.processingTimers, dos);
     encodeNavigableSet(value.synchronizedProcessingTimers, dos);
-
-    //LOG.info("Encoded navigable sets");
 
     dos.writeLong(value.inputWatermarkTime.getMillis());
     dos.writeLong(value.processingTime.getMillis());
@@ -72,7 +74,7 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
   }
 
   @Override
-  public InMemoryTimerInternalsFactory<K> decode(InputStream inStream) throws CoderException, IOException {
+  public InMemoryTimerInternalsFactory<K> decode(final InputStream inStream) throws CoderException, IOException {
 
     final Comparator<Pair<K, TimerInternals.TimerData>> comparator = (o1, o2) -> {
       final int comp = o1.right().compareTo(o2.right());
@@ -91,7 +93,8 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers = decodeNavigableSet(dis, comparator);
     final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers = decodeNavigableSet(dis, comparator);
-    final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers = decodeNavigableSet(dis, comparator);
+    final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers =
+      decodeNavigableSet(dis, comparator);
 
     final Instant inputWatermarkTime = new Instant(dis.readLong());
     final Instant processingTime = new Instant(dis.readLong());
@@ -122,10 +125,8 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     for (final Pair<K, TimerInternals.TimerData> data : set) {
       keyCoder.encode(data.left(), dos);
-      //LOG.info("Encode key");
       final TimerInternals.TimerData timerData = data.right();
       timerCoder.encode(timerData, dos);
-      //LOG.info("Encode timer");
     }
   }
 
@@ -167,8 +168,6 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
       conf.encodeToStream(dos, processingTime);
       conf.encodeToStream(dos, synchronizedProcessingTime);
       conf.encodeToStream(dos, outputWatermarkTime);
-
-      //LOG.info("Serialize instances");
     }
   }
 
@@ -204,18 +203,16 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
                            final DataOutputStream dos) throws IOException {
     dos.writeInt(existingTimers.size());
 
-    //LOG.info("Start encode table");
-
     for (final Table.Cell<StateNamespace, String, TimerInternals.TimerData> cell : existingTimers.cellSet()) {
       dos.writeUTF(cell.getRowKey().stringKey());
       dos.writeUTF(cell.getColumnKey());
       timerCoder.encode(cell.getValue(), dos);
     }
 
-    //LOG.info("End encode table");
   }
 
-  private Table<StateNamespace, String, TimerInternals.TimerData> decodeTable(final DataInputStream dis) throws IOException {
+  private Table<StateNamespace, String, TimerInternals.TimerData> decodeTable(final DataInputStream dis)
+    throws IOException {
     final int size = dis.readInt();
     final Table<StateNamespace, String, TimerInternals.TimerData> table = HashBasedTable.create();
 

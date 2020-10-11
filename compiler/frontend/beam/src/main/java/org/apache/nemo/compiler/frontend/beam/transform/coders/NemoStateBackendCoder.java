@@ -34,6 +34,9 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Coder for {@link NemoStateBackend}.
+ */
 public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
   private static final Logger LOG = LoggerFactory.getLogger(NemoStateBackendCoder.class.getName());
 
@@ -44,11 +47,13 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
   }
 
   @Override
-  public void encode(NemoStateBackend value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final NemoStateBackend value, final OutputStream outStream) throws CoderException, IOException {
     throw new RuntimeException("Unsupported");
   }
 
-  public void encode(NemoStateBackend value, OutputStream outStream, Map<Coder, Integer> coderIndexMap)  throws CoderException, IOException{
+  public void encode(final NemoStateBackend value,
+                     final OutputStream outStream,
+                     final Map<Coder, Integer> coderIndexMap) throws CoderException, IOException {
 
     final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map = value.map;
     final int size = map.size();
@@ -88,11 +93,12 @@ public final class NemoStateBackendCoder extends Coder<NemoStateBackend> {
   }
 
   @Override
-  public NemoStateBackend decode(InputStream inStream) throws CoderException, IOException {
+  public NemoStateBackend decode(final InputStream inStream) throws CoderException, IOException {
     throw new RuntimeException("Unsupported");
   }
 
-  public NemoStateBackend decode(InputStream inStream, List<Coder> coderList) throws CoderException, IOException {
+  public NemoStateBackend decode(final InputStream inStream, final List<Coder> coderList)
+    throws CoderException, IOException {
     final DataInputStream dis = new DataInputStream(inStream);
     final int size = dis.readInt();
 

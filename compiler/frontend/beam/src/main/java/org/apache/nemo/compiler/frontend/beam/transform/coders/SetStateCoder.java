@@ -20,7 +20,6 @@ package org.apache.nemo.compiler.frontend.beam.transform.coders;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
-import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.SetState;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
 
@@ -29,6 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Coder for {@link SetState}.
+ * @param <T> element type
+ */
 public final class SetStateCoder<T> extends Coder<SetState<T>> {
 
   private final Coder<T> coder;
@@ -38,7 +41,7 @@ public final class SetStateCoder<T> extends Coder<SetState<T>> {
   }
 
   @Override
-  public void encode(SetState<T> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final SetState<T> value, final OutputStream outStream) throws CoderException, IOException {
     final Iterable<T> iterable = value.read();
 
     if (iterable == null) {
@@ -57,7 +60,7 @@ public final class SetStateCoder<T> extends Coder<SetState<T>> {
   }
 
   @Override
-  public SetState<T> decode(InputStream inStream) throws CoderException, IOException {
+  public SetState<T> decode(final InputStream inStream) throws CoderException, IOException {
 
     final int b = inStream.read();
     final SetState<T> state = new InMemoryStateInternals.InMemorySet<>(coder);
@@ -85,9 +88,13 @@ public final class SetStateCoder<T> extends Coder<SetState<T>> {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SetStateCoder<?> that = (SetStateCoder<?>) o;
     return Objects.equals(coder, that.coder);
   }

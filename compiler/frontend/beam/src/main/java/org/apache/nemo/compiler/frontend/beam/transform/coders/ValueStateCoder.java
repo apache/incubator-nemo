@@ -29,6 +29,10 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Coder for {@link ValueState}.
+ * @param <T> element type
+ */
 public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
 
   private final Coder<T> coder;
@@ -38,11 +42,10 @@ public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
   }
 
   @Override
-  public void encode(ValueState<T> value, OutputStream outStream) throws CoderException, IOException {
+  public void encode(final ValueState<T> value, final OutputStream outStream) throws CoderException, IOException {
     final T val = value.read();
 
     if (val == null) {
-      // if null, set 1
       outStream.write(1);
     } else {
       outStream.write(0);
@@ -51,7 +54,7 @@ public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
   }
 
   @Override
-  public ValueState<T> decode(InputStream inStream) throws CoderException, IOException {
+  public ValueState<T> decode(final InputStream inStream) throws CoderException, IOException {
 
     final ValueState<T> valueState = new InMemoryStateInternals.InMemoryValue<>(coder);
 
@@ -76,16 +79,19 @@ public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ValueStateCoder<?> that = (ValueStateCoder<?>) o;
     return Objects.equals(coder, that.coder);
   }
 
   @Override
   public int hashCode() {
-
     return Objects.hash(coder);
   }
 
