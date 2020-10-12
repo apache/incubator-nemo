@@ -89,8 +89,8 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     final SlidingWindows slidingWindows = SlidingWindows.of(Duration.standardSeconds(2))
       .every(Duration.standardSeconds(1));
 
-    final GBKStreamingTransform<String, String, Iterable<String>> doFnTransform =
-      new GBKStreamingTransform(
+    final GBKTransform<String, String, Iterable<String>> doFnTransform =
+      new GBKTransform(
         NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
@@ -274,8 +274,8 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
 
-    final GBKStreamingTransform<String, String, Iterable<String>> doFnTransform =
-      new GBKStreamingTransform(
+    final GBKTransform<String, String, Iterable<String>> doFnTransform =
+      new GBKTransform(
         NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,

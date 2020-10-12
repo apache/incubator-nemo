@@ -40,14 +40,15 @@ import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
 
 /**
- * This transform performs GroupByKey or CombinePerKey operation for streaming data.
+ * This transform performs GroupByKey or CombinePerKey operation when input data is unbounded or is not in
+ * global window.
  * @param <K> key type.
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class GBKStreamingTransform<K, InputT, OutputT>
+public final class GBKTransform<K, InputT, OutputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
-  private static final Logger LOG = LoggerFactory.getLogger(GBKStreamingTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(GBKTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
@@ -57,7 +58,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   private transient OutputCollector originOc;
   private volatile boolean dataReceived = false;
 
-  public GBKStreamingTransform(final Coder<K> keyCoder,
+  public GBKTransform(final Coder<K> keyCoder,
                            final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, OutputT>> mainOutputTag,
                            final WindowingStrategy<?, ?> windowingStrategy,
@@ -122,7 +123,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
 
   /**
    * Every time a single element arrives, this method invokes runner to process a single element.
-   * The collected data are emitted at {@link GBKStreamingTransform#onWatermark(Watermark)}
+   * The collected data are emitted at {@link GBKTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
   @Override

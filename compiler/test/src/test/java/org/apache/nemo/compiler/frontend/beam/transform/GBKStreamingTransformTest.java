@@ -139,8 +139,8 @@ public class GBKStreamingTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES)
       );
 
-    final GBKStreamingTransform<String, Integer, Integer> combine_transform =
-      new GBKStreamingTransform(
+    final GBKTransform<String, Integer, Integer> combine_transform =
+      new GBKTransform(
         key_coder,
         null_coder,
         outputTag,
@@ -267,8 +267,8 @@ public class GBKStreamingTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness)
       );
 
-    final GBKStreamingTransform<String, Integer, Integer> combine_transform =
-      new GBKStreamingTransform(
+    final GBKTransform<String, Integer, Integer> combine_transform =
+      new GBKTransform(
         key_coder,
         null_coder,
         outputTag,

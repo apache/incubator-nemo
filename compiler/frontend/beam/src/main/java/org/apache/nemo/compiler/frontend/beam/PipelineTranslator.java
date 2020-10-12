@@ -407,8 +407,8 @@ final class PipelineTranslator {
             KvCoder.of(inputCoder.getKeyCoder(),
               accumulatorCoder),
             null, mainInput.getWindowingStrategy()));
-      final GBKStreamingTransform partialCombineStreamTransform =
-        new GBKStreamingTransform(
+      final GBKTransform partialCombineStreamTransform =
+        new GBKTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
@@ -418,8 +418,8 @@ final class PipelineTranslator {
           DoFnSchemaInformation.create(),
           DisplayData.from(beamNode.getTransform()));
 
-      final GBKStreamingTransform finalCombineStreamTransform =
-        new GBKStreamingTransform(
+      final GBKTransform finalCombineStreamTransform =
+        new GBKTransform(
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           new TupleTag<>(),
@@ -569,7 +569,7 @@ final class PipelineTranslator {
         TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
       final KvCoder inputCoder = (KvCoder) inputs.getCoder();
       // GroupByKey Transform for streaming data
-      return new GBKStreamingTransform<>(inputCoder.getKeyCoder(),
+      return new GBKTransform<>(inputCoder.getKeyCoder(),
         getOutputCoders(pTransform),
         mainOutputTag,
         mainInput.getWindowingStrategy(),
