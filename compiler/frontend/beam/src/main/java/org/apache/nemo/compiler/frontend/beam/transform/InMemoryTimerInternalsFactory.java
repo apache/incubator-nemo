@@ -35,6 +35,7 @@ import java.util.*;
  * @param <K> key type
  */
 public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFactory<K> {
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
 
   /**
    * Current input watermark.
@@ -49,37 +50,9 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   /**
    * Current synchronized processing time.
    */
-  private Instant synchronizedProcessingTime ;
+  private Instant synchronizedProcessingTime;
 
   private Map<K, NemoTimerInternals> timerInternalsMap;
-
-  public Instant getInputWatermarkTime() {
-    return inputWatermarkTime;
-  }
-
-  public Instant getProcessingTime() {
-    return processingTime;
-  }
-
-  public Instant getSynchronizedProcessingTime() {
-    return synchronizedProcessingTime;
-  }
-
-  public Map<K, NemoTimerInternals> getTimerInternalsMap() {
-    return timerInternalsMap;
-  }
-
-  public void setSynchronizedProcessingTime(final Instant time) {
-    synchronizedProcessingTime = time;
-  }
-
-  public void setProcessingTime(final Instant time) {
-    processingTime = time;
-  }
-
-  public void setInputWatermarkTime(final Instant time) {
-    inputWatermarkTime = time;
-  }
 
   @Override
   public String toString() {
@@ -121,8 +94,6 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     this.synchronizedProcessingTime = synchronizedProcessingTime;
     this.timerInternalsMap = timerInternalsMap;
   }
-
-  private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
 
   public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
     this.inputWatermarkTime = timerInternalsFactory.inputWatermarkTime;
@@ -221,5 +192,33 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       }
     }
     return null;
+  }
+
+  public Instant getInputWatermarkTime() {
+    return inputWatermarkTime;
+  }
+
+  public Instant getProcessingTime() {
+    return processingTime;
+  }
+
+  public Instant getSynchronizedProcessingTime() {
+    return synchronizedProcessingTime;
+  }
+
+  public Map<K, NemoTimerInternals> getTimerInternalsMap() {
+    return timerInternalsMap;
+  }
+
+  public void setSynchronizedProcessingTime(final Instant time) {
+    synchronizedProcessingTime = time;
+  }
+
+  public void setProcessingTime(final Instant time) {
+    processingTime = time;
+  }
+
+  public void setInputWatermarkTime(final Instant time) {
+    inputWatermarkTime = time;
   }
 }

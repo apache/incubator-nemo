@@ -20,9 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.StateNamespace;
 import org.apache.beam.runners.core.StateTag;
-import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.state.State;
-import org.apache.nemo.common.Pair;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
