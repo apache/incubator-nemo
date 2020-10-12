@@ -368,7 +368,6 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     checkOutput(KV.of("1", Arrays.asList("hello again!")), oc.outputs.get(0).getValue());
     oc.outputs.clear();
 
-
     doFnTransform.close();
 
   }
