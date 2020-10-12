@@ -37,19 +37,6 @@ import java.util.*;
 public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFactory<K> {
 
   /**
-   * Pending input watermark timers, in timestamp order.
-   */
-  private NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers;
-  /**
-   * Pending processing time timers, in timestamp order.
-   */
-  private NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers;
-  /**
-   * Pending synchronized processing time timers, in timestamp order.
-   */
-  private NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers;
-
-  /**
    * Current input watermark.
    */
   private Instant inputWatermarkTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
@@ -57,26 +44,14 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   /**
    * Current processing time.
    */
-  private Instant processingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
+  private Instant processingTime;
 
   /**
    * Current synchronized processing time.
    */
-  private Instant synchronizedProcessingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
+  private Instant synchronizedProcessingTime ;
 
   private Map<K, NemoTimerInternals> timerInternalsMap;
-
-  public NavigableSet<Pair<K, TimerInternals.TimerData>> getWatermarkTimers() {
-    return watermarkTimers;
-  }
-
-  public NavigableSet<Pair<K, TimerInternals.TimerData>> getProcessingTimers() {
-    return processingTimers;
-  }
-
-  public NavigableSet<Pair<K, TimerInternals.TimerData>> getSynchronizedProcessingTimers() {
-    return synchronizedProcessingTimers;
-  }
 
   public Instant getInputWatermarkTime() {
     return inputWatermarkTime;
@@ -109,9 +84,6 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   @Override
   public String toString() {
     return "TimerInternalsMap: " + timerInternalsMap + "\n"
-      + "WatermarkTimers: " + watermarkTimers + "(" + watermarkTimers.hashCode() + ")\n"
-      + "ProcessingTimers: " + processingTimers + "\n"
-      + "SyncTimers: " + synchronizedProcessingTimers + "\n"
       + "InputWatermarkTime: " + inputWatermarkTime + "\n"
       + "ProcessingTime: " + processingTime + "\n"
       + "SyncProcessingTime: " + synchronizedProcessingTime;
@@ -131,9 +103,6 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   };
 
   InMemoryTimerInternalsFactory() {
-    this.watermarkTimers = new TreeSet<>(comparator);
-    this.processingTimers = new TreeSet<>(comparator);
-    this.synchronizedProcessingTimers = new TreeSet<>(comparator);
     this.timerInternalsMap = new HashMap<>();
     this.processingTime = Instant.now();
     this.synchronizedProcessingTime = Instant.now();
@@ -147,9 +116,6 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     final Instant processingTime,
     final Instant synchronizedProcessingTime,
     final Map<K, NemoTimerInternals> timerInternalsMap) {
-    this.watermarkTimers = watermarkTimers;
-    this.processingTimers = processingTimers;
-    this.synchronizedProcessingTimers = synchronizedProcessingTimers;
     this.inputWatermarkTime = inputWatermarkTime;
     this.processingTime = processingTime;
     this.synchronizedProcessingTime = synchronizedProcessingTime;
@@ -159,14 +125,9 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
 
   public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
-    this.watermarkTimers = timerInternalsFactory.watermarkTimers;
-    this.processingTimers = timerInternalsFactory.processingTimers;
-    this.synchronizedProcessingTimers = timerInternalsFactory.synchronizedProcessingTimers;
-
     this.inputWatermarkTime = timerInternalsFactory.inputWatermarkTime;
     this.processingTime = timerInternalsFactory.processingTime;
     this.synchronizedProcessingTime = timerInternalsFactory.synchronizedProcessingTime;
-
     this.timerInternalsMap = timerInternalsFactory.timerInternalsMap;
   }
 

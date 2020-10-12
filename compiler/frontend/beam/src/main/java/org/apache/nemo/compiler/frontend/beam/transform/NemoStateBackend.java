@@ -28,13 +28,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Keep track of states in {@link InMemoryStateInternals}. */
 public final class NemoStateBackend {
-  private final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map;
+  private final Map<StateNamespace, Map<StateTag, State>> map;
 
   public NemoStateBackend() {
     this.map = new ConcurrentHashMap<>();
   }
 
-  public NemoStateBackend(final Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> map) {
+  public NemoStateBackend(final Map<StateNamespace, Map<StateTag, State>> map) {
     this.map = map;
   }
 
@@ -42,7 +42,7 @@ public final class NemoStateBackend {
     map.clear();
   }
 
-  public Map<StateNamespace, Map<StateTag, Pair<State, Coder>>> getMap() {
+  public Map<StateNamespace, Map<StateTag, State>> getMap() {
     return map;
   }
 

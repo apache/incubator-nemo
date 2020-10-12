@@ -19,9 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.*;
-import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.state.State;
-import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,38 +60,27 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
   }
 
   public void setState(final InMemoryStateInternalsFactory<K> stateFactorty) {
-
-    /*
-    this.stateInternalMap.clear();
-    this.stateInternalMap.putAll(stateFactorty.stateInternalMap);
-
-    this.stateBackendMap.clear();
-    this.stateBackendMap.putAll(stateFactorty.stateBackendMap);
-    */
-
     this.stateInternalMap = stateFactorty.stateInternalMap;
     this.stateBackendMap = stateFactorty.stateBackendMap;
   }
 
-  // removing states. Consider accumulating mode. (Only remove states if it is the last pane in corresponding window)
   public void removeNamespaceForKey(final K key,
                                     final StateNamespace namespace,
                                     final Instant timestamp) {
     stateBackendMap.get(key).getMap().remove(namespace);
     stateBackendMap.get(key).getMap().remove(StateNamespaces.global());
 
-    final Iterator<Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>>> iterator =
+    final Iterator<Map.Entry<StateNamespace, Map<StateTag, State>>> iterator =
       stateBackendMap.get(key).getMap().entrySet().iterator();
 
     while (iterator.hasNext()) {
-      final Map.Entry<StateNamespace, Map<StateTag, Pair<State, Coder>>> elem = iterator.next();
+      final Map.Entry<StateNamespace, Map<StateTag, State>> elem = iterator.next();
       final StateNamespace stateNamespace = elem.getKey();
 
       if (stateNamespace instanceof StateNamespaces.WindowNamespace) {
         final StateNamespaces.WindowNamespace windowNamespace = (StateNamespaces.WindowNamespace) stateNamespace;
         if (windowNamespace.getWindow().maxTimestamp().isBefore(timestamp)
           || windowNamespace.getWindow().maxTimestamp().isEqual(timestamp)) {
-
           iterator.remove();
         }
       }

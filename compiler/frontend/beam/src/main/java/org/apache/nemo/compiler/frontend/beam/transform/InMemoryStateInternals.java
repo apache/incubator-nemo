@@ -33,8 +33,6 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.TimestampCombiner;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.util.CombineFnUtil;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.compiler.frontend.beam.transform.coders.*;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,16 +82,16 @@ public class InMemoryStateInternals<K> implements StateInternals {
   }
 
   private final StateTable inMemoryState =
-      new StateTable() {
-        @Override
-        protected StateTag.StateBinder binderForNamespace(final StateNamespace namespace, final StateContext<?> c) {
-          final Map<StateTag, Pair<State, Coder>> map =
-            nemoStateBackend.getMap().getOrDefault(namespace, new ConcurrentHashMap<>());
-          nemoStateBackend.getMap().putIfAbsent(namespace, map);
-          final Map<StateTag, Pair<State, Coder>> m = nemoStateBackend.getMap().get(namespace);
-          return new InMemoryStateBinder(namespace, m, c);
-        }
-      };
+    new StateTable() {
+      @Override
+      protected StateTag.StateBinder binderForNamespace(final StateNamespace namespace, final StateContext<?> c) {
+        final Map<StateTag, State> map =
+          nemoStateBackend.getMap().getOrDefault(namespace, new ConcurrentHashMap<>());
+        nemoStateBackend.getMap().putIfAbsent(namespace, map);
+        final Map<StateTag, State> m = nemoStateBackend.getMap().get(namespace);
+        return new InMemoryStateBinder(namespace, m, c);
+      }
+    };
 
   /**
    * Accessor for inMemoryState.
@@ -136,11 +134,11 @@ public class InMemoryStateInternals<K> implements StateInternals {
   /** A {@link StateBinder} that returns In Memory {@link State} objects. */
   public class InMemoryStateBinder implements StateTag.StateBinder {
     private final StateContext<?> c;
-    private final Map<StateTag, Pair<State, Coder>> stateCoderMap;
+    private final Map<StateTag, State> stateCoderMap;
     private final StateNamespace namespace;
 
     public InMemoryStateBinder(final StateNamespace namespace,
-                               final Map<StateTag, Pair<State, Coder>> stateCoderMap,
+                               final Map<StateTag, State> stateCoderMap,
                                final StateContext<?> c) {
       this.namespace = namespace;
       this.stateCoderMap = stateCoderMap;
@@ -157,10 +155,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public <T> ValueState<T> bindValue(final StateTag<ValueState<T>> address, final Coder<T> coder) {
       if (stateCoderMap.containsKey(address)) {
-        return (ValueState<T>) stateCoderMap.get(address).left();
+        return (ValueState<T>) stateCoderMap.get(address);
       } else {
         final ValueState<T> state = new InMemoryValue<>(coder);
-        stateCoderMap.put(address, Pair.of(state, new ValueStateCoder<>(coder)));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -175,10 +173,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public <T> BagState<T> bindBag(final StateTag<BagState<T>> address, final Coder<T> elemCoder) {
       if (stateCoderMap.containsKey(address)) {
-        return (BagState<T>) stateCoderMap.get(address).left();
+        return (BagState<T>) stateCoderMap.get(address);
       } else {
         final BagState<T> state = new InMemoryBag<>(elemCoder);
-        stateCoderMap.put(address, Pair.of(state, new BagStateCoder<>(elemCoder)));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -193,10 +191,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public <T> SetState<T> bindSet(final StateTag<SetState<T>> address, final Coder<T> elemCoder) {
       if (stateCoderMap.containsKey(address)) {
-        return (SetState<T>) stateCoderMap.get(address).left();
+        return (SetState<T>) stateCoderMap.get(address);
       } else {
         final SetState<T> state = new InMemorySet<>(elemCoder);
-        stateCoderMap.put(address, Pair.of(state, new SetStateCoder<>(elemCoder)));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -212,14 +210,14 @@ public class InMemoryStateInternals<K> implements StateInternals {
      */
     @Override
     public <KeyT, ValueT> MapState<KeyT, ValueT> bindMap(
-        final StateTag<MapState<KeyT, ValueT>> address,
-        final Coder<KeyT> mapKeyCoder,
-        final Coder<ValueT> mapValueCoder) {
+      final StateTag<MapState<KeyT, ValueT>> address,
+      final Coder<KeyT> mapKeyCoder,
+      final Coder<ValueT> mapValueCoder) {
       if (stateCoderMap.containsKey(address)) {
-        return (MapState<KeyT, ValueT>) stateCoderMap.get(address).left();
+        return (MapState<KeyT, ValueT>) stateCoderMap.get(address);
       } else {
         final MapState<KeyT, ValueT> state = new InMemoryMap<>(mapKeyCoder, mapValueCoder);
-        stateCoderMap.put(address, Pair.of(state, new MapStateCoder<>(mapKeyCoder, mapValueCoder)));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -237,14 +235,14 @@ public class InMemoryStateInternals<K> implements StateInternals {
      */
     @Override
     public <InputT, AccumT, OutputT> CombiningState<InputT, AccumT, OutputT> bindCombiningValue(
-        final StateTag<CombiningState<InputT, AccumT, OutputT>> address,
-        final Coder<AccumT> accumCoder,
-        final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
+      final StateTag<CombiningState<InputT, AccumT, OutputT>> address,
+      final Coder<AccumT> accumCoder,
+      final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
       if (stateCoderMap.containsKey(address)) {
-        return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
+        return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address);
       } else {
         final CombiningState<InputT, AccumT, OutputT> state = new InMemoryCombiningState<>(combineFn, accumCoder);
-        stateCoderMap.put(address, Pair.of(state, new CombiningStateCoder<>(accumCoder, combineFn)));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -258,12 +256,12 @@ public class InMemoryStateInternals<K> implements StateInternals {
      */
     @Override
     public WatermarkHoldState bindWatermark(
-        final StateTag<WatermarkHoldState> address, final TimestampCombiner timestampCombiner) {
+      final StateTag<WatermarkHoldState> address, final TimestampCombiner timestampCombiner) {
       if (stateCoderMap.containsKey(address)) {
-        return (WatermarkHoldState) stateCoderMap.get(address).left();
+        return (WatermarkHoldState) stateCoderMap.get(address);
       } else {
         final WatermarkHoldState state = new InMemoryWatermarkHold(timestampCombiner);
-        stateCoderMap.put(address, Pair.of(state, WatermarkHoldStateCoder.getInstance()));
+        stateCoderMap.put(address, state);
         return state;
       }
     }
@@ -281,10 +279,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
      */
     @Override
     public <InputT, AccumT, OutputT>
-        CombiningState<InputT, AccumT, OutputT> bindCombiningValueWithContext(
-            final StateTag<CombiningState<InputT, AccumT, OutputT>> address,
-            final Coder<AccumT> accumCoder,
-            final CombineWithContext.CombineFnWithContext<InputT, AccumT, OutputT> combineFn) {
+    CombiningState<InputT, AccumT, OutputT> bindCombiningValueWithContext(
+      final StateTag<CombiningState<InputT, AccumT, OutputT>> address,
+      final Coder<AccumT> accumCoder,
+      final CombineWithContext.CombineFnWithContext<InputT, AccumT, OutputT> combineFn) {
       return bindCombiningValue(address, accumCoder, CombineFnUtil.bindContext(combineFn, c));
     }
   }
@@ -294,7 +292,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
    * @param <T> element type stored in {@link ValueState}
    */
   public static final class InMemoryValue<T>
-      implements ValueState<T>, InMemoryState<InMemoryValue<T>> {
+    implements ValueState<T>, InMemoryState<InMemoryValue<T>> {
     private final Coder<T> coder;
 
     private boolean isCleared = true;
@@ -355,7 +353,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
    * @param <W> window type
    */
   public static final class InMemoryWatermarkHold<W extends BoundedWindow>
-      implements WatermarkHoldState, InMemoryState<InMemoryWatermarkHold<W>> {
+    implements WatermarkHoldState, InMemoryState<InMemoryWatermarkHold<W>> {
 
     private final TimestampCombiner timestampCombiner;
 
@@ -392,7 +390,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public void add(final Instant outputTime) {
       combinedHold =
-          combinedHold == null ? outputTime : timestampCombiner.combine(combinedHold, outputTime);
+        combinedHold == null ? outputTime : timestampCombiner.combine(combinedHold, outputTime);
     }
 
     /** Return true if the {@link InMemoryWatermarkHold} is cleared. */
@@ -445,8 +443,8 @@ public class InMemoryStateInternals<K> implements StateInternals {
    * @param <OutputT> output type
    */
   public static final class InMemoryCombiningState<InputT, AccumT, OutputT>
-      implements CombiningState<InputT, AccumT, OutputT>,
-          InMemoryState<InMemoryCombiningState<InputT, AccumT, OutputT>> {
+    implements CombiningState<InputT, AccumT, OutputT>,
+    InMemoryState<InMemoryCombiningState<InputT, AccumT, OutputT>> {
     private final Combine.CombineFn<InputT, AccumT, OutputT> combineFn;
     private final Coder<AccumT> accumCoder;
     private boolean isCleared = true;
@@ -478,7 +476,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public OutputT read() {
       return combineFn.extractOutput(
-          combineFn.mergeAccumulators(Arrays.asList(combineFn.createAccumulator(), accum)));
+        combineFn.mergeAccumulators(Arrays.asList(combineFn.createAccumulator(), accum)));
     }
 
     /** Add input to the {@link InMemoryCombiningState}. */
@@ -536,7 +534,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
     @Override
     public InMemoryCombiningState<InputT, AccumT, OutputT> copy() {
       InMemoryCombiningState<InputT, AccumT, OutputT> that =
-          new InMemoryCombiningState<>(combineFn, accumCoder);
+        new InMemoryCombiningState<>(combineFn, accumCoder);
       if (!this.isCleared) {
         that.isCleared = this.isCleared;
         that.addAccum(uncheckedClone(accumCoder, accum));
@@ -716,7 +714,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
    * @param <V> value type
    */
   public static final class InMemoryMap<K, V>
-      implements MapState<K, V>, InMemoryState<InMemoryMap<K, V>> {
+    implements MapState<K, V>, InMemoryState<InMemoryMap<K, V>> {
     private final Coder<K> keyCoder;
     private final Coder<V> valueCoder;
 
@@ -818,7 +816,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
       InMemoryMap<K, V> that = new InMemoryMap<>(keyCoder, valueCoder);
       for (Map.Entry<K, V> entry : this.contents.entrySet()) {
         that.contents.put(
-            uncheckedClone(keyCoder, entry.getKey()), uncheckedClone(valueCoder, entry.getValue()));
+          uncheckedClone(keyCoder, entry.getKey()), uncheckedClone(valueCoder, entry.getValue()));
       }
       that.contents.putAll(this.contents);
       return that;

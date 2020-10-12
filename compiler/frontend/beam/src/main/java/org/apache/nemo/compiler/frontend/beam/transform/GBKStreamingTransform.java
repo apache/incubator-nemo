@@ -33,7 +33,6 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKStateCoder;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +46,7 @@ import java.util.*;
  * @param <OutputT> output type.
  */
 public final class GBKStreamingTransform<K, InputT, OutputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>>
-  implements StatefulTransform<GBKState<K>> {
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKStreamingTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
@@ -57,8 +55,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
   private volatile Map<K, Watermark> keyAndWatermarkHoldMap;
   private volatile Watermark inputWatermark;
   private transient OutputCollector originOc;
-  private final Coder<K> keyCoder;
-  private final Coder windowCoder;
   private volatile boolean dataReceived = false;
 
   public GBKStreamingTransform(final Coder<K> keyCoder,
@@ -80,8 +76,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       displayData,
       doFnSchemaInformation,
       Collections.<String, PCollectionView<?>>emptyMap()); /* does not have side inputs */
-    this.windowCoder = windowingStrategy.getWindowFn().windowCoder();
-    this.keyCoder = keyCoder;
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
@@ -263,6 +257,7 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
       inMemoryTimerInternalsFactory.removeTimer(curr);
       inMemoryTimerInternalsFactory.removeTimerForKeyIfEmpty(curr.left());
+
       inMemoryStateInternalsFactory.removeNamespaceForKey(
         curr.left(), curr.right().getNamespace(), curr.right().getTimestamp());
     }
@@ -300,37 +295,6 @@ public final class GBKStreamingTransform<K, InputT, OutputT>
     return timerData;
   }
 
-  @Override
-  public Coder<GBKState<K>> getStateCoder() {
-    return new GBKStateCoder<>(keyCoder, windowCoder);
-  }
-
-  @Override
-  public GBKState<K> getState() {
-    return new GBKState<>(inMemoryTimerInternalsFactory,
-      inMemoryStateInternalsFactory,
-      prevOutputWatermark,
-      keyAndWatermarkHoldMap,
-      inputWatermark);
-  }
-
-  @Override
-  public void setState(final GBKState<K> state) {
-
-    if (inMemoryStateInternalsFactory == null) {
-      inMemoryStateInternalsFactory = state.getStateInternalsFactory();
-      inMemoryTimerInternalsFactory = state.getTimerInternalsFactory();
-    } else {
-      inMemoryStateInternalsFactory.setState(state.getStateInternalsFactory());
-      inMemoryTimerInternalsFactory.setState(state.getTimerInternalsFactory());
-    }
-
-    inputWatermark = state.getInputWatermark();
-    prevOutputWatermark = state.getPrevOutputWatermark();
-
-    keyAndWatermarkHoldMap.clear();
-    keyAndWatermarkHoldMap.putAll(state.getKeyAndWatermarkHoldMap());
-  }
 
   /** Wrapper class for {@link OutputCollector}. */
   public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
