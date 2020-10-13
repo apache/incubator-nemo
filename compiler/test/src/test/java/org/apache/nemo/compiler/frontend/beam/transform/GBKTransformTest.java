@@ -155,7 +155,6 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, Integer, Integer> combine_transform =
       new GBKTransform(
-        STRING_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES),
@@ -283,7 +282,6 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, Integer, Integer> combine_transform =
       new GBKTransform(
-        STRING_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness),
@@ -366,6 +364,7 @@ public class GBKTransformTest extends TestCase {
   //                                                             (3,"a")
   //                                                                  (2,"b")
   //                                                       => window2: {(1,"a"), (2,["a","b"]), (3,"a")}
+
   @Test
   @SuppressWarnings("unchecked")
   public void test_gbk() {
@@ -376,7 +375,6 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, String, Iterable<String>> doFnTransform =
       new GBKTransform(
-        STRING_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows),
@@ -561,7 +559,6 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, String, Iterable<String>> doFnTransform =
       new GBKTransform(
-        STRING_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(window).withTrigger(trigger)

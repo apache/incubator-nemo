@@ -30,14 +30,8 @@ import java.util.Map;
  * @param <K> key type
  */
 public final class InMemoryStateInternalsFactory<K> implements StateInternalsFactory<K> {
-
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternalsFactory.class.getName());
-
-  private Map<K, StateInternals> stateInternalMap;
-
-  public InMemoryStateInternalsFactory() {
-    this.stateInternalMap = new HashMap<>();
-  }
+  private final Map<K, StateInternals> stateInternalMap = new HashMap<>();
 
   @Override
   public String toString() {

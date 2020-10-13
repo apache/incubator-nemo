@@ -32,16 +32,11 @@ import java.util.*;
  */
 public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFactory<K> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
-
-  private Map<K, InMemoryTimerInternals> timerInternalsMap;
+  private Map<K, InMemoryTimerInternals> timerInternalsMap = new HashMap<>();
 
   @Override
   public String toString() {
     return "TimerInternalsMap: " + timerInternalsMap;
-  }
-
-  InMemoryTimerInternalsFactory() {
-    this.timerInternalsMap = new HashMap<>();
   }
 
   @Override
@@ -76,7 +71,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
   /** Check if {@param timerInternals} doesn't have any timers left. */
   public boolean isEmpty(final InMemoryTimerInternals timerInternal) {
-    for (TimeDomain domain : TimeDomain.values()) {
+    for (final TimeDomain domain : TimeDomain.values()) {
       if (timerInternal.getNextTimer(domain) != null) {
         return false;
       }

@@ -42,9 +42,9 @@ import java.util.*;
 /**
  * This transform performs GroupByKey or CombinePerKey operation when input data is unbounded or is not in
  * global window.
- * @param <K> key type.
- * @param <InputT> input type.
- * @param <OutputT> output type.
+ * @param <K> key type
+ * @param <InputT> input type
+ * @param <OutputT> output type
  */
 public final class GBKTransform<K, InputT, OutputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
@@ -52,14 +52,13 @@ public final class GBKTransform<K, InputT, OutputT>
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
+  private final Map<K, Watermark> keyOutputWatermarkMap;
   private Watermark prevOutputWatermark;
-  private Map<K, Watermark> keyOutputWatermarkMap;
   private Watermark inputWatermark;
-  private transient OutputCollector originOc;
   private boolean dataReceived = false;
+  private transient OutputCollector originOc;
 
-  public GBKTransform(final Coder<K> keyCoder,
-                      final Map<TupleTag<?>, Coder<?>> outputCoders,
+  public GBKTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                       final TupleTag<KV<K, OutputT>> mainOutputTag,
                       final WindowingStrategy<?, ?> windowingStrategy,
                       final PipelineOptions options,
@@ -93,7 +92,7 @@ public final class GBKTransform<K, InputT, OutputT>
     if (inMemoryStateInternalsFactory == null) {
       this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
     } else {
-      LOG.info("InMemoryStateInternalFactroy is already set");
+      LOG.info("InMemoryStateInternalFactory is already set");
     }
 
     if (inMemoryTimerInternalsFactory == null) {
@@ -139,7 +138,7 @@ public final class GBKTransform<K, InputT, OutputT>
         checkAndFinishBundle();
       } catch (final Exception e) {
         e.printStackTrace();
-        throw new RuntimeException("exception trigggered element " + element.toString());
+        throw new RuntimeException("Exception triggered element " + element.toString());
       }
   }
 
@@ -198,7 +197,9 @@ public final class GBKTransform<K, InputT, OutputT>
   @Override
   public void onWatermark(final Watermark watermark) throws RuntimeException {
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
-      throw new RuntimeException("Received watermark is before inputWatermark in GBKTransform");
+      throw new RuntimeException(
+        "Received watermark " + watermark.getTimestamp()
+          + " is before inputWatermark " + inputWatermark.getTimestamp() + " in GBKTransform.");
     }
     checkAndInvokeBundle();
     inputWatermark = watermark;
@@ -233,8 +234,7 @@ public final class GBKTransform<K, InputT, OutputT>
   private void triggerTimers(final Instant processingTime,
                             final Instant synchronizedTime,
                             final Watermark watermark) {
-
-    Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
+    final Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
       inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
     while (iter.hasNext()) {
       final Map.Entry<K, InMemoryTimerInternals> curr = iter.next();
@@ -246,12 +246,13 @@ public final class GBKTransform<K, InputT, OutputT>
         e.printStackTrace();
         throw new RuntimeException();
       }
-      for (TimeDomain domain : TimeDomain.values()) {
+      for (final TimeDomain domain : TimeDomain.values()) {
         processTrigger(curr.getKey(), curr.getValue(), domain);
       }
       // Remove timerInternals and stateInternals that are no longer needed.
       if (inMemoryTimerInternalsFactory.isEmpty(curr.getValue())) {
         iter.remove();
+        inMemoryStateInternalsFactory.getStateInternalMap().remove(curr.getKey());
       }
     }
   }
@@ -280,7 +281,7 @@ public final class GBKTransform<K, InputT, OutputT>
       this.oc = oc;
     }
 
-    /** Emit output. If an output value is emitted on-time, add output timestamp to watermark hold map. */
+    /** Emit output. If {@param output} is emitted on-time, save its timestamp in the output watermark map. */
     @Override
     public void emit(final WindowedValue<KV<K, OutputT>> output) {
       // The watermark advances only in ON_TIME
