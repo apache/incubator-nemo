@@ -28,7 +28,6 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -52,9 +51,9 @@ public final class GBKTransform<K, InputT, OutputT>
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
-  private final Map<K, Watermark> keyOutputWatermarkMap;
-  private Watermark prevOutputWatermark;
-  private Watermark inputWatermark;
+  private final Map<K, Watermark> keyOutputWatermarkMap = new HashMap<>();
+  private Watermark prevOutputWatermark = new Watermark(Long.MIN_VALUE);
+  private Watermark inputWatermark = new Watermark(Long.MIN_VALUE);
   private boolean dataReceived = false;
   private transient OutputCollector originOc;
 
@@ -75,11 +74,8 @@ public final class GBKTransform<K, InputT, OutputT>
       options,
       displayData,
       doFnSchemaInformation,
-      Collections.<String, PCollectionView<?>>emptyMap()); /* does not have side inputs */
+      Collections.emptyMap()); /* does not have side inputs */
     this.reduceFn = reduceFn;
-    this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
-    this.inputWatermark = new Watermark(Long.MIN_VALUE);
-    this.keyOutputWatermarkMap = new HashMap<>();
   }
 
   /**
@@ -122,7 +118,6 @@ public final class GBKTransform<K, InputT, OutputT>
 
   /**
    * Every time a single element arrives, this method invokes runner to process a single element.
-   * The collected data are emitted at {@link GBKTransform#onWatermark(Watermark)}
    * @param element input data element.
    */
   @Override
@@ -143,16 +138,90 @@ public final class GBKTransform<K, InputT, OutputT>
   }
 
   /**
-   * Process the collected data, trigger timers, and emit watermark to downstream operators.
+   * Trigger timers that need to be fired at {@param watermark} and emit output watermark.
+   * @param watermark watermark
+   */
+  @Override
+  public void onWatermark(final Watermark watermark) throws RuntimeException {
+    if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
+      throw new RuntimeException(
+        "Received watermark " + watermark.getTimestamp()
+          + " is before the previous inputWatermark " + inputWatermark.getTimestamp() + " in GBKTransform.");
+    }
+    checkAndInvokeBundle();
+    inputWatermark = watermark;
+    try {
+      // Trigger timers
+      triggerTimers(Instant.now(), Instant.now(), inputWatermark);
+      // Emit output watermark
+      emitOutputWatermark();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+    checkAndFinishBundle();
+  }
+
+  /**
+   * This advances the input watermark and processing time to the timestamp max value
+   * in order to emit all data.
+   */
+  @Override
+  protected void beforeClose() {
+    // Finish any pending windows by advancing the input watermark to timestamp max value.
+    inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
+    // Trigger all the remaining timers that have not been fired yet.
+    triggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
+    // Emit output watermark
+    emitOutputWatermark();
+  }
+
+  /**
+   * Trigger eligible timers. When triggering, it emits the output to downstream operators.
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
-   * @param triggerWatermark watermark
+   * @param watermark watermark
    */
-  private void processElementsAndTriggerTimers(final Instant processingTime,
-                                               final Instant synchronizedTime,
-                                               final Watermark triggerWatermark) {
-    triggerTimers(processingTime, synchronizedTime, triggerWatermark);
-    emitOutputWatermark();
+  private void triggerTimers(final Instant processingTime,
+                            final Instant synchronizedTime,
+                            final Watermark watermark) {
+    final Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
+      inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
+    while (iter.hasNext()) {
+      final Map.Entry<K, InMemoryTimerInternals> curr = iter.next();
+      try {
+        curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
+        curr.getValue().advanceProcessingTime(processingTime);
+        curr.getValue().advanceSynchronizedProcessingTime(synchronizedTime);
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException();
+      }
+      for (final TimeDomain domain : TimeDomain.values()) {
+        processTrigger(curr.getKey(), curr.getValue(), domain);
+      }
+      // Remove timerInternals and stateInternals that are no longer needed.
+      if (inMemoryTimerInternalsFactory.isEmpty(curr.getValue())) {
+        iter.remove();
+        inMemoryStateInternalsFactory.getStateInternalMap().remove(curr.getKey());
+      }
+    }
+  }
+
+  /**
+   * Fetch eligible timers in {@param timeDomain} and trigger them.
+   * @param key key
+   * @param timerInternal timerInternal to be accessed
+   * @param timeDomain time domain
+   */
+  private void processTrigger(final K key, final InMemoryTimerInternals timerInternal, final TimeDomain timeDomain) {
+    TimerInternals.TimerData timer;
+    // Get all eligible timers and trigger them.
+    while ((timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, timeDomain)) != null) {
+      final KeyedWorkItem<K, InputT> timerWorkItem =
+        KeyedWorkItems.timersWorkItem(key, Collections.singletonList(timer));
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+    }
   }
 
   /**
@@ -187,89 +256,6 @@ public final class GBKTransform<K, InputT, OutputT>
       outputWatermarkCandidate = new Watermark(
         Math.max(prevOutputWatermark.getTimestamp(),
           Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
-    }
-  }
-
-  /**
-   * Trigger timers that need to be fired at {@param watermark}.
-   * @param watermark watermark
-   */
-  @Override
-  public void onWatermark(final Watermark watermark) throws RuntimeException {
-    if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
-      throw new RuntimeException(
-        "Received watermark " + watermark.getTimestamp()
-          + " is before inputWatermark " + inputWatermark.getTimestamp() + " in GBKTransform.");
-    }
-    checkAndInvokeBundle();
-    inputWatermark = watermark;
-    // Triggering timers
-    try {
-      processElementsAndTriggerTimers(Instant.now(), Instant.now(), inputWatermark);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-    checkAndFinishBundle();
-  }
-
-  /**
-   * This advances the input watermark and processing time to the timestamp max value
-   * in order to emit all data.
-   */
-  @Override
-  protected void beforeClose() {
-    // Finish any pending windows by advancing the input watermark to infinity.
-    inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
-    processElementsAndTriggerTimers(
-      BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
-  }
-
-  /**
-   * Trigger timers. When triggering, it emits the windowed data to downstream operators.
-   * @param processingTime processing time
-   * @param synchronizedTime synchronized time
-   * @param watermark watermark
-   */
-  private void triggerTimers(final Instant processingTime,
-                            final Instant synchronizedTime,
-                            final Watermark watermark) {
-    final Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
-      inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
-    while (iter.hasNext()) {
-      final Map.Entry<K, InMemoryTimerInternals> curr = iter.next();
-      try {
-        curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
-        curr.getValue().advanceProcessingTime(processingTime);
-        curr.getValue().advanceSynchronizedProcessingTime(synchronizedTime);
-      } catch (final Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException();
-      }
-      for (final TimeDomain domain : TimeDomain.values()) {
-        processTrigger(curr.getKey(), curr.getValue(), domain);
-      }
-      // Remove timerInternals and stateInternals that are no longer needed.
-      if (inMemoryTimerInternalsFactory.isEmpty(curr.getValue())) {
-        iter.remove();
-        inMemoryStateInternalsFactory.getStateInternalMap().remove(curr.getKey());
-      }
-    }
-  }
-
-  /**
-   * Fetch eligible timers in {@param timedomain} and trigger them.
-   * @param key key
-   * @param timerInternal timerInternal to be accessed
-   * @param domain time domain
-   */
-  private void processTrigger(final K key, final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
-    TimerInternals.TimerData timer;
-    // Get eligible timers and trigger them.
-    while ((timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain)) != null) {
-      final KeyedWorkItem<K, InputT> timerWorkItem =
-        KeyedWorkItems.timersWorkItem(key, Collections.singletonList(timer));
-      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
     }
   }
 

@@ -35,7 +35,7 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
 
   @Override
   public String toString() {
-    return "StateInternalMap" + stateInternalMap;
+    return "StateInternalMap: " + stateInternalMap;
   }
 
   @Override
