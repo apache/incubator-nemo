@@ -19,13 +19,10 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.*;
-import org.apache.beam.sdk.state.State;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -37,78 +34,24 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternalsFactory.class.getName());
 
   private Map<K, StateInternals> stateInternalMap;
-  private Map<K, NemoStateBackend> stateBackendMap;
 
   public InMemoryStateInternalsFactory() {
     this.stateInternalMap = new HashMap<>();
-    this.stateBackendMap = new HashMap<>();
-  }
-
-  public InMemoryStateInternalsFactory(
-    final Map<K, StateInternals> stateInternalMap,
-    final Map<K, NemoStateBackend> stateBackendMap) {
-    this.stateInternalMap = stateInternalMap;
-    this.stateBackendMap = stateBackendMap;
-  }
-
-  public Map<K, StateInternals> getStateInternalMap() {
-    return stateInternalMap;
-  }
-
-  public Map<K, NemoStateBackend> getStateBackendMap() {
-    return stateBackendMap;
-  }
-
-  public void setState(final InMemoryStateInternalsFactory<K> stateFactorty) {
-    this.stateInternalMap = stateFactorty.stateInternalMap;
-    this.stateBackendMap = stateFactorty.stateBackendMap;
-  }
-
-  public void removeNamespaceForKey(final K key,
-                                    final StateNamespace namespace,
-                                    final Instant timestamp) {
-    stateBackendMap.get(key).getMap().remove(namespace);
-    stateBackendMap.get(key).getMap().remove(StateNamespaces.global());
-
-    final Iterator<Map.Entry<StateNamespace, Map<StateTag, State>>> iterator =
-      stateBackendMap.get(key).getMap().entrySet().iterator();
-
-    while (iterator.hasNext()) {
-      final Map.Entry<StateNamespace, Map<StateTag, State>> elem = iterator.next();
-      final StateNamespace stateNamespace = elem.getKey();
-
-      if (stateNamespace instanceof StateNamespaces.WindowNamespace) {
-        final StateNamespaces.WindowNamespace windowNamespace = (StateNamespaces.WindowNamespace) stateNamespace;
-        if (windowNamespace.getWindow().maxTimestamp().isBefore(timestamp)
-          || windowNamespace.getWindow().maxTimestamp().isEqual(timestamp)) {
-          iterator.remove();
-        }
-      }
-    }
-    if (stateBackendMap.get(key).getMap().isEmpty()) {
-      stateBackendMap.remove(key);
-      stateInternalMap.remove(key);
-    }
-  }
-
-  public int getNumKeys() {
-    return stateInternalMap.size();
   }
 
   @Override
   public String toString() {
-    return "StateBackend: " + stateBackendMap;
+    return "StateInternalMap" + stateInternalMap;
   }
 
   @Override
   public StateInternals stateInternalsForKey(final K key) {
-    stateBackendMap.putIfAbsent(key, new NemoStateBackend());
-
-    final NemoStateBackend stateBackend = stateBackendMap.get(key);
-
     stateInternalMap.putIfAbsent(key,
-      InMemoryStateInternals.forKey(key, stateBackend));
-
+      InMemoryStateInternals.forKey(key));
     return stateInternalMap.get(key);
+  }
+
+  public Map<K, StateInternals> getStateInternalMap() {
+    return stateInternalMap;
   }
 }

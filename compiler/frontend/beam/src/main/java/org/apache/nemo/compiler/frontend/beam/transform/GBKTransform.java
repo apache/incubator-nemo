@@ -192,7 +192,7 @@ public final class GBKTransform<K, InputT, OutputT>
   }
 
   /**
-   * Trigger timers that need to be fired.
+   * Trigger timers that need to be fired at {@param watermark}.
    * @param watermark watermark
    */
   @Override
@@ -209,7 +209,6 @@ public final class GBKTransform<K, InputT, OutputT>
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-    // Emit watermark to downstream operators
     checkAndFinishBundle();
   }
 
@@ -235,6 +234,7 @@ public final class GBKTransform<K, InputT, OutputT>
                             final Instant synchronizedTime,
                             final Watermark watermark) {
 
+    ArrayList<K> removed = new ArrayList<>();
     for (Map.Entry<K, InMemoryTimerInternals> curr : inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet()) {
       try {
         curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
@@ -247,25 +247,30 @@ public final class GBKTransform<K, InputT, OutputT>
       for (TimeDomain domain : TimeDomain.values()) {
         processTrigger(curr.getKey(), curr.getValue(), domain);
       }
-      // inMemoryTimerInternalsFactory.isEmpty(curr.getValue());
+      if (inMemoryTimerInternalsFactory.isEmpty(curr.getValue())) {
+        removed.add(curr.getKey());
+      }
+    }
+    // Remove timerInternals and stateInternals that are no longer needed.
+    for (K key : removed) {
+      inMemoryTimerInternalsFactory.getTimerInternalsMap().remove(key);
+      inMemoryStateInternalsFactory.getStateInternalMap().remove(key);
     }
   }
 
   /**
-   * Fetch eligible timers in {@param timedomain} and process them.
+   * Fetch eligible timers in {@param timedomain} and trigger them.
    * @param key key
    * @param timerInternal timerInternal to be accessed
-   * @param domain timedomain
+   * @param domain time domain
    */
   private void processTrigger(final K key, final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
-    TimerInternals.TimerData timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain);
-    while (timer != null) {
-      // Trigger timers and emit windowed data
+    TimerInternals.TimerData timer;
+    // Get eligible timers and trigger them.
+    while ((timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain)) != null) {
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(key, Collections.singletonList(timer));
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
-      inMemoryStateInternalsFactory.removeNamespaceForKey(key, timer.getNamespace(), timer.getTimestamp());
-      timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain);
     }
   }
 

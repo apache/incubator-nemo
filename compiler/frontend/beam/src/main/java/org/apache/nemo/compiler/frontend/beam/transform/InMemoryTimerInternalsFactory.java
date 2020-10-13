@@ -75,7 +75,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
   }
 
   /** Check if {@param timerInternals} doesn't have any timers left. */
-  public boolean isEmpty(InMemoryTimerInternals timerInternal) {
+  public boolean isEmpty(final InMemoryTimerInternals timerInternal) {
     for (TimeDomain domain : TimeDomain.values()) {
       if (timerInternal.getNextTimer(domain) != null) {
         return false;
