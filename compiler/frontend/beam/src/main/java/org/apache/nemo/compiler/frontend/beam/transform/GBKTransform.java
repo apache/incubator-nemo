@@ -235,7 +235,7 @@ public final class GBKTransform<K, InputT, OutputT>
                             final Instant synchronizedTime,
                             final Watermark watermark) {
 
-    for (Map.Entry<K, InMemoryTimerInternals> curr : inMemoryTimerInternalsFactory.timerInternalsMap.entrySet()) {
+    for (Map.Entry<K, InMemoryTimerInternals> curr : inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet()) {
       try {
         curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
         curr.getValue().advanceProcessingTime(processingTime);
