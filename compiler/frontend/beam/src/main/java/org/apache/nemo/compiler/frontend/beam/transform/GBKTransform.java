@@ -258,14 +258,14 @@ public final class GBKTransform<K, InputT, OutputT>
    * @param domain timedomain
    */
   private void processTrigger(K key, InMemoryTimerInternals timerInternal, TimeDomain domain) {
-    TimerInternals.TimerData timer = inMemoryTimerInternalsFactory.getTimer(timerInternal, domain);
+    TimerInternals.TimerData timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain);
     while (timer != null) {
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(key, Collections.singletonList(timer));
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
       inMemoryStateInternalsFactory.removeNamespaceForKey(key, timer.getNamespace(), timer.getTimestamp());
-      timer = inMemoryTimerInternalsFactory.getTimer(timerInternal, domain);
+      timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain);
     }
   }
 

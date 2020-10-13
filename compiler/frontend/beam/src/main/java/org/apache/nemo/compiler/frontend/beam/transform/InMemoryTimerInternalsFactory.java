@@ -55,7 +55,8 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
-  public TimerInternals.TimerData getTimer(final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
+  /** Remove the next elligible timer in {@param domain}*/
+  public TimerInternals.TimerData pollTimer(final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
     switch (domain) {
       case EVENT_TIME :
         return timerInternal.removeNextEventTimer();
