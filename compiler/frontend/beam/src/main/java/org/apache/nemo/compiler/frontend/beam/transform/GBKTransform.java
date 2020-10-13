@@ -59,13 +59,13 @@ public final class GBKTransform<K, InputT, OutputT>
   private boolean dataReceived = false;
 
   public GBKTransform(final Coder<K> keyCoder,
-                           final Map<TupleTag<?>, Coder<?>> outputCoders,
-                           final TupleTag<KV<K, OutputT>> mainOutputTag,
-                           final WindowingStrategy<?, ?> windowingStrategy,
-                           final PipelineOptions options,
-                           final SystemReduceFn reduceFn,
-                           final DoFnSchemaInformation doFnSchemaInformation,
-                           final DisplayData displayData) {
+                      final Map<TupleTag<?>, Coder<?>> outputCoders,
+                      final TupleTag<KV<K, OutputT>> mainOutputTag,
+                      final WindowingStrategy<?, ?> windowingStrategy,
+                      final PipelineOptions options,
+                      final SystemReduceFn reduceFn,
+                      final DoFnSchemaInformation doFnSchemaInformation,
+                      final DisplayData displayData) {
     super(null,
       null,
       outputCoders,
@@ -234,8 +234,10 @@ public final class GBKTransform<K, InputT, OutputT>
                             final Instant synchronizedTime,
                             final Watermark watermark) {
 
-    ArrayList<K> removed = new ArrayList<>();
-    for (Map.Entry<K, InMemoryTimerInternals> curr : inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet()) {
+    Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
+      inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
+    while (iter.hasNext()) {
+      final Map.Entry<K, InMemoryTimerInternals> curr = iter.next();
       try {
         curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
         curr.getValue().advanceProcessingTime(processingTime);
@@ -247,14 +249,10 @@ public final class GBKTransform<K, InputT, OutputT>
       for (TimeDomain domain : TimeDomain.values()) {
         processTrigger(curr.getKey(), curr.getValue(), domain);
       }
+      // Remove timerInternals and stateInternals that are no longer needed.
       if (inMemoryTimerInternalsFactory.isEmpty(curr.getValue())) {
-        removed.add(curr.getKey());
+        iter.remove();
       }
-    }
-    // Remove timerInternals and stateInternals that are no longer needed.
-    for (K key : removed) {
-      inMemoryTimerInternalsFactory.getTimerInternalsMap().remove(key);
-      inMemoryStateInternalsFactory.getStateInternalMap().remove(key);
     }
   }
 
