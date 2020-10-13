@@ -151,7 +151,7 @@ public final class GBKTransform<K, InputT, OutputT>
    */
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime,
-                                               final Watermark triggerWatermark){
+                                               final Watermark triggerWatermark) {
     triggerTimers(processingTime, synchronizedTime, triggerWatermark);
     emitOutputWatermark();
   }
@@ -240,8 +240,7 @@ public final class GBKTransform<K, InputT, OutputT>
         curr.getValue().advanceInputWatermark(new Instant(watermark.getTimestamp()));
         curr.getValue().advanceProcessingTime(processingTime);
         curr.getValue().advanceSynchronizedProcessingTime(synchronizedTime);
-      }
-      catch (final Exception e) {
+      } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException();
       }
@@ -257,7 +256,7 @@ public final class GBKTransform<K, InputT, OutputT>
    * @param timerInternal timerInternal to be accessed
    * @param domain timedomain
    */
-  private void processTrigger(K key, InMemoryTimerInternals timerInternal, TimeDomain domain) {
+  private void processTrigger(final K key, final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
     TimerInternals.TimerData timer = inMemoryTimerInternalsFactory.pollTimer(timerInternal, domain);
     while (timer != null) {
       // Trigger timers and emit windowed data

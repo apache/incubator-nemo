@@ -33,7 +33,7 @@ import java.util.*;
 public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFactory<K> {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
 
-  public Map<K, InMemoryTimerInternals> timerInternalsMap;
+  private Map<K, InMemoryTimerInternals> timerInternalsMap;
 
   @Override
   public String toString() {
@@ -55,7 +55,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
-  /** Remove the next elligible timer in {@param domain}*/
+  /** Remove the next elligible timer in {@param domain}. */
   public TimerInternals.TimerData pollTimer(final InMemoryTimerInternals timerInternal, final TimeDomain domain) {
     switch (domain) {
       case EVENT_TIME :
@@ -67,5 +67,10 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       default :
         return null;
     }
+  }
+
+  /** Accessor for timerInternalsMap. */
+  public Map<K, InMemoryTimerInternals> getTimerInternalsMap() {
+    return timerInternalsMap;
   }
 }
