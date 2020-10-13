@@ -247,6 +247,7 @@ public final class GBKTransform<K, InputT, OutputT>
       for (TimeDomain domain : TimeDomain.values()) {
         processTrigger(curr.getKey(), curr.getValue(), domain);
       }
+      // inMemoryTimerInternalsFactory.isEmpty(curr.getValue());
     }
   }
 
