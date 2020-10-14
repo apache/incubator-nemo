@@ -557,10 +557,10 @@ final class PipelineTranslator {
     final TupleTag mainOutputTag = new TupleTag<>();
 
     if (isGlobalWindow(beamNode, ctx.getPipeline())) {
-      // GroupByKey Transform for batch data
+      // GroupByKey Transform when using a global windowing strategy.
       return new GroupByKeyTransform();
     } else {
-      // GroupByKey Transform for streaming data
+      // GroupByKey Transform when using a non-global windowing strategy.
       return new GBKTransform<>(
         getOutputCoders(pTransform),
         mainOutputTag,
