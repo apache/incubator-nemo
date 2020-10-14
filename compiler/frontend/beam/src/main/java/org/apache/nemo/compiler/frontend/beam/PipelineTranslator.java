@@ -379,13 +379,13 @@ final class PipelineTranslator {
     final IRVertex partialCombine;
     final IRVertex finalCombine;
 
-    // Choose between batch processing and stream processing based on window type and boundedness of data
+    // Choose a method based on window type and boundedness of data
     if (isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline())) {
-      // Batch processing, using CombinePartialTransform and CombineFinalTransform
+      // Using CombinePartialTransform and CombineFinalTransform
       partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
       finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
-      // Stream data processing, using GBKTransform
     } else {
+      // Using CombineFnWindowedTransform
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
       final CombineFnBase.GlobalCombineFn partialCombineFn = new PartialCombineFn(
         (Combine.CombineFn) combineFn, accumulatorCoder);
@@ -406,8 +406,8 @@ final class PipelineTranslator {
             KvCoder.of(inputCoder.getKeyCoder(),
               accumulatorCoder),
             null, mainInput.getWindowingStrategy()));
-      final GBKTransform partialCombineStreamTransform =
-        new GBKTransform(
+      final CombineFnWindowedTransform partialCombineTransform =
+        new CombineFnWindowedTransform(
           getOutputCoders(pTransform),
           new TupleTag<>(),
           mainInput.getWindowingStrategy(),
@@ -416,8 +416,8 @@ final class PipelineTranslator {
           DoFnSchemaInformation.create(),
           DisplayData.from(beamNode.getTransform()));
 
-      final GBKTransform finalCombineStreamTransform =
-        new GBKTransform(
+      final CombineFnWindowedTransform finalCombineTransform =
+        new CombineFnWindowedTransform(
           getOutputCoders(pTransform),
           new TupleTag<>(),
           mainInput.getWindowingStrategy(),
@@ -426,8 +426,8 @@ final class PipelineTranslator {
           DoFnSchemaInformation.create(),
           DisplayData.from(beamNode.getTransform()));
 
-      partialCombine = new OperatorVertex(partialCombineStreamTransform);
-      finalCombine = new OperatorVertex(finalCombineStreamTransform);
+      partialCombine = new OperatorVertex(partialCombineTransform);
+      finalCombine = new OperatorVertex(finalCombineTransform);
     }
 
     // (Step 1) Partial Combine

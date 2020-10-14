@@ -39,13 +39,12 @@ import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
 
 /**
- * This transform performs GroupByKey or CombinePerKey operation when input data is unbounded or is not in
- * global window.
+ * This transform executes GroupByKey transformation when input data is unbounded or is not in a global window.
  * @param <K> key type
  * @param <InputT> input type
  * @param <OutputT> output type
  */
-public final class GBKTransform<K, InputT, OutputT>
+public class GBKTransform<K, InputT, OutputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKTransform.class.getName());
   private final SystemReduceFn reduceFn;
