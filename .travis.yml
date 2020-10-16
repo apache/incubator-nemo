@@ -29,19 +29,18 @@ env:
   global:
     - HADOOP_HOME="/"
   jobs:
-    - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info -T1C"
+    - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
   - nvm install node  # for Web UI build
 install: true
 script:
-  # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis if it's not an external PR (It's to be supported later on)
+  # the following command line builds the project, runs the tests with coverage
   - travis_retry mvn clean $GOAL
   # Web UI Build
   - pushd webui && npm install && npm test && popd
 cache:
   directories:
   - '$HOME/.m2/repository'
-  - '$HOME/.sonar/cache'
   - 'webui/node_modules'  # for Web UI build
 
 notifications:
