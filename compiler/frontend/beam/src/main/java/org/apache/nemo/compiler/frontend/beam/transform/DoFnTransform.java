@@ -78,7 +78,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
-    LOG.error("input received : {}", data);
     // Do not need any push-back logic.
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
