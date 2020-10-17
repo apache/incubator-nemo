@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import junit.framework.TestCase;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.transforms.Combine;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Arrays;
@@ -76,6 +77,7 @@ public class CombineFnTest extends TestCase {
     }
   }
 
+  @Test
   public void testPartialCombineFn() {
     // Initialize partial combineFn.
     final PartialCombineFn<Integer, CountFn.Accum> partialCombineFn = new PartialCombineFn(combineFn, accumCoder);
@@ -118,6 +120,7 @@ public class CombineFnTest extends TestCase {
     }
   }
 
+  @Test
   public void testFinalCombineFn() {
     // Initialize final combine function.
     final FinalCombineFn<CountFn.Accum, Integer> finalCombineFn = new FinalCombineFn(combineFn, accumCoder);
