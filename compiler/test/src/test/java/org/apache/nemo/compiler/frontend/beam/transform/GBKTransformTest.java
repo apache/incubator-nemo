@@ -161,7 +161,8 @@ public class GBKTransformTest extends TestCase {
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.combining(STRING_CODER, applied_combine_fn),
         DoFnSchemaInformation.create(),
-        DisplayData.none());
+        DisplayData.none(),
+        false);
 
     // window1 : [-5000, 5000) in millisecond
     // window2 : [0, 10000)
@@ -288,7 +289,8 @@ public class GBKTransformTest extends TestCase {
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.combining(STRING_CODER, applied_combine_fn),
         DoFnSchemaInformation.create(),
-        DisplayData.none());
+        DisplayData.none(),
+        false);
 
     // window1 : [-5000, 5000) in millisecond
     // window2 : [0, 10000)
@@ -381,7 +383,8 @@ public class GBKTransformTest extends TestCase {
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(STRING_CODER),
         DoFnSchemaInformation.create(),
-        DisplayData.none());
+        DisplayData.none(),
+        false);
 
     final Instant ts1 = new Instant(1);
     final Instant ts2 = new Instant(100);
@@ -567,7 +570,8 @@ public class GBKTransformTest extends TestCase {
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(STRING_CODER),
         DoFnSchemaInformation.create(),
-        DisplayData.none());
+        DisplayData.none(),
+        false);
 
 
     final Transform.Context context = mock(Transform.Context.class);

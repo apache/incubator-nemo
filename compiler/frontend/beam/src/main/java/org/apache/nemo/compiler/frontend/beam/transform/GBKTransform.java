@@ -39,8 +39,8 @@ import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
 
 /**
- * This transform performs GroupByKey or CombinePerKey operation when input data is unbounded or is not in
- * global window.
+ * This transform executes GroupByKey transformation and CombinePerKey transformation when input data is unbounded
+ * or is not in a global window.
  * @param <K> key type
  * @param <InputT> input type
  * @param <OutputT> output type
@@ -56,6 +56,7 @@ public final class GBKTransform<K, InputT, OutputT>
   private Watermark inputWatermark = new Watermark(Long.MIN_VALUE);
   private boolean dataReceived = false;
   private transient OutputCollector originOc;
+  private final boolean isPartialCombining;
 
   public GBKTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                       final TupleTag<KV<K, OutputT>> mainOutputTag,
@@ -63,7 +64,8 @@ public final class GBKTransform<K, InputT, OutputT>
                       final PipelineOptions options,
                       final SystemReduceFn reduceFn,
                       final DoFnSchemaInformation doFnSchemaInformation,
-                      final DisplayData displayData) {
+                      final DisplayData displayData,
+                      final boolean isPartialCombining) {
     super(null,
       null,
       outputCoders,
@@ -76,6 +78,7 @@ public final class GBKTransform<K, InputT, OutputT>
       doFnSchemaInformation,
       Collections.emptyMap()); /* does not have side inputs */
     this.reduceFn = reduceFn;
+    this.isPartialCombining = isPartialCombining;
   }
 
   /**
@@ -122,19 +125,19 @@ public final class GBKTransform<K, InputT, OutputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-      dataReceived = true;
-      try {
-        checkAndInvokeBundle();
-        final KV<K, InputT> kv = element.getValue();
-        final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.elementsWorkItem(kv.getKey(),
-            Collections.singletonList(element.withValue(kv.getValue())));
-        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-        checkAndFinishBundle();
-      } catch (final Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException("Exception triggered element " + element.toString());
-      }
+    dataReceived = true;
+    try {
+      checkAndInvokeBundle();
+      final KV<K, InputT> kv = element.getValue();
+      final KeyedWorkItem<K, InputT> keyedWorkItem =
+        KeyedWorkItems.elementsWorkItem(kv.getKey(),
+          Collections.singletonList(element.withValue(kv.getValue())));
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+      checkAndFinishBundle();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception triggered element " + element.toString());
+    }
   }
 
   /**
@@ -183,8 +186,8 @@ public final class GBKTransform<K, InputT, OutputT>
    * @param watermark watermark
    */
   private void triggerTimers(final Instant processingTime,
-                            final Instant synchronizedTime,
-                            final Watermark watermark) {
+                             final Instant synchronizedTime,
+                             final Watermark watermark) {
     final Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
       inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
     while (iter.hasNext()) {
@@ -259,6 +262,12 @@ public final class GBKTransform<K, InputT, OutputT>
     }
   }
 
+  /** Accessor for isPartialCombining. */
+  public boolean getIsPartialCombining() {
+    return isPartialCombining;
+  }
+
+
   /** Wrapper class for {@link OutputCollector}. */
   public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
     private final OutputCollector<WindowedValue<KV<K, OutputT>>> oc;
@@ -278,9 +287,9 @@ public final class GBKTransform<K, InputT, OutputT>
           (InMemoryTimerInternals) inMemoryTimerInternalsFactory.timerInternalsForKey(key);
         // Add the output timestamp to the watermark hold of each key.
         // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999.
-          keyOutputWatermarkMap.put(key,
-            new Watermark(output.getTimestamp().getMillis() + 1));
-          timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
+        keyOutputWatermarkMap.put(key,
+          new Watermark(output.getTimestamp().getMillis() + 1));
+        timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
       oc.emit(output);
     }
