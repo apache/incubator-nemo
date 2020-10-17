@@ -58,7 +58,8 @@ public final class GBKTransform<K, InputT, OutputT>
   private transient OutputCollector originOc;
   private final boolean isPartialCombining;
 
-  public GBKTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
+  public GBKTransform(final Coder<KV<K, InputT>> inputCoder,
+                      final Map<TupleTag<?>, Coder<?>> outputCoders,
                       final TupleTag<KV<K, OutputT>> mainOutputTag,
                       final WindowingStrategy<?, ?> windowingStrategy,
                       final PipelineOptions options,
@@ -67,7 +68,7 @@ public final class GBKTransform<K, InputT, OutputT>
                       final DisplayData displayData,
                       final boolean isPartialCombining) {
     super(null,
-      null,
+      inputCoder,
       outputCoders,
       mainOutputTag,
       Collections.emptyList(),  /* no additional outputs */
@@ -278,7 +279,7 @@ public final class GBKTransform<K, InputT, OutputT>
 
     /** Emit output. If {@param output} is emitted on-time, save its timestamp in the output watermark map. */
     @Override
-    public void emit(final WindowedValue<KV<K, OutputT>> output) {
+    public final void emit(final WindowedValue<KV<K, OutputT>> output) {
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
         KV<K, OutputT> value = output.getValue();
@@ -296,13 +297,13 @@ public final class GBKTransform<K, InputT, OutputT>
 
     /** Emit watermark. */
     @Override
-    public void emitWatermark(final Watermark watermark) {
+    public final void emitWatermark(final Watermark watermark) {
       oc.emitWatermark(watermark);
     }
 
     /** Emit output value to {@param dstVertexId}. */
     @Override
-    public <T> void emit(final String dstVertexId, final T output) {
+    public final <T> void emit(final String dstVertexId, final T output) {
       oc.emit(dstVertexId, output);
     }
   }
