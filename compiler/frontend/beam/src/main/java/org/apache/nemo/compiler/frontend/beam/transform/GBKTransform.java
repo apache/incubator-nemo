@@ -39,7 +39,8 @@ import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
 
 /**
- * This transform executes GroupByKey transformation when input data is unbounded or is not in a global window.
+ * This transform executes GroupByKey transformation when input data is unbounded or is not in
+ * global window.
  * @param <K> key type
  * @param <InputT> input type
  * @param <OutputT> output type
@@ -121,19 +122,19 @@ public class GBKTransform<K, InputT, OutputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-      dataReceived = true;
-      try {
-        checkAndInvokeBundle();
-        final KV<K, InputT> kv = element.getValue();
-        final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.elementsWorkItem(kv.getKey(),
-            Collections.singletonList(element.withValue(kv.getValue())));
-        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-        checkAndFinishBundle();
-      } catch (final Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException("Exception triggered element " + element.toString());
-      }
+    dataReceived = true;
+    try {
+      checkAndInvokeBundle();
+      final KV<K, InputT> kv = element.getValue();
+      final KeyedWorkItem<K, InputT> keyedWorkItem =
+        KeyedWorkItems.elementsWorkItem(kv.getKey(),
+          Collections.singletonList(element.withValue(kv.getValue())));
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+      checkAndFinishBundle();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception triggered element " + element.toString());
+    }
   }
 
   /**
@@ -182,8 +183,8 @@ public class GBKTransform<K, InputT, OutputT>
    * @param watermark watermark
    */
   private void triggerTimers(final Instant processingTime,
-                            final Instant synchronizedTime,
-                            final Watermark watermark) {
+                             final Instant synchronizedTime,
+                             final Watermark watermark) {
     final Iterator<Map.Entry<K, InMemoryTimerInternals>> iter =
       inMemoryTimerInternalsFactory.getTimerInternalsMap().entrySet().iterator();
     while (iter.hasNext()) {
@@ -277,9 +278,9 @@ public class GBKTransform<K, InputT, OutputT>
           (InMemoryTimerInternals) inMemoryTimerInternalsFactory.timerInternalsForKey(key);
         // Add the output timestamp to the watermark hold of each key.
         // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999.
-          keyOutputWatermarkMap.put(key,
-            new Watermark(output.getTimestamp().getMillis() + 1));
-          timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
+        keyOutputWatermarkMap.put(key,
+          new Watermark(output.getTimestamp().getMillis() + 1));
+        timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
       oc.emit(output);
     }

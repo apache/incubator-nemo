@@ -153,8 +153,8 @@ public class GBKTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES)
       );
 
-    final GBKTransform<String, Integer, Integer> combine_transform =
-      new GBKTransform(
+    final CombineFnWindowedTransform<String, Integer, Integer> combine_transform =
+      new CombineFnWindowedTransform(
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES),
@@ -280,8 +280,8 @@ public class GBKTransformTest extends TestCase {
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness)
       );
 
-    final GBKTransform<String, Integer, Integer> combine_transform =
-      new GBKTransform(
+    final CombineFnWindowedTransform<String, Integer, Integer> combine_transform =
+      new CombineFnWindowedTransform(
         NULL_OUTPUT_CODERS,
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness),
