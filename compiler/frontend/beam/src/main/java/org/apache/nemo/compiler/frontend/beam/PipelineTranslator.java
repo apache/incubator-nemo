@@ -384,8 +384,8 @@ final class PipelineTranslator {
       // Batch processing, using CombinePartialTransform and CombineFinalTransform
       partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
       finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
-      // Stream data processing, using CombineFnWindowedTransform
     } else {
+      // Stream data processing, using GBKTransform
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
       final CombineFnBase.GlobalCombineFn partialCombineFn = new PartialCombineFn(
         (Combine.CombineFn) combineFn, accumulatorCoder);
@@ -406,25 +406,27 @@ final class PipelineTranslator {
             KvCoder.of(inputCoder.getKeyCoder(),
               accumulatorCoder),
             null, mainInput.getWindowingStrategy()));
-      final CombineFnWindowedTransform partialCombineStreamTransform =
-        new CombineFnWindowedTransform(
+      final GBKTransform partialCombineStreamTransform =
+        new GBKTransform(
           getOutputCoders(pTransform),
           new TupleTag<>(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           partialSystemReduceFn,
           DoFnSchemaInformation.create(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(beamNode.getTransform()),
+          true);
 
-      final CombineFnWindowedTransform finalCombineStreamTransform =
-        new CombineFnWindowedTransform(
+      final GBKTransform finalCombineStreamTransform =
+        new GBKTransform(
           getOutputCoders(pTransform),
           new TupleTag<>(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           finalSystemReduceFn,
           DoFnSchemaInformation.create(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(beamNode.getTransform()),
+          false);
 
       partialCombine = new OperatorVertex(partialCombineStreamTransform);
       finalCombine = new OperatorVertex(finalCombineStreamTransform);
@@ -568,7 +570,8 @@ final class PipelineTranslator {
         ctx.getPipelineOptions(),
         SystemReduceFn.buffering(mainInput.getCoder()),
         DoFnSchemaInformation.create(),
-        DisplayData.from(beamNode.getTransform()));
+        DisplayData.from(beamNode.getTransform()),
+        false);
     }
   }
 

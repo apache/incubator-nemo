@@ -39,13 +39,13 @@ import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import java.util.*;
 
 /**
- * This transform executes GroupByKey transformation when input data is unbounded or is not in
- * global window.
+ * This transform executes GroupByKey transformation and CombinePerKey transformation when input data is unbounded
+ * or is not in a global window.
  * @param <K> key type
  * @param <InputT> input type
  * @param <OutputT> output type
  */
-public class GBKTransform<K, InputT, OutputT>
+public final class GBKTransform<K, InputT, OutputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKTransform.class.getName());
   private final SystemReduceFn reduceFn;
@@ -56,6 +56,7 @@ public class GBKTransform<K, InputT, OutputT>
   private Watermark inputWatermark = new Watermark(Long.MIN_VALUE);
   private boolean dataReceived = false;
   private transient OutputCollector originOc;
+  private final boolean isPartialCombining;
 
   public GBKTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                       final TupleTag<KV<K, OutputT>> mainOutputTag,
@@ -63,7 +64,8 @@ public class GBKTransform<K, InputT, OutputT>
                       final PipelineOptions options,
                       final SystemReduceFn reduceFn,
                       final DoFnSchemaInformation doFnSchemaInformation,
-                      final DisplayData displayData) {
+                      final DisplayData displayData,
+                      final boolean isPartialCombining) {
     super(null,
       null,
       outputCoders,
@@ -76,6 +78,7 @@ public class GBKTransform<K, InputT, OutputT>
       doFnSchemaInformation,
       Collections.emptyMap()); /* does not have side inputs */
     this.reduceFn = reduceFn;
+    this.isPartialCombining = isPartialCombining;
   }
 
   /**
@@ -258,6 +261,12 @@ public class GBKTransform<K, InputT, OutputT>
           Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
     }
   }
+
+  /** Accessor for isPartialCombining. */
+  public boolean getIsPartialCombining() {
+    return isPartialCombining;
+  }
+
 
   /** Wrapper class for {@link OutputCollector}. */
   public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
