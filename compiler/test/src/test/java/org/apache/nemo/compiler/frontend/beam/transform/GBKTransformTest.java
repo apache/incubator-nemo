@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import com.google.common.collect.Iterables;
 import junit.framework.TestCase;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.sdk.coders.*;
@@ -41,15 +42,12 @@ import java.util.*;
 
 import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.*;
 import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.ACCUMULATING_FIRED_PANES;
-import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.DISCARDING_FIRED_PANES;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
 public class GBKTransformTest extends TestCase {
   private static final Logger LOG = LoggerFactory.getLogger(GBKTransformTest.class.getName());
   private final static Coder STRING_CODER = StringUtf8Coder.of();
   private final static Coder INTEGER_CODER = BigEndianIntegerCoder.of();
-  private final static Map<TupleTag<?>, Coder<?>> NULL_OUTPUT_CODERS = null;
 
   private void checkOutput(final KV<String, Integer> expected, final KV<String, Integer> result) {
     // check key
@@ -155,7 +153,8 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, Integer, Integer> combine_transform =
       new GBKTransform(
-        NULL_OUTPUT_CODERS,
+        KvCoder.of(STRING_CODER, INTEGER_CODER),
+        Collections.singletonMap(outputTag, KvCoder.of(STRING_CODER, INTEGER_CODER)),
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
@@ -283,7 +282,8 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, Integer, Integer> combine_transform =
       new GBKTransform(
-        NULL_OUTPUT_CODERS,
+        KvCoder.of(STRING_CODER, INTEGER_CODER),
+        Collections.singletonMap(outputTag, KvCoder.of(STRING_CODER, INTEGER_CODER)),
         outputTag,
         WindowingStrategy.of(slidingWindows).withMode(ACCUMULATING_FIRED_PANES).withAllowedLateness(lateness),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
@@ -377,7 +377,8 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, String, Iterable<String>> doFnTransform =
       new GBKTransform(
-        NULL_OUTPUT_CODERS,
+        KvCoder.of(STRING_CODER, STRING_CODER),
+        Collections.singletonMap(outputTag, KvCoder.of(STRING_CODER, IterableCoder.of(STRING_CODER))),
         outputTag,
         WindowingStrategy.of(slidingWindows),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
@@ -562,7 +563,8 @@ public class GBKTransformTest extends TestCase {
 
     final GBKTransform<String, String, Iterable<String>> doFnTransform =
       new GBKTransform(
-        NULL_OUTPUT_CODERS,
+        KvCoder.of(STRING_CODER, STRING_CODER),
+        Collections.singletonMap(outputTag, KvCoder.of(STRING_CODER, IterableCoder.of(STRING_CODER))),
         outputTag,
         WindowingStrategy.of(window).withTrigger(trigger)
           .withMode(ACCUMULATING_FIRED_PANES)

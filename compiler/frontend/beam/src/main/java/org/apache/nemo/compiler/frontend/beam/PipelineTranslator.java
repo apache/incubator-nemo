@@ -406,10 +406,11 @@ final class PipelineTranslator {
             KvCoder.of(inputCoder.getKeyCoder(),
               accumulatorCoder),
             null, mainInput.getWindowingStrategy()));
+      final TupleTag<?> partialMainOutputTag = new TupleTag<>();
       final GBKTransform partialCombineStreamTransform =
-        new GBKTransform(
-          getOutputCoders(pTransform),
-          new TupleTag<>(),
+        new GBKTransform(inputCoder,
+          Collections.singletonMap(partialMainOutputTag, KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder)),
+          partialMainOutputTag,
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           partialSystemReduceFn,
@@ -418,9 +419,9 @@ final class PipelineTranslator {
           true);
 
       final GBKTransform finalCombineStreamTransform =
-        new GBKTransform(
+        new GBKTransform(KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
           getOutputCoders(pTransform),
-          new TupleTag<>(),
+          Iterables.getOnlyElement(beamNode.getOutputs().keySet()),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           finalSystemReduceFn,
@@ -556,7 +557,7 @@ final class PipelineTranslator {
     final AppliedPTransform<?, ?, ?> pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-    final TupleTag mainOutputTag = new TupleTag<>();
+    final TupleTag mainOutputTag = Iterables.getOnlyElement(beamNode.getOutputs().keySet());
 
     if (isGlobalWindow(beamNode, ctx.getPipeline())) {
       // GroupByKey Transform when using a global windowing strategy.
@@ -564,6 +565,7 @@ final class PipelineTranslator {
     } else {
       // GroupByKey Transform when using a non-global windowing strategy.
       return new GBKTransform<>(
+        (KvCoder) mainInput.getCoder(),
         getOutputCoders(pTransform),
         mainOutputTag,
         mainInput.getWindowingStrategy(),
