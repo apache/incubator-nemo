@@ -123,6 +123,9 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     this.timeSinceLastExecution = System.currentTimeMillis();
+
+
+    LOG.error("task executor starting. Thread : {}, Task Id : {}", Thread.currentThread(), taskId);
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -331,6 +334,9 @@ public final class TaskExecutor {
    * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
+
+
+
     // Housekeeping stuff
     if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again");
@@ -436,6 +442,13 @@ public final class TaskExecutor {
    * @return false if IOException.
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
+    LOG.error("Task ID : {}, current Thread : {} , num of fetchers : {}", taskId, Thread.currentThread(), fetchers.size());
+    LOG.error("list of data data fetchers starting");
+    for (DataFetcher fetcher : fetchers) {
+      LOG.error("Task ID : {}, fetcher : {}", taskId, fetcher);
+    }
+    LOG.error("list of data data fetchers ending");
+
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
 

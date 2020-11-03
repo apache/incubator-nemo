@@ -45,7 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @ThreadSafe
 public final class PipeContainer {
   private static final Logger LOG = LoggerFactory.getLogger(PipeContainer.class.getName());
-  private final ConcurrentHashMap<Pair<String, Long>, CountBasedBlockingContainer<ByteOutputContext>> pipeMap;
+  public final ConcurrentHashMap<Pair<String, Long>, CountBasedBlockingContainer<ByteOutputContext>> pipeMap;
 
   PipeContainer() {
     this.pipeMap = new ConcurrentHashMap<>();

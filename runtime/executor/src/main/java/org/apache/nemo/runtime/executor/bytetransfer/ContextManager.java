@@ -18,15 +18,20 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext.ContextId;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,20 +43,22 @@ import java.util.function.Function;
  */
 final class ContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
 
-  private final PipeManagerWorker pipeManagerWorker;
-  private final BlockManagerWorker blockManagerWorker;
-  private final ByteTransfer byteTransfer;
-  private final ChannelGroup channelGroup;
-  private final String localExecutorId;
-  private final Channel channel;
-  private volatile String remoteExecutorId = null;
+  private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class.getName());
 
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
-  private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
+  public final PipeManagerWorker pipeManagerWorker;
+  public final BlockManagerWorker blockManagerWorker;
+  public final ByteTransfer byteTransfer;
+  public final ChannelGroup channelGroup;
+  public final String localExecutorId;
+  public final Channel channel;
+  public volatile String remoteExecutorId = null;
+
+  public final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
+  public final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
+  public final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  public final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  public final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
+  public final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
 
   /**
    * Creates context manager for this channel.
@@ -139,6 +146,29 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
       });
       if (isPipe) {
+        ControlMessage.PipeTransferContextDescriptor descriptor = null;
+        try {
+          descriptor =
+            ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(contextDescriptor);
+        }
+        catch (InvalidProtocolBufferException e) {
+          e.printStackTrace();
+        }
+
+        final long srcTaskIndex = descriptor.getSrcTaskIndex();
+        final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
+        final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
+        final int numPipeToWait = (int) descriptor.getNumPipeToWait();
+
+        LOG.error("{} : newOutputContext created, Context Manager : {}, srcTaskIndex : {}, runtimeEdgeId : {}, dstTaskIndex : {}, numPipeToWait : {}",
+          Thread.currentThread(),
+          this,
+          srcTaskIndex,
+          runtimeEdgeId,
+          dstTaskIndex,
+          numPipeToWait
+        );
+
         pipeManagerWorker.onOutputContext(context);
       } else {
         blockManagerWorker.onOutputContext(context);
@@ -201,6 +231,29 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @return new {@link ByteInputContext}
    */
   ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+    ControlMessage.PipeTransferContextDescriptor descriptor = null;
+    try {
+      descriptor =
+        ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(contextDescriptor);
+    }
+    catch (InvalidProtocolBufferException e) {
+       e.printStackTrace();
+    }
+
+    final long srcTaskIndex = descriptor.getSrcTaskIndex();
+    final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
+    final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
+    final int numPipeToWait = (int) descriptor.getNumPipeToWait();
+
+    LOG.error("{} : newInputContext created, Context Manager : {}, srcTaskIndex : {}, runtimeEdgeId : {}, dstTaskIndex : {}, numPipeToWait : {}",
+      Thread.currentThread(),
+      this,
+      srcTaskIndex,
+      runtimeEdgeId,
+      dstTaskIndex,
+      numPipeToWait
+      );
+
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
       ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       contextId -> new ByteInputContext(executorId, contextId, contextDescriptor, this),
@@ -216,6 +269,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @return new {@link ByteOutputContext}
    */
   ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+    LOG.error("newOutputContext called");
     return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
       ByteTransferDataDirection.INITIATOR_SENDS_DATA,
       contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),
@@ -231,7 +285,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     if (remoteExecutorId == null) {
       remoteExecutorId = executorId;
     } else if (!executorId.equals(remoteExecutorId)) {
-      throw new RuntimeException(String.format("Wrong ContextManager: (%s != %s)", executorId, remoteExecutorId));
+      throw new RuntimeException(String.format("x: (%s != %s)", executorId, remoteExecutorId));
     }
   }
 

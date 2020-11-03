@@ -22,6 +22,8 @@ import org.apache.beam.runners.core.DoFnRunners;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default output emitter that uses outputCollector.
@@ -39,6 +41,7 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
   DefaultOutputManager(final OutputCollector<WindowedValue<OutputT>> outputCollector,
                        final TupleTag<OutputT> mainOutputTag) {
     this.outputCollector = outputCollector;
+
     this.mainOutputTag = mainOutputTag;
   }
 

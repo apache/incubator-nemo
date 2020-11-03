@@ -24,6 +24,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -64,6 +66,8 @@ import java.util.List;
  * @see ByteTransportChannelInitializer
  */
 final class FrameDecoder extends ByteToMessageDecoder {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
 
   private static final int HEADER_LENGTH = 9;
 

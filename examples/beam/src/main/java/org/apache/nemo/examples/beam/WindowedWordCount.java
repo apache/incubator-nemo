@@ -116,14 +116,7 @@ public final class WindowedWordCount {
 
     getSource(p, args)
       .apply(windowFn)
-      .apply(Sum.longsPerKey())
-      .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
-        @Override
-        public String apply(final KV<String, Long> kv) {
-          return kv.getKey() + ": " + kv.getValue();
-        }
-      }))
-      .apply(new WriteOneFilePerWindow(outputFilePath, 1));
+      .apply(Sum.longsPerKey());
 
     p.run().waitUntilFinish();
   }

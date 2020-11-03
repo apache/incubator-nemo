@@ -58,9 +58,11 @@ public final class ByteTransfer {
    * @param isPipe            is pipe
    * @return a {@link ByteInputContext} from which the received data can be read
    */
+  // One that's been getting called.
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
                                                              final byte[] contextDescriptor,
                                                              final boolean isPipe) {
+    LOG.error("InputContext called");
     return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -72,9 +74,11 @@ public final class ByteTransfer {
    * @param isPipe            is pipe
    * @return a {@link ByteOutputContext} to which data can be written
    */
+  // This is not used currently.
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final byte[] contextDescriptor,
                                                                final boolean isPipe) {
+    LOG.error("OutputContext. CALLED");
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 

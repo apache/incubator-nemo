@@ -52,7 +52,7 @@ import java.util.concurrent.CompletableFuture;
 public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
-  private final String executorId;
+  public final String executorId;
   private final SerializerManager serializerManager;
 
   // To-Executor connections
@@ -94,7 +94,6 @@ public final class PipeManagerWorker {
               .build())
           .build());
 
-
     return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       // Get executor id
       if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
@@ -104,12 +103,49 @@ public final class PipeManagerWorker {
       if (!pipeLocInfo.hasExecutorId()) {
         throw new IllegalStateException();
       }
+
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
-      // Descriptor
+
+
+
+      // If the current executor and the target executor are equal, read from the local memory.
+      if (targetExecutorId.equals(executorId)) {
+        // return DataUtil.InputStreamIterator (with queue)
+        // Or find a way to return objects right away.
+        return readFromLocal()
+      }
+      else {
+        // If not, create byteTransferInputContext.
+        // Descriptor
+        final ControlMessage.PipeTransferContextDescriptor descriptor =
+          ControlMessage.PipeTransferContextDescriptor.newBuilder()
+          .setRuntimeEdgeId(runtimeEdgeId)
+          .setSrcTaskIndex(srcTaskIndex)
+          .setDstTaskIndex(dstTaskIndex)
+          .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
+          .build();
+
+        // Connect to the executor
+        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+          // until here, CompletableFuture<ByteInputContext>
+          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdgeId)));
+    }});
+  }
+
+  // Read data from the remote executor via netty channel
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> readFromRemote(
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture,
+    final int srcTaskIndex,
+    final RuntimeEdge runtimeEdge,
+    final int dstTaskIndex,
+    final String targetExecutorId) {
+
+    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       final ControlMessage.PipeTransferContextDescriptor descriptor =
         ControlMessage.PipeTransferContextDescriptor.newBuilder()
-          .setRuntimeEdgeId(runtimeEdgeId)
+          .setRuntimeEdgeId(runtimeEdge.getId())
           .setSrcTaskIndex(srcTaskIndex)
           .setDstTaskIndex(dstTaskIndex)
           .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
@@ -117,10 +153,22 @@ public final class PipeManagerWorker {
 
       // Connect to the executor
       return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+        // until here, CompletableFuture<ByteInputContext>
         .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-          serializerManager.getSerializer(runtimeEdgeId)));
+          serializerManager.getSerializer(runtimeEdge.getId())));
     });
   }
+
+  // Read data from the local memory
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> readFromLocal(final int srcTaskIndex,
+                                                                        final RuntimeEdge runtimeEdge,
+                                                                        final int dstTaskIndex) {
+
+  }
+
+
+
+
 
 
   public void notifyMaster(final String runtimeEdgeId, final long srcTaskIndex) {
@@ -147,13 +195,13 @@ public final class PipeManagerWorker {
    */
   public List<ByteOutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
                                                    final long srcTaskIndex) {
-
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), srcTaskIndex);
     pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
     // Then, do stuff
-    return pipeContainer.getPipes(pairKey); // blocking call
+    List<ByteOutputContext> result = pipeContainer.getPipes(pairKey);
+    return result; // blocking call
   }
 
   public Serializer getSerializer(final String runtimeEdgeId) {
@@ -166,6 +214,8 @@ public final class PipeManagerWorker {
    * @param outputContext output context
    * @throws InvalidProtocolBufferException protobuf exception
    */
+
+  // Used to create the outputcontext in a sender's executor
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());

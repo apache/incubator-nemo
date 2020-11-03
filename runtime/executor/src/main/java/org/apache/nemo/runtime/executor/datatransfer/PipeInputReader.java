@@ -28,6 +28,8 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +41,7 @@ import java.util.concurrent.CompletableFuture;
  * Represents the input data transfer to a task.
  */
 public final class PipeInputReader implements InputReader {
+  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final PipeManagerWorker pipeManagerWorker;
   private final MetricMessageSender metricMessageSender;
 
@@ -64,6 +67,7 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
+    LOG.error("pipe manager : {}", pipeManagerWorker);
     final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
     final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
@@ -73,10 +77,18 @@ public final class PipeInputReader implements InputReader {
     } else if (comValue.equals(CommunicationPatternProperty.Value.BROADCAST)
       || comValue.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       final int numSrcTasks = InputReader.getSourceParallelism(this);
+      LOG.error("numSrcTasks {} :", numSrcTasks);
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+
+      // for external tasks
       for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
         futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
       }
+
+      // for internal tasks
+
+
+
       return futures;
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));

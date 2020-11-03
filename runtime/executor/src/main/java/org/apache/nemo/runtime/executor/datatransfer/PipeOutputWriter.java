@@ -50,6 +50,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private boolean initialized;
   private Serializer serializer;
+  // needs to be fixed.
   private List<ByteOutputContext> pipes;
 
   /**
@@ -74,6 +75,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+    LOG.error("{} : writing Data, num of byteoutputContext : {}, {} , {}", Thread.currentThread(), pipes.size(), pipeManagerWorker.executorId, srcTaskId);
     pipeList.forEach(pipe -> {
       try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         pipeToWriteTo.writeElement(element, serializer);
@@ -132,6 +134,7 @@ public final class PipeOutputWriter implements OutputWriter {
     initialized = true;
 
     // Blocking call
+    // needs to be fixed. When the next task is in the same executor, we should store elements in a shared-memory, instead of using netty channel.
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
   }
