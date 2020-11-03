@@ -76,6 +76,7 @@ public final class TaskExecutor {
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
+  private long numOfProcessedEvents = 0;
   private long timeSinceLastExecution;
   private final MetricMessageSender metricMessageSender;
 
@@ -346,21 +347,16 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
-      SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
-      SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
-      SerializationUtils.serialize(encodedReadBytes));
+    sendMetrics();
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       finalizeVertex(vertexHarness);
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
-      SerializationUtils.serialize(System.currentTimeMillis() - executionStartTime));
     this.timeSinceLastExecution = System.currentTimeMillis();
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
+      SerializationUtils.serialize(timeSinceLastExecution - executionStartTime));
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
       LOG.info("{} completed", taskId);
@@ -372,6 +368,24 @@ public final class TaskExecutor {
     }
   }
 
+  /**
+   * Send data-processing metrics.
+   */
+  public void sendMetrics() {
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
+      SerializationUtils.serialize(boundedSourceReadTime));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
+      SerializationUtils.serialize(serializedReadBytes));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
+      SerializationUtils.serialize(encodedReadBytes));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "numOfProcessedElements",
+      SerializationUtils.serialize(numOfProcessedEvents));
+  }
+
+  /**
+   * Finalize the vertex.
+   * @param vertexHarness the vertex harness.
+   */
   private void finalizeVertex(final VertexHarness vertexHarness) {
     closeTransform(vertexHarness);
     finalizeOutputWriters(vertexHarness);
@@ -404,6 +418,7 @@ public final class TaskExecutor {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
     }
+    this.numOfProcessedEvents++;
   }
 
   /**
@@ -413,9 +428,7 @@ public final class TaskExecutor {
    * @param currentTime   current time
    * @param prevTime      prev time
    */
-  private boolean isPollingTime(final long pollingPeriod,
-                                final long currentTime,
-                                final long prevTime) {
+  private boolean isPollingTime(final long pollingPeriod, final long currentTime, final long prevTime) {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
@@ -474,7 +487,6 @@ public final class TaskExecutor {
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
-
 
       if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
         // We check pending data every polling interval
