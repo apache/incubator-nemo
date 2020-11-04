@@ -19,8 +19,19 @@
 
 package org.apache.nemo.examples.beam;
 
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
+
 /**
  * Application for EDGAR dataset.
+ * Format: ip, date, time, zone, doc_cik, access number, doc_name, code, size, idx, norefer, noagent, find, crawler.
  * Calculate the average document size of the requests.
  */
 public final class EDGARAvgDocSize {
@@ -36,6 +47,42 @@ public final class EDGARAvgDocSize {
    * @param args arguments.
    */
   public static void main(final String[] args) {
+    final String inputFilePath = args[0];
+    final String windowType = args[1];
+    final String outputFilePath = args[2];
 
+    final Window<Long> windowFn;
+    if (windowType.equals("fixed")) {
+      windowFn = Window.into(FixedWindows.of(Duration.standardSeconds(5)));
+    } else {
+      windowFn = Window.into(SlidingWindows.of(Duration.standardSeconds(10))
+        .every(Duration.standardSeconds(5)));
+    }
+
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
+    options.setJobName("EDGAR: Average document size per window");
+
+    final Pipeline p = Pipeline.create(options);
+
+    final PCollection<Long> source = GenericSourceSink.read(p, inputFilePath)
+      .apply(ParDo.of(new DoFn<String, Long>() {
+        @ProcessElement
+        public void processElement(@DoFn.Element final String elem,
+                                   final OutputReceiver<Long> out) {
+          final String[] splitt = elem.split(",");
+          out.outputWithTimestamp(Long.valueOf(splitt[8]), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+        }
+      }));
+    source.apply(windowFn)
+      .apply(Mean.globally())
+      .apply(MapElements.via(new SimpleFunction<Double, String>() {
+        @Override
+        public String apply(final Double d) {
+          return d.toString();
+        }
+      }))
+      .apply(new WriteOneFilePerWindow(outputFilePath, 1));
+
+    p.run().waitUntilFinish();
   }
 }
