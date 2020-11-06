@@ -49,7 +49,7 @@ import static io.netty.buffer.Unpooled.wrappedBuffer;
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public final class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
+public class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
@@ -70,7 +70,12 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
                     final byte[] contextDescriptor,
                     final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    this.channel = contextManager.getChannel();
+    if (contextManager == null) {
+      this.channel = null;
+    }
+    else {
+      this.channel = contextManager.getChannel();
+    }
   }
 
   /**

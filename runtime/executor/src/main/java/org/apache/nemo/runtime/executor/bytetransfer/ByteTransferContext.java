@@ -31,7 +31,7 @@ import java.util.Objects;
 /**
  * {@link ByteInputContext} and {@link ByteOutputContext}.
  */
-public abstract class ByteTransferContext {
+public abstract class ByteTransferContext extends Object{
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);
 

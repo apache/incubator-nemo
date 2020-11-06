@@ -155,6 +155,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private void fetchDataLazily() {
+    LOG.error("ParentTaskDataFetcher is used");
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {

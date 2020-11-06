@@ -146,29 +146,6 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
       });
       if (isPipe) {
-        ControlMessage.PipeTransferContextDescriptor descriptor = null;
-        try {
-          descriptor =
-            ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(contextDescriptor);
-        }
-        catch (InvalidProtocolBufferException e) {
-          e.printStackTrace();
-        }
-
-        final long srcTaskIndex = descriptor.getSrcTaskIndex();
-        final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
-        final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
-        final int numPipeToWait = (int) descriptor.getNumPipeToWait();
-
-        LOG.error("{} : newOutputContext created, Context Manager : {}, srcTaskIndex : {}, runtimeEdgeId : {}, dstTaskIndex : {}, numPipeToWait : {}",
-          Thread.currentThread(),
-          this,
-          srcTaskIndex,
-          runtimeEdgeId,
-          dstTaskIndex,
-          numPipeToWait
-        );
-
         pipeManagerWorker.onOutputContext(context);
       } else {
         blockManagerWorker.onOutputContext(context);
@@ -245,15 +222,6 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
     final int numPipeToWait = (int) descriptor.getNumPipeToWait();
 
-    LOG.error("{} : newInputContext created, Context Manager : {}, srcTaskIndex : {}, runtimeEdgeId : {}, dstTaskIndex : {}, numPipeToWait : {}",
-      Thread.currentThread(),
-      this,
-      srcTaskIndex,
-      runtimeEdgeId,
-      dstTaskIndex,
-      numPipeToWait
-      );
-
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
       ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       contextId -> new ByteInputContext(executorId, contextId, contextDescriptor, this),
@@ -269,7 +237,6 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @return new {@link ByteOutputContext}
    */
   ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
-    LOG.error("newOutputContext called");
     return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
       ByteTransferDataDirection.INITIATOR_SENDS_DATA,
       contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),

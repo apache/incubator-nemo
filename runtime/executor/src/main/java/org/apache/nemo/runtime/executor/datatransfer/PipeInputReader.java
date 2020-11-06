@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -26,6 +28,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext;
+import org.apache.nemo.runtime.executor.bytetransfer.LocalOutputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.slf4j.Logger;
@@ -36,6 +40,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Represents the input data transfer to a task.
@@ -65,9 +70,31 @@ public final class PipeInputReader implements InputReader {
     this.metricMessageSender = metricMessageSender;
   }
 
+  public List<CompletableFuture<Object>> read1() {
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    if (comValue.equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
+      return Collections.singletonList(pipeManagerWorker.isLocal(dstTaskIndex, runtimeEdge, dstTaskIndex));
+    } else if (comValue.equals(CommunicationPatternProperty.Value.BROADCAST)
+      || comValue.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
+      final List<CompletableFuture<Object>> futures = new ArrayList<>();
+      final int numSrcTasks = InputReader.getSourceParallelism(this);
+
+      for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+        futures.add(pipeManagerWorker.isLocal(srcTaskIdx, runtimeEdge, dstTaskIndex));
+      }
+      return futures;
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
+
+  // original
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
-    LOG.error("pipe manager : {}", pipeManagerWorker);
     final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
     final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
@@ -77,18 +104,10 @@ public final class PipeInputReader implements InputReader {
     } else if (comValue.equals(CommunicationPatternProperty.Value.BROADCAST)
       || comValue.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
       final int numSrcTasks = InputReader.getSourceParallelism(this);
-      LOG.error("numSrcTasks {} :", numSrcTasks);
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
-
-      // for external tasks
       for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
         futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
       }
-
-      // for internal tasks
-
-
-
       return futures;
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));

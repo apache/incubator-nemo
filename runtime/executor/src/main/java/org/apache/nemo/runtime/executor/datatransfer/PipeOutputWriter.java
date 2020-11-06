@@ -25,6 +25,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.LocalOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -76,11 +77,19 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
     LOG.error("{} : writing Data, num of byteoutputContext : {}, {} , {}", Thread.currentThread(), pipes.size(), pipeManagerWorker.executorId, srcTaskId);
+
     pipeList.forEach(pipe -> {
-      try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
-        pipeToWriteTo.writeElement(element, serializer);
-      } catch (IOException e) {
-        throw new RuntimeException(e); // For now we crash the executor on IOException
+      if (pipe instanceof LocalOutputContext) {
+        LOG.error("{} : writing to local : {}", Thread.currentThread(), element);
+        ((LocalOutputContext) pipe).write(element);
+      }
+      else {
+        try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
+          LOG.error("{} : writing to remote : {}", Thread.currentThread(), element);
+          pipeToWriteTo.writeElement(element, serializer);
+        } catch (IOException e) {
+          throw new RuntimeException(e); // For now we crash the executor on IOException
+        }
       }
     });
   }
@@ -123,6 +132,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
     pipes.forEach(pipe -> {
       try {
+        LOG.error("close called");
         pipe.close();
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -132,11 +142,11 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private void doInitialize() {
     initialized = true;
-
     // Blocking call
     // needs to be fixed. When the next task is in the same executor, we should store elements in a shared-memory, instead of using netty channel.
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    LOG.error("initializing to output data. Task ID : {}, size of outputcontexts : {}", srcTaskId, pipes.size());
   }
 
   private List<ByteOutputContext> getPipeToWrite(final Object element) {

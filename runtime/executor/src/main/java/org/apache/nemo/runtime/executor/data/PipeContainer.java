@@ -77,6 +77,22 @@ public final class PipeContainer {
         }
         return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {
+        LOG.error("InterruptedException occured. While waiting for getting outputcontexts.");
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    public T getValue(final int index) {
+      lock.lock();
+      try {
+        if (!isCountSatistified()) {
+          condition.await();
+        }
+        return indexToValue.get(index);
+      } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new RuntimeException(e);
       } finally {
@@ -147,6 +163,13 @@ public final class PipeContainer {
   List<ByteOutputContext> getPipes(final Pair<String, Long> pairKey) {
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
     return container.getValuesBlocking();
+  }
+
+
+  //Temporary
+  ByteOutputContext getPipe(final Pair<String, Long> pairKey, final int dstTaskIndex) {
+    final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
+    return container.getValue(dstTaskIndex);
   }
 }
 

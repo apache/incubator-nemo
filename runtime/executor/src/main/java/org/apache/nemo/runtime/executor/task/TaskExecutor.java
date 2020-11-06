@@ -282,7 +282,7 @@ public final class TaskExecutor {
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
-                  parentTaskReader,
+                  (PipeInputReader) parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
               dataFetcherList.add(
@@ -442,12 +442,6 @@ public final class TaskExecutor {
    * @return false if IOException.
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
-    LOG.error("Task ID : {}, current Thread : {} , num of fetchers : {}", taskId, Thread.currentThread(), fetchers.size());
-    LOG.error("list of data data fetchers starting");
-    for (DataFetcher fetcher : fetchers) {
-      LOG.error("Task ID : {}, fetcher : {}", taskId, fetcher);
-    }
-    LOG.error("list of data data fetchers ending");
 
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
