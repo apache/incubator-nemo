@@ -49,7 +49,7 @@ import static io.netty.buffer.Unpooled.wrappedBuffer;
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
+public class ByteOutputContext extends ByteTransferContext implements OutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
@@ -141,7 +141,7 @@ public class ByteOutputContext extends ByteTransferContext implements AutoClosea
    * <p>Public methods are thread safe,
    * although the execution order may not be linearized if they were called from different threads.</p>
    */
-  public final class ByteOutputStream implements AutoCloseable {
+  public final class ByteOutputStream implements TransferOutputStream {
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
@@ -270,5 +270,11 @@ public class ByteOutputContext extends ByteTransferContext implements AutoClosea
 
       newSubStream = false;
     }
+
+
+  }
+
+  public boolean isLocal() {
+    return false;
   }
 }

@@ -269,4 +269,8 @@ public final class ByteInputContext extends ByteTransferContext {
       }
     }
   }
+
+  public boolean isLocal() {
+    return false;
+  }
 }

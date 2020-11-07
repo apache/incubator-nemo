@@ -73,7 +73,6 @@ public final class PipeManagerWorker {
     this.toMaster = toMaster;
   }
 
-
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
                                                                final RuntimeEdge runtimeEdge,
                                                                final int dstTaskIndex) {
@@ -105,60 +104,37 @@ public final class PipeManagerWorker {
       }
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
-      // Descriptor
-      final ControlMessage.PipeTransferContextDescriptor descriptor =
-        ControlMessage.PipeTransferContextDescriptor.newBuilder()
-          .setRuntimeEdgeId(runtimeEdgeId)
-          .setSrcTaskIndex(srcTaskIndex)
-          .setDstTaskIndex(dstTaskIndex)
-          .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
-          .build();
+      if (targetExecutorId.equals(executorId)) {
 
-      // Connect to the executor
-      return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-          serializerManager.getSerializer(runtimeEdgeId)));
+        Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
+        pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
+
+        // initialize LocalOutputContext
+        LocalOutputContext context = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
+        pipeContainer.putPipe(pairKey, dstTaskIndex, context);
+        CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
+        result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
+        return result;
+      }
+      else {
+        final ControlMessage.PipeTransferContextDescriptor descriptor =
+          ControlMessage.PipeTransferContextDescriptor.newBuilder()
+            .setRuntimeEdgeId(runtimeEdge.getId())
+            .setSrcTaskIndex(srcTaskIndex)
+            .setDstTaskIndex(dstTaskIndex)
+            .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
+            .build();
+
+        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+          // until here, CompletableFuture<ByteInputContext>
+          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdge.getId())));
+      }
     });
   }
 
-
-  // Read data from the local memory
-  public LocalOutputContext readFromLocal(final int srcTaskIndex, final RuntimeEdge runtimeEdge, final int dstTaskIndex) {
-    // if not present, create new queue in pipecontainer and return it
-    Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
-
-    pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
-
-    // if absent, read from it
-    pipeContainer.putPipe(pairKey, dstTaskIndex, new LocalOutputContext());
-
-    // read from localMemContainer
-    return (LocalOutputContext) pipeContainer.getPipe(Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex)), dstTaskIndex);
-  }
-
-  // Read data from the remote executor via netty channel
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> readFromRemote(
-    final int srcTaskIndex,
-    final RuntimeEdge runtimeEdge,
-    final int dstTaskIndex,
-    final String targetExecutorId) {
-
-    final ControlMessage.PipeTransferContextDescriptor descriptor =
-      ControlMessage.PipeTransferContextDescriptor.newBuilder()
-        .setRuntimeEdgeId(runtimeEdge.getId())
-        .setSrcTaskIndex(srcTaskIndex)
-        .setDstTaskIndex(dstTaskIndex)
-        .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
-        .build();
-
-    return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-      // until here, CompletableFuture<ByteInputContext>
-      .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-      serializerManager.getSerializer(runtimeEdge.getId())));
-  }
-
   // Whether it is local or not
-  public CompletableFuture<Object> isLocal(final int srcTaskIndex,
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> isLocal(final int srcTaskIndex,
                                             final RuntimeEdge runtimeEdge,
                                             final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
@@ -189,18 +165,16 @@ public final class PipeManagerWorker {
 
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
-
       if (targetExecutorId.equals(executorId)) {
-        // read from the local memory
+
         Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
         pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
         // initialize LocalOutputContext
-        pipeContainer.putPipe(pairKey, dstTaskIndex, new LocalOutputContext());
-
-        CompletableFuture<Object> result = new CompletableFuture<>();
-        // read from localMemContainer
-        result.complete(pipeContainer.getPipe(Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex)), dstTaskIndex));
+        LocalOutputContext context = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
+        pipeContainer.putPipe(pairKey, dstTaskIndex, context);
+        CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
+        result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
         return result;
       }
       else {
@@ -242,14 +216,14 @@ public final class PipeManagerWorker {
    * @param srcTaskIndex source task index
    * @return output contexts.
    */
-  public List<ByteOutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
+  public List<OutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
                                                    final long srcTaskIndex) {
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), srcTaskIndex);
     pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
     // Then, do stuff
-    List<ByteOutputContext> result = pipeContainer.getPipes(pairKey);
+    List<OutputContext> result = pipeContainer.getPipes(pairKey);
     return result; // blocking call
   }
 

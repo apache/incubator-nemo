@@ -70,28 +70,6 @@ public final class PipeInputReader implements InputReader {
     this.metricMessageSender = metricMessageSender;
   }
 
-  public List<CompletableFuture<Object>> read1() {
-    final Optional<CommunicationPatternProperty.Value> comValueOptional =
-      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
-    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
-
-    if (comValue.equals(CommunicationPatternProperty.Value.ONE_TO_ONE)) {
-      return Collections.singletonList(pipeManagerWorker.isLocal(dstTaskIndex, runtimeEdge, dstTaskIndex));
-    } else if (comValue.equals(CommunicationPatternProperty.Value.BROADCAST)
-      || comValue.equals(CommunicationPatternProperty.Value.SHUFFLE)) {
-      final List<CompletableFuture<Object>> futures = new ArrayList<>();
-      final int numSrcTasks = InputReader.getSourceParallelism(this);
-
-      for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-        futures.add(pipeManagerWorker.isLocal(srcTaskIdx, runtimeEdge, dstTaskIndex));
-      }
-      return futures;
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-    }
-  }
-
-
   // original
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {

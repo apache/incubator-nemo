@@ -24,8 +24,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.LocalOutputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.OutputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.TransferOutputStream;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -52,7 +52,7 @@ public final class PipeOutputWriter implements OutputWriter {
   private boolean initialized;
   private Serializer serializer;
   // needs to be fixed.
-  private List<ByteOutputContext> pipes;
+  private List<OutputContext> pipes;
 
   /**
    * Constructor.
@@ -75,21 +75,13 @@ public final class PipeOutputWriter implements OutputWriter {
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
   }
 
-  private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+  private void writeData(final Object element, final List<OutputContext> pipeList) {
     LOG.error("{} : writing Data, num of byteoutputContext : {}, {} , {}", Thread.currentThread(), pipes.size(), pipeManagerWorker.executorId, srcTaskId);
-
     pipeList.forEach(pipe -> {
-      if (pipe instanceof LocalOutputContext) {
-        LOG.error("{} : writing to local : {}", Thread.currentThread(), element);
-        ((LocalOutputContext) pipe).write(element);
-      }
-      else {
-        try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
-          LOG.error("{} : writing to remote : {}", Thread.currentThread(), element);
-          pipeToWriteTo.writeElement(element, serializer);
-        } catch (IOException e) {
-          throw new RuntimeException(e); // For now we crash the executor on IOException
-        }
+      try (TransferOutputStream pipeToWriteTo = pipe.newOutputStream()) {
+        pipeToWriteTo.writeElement(element, serializer);
+      } catch (IOException e) {
+        throw new RuntimeException(e); // For now we crash the executor on IOException
       }
     });
   }
@@ -149,7 +141,7 @@ public final class PipeOutputWriter implements OutputWriter {
     LOG.error("initializing to output data. Task ID : {}, size of outputcontexts : {}", srcTaskId, pipes.size());
   }
 
-  private List<ByteOutputContext> getPipeToWrite(final Object element) {
+  private List<OutputContext> getPipeToWrite(final Object element) {
     final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
     final CommunicationPatternProperty.Value comm = comValueOptional.orElseThrow(IllegalStateException::new);

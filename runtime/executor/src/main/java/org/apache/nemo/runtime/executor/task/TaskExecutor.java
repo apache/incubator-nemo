@@ -288,7 +288,7 @@ public final class TaskExecutor {
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
-                  parentTaskReader,
+                  (BlockInputReader) parentTaskReader,
                   dataFetcherOutputCollector));
             }
           }

@@ -347,7 +347,7 @@ public final class DataUtil {
   /**
    * {@link Iterator} with interface to access to the number of bytes.
    *
-   * @param <T> the type of decoded object
+   * @param <T> the type of decoded objectitera
    */
   public interface IteratorWithNumBytes<T> extends Iterator<T> {
     /**

@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.executor.bytetransfer.LocalOutputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.slf4j.Logger;
@@ -84,7 +83,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   @Override
   Object fetchDataElement() throws IOException {
     if (firstFetch) {
-      LOG.error("{} : checkpoint 6", Thread.currentThread());
       fetchDataLazily();
       firstFetch = false;
     }
@@ -104,27 +102,22 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       }
     }
   }
-
   private void fetchDataLazily() {
-    // should be fixed. Read from local and remote
-    final List<CompletableFuture<Object>> futures = readersForParentTask.read1();
-
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
 
-    // Read from local and remote -> Pair<List<CompetableFuture<DataUtil.IteratorWithn>, List<LocalOutputContext>>
-
     if (numOfIterators > 1) {
-      LOG.error("single watermark manager created ");
       inputWatermarkManager = new MultiInputWatermarkManager(numOfIterators, new WatermarkCollector());
     } else {
-      LOG.error("multiple watermark amnager creatd");
       inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
     }
 
-    /**
-    for (CompletableFuture<DataUtil.IteratorWithNumBytes> compFuture : externals) {
-      compFuture.whenComplete((iterator, exception) -> queueInsertionThreads.submit(() -> {
+    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) ->
+      // A thread for each iterator
+      queueInsertionThreads.submit(() -> {
         if (exception == null) {
+          // Variable to avoid producing a redundant finish mark
+          boolean isFinishMarkProduced = false;
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
@@ -139,176 +132,22 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
               }
             } else {
               // data element
-              LOG.error("offering element*** : {}", element);
+              if (element instanceof Finishmark) {
+                isFinishMarkProduced = true;
+              }
               elementQueue.offer(element);
             }
           }
           // This iterator is finished.
           countBytesSynchronized(iterator);
-          elementQueue.offer(Finishmark.getInstance());
+          if (!isFinishMarkProduced) {
+            elementQueue.offer(Finishmark.getInstance());
+          }
         } else {
           LOG.error(exception.getMessage());
           throw new RuntimeException(exception);
         }
-      }));
-    }
-    */
-
-
-    // Adding elements from remote executor into queue
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) ->
-      // A thread for each iterator
-    {
-      if (iterator instanceof DataUtil.IteratorWithNumBytes) {
-        queueInsertionThreads.submit(() -> {
-          DataUtil.IteratorWithNumBytes iter = (DataUtil.IteratorWithNumBytes) iterator;
-          if (exception == null) {
-            // Consume this iterator to the end.
-            while (iter.hasNext()) { // blocked on the iterator.
-              final Object element = iter.next();
-              if (element instanceof WatermarkWithIndex) {
-                // watermark element
-                // the input watermark manager is accessed by multiple threads
-                // so we should synchronize it
-                synchronized (inputWatermarkManager) {
-                  final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-                  inputWatermarkManager.trackAndEmitWatermarks(
-                    watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
-                }
-              } else {
-                // data element
-                LOG.error("offering element*** : {}", element);
-                elementQueue.offer(element);
-              }
-            }
-
-            // This iterator is finished.
-            countBytesSynchronized(iter);
-            LOG.error("offering element finishmark");
-            elementQueue.offer(Finishmark.getInstance());
-          } else {
-            LOG.error(exception.getMessage());
-            throw new RuntimeException(exception);
-          }
-        });
-      }
-      else {
-        queueInsertionThreads.submit(() -> {
-          LocalOutputContext localOutputContext = (LocalOutputContext) iterator;
-          boolean isfinished = false;
-          while (!isfinished) { // blocked on the iterator.
-            final Object element = localOutputContext.read();
-            if (element == null) {
-              continue;
-            }
-            if (element instanceof WatermarkWithIndex && ((WatermarkWithIndex) element).getWatermark().getTimestamp() == Long.MAX_VALUE) {
-              isfinished = true;
-              LOG.error("max watermark received");
-            }
-            if (element instanceof Finishmark) isfinished = true;
-            if (element instanceof WatermarkWithIndex) {
-              LOG.error("Watermark timestamp : {}", ((WatermarkWithIndex) element).getWatermark().getTimestamp());
-              if (((WatermarkWithIndex) element).getWatermark().compareTo(new Watermark(9223372036854775L)) == 0) {
-                isfinished = true;
-                WatermarkWithIndex a = new WatermarkWithIndex(new Watermark(Long.MAX_VALUE), 1);
-                LOG.error("experiment : timestamp : {}", a.getWatermark().getTimestamp());
-                LOG.error("experiment : {}", a.getWatermark().compareTo(new Watermark(9223372036854775L)));
-                LOG.error("max watermark received");
-              }
-
-
-              // watermark element
-              // the input watermark manager is accessed by multiple threads
-              // so we should synchronize it
-              synchronized (inputWatermarkManager) {
-                final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-                inputWatermarkManager.trackAndEmitWatermarks(
-                  watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
-              }
-            } else {
-              // data element
-              LOG.error("From local executor, offering element*** : {}", element);
-              elementQueue.offer(element);
-            }
-          }
-          LOG.error("offering finishamark");
-          elementQueue.offer(Finishmark.getInstance());
-        });
-      }
-    }
-    ));
-
-    /**
-    // Adding elements from local executor into queue
-    for (LocalOutputContext local : locals) {
-      queueInsertionThreads.submit(() -> {
-        boolean isfinished = false;
-        while (!isfinished) { // blocked on the iterator.
-          final Object element = local.read();
-          if (element == null) {
-            try {
-              Thread.sleep(100);
-            }
-            catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-            continue;
-          }
-          if (element instanceof Finishmark) isfinished = true;
-          if (element instanceof WatermarkWithIndex) {
-            // watermark element
-            // the input watermark manager is accessed by multiple threads
-            // so we should synchronize it
-            synchronized (inputWatermarkManager) {
-              final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-              inputWatermarkManager.trackAndEmitWatermarks(
-                watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
-            }
-          } else {
-            // data element
-            LOG.error("From local executor, offering element*** : {}", element);
-            elementQueue.offer(element);
-          }
-          LOG.error("loop ending");
-        }
-      });
-    }
-     */
-
-    /**
-    locals.forEach(localOutputContext ->
-      queueInsertionThreads.submit(() -> {
-        boolean isfinished = false;
-        while (!isfinished) { // blocked on the iterator.
-          final Object element = localOutputContext.read();
-          if (element == null) {
-            try {
-              Thread.sleep(100);
-            }
-            catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-            continue;
-          }
-          if (element instanceof Finishmark) isfinished = true;
-          if (element instanceof WatermarkWithIndex) {
-            // watermark element
-            // the input watermark manager is accessed by multiple threads
-            // so we should synchronize it
-            synchronized (inputWatermarkManager) {
-              final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
-              inputWatermarkManager.trackAndEmitWatermarks(
-                watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
-            }
-          } else {
-            // data element
-            LOG.error("From local executor, offering element*** : {}", element);
-            elementQueue.offer(element);
-          }
-          LOG.error("loop ending");
-        }
-      }));
-     */
+      })));
   }
 
   final long getSerializedBytes() {
