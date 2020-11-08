@@ -29,15 +29,15 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.transfer.*;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.runtime.executor.transfer.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -108,7 +108,8 @@ public final class PipeManagerWorker {
         pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
         // initialize a local output context
-        LocalOutputContext outputContext = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
+        LocalOutputContext outputContext =
+          new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
         pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
 
         // Initialize a local input context and connect it to the corresponding local output context
@@ -156,14 +157,13 @@ public final class PipeManagerWorker {
    * @return output contexts.
    */
   public List<OutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
-                                                   final long srcTaskIndex) {
+                                               final long srcTaskIndex) {
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), srcTaskIndex);
     pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
     // Then, do stuff
-    List<OutputContext> result = pipeContainer.getPipes(pairKey);
-    return result; // blocking call
+    return pipeContainer.getPipes(pairKey); // blocking call
   }
 
   public Serializer getSerializer(final String runtimeEdgeId) {

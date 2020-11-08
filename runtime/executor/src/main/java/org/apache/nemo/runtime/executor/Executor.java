@@ -122,7 +122,6 @@ public final class Executor {
    */
   private void launchTask(final Task task) {
     LOG.info("Launch task: {}", task.getTaskId());
-    LOG.error("Launch task: {}", task.getTaskId());
     try {
       final long deserializationStartTime = System.currentTimeMillis();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =

@@ -70,11 +70,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
                     final byte[] contextDescriptor,
                     final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    if (contextManager == null) {
-      this.channel = null;
-    } else {
-      this.channel = contextManager.getChannel();
-    }
+    this.channel = contextManager.getChannel();
   }
 
   /**
@@ -83,7 +79,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
    * @return new {@link ByteOutputStream}
    * @throws IOException if an exception was set or this context was closed.
    */
-  public ByteOutputStream newOutputStream() throws IOException {
+  public final ByteOutputStream newOutputStream() throws IOException {
     ensureNoException();
     if (closed) {
       throw new IOException("Context already closed.");
@@ -99,7 +95,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
    * Closes this stream.
    * @throws IOException if an exception was set
    */
-  public void close() throws IOException {
+  public final void close() throws IOException {
     ensureNoException();
     if (closed) {
       return;

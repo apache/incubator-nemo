@@ -123,9 +123,6 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     this.timeSinceLastExecution = System.currentTimeMillis();
-
-
-    LOG.error("task executor starting. Thread : {}, Task Id : {}", Thread.currentThread(), taskId);
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -279,14 +276,12 @@ public final class TaskExecutor {
               new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager);
 
             if (parentTaskReader instanceof PipeInputReader) {
-              LOG.error("pipeinputreader");
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
-              LOG.error("block inputreader");
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
@@ -336,9 +331,6 @@ public final class TaskExecutor {
    * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
-
-
-
     // Housekeeping stuff
     if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again");
@@ -444,7 +436,6 @@ public final class TaskExecutor {
    * @return false if IOException.
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
-
     final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
     final List<DataFetcher> pendingFetchers = new LinkedList<>();
 

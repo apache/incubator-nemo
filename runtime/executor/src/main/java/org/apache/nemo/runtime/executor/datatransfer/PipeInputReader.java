@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -66,7 +65,6 @@ public final class PipeInputReader implements InputReader {
     this.metricMessageSender = metricMessageSender;
   }
 
-  // original
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValueOptional =

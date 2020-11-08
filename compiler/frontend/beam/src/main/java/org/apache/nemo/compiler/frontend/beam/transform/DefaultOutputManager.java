@@ -39,7 +39,6 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
   DefaultOutputManager(final OutputCollector<WindowedValue<OutputT>> outputCollector,
                        final TupleTag<OutputT> mainOutputTag) {
     this.outputCollector = outputCollector;
-
     this.mainOutputTag = mainOutputTag;
   }
 

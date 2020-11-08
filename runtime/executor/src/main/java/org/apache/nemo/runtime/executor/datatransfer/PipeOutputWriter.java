@@ -51,7 +51,6 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private boolean initialized;
   private Serializer serializer;
-  // needs to be fixed.
   private List<OutputContext> pipes;
 
   /**
@@ -132,6 +131,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private void doInitialize() {
     initialized = true;
+
     // Blocking call
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());

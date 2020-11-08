@@ -55,7 +55,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
 
-  // elements
   private final ConcurrentLinkedQueue elementQueue;
 
   private long serBytes = 0;
@@ -100,6 +99,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       }
     }
   }
+
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();

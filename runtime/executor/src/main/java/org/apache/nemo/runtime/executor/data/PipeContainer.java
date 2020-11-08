@@ -84,21 +84,6 @@ public final class PipeContainer {
       }
     }
 
-    public T getValue(final int index) {
-      lock.lock();
-      try {
-        if (!isCountSatistified()) {
-          condition.await();
-        }
-        return indexToValue.get(index);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
-      } finally {
-        lock.unlock();
-      }
-    }
-
     public void setValue(final int index, final T value) {
       lock.lock();
       try {
@@ -146,11 +131,11 @@ public final class PipeContainer {
    *
    * @param pairKey the pair of the runtime edge id and the source task index.
    * @param dstTaskIndex the destination task index.
-   * @param context the output context.
+   * @param outputContext the output context.
    */
-  void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final OutputContext context) {
+  void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final OutputContext outputContext) {
     final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
-    container.setValue(dstTaskIndex, context);
+    container.setValue(dstTaskIndex, outputContext);
   }
 
   /**
