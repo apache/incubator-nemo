@@ -21,14 +21,24 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class represents the data transfer context when both the sender and the receiver are in the same executor.
+ * During the data transfer, data serialization and deserialization don't occur.
+ */
 public abstract class LocalTransferContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);
   private final String executorId;
   private final String edgeId;
   private final int srcTaskIndex;
   private final int dstTaskIndex;
-  private final boolean isLocal = true;
 
+  /**
+   * Creates a new local transfer context.
+   * @param executorId id of the executor to which this context belong
+   * @param edgeId id of the DAG edge
+   * @param srcTaskIndex source task index
+   * @param dstTaskIndex destination task index
+   */
   LocalTransferContext(final String executorId,
                        final String edgeId,
                        final int srcTaskIndex,
@@ -39,26 +49,41 @@ public abstract class LocalTransferContext {
     this.dstTaskIndex = dstTaskIndex;
   }
 
+  /**
+   * Closes this context.
+   */
   public abstract void close();
 
-  public boolean isLocal() {
-    return isLocal;
-  }
-
-  public String getExecutorId() {
+  /**
+   * Accessor method for the executor id of this context.
+   * @return executor id
+   */
+  public final String getExecutorId() {
     return executorId;
   }
 
-  public String getEdgeId() {
+  /**
+   * Accessor method for the edge id of this context.
+   * @return edge id
+   */
+  public final String getEdgeId() {
     return edgeId;
   }
 
-  public int getSrcTaskIndex() {
+  /**
+   * Accessor method for the source task index of this context.
+   * @return source task index
+   */
+  public final int getSrcTaskIndex() {
     return srcTaskIndex;
   }
 
-  public int getDstTaskIndex() {
+  /**
+   * Accessor method for the destination task index of this context.
+   * @return destination task index
+   */
+
+  public final int getDstTaskIndex() {
     return dstTaskIndex;
   }
-
 }

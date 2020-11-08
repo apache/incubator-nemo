@@ -50,7 +50,8 @@ public final class LocalInputContext extends LocalTransferContext {
 
   /**
    * Close this local input context.
-   * @throws RuntimeException
+   * @throws RuntimeException if the connected output context hasn't been closed yet, or if there are still data
+   * left to be processed.
    */
   public void close() throws RuntimeException {
     if (!localOutputContext.isClosed()) {
@@ -66,14 +67,25 @@ public final class LocalInputContext extends LocalTransferContext {
     isClosed = true;
   }
 
+  /**
+   * Check if this context has already been closed.
+   * @return true if this context has already been closed.
+   */
   public boolean isClosed() {
     return isClosed;
   }
 
+  /**
+   * Creates a new iterator which retrieves data.
+   * @return iterator that iterates the received elements.
+   */
   public LocalInputIterator getIterator() {
     return new LocalInputIterator();
   }
 
+  /**
+   * Local input iterator that iterates the received elements from the sender.
+   */
   private class LocalInputIterator implements Iterator<Object> {
     @Override
     public final boolean hasNext() {
@@ -91,8 +103,7 @@ public final class LocalInputContext extends LocalTransferContext {
       if (isClosed) {
         LOG.error("This context has already been closed");
         throw new RuntimeException();
-      }
-      else {
+      } else {
         Object element;
         while ((element = queue.poll()) == null) {
           continue;
