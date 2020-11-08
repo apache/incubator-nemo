@@ -40,6 +40,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 @NotThreadSafe
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
+
   private final BlockInputReader inputReader;
   private final LinkedBlockingQueue iteratorQueue;
 
@@ -155,7 +156,6 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private void fetchDataLazily() {
-    LOG.error("ParentTaskDataFetcher is used");
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {

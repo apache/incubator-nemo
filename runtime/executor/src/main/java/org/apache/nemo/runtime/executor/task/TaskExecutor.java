@@ -279,12 +279,14 @@ public final class TaskExecutor {
               new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager);
 
             if (parentTaskReader instanceof PipeInputReader) {
+              LOG.error("pipeinputreader");
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   (PipeInputReader) parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
+              LOG.error("block inputreader");
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
