@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.transfer;
 
 import java.io.IOException;
 
@@ -35,7 +35,7 @@ public interface OutputContext extends AutoCloseable {
   /**
    * Closes this output context.
    * @throws IOException if any exception has occurred. For more information, see
-   * {@link org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext.ByteOutputStream#close}.
+   * {@link org.apache.nemo.runtime.executor.transfer.ByteOutputContext.ByteOutputStream#close}.
    */
   public void close() throws IOException;
 }

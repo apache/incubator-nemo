@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.transfer;
 
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import java.io.IOException;
