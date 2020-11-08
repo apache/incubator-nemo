@@ -98,7 +98,6 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
 
   /**
    * Closes this stream.
-   *
    * @throws IOException if an exception was set
    */
   @Override

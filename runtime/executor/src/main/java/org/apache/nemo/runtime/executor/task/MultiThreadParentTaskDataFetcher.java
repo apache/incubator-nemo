@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -55,7 +54,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
-
 
   // elements
   private final ConcurrentLinkedQueue elementQueue;
