@@ -103,17 +103,21 @@ public final class PipeManagerWorker {
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
       if (targetExecutorId.equals(executorId)) {
-
+        // Read from the local executor
         Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
         pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
-        // initialize LocalOutputContext
-        LocalOutputContext context = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
-        pipeContainer.putPipe(pairKey, dstTaskIndex, context);
+        // initialize a local output context
+        LocalOutputContext outputContext = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
+        pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
+
+        // Initialize a local input context and connect it to the corresponding local output context
+        LocalInputContext inputContext = new LocalInputContext(outputContext);
         CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
-        result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
+        result.complete(DataUtil.IteratorWithNumBytes.of(inputContext.getIterator()));
         return result;
-      }  else {
+      } else {
+        // Read from the remote executor
         final ControlMessage.PipeTransferContextDescriptor descriptor =
           ControlMessage.PipeTransferContextDescriptor.newBuilder()
             .setRuntimeEdgeId(runtimeEdge.getId())
@@ -123,7 +127,6 @@ public final class PipeManagerWorker {
             .build();
 
         return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-          // until here, CompletableFuture<ByteInputContext>
           .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
             serializerManager.getSerializer(runtimeEdge.getId())));
       }

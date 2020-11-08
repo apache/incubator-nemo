@@ -129,15 +129,16 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
                   watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
               }
             } else {
-              // data element
               if (element instanceof Finishmark) {
                 isFinishMarkProduced = true;
               }
+              // data element
               elementQueue.offer(element);
             }
           }
           // This iterator is finished.
           countBytesSynchronized(iterator);
+          // If the current iterator hasn't produced finish mark, put it into the global queue.
           if (!isFinishMarkProduced) {
             elementQueue.offer(Finishmark.getInstance());
           }

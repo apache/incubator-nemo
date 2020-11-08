@@ -77,7 +77,6 @@ public final class PipeContainer {
         }
         return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {
-        LOG.error("InterruptedException occured. While waiting for getting outputcontexts.");
         Thread.currentThread().interrupt();
         throw new RuntimeException(e);
       } finally {
@@ -147,7 +146,7 @@ public final class PipeContainer {
    *
    * @param pairKey the pair of the runtime edge id and the source task index.
    * @param dstTaskIndex the destination task index.
-   * @param byteOutputContext the byte output context.
+   * @param context the output context.
    */
   void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final OutputContext context) {
     final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
@@ -158,18 +157,11 @@ public final class PipeContainer {
    * (SYNCHRONIZATION) CountBasedBlockingContainer takes care of it.
    *
    * @param pairKey the pair of the runtime edge id and the source task index.
-   * @return the list of byte output context.
+   * @return the list of output contexts.
    */
   List<OutputContext> getPipes(final Pair<String, Long> pairKey) {
     final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
     return container.getValuesBlocking();
-  }
-
-
-  //Temporary
-  OutputContext getPipe(final Pair<String, Long> pairKey, final int dstTaskIndex) {
-    final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
-    return container.getValue(dstTaskIndex);
   }
 }
 
