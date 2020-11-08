@@ -26,13 +26,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * This class provides a data transfer interface to the sender side when both the sender and the receiver are
- * in the same executor. Since data serialization is unnecessary, the sender puts elements into the queue
- * without serializing them. A single local output context represents a data transfer between two tasks.
+ * in the same executor. Since data serialization is unnecessary, the sender sends data without serializing
+ * them. A single local output context represents a data transfer between two tasks.
  */
 public final class LocalOutputContext extends LocalTransferContext implements OutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(LocalOutputContext.class.getName());
   private ConcurrentLinkedQueue queue = new ConcurrentLinkedQueue();
-  private LocalInputContext localInputContext;
   private boolean isClosed = false;
 
   /**
@@ -55,14 +54,12 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
   @Override
   public void close() {
     if (isClosed) {
-      LOG.error("This context has already been closed");
-      return;
+      throw new RuntimeException("This context has already been closed");
     }
     queue.offer(Finishmark.getInstance());
     isClosed = true;
-    localInputContext = null;
+    // Nullify the reference to the queue for potential garbage collection
     queue = null;
-    return;
   }
 
   /**
@@ -72,8 +69,7 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
    */
   public ConcurrentLinkedQueue getQueue() throws RuntimeException {
     if (isClosed) {
-      LOG.error("The context has already been closed.");
-      throw new RuntimeException();
+      throw new RuntimeException("The context has already been closed.");
     }
     return queue;
   }
@@ -90,18 +86,18 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
    * Creates a new output stream to which the sender sends its data.
    * @return output stream of this local output context
    */
+  @Override
   public TransferOutputStream newOutputStream() {
     return new LocalOutputStream();
   }
 
   /**
-   * Local output stream to which the sender writes its data.
+   * Local output stream to which the sender sends its data.
    */
   private final class LocalOutputStream implements TransferOutputStream {
     public void writeElement(final Object element, final Serializer serializer) {
       if (isClosed) {
-        LOG.error("This context has already been closed.");
-        throw new RuntimeException();
+        throw new RuntimeException("This context has already been closed.");
       }
       queue.offer(element);
     }

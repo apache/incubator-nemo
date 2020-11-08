@@ -23,10 +23,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class represents the data transfer context when both the sender and the receiver are in the same executor.
- * During the data transfer via local transfer contexts, data serialization and deserialization don't occur.
+ * The data transfer via local transfer contexts doesn't involve data serialization and deserialization.
  */
 public abstract class LocalTransferContext {
-  private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalTransferContext.class);
   private final String executorId;
   private final String edgeId;
   private final int srcTaskIndex;
@@ -34,7 +34,7 @@ public abstract class LocalTransferContext {
 
   /**
    * Creates a new local transfer context.
-   * @param executorId id of the executor to which this context belong
+   * @param executorId id of the executor to which this context belongs
    * @param edgeId id of the DAG edge
    * @param srcTaskIndex source task index
    * @param dstTaskIndex destination task index
@@ -55,7 +55,7 @@ public abstract class LocalTransferContext {
   public abstract void close();
 
   /**
-   * Accessor method for the executor id of this context.
+   * Accessor method for the executor id.
    * @return executor id
    */
   public final String getExecutorId() {
@@ -63,7 +63,7 @@ public abstract class LocalTransferContext {
   }
 
   /**
-   * Accessor method for the edge id of this context.
+   * Accessor method for the edge id.
    * @return edge id
    */
   public final String getEdgeId() {
@@ -71,7 +71,7 @@ public abstract class LocalTransferContext {
   }
 
   /**
-   * Accessor method for the source task index of this context.
+   * Accessor method for the source task index.
    * @return source task index
    */
   public final int getSrcTaskIndex() {
@@ -79,10 +79,9 @@ public abstract class LocalTransferContext {
   }
 
   /**
-   * Accessor method for the destination task index of this context.
+   * Accessor method for the destination task index.
    * @return destination task index
    */
-
   public final int getDstTaskIndex() {
     return dstTaskIndex;
   }

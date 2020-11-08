@@ -22,7 +22,7 @@ import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import java.io.IOException;
 
 /**
- * Base class for output stream to which the sender sends its data during the data transfer.
+ * Represents the output stream to which the sender sends its data during the data transfer.
  */
 public interface TransferOutputStream extends AutoCloseable {
   /**

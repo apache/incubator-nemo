@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.transfer;
 import java.io.IOException;
 
 /**
- * Base class for the output context during the data transfer between two tasks.
+ * Represents the output context during the data transfer between two tasks.
  */
 public interface OutputContext extends AutoCloseable {
 

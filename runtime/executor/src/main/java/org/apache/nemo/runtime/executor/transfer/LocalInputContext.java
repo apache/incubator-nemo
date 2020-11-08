@@ -30,14 +30,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * them.
  */
 public final class LocalInputContext extends LocalTransferContext {
-  private static final Logger LOG = LoggerFactory.getLogger(LocalOutputContext.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(LocalInputContext.class.getName());
   private ConcurrentLinkedQueue queue;
   private LocalOutputContext localOutputContext;
   private boolean isClosed = false;
 
   /**
    * Creates a new local input context and connect it to {@param localOutputContext}.
-   * @param localOutputContext the local output context to which this new local input context is connected
+   * @param localOutputContext the local output context to which this local input context is connected
    */
   public LocalInputContext(final LocalOutputContext localOutputContext) {
     super(localOutputContext.getExecutorId(),
@@ -53,15 +53,15 @@ public final class LocalInputContext extends LocalTransferContext {
    * @throws RuntimeException if the connected output context hasn't been closed yet, or if there are still data
    * left to be processed.
    */
+  @Override
   public void close() throws RuntimeException {
     if (!localOutputContext.isClosed()) {
-      LOG.error("The parent task is still sending data");
-      throw new RuntimeException();
+      throw new RuntimeException("The parent task writer is still sending data");
     }
     if (!queue.isEmpty()) {
-      LOG.error("There are data left in this context to be processed");
-      throw new RuntimeException();
+      throw new RuntimeException("There are data left in this context to be processed");
     }
+    // Nullify references for potential garbage collection
     queue = null;
     localOutputContext = null;
     isClosed = true;
@@ -76,7 +76,7 @@ public final class LocalInputContext extends LocalTransferContext {
   }
 
   /**
-   * Creates a new iterator which retrieves data.
+   * Creates a new iterator which iterates the receive elements from the sender.
    * @return iterator that iterates the received elements.
    */
   public LocalInputIterator getIterator() {
@@ -101,8 +101,7 @@ public final class LocalInputContext extends LocalTransferContext {
     @Override
     public final Object next() throws RuntimeException {
       if (isClosed) {
-        LOG.error("This context has already been closed");
-        throw new RuntimeException();
+        throw new RuntimeException("This context has already been closed");
       } else {
         Object element;
         while ((element = queue.poll()) == null) {
