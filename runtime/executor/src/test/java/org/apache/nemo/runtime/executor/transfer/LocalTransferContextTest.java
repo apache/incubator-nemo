@@ -52,19 +52,19 @@ public final class LocalTransferContextTest extends TestCase {
     final class sendingData implements Runnable {
       @Override
       public void run() {
-        for (int elem = 0; elem < NUM_OF_ELEMENTS; elem++) {
-          expectedCount += elem;
-          // For every million elements, a thread rests for 0.5 seconds
-          if (elem % 1000000 == 0) {
+        for (int element = 0; element < NUM_OF_ELEMENTS; element++) {
+          expectedCount += element;
+          // For every million elements, a thread rests for a second
+          if (element % 1000000 == 0) {
             try {
-              Thread.sleep(500);
+              Thread.sleep(1000);
             }
             catch (InterruptedException e) {
-              throw new RuntimeException();
+              e.printStackTrace();
             }
           }
           // Send an element
-          outputStream.writeElement(elem, NULL_SERIALIZER);
+          outputStream.writeElement(element, NULL_SERIALIZER);
         }
         // Close this context
         outputContext.close();
@@ -90,8 +90,18 @@ public final class LocalTransferContextTest extends TestCase {
     // Spawn threads to run tasks
     final Thread receiver = new Thread(new retrievingData());
     final Thread sender = new Thread(new sendingData());
-    receiver.run();
-    sender.run();
+
+    // Execute tasks
+    sender.start();
+    receiver.start();
+
+    // Wait until tasks are completed
+    try {
+      receiver.join();
+      sender.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     // Check if the receiver has received all the data successfully
     assertEquals(expectedCount, count);

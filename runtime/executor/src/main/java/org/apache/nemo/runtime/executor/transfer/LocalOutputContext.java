@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class LocalOutputContext extends LocalTransferContext implements OutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(LocalOutputContext.class.getName());
-  private ConcurrentLinkedQueue queue = new ConcurrentLinkedQueue();;
+  private ConcurrentLinkedQueue queue = new ConcurrentLinkedQueue();
   private LocalInputContext localInputContext;
   private boolean isClosed = false;
 
