@@ -59,7 +59,6 @@ import java.util.Optional;
  */
 @NotThreadSafe
 public final class FileBlock<K extends Serializable> implements Block<K> {
-
   private final String id;
   private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;

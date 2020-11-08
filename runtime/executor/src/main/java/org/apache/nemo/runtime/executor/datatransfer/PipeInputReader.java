@@ -28,8 +28,6 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,7 +39,6 @@ import java.util.concurrent.CompletableFuture;
  * Represents the input data transfer to a task.
  */
 public final class PipeInputReader implements InputReader {
-  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final PipeManagerWorker pipeManagerWorker;
   private final MetricMessageSender metricMessageSender;
 

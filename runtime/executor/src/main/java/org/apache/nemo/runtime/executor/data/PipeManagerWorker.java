@@ -176,7 +176,6 @@ public final class PipeManagerWorker {
    * @param outputContext output context
    * @throws InvalidProtocolBufferException protobuf exception
    */
-
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
