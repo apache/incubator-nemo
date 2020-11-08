@@ -104,17 +104,17 @@ public final class PipeManagerWorker {
 
       if (targetExecutorId.equals(executorId)) {
         // Read from the local executor
-        Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
+        final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
         pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
         // initialize a local output context
-        LocalOutputContext outputContext =
+        final LocalOutputContext outputContext =
           new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
         pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
 
         // Initialize a local input context and connect it to the corresponding local output context
-        LocalInputContext inputContext = new LocalInputContext(outputContext);
-        CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
+        final LocalInputContext inputContext = new LocalInputContext(outputContext);
+        final CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
         result.complete(DataUtil.IteratorWithNumBytes.of(inputContext.getIterator()));
         return result;
       } else {

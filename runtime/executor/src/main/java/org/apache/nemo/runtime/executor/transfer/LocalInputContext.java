@@ -86,7 +86,7 @@ public final class LocalInputContext extends LocalTransferContext {
   /**
    * Local input iterator that iterates the received elements from the sender.
    */
-  private class LocalInputIterator implements Iterator<Object> {
+  private class LocalInputIterator implements Iterator {
     @Override
     public final boolean hasNext() {
       if (isClosed) {
