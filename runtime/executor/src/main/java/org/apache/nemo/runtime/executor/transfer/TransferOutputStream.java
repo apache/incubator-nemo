@@ -30,11 +30,11 @@ public interface TransferOutputStream extends AutoCloseable {
    * @param element element to be sent
    * @param serializer serializer of {@param element}
    */
-  public void writeElement(final Object element, final Serializer serializer);
+  void writeElement(Object element, Serializer serializer);
 
   /**
    * Closes this output stream.
    * @throws IOException if any exception has occurred. For more information, see {@link ByteOutputContext#close}.
    */
-  public void close() throws IOException;
+  void close() throws IOException;
 }

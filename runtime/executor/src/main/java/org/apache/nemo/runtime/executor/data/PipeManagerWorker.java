@@ -50,7 +50,7 @@ import java.util.concurrent.CompletableFuture;
 public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
-  public final String executorId;
+  private final String executorId;
   private final SerializerManager serializerManager;
 
   // To-Executor connections
@@ -115,8 +115,7 @@ public final class PipeManagerWorker {
         CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
         result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
         return result;
-      }
-      else {
+      }  else {
         final ControlMessage.PipeTransferContextDescriptor descriptor =
           ControlMessage.PipeTransferContextDescriptor.newBuilder()
             .setRuntimeEdgeId(runtimeEdge.getId())
@@ -176,8 +175,7 @@ public final class PipeManagerWorker {
         CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
         result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
         return result;
-      }
-      else {
+      } else {
         final ControlMessage.PipeTransferContextDescriptor descriptor =
           ControlMessage.PipeTransferContextDescriptor.newBuilder()
             .setRuntimeEdgeId(runtimeEdge.getId())

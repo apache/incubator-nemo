@@ -30,12 +30,12 @@ public interface OutputContext extends AutoCloseable {
    * @return output stream to which the sender sends its data.
    * @throws IOException if a channel error occurs, or the context has already been closed.
    */
-  public TransferOutputStream newOutputStream() throws IOException;
+  TransferOutputStream newOutputStream() throws IOException;
 
   /**
    * Closes this output context.
    * @throws IOException if any exception has occurred. For more information, see
    * {@link org.apache.nemo.runtime.executor.transfer.ByteOutputContext.ByteOutputStream#close}.
    */
-  public void close() throws IOException;
+  void close() throws IOException;
 }

@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -28,8 +27,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
-import org.apache.nemo.runtime.executor.transfer.ByteTransferContext;
-import org.apache.nemo.runtime.executor.transfer.LocalOutputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.slf4j.Logger;
@@ -40,7 +37,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Represents the input data transfer to a task.

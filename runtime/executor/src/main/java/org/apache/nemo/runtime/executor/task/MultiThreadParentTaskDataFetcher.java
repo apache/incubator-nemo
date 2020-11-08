@@ -49,7 +49,7 @@ import java.util.concurrent.Executors;
 class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(MultiThreadParentTaskDataFetcher.class);
 
-  private final PipeInputReader readersForParentTask;
+  private final InputReader readersForParentTask;
   private final ExecutorService queueInsertionThreads;
 
   // Non-finals (lazy fetching)
@@ -69,7 +69,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
 
   MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
-                                   final PipeInputReader readerForParentTask,
+                                   final InputReader readerForParentTask,
                                    final OutputCollector outputCollector) {
     super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;

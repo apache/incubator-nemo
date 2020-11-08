@@ -140,7 +140,7 @@ public final class ParentTaskDataFetcherTest {
   private ParentTaskDataFetcher createFetcher(final InputReader readerForParentTask) {
     return new ParentTaskDataFetcher(
       mock(IRVertex.class),
-      (BlockInputReader) readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
+      readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
       mock(OutputCollector.class));
   }
 

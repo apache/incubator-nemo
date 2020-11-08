@@ -246,7 +246,6 @@ public final class GBKTransform<K, InputT, OutputT>
       // Progress
       prevOutputWatermark = outputWatermarkCandidate;
       // Emit watermark
-      LOG.error("outputting watermark : {}", outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {

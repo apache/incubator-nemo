@@ -22,8 +22,6 @@ import org.apache.beam.runners.core.DoFnRunners;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Default output emitter that uses outputCollector.

@@ -43,9 +43,9 @@ public final class ByteInputContext extends ByteTransferContext {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteInputContext.class.getName());
 
-  public final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
-  public final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  public final AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
+  private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
+  private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
+  private final AtomicReference<ByteBufInputStream> currentByteBufInputStream = new AtomicReference<>();
 
   private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
     @Override
@@ -161,7 +161,7 @@ public final class ByteInputContext extends ByteTransferContext {
    */
   private static final class ByteBufInputStream extends InputStream {
 
-    public final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
+    private final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
 
     @Override
     public int read() throws IOException {
@@ -268,9 +268,5 @@ public final class ByteInputContext extends ByteTransferContext {
         throw new IOException(e);
       }
     }
-  }
-
-  public boolean isLocal() {
-    return false;
   }
 }

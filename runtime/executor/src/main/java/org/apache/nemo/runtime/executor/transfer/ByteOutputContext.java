@@ -72,8 +72,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     if (contextManager == null) {
       this.channel = null;
-    }
-    else {
+    } else {
       this.channel = contextManager.getChannel();
     }
   }
@@ -100,7 +99,6 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
    * Closes this stream.
    * @throws IOException if an exception was set
    */
-  @Override
   public void close() throws IOException {
     ensureNoException();
     if (closed) {
@@ -116,7 +114,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
   }
 
   @Override
-  public void onChannelError(@Nullable final Throwable cause) {
+  public final void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
     channel.close();
   }
@@ -124,7 +122,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
   /**
    * @throws IOException when a channel exception has been set.
    */
-  void ensureNoException() throws IOException {
+  final void ensureNoException() throws IOException {
     if (hasException()) {
       if (getException() == null) {
         throw new IOException();
@@ -269,11 +267,5 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
 
       newSubStream = false;
     }
-
-
-  }
-
-  public boolean isLocal() {
-    return false;
   }
 }

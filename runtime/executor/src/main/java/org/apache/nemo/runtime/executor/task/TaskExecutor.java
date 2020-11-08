@@ -283,14 +283,14 @@ public final class TaskExecutor {
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
-                  (PipeInputReader) parentTaskReader,
+                  parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
               LOG.error("block inputreader");
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
-                  (BlockInputReader) parentTaskReader,
+                  parentTaskReader,
                   dataFetcherOutputCollector));
             }
           }

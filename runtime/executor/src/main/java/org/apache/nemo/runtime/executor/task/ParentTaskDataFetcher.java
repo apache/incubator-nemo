@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailurePropert
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
-  private final BlockInputReader inputReader;
+  private final InputReader inputReader;
   private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
@@ -53,7 +52,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long encodedBytes = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
-                        final BlockInputReader inputReader,
+                        final InputReader inputReader,
                         final OutputCollector outputCollector) {
     super(dataSource, outputCollector);
     this.inputReader = inputReader;

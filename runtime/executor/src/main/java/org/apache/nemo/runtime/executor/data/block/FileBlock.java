@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.executor.transfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.data.MemoryAllocationException;
 import org.apache.nemo.runtime.executor.data.MemoryPoolAssigner;
 import org.apache.nemo.common.Pair;
@@ -32,8 +31,6 @@ import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 

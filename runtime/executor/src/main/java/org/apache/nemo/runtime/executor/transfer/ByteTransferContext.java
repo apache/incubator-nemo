@@ -32,9 +32,7 @@ import java.util.Objects;
  * {@link ByteInputContext} and {@link ByteOutputContext}.
  */
 public abstract class ByteTransferContext {
-
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);
-
   private final String remoteExecutorId;
   private final ContextId contextId;
   private final byte[] contextDescriptor;
