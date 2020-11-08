@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class represents the data transfer context when both the sender and the receiver are in the same executor.
- * During the data transfer, data serialization and deserialization don't occur.
+ * During the data transfer via local transfer contexts, data serialization and deserialization don't occur.
  */
 public abstract class LocalTransferContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);

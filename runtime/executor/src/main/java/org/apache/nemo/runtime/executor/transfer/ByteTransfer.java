@@ -62,7 +62,6 @@ public final class ByteTransfer {
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
                                                              final byte[] contextDescriptor,
                                                              final boolean isPipe) {
-    LOG.error("InputContext called");
     return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
@@ -78,7 +77,6 @@ public final class ByteTransfer {
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final byte[] contextDescriptor,
                                                                final boolean isPipe) {
-    LOG.error("OutputContext. CALLED");
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 

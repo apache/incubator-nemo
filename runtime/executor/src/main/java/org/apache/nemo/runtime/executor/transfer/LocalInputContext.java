@@ -25,7 +25,7 @@ import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * This class provides a data transfer interface to the receiver side when both the sender and the recevier are in the
+ * This class provides a data transfer interface to the receiver side when both the sender and the receiver are in the
  * same executor. Since the sender doesn't serialize data, the receiver doesn't need to deserialize data when retrieving
  * them.
  */
@@ -49,7 +49,7 @@ public final class LocalInputContext extends LocalTransferContext {
   }
 
   /**
-   * Close this local input context.
+   * Closes this local input context.
    * @throws RuntimeException if the connected output context hasn't been closed yet, or if there are still data
    * left to be processed.
    */
@@ -68,7 +68,7 @@ public final class LocalInputContext extends LocalTransferContext {
   }
 
   /**
-   * Check if this context has already been closed.
+   * Checks if this context has already been closed.
    * @return true if this context has already been closed.
    */
   public boolean isClosed() {

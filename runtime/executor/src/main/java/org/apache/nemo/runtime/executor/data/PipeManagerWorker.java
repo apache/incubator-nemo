@@ -91,8 +91,6 @@ public final class PipeManagerWorker {
               .setSrcTaskIndex(srcTaskIndex)
               .build())
           .build());
-
-
     return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       // Get executor id
       if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
@@ -130,66 +128,6 @@ public final class PipeManagerWorker {
             serializerManager.getSerializer(runtimeEdge.getId())));
       }
     });
-  }
-
-  // Whether it is local or not
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> isLocal(final int srcTaskIndex,
-                                            final RuntimeEdge runtimeEdge,
-                                            final int dstTaskIndex) {
-    final String runtimeEdgeId = runtimeEdge.getId();
-    // Get the location of the src task (blocking call)
-    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
-      .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestPipeLoc)
-          .setRequestPipeLocMsg(
-            ControlMessage.RequestPipeLocationMessage.newBuilder()
-              .setExecutorId(executorId)
-              .setRuntimeEdgeId(runtimeEdgeId)
-              .setSrcTaskIndex(srcTaskIndex)
-              .build())
-          .build());
-
-    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
-      // Get executor id
-      if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
-        throw new RuntimeException("Response message type mismatch!");
-      }
-      final ControlMessage.PipeLocationInfoMessage pipeLocInfo = responseFromMaster.getPipeLocInfoMsg();
-      if (!pipeLocInfo.hasExecutorId()) {
-        throw new IllegalStateException();
-      }
-
-      final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
-
-      if (targetExecutorId.equals(executorId)) {
-
-        Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
-        pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
-
-        // initialize LocalOutputContext
-        LocalOutputContext context = new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
-        pipeContainer.putPipe(pairKey, dstTaskIndex, context);
-        CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
-        result.complete(DataUtil.IteratorWithNumBytes.of(new LocalInputContext(context).getIterator()));
-        return result;
-      } else {
-        final ControlMessage.PipeTransferContextDescriptor descriptor =
-          ControlMessage.PipeTransferContextDescriptor.newBuilder()
-            .setRuntimeEdgeId(runtimeEdge.getId())
-            .setSrcTaskIndex(srcTaskIndex)
-            .setDstTaskIndex(dstTaskIndex)
-            .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
-            .build();
-
-        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-          // until here, CompletableFuture<ByteInputContext>
-          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-            serializerManager.getSerializer(runtimeEdge.getId())));
-      }
-  });
   }
 
   public void notifyMaster(final String runtimeEdgeId, final long srcTaskIndex) {
@@ -236,7 +174,6 @@ public final class PipeManagerWorker {
    * @throws InvalidProtocolBufferException protobuf exception
    */
 
-  // Used to create the outputcontext in a sender's executor
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
