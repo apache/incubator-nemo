@@ -49,7 +49,7 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
   }
 
   /**
-   * Close this local output context.
+   * Closes this local output context.
    */
   @Override
   public void close() {
@@ -75,7 +75,7 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
   }
 
   /**
-   * Check whether the context has been closed.
+   * Checks whether the context has been closed.
    * @return true if the context has been closed.
    */
   public boolean isClosed() {
