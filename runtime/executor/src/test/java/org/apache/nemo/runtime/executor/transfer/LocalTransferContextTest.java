@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.transfer;
 
 import junit.framework.TestCase;
-import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.junit.Test;
 import java.util.Iterator;
@@ -36,7 +35,6 @@ public final class LocalTransferContextTest extends TestCase {
   private static final int NUM_OF_ELEMENTS = 10000000;
   private static int expectedCount = 0;
   private static int count = 0;
-  private static boolean finishMarkReceived = false;
 
   @Test
   public void testWriteAndRead() {
