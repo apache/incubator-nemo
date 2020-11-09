@@ -19,32 +19,27 @@
 package org.apache.nemo.runtime.executor.transfer;
 
 import org.apache.nemo.common.punctuation.Finishmark;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * This class provides a data transfer interface to the receiver side when both the sender and the receiver are in the
  * same executor. Since the sender doesn't serialize data, the receiver doesn't need to deserialize data when retrieving
  * them.
  */
-public final class LocalInputContext extends LocalTransferContext {
-  private static final Logger LOG = LoggerFactory.getLogger(LocalInputContext.class.getName());
-  private ConcurrentLinkedQueue queue;
-  private LocalOutputContext localOutputContext;
-  private boolean isClosed = false;
+  public final class LocalInputContext extends LocalTransferContext {
+    private final LinkedBlockingQueue queue;
+    private boolean isClosed = false;
 
-  /**
-   * Creates a new local input context and connect it to {@param localOutputContext}.
-   * @param localOutputContext the local output context to which this local input context is connected
-   */
-  public LocalInputContext(final LocalOutputContext localOutputContext) {
+    /**
+     * Creates a new local input context and connect it to {@param localOutputContext}.
+     * @param localOutputContext the local output context to which this local input context is connected
+     */
+    public LocalInputContext(final LocalOutputContext localOutputContext) {
     super(localOutputContext.getExecutorId(),
           localOutputContext.getEdgeId(),
           localOutputContext.getSrcTaskIndex(),
           localOutputContext.getDstTaskIndex());
-    this.localOutputContext = localOutputContext;
     this.queue = localOutputContext.getQueue();
   }
 
@@ -55,15 +50,6 @@ public final class LocalInputContext extends LocalTransferContext {
    */
   @Override
   public void close() throws RuntimeException {
-    if (!localOutputContext.isClosed()) {
-      throw new RuntimeException("The parent task writer is still sending data");
-    }
-    if (!queue.isEmpty()) {
-      throw new RuntimeException("There are data left in this context to be processed");
-    }
-    // Nullify references for potential garbage collection
-    queue = null;
-    localOutputContext = null;
     isClosed = true;
   }
 
@@ -87,14 +73,24 @@ public final class LocalInputContext extends LocalTransferContext {
    * Local input iterator that iterates the received elements from the sender.
    */
   private class LocalInputIterator implements Iterator {
+    private Object next;
+    private boolean hasNext = false;
+
     @Override
     public final boolean hasNext() {
+      if (hasNext) {
+        return true;
+      }
       if (isClosed) {
         return false;
       }
-      while (queue.peek() == null) {
-        continue;
+      try {
+        // Blocking call
+        next = queue.take();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
+      hasNext = true;
       return true;
     }
 
@@ -102,15 +98,14 @@ public final class LocalInputContext extends LocalTransferContext {
     public final Object next() throws RuntimeException {
       if (isClosed) {
         throw new RuntimeException("This context has already been closed");
+      } else if (!hasNext) {
+        throw new RuntimeException("Next element is not available");
       } else {
-        Object element;
-        while ((element = queue.poll()) == null) {
-          continue;
-        }
-        if (element instanceof Finishmark) {
+        if (next instanceof Finishmark) {
           LocalInputContext.this.close();
         }
-        return element;
+        hasNext = false;
+        return next;
       }
     }
   }

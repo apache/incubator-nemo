@@ -23,6 +23,7 @@ import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * This class provides a data transfer interface to the sender side when both the sender and the receiver are
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class LocalOutputContext extends LocalTransferContext implements OutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(LocalOutputContext.class.getName());
-  private ConcurrentLinkedQueue queue = new ConcurrentLinkedQueue();
+  private final LinkedBlockingQueue queue = new LinkedBlockingQueue();
   private boolean isClosed = false;
 
   /**
@@ -58,8 +59,6 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
     }
     queue.offer(Finishmark.getInstance());
     isClosed = true;
-    // Nullify the reference to the queue for potential garbage collection
-    queue = null;
   }
 
   /**
@@ -67,7 +66,7 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
    * @return queue to which the sender writes its data.
    * @throws RuntimeException if the context has already been closed.
    */
-  public ConcurrentLinkedQueue getQueue() throws RuntimeException {
+  public LinkedBlockingQueue getQueue() throws RuntimeException {
     if (isClosed) {
       throw new RuntimeException("The context has already been closed.");
     }
