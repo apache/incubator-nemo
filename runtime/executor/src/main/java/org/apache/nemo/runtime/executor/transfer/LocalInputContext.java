@@ -87,6 +87,10 @@ import java.util.concurrent.LinkedBlockingQueue;
       try {
         // Blocking call
         next = queue.take();
+        if (next instanceof Finishmark) {
+          LocalInputContext.this.close();
+          return false;
+        }
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }
@@ -101,9 +105,6 @@ import java.util.concurrent.LinkedBlockingQueue;
       } else if (!hasNext) {
         throw new RuntimeException("Next element is not available");
       } else {
-        if (next instanceof Finishmark) {
-          LocalInputContext.this.close();
-        }
         hasNext = false;
         return next;
       }

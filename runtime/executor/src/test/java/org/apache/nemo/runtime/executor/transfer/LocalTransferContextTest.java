@@ -77,12 +77,8 @@ public final class LocalTransferContextTest extends TestCase {
       public void run() {
         while (inputIterator.hasNext()) {
           Object element = inputIterator.next();
-          if (element instanceof Finishmark) {
-            finishMarkReceived = true;
-          }
-          else {
-            count += (int) element;
-          }
+          count += (int) element;
+
         }
       }
     }
@@ -105,10 +101,8 @@ public final class LocalTransferContextTest extends TestCase {
 
     // Check if the receiver has received all the data successfully
     assertEquals(expectedCount, count);
-    // Check whether the receiver has received the finish mark
-    assertEquals(true, finishMarkReceived);
     // Check whether both the local output context and input context have been closed
-    assertEquals(true, outputContext.isClosed());
-    assertEquals(true, inputContext.isClosed());
+    assertTrue(outputContext.isClosed());
+    assertTrue(inputContext.isClosed());
   }
 }
