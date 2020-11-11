@@ -50,11 +50,6 @@ public abstract class LocalTransferContext {
   }
 
   /**
-   * Closes this context.
-   */
-  public abstract void close();
-
-  /**
    * Accessor method for the executor id.
    * @return executor id
    */

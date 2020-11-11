@@ -99,8 +99,8 @@ public final class LocalTransferContextTest extends TestCase {
 
     // Check if the receiver has received all the data successfully
     assertEquals(expectedCount, count);
-    // Check whether both the local output context and input context have been closed
+    // Check whether both the local output context and the input context have been closed
     assertTrue(outputContext.isClosed());
-    assertTrue(inputContext.isClosed());
+    assertTrue(inputContext.isOutputContextClosed());
   }
 }

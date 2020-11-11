@@ -29,7 +29,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
   public final class LocalInputContext extends LocalTransferContext {
     private final LinkedBlockingQueue queue;
-    private boolean isClosed = false;
+    private boolean isOutputContextClosed = false;
 
     /**
      * Creates a new local input context and connect it to {@param localOutputContext}.
@@ -44,20 +44,11 @@ import java.util.concurrent.LinkedBlockingQueue;
   }
 
   /**
-   * Closes this local input context.
-   * @throws RuntimeException if the connected output context hasn't been closed yet, or if there are still data
-   * left to be processed.
-   */
-  @Override
-  public void close() throws RuntimeException {
-  }
-
-  /**
    * Checks if this context has already been closed.
    * @return true if this context has already been closed.
    */
-  public boolean isClosed() {
-    return isClosed;
+  public boolean isOutputContextClosed() {
+    return isOutputContextClosed;
   }
 
   /**
@@ -80,14 +71,15 @@ import java.util.concurrent.LinkedBlockingQueue;
       if (hasNext) {
         return true;
       }
-      if (isClosed) {
+      if (isOutputContextClosed) {
         return false;
       }
       try {
         // Blocking call
         next = queue.take();
         if (next instanceof Finishmark) {
-          isClosed = true;
+          isOutputContextClosed = true;
+          return false;
         }
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
@@ -98,8 +90,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 
     @Override
     public final Object next() throws RuntimeException {
-      if (isClosed) {
-        throw new RuntimeException("This context has already been closed");
+      if (isOutputContextClosed) {
+        throw new RuntimeException("The connected output context has already been closed");
       } else if (!hasNext) {
         throw new RuntimeException("Next element is not available");
       } else {
