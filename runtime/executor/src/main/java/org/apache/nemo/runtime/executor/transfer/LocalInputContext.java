@@ -50,7 +50,6 @@ import java.util.concurrent.LinkedBlockingQueue;
    */
   @Override
   public void close() throws RuntimeException {
-    isClosed = true;
   }
 
   /**
@@ -88,8 +87,7 @@ import java.util.concurrent.LinkedBlockingQueue;
         // Blocking call
         next = queue.take();
         if (next instanceof Finishmark) {
-          LocalInputContext.this.close();
-          return false;
+          isClosed = true;
         }
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
