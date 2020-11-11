@@ -44,8 +44,8 @@ import java.util.concurrent.LinkedBlockingQueue;
   }
 
   /**
-   * Checks if this context has already been closed.
-   * @return true if this context has already been closed.
+   * Checks if the connected output context has already been closed.
+   * @return true if the connected output context has already been closed.
    */
   public boolean isOutputContextClosed() {
     return isOutputContextClosed;
