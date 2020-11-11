@@ -153,8 +153,8 @@ public final class Executor {
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null))));
 
-      final TaskExecutor executor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-        metricMessageSender, persistentConnectionToMasterMap);
+      final TaskExecutor executor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory,
+        broadcastManagerWorker, metricMessageSender, persistentConnectionToMasterMap);
       this.taskExecutorList.add(executor);
       executor.execute();
     } catch (final Exception e) {
