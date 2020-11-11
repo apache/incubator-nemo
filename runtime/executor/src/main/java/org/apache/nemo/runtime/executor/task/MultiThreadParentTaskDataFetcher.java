@@ -114,7 +114,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
-          // Variable to avoid producing a redundant finish mark
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
