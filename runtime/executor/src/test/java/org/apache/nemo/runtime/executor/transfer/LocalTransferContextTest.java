@@ -74,9 +74,18 @@ public final class LocalTransferContextTest extends TestCase {
       @Override
       public void run() {
         while (inputIterator.hasNext()) {
+          int counter = 0;
           Object element = inputIterator.next();
           count += (int) element;
-
+          counter++;
+          if (counter % 500000 == 0) {
+            try {
+              Thread.sleep(500);
+            }
+            catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
         }
       }
     }
