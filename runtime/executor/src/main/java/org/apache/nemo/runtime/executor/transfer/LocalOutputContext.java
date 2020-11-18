@@ -73,7 +73,7 @@ public final class LocalOutputContext extends LocalTransferContext implements Ou
   }
 
   /**
-   * Checks whether the context has been closed.
+   * Checks whether the context has been closed. It is for testing purpose.
    * @return true if the context has been closed.
    */
   public boolean isClosed() {
