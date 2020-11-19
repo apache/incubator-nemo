@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.transfer.OutputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @ThreadSafe
 public final class PipeContainer {
   private static final Logger LOG = LoggerFactory.getLogger(PipeContainer.class.getName());
-  private final ConcurrentHashMap<Pair<String, Long>, CountBasedBlockingContainer<ByteOutputContext>> pipeMap;
+  private final ConcurrentHashMap<Pair<String, Long>, CountBasedBlockingContainer<OutputContext>> pipeMap;
 
   PipeContainer() {
     this.pipeMap = new ConcurrentHashMap<>();
@@ -131,21 +131,21 @@ public final class PipeContainer {
    *
    * @param pairKey the pair of the runtime edge id and the source task index.
    * @param dstTaskIndex the destination task index.
-   * @param byteOutputContext the byte output context.
+   * @param outputContext the output context.
    */
-  void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final ByteOutputContext byteOutputContext) {
-    final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
-    container.setValue(dstTaskIndex, byteOutputContext);
+  void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final OutputContext outputContext) {
+    final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
+    container.setValue(dstTaskIndex, outputContext);
   }
 
   /**
    * (SYNCHRONIZATION) CountBasedBlockingContainer takes care of it.
    *
    * @param pairKey the pair of the runtime edge id and the source task index.
-   * @return the list of byte output context.
+   * @return the list of output contexts.
    */
-  List<ByteOutputContext> getPipes(final Pair<String, Long> pairKey) {
-    final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
+  List<OutputContext> getPipes(final Pair<String, Long> pairKey) {
+    final CountBasedBlockingContainer<OutputContext> container = pipeMap.get(pairKey);
     return container.getValuesBlocking();
   }
 }
