@@ -24,7 +24,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.transfer.OutputContext;
+import org.apache.nemo.runtime.executor.transfer.TransferOutputStream;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -50,7 +51,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private boolean initialized;
   private Serializer serializer;
-  private List<ByteOutputContext> pipes;
+  private List<OutputContext> pipes;
 
   /**
    * Constructor.
@@ -73,9 +74,9 @@ public final class PipeOutputWriter implements OutputWriter {
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
   }
 
-  private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+  private void writeData(final Object element, final List<OutputContext> pipeList) {
     pipeList.forEach(pipe -> {
-      try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
+      try (TransferOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         pipeToWriteTo.writeElement(element, serializer);
       } catch (IOException e) {
         throw new RuntimeException(e); // For now we crash the executor on IOException
@@ -136,7 +137,7 @@ public final class PipeOutputWriter implements OutputWriter {
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
   }
 
-  private List<ByteOutputContext> getPipeToWrite(final Object element) {
+  private List<OutputContext> getPipeToWrite(final Object element) {
     final Optional<CommunicationPatternProperty.Value> comValueOptional =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
     final CommunicationPatternProperty.Value comm = comValueOptional.orElseThrow(IllegalStateException::new);
