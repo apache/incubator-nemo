@@ -146,18 +146,12 @@ message BlockStateChangedMsg {
 
 message RunTimePassMessageMsg {
     required string taskId = 1;
-    required RunTimePassType runTimePassType = 2;
-    repeated RunTimePassMessageEntry entry = 3;
+    repeated RunTimePassMessageEntry entry = 2;
 }
 
 message RunTimePassMessageEntry {
     required string key = 1;
     required int64 value = 2;
-}
-
-enum RunTimePassType {
-  DataSkewPass = 1;
-  DynamicTaskSizingPass = 2;
 }
 
 message RequestBlockLocationMsg {

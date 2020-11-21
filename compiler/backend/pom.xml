@@ -52,5 +52,11 @@ under the License.
       <artifactId>nemo-runtime-master</artifactId>
       <version>${project.version}</version>
     </dependency>
+      <dependency>
+          <groupId>org.apache.nemo</groupId>
+          <artifactId>nemo-runtime-master</artifactId>
+          <version>0.3-SNAPSHOT</version>
+          <scope>compile</scope>
+      </dependency>
   </dependencies>
 </project>

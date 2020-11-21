@@ -28,7 +28,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.StageState;
@@ -253,15 +252,9 @@ public final class BatchSchedulerUtils {
    * @param data             of the message.
    */
   public static void onRunTimePassMessage(final PlanStateManager planStateManager, final PlanRewriter planRewriter,
-                                          final ControlMessage.RunTimePassType runTimePassType,
                                           final String taskId, final Object data) {
     final Set<StageEdge> targetEdges = BatchSchedulerUtils.getEdgesToOptimize(planStateManager, taskId);
-    if (runTimePassType.equals(ControlMessage.RunTimePassType.DynamicTaskSizingPass)) {
-      planRewriter.accumulate(getMessageId(targetEdges), runTimePassType, targetEdges);
-    } else {
-      planRewriter.accumulate(getMessageId(targetEdges), runTimePassType, data);
-    }
-
+    planRewriter.accumulate(getMessageId(targetEdges), targetEdges, data);
   }
 
   static int getMessageId(final Set<StageEdge> stageEdges) {

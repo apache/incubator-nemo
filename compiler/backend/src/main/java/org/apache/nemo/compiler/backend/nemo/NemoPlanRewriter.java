@@ -40,10 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -153,18 +150,14 @@ public final class NemoPlanRewriter implements PlanRewriter {
   }
 
   @Override
-  public void accumulate(final int messageId, final ControlMessage.RunTimePassType runTimePassType, final Object data) {
+  public void accumulate(final int messageId, final Set<StageEdge> targetEdges, final Object data) {
     final Prophet prophet;
-    switch (runTimePassType) {
-      case DataSkewPass:
-        prophet = new SkewProphet((List<ControlMessage.RunTimePassMessageEntry>) data);
-        break;
-      case DynamicTaskSizingPass:
-        prophet = new ParallelismProphet(currentIRDAG, currentPhysicalPlan, simulationSchedulerInjectionFuture.get(),
-          physicalPlanGenerator, (Set<StageEdge>) data);
-        break;
-      default:
-        throw new IllegalArgumentException("This type of run-time pass is not supported");
+    final List parsedData = (List<ControlMessage.RunTimePassMessageEntry>) data;
+    if (parsedData.isEmpty()) {
+      prophet = new SkewProphet(parsedData);
+    } else {
+      prophet = new ParallelismProphet(currentIRDAG, currentPhysicalPlan, simulationSchedulerInjectionFuture.get(),
+        physicalPlanGenerator, targetEdges);
     }
     messageIdToAggregatedData.putIfAbsent(messageId, new HashMap<>());
     final Map<String, Long> aggregatedData = prophet.calculate();

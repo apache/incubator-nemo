@@ -46,38 +46,33 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
   private final IRVertex irVertex;
   private final PersistentConnectionToMasterMap connectionToMasterMap;
   private final TaskExecutor taskExecutor;
-  private final ControlMessage.RunTimePassType runTimePassType;
+  private final boolean dataTransferNeeded;
 
   public RunTimeMessageOutputCollector(final String taskId,
                                        final IRVertex irVertex,
                                        final PersistentConnectionToMasterMap connectionToMasterMap,
                                        final TaskExecutor taskExecutor,
-                                       final ControlMessage.RunTimePassType runTimePassType) {
+                                       final boolean dataTransferNeeded) {
     this.taskId = taskId;
     this.irVertex = irVertex;
     this.connectionToMasterMap = connectionToMasterMap;
     this.taskExecutor = taskExecutor;
-    this.runTimePassType = runTimePassType;
+    this.dataTransferNeeded = dataTransferNeeded;
   }
 
   @Override
   public void emit(final O output) {
     final List<ControlMessage.RunTimePassMessageEntry> entries = new ArrayList<>();
-    switch (runTimePassType) {
-      case DataSkewPass:
-        final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
-        aggregatedMessage.forEach((key, size) ->
-          entries.add(
-            ControlMessage.RunTimePassMessageEntry.newBuilder()
-              // TODO #325: Add (de)serialization for non-string key types in data metric collection
-              .setKey(key == null ? NULL_KEY : String.valueOf(key))
-              .setValue(size)
-              .build())
-        );
-        break;
-      case DynamicTaskSizingPass:
-      default:
-        break;
+    if (this.dataTransferNeeded) {
+      final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
+      aggregatedMessage.forEach((key, size) ->
+        entries.add(
+          ControlMessage.RunTimePassMessageEntry.newBuilder()
+            // TODO #325: Add (de)serialization for non-string key types in data metric collection
+            .setKey(key == null ? NULL_KEY : String.valueOf(key))
+            .setValue(size)
+            .build())
+      );
     }
     connectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
@@ -85,7 +80,6 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
         .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
         .setType(ControlMessage.MessageType.RunTimePassMessage)
         .setRunTimePassMessageMsg(ControlMessage.RunTimePassMessageMsg.newBuilder()
-          .setRunTimePassType(runTimePassType)
           .setTaskId(taskId)
           .addAllEntry(entries)
         )

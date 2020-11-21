@@ -445,7 +445,6 @@ public final class RuntimeMaster {
         throw new RuntimeException(exception);
       case RunTimePassMessage:
         ((BatchScheduler) scheduler).onRunTimePassMessage(
-          message.getRunTimePassMessageMsg().getRunTimePassType(),
           message.getRunTimePassMessageMsg().getTaskId(),
           message.getRunTimePassMessageMsg().getEntryList());
         break;
