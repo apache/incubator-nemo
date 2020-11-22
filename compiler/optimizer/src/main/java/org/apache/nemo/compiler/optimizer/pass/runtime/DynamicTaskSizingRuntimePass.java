@@ -39,11 +39,11 @@ import java.util.stream.Collectors;
 /**
  * Runtime pass for Dynamic Task Sizing policy.
  */
-public final class DynamicTaskSizingRunTimePass extends RunTimePass<Map<String, Long>> {
-  private static final Logger LOG = LoggerFactory.getLogger(DynamicTaskSizingRunTimePass.class.getName());
+public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, Long>> {
+  private static final Logger LOG = LoggerFactory.getLogger(DynamicTaskSizingRuntimePass.class.getName());
   private final String mapKey = "opt.parallelism";
 
-  public DynamicTaskSizingRunTimePass() {
+  public DynamicTaskSizingRuntimePass() {
   }
 
   @Override

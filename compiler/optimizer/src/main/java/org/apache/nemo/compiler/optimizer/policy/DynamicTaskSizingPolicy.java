@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopUnrollingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SamplingTaskSizingPass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.DynamicTaskSizingRunTimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.DynamicTaskSizingRuntimePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 /**
@@ -32,7 +32,7 @@ public final class DynamicTaskSizingPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
     new PolicyBuilder()
       .registerCompileTimePass(new DefaultParallelismPass())
-      .registerRunTimePass(new DynamicTaskSizingRunTimePass(), new SamplingTaskSizingPass())
+      .registerRunTimePass(new DynamicTaskSizingRuntimePass(), new SamplingTaskSizingPass())
       .registerCompileTimePass(new LoopUnrollingPass())
       .registerCompileTimePass(new DefaultEdgeEncoderPass())
       .registerCompileTimePass(new DefaultEdgeDecoderPass())
