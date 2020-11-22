@@ -153,7 +153,7 @@ public final class NemoPlanRewriter implements PlanRewriter {
   public void accumulate(final int messageId, final Set<StageEdge> targetEdges, final Object data) {
     final Prophet prophet;
     final List parsedData = (List<ControlMessage.RunTimePassMessageEntry>) data;
-    if (parsedData.isEmpty()) {
+    if (!parsedData.isEmpty()) {
       prophet = new SkewProphet(parsedData);
     } else {
       prophet = new ParallelismProphet(currentIRDAG, currentPhysicalPlan, simulationSchedulerInjectionFuture.get(),
