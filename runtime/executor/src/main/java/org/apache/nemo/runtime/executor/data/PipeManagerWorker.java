@@ -29,10 +29,8 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.runtime.executor.transfer.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,8 +91,6 @@ public final class PipeManagerWorker {
               .setSrcTaskIndex(srcTaskIndex)
               .build())
           .build());
-
-
     return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       // Get executor id
       if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
@@ -106,22 +102,37 @@ public final class PipeManagerWorker {
       }
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
-      // Descriptor
-      final ControlMessage.PipeTransferContextDescriptor descriptor =
-        ControlMessage.PipeTransferContextDescriptor.newBuilder()
-          .setRuntimeEdgeId(runtimeEdgeId)
-          .setSrcTaskIndex(srcTaskIndex)
-          .setDstTaskIndex(dstTaskIndex)
-          .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
-          .build();
+      if (targetExecutorId.equals(executorId)) {
+        // Read from the local executor
+        final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), Long.valueOf(srcTaskIndex));
+        pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
-      // Connect to the executor
-      return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-          serializerManager.getSerializer(runtimeEdgeId)));
+        // initialize a local output context
+        final LocalOutputContext outputContext =
+          new LocalOutputContext(executorId, runtimeEdgeId, srcTaskIndex, dstTaskIndex);
+        pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
+
+        // Initialize a local input context and connect it to the corresponding local output context
+        final LocalInputContext inputContext = new LocalInputContext(outputContext);
+        final CompletableFuture<DataUtil.IteratorWithNumBytes> result = new CompletableFuture<>();
+        result.complete(DataUtil.IteratorWithNumBytes.of(inputContext.getIterator()));
+        return result;
+      } else {
+        // Read from the remote executor
+        final ControlMessage.PipeTransferContextDescriptor descriptor =
+          ControlMessage.PipeTransferContextDescriptor.newBuilder()
+            .setRuntimeEdgeId(runtimeEdge.getId())
+            .setSrcTaskIndex(srcTaskIndex)
+            .setDstTaskIndex(dstTaskIndex)
+            .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
+            .build();
+
+        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdge.getId())));
+      }
     });
   }
-
 
   public void notifyMaster(final String runtimeEdgeId, final long srcTaskIndex) {
     // Notify the master that we're using this pipe.
@@ -145,9 +156,8 @@ public final class PipeManagerWorker {
    * @param srcTaskIndex source task index
    * @return output contexts.
    */
-  public List<ByteOutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
-                                                   final long srcTaskIndex) {
-
+  public List<OutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
+                                               final long srcTaskIndex) {
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), srcTaskIndex);
     pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));

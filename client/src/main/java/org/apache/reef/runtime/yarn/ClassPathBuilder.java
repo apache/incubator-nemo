@@ -40,8 +40,8 @@ final class ClassPathBuilder {
   /**
    * The oracle that tells us whether a given path could be a YARN configuration path.
    *
-   * @param path
-   * @return
+   * @param path the path.
+   * @return whether or not it could be a YARN conf path.
    */
   private static boolean couldBeYarnConfigurationPath(final String path) {
     return path.contains("conf")
@@ -53,7 +53,7 @@ final class ClassPathBuilder {
    * Adds the given classpath entry. A guess will be made whether it refers to a configuration folder, in which case
    * it will be added to the prefix. Else, it will be added to the suffix.
    *
-   * @param classPathEntry
+   * @param classPathEntry the given classpath entry.
    */
   void add(final String classPathEntry) {
     // Make sure that the cluster configuration is in front of user classes
@@ -67,7 +67,7 @@ final class ClassPathBuilder {
   /**
    * Adds the given classPathEntry to the classpath suffix.
    *
-   * @param classPathEntry
+   * @param classPathEntry the given classpath entry.
    */
   void addToSuffix(final String classPathEntry) {
     this.suffix.add(classPathEntry);
@@ -76,7 +76,7 @@ final class ClassPathBuilder {
   /**
    * Adds the given classPathEntry to the classpath prefix.
    *
-   * @param classPathEntry
+   * @param classPathEntry the given classpath entry.
    */
   void addToPrefix(final String classPathEntry) {
     this.prefix.add(classPathEntry);
@@ -85,7 +85,7 @@ final class ClassPathBuilder {
   /**
    * Adds all entries given using the <code>add()</code> method.
    *
-   * @param entries
+   * @param entries entries to add.
    */
   void addAll(final String... entries) {
     for (final String classPathEntry : entries) {
@@ -96,7 +96,7 @@ final class ClassPathBuilder {
   /**
    * Adds all the given entries to the classpath suffix.
    *
-   * @param entries
+   * @param entries entries to add.
    */
   void addAllToSuffix(final String... entries) {
     for (final String classPathEntry : entries) {

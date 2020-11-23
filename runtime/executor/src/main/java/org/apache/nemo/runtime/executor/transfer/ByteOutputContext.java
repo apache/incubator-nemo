@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.transfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -49,7 +49,7 @@ import static io.netty.buffer.Unpooled.wrappedBuffer;
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public final class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
+public class ByteOutputContext extends ByteTransferContext implements OutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
@@ -79,7 +79,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * @return new {@link ByteOutputStream}
    * @throws IOException if an exception was set or this context was closed.
    */
-  public ByteOutputStream newOutputStream() throws IOException {
+  public final ByteOutputStream newOutputStream() throws IOException {
     ensureNoException();
     if (closed) {
       throw new IOException("Context already closed.");
@@ -93,11 +93,9 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
   /**
    * Closes this stream.
-   *
    * @throws IOException if an exception was set
    */
-  @Override
-  public void close() throws IOException {
+  public final void close() throws IOException {
     ensureNoException();
     if (closed) {
       return;
@@ -112,7 +110,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   }
 
   @Override
-  public void onChannelError(@Nullable final Throwable cause) {
+  public final void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
     channel.close();
   }
@@ -120,7 +118,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   /**
    * @throws IOException when a channel exception has been set.
    */
-  void ensureNoException() throws IOException {
+  final void ensureNoException() throws IOException {
     if (hasException()) {
       if (getException() == null) {
         throw new IOException();
@@ -136,7 +134,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * <p>Public methods are thread safe,
    * although the execution order may not be linearized if they were called from different threads.</p>
    */
-  public final class ByteOutputStream implements AutoCloseable {
+  public final class ByteOutputStream implements TransferOutputStream {
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
