@@ -59,7 +59,7 @@ import java.util.stream.IntStream;
  */
 public final class NemoPlanRewriter implements PlanRewriter {
   private static final Logger LOG = LoggerFactory.getLogger(NemoPlanRewriter.class.getName());
-
+  private static final String DATA_NOT_AUGMENTED = "NONE";
   private final NemoOptimizer nemoOptimizer;
   private final NemoBackend nemoBackend;
   private final Map<Integer, Map<Object, Long>> messageIdToAggregatedData;
@@ -144,11 +144,21 @@ public final class NemoPlanRewriter implements PlanRewriter {
     return currentPhysicalPlan;
   }
 
+  /**
+   * Accumulate the data needed in Plan Rewrite.
+   * DATA_NOT_AUGMENTED indicates that the information need in rewrite is not stored in RunTimePassMessageEntry,
+   * and we should explicitly generate it using Prophet class. In this case, the data will contain only one entry with
+   * key as DATA_NOT_AUGMENTED.
+   *
+   * @param messageId     of the rewrite.
+   * @param targetEdges   edges to change during rewrite.
+   * @param data          to accumulate.
+   */
   @Override
   public void accumulate(final int messageId, final Set<StageEdge> targetEdges, final Object data) {
     final Prophet prophet;
     final List<ControlMessage.RunTimePassMessageEntry> parsedData = (List<ControlMessage.RunTimePassMessageEntry>) data;
-    if (!parsedData.isEmpty() && parsedData.get(0).getKey().equals("NONE")) {
+    if (!parsedData.isEmpty() && parsedData.get(0).getKey().equals(DATA_NOT_AUGMENTED)) {
       prophet = new ParallelismProphet(currentIRDAG, currentPhysicalPlan, simulationSchedulerInjectionFuture.get(),
         physicalPlanGenerator, targetEdges);
     } else {

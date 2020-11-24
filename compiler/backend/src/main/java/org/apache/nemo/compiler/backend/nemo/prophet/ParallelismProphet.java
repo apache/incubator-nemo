@@ -74,6 +74,12 @@ public final class ParallelismProphet implements Prophet<String, Long> {
 
   /**
    * Launch SimulationScheduler and find out the optimal parallelism.
+   * For now, the number of candidate parallelisms is seven, so we iterate seven times.
+   * In each iteration index i, the candidate parallelism is calculated by dividing the i-th power of two from
+   * partitonerProperty (which is guaranteed to be one of 1024, 2048, 4096. For more information, please refer to
+   * SamplingTaskSizingPass). This approach is taken to guarantee the equal length of each partition, which will be
+   * updated in DynamicTaskSizingRuntimePass.
+   *
    * @return  Map of one element, with key "opt.parallelism".
    */
   @Override
@@ -96,7 +102,8 @@ public final class ParallelismProphet implements Prophet<String, Long> {
   }
 
   /**
-   * Simulate the given physical plan.
+   * Simulate the given physical plan. The simulationScheduler schedules plan only once, to reduce further overhead
+   * from simulation.
    * @param physicalPlan      physical plan(with only one stage) to simulate
    * @return                  Pair of Integer and Long. Integer value indicates the simulated parallelism, and
    *                          Long value is simulated job(=stage) duration.

@@ -22,6 +22,9 @@ import java.util.Map;
 
 /**
  * A prophet class for dynamic optimization.
+ * It calculates the statistics the runtime pass needs by (including, but not limited to) parsing the
+ * messages accumulated by the RuntimeMessageOutputCollector, and feeds the information to the runtime pass
+ * in NemoPlanRewriter.
  * @param <K> key type of the optimized value
  * @param <V> type of optimized value
  */

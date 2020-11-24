@@ -153,7 +153,7 @@ public final class SamplingTaskSizingPass extends ReshapingPass {
   }
 
   /**
-   * should be called after EnableDynamicTaskSizingProperty is declared as true.
+   * Should be called after EnableDynamicTaskSizingProperty is declared as true.
    * @param dag   IRDAG to get job input data size from
    * @return      partitioner property regarding job size
    */

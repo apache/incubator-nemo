@@ -43,6 +43,12 @@ import java.util.stream.Collectors;
  */
 public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(DynamicTaskSizingRuntimePass.class.getName());
+  private static final int PARTITIONER_PROPERTY_FOR_SMALL_JOB = 1024;
+  private static final int PARTITIONER_PROPERTY_FOR_MEDIUM_JOB = 2048;
+  private static final int PARTITIONER_PROPERTY_FOR_LARGE_JOB = 4096;
+  private static final int LOWER_BOUND_SMALL_JOB_GB = 1;
+  private static final int LOWER_BOUND_MEDIUM_JOB_GB = 10;
+  private static final int LOWER_BOUND_LARGE_JOB_GB = 100;
   private final String mapKey = "opt.parallelism";
 
   /**
@@ -79,24 +85,62 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
       }
     }
     final int partitionUnit = partitionerProperty / optimizedTaskSizeRatio;
-    edgesToOptimize.forEach(irEdge -> setSubPartitionProperty(irEdge, partitionUnit, partitionerProperty));
+    edgesToOptimize.forEach(irEdge -> setSubPartitionSetProperty(irEdge, partitionUnit, partitionerProperty));
     edgesToOptimize.forEach(irEdge -> setDstVertexParallelismProperty(irEdge, partitionUnit, partitionerProperty));
     return irdag;
   }
 
+  /**
+   * Get PartitionerProperty by job size of the given dag.
+   * Please note that this runtime optimization is not intended to operate on jobs with size smaller than
+   * LOWER_BOUND_SMALL_JOB_GB.
+   * @param dag   dag to observe.
+   * @return      partitioner property.
+   */
   private int getPartitionerProperty(final IRDAG dag) {
-    long jobSizeInBytes = dag.getInputSize();
-    long jobSizeInGB = jobSizeInBytes / (1024 * 1024 * 1024);
-    if (1 <= jobSizeInGB && jobSizeInGB < 10) {
-      return 1024;
-    } else if (10 <= jobSizeInGB && jobSizeInGB < 100) {
-      return 2048;
+    long sourceInputDataSizeInBytes = dag.getInputSize();
+    long sourceInputDataSizeInGB = sourceInputDataSizeInBytes / (1024 * 1024 * 1024);
+    if (sourceInputDataSizeInGB < LOWER_BOUND_SMALL_JOB_GB) {
+      final String message = String.format("Job size must be greater than %d GB to run DynamicTaskSizingRuntimePass",
+        LOWER_BOUND_SMALL_JOB_GB);
+      throw new RuntimeOptimizationException(message);
+    } else if (sourceInputDataSizeInGB < LOWER_BOUND_MEDIUM_JOB_GB) {
+      return PARTITIONER_PROPERTY_FOR_SMALL_JOB;
+    } else if (sourceInputDataSizeInGB < LOWER_BOUND_LARGE_JOB_GB) {
+      return PARTITIONER_PROPERTY_FOR_MEDIUM_JOB;
     } else {
-      return 4096;
+      return PARTITIONER_PROPERTY_FOR_LARGE_JOB;
     }
   }
 
-  private void setSubPartitionProperty(final IREdge edge, final int growingFactor, final int partitionerProperty) {
+  /**
+   * Update SubPartitionSetProperty of the given edge using partitionerProperty and growingFactor.
+   * Since this function only re-splits the allocated partitions of the edge, but not changes its range, the start and
+   * end value of the before and after partitions should be equal.
+   * The length of updated SubPartitionSetProperty indicates the optimized parallelism of the destination of the edge.
+   *
+   * Note:
+   * Since the PartitionerProperty is dependent on Job size and SubPartitionSetProperty depends on PartitionerProperty,
+   * The RangeEndExclusive() value of the last element in SubPartitionerProperty of the edge must be equal with the
+   * PartitionerProperty of the edge.
+   * [Example case]
+   * Original SubPartitionSetProperty: [[512, 4096)]
+   * growing factor: 64
+   * partitioner property: 4096
+   *
+   * start value in code: 512
+   *
+   * Updated partitioner property: [[512, 576), [576, 640), [640, 704), ... , [3968, 4032), [4032, 4096)]
+   * In this case, the updated parallelism property of the destination vertex of the edge is 56.
+   * Updated parallelism property: (4096 - 512) / 64.
+   *
+   * @param edge                Edge to update SubPartitionSetProperty.
+   * @param growingFactor       The length of the updated KeyRange.
+   *                            That is, keyRange.rangeEndExclusive() - keyRange.rangeBeginInclusive().
+   *                            The length of the range of re-splitted partitions are all equal for now.
+   * @param partitionerProperty The total size of partitions in integer.
+   */
+  private void setSubPartitionSetProperty(final IREdge edge, final int growingFactor, final int partitionerProperty) {
     final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class)
       .orElseThrow(() -> new RuntimeOptimizationException("SubPartitionSet Property of edge is missing."));
     if (keyRanges.isEmpty()) {
@@ -112,11 +156,18 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
     edge.setPropertyPermanently(SubPartitionSetProperty.of(partitionSet));
   }
 
+  /**
+   * Update the ParallelismProperty of the destination vertex of the given edge.
+   * For more information, please refer to the upper setSubPartitionSetProperty() method.
+   * @param edge                  Incoming edge of the vertex to optimize.
+   * @param partitionSize         The length of the KeyRange.
+   * @param partitionerProperty   The total size of partitions in integer.
+   */
   private void setDstVertexParallelismProperty(final IREdge edge,
                                                final int partitionSize,
                                                final int partitionerProperty) {
     final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class)
-      .orElseThrow(() -> new RuntimeOptimizationException("Parallellism Property of vertex is missing."));
+      .orElseThrow(() -> new RuntimeOptimizationException("SubpartitionSet Property of the edge is missing."));
     final int start = (int) keyRanges.get(0).rangeBeginInclusive();
     final int newParallelism = (partitionerProperty - start) / partitionSize;
     edge.getDst().setPropertyPermanently(ParallelismProperty.of(newParallelism));
