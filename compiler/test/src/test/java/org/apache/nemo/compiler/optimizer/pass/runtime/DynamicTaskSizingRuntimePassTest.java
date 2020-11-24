@@ -71,7 +71,8 @@ public class DynamicTaskSizingRuntimePassTest {
         .apply(dagAfterCompileTimePass, new Message<>(1, edgesToExamine, message));
       for (IREdge edge : afterRuntimePass.getEdges())
         if (edgesToExamine.contains(edge)) {
-          assertEquals(edge.getDst().getPropertyValue(ParallelismProperty.class), 8);
+          int dstParallelism = edge.getDst().getPropertyValue(ParallelismProperty.class).orElse(1);
+          assertEquals(dstParallelism, 8);
         }
     }
   }

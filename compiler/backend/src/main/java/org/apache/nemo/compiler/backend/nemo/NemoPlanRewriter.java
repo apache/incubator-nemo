@@ -30,12 +30,10 @@ import org.apache.nemo.compiler.backend.nemo.prophet.SkewProphet;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.master.scheduler.SimulationScheduler;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,10 +74,7 @@ public final class NemoPlanRewriter implements PlanRewriter {
   public NemoPlanRewriter(final NemoOptimizer nemoOptimizer,
                           final NemoBackend nemoBackend,
                           final InjectionFuture<SimulationScheduler> simulationSchedulerInjectionFuture,
-                          final PhysicalPlanGenerator physicalPlanGenerator,
-                          @Parameter(JobConf.ClientSideRPCServerHost.class) final String clientHost,
-                          @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort,
-                          @Parameter(JobConf.ExecutorJSONContents.class) final String executorJSONContents) {
+                          final PhysicalPlanGenerator physicalPlanGenerator) {
     this.nemoOptimizer = nemoOptimizer;
     this.nemoBackend = nemoBackend;
     this.simulationSchedulerInjectionFuture = simulationSchedulerInjectionFuture;

@@ -41,7 +41,7 @@ import java.util.Map;
 public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(RunTimeMessageOutputCollector.class.getName());
   private static final String NULL_KEY = "NULL";
-  private static final String NON_EXIST = "NONE";
+  private static final String NON_EXISTENT = "NONE";
 
   private final String taskId;
   private final IRVertex irVertex;
@@ -78,7 +78,7 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
       entries.add(
         ControlMessage.RunTimePassMessageEntry.newBuilder()
           // TODO #325: Add (de)serialization for non-string key types in data metric collection
-          .setKey(NON_EXIST)
+          .setKey(NON_EXISTENT)
           .setValue(0)
           .build());
     }

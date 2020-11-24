@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,6 +44,9 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   private static final Logger LOG = LoggerFactory.getLogger(DynamicTaskSizingRuntimePass.class.getName());
   private final String mapKey = "opt.parallelism";
 
+  /**
+   * Default Constructor.
+   */
   public DynamicTaskSizingRuntimePass() {
   }
 
@@ -59,7 +63,7 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
 
     final IREdge representativeEdge = edgesToOptimize.iterator().next();
     // double check
-    if (!representativeEdge.getDst().getPropertyValue(EnableDynamicTaskSizingProperty.class).get()) {
+    if (!representativeEdge.getDst().getPropertyValue(EnableDynamicTaskSizingProperty.class).orElse(false)) {
       return irdag;
     }
     final Map<String, Long> messageValue = mapMessage.getMessageValue();
@@ -67,9 +71,9 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
     final int optimizedTaskSizeRatio = messageValue.get(mapKey).intValue();
     final int partitionerProperty = getPartitionerProperty(irdag);
     for (IREdge edge : edgesToOptimize) {
-      if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.SHUFFLE)
-        && !edge.getPropertyValue(PartitionerProperty.class).get().right().equals(partitionerProperty)) {
+      if (!edge.getPropertyValue(PartitionerProperty.class).get().right().equals(partitionerProperty)
+      && edge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.SHUFFLE)) {
         throw new IllegalArgumentException();
       }
     }
@@ -92,7 +96,11 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   }
 
   private void setSubPartitionProperty(final IREdge edge, final int growingFactor, final int partitionerProperty) {
-    final int start = (int) edge.getPropertyValue(SubPartitionSetProperty.class).get().get(0).rangeBeginInclusive();
+    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class).orElse(new ArrayList<>());
+    if (keyRanges.isEmpty()) {
+      return;
+    }
+    final int start = (int) keyRanges.get(0).rangeBeginInclusive();
     final ArrayList<KeyRange> partitionSet = new ArrayList<>();
     int taskIndex = 0;
     for (int startIndex = start; startIndex < partitionerProperty; startIndex += growingFactor) {
@@ -105,7 +113,11 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   private void setDstVertexParallelismProperty(final IREdge edge,
                                                final int partitionSize,
                                                final int partitionerProperty) {
-    final int start = (int) edge.getPropertyValue(SubPartitionSetProperty.class).get().get(0).rangeBeginInclusive();
+    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class).orElse(new ArrayList<>());
+    if (keyRanges.isEmpty()) {
+      return;
+    }
+    final int start = (int) keyRanges.get(0).rangeBeginInclusive();
     final int newParallelism = (partitionerProperty - start) / partitionSize;
     edge.getDst().setPropertyPermanently(ParallelismProperty.of(newParallelism));
   }

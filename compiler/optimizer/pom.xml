@@ -33,7 +33,7 @@ under the License.
       </plugins>
     </build>
 
-    <parent>
+  <parent>
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-compiler</artifactId>
     <version>0.3-SNAPSHOT</version>

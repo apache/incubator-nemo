@@ -49,8 +49,7 @@ public final class ParallelismProphet implements Prophet<String, Long> {
   private final IRDAG currentIRDAG;
   private final PhysicalPlan currentPhysicalPlan;
   private final Set<StageEdge> edgesToOptimize;
-  private final Set<String> stageId;
-  private int partitionerProperty;
+  private final int partitionerProperty;
 
   /**
    * Default constructor for ParallelismProphet.
@@ -70,10 +69,13 @@ public final class ParallelismProphet implements Prophet<String, Long> {
     this.simulationScheduler = simulationScheduler;
     this.physicalPlanGenerator = physicalPlanGenerator;
     this.edgesToOptimize = edgesToOptimize;
-    this.stageId = edgesToOptimize.stream().map(StageEdge::getDst).map(Stage::getId).collect(Collectors.toSet());
-    calculatePartitionerProperty(edgesToOptimize);
+    this.partitionerProperty = calculatePartitionerProperty(edgesToOptimize);
   }
 
+  /**
+   * Launch SimulationScheduler and find out the optimal parallelism.
+   * @return  Map of one element, with key "opt.parallelism".
+   */
   @Override
   public Map<String, Long> calculate() {
     final Map<String, Long> result = new HashMap<>();
@@ -110,13 +112,15 @@ public final class ParallelismProphet implements Prophet<String, Long> {
     return Collections.min(taskSizeRatioToDuration, Comparator.comparing(Pair::right));
   }
 
-  private void setPartitionerProperty(final int partitionerProperty) {
-    this.partitionerProperty = partitionerProperty;
+  /**
+   * Calculate the partitioner property of the target stage.
+   * @param edges Edges to optimize(i.e. edges pointing to the target stage vertices)
+   *              Edges are considered to have all same partitioner property value.
+   */
+  private int calculatePartitionerProperty(final Set<StageEdge> edges) {
+    return edges.iterator().next().getPropertyValue(PartitionerProperty.class).get().right();
   }
 
-  private void calculatePartitionerProperty(final Set<StageEdge> edges) {
-    setPartitionerProperty(edges.iterator().next().getPropertyValue(PartitionerProperty.class).get().right());
-  }
   /**
    * Make Physical plan which is to be launched in Simulation Scheduler.
    * @param parallelism   parallelism to set in new physical plan
