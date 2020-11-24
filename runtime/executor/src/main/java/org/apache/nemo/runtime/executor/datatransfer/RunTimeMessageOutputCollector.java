@@ -41,35 +41,47 @@ import java.util.Map;
 public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(RunTimeMessageOutputCollector.class.getName());
   private static final String NULL_KEY = "NULL";
+  private static final String NON_EXISTENT = "NONE";
 
   private final String taskId;
   private final IRVertex irVertex;
   private final PersistentConnectionToMasterMap connectionToMasterMap;
   private final TaskExecutor taskExecutor;
+  private final boolean dataTransferNeeded;
 
   public RunTimeMessageOutputCollector(final String taskId,
                                        final IRVertex irVertex,
                                        final PersistentConnectionToMasterMap connectionToMasterMap,
-                                       final TaskExecutor taskExecutor) {
+                                       final TaskExecutor taskExecutor,
+                                       final boolean dataTransferNeeded) {
     this.taskId = taskId;
     this.irVertex = irVertex;
     this.connectionToMasterMap = connectionToMasterMap;
     this.taskExecutor = taskExecutor;
+    this.dataTransferNeeded = dataTransferNeeded;
   }
 
   @Override
   public void emit(final O output) {
-    final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
     final List<ControlMessage.RunTimePassMessageEntry> entries = new ArrayList<>();
-    aggregatedMessage.forEach((key, size) ->
+    if (this.dataTransferNeeded) {
+      final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
+      aggregatedMessage.forEach((key, size) ->
+        entries.add(
+          ControlMessage.RunTimePassMessageEntry.newBuilder()
+            // TODO #325: Add (de)serialization for non-string key types in data metric collection
+            .setKey(key == null ? NULL_KEY : String.valueOf(key))
+            .setValue(size)
+            .build())
+      );
+    } else {
       entries.add(
         ControlMessage.RunTimePassMessageEntry.newBuilder()
           // TODO #325: Add (de)serialization for non-string key types in data metric collection
-          .setKey(key == null ? NULL_KEY : String.valueOf(key))
-          .setValue(size)
-          .build())
-    );
-
+          .setKey(NON_EXISTENT)
+          .setValue(0)
+          .build());
+    }
     connectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())

@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
-
-import java.util.Set;
+package org.apache.nemo.common.exception;
 
 /**
- * PhysicalPlan rewriter.
+ * CompileTimeOptimizationException.
+ * Thrown for run-time optimization related exceptions.
  */
-public interface PlanRewriter {
+public class RuntimeOptimizationException extends RuntimeException {
   /**
-   * @param messageId           of the rewrite.
-   * @return physical plan.
+   * Constructor of RuntimeOptimizationException.
+   *
+   * @param cause cause.
    */
-  PhysicalPlan rewrite(int messageId);
+  public RuntimeOptimizationException(final Throwable cause) {
+    super(cause);
+  }
 
   /**
-   * @param messageId of the rewrite.
-   * @param data      to accumulate.
+   * Constructor of CompileTimeOptimizationException.
+   *
+   * @param message message.
    */
-  void accumulate(int messageId, Set<StageEdge> targetEdges, Object data);
+  public RuntimeOptimizationException(final String message) {
+    super(message);
+  }
 }

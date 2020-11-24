@@ -40,6 +40,7 @@ public final class IdManager {
   private static AtomicInteger vertexId = new AtomicInteger(1);
   private static AtomicInteger edgeId = new AtomicInteger(1);
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
+  private static AtomicInteger duplicatedEdgeGroupId = new AtomicInteger(0);
   private static AtomicInteger messageId = new AtomicInteger(1);
   private static volatile boolean isDriver = false;
 
@@ -98,6 +99,10 @@ public final class IdManager {
    */
   public static String generateResourceSpecId() {
     return "ResourceSpec" + resourceSpecIdGenerator.getAndIncrement();
+  }
+
+  public static Integer generateDuplicatedEdgeGroupId() {
+    return duplicatedEdgeGroupId.getAndIncrement();
   }
 
   public static Integer generateMessageId() {
