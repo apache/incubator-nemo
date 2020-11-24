@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.exception.RuntimeOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -51,7 +52,8 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   }
 
   @Override
-  public IRDAG apply(final IRDAG irdag, final Message<Map<String, Long>> mapMessage) {
+  public IRDAG apply(final IRDAG irdag,
+                     final Message<Map<String, Long>> mapMessage) {
     final Set<IREdge> edgesToOptimize = mapMessage.getExaminedEdges();
     final Set<IRVertex> stageVertices = edgesToOptimize.stream().map(IREdge::getDst).collect(Collectors.toSet());
     irdag.topologicalDo(v -> {
@@ -71,9 +73,8 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
     final int optimizedTaskSizeRatio = messageValue.get(mapKey).intValue();
     final int partitionerProperty = getPartitionerProperty(irdag);
     for (IREdge edge : edgesToOptimize) {
-      if (!edge.getPropertyValue(PartitionerProperty.class).get().right().equals(partitionerProperty)
-      && edge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.SHUFFLE)) {
+      if (CommunicationPatternProperty.Value.SHUFFLE.equals(edge.getPropertyValue(CommunicationPatternProperty.class)
+        .get()) && partitionerProperty != (edge.getPropertyValue(PartitionerProperty.class).get().right())) {
         throw new IllegalArgumentException();
       }
     }
@@ -96,7 +97,8 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   }
 
   private void setSubPartitionProperty(final IREdge edge, final int growingFactor, final int partitionerProperty) {
-    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class).orElse(new ArrayList<>());
+    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class)
+      .orElseThrow(() -> new RuntimeOptimizationException("SubPartitionSet Property of edge is missing."));
     if (keyRanges.isEmpty()) {
       return;
     }
@@ -113,10 +115,8 @@ public final class DynamicTaskSizingRuntimePass extends RunTimePass<Map<String, 
   private void setDstVertexParallelismProperty(final IREdge edge,
                                                final int partitionSize,
                                                final int partitionerProperty) {
-    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class).orElse(new ArrayList<>());
-    if (keyRanges.isEmpty()) {
-      return;
-    }
+    final List<KeyRange> keyRanges = edge.getPropertyValue(SubPartitionSetProperty.class)
+      .orElseThrow(() -> new RuntimeOptimizationException("Parallellism Property of vertex is missing."));
     final int start = (int) keyRanges.get(0).rangeBeginInclusive();
     final int newParallelism = (partitionerProperty - start) / partitionSize;
     edge.getDst().setPropertyPermanently(ParallelismProperty.of(newParallelism));
