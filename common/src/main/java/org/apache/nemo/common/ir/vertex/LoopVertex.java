@@ -164,6 +164,7 @@ public class LoopVertex extends IRVertex {
 
   /**
    * Getter method for edgeWithLoopToEdgeWithInternalVertex.
+   * @return the map of edge with loop to the edge with the internal vertex.
    */
   public Map<IREdge, IREdge> getEdgeWithLoopToEdgeWithInternalVertex() {
     return this.edgeWithLoopToEdgeWithInternalVertex;
@@ -171,6 +172,7 @@ public class LoopVertex extends IRVertex {
 
   /**
    * Getter method for edgeWithInternalVertexToEdgeWithLoop.
+   * @return the map of edge with internal vertex to the edge with the loop.
    */
   public Map<IREdge, IREdge> getEdgeWithInternalVertexToEdgeWithLoop() {
     return this.edgeWithInternalVertexToEdgeWithLoop;

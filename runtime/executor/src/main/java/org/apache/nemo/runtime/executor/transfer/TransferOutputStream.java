@@ -28,7 +28,7 @@ public interface TransferOutputStream extends AutoCloseable {
   /**
    * Write an element into the output stream.
    * @param element element to be sent
-   * @param serializer serializer of {@param element}
+   * @param serializer serializer of {@code element}
    */
   void writeElement(Object element, Serializer serializer);
 
