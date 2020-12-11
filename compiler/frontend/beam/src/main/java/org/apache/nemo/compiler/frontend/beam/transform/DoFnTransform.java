@@ -56,6 +56,8 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
    * @param windowingStrategy    windowing strategy
    * @param options              pipeline options
    * @param displayData          display data.
+   * @param doFnSchemaInformation doFn schema information.
+   * @param sideInputMapping      side input mapping.
    */
   public DoFnTransform(final DoFn<InputT, OutputT> doFn,
                        final Coder<InputT> inputCoder,

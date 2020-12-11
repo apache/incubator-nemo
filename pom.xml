@@ -17,19 +17,18 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>21</version>
+    <version>23</version>
   </parent>
 
   <groupId>org.apache.nemo</groupId>
   <artifactId>nemo-project</artifactId>
-  <version>0.3-SNAPSHOT</version>
+  <version>0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Nemo Project</name>
 
@@ -283,9 +282,10 @@ under the License.
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>${maven.javadoc.version}</version>
         <configuration>
-          <excludePackageNames>*.org.apache.nemo.runtime.common.comm</excludePackageNames>
+          <excludePackageNames>*.org.apache.nemo.runtime.common.comm:*.compiler.frontend.spark.*</excludePackageNames>
           <outputDirectory>docs/apidocs</outputDirectory>
           <reportOutputDirectory>docs/apidocs</reportOutputDirectory>
+          <detectJavaApiLink>false</detectJavaApiLink>
         </configuration>
         <executions>
           <execution>

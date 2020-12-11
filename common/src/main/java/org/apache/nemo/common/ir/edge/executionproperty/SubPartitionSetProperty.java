@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import java.util.ArrayList;
 
 /**
- * This property decides the hash partition set of sampled & optimized tasks in Dynamic Task Sizing Policy.
+ * This property decides the hash partition set of sampled and optimized tasks in Dynamic Task Sizing Policy.
  * <p>
  * Adopting this property requires changing other properties as well.
  * Such execution properties include:

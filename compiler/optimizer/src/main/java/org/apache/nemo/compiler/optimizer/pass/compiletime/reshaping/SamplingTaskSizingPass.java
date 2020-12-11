@@ -36,17 +36,17 @@ import java.util.stream.Collectors;
 
 /**
  * Compiler pass for dynamic task size optimization. Happens only when the edge property is SHUFFLE.
- * If (size of given job) >= 1GB: enable dynamic task sizing optimization.
+ * If (size of given job) is greater than or equal to 1GB: enable dynamic task sizing optimization.
  * else:                          break.
  *
  *
- * @Attributes
+ * With attributes
  * PARTITIONER_PROPERTY_FOR_SMALL_JOB:  PartitionerProperty for jobs in range of [1GB, 10GB) size.
  * PARTITIONER_PROPERTY_FOR_MEDIUM_JOB: PartitionerProperty for jobs in range of [10GB, 100GB) size.
  * PARTITIONER_PROPERTY_FOR_BIG_JOB:    PartitionerProperty for jobs in range of [100GB, - ) size(No upper limit).
  *
  * source stage - shuffle edge - current stage - next stage
- * -> source stage - [curr stage - signal vertex] - next stage
+ * - source stage - [curr stage - signal vertex] - next stage
  * where [] is a splitter vertex
  */
 @Annotates({EnableDynamicTaskSizingProperty.class, PartitionerProperty.class, SubPartitionSetProperty.class,

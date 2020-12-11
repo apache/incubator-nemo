@@ -60,6 +60,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
    * @param sideInputs           side inputs
    * @param options              pipeline options
    * @param displayData          display data.
+   * @param doFnSchemaInformation DoFn schema information.
+   * @param sideInputMapping      side input mapping.
    */
   public PushBackDoFnTransform(final DoFn<InputT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
