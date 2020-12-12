@@ -20,6 +20,8 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -57,7 +59,7 @@ public final class EDGARTop10Documents {
     final String windowType = args[1];
     final String outputFilePath = args[2];
 
-    final Window<KV<String, Long>> windowFn;
+    final Window<KV<Object, Long>> windowFn;
     if (windowType.equals("fixed")) {
       windowFn = Window.into(FixedWindows.of(Duration.standardSeconds(5)));
     } else {
@@ -70,21 +72,22 @@ public final class EDGARTop10Documents {
 
     final Pipeline p = Pipeline.create(options);
 
-    final PCollection<KV<String, Long>> source = GenericSourceSink.read(p, inputFilePath)
-      .apply(ParDo.of(new DoFn<String, KV<String, Long>>() {
+    final PCollection<KV<Object, Long>> source = GenericSourceSink.read(p, inputFilePath)
+      .apply(ParDo.of(new DoFn<String, KV<Object, Long>>() {
         @ProcessElement
         public void processElement(@DoFn.Element final String elem,
-                                   final OutputReceiver<KV<String, Long>> out) {
+                                   final OutputReceiver<KV<Object, Long>> out) {
           final String[] splitt = elem.split(",");
           out.outputWithTimestamp(KV.of(splitt[4], 1L), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
         }
       }));
+    source.setCoder(KvCoder.of(ObjectCoderForString.of(), VarLongCoder.of()));
     source.apply(windowFn)
       .apply(Sum.longsPerKey())
-      .apply(Top.of(10, new ValueComparator<>()))
-      .apply(MapElements.via(new SimpleFunction<List<KV<String, Long>>, String>() {
+      .apply(Top.of(10, new ValueComparator<>()).withoutDefaults())
+      .apply(MapElements.via(new SimpleFunction<List<KV<Object, Long>>, String>() {
         @Override
-        public String apply(final List<KV<String, Long>> kvs) {
+        public String apply(final List<KV<Object, Long>> kvs) {
           return kvs.stream().map(kv -> kv.getKey() + ": " + kv.getValue()).collect(Collectors.joining("\n"));
         }
       }))

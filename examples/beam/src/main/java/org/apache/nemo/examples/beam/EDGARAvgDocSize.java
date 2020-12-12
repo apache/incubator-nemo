@@ -51,7 +51,7 @@ public final class EDGARAvgDocSize {
     final String windowType = args[1];
     final String outputFilePath = args[2];
 
-    final Window<Long> windowFn;
+    final Window<Number> windowFn;
     if (windowType.equals("fixed")) {
       windowFn = Window.into(FixedWindows.of(Duration.standardSeconds(5)));
     } else {
@@ -64,17 +64,18 @@ public final class EDGARAvgDocSize {
 
     final Pipeline p = Pipeline.create(options);
 
-    final PCollection<Long> source = GenericSourceSink.read(p, inputFilePath)
-      .apply(ParDo.of(new DoFn<String, Long>() {
+    final PCollection<Number> source = GenericSourceSink.read(p, inputFilePath)
+      .apply(ParDo.of(new DoFn<String, Number>() {
         @ProcessElement
         public void processElement(@DoFn.Element final String elem,
-                                   final OutputReceiver<Long> out) {
+                                   final OutputReceiver<Number> out) {
           final String[] splitt = elem.split(",");
-          out.outputWithTimestamp(Long.valueOf(splitt[8]), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          out.outputWithTimestamp(Double.valueOf(splitt[8]).longValue(),
+            Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
         }
       }));
     source.apply(windowFn)
-      .apply(Mean.globally())
+      .apply(Mean.globally().withoutDefaults())
       .apply(MapElements.via(new SimpleFunction<Double, String>() {
         @Override
         public String apply(final Double d) {
