@@ -53,7 +53,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARAvgDocSizeFixed")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARAvgDocSizeFixed")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -73,7 +73,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARAvgDocSizeSliding")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARAvgDocSizeSliding")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -92,7 +92,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARDocumentSuccessRateFixed")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARDocumentSuccessRateFixed")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -111,7 +111,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARDocumentSuccessRateSliding")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARDocumentSuccessRateSliding")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -130,7 +130,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARRequestsByCIKFixed")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARRequestsByCIKFixed")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -149,7 +149,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARRequestsByCIKSliding")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARRequestsByCIKSliding")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -162,13 +162,14 @@ public final class EDGARITCase {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testEDGARTop10BadRefererDocsFixed() throws Exception {
+
     builder = new ArgBuilder()
       .addUserMain(EDGARTop10BadRefererDocs.class.getCanonicalName())
       .addUserArgs(inputFilePath, "fixed", outputFilePath);
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARTop10BadRefererDocsFixed")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARTop10BadRefererDocsFixed")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -187,7 +188,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARTop10BadRefererDocsSliding")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARTop10BadRefererDocsSliding")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -206,7 +207,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARTop10DocumentsFixed")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARTop10DocumentsFixed")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -225,7 +226,7 @@ public final class EDGARITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testEDGARTop10DocumentsSliding")
+      .addJobId(EDGARITCase.class.getSimpleName() + "testEDGARTop10DocumentsSliding")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 

@@ -20,6 +20,8 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -57,7 +59,7 @@ public final class EDGARTop10BadRefererDocs {
     final String windowType = args[1];
     final String outputFilePath = args[2];
 
-    final Window<KV<String, Integer>> windowFn;
+    final Window<KV<Object, Integer>> windowFn;
     if (windowType.equals("fixed")) {
       windowFn = Window.into(FixedWindows.of(Duration.standardSeconds(5)));
     } else {
@@ -70,22 +72,23 @@ public final class EDGARTop10BadRefererDocs {
 
     final Pipeline p = Pipeline.create(options);
 
-    final PCollection<KV<String, Integer>> source = GenericSourceSink.read(p, inputFilePath)
-      .apply(ParDo.of(new DoFn<String, KV<String, Integer>>() {
+    final PCollection<KV<Object, Integer>> source = GenericSourceSink.read(p, inputFilePath)
+      .apply(ParDo.of(new DoFn<String, KV<Object, Integer>>() {
         @ProcessElement
         public void processElement(@DoFn.Element final String elem,
-                                   final OutputReceiver<KV<String, Integer>> out) {
+                                   final OutputReceiver<KV<Object, Integer>> out) {
           final String[] splitt = elem.split(",");
           final Integer failure = splitt[7].startsWith("2") ? 0 : 1;
           out.outputWithTimestamp(KV.of(splitt[6], failure), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
         }
       }));
+    source.setCoder(KvCoder.of(ObjectCoderForString.of(), VarIntCoder.of()));
     source.apply(windowFn)
       .apply(Mean.perKey())
-      .apply(Top.of(10, new ValueComparator<>()))
-      .apply(MapElements.via(new SimpleFunction<List<KV<String, Double>>, String>() {
+      .apply(Top.of(10, new ValueComparator<>()).withoutDefaults())
+      .apply(MapElements.via(new SimpleFunction<List<KV<Object, Double>>, String>() {
         @Override
-        public String apply(final List<KV<String, Double>> kvs) {
+        public String apply(final List<KV<Object, Double>> kvs) {
           return kvs.stream().map(kv -> kv.getKey() + ": " + kv.getValue()).collect(Collectors.joining("\n"));
         }
       }))
