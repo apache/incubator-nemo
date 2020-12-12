@@ -70,8 +70,12 @@ public final class EDGARAvgDocSize {
         public void processElement(@DoFn.Element final String elem,
                                    final OutputReceiver<Number> out) {
           final String[] splitt = elem.split(",");
-          out.outputWithTimestamp(Double.valueOf(splitt[8]).longValue(),
-            Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          try {
+            out.outputWithTimestamp(Double.valueOf(splitt[8]).longValue(),
+              Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          } catch (Exception e) {
+            // do nothing
+          }
         }
       }));
     source.apply(windowFn)
