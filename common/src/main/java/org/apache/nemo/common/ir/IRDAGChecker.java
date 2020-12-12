@@ -22,6 +22,8 @@ import org.apache.commons.lang.mutable.MutableObject;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGInterface;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -439,13 +441,29 @@ public final class IRDAGChecker {
           .collect(Collectors.toList());
 
         if (!nonStreamVertexEdge.isEmpty()) {
-          if (1 != nonStreamVertexEdge.stream()
-            .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
-            return failure("Incompatible encoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+          Set<? extends Class<? extends EncoderFactory>> encoderProperties = nonStreamVertexEdge.stream().map(e
+            -> e.getPropertyValue(EncoderProperty.class).get().getClass()).collect(Collectors.toSet());
+          if (1 != nonStreamVertexEdge.stream().map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass())
+            .distinct().count()) {
+            // if the number of distinct encoders is two and one of them is DummyEncoderFactory, this indicates that
+            // one of the edge comes from SignalVertex, which is used in DynamicTaskSizingPolicy.
+            // Therefore, we do return failure in this case.
+            if (!encoderProperties.contains(EncoderFactory.DummyEncoderFactory.class)
+              || encoderProperties.size() != 2) {
+              return failure("Incompatible encoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+            }
           }
-          if (1 != nonStreamVertexEdge.stream()
-            .map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass()).distinct().count()) {
-            return failure("Incompatible decoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+          Set<? extends Class<? extends DecoderFactory>> decoderProperties = nonStreamVertexEdge.stream().map(e
+            -> e.getPropertyValue(DecoderProperty.class).get().getClass()).collect(Collectors.toSet());
+          if (1 != nonStreamVertexEdge.stream().map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass())
+            .distinct().count()) {
+            // if the number of distinct decoders is two and one of them is DummyDecoderFactory, this indicates that
+            // one of the edge comes from SignalVertex, which is used in DynamicTaskSizingPolicy.
+            // Therefore, we do not return failure in this case.
+            if (!decoderProperties.contains(DecoderFactory.DummyDecoderFactory.class)
+              || encoderProperties.size() != 2) {
+              return failure("Incompatible decoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+            }
           }
         }
       }

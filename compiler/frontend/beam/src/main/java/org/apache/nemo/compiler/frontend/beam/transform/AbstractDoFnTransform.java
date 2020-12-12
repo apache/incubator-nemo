@@ -98,6 +98,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param sideInputs           side inputs
    * @param options              pipeline options
    * @param displayData          display data.
+   * @param doFnSchemaInformation doFn schema information.
+   * @param sideInputMapping      side input mapping.
    */
   public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
                                final Coder<InputT> inputCoder,

@@ -52,7 +52,8 @@ import java.util.stream.Collectors;
 public final class SimulatedTaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(SimulatedTaskExecutor.class.getName());
   private static final String TASK_METRIC_ID = "TaskMetric";
-
+  private static final int SAMPLING_PARALLELISM = 32;
+  private static final int FALLBACK_PARALLELISM = 1;
   /**
    * the simulation scheduler that the executor is associated with.
    */
@@ -106,15 +107,19 @@ public final class SimulatedTaskExecutor {
       .filter(s -> s.get("properties").get("irDag").get("edges").size()
         == stageIRDAG.getEdges().size())  // same # of edges.
       .filter(s -> s.get("properties").get("executionProperties")
-        .get("org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty").asInt(0)
-        == task.getPropertyValue(ParallelismProperty.class).orElse(0))  // same parallelism.
+        .get("org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty").asInt(1)
+        == SAMPLING_PARALLELISM)  // sampling vertices have parallelism of 32
+      .filter(s -> s.get("properties").get("executionProperties")
+        .get("org.apache.nemo.common.ir.vertex.executionproperty.EnableDynamicTaskSizingProperty").asBoolean())
       .map(s -> s.get("id").asText())
       .collect(Collectors.toSet());
 
+    final int simulationTaskParallelism = task.getPropertyValue(ParallelismProperty.class).orElse(FALLBACK_PARALLELISM);
     // Derive the average task duration from the stages.
     final OptionalDouble average = this.actualMetricStore.getMetricMap(TaskMetric.class).entrySet().stream()
       .filter(e -> stageIdsToGatherMetricsFrom.contains(RuntimeIdManager.getStageIdFromTaskId(e.getKey())))
       .map(Map.Entry::getValue)  // stream of TaskMetric.
+      .filter(tm -> ((TaskMetric) tm).getTaskSizeRatio() == simulationTaskParallelism)
       .mapToLong(tm -> ((TaskMetric) tm).getTaskDuration())
       .filter(l -> l > 0)
       .average();

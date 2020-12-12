@@ -32,7 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
     private boolean outputContextClosed = false;
 
     /**
-     * Creates a new local input context and connect it to {@param localOutputContext}.
+     * Creates a new local input context and connect it to {@code localOutputContext}.
      * @param localOutputContext the local output context to which this local input context is connected
      */
     public LocalInputContext(final LocalOutputContext localOutputContext) {

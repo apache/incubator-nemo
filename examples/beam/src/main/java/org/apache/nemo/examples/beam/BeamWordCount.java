@@ -153,6 +153,7 @@ public final class BeamWordCount {
     /**
      * By default, this example reads from a public dataset containing the text of King Lear. Set
      * this option to choose a different input file or glob.
+     * @return the input file path.
      */
     @Description("Path of the file to read from")
     @Default.String("gs://apache-beam-samples/shakespeare/kinglear.txt")
@@ -160,7 +161,10 @@ public final class BeamWordCount {
 
     void setInputFile(String value);
 
-    /** Set this required option to specify where to write the output. */
+    /**
+     * Set this required option to specify where to write the output.
+     * @return the output path.
+     */
     @Description("Path of the file to write to")
     @Required
     String getOutput();

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
@@ -163,6 +164,7 @@ public class LoopVertex extends IRVertex {
 
   /**
    * Getter method for edgeWithLoopToEdgeWithInternalVertex.
+   * @return the map of edge with loop to the edge with the internal vertex.
    */
   public Map<IREdge, IREdge> getEdgeWithLoopToEdgeWithInternalVertex() {
     return this.edgeWithLoopToEdgeWithInternalVertex;
@@ -170,6 +172,7 @@ public class LoopVertex extends IRVertex {
 
   /**
    * Getter method for edgeWithInternalVertexToEdgeWithLoop.
+   * @return the map of edge with internal vertex to the edge with the loop.
    */
   public Map<IREdge, IREdge> getEdgeWithInternalVertexToEdgeWithLoop() {
     return this.edgeWithInternalVertexToEdgeWithLoop;
@@ -292,7 +295,7 @@ public class LoopVertex extends IRVertex {
   public void markDuplicateEdges() {
     nonIterativeIncomingEdges.forEach(((irVertex, inEdges) -> inEdges.forEach(inEdge -> {
       final DuplicateEdgeGroupPropertyValue value =
-        new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateEdgeGroupId.getAndIncrement()));
+        new DuplicateEdgeGroupPropertyValue(String.valueOf(IdManager.generateDuplicatedEdgeGroupId()));
       inEdge.setProperty(DuplicateEdgeGroupProperty.of(value));
       getDagIncomingEdges().getOrDefault(irVertex, new HashSet<>()).stream()
         .filter(irEdge -> irEdge.getSrc().equals(inEdge.getSrc()))

@@ -121,7 +121,6 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Process the RuntimePassMessage.
-   *
    * @param taskId           that generated the message.
    * @param data             of the message.
    */
