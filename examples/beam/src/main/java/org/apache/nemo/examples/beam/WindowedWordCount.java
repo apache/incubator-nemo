@@ -49,16 +49,16 @@ public final class WindowedWordCount {
 
   /**
    * @param p    pipeline.
-   * @param args arguments.
+   * @param inputType input type arg.
+   * @param inputFilePath input file path arg.
    * @return source.
    */
   private static PCollection<KV<String, Long>> getSource(
     final Pipeline p,
-    final String[] args) {
+    final String inputType,
+    final String inputFilePath) {
 
-    final String inputType = args[2];
     if (inputType.compareTo(INPUT_TYPE_BOUNDED) == 0) {
-      final String inputFilePath = args[3];
       return GenericSourceSink.read(p, inputFilePath)
         .apply(ParDo.of(new DoFn<String, String>() {
           @ProcessElement
@@ -111,6 +111,8 @@ public final class WindowedWordCount {
   public static void main(final String[] args) {
     final String outputFilePath = args[0];
     final String windowType = args[1];
+    final String inputType = args[2];
+    final String inputFilePath = args[3];
 
     final Window<KV<String, Long>> windowFn;
     if (windowType.equals("fixed")) {
@@ -125,7 +127,7 @@ public final class WindowedWordCount {
 
     final Pipeline p = Pipeline.create(options);
 
-    getSource(p, args)
+    getSource(p, inputType, inputFilePath)
       .apply(windowFn)
       .apply(Sum.longsPerKey())
       .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
