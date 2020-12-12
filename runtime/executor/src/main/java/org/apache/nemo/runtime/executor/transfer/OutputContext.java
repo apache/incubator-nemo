@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
+package org.apache.nemo.runtime.executor.transfer;
 
-import java.util.Set;
+import java.io.IOException;
 
 /**
- * PhysicalPlan rewriter.
+ * Represents the output context during the data transfer between two tasks.
  */
-public interface PlanRewriter {
-  /**
-   * @param messageId           of the rewrite.
-   * @return physical plan.
-   */
-  PhysicalPlan rewrite(int messageId);
+public interface OutputContext extends AutoCloseable {
 
   /**
-   * @param messageId of the rewrite.
-   * @param data      to accumulate.
+   * Creates a new output stream to which the sender sends its data.
+   * @return output stream to which the sender sends its data.
+   * @throws IOException if a channel error occurs, or the context has already been closed.
    */
-  void accumulate(int messageId, Set<StageEdge> targetEdges, Object data);
+  TransferOutputStream newOutputStream() throws IOException;
+
+  /**
+   * Closes this output context.
+   * @throws IOException if any exception has occurred. For more information, see
+   * {@link org.apache.nemo.runtime.executor.transfer.ByteOutputContext.ByteOutputStream#close}.
+   */
+  void close() throws IOException;
 }

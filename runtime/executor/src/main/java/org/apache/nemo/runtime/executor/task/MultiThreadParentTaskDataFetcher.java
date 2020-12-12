@@ -131,7 +131,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
               elementQueue.offer(element);
             }
           }
-
           // This iterator is finished.
           countBytesSynchronized(iterator);
           elementQueue.offer(Finishmark.getInstance());

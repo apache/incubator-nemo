@@ -50,7 +50,13 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
-  /** Remove the next eligible timer in {@param timeDomain}. */
+  /**
+   * Remove the next eligible timer in {@code timeDomain}.
+   *
+   * @param timerInternal the timer internals.
+   * @param timeDomain the time domain.
+   * @return the timer data.
+   */
   public TimerInternals.TimerData pollTimer(final InMemoryTimerInternals timerInternal, final TimeDomain timeDomain) {
     switch (timeDomain) {
       case EVENT_TIME :
@@ -64,12 +70,21 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     }
   }
 
-  /** Accessor for timerInternalsMap. */
+  /**
+   * Accessor for timerInternalsMap.
+   *
+   * @return the timer internals map.
+   */
   public Map<K, InMemoryTimerInternals> getTimerInternalsMap() {
     return timerInternalsMap;
   }
 
-  /** Helper method to check if {@param timerInternals} doesn't have any timers left. */
+  /**
+   * Helper method to check if {@code timerInternals} doesn't have any timers left.
+   *
+   * @param timerInternal the in-memory timer internals.
+   * @return whether it is empty or not.
+   */
   public boolean isEmpty(final InMemoryTimerInternals timerInternal) {
     for (final TimeDomain domain : TimeDomain.values()) {
       if (timerInternal.getNextTimer(domain) != null) {

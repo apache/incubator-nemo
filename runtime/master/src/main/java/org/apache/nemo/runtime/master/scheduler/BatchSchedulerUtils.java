@@ -237,8 +237,7 @@ public final class BatchSchedulerUtils {
     }
 
     if (stageComplete) {
-      return Optional.of(planRewriter.rewrite(
-        planStateManager.getPhysicalPlan(), getMessageId(targetEdges)));
+      return Optional.of(planRewriter.rewrite(getMessageId(targetEdges)));
     } else {
       return Optional.empty();
     }
@@ -255,7 +254,7 @@ public final class BatchSchedulerUtils {
   public static void onRunTimePassMessage(final PlanStateManager planStateManager, final PlanRewriter planRewriter,
                                           final String taskId, final Object data) {
     final Set<StageEdge> targetEdges = BatchSchedulerUtils.getEdgesToOptimize(planStateManager, taskId);
-    planRewriter.accumulate(BatchSchedulerUtils.getMessageId(targetEdges), data);
+    planRewriter.accumulate(getMessageId(targetEdges), targetEdges, data);
   }
 
   static int getMessageId(final Set<StageEdge> stageEdges) {

@@ -16,7 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.nemo.common.exception;
+
 /**
- * Responsible for transferring block content from one executor to another.
+ * CompileTimeOptimizationException.
+ * Thrown for run-time optimization related exceptions.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+public class RuntimeOptimizationException extends RuntimeException {
+  /**
+   * Constructor of RuntimeOptimizationException.
+   *
+   * @param cause cause.
+   */
+  public RuntimeOptimizationException(final Throwable cause) {
+    super(cause);
+  }
+
+  /**
+   * Constructor of CompileTimeOptimizationException.
+   *
+   * @param message message.
+   */
+  public RuntimeOptimizationException(final String message) {
+    super(message);
+  }
+}

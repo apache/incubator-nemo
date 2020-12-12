@@ -146,7 +146,7 @@ public final class ExampleTestUtil {
         final Double testElement = testOutput.get(i).get(j);
         final Double resourceElement = resourceOutput.get(i).get(j);
         if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
-          throw new RuntimeException("output mismatch");
+          throw new RuntimeException("output mismatch between " + testElement + " and " + resourceElement);
         }
       }
     }

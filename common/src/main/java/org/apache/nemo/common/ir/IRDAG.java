@@ -314,7 +314,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * helper method in deleting splitter vertex.
    * @param dag       dag to get information.
    * @param excluded  Set of Splitter vertex to delete. Always a singleton set.
-   * @return
+   * @return the DAG builder after the deletion.
    */
   private DAGBuilder<IRVertex, IREdge> rebuildExcludingSplitter(final DAG<IRVertex, IREdge> dag,
                                                                 final Set<IRVertex> excluded) {
