@@ -16,23 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
-
-import java.util.Set;
-
 /**
- * PhysicalPlan rewriter.
+ * Responsible for transferring block content from one executor to another.
  */
-public interface PlanRewriter {
-  /**
-   * @param messageId           of the rewrite.
-   * @return physical plan.
-   */
-  PhysicalPlan rewrite(int messageId);
-
-  /**
-   * @param messageId of the rewrite.
-   * @param data      to accumulate.
-   */
-  void accumulate(int messageId, Set<StageEdge> targetEdges, Object data);
-}
+package org.apache.nemo.runtime.executor.transfer;

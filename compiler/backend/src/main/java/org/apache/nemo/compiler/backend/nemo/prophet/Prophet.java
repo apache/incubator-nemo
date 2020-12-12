@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
+package org.apache.nemo.compiler.backend.nemo.prophet;
 
-import java.util.Set;
+import java.util.Map;
 
 /**
- * PhysicalPlan rewriter.
+ * A prophet class for dynamic optimization.
+ * It calculates the statistics the runtime pass needs by (including, but not limited to) parsing the
+ * messages accumulated by the RuntimeMessageOutputCollector, and feeds the information to the runtime pass
+ * in NemoPlanRewriter.
+ * @param <K> key type of the optimized value
+ * @param <V> type of optimized value
  */
-public interface PlanRewriter {
+public interface Prophet<K, V> {
   /**
-   * @param messageId           of the rewrite.
-   * @return physical plan.
+   * Calculate the optimized values based on runtime messages.
+   * @return A map containing the optimized values.
    */
-  PhysicalPlan rewrite(int messageId);
-
-  /**
-   * @param messageId of the rewrite.
-   * @param data      to accumulate.
-   */
-  void accumulate(int messageId, Set<StageEdge> targetEdges, Object data);
+  Map<K, V> calculate();
 }

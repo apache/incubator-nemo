@@ -21,6 +21,7 @@ package org.apache.nemo.examples.beam;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
+import org.apache.nemo.compiler.optimizer.policy.DynamicTaskSizingPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,25 +37,33 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class MultinomialLogisticRegressionITCase {
   private static ArgBuilder builder = new ArgBuilder();
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
+  private static final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_mlr";
+  private static final String numFeatures = "100";
+  private static final String numClasses = "5";
+  private static final String numIteration = "3";
 
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder();
+    builder = new ArgBuilder()
+      .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
+      .addUserArgs(input, numFeatures, numClasses, numIteration);
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
-  public void test() throws Exception {
-    final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_mlr";
-    final String numFeatures = "100";
-    final String numClasses = "5";
-    final String numIteration = "3";
-
+  public void testDefault() throws Exception {
     JobLauncher.main(builder
-      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
-      .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numClasses, numIteration)
-      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .addResourceJson(executorResourceFileName)
+      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_default")
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
+  public void testDTS() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_dts")
+      .addOptimizationPolicy(DynamicTaskSizingPolicy.class.getCanonicalName())
       .build());
   }
 

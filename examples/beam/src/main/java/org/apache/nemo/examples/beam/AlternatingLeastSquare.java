@@ -326,7 +326,6 @@ public final class AlternatingLeastSquare {
      * ProcessElement method for BEAM.
      *
      * @param c ProcessContext.
-     * @throws Exception Exception on the way.
      */
     @ProcessElement
     public void processElement(final ProcessContext c) {
@@ -354,7 +353,6 @@ public final class AlternatingLeastSquare {
    * Main function for the ALS BEAM program.
    *
    * @param args arguments.
-   * @throws ClassNotFoundException exception.
    */
   public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();

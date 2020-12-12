@@ -185,7 +185,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * should be used when there are changes in vertices before / after SplitterVertex.
    *
    * CAUTION: TaskSizeSplitterVertex must only appear in IRDAG.
-   *          {@param originalEdge} and {@param edgeToInsert} should have same source and destination.
+   *          {@code originalEdge} and {@code edgeToInsert} should have same source and destination.
    *
    * Relation to be Erased:   originalEdge - internalEdge
    * Relation to insert:      edgeToInsert - newInternalEdge
@@ -250,8 +250,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * without replacing existing mapping relationships.
    * The changes which invokes this method should not be caused by SplitterVertex itself. Therefore, this method
    * should be used when there are changes in vertices before / after SplitterVertex.
-   * Since {@param edgeToInsert} should also have a mapping relationship to originalVertices of SplitterVertex,
-   * we give {@param edgeToReference} together to copy the mapping information. Therefore, these two parameters must
+   * Since {@code edgeToInsert} should also have a mapping relationship to originalVertices of SplitterVertex,
+   * we give {@code edgeToReference} together to copy the mapping information. Therefore, these two parameters must
    * have at least one common source or destination.
    *
    * Relation to reference:   edgeToReference - internalEdge

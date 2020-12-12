@@ -142,7 +142,7 @@ public final class GBKTransform<K, InputT, OutputT>
   }
 
   /**
-   * Trigger timers that need to be fired at {@param watermark} and emit output watermark.
+   * Trigger timers that need to be fired at {@code watermark} and emit output watermark.
    * @param watermark watermark
    */
   @Override
@@ -263,7 +263,11 @@ public final class GBKTransform<K, InputT, OutputT>
     }
   }
 
-  /** Accessor for isPartialCombining. */
+  /**
+   * Accessor for isPartialCombining.
+   *
+   * @return whether it is partial combining.
+   */
   public boolean getIsPartialCombining() {
     return isPartialCombining;
   }
@@ -277,7 +281,7 @@ public final class GBKTransform<K, InputT, OutputT>
       this.oc = oc;
     }
 
-    /** Emit output. If {@param output} is emitted on-time, save its timestamp in the output watermark map. */
+    /** Emit output. If {@code output} is emitted on-time, save its timestamp in the output watermark map. */
     @Override
     public final void emit(final WindowedValue<KV<K, OutputT>> output) {
       // The watermark advances only in ON_TIME
@@ -301,7 +305,7 @@ public final class GBKTransform<K, InputT, OutputT>
       oc.emitWatermark(watermark);
     }
 
-    /** Emit output value to {@param dstVertexId}. */
+    /** Emit output value to {@code dstVertexId}. */
     @Override
     public final <T> void emit(final String dstVertexId, final T output) {
       oc.emit(dstVertexId, output);

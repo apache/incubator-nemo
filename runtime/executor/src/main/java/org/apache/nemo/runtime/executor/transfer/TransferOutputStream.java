@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
+package org.apache.nemo.runtime.executor.transfer;
 
-import java.util.Set;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import java.io.IOException;
 
 /**
- * PhysicalPlan rewriter.
+ * Represents the output stream to which the sender sends its data during the data transfer.
  */
-public interface PlanRewriter {
+public interface TransferOutputStream extends AutoCloseable {
   /**
-   * @param messageId           of the rewrite.
-   * @return physical plan.
+   * Write an element into the output stream.
+   * @param element element to be sent
+   * @param serializer serializer of {@code element}
    */
-  PhysicalPlan rewrite(int messageId);
+  void writeElement(Object element, Serializer serializer);
 
   /**
-   * @param messageId of the rewrite.
-   * @param data      to accumulate.
+   * Closes this output stream.
+   * @throws IOException if any exception has occurred. For more information, see {@link ByteOutputContext#close}.
    */
-  void accumulate(int messageId, Set<StageEdge> targetEdges, Object data);
+  void close() throws IOException;
 }

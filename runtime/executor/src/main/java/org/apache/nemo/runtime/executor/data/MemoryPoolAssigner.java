@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * TODO #397: Separation of JVM heap region and off-heap memory region
  */
 @ThreadSafe
-public class MemoryPoolAssigner {
+public final class MemoryPoolAssigner {
   private final int chunkSize;
 
   private static final int MIN_CHUNK_SIZE_KB = 4;
