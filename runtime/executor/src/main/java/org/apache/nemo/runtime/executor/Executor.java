@@ -87,7 +87,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private final List<TaskExecutor> taskExecutorList;
+  private static final List<TaskExecutor> TASK_EXECUTOR_LIST = new ArrayList<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -106,7 +106,6 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
-    this.taskExecutorList = new ArrayList<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -155,7 +154,7 @@ public final class Executor {
 
       final TaskExecutor executor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory,
         broadcastManagerWorker, metricMessageSender, persistentConnectionToMasterMap);
-      this.taskExecutorList.add(executor);
+      TASK_EXECUTOR_LIST.add(executor);
       executor.execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
@@ -228,7 +227,7 @@ public final class Executor {
           onTaskReceived(task);
           break;
         case RequestMetricFlush:
-          taskExecutorList.forEach(TaskExecutor::sendMetrics);
+          TASK_EXECUTOR_LIST.forEach(TaskExecutor::sendMetrics);
           metricMessageSender.flush();
           break;
         default:
