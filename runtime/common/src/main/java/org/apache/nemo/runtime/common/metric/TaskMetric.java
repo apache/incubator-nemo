@@ -35,6 +35,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
   private long taskDuration = -1;
+  private long numOfProcessedElements = -1;
   private long taskCPUTime = -1;
   private long schedulingOverhead = -1;
   private long serializedReadBytes = -1;
@@ -104,6 +105,22 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   private void setTaskDuration(final long taskDuration) {
     this.taskDuration = taskDuration;
+  }
+
+  /**
+   * Getter of numOfProcessedElements.
+   * @return numOfProcessedElements.
+   */
+  public final long getNumOfProcessedElements() {
+    return numOfProcessedElements;
+  }
+
+  /**
+   * Setter of numOfProcessedElements.
+   * @param numOfProcessedElements to set.
+   */
+  public final void setNumOfProcessedElements(final long numOfProcessedElements) {
+    this.numOfProcessedElements = numOfProcessedElements;
   }
 
   /**
@@ -263,6 +280,9 @@ public class TaskMetric implements StateMetric<TaskState.State> {
     switch (metricField) {
       case "taskDuration":
         setTaskDuration(SerializationUtils.deserialize(metricValue));
+        break;
+      case "numOfProcessedElements":
+        setNumOfProcessedElements(SerializationUtils.deserialize(metricValue));
         break;
       case "schedulingOverhead":
         setSchedulingOverhead(SerializationUtils.deserialize(metricValue));
