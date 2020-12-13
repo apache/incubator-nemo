@@ -29,6 +29,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Application for EDGAR dataset.
@@ -36,6 +38,8 @@ import org.joda.time.Instant;
  * Count the number of requests for each company's CIK.
  */
 public final class EDGARRequestsByCIK {
+  private static final Logger LOG = LoggerFactory.getLogger(EDGARRequestsByCIK.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -71,7 +75,11 @@ public final class EDGARRequestsByCIK {
         public void processElement(@DoFn.Element final String elem,
                                    final OutputReceiver<KV<String, Long>> out) {
           final String[] splitt = elem.split(",");
-          out.outputWithTimestamp(KV.of(splitt[4], 1L), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          try {
+            out.outputWithTimestamp(KV.of(splitt[4], 1L), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          } catch (Exception e) {
+            LOG.warn("Parsing failed due to: ", e);
+          }
         }
       }));
     source.apply(windowFn)
