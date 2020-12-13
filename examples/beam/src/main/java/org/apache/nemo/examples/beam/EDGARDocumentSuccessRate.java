@@ -29,6 +29,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Application for EDGAR dataset.
@@ -36,6 +38,8 @@ import org.joda.time.Instant;
  * Calculate the success rate of each document.
  */
 public final class EDGARDocumentSuccessRate {
+  private static final Logger LOG = LoggerFactory.getLogger(EDGARDocumentSuccessRate.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -72,7 +76,11 @@ public final class EDGARDocumentSuccessRate {
                                    final OutputReceiver<KV<String, Integer>> out) {
           final String[] splitt = elem.split(",");
           final Integer success = splitt[7].startsWith("2") ? 1 : 0;
-          out.outputWithTimestamp(KV.of(splitt[6], success), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          try {
+            out.outputWithTimestamp(KV.of(splitt[6], success), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          } catch (Exception e) {
+            LOG.warn("Parsing failed due to: ", e);
+          }
         }
       }));
     source.apply(windowFn)

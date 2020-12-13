@@ -31,6 +31,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -43,6 +45,8 @@ import java.util.stream.Collectors;
  * Top 10 documents tha produce the most bad referer errors.
  */
 public final class EDGARTop10BadRefererDocs {
+  private static final Logger LOG = LoggerFactory.getLogger(EDGARTop10BadRefererDocs.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -79,7 +83,11 @@ public final class EDGARTop10BadRefererDocs {
                                    final OutputReceiver<KV<Object, Integer>> out) {
           final String[] splitt = elem.split(",");
           final Integer failure = splitt[7].startsWith("2") ? 0 : 1;
-          out.outputWithTimestamp(KV.of(splitt[6], failure), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          try {
+            out.outputWithTimestamp(KV.of(splitt[6], failure), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          } catch (Exception e) {
+            LOG.warn("Parsing failed due to: ", e);
+          }
         }
       }));
     source.setCoder(KvCoder.of(ObjectCoderForString.of(), VarIntCoder.of()));

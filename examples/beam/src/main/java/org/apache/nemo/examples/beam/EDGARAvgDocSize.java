@@ -28,6 +28,8 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Application for EDGAR dataset.
@@ -35,6 +37,8 @@ import org.joda.time.Instant;
  * Calculate the average document size of the requests.
  */
 public final class EDGARAvgDocSize {
+  private static final Logger LOG = LoggerFactory.getLogger(EDGARAvgDocSize.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -74,7 +78,7 @@ public final class EDGARAvgDocSize {
             out.outputWithTimestamp(Double.valueOf(splitt[8]).longValue(),
               Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
           } catch (Exception e) {
-            // do nothing
+            LOG.warn("Parsing failed due to: ", e);
           }
         }
       }));

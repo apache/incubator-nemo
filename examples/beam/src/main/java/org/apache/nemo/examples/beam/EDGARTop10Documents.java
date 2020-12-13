@@ -31,6 +31,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -43,6 +45,8 @@ import java.util.stream.Collectors;
  * Top 10 documents with most requests.
  */
 public final class EDGARTop10Documents {
+  private static final Logger LOG = LoggerFactory.getLogger(EDGARTop10Documents.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -78,7 +82,11 @@ public final class EDGARTop10Documents {
         public void processElement(@DoFn.Element final String elem,
                                    final OutputReceiver<KV<Object, Long>> out) {
           final String[] splitt = elem.split(",");
-          out.outputWithTimestamp(KV.of(splitt[4], 1L), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          try {
+            out.outputWithTimestamp(KV.of(splitt[4], 1L), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
+          } catch (Exception e) {
+            LOG.warn("Parsing failed due to: ", e);
+          }
         }
       }));
     source.setCoder(KvCoder.of(ObjectCoderForString.of(), VarLongCoder.of()));
