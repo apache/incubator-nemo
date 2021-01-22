@@ -167,7 +167,8 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
 
 
   @Override
-  public synchronized void receiveStopSignalFromParent(final ByteTransferContextSetupMessage msg, final TaskLoc sendDataTo) {
+  public synchronized void receiveStopSignalFromParent(
+    final ByteTransferContextSetupMessage msg, final TaskLoc sendDataTo) {
 
     switch (channelStatus) {
       case INPUT_STOP: {
@@ -523,6 +524,16 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     @Override
     public boolean isFinished() {
       return isFinished;
+    }
+
+    @Override
+    public ByteBuf nextByteBuf() {
+      try {
+        return currentByteBufInputStream.byteBufQueue.take();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
 
     @Override

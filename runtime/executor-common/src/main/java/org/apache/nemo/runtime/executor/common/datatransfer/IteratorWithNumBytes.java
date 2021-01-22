@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import io.netty.buffer.ByteBuf;
+
 import java.util.Iterator;
 
 /**
@@ -16,11 +18,18 @@ public interface IteratorWithNumBytes<T> extends Iterator<T> {
 
   boolean isFinished();
 
+  ByteBuf nextByteBuf();
+
   static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator) {
     return new IteratorWithNumBytes<E>() {
       @Override
       public boolean isFinished() {
         return false;
+      }
+
+      @Override
+      public ByteBuf nextByteBuf() {
+        throw new RuntimeException("Not implemented");
       }
 
       @Override
@@ -62,6 +71,11 @@ public interface IteratorWithNumBytes<T> extends Iterator<T> {
       @Override
       public boolean isFinished() {
         return false;
+      }
+
+      @Override
+      public ByteBuf nextByteBuf() {
+        throw new RuntimeException("Not implemented");
       }
 
       @Override

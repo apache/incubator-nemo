@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import io.netty.buffer.ByteBuf;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
@@ -979,23 +980,33 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     });
   }
 
+  public boolean offloaded = false;
+
   @Override
   public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
     if (iterator.hasNext()) {
       executorThread.decoderThread.execute(() -> {
         while (iterator.hasNext()) {
-          final Object element = iterator.next();
-          if (prepared.get()) {
-            executorThread.queue.add(() -> {
-              if (!element.equals(EmptyElement.getInstance())) {
-                //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+          // TODO: 여기서 remote로 offloading 해야함.
+          if (offloaded) {
+            // send bytebuf to remote
+            // final ByteBuf byteBuf = iterator.nextByteBuf();
 
-                //executorMetrics.increaseInputCounter(stageId);
-                //taskMetrics.incrementInputElement();
+          } else {
 
-                onEventFromDataFetcher(element, dataFetcher);
-              }
-            });
+            final Object element = iterator.next();
+            if (prepared.get()) {
+              executorThread.queue.add(() -> {
+                if (!element.equals(EmptyElement.getInstance())) {
+                  //LOG.info("handle intermediate data {}, {}", element, dataFetcher);
+
+                  //executorMetrics.increaseInputCounter(stageId);
+                  //taskMetrics.incrementInputElement();
+
+                  onEventFromDataFetcher(element, dataFetcher);
+                }
+              });
+            }
           }
         }
       });

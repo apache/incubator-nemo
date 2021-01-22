@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -196,7 +197,8 @@ public final class DataUtil {
     Stream<Object> concatStream = concatStreamBase.stream();
     for (final NonSerializedPartition nonSerializedPartition : partitionsToConcat) {
       final Iterable elementsInPartition = nonSerializedPartition.getData();
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(elementsInPartition.spliterator(), false));
+      concatStream = Stream.concat(concatStream,
+        StreamSupport.stream(elementsInPartition.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());
   }
@@ -287,6 +289,11 @@ public final class DataUtil {
     @Override
     public boolean isFinished() {
       return false;
+    }
+
+    @Override
+    public ByteBuf nextByteBuf() {
+      throw new RuntimeException("Not implemented");
     }
 
     @Override

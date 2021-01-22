@@ -236,6 +236,13 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     // length should not exceed Integer.MAX_VALUE (since in.readableBytes() returns an int)
     final long length = Math.min(dataBodyBytesToRead, in.readableBytes());
     assert (length <= Integer.MAX_VALUE);
+
+    if (length < dataBodyBytesToRead) {
+      LOG.warn("Byte length is smaller than dataBodyBttesToRead "
+        + ", length: {}, dataByteBytesToRead: {}", new Object[] {length, dataBodyBytesToRead});
+      return;
+    }
+
     final ByteBuf body = in.readSlice((int) length).retain();
 
     if (inputContext == null) {

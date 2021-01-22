@@ -277,8 +277,10 @@ public final class JobLauncher {
             .build())
         .build());
 
+    final String home = System.getenv("HOME");
+
     try {
-      BufferedWriter writer = new BufferedWriter(new FileWriter("/home/ubuntu/incubator-nemo/scaling.txt"));
+      BufferedWriter writer = new BufferedWriter(new FileWriter(home + "/incubator-nemo/scaling.txt"));
       writer.close();
     } catch (final Exception e) {
       e.printStackTrace();
@@ -291,7 +293,7 @@ public final class JobLauncher {
       LOG.info("Scaling service invoked...");
         try {
           final BufferedReader br =
-            new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/scaling.txt"));
+            new BufferedReader(new FileReader(home + "/incubator-nemo/scaling.txt"));
 
           String s;
           String lastLine = null;
@@ -390,7 +392,7 @@ public final class JobLauncher {
     // input rate 보내기
     try {
       final BufferedReader br =
-        new BufferedReader(new FileReader("/home/ubuntu/incubator-nemo/source.log"));
+        new BufferedReader(new FileReader(home + "/incubator-nemo/source.log"));
 
       Pattern pattern = Pattern.compile("\\d+ events");
 
