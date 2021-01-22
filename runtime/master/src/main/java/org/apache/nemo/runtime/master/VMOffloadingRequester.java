@@ -121,7 +121,7 @@ public final class VMOffloadingRequester {
       .option(ChannelOption.SO_KEEPALIVE, true);
 
     this.ec2 = AmazonEC2ClientBuilder.standard()
-      .withRegion(evalConf.awsRegion).defaultClient();
+      .withRegion(evalConf.awsRegion).build();
 
     this.vmWorkerConf = vmWorkerConf;
     this.executorCpuUseMap = executorCpuUseMap;
