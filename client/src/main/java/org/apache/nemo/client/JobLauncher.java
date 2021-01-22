@@ -102,6 +102,14 @@ public final class JobLauncher {
   private JobLauncher() {
   }
 
+  private static void registerShutdownHook() {
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      public void run() {
+        shutdown();
+      }
+    });
+  }
+
   /**
    * Main JobLauncher method.
    *
@@ -110,6 +118,7 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     try {
+      registerShutdownHook();
       setup(args);
       // Launch client main. The shutdown() method is called inside the launchDAG() method.
       runUserProgramMain(builtJobConf);
