@@ -204,7 +204,7 @@ public final class JobLauncher {
         .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
       // Wait for driver to naturally finish
       synchronized (driverLauncher) {
-        while (!driverLauncher.getStatus().isDone()) {
+        // while (!driverLauncher.getStatus().isDone()) {
           try {
             Thread.sleep(2000);
             // LOG.info("Wait for the driver to finish");
@@ -214,7 +214,7 @@ public final class JobLauncher {
             // clean up state...
             Thread.currentThread().interrupt();
           }
-        }
+        // }
         LOG.info("Driver terminated");
       }
 
