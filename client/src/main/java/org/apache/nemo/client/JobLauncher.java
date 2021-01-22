@@ -206,8 +206,9 @@ public final class JobLauncher {
       synchronized (driverLauncher) {
         while (!driverLauncher.getStatus().isDone()) {
           try {
-            LOG.info("Wait for the driver to finish");
-            driverLauncher.wait();
+            Thread.sleep(2000);
+            // LOG.info("Wait for the driver to finish");
+            // driverLauncher.wait();
           } catch (final InterruptedException e) {
             LOG.warn("Interrupted: ", e);
             // clean up state...
