@@ -196,33 +196,38 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
-  public static void shutdown() {
-    // Trigger driver shutdown afterwards
-    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-      .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-    // Wait for driver to naturally finish
-    synchronized (driverLauncher) {
-      while (!driverLauncher.getStatus().isDone()) {
-        try {
-          LOG.info("Wait for the driver to finish");
-          driverLauncher.wait();
-        } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
-          // clean up state...
-          Thread.currentThread().interrupt();
+  private static boolean shutdowned = false;
+  public static synchronized void shutdown() {
+    if (!shutdowned) {
+      // Trigger driver shutdown afterwards
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+      // Wait for driver to naturally finish
+      synchronized (driverLauncher) {
+        while (!driverLauncher.getStatus().isDone()) {
+          try {
+            LOG.info("Wait for the driver to finish");
+            driverLauncher.wait();
+          } catch (final InterruptedException e) {
+            LOG.warn("Interrupted: ", e);
+            // clean up state...
+            Thread.currentThread().interrupt();
+          }
         }
+        LOG.info("Driver terminated");
       }
-      LOG.info("Driver terminated");
-    }
 
-    // Close everything that's left
-    driverRPCServer.shutdown();
-    driverLauncher.close();
-    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
+      // Close everything that's left
+      driverRPCServer.shutdown();
+      driverLauncher.close();
+      final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
+      if (possibleError.isPresent()) {
+        throw new RuntimeException(possibleError.get());
+      } else {
+        LOG.info("Job successfully completed");
+      }
+
+      shutdowned = true;
     }
   }
 
