@@ -51,6 +51,7 @@ public final class RendevousServer {
         this.publicAddress = NetworkUtils.getPublicIP();
       } else {
         this.publicAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
+        LOG.info("Local public address: " +  this.publicAddress);
       }
       host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {

@@ -91,6 +91,7 @@ public final class JobLauncher {
   private static DriverRPCServer driverRPCServer;
 
   private static CountDownLatch driverReadyLatch;
+  private static CountDownLatch driverShutdownedLatch;
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
@@ -102,6 +103,14 @@ public final class JobLauncher {
   private JobLauncher() {
   }
 
+  private static void registerShutdownHook() {
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      public void run() {
+        shutdown();
+      }
+    });
+  }
+
   /**
    * Main JobLauncher method.
    *
@@ -110,6 +119,7 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     try {
+      registerShutdownHook();
       setup(args);
       // Launch client main. The shutdown() method is called inside the launchDAG() method.
       runUserProgramMain(builtJobConf);
@@ -150,6 +160,7 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
+      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> driverShutdownedLatch.countDown())
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -187,33 +198,42 @@ public final class JobLauncher {
   /**
    * Clean up everything.
    */
-  public static void shutdown() {
-    // Trigger driver shutdown afterwards
-    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-      .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-    // Wait for driver to naturally finish
-    synchronized (driverLauncher) {
-      while (!driverLauncher.getStatus().isDone()) {
-        try {
-          LOG.info("Wait for the driver to finish");
-          driverLauncher.wait();
-        } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: ", e);
-          // clean up state...
-          Thread.currentThread().interrupt();
-        }
-      }
-      LOG.info("Driver terminated");
-    }
+  private static boolean shutdowned = false;
+  public static synchronized void shutdown() {
+    if (!shutdowned) {
+      // Trigger driver shutdown afterwards
+      driverShutdownedLatch = new CountDownLatch(1);
+      scalingService.shutdownNow();
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+      // Wait for driver to naturally finish
 
-    // Close everything that's left
-    driverRPCServer.shutdown();
-    driverLauncher.close();
-    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
+      synchronized (driverLauncher) {
+        // while (!driverLauncher.getStatus().isDone()) {
+          try {
+            driverShutdownedLatch.await();
+            // LOG.info("Wait for the driver to finish");
+            // driverLauncher.wait();
+          } catch (final InterruptedException e) {
+            LOG.warn("Interrupted: ", e);
+            // clean up state...
+            Thread.currentThread().interrupt();
+          }
+        // }
+        LOG.info("Driver terminated");
+      }
+
+      // Close everything that's left
+      driverRPCServer.shutdown();
+      driverLauncher.close();
+      final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
+      if (possibleError.isPresent()) {
+        throw new RuntimeException(possibleError.get());
+      } else {
+        LOG.info("Job successfully completed");
+      }
+
+      shutdowned = true;
     }
   }
 

@@ -19,6 +19,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.VMWorkerConf;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
@@ -46,7 +47,7 @@ public final class VMOffloadingRequester {
   private final OffloadingEventHandler nemoEventHandler;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(30);
-  private final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+  private final AmazonEC2 ec2;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private EventLoopGroup serverBossGroup;
@@ -103,6 +104,7 @@ public final class VMOffloadingRequester {
                                final String serverAddress,
                                final int port,
                                final VMWorkerConf vmWorkerConf,
+                               final EvalConf evalConf,
                                final Map<String, Pair<Double, Double>> executorCpuUseMap) {
     this.nemoEventHandler = nemoEventHandler;
     this.serverAddress = serverAddress;
@@ -117,6 +119,9 @@ public final class VMOffloadingRequester {
       .handler(new NettyChannelInitializer(new NettyLambdaInboundHandler(map)))
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
+
+    this.ec2 = AmazonEC2ClientBuilder.standard()
+      .withRegion(evalConf.awsRegion).build();
 
     this.vmWorkerConf = vmWorkerConf;
     this.executorCpuUseMap = executorCpuUseMap;

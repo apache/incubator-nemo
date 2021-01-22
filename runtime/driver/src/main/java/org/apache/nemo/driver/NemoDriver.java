@@ -180,6 +180,9 @@ public final class NemoDriver {
     LOG.info("Driver shutdown initiated");
     runnerThread.execute(runtimeMaster::terminate);
     runnerThread.shutdown();
+    runtimeMaster.terminate();
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+      .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
   }
 
   /**

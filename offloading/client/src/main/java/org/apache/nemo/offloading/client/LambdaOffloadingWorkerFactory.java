@@ -61,7 +61,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
+    this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
+      .withRegion("ap-northeast-1").withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
 
 

@@ -16,6 +16,8 @@ import java.util.*;
 
 public final class EvalConf {
 
+  public static final String AWS_REGION = "ap-northeast-1";
+
   @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading", default_value = "false")
   public final class EnableOffloading implements Name<Boolean> {
   }
@@ -120,6 +122,10 @@ public final class EvalConf {
   @NamedParameter(short_name = "sf_to_vm", default_value = "false")
   public static final class SftoVm implements Name<Boolean> {}
 
+  @NamedParameter(short_name = "aws_region", default_value = "ap-northeast-1")
+  public static final class AWSRegion implements Name<String> {}
+
+
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -150,6 +156,7 @@ public final class EvalConf {
   public final boolean randomSelection;
   public final double scalingAlpha;
   public final boolean sfToVm;
+  public final String awsRegion;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -178,7 +185,8 @@ public final class EvalConf {
                    @Parameter(Autoscaling.class) final boolean autoscaling,
                    @Parameter(RandomSelection.class) final boolean randomSelection,
                    @Parameter(ScalingAlpha.class) final double scalingAlpha,
-                   @Parameter(SftoVm.class) final boolean sfToVm) throws IOException {
+                   @Parameter(SftoVm.class) final boolean sfToVm,
+                   @Parameter(AWSRegion.class) final String awsRegion) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -206,6 +214,7 @@ public final class EvalConf {
     this.randomSelection = randomSelection;
     this.scalingAlpha = scalingAlpha;
     this.sfToVm = sfToVm;
+    this.awsRegion = awsRegion;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -244,6 +253,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(RandomSelection.class, Boolean.toString(randomSelection));
     jcb.bindNamedParameter(ScalingAlpha.class, Double.toString(scalingAlpha));
     jcb.bindNamedParameter(SftoVm.class, Boolean.toString(sfToVm));
+    jcb.bindNamedParameter(AWSRegion.class, awsRegion);
     return jcb.build();
   }
 
@@ -276,6 +286,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(RandomSelection.class);
     cl.registerShortNameOfClass(ScalingAlpha.class);
     cl.registerShortNameOfClass(SftoVm.class);
+    cl.registerShortNameOfClass(AWSRegion.class);
   }
 
   @Override
@@ -308,6 +319,7 @@ public final class EvalConf {
     sb.append("controlLogging: "); sb.append(controlLogging); sb.append("\n");
     sb.append("autoscaling: "); sb.append(autoscaling); sb.append("\n");
     sb.append("randomselection: "); sb.append(randomSelection); sb.append("\n");
+    sb.append("awsRegion: "); sb.append(awsRegion); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

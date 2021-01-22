@@ -80,7 +80,7 @@ public final class VMWorkerManagerInMaster {
 
     this.requestor = new VMOffloadingRequester(
       nemoEventHandler, nettyServerTransport.getLocalAddress(), nettyServerTransport.getPort(),
-      vmWorkerConf, executorCpuUseMap);
+      vmWorkerConf, evalConf, executorCpuUseMap);
   }
 
   public List<CompletableFuture<VMScalingWorker>> createWorkers(final int num) {
