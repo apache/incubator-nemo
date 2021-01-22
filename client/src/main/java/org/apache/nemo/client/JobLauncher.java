@@ -200,6 +200,7 @@ public final class JobLauncher {
   public static synchronized void shutdown() {
     if (!shutdowned) {
       // Trigger driver shutdown afterwards
+      scalingService.shutdownNow();
       driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
         .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
       // Wait for driver to naturally finish
