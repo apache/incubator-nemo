@@ -77,7 +77,7 @@ public final class ContainerManager {
   /**
    * Remember the resource spec for each evaluator.
    */
-  private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
+  private final Map<AllocatedEvaluator, ResourceSpecification> evaluatorIdToResourceSpec;
 
   private final JVMProcessFactory jvmProcessFactory;
 
@@ -151,7 +151,7 @@ public final class ContainerManager {
     }
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
-    evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
+    evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
@@ -216,7 +216,13 @@ public final class ContainerManager {
    * @return the resource specification of the failed evaluator
    */
   public ResourceSpecification onContainerFailed(final String failedEvaluatorId) {
-    final ResourceSpecification resourceSpecification = evaluatorIdToResourceSpec.remove(failedEvaluatorId);
+    ResourceSpecification resourceSpecification = null;
+    for (final AllocatedEvaluator evaluator : evaluatorIdToResourceSpec.keySet()) {
+      if (evaluator.getId().equals(failedEvaluatorId)) {
+        resourceSpecification = evaluatorIdToResourceSpec.remove(evaluator);
+      }
+    }
+
     if (resourceSpecification == null) {
       throw new IllegalStateException(failedEvaluatorId + " not in " + evaluatorIdToResourceSpec);
     }
@@ -228,6 +234,12 @@ public final class ContainerManager {
     if (isTerminated) {
       throw new IllegalStateException("Cannot terminate twice");
     }
+
+    evaluatorIdToResourceSpec.keySet().forEach(evalutor -> {
+      LOG.info("Terminating evaluator " + evalutor.getId() +
+        ", " + evalutor.getEvaluatorDescriptor());
+      evalutor.close();
+    });
     isTerminated = true;
   }
 

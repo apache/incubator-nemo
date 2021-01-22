@@ -91,6 +91,7 @@ public final class JobLauncher {
   private static DriverRPCServer driverRPCServer;
 
   private static CountDownLatch driverReadyLatch;
+  private static CountDownLatch driverShutdownedLatch;
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
@@ -159,6 +160,7 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
+      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> driverShutdownedLatch.countDown())
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -200,14 +202,16 @@ public final class JobLauncher {
   public static synchronized void shutdown() {
     if (!shutdowned) {
       // Trigger driver shutdown afterwards
+      driverShutdownedLatch = new CountDownLatch(1);
       scalingService.shutdownNow();
       driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
         .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
       // Wait for driver to naturally finish
+
       synchronized (driverLauncher) {
         // while (!driverLauncher.getStatus().isDone()) {
           try {
-            Thread.sleep(2000);
+            driverShutdownedLatch.await();
             // LOG.info("Wait for the driver to finish");
             // driverLauncher.wait();
           } catch (final InterruptedException e) {

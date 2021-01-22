@@ -570,6 +570,15 @@ public final class Executor {
         stageExecutorThreadMap.getStageExecutorThreadMap().values()) {
         pair.right().forEach(ExecutorThread::close);
       }
+      scheduledExecutorService.shutdownNow();
+      executorService.shutdownNow();
+      taskEventExecutorService.shutdownNow();
+      prepareService.shutdownNow();
+
+      for (final ExecutorThread t : executorThreads.getExecutorThreads()) {
+        t.close();
+      }
+
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
