@@ -157,11 +157,9 @@ public final class ContainerManager {
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-      .addOption("-verbose:class");
-
-
-    LOG.info("Add jvm process for verbose:class");
+    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess();
+      // .addOption("-verbose:class");
+    // LOG.info("Add jvm process for verbose:class");
 
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
