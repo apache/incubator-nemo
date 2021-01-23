@@ -127,7 +127,6 @@ public final class VMOffloadingRequester {
     this.executorCpuUseMap = executorCpuUseMap;
   }
 
-
   public List<CompletableFuture<VMScalingWorker>> createWorkers(final int num) {
     final int currNum = numVMs.get();
     final List<String> addresses = vmAddresses.subList(currNum, currNum + num);
