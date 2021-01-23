@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
@@ -134,7 +135,7 @@ public final class ParentTaskDataFetcherTest {
   }
 
   private CompletableFuture generateCompletableFuture(final Iterator iterator) {
-   return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(iterator));
+   return CompletableFuture.completedFuture(IteratorWithNumBytes.of(iterator));
   }
 
   private class FailedIterator implements Iterator {

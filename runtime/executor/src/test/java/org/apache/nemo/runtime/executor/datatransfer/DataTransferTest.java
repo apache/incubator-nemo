@@ -45,6 +45,7 @@ import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.executor.Executor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -537,7 +538,7 @@ public final class DataTransferTest {
    * @throws ExecutionException   when fail to get results from futures.
    * @throws InterruptedException when interrupted during getting results from futures.
    */
-  private Iterator combineFutures(final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures)
+  private Iterator combineFutures(final List<CompletableFuture<IteratorWithNumBytes>> futures)
     throws ExecutionException, InterruptedException {
     final List concatStreamBase = new ArrayList<>();
     Stream<Object> concatStream = concatStreamBase.stream();

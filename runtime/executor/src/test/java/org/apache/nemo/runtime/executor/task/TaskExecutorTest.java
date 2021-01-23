@@ -47,6 +47,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
@@ -118,7 +119,7 @@ public final class TaskExecutorTest {
     // Mock a IntermediateDataIOFactory.
     runtimeEdgeToOutputData = new HashMap<>();
     intermediateDataIOFactory = mock(IntermediateDataIOFactory.class);
-    when(intermediateDataIOFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(intermediateDataIOFactory.createReader(anyInt(), any(), any(), any())).then(new ParentTaskReaderAnswer());
     when(intermediateDataIOFactory.createWriter(any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
@@ -568,11 +569,11 @@ public final class TaskExecutorTest {
   private class ParentTaskReaderAnswer implements Answer<InputReader> {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
-      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
+      final List<CompletableFuture<IteratorWithNumBytes>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
       final int elementsPerSource = DATA_SIZE / SOURCE_PARALLELISM;
       for (int i = 0; i < SOURCE_PARALLELISM; i++) {
         inputFutures.add(CompletableFuture.completedFuture(
-            DataUtil.IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
+            IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
                 .iterator())));
       }
       final InputReader inputReader = mock(InputReader.class);
@@ -878,8 +879,15 @@ public final class TaskExecutorTest {
   }
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
+    return null;
+    /*
     return new DefaultTaskExecutorImpl(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-      metricMessageSender, persistentConnectionToMasterMap, /*TODO: remove*/null, null,
-      null, null);
+      metricMessageSender, persistentConnectionToMasterMap, TODO: removenull, null,
+      null, null,
+      null, null, null,
+      null, null, null,
+      null, null, null,
+      null, null, null,
+      null, null, null, null);*/
   }
 }
