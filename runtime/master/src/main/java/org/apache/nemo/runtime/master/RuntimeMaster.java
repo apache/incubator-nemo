@@ -271,6 +271,7 @@ public final class RuntimeMaster {
 
       try {
         metricServer.stop();
+        metricServer.destroy();
       } catch (final Exception e) {
         throw new MetricException("Failed to stop rest api server: " + e);
       }
