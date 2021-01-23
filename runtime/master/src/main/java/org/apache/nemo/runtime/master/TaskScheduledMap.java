@@ -50,6 +50,7 @@ public final class TaskScheduledMap {
   }
 
   private boolean copied = false;
+
   public synchronized void keepOnceCurrentTaskExecutorIdMap() {
     if (copied) {
       return;

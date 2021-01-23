@@ -18,11 +18,23 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.runtime.common.HDFSUtils;
+import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.junit.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public final class TestUtil {
   public static List<String> generateTaskIds(final Stage stage) {
@@ -32,5 +44,25 @@ public final class TestUtil {
       result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
     }
     return result;
+  }
+
+  @Test
+  public void testHDFStore() throws IOException {
+    HDFSUtils.createStateDirIfNotExistsAndDelete();
+
+    final StateStore stateStore = new HDFStateStore();
+    final OutputStream os = stateStore.getOutputStreamForStoreTaskState("T1");
+
+    final List<Integer> list = Arrays.asList(1, 2, 3, 4, 5, 6, 7);
+    SerializationUtils.serialize((Serializable) list, os);
+
+    os.close();
+
+    assertTrue(stateStore.containsState("T1"));
+
+    final InputStream is = stateStore.getStateStream("T1");
+    final List<Integer> result = SerializationUtils.deserialize(is);
+
+    assertEquals(result, list);
   }
 }

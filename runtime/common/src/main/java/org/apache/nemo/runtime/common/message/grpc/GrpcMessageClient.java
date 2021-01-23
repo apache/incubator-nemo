@@ -102,8 +102,8 @@ final class GrpcMessageClient {
    * @param message a message to send
    */
   void send(final ControlMessage.Message message) {
-    LOG.info("Grpc from {}", ClientCalls.class.getProtectionDomain().getCodeSource().getLocation());
-    LOG.info("Netty {}", Http2ConnectionHandler.class.getProtectionDomain().getCodeSource().getLocation());
+    // LOG.info("Grpc from {}", ClientCalls.class.getProtectionDomain().getCodeSource().getLocation());
+    // LOG.info("Netty {}", Http2ConnectionHandler.class.getProtectionDomain().getCodeSource().getLocation());
 
     LOG.debug("[SEND] request msg.id={}, msg.listenerId={}, msg.type={}",
         message.getId(), message.getListenerId(), message.getType());

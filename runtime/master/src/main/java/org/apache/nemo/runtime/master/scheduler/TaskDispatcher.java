@@ -256,6 +256,7 @@ final class TaskDispatcher {
       final Collection<Task> taskList = taskListOptional.get();
 
       LOG.info("Size of tasks: {}", taskList.size());
+      // Reverse order by stage number
       final List<List<Task>> stageTasks = getStageTasks(taskList);
 
       final List<Task> couldNotSchedule = new ArrayList<>();
@@ -291,12 +292,9 @@ final class TaskDispatcher {
             LOG.info("Candidate executor for {}: {}", task.getTaskId(), candidateExecutors.getValue().isEmpty());
 
             if (!candidateExecutors.getValue().isEmpty()) {
-
-
               // Select executor
               final ExecutorRepresenter selectedExecutor
                 = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
-
 
               // update metadata first
               planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);

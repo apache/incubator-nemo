@@ -47,6 +47,10 @@ public final class PendingTaskCollectionPointer {
     this.curTaskCollection = newCollection;
   }
 
+  synchronized void add(final Task task) {
+    this.curTaskCollection.add(task);
+  }
+
   /**
    * This collection of tasks can be scheduled only if there's no collection of tasks to schedule at the moment.
    * @param newCollection to schedule

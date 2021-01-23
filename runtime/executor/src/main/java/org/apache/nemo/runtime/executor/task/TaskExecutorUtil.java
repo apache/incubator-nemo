@@ -55,19 +55,6 @@ public final class TaskExecutorUtil {
   }
 
 
-  public static Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
-                                                         final Map<String, Readable> irVertexIdToReadable) {
-    if (irVertex instanceof SourceVertex) {
-      final Readable readable = irVertexIdToReadable.get(irVertex.getId());
-      if (readable == null) {
-        throw new IllegalStateException(irVertex.toString());
-      }
-      return Optional.of(readable);
-    } else {
-      return Optional.empty();
-    }
-  }
-
   public static boolean hasExternalOutput(final IRVertex irVertex,
                                           final List<StageEdge> outEdgesToChildrenTasks) {
     final List<StageEdge> out =

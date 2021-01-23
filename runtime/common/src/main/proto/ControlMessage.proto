@@ -116,6 +116,11 @@ enum MessageType {
     RegisterSerializerIndex = 37; // worker -> master
     LookupSerializerIndex = 38; // worker -> master
     ReturnSerializerIndex = 39; // master -> worker
+
+
+    // For task migration
+    StopTask = 40; // master -> worker
+    StopTaskDone = 41; // worker -> master
 }
 
 message Message {
@@ -473,4 +478,13 @@ message ReturnSerializerMessage {
 
 message LookupSerializerMesssage {
   required string runtimeEdgeId = 1;
+}
+
+message StopTaskMessage {
+  required string taskId = 1;
+}
+
+message StopTaskDoneMessage {
+  required string taskId = 1;
+  required string executorId = 2;
 }

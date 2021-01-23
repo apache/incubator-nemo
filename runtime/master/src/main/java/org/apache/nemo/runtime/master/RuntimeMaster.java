@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.amazonaws.transform.PathMarshallers;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
@@ -28,6 +29,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -58,6 +60,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.io.Serializable;
 import java.util.*;
@@ -131,7 +134,7 @@ public final class RuntimeMaster {
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
                         @Parameter(JobConf.DBId.class) final String dbId,
                         @Parameter(JobConf.DBPasswd.class) final String dbPassword,
-                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) throws IOException {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
@@ -149,6 +152,8 @@ public final class RuntimeMaster {
       SPECULATION_CHECKING_PERIOD_MS,
       SPECULATION_CHECKING_PERIOD_MS,
       TimeUnit.MILLISECONDS);
+
+    HDFSUtils.createStateDirIfNotExistsAndDelete();
 
     this.scheduler = scheduler;
     this.containerManager = containerManager;

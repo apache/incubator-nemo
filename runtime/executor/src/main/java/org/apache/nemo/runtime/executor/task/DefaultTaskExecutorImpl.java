@@ -20,6 +20,9 @@ package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
@@ -39,6 +42,7 @@ import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -55,6 +59,7 @@ import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
+import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -70,6 +75,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -188,6 +195,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final ScalingOutCounter scalingOutCounter;
 
+  private final StateStore stateStore;
+
   /**
    * Constructor.
    *
@@ -224,9 +233,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorGlobalInstances executorGlobalInstances,
                                  final RendevousServerClient rendevousServerClient,
                                  final ExecutorThread executorThread,
-                                 final ScalingOutCounter scalingOutCounter) {
+                                 final ScalingOutCounter scalingOutCounter,
+                                 final StateStore stateStore) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.stateStore = stateStore;
     this.taskMetrics = new TaskMetrics();
     this.copyOutgoingEdges = copyOutgoingEdges;
     this.executorThread = executorThread;
@@ -283,9 +294,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
+    // TODO: Initialize states for the task
+    // TODO: restart output writers and sources if it is moved
+
     // Prepare data structures
     prepare(task, irVertexDag, intermediateDataIOFactory);
-
     prepared.set(true);
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
@@ -638,7 +651,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
 
     reverseTopologicallySorted.forEach(irVertex -> {
-      final Optional<Readable> sourceReader = TaskExecutorUtil.getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
+      final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
       if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
         throw new IllegalStateException(irVertex.toString());
       }
@@ -1101,6 +1114,47 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   ////////////////////////////////////////////// Transform-specific helper methods
+
+
+
+  public Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
+                                                  final Map<String, Readable> irVertexIdToReadable) {
+    if (irVertex instanceof SourceVertex) {
+      final Readable readable = irVertexIdToReadable.get(irVertex.getId());
+      if (stateStore.containsState(taskId)) {
+
+        LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it.");
+        final UnboundedSource oSource = ((UnboundedSourceReadable)readable).getUnboundedSource();
+        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder =
+          ((UnboundedSourceReadable)readable).getUnboundedSource().getCheckpointMarkCoder();
+
+        final UnboundedSource.CheckpointMark checkpointMark;
+        try {
+          final InputStream is = stateStore.getStateStream(taskId);
+          checkpointMark = checkpointMarkCoder
+            .decode(is);
+          is.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
+
+        final UnboundedSourceReadable newReadable =
+          new UnboundedSourceReadable(oSource, null, checkpointMark);
+
+        return Optional.of((Readable) newReadable);
+      } else {
+        if (readable == null) {
+          throw new IllegalStateException(irVertex.toString());
+        }
+        return Optional.of(readable);
+      }
+    } else {
+      return Optional.empty();
+    }
+  }
 
   private void closeTransform(final VertexHarness vertexHarness) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
