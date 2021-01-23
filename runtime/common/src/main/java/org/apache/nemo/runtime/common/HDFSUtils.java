@@ -12,7 +12,7 @@ public final class HDFSUtils {
   private static final Logger LOG = LoggerFactory.getLogger(HDFSUtils.class.getName());
 
   public static final Configuration CONF = new Configuration();
-  public static final String STATE_PATH = "hdfs:///sponge_state";
+  public static final String STATE_PATH = "hdfs://hdfs-master:9000/sponge_state";
 
   public static void createStateDirIfNotExistsAndDelete() throws IOException {
     LOG.info("Creating sponge state dir");
