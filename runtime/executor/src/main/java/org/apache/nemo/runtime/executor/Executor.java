@@ -602,12 +602,7 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case StopTask: {
-          // TODO: receive stop task message
-          LOG.info("Stopping task " + message.getStopTaskMsg().getTaskId());
-          taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
-          break;
-        }
+
         case GlobalExecutorAddressInfo: {
           final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
 

@@ -56,7 +56,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final List<List<TaskExecutor>> offloadedTasksPerStage;
 
-  private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   final PersistentConnectionToMasterMap toMaster;
 
@@ -127,7 +127,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.taskLocationMap = taskLocationMap;
     this.executorId = executorId;
     this.stageOffloadingWorkerManager = stageOffloadingWorkerManager;
-    this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.offloadedTasksPerStage = new ArrayList<>();
     this.messageEnvironment = messageEnvironment;
     this.stageExecutorThreadMap = stageExecutorThreadMap;
@@ -236,7 +236,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   private synchronized void scaleOutToVms(final Map<String, List<String>> offloadTasks,
                                           final Map<String, String> taskExecutorIdMap) {
     // scale out
-    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
+    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(
+      taskExecutorMapWrapper.getTaskExecutorMap());
 
     final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
 
@@ -352,7 +353,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private synchronized void scaleOut(final Map<String, List<String>> offloadTasks) {
     // scale out
-    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
+    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(
+      taskExecutorMapWrapper.getTaskExecutorMap());
 
     final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
 
@@ -598,7 +600,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private void scaleOutWithDivideNum(final double divideNum) {
     // scale out
-    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(taskExecutorMap);
+    final StatelessTaskStatInfo taskStatInfo = PolicyUtils.measureTaskStatInfo(
+      taskExecutorMapWrapper.getTaskExecutorMap());
 
     final List<List<TaskExecutor>> stageTasks = stageTasks(taskStatInfo.runningTasks);
     final Map<String, Integer> stageOffloadCntMap = new HashMap<>();
@@ -711,6 +714,12 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case StopTask: {
+          // TODO: receive stop task message
+          LOG.info("Stopping task " + message.getStopTaskMsg().getTaskId());
+          taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
+          break;
+        }
         case BroadcastInfo: {
           LOG.info("Receive info {}", message.getBroadcastInfoMsg().getInfo());
           break;
