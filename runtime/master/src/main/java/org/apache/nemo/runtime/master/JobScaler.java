@@ -1115,6 +1115,37 @@ public final class JobScaler {
     }
   }
 
+  public void sendTaskStopSignal(final int num) {
+
+    LOG.info("Send task stop signal");
+    final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+
+    int stopped = 0;
+
+    for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
+      final String taskId = entry.getKey();
+      final String executorId = entry.getValue();
+      final long id = RuntimeIdManager.generateMessageId();
+
+      final ExecutorRepresenter representer = taskScheduledMap.getExecutorRepresenter(executorId);
+      LOG.info("Send task " + taskId + " stop to executor " + executorId);
+      representer.sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(id)
+        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.StopTask)
+        .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+          .setTaskId(taskId)
+          .build())
+        .build());
+
+      stopped += 1;
+
+      if (stopped == num) {
+        break;
+      }
+    }
+  }
+
   private void sendScalingOutDoneToAllWorkers() {
     LOG.info("Send scale out done to all workers");
 

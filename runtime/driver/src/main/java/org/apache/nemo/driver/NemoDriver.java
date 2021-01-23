@@ -156,6 +156,10 @@ public final class NemoDriver {
             .build();
           LOG.info("Requesting new yarn executor!! " + spec);
           runtimeMaster.requestContainer(spec);
+        } else if (decision.equals("move-task")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          jobScaler.sendTaskStopSignal(num);
         } else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }

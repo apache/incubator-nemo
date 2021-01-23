@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 
 import javax.inject.Inject;
@@ -13,15 +14,22 @@ public final class TaskExecutorMapWrapper {
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private final ConcurrentMap<String, List<TaskExecutor>> stageTaskMap;
+  private final ConcurrentMap<String, TaskExecutor> taskIdExecutorMap;
+  private final ConcurrentMap<TaskExecutor, ExecutorThread> taskExecutorThreadMap;
 
   @Inject
   private TaskExecutorMapWrapper() {
     this.taskExecutorMap = new ConcurrentHashMap<>();
     this.stageTaskMap = new ConcurrentHashMap<>();
+    this.taskIdExecutorMap = new ConcurrentHashMap<>();
+    this.taskExecutorThreadMap = new ConcurrentHashMap<>();
   }
 
-  public void putTaskExecutor(final TaskExecutor taskExecutor) {
+  public void putTaskExecutor(final TaskExecutor taskExecutor,
+                              ExecutorThread thread) {
     taskExecutorMap.put(taskExecutor, true);
+    taskIdExecutorMap.put(taskExecutor.getId(), taskExecutor);
+    taskExecutorThreadMap.put(taskExecutor, thread);
 
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
     stageTaskMap.putIfAbsent(stageId, new ArrayList<>());
@@ -31,6 +39,19 @@ public final class TaskExecutorMapWrapper {
     synchronized (tasks) {
       tasks.add(taskExecutor);
     }
+  }
+
+  public void removeTask(String taskId) {
+    final TaskExecutor e = taskIdExecutorMap.remove(taskId);
+    final ExecutorThread et = taskExecutorThreadMap.remove(e);
+    et.deleteTask(e);
+    taskExecutorMap.remove(e);
+
+    stageTaskMap.values().forEach(l -> {
+      synchronized (l) {
+        l.remove(e);
+      }
+    });
   }
 
   public ConcurrentMap<TaskExecutor, Boolean> getTaskExecutorMap() {

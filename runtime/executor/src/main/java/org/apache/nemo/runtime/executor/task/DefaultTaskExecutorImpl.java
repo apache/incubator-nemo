@@ -43,6 +43,7 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -77,6 +78,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -105,6 +107,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final SerializerManager serializerManager;
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
+  private final Set<PipeOutputWriter> pipeOutputWriters;
 
   // Variables for offloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
@@ -255,6 +258,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.scalingOutCounter = scalingOutCounter;
 
     this.pollingTrigger = executorGlobalInstances.getPollingTrigger();
+    this.pipeOutputWriters = new HashSet<>();
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -401,20 +405,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     throw new RuntimeException("not supported");
   }
 
-  @Override
-  public boolean isFinished() {
-    return false;
-  }
-
-  @Override
-  public void finish() {
-    // do nothing
-  }
-
-  @Override
-  public boolean isFinishDone() {
-    return false;
-  }
 
   @Override
   public void setOffloadedTaskTime(long t) {
@@ -1216,10 +1206,82 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
 
+  private final List<Future<Integer>> pendingFutures = new ArrayList<>();
+  private boolean finished = false;
+
   @Override
   public void close() throws Exception {
+    for (final DataFetcher dataFetcher : allFetchers) {
+      LOG.info("Stopping data fetcher of {}/ {}", taskId, dataFetcher);
+      pendingFutures.add(dataFetcher.stop(taskId));
+    }
 
+    LOG.info("Waiting pending futures haha {}...", taskId);
+    finished = true;
   }
+
+  private boolean allPendingDone() {
+    for (final Future<Integer> pendingFuture : pendingFutures) {
+      if (!pendingFuture.isDone()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished && allPendingDone() && executorThread.queue.isEmpty();
+  }
+
+  private final List<Future> outputfutures = new ArrayList<>();
+
+  @Override
+  public void finish() {
+    // TODO: finish output writer for intermediate tasks.
+    LOG.info("Finishing {}", taskId);
+    /*
+    outputfutures.addAll(outputWriterMap.stream()
+      .forEach(outputWriter -> {
+        outputWriter.close();
+      });
+
+    LOG.info("Closing output writer {}", taskId);
+    */
+  }
+
+  @Override
+  public boolean isFinishDone() {
+    // TODO: waiting for pending output writer
+    // Here, we serialize states
+
+    boolean hasChekpoint = false;
+    for (final DataFetcher dataFetcher : allFetchers) {
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        if (hasChekpoint) {
+          throw new RuntimeException("Double checkpoint..." + taskId);
+        }
+        hasChekpoint = true;
+        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+        final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
+        final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+
+        LOG.info("Store checkpointmark of task {}/ {}", taskId, checkpointMark);
+        final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId);
+        try {
+          checkpointMarkCoder.encode(checkpointMark, os);
+          os.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
+    return true;
+  }
+
 
   @Override
   public String toString() {

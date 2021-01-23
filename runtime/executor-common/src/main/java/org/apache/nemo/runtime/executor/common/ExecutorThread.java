@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.offloading.common.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +41,11 @@ public final class ExecutorThread {
 
   private final String executorId;
 
+  private final EventHandler<String> taskDoneHandler;
+
   public ExecutorThread(final int executorThreadIndex,
-                        final String executorId) {
+                        final String executorId,
+                        final EventHandler<String> taskDoneHandler) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.deletedTasks = new ConcurrentLinkedQueue<>();
@@ -54,6 +58,7 @@ public final class ExecutorThread {
     this.sourceTasks = new ArrayList<>();
     this.pendingSourceTasks = new ArrayList<>();
     this.executorId = executorId;
+    this.taskDoneHandler = taskDoneHandler;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -134,7 +139,15 @@ public final class ExecutorThread {
     }
 
     if (!finishWaitingTasks.isEmpty()) {
-      finishWaitingTasks.removeIf(executor -> executor.isFinishDone());
+      finishWaitingTasks.removeIf(executor -> {
+        if (executor.isFinishDone()) {
+          // Task stop handler
+          taskDoneHandler.onNext(executor.getId());
+          return true;
+        } else {
+          return false;
+        }
+      });
     }
   }
 

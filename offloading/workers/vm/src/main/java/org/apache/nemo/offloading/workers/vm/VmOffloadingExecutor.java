@@ -6,6 +6,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.*;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
@@ -159,7 +160,12 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i));
+        new ExecutorThread(1, "lambda-" + i, new EventHandler<String>() {
+          @Override
+          public void onNext(String msg) {
+            // do nothing
+          }
+        }));
       executorThreads.get(i).start();
     }
 

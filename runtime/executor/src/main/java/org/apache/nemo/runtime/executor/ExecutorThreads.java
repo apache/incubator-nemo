@@ -15,11 +15,12 @@ public final class ExecutorThreads {
 
   @Inject
   private ExecutorThreads(final EvalConf evalConf,
-                          @Parameter(JobConf.ExecutorId.class) final String executorId) {
+                          @Parameter(JobConf.ExecutorId.class) final String executorId,
+                          final TaskDoneHandler taskDoneHandler) {
 
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
-      executorThreads.add(new ExecutorThread(i, executorId));
+      executorThreads.add(new ExecutorThread(i, executorId, taskDoneHandler));
       executorThreads.get(i).start();
     }
   }

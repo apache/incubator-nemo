@@ -129,7 +129,7 @@ public final class DataTransferTest {
   private BlockManagerWorker worker2;
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
-  @Before
+  // @Before
   public void setUp() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
@@ -168,7 +168,7 @@ public final class DataTransferTest {
         nameClientInjector).left();
   }
 
-  @After
+  // @After
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(new File(TMP_LOCAL_FILE_DIRECTORY));
     FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
@@ -227,7 +227,7 @@ public final class DataTransferTest {
     }
   }
 
-  @Test
+  // @Test
   public void testWriteAndRead() {
     // test OneToOne same worker
     writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
