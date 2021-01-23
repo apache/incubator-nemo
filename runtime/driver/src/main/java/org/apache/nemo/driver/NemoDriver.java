@@ -149,8 +149,8 @@ public final class NemoDriver {
           jobScaler.broadcastInfo(message.getScalingMsg());
         } else if (decision.equals("add-yarn")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
-          final int mem = new Integer(args[0]);
-          final int capactiy = new Integer(args[1]);
+          final int mem = new Integer(args[1]);
+          final int capactiy = new Integer(args[2]);
           final String spec = ResourceSpecBuilder.builder()
             .addResource(ResourceSpecBuilder.ResourceType.Reserved, mem, capactiy)
             .build();

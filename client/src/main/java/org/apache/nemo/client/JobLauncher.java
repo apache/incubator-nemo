@@ -401,6 +401,15 @@ public final class JobLauncher {
                   .build())
                 .build());
 
+            } else if (decision.equals("add-yarn")) {
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .setInfo(lastLine)
+                  .build())
+                .build());
+
             } else {
               throw new RuntimeException("Invalid line: " + lastLine);
             }
