@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
@@ -146,6 +147,15 @@ public final class NemoDriver {
           jobScaler.proactive(message.getScalingMsg());
         } else if (decision.equals("info")) {
           jobScaler.broadcastInfo(message.getScalingMsg());
+        } else if (decision.equals("add-yarn")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int mem = new Integer(args[1]);
+          final int capactiy = new Integer(args[2]);
+          final String spec = ResourceSpecBuilder.builder()
+            .addResource(ResourceSpecBuilder.ResourceType.Reserved, mem, capactiy)
+            .build();
+          LOG.info("Requesting new yarn executor!! " + spec);
+          runtimeMaster.requestContainer(spec);
         } else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }
