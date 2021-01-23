@@ -12,6 +12,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.*;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.LambdaRuntimeContext;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
@@ -177,7 +178,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i));
+        new ExecutorThread(1, "lambda-" + i, new EventHandler<String>() {
+          @Override
+          public void onNext(String msg) {
+            // do nothing
+          }
+        }));
       executorThreads.get(i).start();
     }
 

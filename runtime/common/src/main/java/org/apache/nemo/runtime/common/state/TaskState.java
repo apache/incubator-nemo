@@ -49,6 +49,7 @@ public final class TaskState {
     stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
     stateMachineBuilder.addTransition(State.EXECUTING, State.SHOULD_RETRY, "Did not complete, should be retried");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED, "Unrecoverable failure");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.READY, "For rescheduling");
 
     // From ON HOLD
     stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after being on hold");

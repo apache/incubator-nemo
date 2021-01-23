@@ -186,7 +186,8 @@ public final class Executor {
                    final ExecutorMetrics executorMetrics,
                    final ScalingOutCounter scalingOutCounter,
                    final SFTaskMetrics sfTaskMetrics,
-                   final HDFStateStore stateStore) {
+                   final HDFStateStore stateStore,
+                   final TaskDoneHandler taskDoneHandler) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -517,9 +518,9 @@ public final class Executor {
         scalingOutCounter,
         stateStore);
 
-      taskExecutorMapWrapper.putTaskExecutor(taskExecutor);
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);
+      taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThreads.getExecutorThreads().get(index));
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
@@ -601,6 +602,7 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+
         case GlobalExecutorAddressInfo: {
           final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
 

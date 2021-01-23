@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -14,7 +15,10 @@ import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
+import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
 import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +99,14 @@ public final class JobScaler {
 
   private long vmScalingTime = System.currentTimeMillis();
 
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
+
+  private final RuntimeMaster runtimeMaster;
+
+  private final TaskDispatcher taskDispatcher;
+
+  private final PlanStateManager planStateManager;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -102,6 +114,10 @@ public final class JobScaler {
                     final TaskOffloadingManager taskOffloadingManager,
                     final VMWorkerManagerInMaster vmWorkerManagerInMaster,
                     final EvalConf evalConf,
+                    final RuntimeMaster runtimeMaster,
+                    final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                    final TaskDispatcher taskDispatcher,
+                    final PlanStateManager planStateManager,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -111,7 +127,11 @@ public final class JobScaler {
     this.executorCpuUseMap = m.getExecutorCpuUseMap();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
+    this.runtimeMaster = runtimeMaster;
+    this.taskDispatcher = taskDispatcher;
+    this.planStateManager = planStateManager;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -1115,6 +1135,37 @@ public final class JobScaler {
     }
   }
 
+  public void sendTaskStopSignal(final int num) {
+
+    LOG.info("Send task stop signal");
+    final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+
+    int stopped = 0;
+
+    for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
+      final String taskId = entry.getKey();
+      final String executorId = entry.getValue();
+      final long id = RuntimeIdManager.generateMessageId();
+
+      final ExecutorRepresenter representer = taskScheduledMap.getExecutorRepresenter(executorId);
+      LOG.info("Send task " + taskId + " stop to executor " + executorId);
+      representer.sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(id)
+        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.StopTask)
+        .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+          .setTaskId(taskId)
+          .build())
+        .build());
+
+      stopped += 1;
+
+      if (stopped == num) {
+        break;
+      }
+    }
+  }
+
   private void sendScalingOutDoneToAllWorkers() {
     LOG.info("Send scale out done to all workers");
 
@@ -1138,7 +1189,6 @@ public final class JobScaler {
           .build())
         .build());
       });
-
     }
   }
 
@@ -1146,6 +1196,21 @@ public final class JobScaler {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case StopTaskDone: {
+          runtimeMaster.getRuntimeMasterThread().execute(() -> {
+            final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
+            LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
+            final ExecutorRepresenter executorRepresenter =
+              taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
+            executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+            final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+            LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
+            planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
+            pendingTaskCollectionPointer.addTask(task);
+            taskDispatcher.onNewPendingTaskCollectionAvailable();
+          });
+          break;
+        }
         case LocalScalingReadyDone: {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();

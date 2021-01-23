@@ -53,7 +53,7 @@ import javax.inject.Inject;
  */
 @DriverSide
 @NotThreadSafe
-final class TaskDispatcher {
+public final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService dispatcherThread;
@@ -263,11 +263,13 @@ final class TaskDispatcher {
 
       for (final List<Task> stageTask : stageTasks) {
 
+        /*
         try {
           Thread.sleep(8000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
+        */
 
         for (final Task task : stageTask) {
           if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
@@ -308,8 +310,6 @@ final class TaskDispatcher {
             }
           });
         }
-
-
       }
 
       LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
@@ -317,7 +317,7 @@ final class TaskDispatcher {
         // Try these again, if no new task list has been set
         pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
         try {
-          Thread.sleep(1000);
+          Thread.sleep(100);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -337,7 +337,7 @@ final class TaskDispatcher {
   /**
    * Signals to the condition on the Task collection availability.
    */
-  void onNewPendingTaskCollectionAvailable() {
+  public void onNewPendingTaskCollectionAvailable() {
     schedulingIteration.signal();
   }
 

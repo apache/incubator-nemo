@@ -90,7 +90,7 @@ public final class NemoDriver {
   private final ClientRPC clientRPC;
 
   private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
-      new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
+     new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
@@ -156,6 +156,10 @@ public final class NemoDriver {
             .build();
           LOG.info("Requesting new yarn executor!! " + spec);
           runtimeMaster.requestContainer(spec);
+        } else if (decision.equals("move-task")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          jobScaler.sendTaskStopSignal(num);
         } else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }
@@ -188,8 +192,8 @@ public final class NemoDriver {
    */
   private void shutdown() {
     LOG.info("Driver shutdown initiated");
-    runnerThread.execute(runtimeMaster::terminate);
-    runnerThread.shutdown();
+    // runnerThread.execute(runtimeMaster::terminate);
+    runnerThread.shutdownNow();
     runtimeMaster.terminate();
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
       .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
@@ -259,6 +263,7 @@ public final class NemoDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       runtimeMaster.onExecutorFailed(failedEvaluator);
+      shutdown();
     }
   }
 
@@ -268,6 +273,7 @@ public final class NemoDriver {
   public final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
+      shutdown();
       throw new RuntimeException(failedContext.getId() + " failed. See driver's log for the stack trace in executor.",
           failedContext.asError());
     }

@@ -168,6 +168,9 @@ message Message {
     optional RegisterSerializerMessage registerSerializerMsg = 38;
     optional LookupSerializerMesssage lookupSerializerMsg = 39;
     optional ReturnSerializerMessage returnSerializerMsg = 40;
+
+    optional StopTaskMessage stopTaskMsg = 41;
+    optional StopTaskDoneMessage stopTaskDoneMsg = 42;
 }
 
 message BroadcastInfoMessage {

@@ -152,6 +152,15 @@ public final class ExecutorRepresenter {
   }
 
   /**
+   * Marks the specified Task as completed.
+   * @param taskId id of the completed task
+   */
+  public void onTaskExecutionStop(final String taskId) {
+    final Task completedTask = removeFromRunningTasks(taskId);
+    runningTaskToAttempt.remove(completedTask);
+  }
+
+  /**
    * Marks the specified Task as failed.
    * @param taskId id of the Task
    */

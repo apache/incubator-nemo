@@ -106,7 +106,7 @@ public final class JobLauncher {
   private static void registerShutdownHook() {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
-        shutdown();
+        shutdown(false);
       }
     });
   }
@@ -160,7 +160,15 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
-      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> driverShutdownedLatch.countDown())
+      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> {
+        LOG.info("Driver shutdown message received !");
+        if (!shutdowned) {
+          LOG.info("Driver shutdown message received ! shutdown latch");
+          shutdown(driverShutdownedLatch == null);
+        } else {
+          driverShutdownedLatch.countDown();
+        }
+      })
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -199,30 +207,39 @@ public final class JobLauncher {
    * Clean up everything.
    */
   private static boolean shutdowned = false;
-  public static synchronized void shutdown() {
+  public static synchronized void shutdown(boolean withoutLatch) {
     if (!shutdowned) {
       // Trigger driver shutdown afterwards
-      driverShutdownedLatch = new CountDownLatch(1);
+
+      shutdowned = true;
+
+      if (!withoutLatch) {
+        driverShutdownedLatch = new CountDownLatch(1);
+      }
       scalingService.shutdownNow();
+      LOG.info("Scaling service shutdown now");
 
       if (driverRPCServer.hasLink()) {
         driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
           .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
         // Wait for driver to naturally finish
 
-        synchronized (driverLauncher) {
-          // while (!driverLauncher.getStatus().isDone()) {
-          try {
-            driverShutdownedLatch.await();
-            // LOG.info("Wait for the driver to finish");
-            // driverLauncher.wait();
-          } catch (final InterruptedException e) {
-            LOG.warn("Interrupted: ", e);
-            // clean up state...
-            Thread.currentThread().interrupt();
+        if (!withoutLatch) {
+          synchronized (driverLauncher) {
+            // while (!driverLauncher.getStatus().isDone()) {
+            try {
+              LOG.info("Driver shutdown latch await");
+              driverShutdownedLatch.await();
+              // LOG.info("Wait for the driver to finish");
+              // driverLauncher.wait();
+            } catch (final InterruptedException e) {
+              LOG.warn("Interrupted: ", e);
+              // clean up state...
+              Thread.currentThread().interrupt();
+            }
+            // }
+            LOG.info("Driver terminated");
           }
-          // }
-          LOG.info("Driver terminated");
         }
       }
 
@@ -236,7 +253,6 @@ public final class JobLauncher {
         LOG.info("Job successfully completed");
       }
 
-      shutdowned = true;
     }
   }
 
@@ -410,6 +426,14 @@ public final class JobLauncher {
                   .build())
                 .build());
 
+            } else if (decision.equals("move-task")) {
+              driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+                .setType(ControlMessage.ClientToDriverMessageType.Scaling)
+                .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
+                  .setDecision(decision)
+                  .setInfo(lastLine)
+                  .build())
+                .build());
             } else {
               throw new RuntimeException("Invalid line: " + lastLine);
             }
@@ -490,7 +514,7 @@ public final class JobLauncher {
     } finally {
       LOG.info("DAG execution done");
       // trigger shutdown.
-      shutdown();
+      shutdown(false);
     }
   }
 
