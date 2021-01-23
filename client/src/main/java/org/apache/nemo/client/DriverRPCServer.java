@@ -125,6 +125,10 @@ public final class DriverRPCServer {
         .build();
   }
 
+  public boolean hasLink() {
+    return link != null;
+  }
+
   /**
    * Sends a message to driver.
    * @param message message to send

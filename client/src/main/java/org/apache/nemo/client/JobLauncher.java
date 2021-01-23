@@ -204,12 +204,14 @@ public final class JobLauncher {
       // Trigger driver shutdown afterwards
       driverShutdownedLatch = new CountDownLatch(1);
       scalingService.shutdownNow();
-      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-      // Wait for driver to naturally finish
 
-      synchronized (driverLauncher) {
-        // while (!driverLauncher.getStatus().isDone()) {
+      if (driverRPCServer.hasLink()) {
+        driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+        // Wait for driver to naturally finish
+
+        synchronized (driverLauncher) {
+          // while (!driverLauncher.getStatus().isDone()) {
           try {
             driverShutdownedLatch.await();
             // LOG.info("Wait for the driver to finish");
@@ -219,8 +221,9 @@ public final class JobLauncher {
             // clean up state...
             Thread.currentThread().interrupt();
           }
-        // }
-        LOG.info("Driver terminated");
+          // }
+          LOG.info("Driver terminated");
+        }
       }
 
       // Close everything that's left
