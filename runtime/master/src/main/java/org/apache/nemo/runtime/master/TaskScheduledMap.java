@@ -51,6 +51,22 @@ public final class TaskScheduledMap {
 
   private boolean copied = false;
 
+  public Task removeTask(final String taskId) {
+    final String executorId = taskExecutorIdMap.remove(taskId);
+    prevTaskExecutorIdMap.remove(taskId);
+
+    final ExecutorRepresenter representer = executorIdRepresentorMap.get(executorId);
+    final Map<String, List<Task>> stageTaskMap = scheduledStageTasks.get(representer);
+
+    synchronized (stageTaskMap) {
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+      final List<Task> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
+      stageTasks.removeIf(task -> task.getTaskId().equals(taskId));
+    }
+
+    return taskIdMap.remove(taskId);
+  }
+
   public synchronized void keepOnceCurrentTaskExecutorIdMap() {
     if (copied) {
       return;

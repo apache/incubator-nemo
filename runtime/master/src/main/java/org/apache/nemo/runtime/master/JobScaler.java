@@ -15,6 +15,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +96,8 @@ public final class JobScaler {
 
   private long vmScalingTime = System.currentTimeMillis();
 
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -102,6 +105,7 @@ public final class JobScaler {
                     final TaskOffloadingManager taskOffloadingManager,
                     final VMWorkerManagerInMaster vmWorkerManagerInMaster,
                     final EvalConf evalConf,
+                    final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -111,6 +115,7 @@ public final class JobScaler {
     this.executorCpuUseMap = m.getExecutorCpuUseMap();
     this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
 
     this.evalConf = evalConf;
@@ -1177,6 +1182,16 @@ public final class JobScaler {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case StopTaskDone: {
+          final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
+          LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
+          final ExecutorRepresenter executorRepresenter =
+            taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
+          executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+          final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+          pendingTaskCollectionPointer.addTask(task);
+          break;
+        }
         case LocalScalingReadyDone: {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();

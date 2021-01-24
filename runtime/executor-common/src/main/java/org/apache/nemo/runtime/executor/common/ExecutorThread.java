@@ -237,7 +237,15 @@ public final class ExecutorThread {
 
 
         while (!finishWaitingTasks.isEmpty()) {
-          finishWaitingTasks.removeIf(executor -> executor.isFinishDone());
+          finishWaitingTasks.removeIf(executor -> {
+            if (executor.isFinishDone()) {
+              // Task stop handler
+              taskDoneHandler.onNext(executor.getId());
+              return true;
+            } else {
+              return false;
+            }
+          });
           Thread.sleep(100);
         }
 

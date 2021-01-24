@@ -170,6 +170,7 @@ message Message {
     optional ReturnSerializerMessage returnSerializerMsg = 40;
 
     optional StopTaskMessage stopTaskMsg = 41;
+    optional StopTaskDoneMessage stopTaskDoneMsg = 42;
 }
 
 message BroadcastInfoMessage {

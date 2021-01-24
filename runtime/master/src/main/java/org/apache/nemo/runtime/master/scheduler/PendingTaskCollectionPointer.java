@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.master.scheduler;
 import org.apache.nemo.runtime.common.plan.Task;
 
 import net.jcip.annotations.ThreadSafe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -33,6 +35,7 @@ import java.util.Optional;
  */
 @ThreadSafe
 public final class PendingTaskCollectionPointer {
+  private static final Logger LOG = LoggerFactory.getLogger(PendingTaskCollectionPointer.class.getName());
   private Collection<Task> curTaskCollection;
 
   @Inject
@@ -47,7 +50,8 @@ public final class PendingTaskCollectionPointer {
     this.curTaskCollection = newCollection;
   }
 
-  synchronized void add(final Task task) {
+  public synchronized void addTask(final Task task) {
+    LOG.info("Add task " + task.getTaskId());
     this.curTaskCollection.add(task);
   }
 
