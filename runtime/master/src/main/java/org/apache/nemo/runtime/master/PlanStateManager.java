@@ -25,6 +25,7 @@ import org.apache.nemo.common.StateMachine;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.PlanState;
@@ -106,11 +107,14 @@ public final class PlanStateManager {
 
   private final WatermarkManager watermarkManager;
 
+  private final String jobId;
+
   /**
    * Constructor.
    */
   @Inject
   private PlanStateManager(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
+                           @Parameter(JobConf.JobId.class) final String jobId,
                            final WatermarkManager watermarkManager) {
     this.planState = new PlanState();
     this.stageIdToState = new HashMap<>();
@@ -121,6 +125,7 @@ public final class PlanStateManager {
     this.metricStore = MetricStore.getStore();
     this.initialized = false;
     this.watermarkManager = watermarkManager;
+    this.jobId = jobId;
   }
 
   /**
@@ -624,18 +629,30 @@ public final class PlanStateManager {
       return;
     }
 
-    final File file = new File(dagDirectory, planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
-    LOG.info("Plan directory: " + file.getAbsolutePath());
-    file.getParentFile().mkdirs();
-    try (final PrintWriter printWriter = new PrintWriter(file)) {
-      printWriter.println(toStringWithPhysicalPlan());
-      LOG.debug(String.format("JSON representation of plan state for %s(%s) was saved to %s",
-        planId, dagLogFileIndex + "-" + suffix, file.getPath()));
-    } catch (final IOException e) {
-      LOG.warn(String.format("Cannot store JSON representation of plan state for %s(%s) to %s: %s",
-        planId, dagLogFileIndex + "-" + suffix, file.getPath(), e.toString()));
-    } finally {
-      dagLogFileIndex++;
+    if (dagDirectory.contains("hdfs")) {
+      try {
+        HDFSUtils.createPlanDir(jobId, planId, dagLogFileIndex, suffix, toStringWithPhysicalPlan());
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      } finally {
+        dagLogFileIndex++;
+      }
+    } else {
+
+      final File file = new File(dagDirectory, planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
+      LOG.info("Plan directory: " + file.getAbsolutePath());
+      file.getParentFile().mkdirs();
+      try (final PrintWriter printWriter = new PrintWriter(file)) {
+        printWriter.println(toStringWithPhysicalPlan());
+        LOG.debug(String.format("JSON representation of plan state for %s(%s) was saved to %s",
+          planId, dagLogFileIndex + "-" + suffix, file.getPath()));
+      } catch (final IOException e) {
+        LOG.warn(String.format("Cannot store JSON representation of plan state for %s(%s) to %s: %s",
+          planId, dagLogFileIndex + "-" + suffix, file.getPath(), e.toString()));
+      } finally {
+        dagLogFileIndex++;
+      }
     }
   }
 
