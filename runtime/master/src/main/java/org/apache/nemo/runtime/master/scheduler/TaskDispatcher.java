@@ -263,11 +263,13 @@ public final class TaskDispatcher {
 
       for (final List<Task> stageTask : stageTasks) {
 
+        /*
         try {
           Thread.sleep(8000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
+        */
 
         for (final Task task : stageTask) {
           if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
@@ -308,8 +310,6 @@ public final class TaskDispatcher {
             }
           });
         }
-
-
       }
 
       LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
@@ -317,7 +317,7 @@ public final class TaskDispatcher {
         // Try these again, if no new task list has been set
         pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
         try {
-          Thread.sleep(1000);
+          Thread.sleep(100);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
