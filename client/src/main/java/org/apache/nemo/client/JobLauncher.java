@@ -161,6 +161,7 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
       .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> {
+        LOG.info("Driver shutdown message received !");
         if (!shutdowned) {
           shutdown(driverShutdownedLatch == null);
         } else {

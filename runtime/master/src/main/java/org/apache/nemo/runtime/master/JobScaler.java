@@ -16,6 +16,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
+import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
 import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +101,8 @@ public final class JobScaler {
 
   private final RuntimeMaster runtimeMaster;
 
+  private final TaskDispatcher taskDispatcher;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -109,6 +112,7 @@ public final class JobScaler {
                     final EvalConf evalConf,
                     final RuntimeMaster runtimeMaster,
                     final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                    final TaskDispatcher taskDispatcher,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -121,6 +125,7 @@ public final class JobScaler {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
     this.runtimeMaster = runtimeMaster;
+    this.taskDispatcher = taskDispatcher;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -1194,6 +1199,7 @@ public final class JobScaler {
             executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
             final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
             pendingTaskCollectionPointer.addTask(task);
+            taskDispatcher.onNewPendingTaskCollectionAvailable();
           });
           break;
         }

@@ -56,6 +56,8 @@ public final class PendingTaskCollectionPointer {
     LOG.info("Add task " + task.getTaskId());
     if (this.curTaskCollection == null) {
       this.curTaskCollection = Collections.singletonList(task);
+    } else {
+      this.curTaskCollection.add(task);
     }
   }
 

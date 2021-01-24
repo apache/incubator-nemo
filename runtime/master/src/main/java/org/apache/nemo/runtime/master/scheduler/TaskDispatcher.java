@@ -53,7 +53,7 @@ import javax.inject.Inject;
  */
 @DriverSide
 @NotThreadSafe
-final class TaskDispatcher {
+public final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService dispatcherThread;
@@ -337,7 +337,7 @@ final class TaskDispatcher {
   /**
    * Signals to the condition on the Task collection availability.
    */
-  void onNewPendingTaskCollectionAvailable() {
+  public void onNewPendingTaskCollectionAvailable() {
     schedulingIteration.signal();
   }
 

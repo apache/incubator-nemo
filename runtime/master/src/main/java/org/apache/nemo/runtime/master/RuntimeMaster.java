@@ -268,6 +268,7 @@ public final class RuntimeMaster {
    */
   public void terminate() {
     // No need to speculate anymore
+    LOG.info("RuntimeMaster termiate called");
     speculativeTaskCloningThread.shutdown();
 
     planStateManager.shutdown();
