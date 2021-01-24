@@ -163,6 +163,7 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> {
         LOG.info("Driver shutdown message received !");
         if (!shutdowned) {
+          LOG.info("Driver shutdown message received ! shutdown latch");
           shutdown(driverShutdownedLatch == null);
         } else {
           driverShutdownedLatch.countDown();
@@ -209,10 +210,14 @@ public final class JobLauncher {
   public static synchronized void shutdown(boolean withoutLatch) {
     if (!shutdowned) {
       // Trigger driver shutdown afterwards
+
+      shutdowned = true;
+
       if (!withoutLatch) {
         driverShutdownedLatch = new CountDownLatch(1);
       }
       scalingService.shutdownNow();
+      LOG.info("Scaling service shutdown now");
 
       if (driverRPCServer.hasLink()) {
         driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
@@ -223,6 +228,7 @@ public final class JobLauncher {
           synchronized (driverLauncher) {
             // while (!driverLauncher.getStatus().isDone()) {
             try {
+              LOG.info("Driver shutdown latch await");
               driverShutdownedLatch.await();
               // LOG.info("Wait for the driver to finish");
               // driverLauncher.wait();
@@ -247,7 +253,6 @@ public final class JobLauncher {
         LOG.info("Job successfully completed");
       }
 
-      shutdowned = true;
     }
   }
 

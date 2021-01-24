@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -14,6 +15,7 @@ import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
@@ -103,6 +105,8 @@ public final class JobScaler {
 
   private final TaskDispatcher taskDispatcher;
 
+  private final PlanStateManager planStateManager;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -113,6 +117,7 @@ public final class JobScaler {
                     final RuntimeMaster runtimeMaster,
                     final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                     final TaskDispatcher taskDispatcher,
+                    final PlanStateManager planStateManager,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -126,6 +131,7 @@ public final class JobScaler {
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
     this.runtimeMaster = runtimeMaster;
     this.taskDispatcher = taskDispatcher;
+    this.planStateManager = planStateManager;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -1198,6 +1204,8 @@ public final class JobScaler {
               taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
             executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
             final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+            LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
+            planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
             pendingTaskCollectionPointer.addTask(task);
             taskDispatcher.onNewPendingTaskCollectionAvailable();
           });
