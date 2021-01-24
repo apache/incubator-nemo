@@ -98,6 +98,8 @@ public final class JobScaler {
 
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
 
+  private final RuntimeMaster runtimeMaster;
+
   @Inject
   private JobScaler(final TaskScheduledMap taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -105,6 +107,7 @@ public final class JobScaler {
                     final TaskOffloadingManager taskOffloadingManager,
                     final VMWorkerManagerInMaster vmWorkerManagerInMaster,
                     final EvalConf evalConf,
+                    final RuntimeMaster runtimeMaster,
                     final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
@@ -117,6 +120,7 @@ public final class JobScaler {
     this.executorService = Executors.newCachedThreadPool();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.vmWorkerManagerInMaster = vmWorkerManagerInMaster;
+    this.runtimeMaster = runtimeMaster;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -1174,7 +1178,6 @@ public final class JobScaler {
           .build())
         .build());
       });
-
     }
   }
 
@@ -1183,13 +1186,15 @@ public final class JobScaler {
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
         case StopTaskDone: {
-          final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
-          LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
-          final ExecutorRepresenter executorRepresenter =
-            taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
-          executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
-          final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
-          pendingTaskCollectionPointer.addTask(task);
+          runtimeMaster.getRuntimeMasterThread().execute(() -> {
+            final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
+            LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
+            final ExecutorRepresenter executorRepresenter =
+              taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
+            executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+            final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+            pendingTaskCollectionPointer.addTask(task);
+          });
           break;
         }
         case LocalScalingReadyDone: {

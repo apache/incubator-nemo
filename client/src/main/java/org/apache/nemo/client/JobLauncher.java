@@ -106,7 +106,7 @@ public final class JobLauncher {
   private static void registerShutdownHook() {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
-        shutdown();
+        shutdown(false);
       }
     });
   }
@@ -160,7 +160,13 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
-      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> driverShutdownedLatch.countDown())
+      .registerHandler(ControlMessage.DriverToClientMessageType.DriverShutdowned, event -> {
+        if (!shutdowned) {
+          shutdown(driverShutdownedLatch == null);
+        } else {
+          driverShutdownedLatch.countDown();
+        }
+      })
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -199,10 +205,12 @@ public final class JobLauncher {
    * Clean up everything.
    */
   private static boolean shutdowned = false;
-  public static synchronized void shutdown() {
+  public static synchronized void shutdown(boolean withoutLatch) {
     if (!shutdowned) {
       // Trigger driver shutdown afterwards
-      driverShutdownedLatch = new CountDownLatch(1);
+      if (!withoutLatch) {
+        driverShutdownedLatch = new CountDownLatch(1);
+      }
       scalingService.shutdownNow();
 
       if (driverRPCServer.hasLink()) {
@@ -210,19 +218,21 @@ public final class JobLauncher {
           .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
         // Wait for driver to naturally finish
 
-        synchronized (driverLauncher) {
-          // while (!driverLauncher.getStatus().isDone()) {
-          try {
-            driverShutdownedLatch.await();
-            // LOG.info("Wait for the driver to finish");
-            // driverLauncher.wait();
-          } catch (final InterruptedException e) {
-            LOG.warn("Interrupted: ", e);
-            // clean up state...
-            Thread.currentThread().interrupt();
+        if (!withoutLatch) {
+          synchronized (driverLauncher) {
+            // while (!driverLauncher.getStatus().isDone()) {
+            try {
+              driverShutdownedLatch.await();
+              // LOG.info("Wait for the driver to finish");
+              // driverLauncher.wait();
+            } catch (final InterruptedException e) {
+              LOG.warn("Interrupted: ", e);
+              // clean up state...
+              Thread.currentThread().interrupt();
+            }
+            // }
+            LOG.info("Driver terminated");
           }
-          // }
-          LOG.info("Driver terminated");
         }
       }
 
@@ -498,7 +508,7 @@ public final class JobLauncher {
     } finally {
       LOG.info("DAG execution done");
       // trigger shutdown.
-      shutdown();
+      shutdown(false);
     }
   }
 

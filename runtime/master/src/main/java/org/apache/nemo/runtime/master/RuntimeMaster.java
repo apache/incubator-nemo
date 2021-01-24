@@ -50,6 +50,7 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -140,7 +141,19 @@ public final class RuntimeMaster {
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
-        Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+        Executors.newSingleThreadExecutor(runnable -> {
+          final Thread t = new Thread(runnable, "RuntimeMaster thread");
+          t.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+              @Override
+              public void uncaughtException(Thread t, Throwable e) {
+                e.printStackTrace();
+                terminate();
+                clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+                  .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
+              }
+            });
+          return t;
+        });
 
     this.taskScheduledMap = taskScheduledMap;
 
@@ -176,6 +189,10 @@ public final class RuntimeMaster {
     this.planStateManager = planStateManager;
     this.warmer = warmer;
     this.warmer.start(evalConf.poolSize);
+  }
+
+  public ExecutorService getRuntimeMasterThread() {
+    return runtimeMasterThread;
   }
 
   /**
