@@ -265,6 +265,16 @@ public final class PlanStateManager {
     return result;
   }
 
+  public synchronized void shutdown() {
+      // Awake all threads waiting the finish of this plan.
+      finishLock.lock();
+      try {
+        planFinishedCondition.signalAll();
+      } finally {
+        finishLock.unlock();
+      }
+  }
+
   /**
    * List of task times so far for this stage.
    * @param stageId of the stage.

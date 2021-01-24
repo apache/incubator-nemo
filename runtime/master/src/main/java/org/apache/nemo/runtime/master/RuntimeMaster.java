@@ -270,6 +270,8 @@ public final class RuntimeMaster {
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
 
+    planStateManager.shutdown();
+
     try {
       // wait for metric flush
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {

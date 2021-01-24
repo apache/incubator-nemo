@@ -89,8 +89,8 @@ public final class NemoDriver {
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
 
-  // private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
-  //    new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
+  private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
+     new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
@@ -193,7 +193,7 @@ public final class NemoDriver {
   private void shutdown() {
     LOG.info("Driver shutdown initiated");
     // runnerThread.execute(runtimeMaster::terminate);
-    // runnerThread.shutdown();
+    runnerThread.shutdownNow();
     runtimeMaster.terminate();
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
       .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
@@ -246,14 +246,14 @@ public final class NemoDriver {
    * @param dagString  the serialized DAG to schedule.
    */
   private void startSchedulingUserDAG(final String dagString) {
-    // runnerThread.execute(() -> {
+    runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
       // flush metrics
       runtimeMaster.flushMetrics();
-    // });
+    });
   }
 
   /**
