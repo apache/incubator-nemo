@@ -1135,7 +1135,9 @@ public final class JobScaler {
     }
   }
 
-  public void sendTaskStopSignal(final int num) {
+  private final Set<String> prevMovedTask = new HashSet<>();
+
+  public synchronized void sendTaskStopSignal(final int num) {
 
     LOG.info("Send task stop signal");
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
@@ -1145,23 +1147,28 @@ public final class JobScaler {
     for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
       final String taskId = entry.getKey();
       final String executorId = entry.getValue();
-      final long id = RuntimeIdManager.generateMessageId();
 
-      final ExecutorRepresenter representer = taskScheduledMap.getExecutorRepresenter(executorId);
-      LOG.info("Send task " + taskId + " stop to executor " + executorId);
-      representer.sendControlMessage(ControlMessage.Message.newBuilder()
-        .setId(id)
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.StopTask)
-        .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-          .setTaskId(taskId)
-          .build())
-        .build());
+      if (!prevMovedTask.contains(taskId)) {
+        final long id = RuntimeIdManager.generateMessageId();
 
-      stopped += 1;
+        final ExecutorRepresenter representer = taskScheduledMap.getExecutorRepresenter(executorId);
+        LOG.info("Send task " + taskId + " stop to executor " + executorId);
+        representer.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(id)
+          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.StopTask)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(taskId)
+            .build())
+          .build());
 
-      if (stopped == num) {
-        break;
+        stopped += 1;
+
+        prevMovedTask.add(taskId);
+
+        if (stopped == num) {
+          break;
+        }
       }
     }
   }
