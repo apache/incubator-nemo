@@ -427,6 +427,7 @@ public final class JobLauncher {
                 .build());
 
             } else if (decision.equals("move-task")) {
+              LOG.info("Send move task " + lastLine);
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)
                 .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
