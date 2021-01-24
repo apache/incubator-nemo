@@ -625,6 +625,7 @@ public final class PlanStateManager {
     }
 
     final File file = new File(dagDirectory, planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
+    LOG.info("Plan directory: " + file.getAbsolutePath());
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
