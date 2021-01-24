@@ -25,7 +25,8 @@ public final class HDFSUtils {
                                    final int dagLogFileIndex,
                                    final String suffix,
                                    final String plan) throws IOException {
-    final Path path = new Path(PLAN_PATH + "/" + jobId + "-" + timestamp
+    final Path path = new Path(PLAN_PATH + "/" + jobId + "-" + timestamp);
+    final Path filepath = new Path(PLAN_PATH + "/" + jobId + "-" + timestamp
     + "/" + planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
     LOG.info("Creating plan dir " + path.getName());
     final FileSystem fileSystem = path.getFileSystem(CONF);
@@ -34,7 +35,7 @@ public final class HDFSUtils {
         fileSystem.mkdirs(path);
       }
 
-      final OutputStream out = new BufferedOutputStream(fileSystem.create(path));
+      final OutputStream out = new BufferedOutputStream(fileSystem.create(filepath));
       out.write(plan.getBytes("UTF-8"));
       out.close();
 
