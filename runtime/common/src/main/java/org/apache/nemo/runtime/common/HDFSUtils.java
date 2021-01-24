@@ -18,12 +18,14 @@ public final class HDFSUtils {
   public static final String STATE_PATH = "hdfs://hdfs-master:9000/sponge_state";
   public static final String PLAN_PATH = "hdfs://hdfs-master:9000/plan_dag";
 
+  private static final Long timestamp = System.currentTimeMillis();
+
   public static void createPlanDir(final String jobId,
                                    final String planId,
                                    final int dagLogFileIndex,
                                    final String suffix,
                                    final String plan) throws IOException {
-    final Path path = new Path(PLAN_PATH + "/" + jobId + "-" + System.currentTimeMillis()
+    final Path path = new Path(PLAN_PATH + "/" + jobId + "-" + timestamp
     + "/" + planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
     LOG.info("Creating plan dir " + path.getName());
     final FileSystem fileSystem = path.getFileSystem(CONF);
