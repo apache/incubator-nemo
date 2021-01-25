@@ -52,6 +52,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
     this.taskId = taskId;
+    LOG.info("Number of edges for multi input watermark: " + numEdges);
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
     for (int i = 0; i < numEdges; i++) {
@@ -119,7 +120,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       final Watermark nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
 
       if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
-        // it is possible
+        // it is possible in the first time
         minWatermarkIndex = nextMinWatermarkIndex;
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));

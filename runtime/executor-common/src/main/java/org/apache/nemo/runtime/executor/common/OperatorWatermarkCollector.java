@@ -45,8 +45,8 @@ public final class OperatorWatermarkCollector extends AbstractOutputCollector {
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    LOG.info("Operator watermark collector " + operatorVertex.getId()
-      + " onWatermark " + new Instant(watermark.getTimestamp()));
+    // LOG.info("Operator watermark collector " + operatorVertex.getId()
+    //  + " onWatermark " + new Instant(watermark.getTimestamp()));
     operatorVertex.getTransform().onWatermark(watermark);
   }
 
