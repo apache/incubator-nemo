@@ -106,7 +106,7 @@ public final class PipeManagerWorker {
   public void broadcast(final List<ByteOutputContext> outputContexts,
                         final Serializer serializer, Object event) {
 
-    LOG.info("Broadcast watermark in pipeline Manager worker {}", event);
+    // LOG.info("Broadcast watermark in pipeline Manager worker {}", event);
     final Map<String, List<ByteTransferContext.ContextId>> contextManagerListMap = new HashMap<>();
     outputContexts.forEach(context -> {
       contextManagerListMap.putIfAbsent(context.getRemoteExecutorId(),
