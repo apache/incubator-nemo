@@ -909,6 +909,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
         processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
       }
+    } else if (event instanceof Watermark) {
+      // This MUST BE generated from input source
+      if (!isSource()) {
+        throw new RuntimeException("Invalid watermark !! this task is not source " + taskId);
+      }
+      processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
 
       // This is for latency logging

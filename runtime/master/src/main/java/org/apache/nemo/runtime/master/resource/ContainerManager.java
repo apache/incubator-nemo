@@ -230,7 +230,8 @@ public final class ContainerManager {
 
   public void terminate() {
     if (isTerminated) {
-      throw new IllegalStateException("Cannot terminate twice");
+      return;
+      // throw new IllegalStateException("Cannot terminate twice");
     }
 
     evaluatorIdToResourceSpec.keySet().forEach(evalutor -> {
