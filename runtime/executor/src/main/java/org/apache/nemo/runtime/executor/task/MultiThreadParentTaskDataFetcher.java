@@ -132,7 +132,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.executorGlobalInstances = executorGlobalInstances;
     executorGlobalInstances.registerWatermarkService(dataSource, () -> {
       final Optional<Long> watermark = rendevousServerClient.requestWatermark(taskId);
-      //LOG.info("Request watermark at {}", taskId);
+      LOG.info("Request watermark at {} / {}", taskId, watermark);
 
       if (prepared.get()) {
         if (watermark.isPresent() && prevWatermarkTimestamp + Util.WATERMARK_PROGRESS <= watermark.get()) {

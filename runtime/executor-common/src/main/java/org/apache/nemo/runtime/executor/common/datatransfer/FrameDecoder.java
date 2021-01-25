@@ -244,8 +244,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
 
     if (in.readableBytes() < dataBodyBytesToRead) {
-      LOG.warn("Bytes to read smaller than dataBodyBytesToRead: "
-        + in.readableBytes() + ", " + dataBodyBytesToRead);
+      // LOG.warn("Bytes to read smaller than dataBodyBytesToRead: "
+      //  + in.readableBytes() + ", " + dataBodyBytesToRead);
       return false;
     }
 
