@@ -632,7 +632,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new MultiInputWatermarkManager(childVertex, edges.size(),
-              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
+              new OperatorWatermarkCollector((OperatorVertex) childVertex), taskId));
         }
       }
     });

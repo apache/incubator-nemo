@@ -151,7 +151,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         LOG.warn(
           "The recent watermark timestamp cannot be less than the previous one "
             + "because watermark is monotonically increasing... " +
-            "TaskId: " + taskId + "srcIndex: " + edgeIndex + ", prevWatermark: " +
+            "TaskId: " + taskId + " srcIndex: " + edgeIndex + ", prevWatermark: " +
             new Instant(watermarks.get(edgeIndex).getTimestamp()) + ", currWatermark: " +
         new Instant(watermark.getTimestamp()));
       } else {
