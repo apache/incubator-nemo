@@ -57,8 +57,8 @@ import java.util.*;
  * {@literal
  *   <---------------------------------- HEADER ---------------------------------------------------> <----- BODY ----->
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
- *   | Zeros |  Stop/Restart  | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag | TransferIdx | Length  |       Body      |
- *   | 4 bit |     1 bit      |       1 bit       |      1 bit       |     1 bit     |   4 bytes   | 4 bytes | Variable length |
+ *   | Zeros |  Stop/Restart  | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag |  Boolean  | TransferIdx | Length  |       Body      |
+ *   | 4 bit |     1 bit      |       1 bit       |      1 bit       |     1 bit     |  1 byte   |  4 bytes   | 4 bytes | Variable length |
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
  * }
  * </pre>
@@ -66,7 +66,7 @@ import java.util.*;
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
-  private static final int HEADER_LENGTH = 9;
+  private static final int HEADER_LENGTH = 10;
 
   private final ContextManager contextManager;
 
@@ -144,6 +144,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     if ((flags & ((byte) (1 << 3))) == 0) {
       // setup context for reading control frame body
+      LOG.info("Control message...??");
       final long length = in.readUnsignedInt();
       controlBodyBytesToRead = length;
       if (length < 0) {
