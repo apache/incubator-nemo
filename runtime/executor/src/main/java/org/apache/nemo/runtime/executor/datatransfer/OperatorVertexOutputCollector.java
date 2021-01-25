@@ -107,7 +107,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.taskExecutor = taskExecutor;
     this.edgeId = edgeId;
-    this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 1.0);
+    this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
     this.isSourceVertex = irVertex instanceof SourceVertex;
   }
 
@@ -213,9 +213,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       */
     if (!irVertex.isSink) {
       proceseedCnt += 1;
-      final long currTime = System.currentTimeMillis();
-
       if (random.nextDouble() < samplingRate) {
+        final long currTime = System.currentTimeMillis();
         final int latency = (int) ((currTime - inputTimestamp));
         LOG.info("Event Latency {} from {} in {} / {}", latency,
           irVertex.getId(),
@@ -234,18 +233,29 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
 
-    if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        final Pair<OperatorMetricCollector, OutputCollector> pair =
-          outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), (O) output);
+    if (dstVertexId.equals("Logging")) {
+      if (random.nextDouble() < samplingRate) {
+        final long currTime = System.currentTimeMillis();
+        final int latency = (int) ((currTime - inputTimestamp));
+        LOG.info("Event Latency {} from {} in {} / {}", latency,
+          irVertex.getId(),
+          taskId,
+          output);
       }
-    }
+    } else {
+      if (internalAdditionalOutputs.containsKey(dstVertexId)) {
+        for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+          final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
+        }
+      }
 
-    if (externalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
+      if (externalAdditionalOutputs.containsKey(dstVertexId)) {
+        for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
+          emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
+        }
       }
     }
   }

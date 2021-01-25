@@ -151,17 +151,17 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    //LOG.info("Final input receive at {}: {}, timestamp: {}, inputWatermark: {}",
-    //  getContext().getTaskId(),
-    //  element,
-    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+    LOG.info("Final input receive at {}: {}, timestamp: {}, inputWatermark: {}",
+      getContext().getTaskId(),
+      element,
+      element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
     try {
       if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
         //LOG.info("Final input process: {}", getContext().getTaskId());
 
-        //LOG.info("Final input!!: {}", element);
+        LOG.info("Final input!!: {}", element);
         // We can call Beam's DoFnRunner#processElement here,
         // but it may generate some overheads if we call the method for each data.
         // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -238,7 +238,7 @@ public final class GBKFinalTransform<K, InputT>
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
 
-      //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
+      LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -275,7 +275,7 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    //LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+    LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
@@ -290,10 +290,10 @@ public final class GBKFinalTransform<K, InputT>
       throw new RuntimeException(e);
     }
     // Emit watermark to downstream operators
-   // LOG.info("After trigger at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    LOG.info("After trigger at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     emitOutputWatermark();
-    //LOG.info("After emitwatermark at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
+    LOG.info("After emitwatermark at {} / {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
 
     final long et1 = System.currentTimeMillis();
     checkAndFinishBundle();
