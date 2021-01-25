@@ -39,7 +39,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
-  public static final int HEADER_LENGTH = Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
+  public static final int HEADER_LENGTH = Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH + Integer.BYTES;
 
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
