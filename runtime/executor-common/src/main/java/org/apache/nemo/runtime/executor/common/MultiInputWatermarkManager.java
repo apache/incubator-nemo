@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This tracks the minimum input watermark among multiple input streams.
@@ -52,6 +53,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
     this.taskId = taskId;
+    LOG.info("Number of edges for multi input watermark: " + numEdges);
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
     for (int i = 0; i < numEdges; i++) {
@@ -119,7 +121,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       final Watermark nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
 
       if (nextMinWatermark.getTimestamp() <= currMinWatermark.getTimestamp()) {
-        // it is possible
+        // it is possible in the first time
         minWatermarkIndex = nextMinWatermarkIndex;
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
@@ -150,7 +152,10 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       if (watermarks.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
         LOG.warn(
           "The recent watermark timestamp cannot be less than the previous one "
-            + "because watermark is monotonically increasing.");
+            + "because watermark is monotonically increasing... " +
+            "TaskId: " + taskId + " srcIndex: " + edgeIndex + ", prevWatermark: " +
+            new Instant(watermarks.get(edgeIndex).getTimestamp()) + ", currWatermark: " +
+        new Instant(watermark.getTimestamp()));
       } else {
         watermarks.set(edgeIndex, watermark);
       }

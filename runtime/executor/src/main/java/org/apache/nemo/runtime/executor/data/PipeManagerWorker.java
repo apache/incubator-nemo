@@ -19,8 +19,14 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -31,19 +37,19 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -95,6 +101,57 @@ public final class PipeManagerWorker {
 
   public SerializerManager getSerializerManager() {
     return serializerManager;
+  }
+
+  public void broadcast(final List<ByteOutputContext> outputContexts,
+                        final Serializer serializer, Object event) {
+
+    // LOG.info("Broadcast watermark in pipeline Manager worker {}", event);
+    final Map<String, List<ByteTransferContext.ContextId>> contextManagerListMap = new HashMap<>();
+    outputContexts.forEach(context -> {
+      contextManagerListMap.putIfAbsent(context.getRemoteExecutorId(),
+        new LinkedList<>());
+      contextManagerListMap.get(context.getRemoteExecutorId()).add(context.getContextId());
+    });
+
+    for (final String remoteExecutorId : contextManagerListMap.keySet()) {
+      final ContextManager contextManager = byteTransfer.getRemoteExecutorContetxManager(remoteExecutorId);
+      final Channel channel = contextManager.getChannel();
+
+      final ByteBuf byteBuf = channel.alloc().ioBuffer();
+      final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+
+      try {
+        final OutputStream wrapped = byteBufOutputStream;
+        //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+        //LOG.info("Element encoder: {}", encoder);
+        encoder.encode(event);
+        wrapped.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
+        contextManagerListMap.get(remoteExecutorId), byteBuf, byteBuf.readableBytes(), true))
+        .addListener(new GenericFutureListener<Future<? super Void>>() {
+          @Override
+          public void operationComplete(Future<? super Void> future) throws Exception {
+            if (future.isSuccess()) {
+              return;
+            } else {
+              LOG.warn(future.cause().getMessage());
+              try {
+                throw future.cause();
+              } catch (Throwable throwable) {
+                throwable.printStackTrace();
+                new RuntimeException(throwable);
+              }
+            }
+          }
+        });
+    }
   }
 
   public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,

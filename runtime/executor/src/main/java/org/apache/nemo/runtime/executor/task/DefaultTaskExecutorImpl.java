@@ -19,10 +19,8 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import io.netty.buffer.ByteBuf;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
@@ -43,7 +41,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -72,6 +69,7 @@ import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,6 +198,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
+  private final TaskInputWatermarkManager taskWatermarkManager;
+
   /**
    * Constructor.
    *
@@ -256,6 +256,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.taskLocationMap = taskLocationMap;
 
     this.scalingOutCounter = scalingOutCounter;
+
+    this.taskWatermarkManager = new TaskInputWatermarkManager();
 
     this.pollingTrigger = executorGlobalInstances.getPollingTrigger();
     this.pipeOutputWriters = new HashSet<>();
@@ -632,7 +634,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new MultiInputWatermarkManager(childVertex, edges.size(),
-              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
+              new OperatorWatermarkCollector((OperatorVertex) childVertex), taskId));
         }
       }
     });
@@ -777,12 +779,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
             final StageEdge edge = pair.left();
             final int edgeIndex = edgeIndexMap.get(edge);
-            final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, edgeIndex, watermarkManager);
-
+                outputCollector, edgeIndex);
 
             //final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
             //  Arrays.asList(edge.getDstIRVertex()),
@@ -792,8 +792,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
             if (parentTaskReader instanceof PipeInputReader) {
               isStateless = false;
-              allFetchers.add(
-                new MultiThreadParentTaskDataFetcher(
+              final DataFetcher df = new MultiThreadParentTaskDataFetcher(
                   taskId,
                   parentTaskReader.getSrcIrVertex(),
                   edge,
@@ -802,7 +801,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   rendevousServerClient,
                   executorGlobalInstances,
                   this,
-                  prepared));
+                  prepared);
+
+              taskWatermarkManager.addDataFetcher(df, edge);
+
+              allFetchers.add(df);
             } else {
               allFetchers.add(
                 new ParentTaskDataFetcher(
@@ -895,8 +898,22 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
-    } else if (event instanceof Watermark) {
+    } else if (event instanceof WatermarkWithIndex) {
       // Watermark
+      // LOG.info("Handling watermark with index {}", event);
+      final WatermarkWithIndex d = (WatermarkWithIndex) event;
+      final Optional<Watermark> watermark =
+        taskWatermarkManager.updateWatermark(dataFetcher, d.getIndex(), d.getWatermark().getTimestamp());
+
+      if (watermark.isPresent()) {
+        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
+        processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
+      }
+    } else if (event instanceof Watermark) {
+      // This MUST BE generated from input source
+      if (!isSource()) {
+        throw new RuntimeException("Invalid watermark !! this task is not source " + taskId);
+      }
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
 
@@ -974,13 +991,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
-
+    throw new RuntimeException("Not supportedl");
+    /*
     executorThread.decoderThread.execute(() -> {
       executorThread.queue.add(() -> {
         //LOG.info("handler watermark");
         onEventFromDataFetcher(element, dataFetcher);
       });
     });
+    */
   }
 
   public boolean offloaded = false;
@@ -996,7 +1015,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             // final ByteBuf byteBuf = iterator.nextByteBuf();
 
           } else {
-
             final Object element = iterator.next();
             if (prepared.get()) {
               executorThread.queue.add(() -> {
@@ -1005,7 +1023,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
                   //executorMetrics.increaseInputCounter(stageId);
                   //taskMetrics.incrementInputElement();
-
                   onEventFromDataFetcher(element, dataFetcher);
                 }
               });

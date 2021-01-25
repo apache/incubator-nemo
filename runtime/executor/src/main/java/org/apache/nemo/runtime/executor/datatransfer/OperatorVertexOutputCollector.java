@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.task.*;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +108,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.taskExecutor = taskExecutor;
     this.edgeId = edgeId;
-    this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 1.0);
+    this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
     this.isSourceVertex = irVertex instanceof SourceVertex;
   }
 
@@ -200,9 +201,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
 
     // calculate thp
-    if (isSourceVertex) {
-      proceseedCnt += 1;
-      final long currTime = System.currentTimeMillis();
+    // if (isSourceVertex) {
+
 
       /*
       if (currTime - prevLogTime >= 1000) {
@@ -212,14 +212,18 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         prevLogTime = currTime;
       }
       */
-
+    if (!irVertex.isSink) {
+      proceseedCnt += 1;
       if (random.nextDouble() < samplingRate) {
-        final int latency = (int)((currTime - inputTimestamp));
-        LOG.info("Event Latency {} from {} in {}", latency,
+        final long currTime = System.currentTimeMillis();
+        final int latency = (int) ((currTime - inputTimestamp));
+        LOG.info("Event Latency {} from {} in {} ", latency,
           irVertex.getId(),
-          taskId);
+          taskId,
+          output);
       }
     }
+    // }
   }
 
   int proceseedCnt = 0;
@@ -230,18 +234,29 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
 
-    if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        final Pair<OperatorMetricCollector, OutputCollector> pair =
-          outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), (O) output);
+    if (dstVertexId.equals("Logging")) {
+      if (random.nextDouble() < samplingRate) {
+        final long currTime = System.currentTimeMillis();
+        final int latency = (int) ((currTime - inputTimestamp));
+        LOG.info("Event Latency {} from {} in {} / {}", latency,
+          irVertex.getId(),
+          taskId,
+          output);
       }
-    }
+    } else {
+      if (internalAdditionalOutputs.containsKey(dstVertexId)) {
+        for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+          final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
+        }
+      }
 
-    if (externalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
+      if (externalAdditionalOutputs.containsKey(dstVertexId)) {
+        for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
+          emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
+        }
       }
     }
   }
@@ -266,6 +281,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
+
+
 
     List<String> offloadingIds = null;
 

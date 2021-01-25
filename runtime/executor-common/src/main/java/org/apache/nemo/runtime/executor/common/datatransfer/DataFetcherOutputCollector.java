@@ -36,25 +36,21 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
   private final IRVertex srcVertex;
   private final OperatorVertex nextOperatorVertex;
   private final int edgeIndex;
-  private final InputWatermarkManager watermarkManager;
   private final OutputCollector nextOutputCollector;
 
   /**
    * It forwards output to the next operator.
    * @param nextOperatorVertex next operator to emit data and watermark
    * @param edgeIndex edge index
-   * @param watermarkManager watermark manager
    */
   public DataFetcherOutputCollector(final IRVertex srcVertex,
                                     final OperatorVertex nextOperatorVertex,
                                     final OutputCollector nextOutputCollector,
-                                    final int edgeIndex,
-                                    final InputWatermarkManager watermarkManager) {
+                                    final int edgeIndex) {
     this.srcVertex = srcVertex;
     this.nextOperatorVertex = nextOperatorVertex;
     this.nextOutputCollector = nextOutputCollector;
     this.edgeIndex = edgeIndex;
-    this.watermarkManager = watermarkManager;
   }
 
   @Override
@@ -65,7 +61,8 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
+    nextOutputCollector.emitWatermark(watermark);
+    // watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
   }
 
   @Override

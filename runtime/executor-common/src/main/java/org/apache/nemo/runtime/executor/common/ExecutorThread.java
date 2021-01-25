@@ -194,15 +194,14 @@ public final class ExecutorThread {
             processed = true;
           }
 
-          if (throttle.get() && !processed) {
-            Thread.sleep(20);
-          }
-
-          if (sourceTasks.isEmpty() && queue.isEmpty()) {
-            Thread.sleep(20);
+          if (throttle.get() && !processed ||
+            (sourceTasks.isEmpty() && queue.isEmpty())) {
+            Thread.sleep(5);
           }
         }
+        // Done event while loop
 
+        // After Finished !!
         final List<TaskExecutor> tasks = new ArrayList<>(deletedTasks.size());
 
         while (!deletedTasks.isEmpty()) {
@@ -227,7 +226,7 @@ public final class ExecutorThread {
         for (final TaskExecutor deletedTask : tasks) {
           LOG.info("Finishing task {}", deletedTask.getId());
           while (!deletedTask.isFinished()) {
-            Thread.sleep(100);
+            Thread.sleep(10);
           }
 
           deletedTask.finish();
@@ -246,7 +245,7 @@ public final class ExecutorThread {
               return false;
             }
           });
-          Thread.sleep(100);
+          Thread.sleep(10);
         }
 
         closed = true;

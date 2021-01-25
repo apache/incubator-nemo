@@ -22,6 +22,7 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
@@ -44,6 +45,8 @@ public final class OperatorWatermarkCollector extends AbstractOutputCollector {
 
   @Override
   public void emitWatermark(final Watermark watermark) {
+    // LOG.info("Operator watermark collector " + operatorVertex.getId()
+    //  + " onWatermark " + new Instant(watermark.getTimestamp()));
     operatorVertex.getTransform().onWatermark(watermark);
   }
 

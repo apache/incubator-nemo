@@ -94,6 +94,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   final TaskMetrics taskMetrics;
 
+  // TODO: Data fetcher watermark manager
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, Serializer> serializerMap,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
@@ -347,7 +348,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, edgeIndex, watermarkManager);
+                outputCollector, edgeIndex);
             allFetchers.add(
               new LambdaParentTaskDataFetcher(
                 offloadingTask.taskId,

@@ -18,19 +18,18 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.ExecutorMetrics;
+import io.netty.channel.Channel;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
@@ -46,8 +45,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
-
-import static org.apache.nemo.common.TaskLoc.SF;
 
 /**
  * Represents the output data transfer from a task.
@@ -164,8 +161,12 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void writeWatermark(final Watermark watermark) {
+    // LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
+    pipeManagerWorker.broadcast(pipes, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));
+
+    // writeData(new WatermarkWithIndex(watermark, srcTaskIndex), pipes, false);
+
     // 여기서 마스터에게 보내면됨.
-    //LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
     rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
   }
 

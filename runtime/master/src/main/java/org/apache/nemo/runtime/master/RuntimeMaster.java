@@ -266,42 +266,45 @@ public final class RuntimeMaster {
   /**
    * Terminates the RuntimeMaster.
    */
+  private boolean terminated = false;
   public void terminate() {
-    // No need to speculate anymore
-    LOG.info("RuntimeMaster termiate called");
-    speculativeTaskCloningThread.shutdown();
+    if (!terminated) {
+      terminated = true;
+      // No need to speculate anymore
+      LOG.info("RuntimeMaster termiate called");
+      speculativeTaskCloningThread.shutdown();
 
-    planStateManager.shutdown();
+      planStateManager.shutdown();
 
-    try {
-      // wait for metric flush
-      if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
-        LOG.warn("Terminating master before all executor terminated messages arrived.");
+      try {
+        // wait for metric flush
+        if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
+          LOG.warn("Terminating master before all executor terminated messages arrived.");
+        }
+      } catch (final InterruptedException e) {
+        LOG.warn("Waiting executor terminating process interrupted: " + e);
+        // clean up state...
+        Thread.currentThread().interrupt();
       }
-    } catch (final InterruptedException e) {
-      LOG.warn("Waiting executor terminating process interrupted: " + e);
-      // clean up state...
-      Thread.currentThread().interrupt();
+
+      runtimeMasterThread.execute(() -> {
+        scheduler.terminate();
+        try {
+          masterMessageEnvironment.close();
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        metricMessageHandler.terminate();
+        containerManager.terminate();
+
+        try {
+          metricServer.stop();
+          metricServer.destroy();
+        } catch (final Exception e) {
+          throw new MetricException("Failed to stop rest api server: " + e);
+        }
+      });
     }
-
-    runtimeMasterThread.execute(() -> {
-      scheduler.terminate();
-      try {
-        masterMessageEnvironment.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      metricMessageHandler.terminate();
-      containerManager.terminate();
-
-      try {
-        metricServer.stop();
-        metricServer.destroy();
-      } catch (final Exception e) {
-        throw new MetricException("Failed to stop rest api server: " + e);
-      }
-    });
-
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 

@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.slf4j.Logger;
@@ -55,8 +57,8 @@ import java.util.*;
  * {@literal
  *   <---------------------------------- HEADER ---------------------------------------------------> <----- BODY ----->
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
- *   | Zeros |  Stop/Restart  | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag | TransferIdx | Length  |       Body      |
- *   | 4 bit |     1 bit      |       1 bit       |      1 bit       |     1 bit     |   4 bytes   | 4 bytes | Variable length |
+ *   | Zeros |  Stop/Restart  | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag |  Boolean  | TransferIdx | Length  |       Body      |
+ *   | 4 bit |     1 bit      |       1 bit       |      1 bit       |     1 bit     |  1 byte   |  4 bytes   | 4 bytes | Variable length |
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
  * }
  * </pre>
@@ -64,7 +66,7 @@ import java.util.*;
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
-  private static final int HEADER_LENGTH = 9;
+  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
 
   private final ContextManager contextManager;
 
@@ -78,10 +80,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    */
   private long dataBodyBytesToRead = 0;
 
+
   /**
    * The {@link ByteInputContext} to which received bytes are added.
    */
   private ByteInputContext inputContext;
+  private List<ByteInputContext> inputContexts;
+
+  private boolean broadcast = false;
 
   /**
    * Whether or not the data frame currently being read is the last frame of a data message.
@@ -92,6 +98,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private final Map<Integer, Collection<ByteBuf>> pendingByteBufMap;
 
   private int currTransferIndex;
+  private List<Integer> currTransferIndices;
 
   public FrameDecoder(final ContextManager contextManager) {
     this.contextManager = contextManager;
@@ -106,8 +113,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       if (controlBodyBytesToRead > 0) {
         toContinue = onControlBodyAdded(in, out);
       } else if (dataBodyBytesToRead > 0) {
-        onDataBodyAdded(in);
-        toContinue = in.readableBytes() > 0;
+        toContinue = onDataBodyAdded(in);
+        // toContinue = in.readableBytes() > 0;
+      } else if (headerRemain > 0) {
+        toContinue = onBroadcastRead(ctx, in);
       } else {
         toContinue = onFrameStarted(ctx, in);
       }
@@ -115,6 +124,48 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         break;
       }
     }
+  }
+
+  private ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
+  private boolean isContextBroadcast;
+  private int broadcastSize;
+  private byte flags;
+  private long headerRemain = 0;
+
+  private boolean onBroadcastRead(final ChannelHandlerContext ctx, final ByteBuf in) {
+    // LOG.info("IsContextBroadcast size {}!!", broadcastSize);
+    if (in.readableBytes() < Integer.BYTES * broadcastSize + Integer.BYTES) {
+      headerRemain = Integer.BYTES * broadcastSize + Integer.BYTES;
+      return false;
+    }
+
+    broadcast = true;
+
+    currTransferIndices = new ArrayList<>(broadcastSize);
+    inputContexts = new ArrayList<>(broadcastSize);
+
+    for (int i = 0; i < broadcastSize; i++) {
+      currTransferIndices.add(in.readInt());
+      inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
+    }
+
+    // LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
+
+    final long length = in.readUnsignedInt();
+
+    // setup context for reading data frame body
+    dataBodyBytesToRead = length;
+
+    final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
+    isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+    isStop = (flags & ((byte) (1 << 4))) != 0;
+
+    headerRemain = 0;
+
+    if (dataBodyBytesToRead == 0) {
+      onDataFrameEnd();
+    }
+    return true;
   }
 
   /**
@@ -133,41 +184,52 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       // cannot read a frame header frame now
       return false;
     }
-    final byte flags = in.readByte();
-    final int transferIndex = in.readInt();
-    final long length = in.readUnsignedInt();
-    if (length < 0) {
-      throw new IllegalStateException(String.format("Frame length is negative: %d", length));
-    }
+
+    flags = in.readByte();
+
     if ((flags & ((byte) (1 << 3))) == 0) {
       // setup context for reading control frame body
+      // rm zero byte
+      in.readByte();
+      in.readInt();
+      final long length = in.readUnsignedInt();
+      // LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
+      if (length < 0) {
+        throw new IllegalStateException(String.format("Frame length is negative: %d", length));
+      }
+
     } else {
-      // setup context for reading data frame body
-      dataBodyBytesToRead = length;
-      final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection =
+      isContextBroadcast = in.readBoolean();
+      final int sizeOrIndex = in.readInt();
+
+      dataDirection =
         (flags & ((byte) (1 << 2))) == 0
           ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
-      final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-      isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-      isStop = (flags & ((byte) (1 << 4))) != 0;
 
-      currTransferIndex = transferIndex;
-      inputContext = contextManager.getInputContext(dataDirection, transferIndex);
-      /*
-      if (inputContext == null) {
-        throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
-                + "address %s and the remote address %s", dataDirection, transferIndex,
-            ctx.channel().localAddress(), ctx.channel().remoteAddress()));
-      }
-      if (newSubStreamFlag) {
-        inputContext.onNewStream();
-      }
-      */
+      if (isContextBroadcast) {
+        broadcastSize = sizeOrIndex;
+        return onBroadcastRead(ctx, in);
+      } else {
+        broadcastSize = 0;
+        broadcast = false;
 
-      if (dataBodyBytesToRead == 0) {
-        onDataFrameEnd();
+        currTransferIndex = sizeOrIndex;
+        inputContext = contextManager.getInputContext(dataDirection, currTransferIndex);
+
+        final long length = in.readUnsignedInt();
+
+        // setup context for reading data frame body
+        dataBodyBytesToRead = length;
+
+        final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
+        isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+        isStop = (flags & ((byte) (1 << 4))) != 0;
+
+        if (dataBodyBytesToRead == 0) {
+          onDataFrameEnd();
+        }
       }
     }
     return true;
@@ -222,49 +284,90 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     return true;
   }
 
+  // private List<ByteBuf> dataByteBufs = new LinkedList<>();
+
   /**
    * Supply byte stream to an existing {@link ByteInputContext}.
    *
    * @param in  the {@link ByteBuf} from which to read data
    * @throws InterruptedException when interrupted while adding to {@link ByteBuf} queue
    */
-  private void onDataBodyAdded(final ByteBuf in) {
+  private boolean onDataBodyAdded(final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead > 0);
     assert (inputContext != null);
+
+    if (dataBodyBytesToRead == 0) {
+      throw new RuntimeException("Data body bytes zero");
+    }
+
+
+    if (in.readableBytes() < dataBodyBytesToRead) {
+      // LOG.warn("Bytes to read smaller than dataBodyBytesToRead: "
+      //  + in.readableBytes() + ", " + dataBodyBytesToRead);
+      return false;
+    }
 
     // length should not exceed Integer.MAX_VALUE (since in.readableBytes() returns an int)
     final long length = Math.min(dataBodyBytesToRead, in.readableBytes());
     assert (length <= Integer.MAX_VALUE);
 
-    if (length < dataBodyBytesToRead) {
-      LOG.warn("Byte length is smaller than dataBodyBttesToRead "
-        + ", length: {}, dataByteBytesToRead: {}", new Object[] {length, dataBodyBytesToRead});
-      return;
+    // final ByteBuf body = in.readSlice((int) length).retain();
+    final ByteBuf buf = in.readRetainedSlice((int) length);
+
+    // dataByteBufs.add(buf);
+    dataBodyBytesToRead -= length;
+
+    if (dataBodyBytesToRead != 0) {
+      throw new RuntimeException(("DataBodyByesToRead should be zero"));
     }
 
-    final ByteBuf body = in.readSlice((int) length).retain();
+    if (broadcast) {
+      // buf.retain(inputContexts.size() - 1);
+      // LOG.info("Broadcast variable !! ");
 
-    if (inputContext == null) {
-      LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
-      pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
-      pendingByteBufMap.get(currTransferIndex).add(body);
-    } else {
-      if (pendingByteBufMap.containsKey(currTransferIndex)) {
-        LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
-        for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
-          inputContext.onByteBuf(pendingByte);
+      for (int i = 0; i < inputContexts.size(); i++) {
+        final ByteInputContext ic = inputContexts.get(i);
+        final Integer ti = currTransferIndices.get(i);
+
+        if (ic == null) {
+          LOG.info("Add bytebuf for null transferIndex {}", ti);
+          pendingByteBufMap.putIfAbsent(ti, new LinkedList<>());
+          pendingByteBufMap.get(ti).add(buf.retainedDuplicate());
+        } else {
+          if (pendingByteBufMap.containsKey(ti)) {
+            LOG.info("Flushing pending bytebuf for transferIndex {}", ti);
+            for (final ByteBuf pendingByte : pendingByteBufMap.remove(ti)) {
+              ic.onByteBuf(pendingByte);
+            }
+          }
+          //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+          ic.onByteBuf(buf.retainedDuplicate());
         }
       }
 
-      //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
-      inputContext.onByteBuf(body);
+      buf.release();
+    } else {
+      if (inputContext == null) {
+        LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
+        pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
+        pendingByteBufMap.get(currTransferIndex).add(buf);
+      } else {
+        if (pendingByteBufMap.containsKey(currTransferIndex)) {
+          LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
+          for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
+            inputContext.onByteBuf(pendingByte);
+          }
+        }
+
+        //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+        inputContext.onByteBuf(buf);
+      }
     }
 
-    dataBodyBytesToRead -= length;
-    if (dataBodyBytesToRead == 0) {
-      onDataFrameEnd();
-    }
+    onDataFrameEnd();
+
+    return in.readableBytes() > 0;
   }
 
   /**

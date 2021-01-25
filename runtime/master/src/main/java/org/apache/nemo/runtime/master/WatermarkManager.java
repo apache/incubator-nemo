@@ -18,7 +18,7 @@ import java.util.concurrent.*;
 public final class WatermarkManager {
   private static final Logger LOG = LoggerFactory.getLogger(WatermarkManager.class.getName());
 
-  private final ConcurrentMap<String, Long> stageOutputWatermarkMap;
+  private final ConcurrentMap<String, Instant> stageOutputWatermarkMap;
   private final ConcurrentMap<String, Long> stageInputWatermarkMap;
 
   private final Map<String, Stage> stageIdStageMap;
@@ -51,7 +51,7 @@ public final class WatermarkManager {
     for (final Stage stage : dag.getVertices()) {
       stageIdStageMap.put(stage.getId(), stage);
       stageWatermarkTrackerMap.put(stage.getId(), new StageWatermarkTracker(stage.getParallelism()));
-      stageOutputWatermarkMap.put(stage.getId(), 0L);
+      stageOutputWatermarkMap.put(stage.getId(), new Instant(0L));
       stageInputWatermarkMap.put(stage.getId(), 0L);
       inputWatermarkUpdateRequiredMap.put(stage.getId(), false);
     }
@@ -74,7 +74,7 @@ public final class WatermarkManager {
 
     if (val.isPresent()) {
       // update output watermark!
-      final long outputW = stageOutputWatermarkMap.get(stageId);
+      final long outputW = stageOutputWatermarkMap.get(stageId).getMillis();
       if (outputW > val.get()) {
         throw new RuntimeException("Output watermark of " + stageId + " is greater than the emitted watermark " + outputW + ", " + val.get());
       }
@@ -85,7 +85,7 @@ public final class WatermarkManager {
     }
     */
 
-      stageOutputWatermarkMap.put(stageId, val.get());
+      stageOutputWatermarkMap.put(stageId, new Instant(val.get()));
       // update dependent stages watermarks
       final Stage stage = stageIdStageMap.get(stageId);
       stageDag.getOutgoingEdgesOf(stage).forEach(edge -> {
@@ -139,7 +139,7 @@ public final class WatermarkManager {
           long minWatermark = Long.MAX_VALUE;
           for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
             final Stage parent = edge.getSrc();
-            final long stageW = stageOutputWatermarkMap.get(parent.getId());
+            final long stageW = stageOutputWatermarkMap.get(parent.getId()).getMillis();
             if (stageW < minWatermark) {
               minWatermark = stageW;
             }
