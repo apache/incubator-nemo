@@ -85,6 +85,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * The {@link ByteInputContext} to which received bytes are added.
    */
   private ByteInputContext inputContext;
+  private List<ByteInputContext> inputContexts;
+
+  private boolean broadcast = false;
 
   /**
    * Whether or not the data frame currently being read is the last frame of a data message.
@@ -95,6 +98,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private final Map<Integer, Collection<ByteBuf>> pendingByteBufMap;
 
   private int currTransferIndex;
+  private List<Integer> currTransferIndices;
 
   public FrameDecoder(final ContextManager contextManager) {
     this.contextManager = contextManager;
@@ -137,37 +141,65 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       return false;
     }
     final byte flags = in.readByte();
-    final int transferIndex = in.readInt();
-    final long length = in.readUnsignedInt();
-    if (length < 0) {
-      throw new IllegalStateException(String.format("Frame length is negative: %d", length));
-    }
+
     if ((flags & ((byte) (1 << 3))) == 0) {
       // setup context for reading control frame body
+      final long length = in.readUnsignedInt();
       controlBodyBytesToRead = length;
+      if (length < 0) {
+        throw new IllegalStateException(String.format("Frame length is negative: %d", length));
+      }
+
     } else {
-      // setup context for reading data frame body
-      dataBodyBytesToRead = length;
+      final boolean isContextBroadcast = in.readBoolean();
+
       final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection =
         (flags & ((byte) (1 << 2))) == 0
           ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
+
+      if (isContextBroadcast) {
+        if (in.readableBytes() < Integer.BYTES) {
+          return false;
+        }
+
+        final int size = in.readInt();
+
+        if (in.readableBytes() < Integer.BYTES * size + Integer.BYTES) {
+          return false;
+        }
+
+        broadcast = true;
+
+        currTransferIndices = new ArrayList<>(size);
+        inputContexts = new ArrayList<>(size);
+
+        for (int i = 0; i < size; i++) {
+          currTransferIndices.add(in.readInt());
+          inputContexts.set(i, contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
+        }
+
+      } else {
+        if (in.readableBytes() < Integer.BYTES + Integer.BYTES) {
+          return false;
+        }
+
+        broadcast = false;
+
+        final int transferIndex = in.readInt();
+        currTransferIndex = transferIndex;
+        inputContext = contextManager.getInputContext(dataDirection, transferIndex);
+      }
+
+      final long length = in.readUnsignedInt();
+
+      // setup context for reading data frame body
+      dataBodyBytesToRead = length;
+
       final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
       isStop = (flags & ((byte) (1 << 4))) != 0;
 
-      currTransferIndex = transferIndex;
-      inputContext = contextManager.getInputContext(dataDirection, transferIndex);
-      /*
-      if (inputContext == null) {
-        throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
-                + "address %s and the remote address %s", dataDirection, transferIndex,
-            ctx.channel().localAddress(), ctx.channel().remoteAddress()));
-      }
-      if (newSubStreamFlag) {
-        inputContext.onNewStream();
-      }
-      */
 
       if (dataBodyBytesToRead == 0) {
         onDataFrameEnd();
@@ -263,20 +295,47 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       throw new RuntimeException(("DataBodyByesToRead should be zero"));
     }
 
-    if (inputContext == null) {
-      LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
-      pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
-      pendingByteBufMap.get(currTransferIndex).add(buf);
-    } else {
-      if (pendingByteBufMap.containsKey(currTransferIndex)) {
-        LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
-        for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
-          inputContext.onByteBuf(pendingByte);
+    if (broadcast) {
+      buf.retain(inputContexts.size() - 1);
+      LOG.info("Broadcast variable !! ");
+
+      for (int i = 0; i < inputContexts.size(); i++) {
+        final ByteInputContext ic = inputContexts.get(i);
+        final Integer ti = currTransferIndices.get(i);
+
+        if (ic == null) {
+          LOG.info("Add bytebuf for null transferIndex {}", ti);
+          pendingByteBufMap.putIfAbsent(ti, new LinkedList<>());
+          pendingByteBufMap.get(ti).add(buf.retainedDuplicate());
+        } else {
+          if (pendingByteBufMap.containsKey(ti)) {
+            LOG.info("Flushing pending bytebuf for transferIndex {}", ti);
+            for (final ByteBuf pendingByte : pendingByteBufMap.remove(ti)) {
+              ic.onByteBuf(pendingByte);
+            }
+          }
+          //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+          ic.onByteBuf(buf.retainedDuplicate());
         }
       }
 
-      //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
-      inputContext.onByteBuf(buf);
+      buf.release();
+    } else {
+      if (inputContext == null) {
+        LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
+        pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
+        pendingByteBufMap.get(currTransferIndex).add(buf);
+      } else {
+        if (pendingByteBufMap.containsKey(currTransferIndex)) {
+          LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
+          for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
+            inputContext.onByteBuf(pendingByte);
+          }
+        }
+
+        //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+        inputContext.onByteBuf(buf);
+      }
     }
 
     onDataFrameEnd();

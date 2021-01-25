@@ -79,6 +79,10 @@ public final class ByteTransfer {
     this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
+  public ContextManager getRemoteExecutorContetxManager(final String remoteExecutor) {
+    return executorIdToChannelFutureMap.get(remoteExecutor).channel().pipeline().get(ContextManager.class);
+  }
+
   /**
    * Initiate a transfer context to receive data.
    * @param executorId        the id of the remote executor

@@ -69,7 +69,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     header.writeByte(flags);
-    header.writeInt(in.contextId.getTransferIndex());
+    header.writeBoolean(in.contextList);
+    if (!in.contextList) {
+      header.writeInt(in.contextId.getTransferIndex());
+    } else {
+      header.writeInt(in.contextIds.size());
+      in.contextIds.forEach(contextId -> {
+        header.writeInt(contextId.getTransferIndex());
+      });
+    }
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
@@ -96,7 +104,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     flags |= (byte) (1 << 3);
-    if (in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
+    if (in.contextList &&
+      in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
       flags |= (byte) (1 << 2);
     }
     if (in.opensSubStream) {
@@ -107,7 +116,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     header.writeByte(flags);
-    header.writeInt(in.contextId.getTransferIndex());
+    header.writeBoolean(in.contextList);
+    if (!in.contextList) {
+      header.writeInt(in.contextId.getTransferIndex());
+    } else {
+      header.writeInt(in.contextIds.size());
+      in.contextIds.forEach(contextId -> {
+        header.writeInt(contextId.getTransferIndex());
+      });
+    }
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
@@ -150,12 +167,34 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     public final Recycler.Handle handle;
     public ByteTransferContext.ContextId contextId;
+    public boolean contextList = false;
+    public List<ByteTransferContext.ContextId> contextIds;
     @Nullable
     public Object body;
     public long length;
     public boolean opensSubStream;
     public boolean closesContext;
     public boolean stopContext;
+
+
+    /**
+     * For broadcast!!
+     */
+    public static DataFrame newInstance(final List<ByteTransferContext.ContextId> contextIds,
+                                        @Nullable final Object body,
+                                        final long length,
+                                        final boolean opensSubStream) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextIds = contextIds;
+      dataFrame.contextList = true;
+      dataFrame.body = body;
+      dataFrame.length = length;
+      dataFrame.opensSubStream = opensSubStream;
+      dataFrame.closesContext = false;
+      dataFrame.stopContext = false;
+      return dataFrame;
+    }
+
 
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
@@ -172,6 +211,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
                                  final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
+      dataFrame.contextList = false;
+      dataFrame.contextIds = null;
       dataFrame.body = body;
       dataFrame.length = length;
       dataFrame.opensSubStream = opensSubStream;
@@ -188,6 +229,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     public static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
+      dataFrame.contextList = false;
+      dataFrame.contextIds = null;
       dataFrame.body = null;
       dataFrame.length = 0;
       dataFrame.opensSubStream = false;
@@ -199,6 +242,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     public static DataFrame newInstanceForStop(final ByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
+      dataFrame.contextList = false;
+      dataFrame.contextIds = null;
       dataFrame.body = null;
       dataFrame.length = 0;
       dataFrame.opensSubStream = false;
