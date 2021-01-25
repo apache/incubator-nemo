@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.slf4j.Logger;
@@ -78,6 +80,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    */
   private long dataBodyBytesToRead = 0;
 
+
   /**
    * The {@link ByteInputContext} to which received bytes are added.
    */
@@ -106,8 +109,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       if (controlBodyBytesToRead > 0) {
         toContinue = onControlBodyAdded(in, out);
       } else if (dataBodyBytesToRead > 0) {
-        onDataBodyAdded(in);
-        toContinue = in.readableBytes() > 0;
+        toContinue = onDataBodyAdded(in);
+        // toContinue = in.readableBytes() > 0;
       } else {
         toContinue = onFrameStarted(ctx, in);
       }
@@ -222,49 +225,65 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     return true;
   }
 
+  // private List<ByteBuf> dataByteBufs = new LinkedList<>();
+
   /**
    * Supply byte stream to an existing {@link ByteInputContext}.
    *
    * @param in  the {@link ByteBuf} from which to read data
    * @throws InterruptedException when interrupted while adding to {@link ByteBuf} queue
    */
-  private void onDataBodyAdded(final ByteBuf in) {
+  private boolean onDataBodyAdded(final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead > 0);
     assert (inputContext != null);
+
+    if (dataBodyBytesToRead == 0) {
+      throw new RuntimeException("Data body bytes zero");
+    }
 
     // length should not exceed Integer.MAX_VALUE (since in.readableBytes() returns an int)
     final long length = Math.min(dataBodyBytesToRead, in.readableBytes());
     assert (length <= Integer.MAX_VALUE);
 
-    if (length < dataBodyBytesToRead) {
-      LOG.warn("Byte length is smaller than dataBodyBttesToRead "
-        + ", length: {}, dataByteBytesToRead: {}", new Object[] {length, dataBodyBytesToRead});
-      return;
+    if (dataBodyBytesToRead < in.readableBytes()) {
+      LOG.warn("Data body bytes to read smaller than readableBytes: "
+        + dataBodyBytesToRead + ", " + in.readableBytes());
+      return false;
     }
 
-    final ByteBuf body = in.readSlice((int) length).retain();
+    // final ByteBuf body = in.readSlice((int) length).retain();
+    final ByteBuf buf = in.readRetainedSlice((int) length);
 
-    if (inputContext == null) {
-      LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
-      pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
-      pendingByteBufMap.get(currTransferIndex).add(body);
-    } else {
-      if (pendingByteBufMap.containsKey(currTransferIndex)) {
-        LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
-        for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
-          inputContext.onByteBuf(pendingByte);
+    // dataByteBufs.add(buf);
+    dataBodyBytesToRead -= length;
+
+    if (dataBodyBytesToRead == 0) {
+      // Merge into bytebuf
+      // final CompositeByteBuf compositeByteBuf =
+      //  ctx.alloc().compositeBuffer(dataByteBufs.size()).addComponents(true, dataByteBufs);
+      //dataByteBufs = new LinkedList<>();
+
+      if (inputContext == null) {
+        LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
+        pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
+        pendingByteBufMap.get(currTransferIndex).add(buf);
+      } else {
+        if (pendingByteBufMap.containsKey(currTransferIndex)) {
+          LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
+          for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
+            inputContext.onByteBuf(pendingByte);
+          }
         }
+
+        //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
+        inputContext.onByteBuf(buf);
       }
 
-      //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
-      inputContext.onByteBuf(body);
-    }
-
-    dataBodyBytesToRead -= length;
-    if (dataBodyBytesToRead == 0) {
       onDataFrameEnd();
     }
+
+    return in.readableBytes() > 0;
   }
 
   /**
