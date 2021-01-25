@@ -974,13 +974,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
-
+    throw new RuntimeException("Not supportedl");
+    /*
     executorThread.decoderThread.execute(() -> {
       executorThread.queue.add(() -> {
         //LOG.info("handler watermark");
         onEventFromDataFetcher(element, dataFetcher);
       });
     });
+    */
   }
 
   public boolean offloaded = false;
@@ -996,7 +998,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             // final ByteBuf byteBuf = iterator.nextByteBuf();
 
           } else {
-
             final Object element = iterator.next();
             if (prepared.get()) {
               executorThread.queue.add(() -> {

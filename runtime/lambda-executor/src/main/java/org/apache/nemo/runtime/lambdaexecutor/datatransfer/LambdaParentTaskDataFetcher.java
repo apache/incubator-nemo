@@ -137,6 +137,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     this.rendevousServerClient = rendevousServerClient;
 
     this.watermarkTrigger = Executors.newSingleThreadScheduledExecutor();
+    /*
     watermarkTrigger.scheduleAtFixedRate(() -> {
 
       synchronized (stopped) {
@@ -152,6 +153,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
         }
       }
     }, 3000, 200, TimeUnit.MILLISECONDS);
+    */
   }
 
   @Override
