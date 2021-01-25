@@ -200,9 +200,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
 
     // calculate thp
-    if (isSourceVertex) {
-      proceseedCnt += 1;
-      final long currTime = System.currentTimeMillis();
+    // if (isSourceVertex) {
+
 
       /*
       if (currTime - prevLogTime >= 1000) {
@@ -212,14 +211,19 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         prevLogTime = currTime;
       }
       */
+    if (!irVertex.isSink) {
+      proceseedCnt += 1;
+      final long currTime = System.currentTimeMillis();
 
       if (random.nextDouble() < samplingRate) {
-        final int latency = (int)((currTime - inputTimestamp));
-        LOG.info("Event Latency {} from {} in {}", latency,
+        final int latency = (int) ((currTime - inputTimestamp));
+        LOG.info("Event Latency {} from {} in {} / {}", latency,
           irVertex.getId(),
-          taskId);
+          taskId,
+          output);
       }
     }
+    // }
   }
 
   int proceseedCnt = 0;
