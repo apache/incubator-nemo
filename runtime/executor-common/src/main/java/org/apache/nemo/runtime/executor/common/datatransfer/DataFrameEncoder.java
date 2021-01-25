@@ -50,7 +50,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
   public ByteBuf encode(final ChannelHandlerContext ctx, final DataFrame in) {
     // encode header
-    final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     byte flags = (byte) 0;
 
     if (in.stopContext) {
@@ -68,11 +67,24 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       flags |= (byte) (1 << 0);
     }
 
-    header.writeByte(flags);
-    header.writeBoolean(in.contextList);
+    ByteBuf header;
+
     if (!in.contextList) {
+      header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+      header.writeByte(flags);
+      header.writeBoolean(in.contextList);
+
       header.writeInt(in.contextId.getTransferIndex());
     } else {
+      header = ctx.alloc().ioBuffer(HEADER_LENGTH
+        + Integer.BYTES
+        + in.contextIds.size() * Integer.BYTES, HEADER_LENGTH
+        + Integer.BYTES
+        + in.contextIds.size() * Integer.BYTES);
+
+      header.writeByte(flags);
+      header.writeBoolean(in.contextList);
+
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
         header.writeInt(contextId.getTransferIndex());
