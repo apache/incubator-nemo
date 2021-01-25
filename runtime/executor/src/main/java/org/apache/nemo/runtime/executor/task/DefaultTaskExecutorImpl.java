@@ -900,13 +900,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof WatermarkWithIndex) {
       // Watermark
-      LOG.info("Handling watermark with index {}", event);
+      // LOG.info("Handling watermark with index {}", event);
       final WatermarkWithIndex d = (WatermarkWithIndex) event;
       final Optional<Watermark> watermark =
         taskWatermarkManager.updateWatermark(dataFetcher, d.getIndex(), d.getWatermark().getTimestamp());
 
       if (watermark.isPresent()) {
-        LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
+        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
         processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
       }
     } else if (event instanceof Watermark) {

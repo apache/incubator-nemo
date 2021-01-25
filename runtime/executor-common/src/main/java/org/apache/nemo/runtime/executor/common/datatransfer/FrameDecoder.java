@@ -133,7 +133,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private long headerRemain = 0;
 
   private boolean onBroadcastRead(final ChannelHandlerContext ctx, final ByteBuf in) {
-    LOG.info("IsContextBroadcast size {}!!", broadcastSize);
+    // LOG.info("IsContextBroadcast size {}!!", broadcastSize);
     if (in.readableBytes() < Integer.BYTES * broadcastSize + Integer.BYTES) {
       headerRemain = Integer.BYTES * broadcastSize + Integer.BYTES;
       return false;
@@ -149,7 +149,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
     }
 
-    LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
+    // LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
 
     final long length = in.readUnsignedInt();
 
@@ -193,7 +193,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       in.readByte();
       in.readInt();
       final long length = in.readUnsignedInt();
-      LOG.info("Control message...?? length {}", length);
+      // LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
       if (length < 0) {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
@@ -324,7 +324,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     if (broadcast) {
       // buf.retain(inputContexts.size() - 1);
-      LOG.info("Broadcast variable !! ");
+      // LOG.info("Broadcast variable !! ");
 
       for (int i = 0; i < inputContexts.size(); i++) {
         final ByteInputContext ic = inputContexts.get(i);

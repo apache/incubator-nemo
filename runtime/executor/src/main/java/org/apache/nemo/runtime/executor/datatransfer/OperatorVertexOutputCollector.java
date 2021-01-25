@@ -217,7 +217,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       if (random.nextDouble() < samplingRate) {
         final long currTime = System.currentTimeMillis();
         final int latency = (int) ((currTime - inputTimestamp));
-        LOG.info("Event Latency {} from {} in {} / {}", latency,
+        LOG.info("Event Latency {} from {} in {} ", latency,
           irVertex.getId(),
           taskId,
           output);
