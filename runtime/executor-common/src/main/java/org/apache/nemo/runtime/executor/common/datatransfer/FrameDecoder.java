@@ -144,8 +144,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     if ((flags & ((byte) (1 << 3))) == 0) {
       // setup context for reading control frame body
-      LOG.info("Control message...??");
       final long length = in.readUnsignedInt();
+      LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
       if (length < 0) {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
