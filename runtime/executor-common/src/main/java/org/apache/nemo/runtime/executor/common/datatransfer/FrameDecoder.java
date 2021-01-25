@@ -66,7 +66,7 @@ import java.util.*;
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
-  private static final int HEADER_LENGTH = 10;
+  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
 
   private final ContextManager contextManager;
 
@@ -115,6 +115,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       } else if (dataBodyBytesToRead > 0) {
         toContinue = onDataBodyAdded(in);
         // toContinue = in.readableBytes() > 0;
+      } else if (headerRemain > 0) {
+        toContinue = onBroadcastRead(ctx, in);
       } else {
         toContinue = onFrameStarted(ctx, in);
       }
@@ -122,6 +124,48 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         break;
       }
     }
+  }
+
+  private ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
+  private boolean isContextBroadcast;
+  private int broadcastSize;
+  private byte flags;
+  private long headerRemain = 0;
+
+  private boolean onBroadcastRead(final ChannelHandlerContext ctx, final ByteBuf in) {
+    LOG.info("IsContextBroadcast size {}!!", broadcastSize);
+    if (in.readableBytes() < Integer.BYTES * broadcastSize + Integer.BYTES) {
+      headerRemain = Integer.BYTES * broadcastSize + Integer.BYTES;
+      return false;
+    }
+
+    broadcast = true;
+
+    currTransferIndices = new ArrayList<>(broadcastSize);
+    inputContexts = new ArrayList<>(broadcastSize);
+
+    for (int i = 0; i < broadcastSize; i++) {
+      currTransferIndices.add(in.readInt());
+      inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
+    }
+
+    LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
+
+    final long length = in.readUnsignedInt();
+
+    // setup context for reading data frame body
+    dataBodyBytesToRead = length;
+
+    final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
+    isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+    isStop = (flags & ((byte) (1 << 4))) != 0;
+
+    headerRemain = 0;
+
+    if (dataBodyBytesToRead == 0) {
+      onDataFrameEnd();
+    }
+    return true;
   }
 
   /**
@@ -140,10 +184,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       // cannot read a frame header frame now
       return false;
     }
-    final byte flags = in.readByte();
+
+    flags = in.readByte();
 
     if ((flags & ((byte) (1 << 3))) == 0) {
       // setup context for reading control frame body
+      // rm zero byte
+      in.readByte();
+      in.readInt();
       final long length = in.readUnsignedInt();
       LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
@@ -152,61 +200,36 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       }
 
     } else {
-      final boolean isContextBroadcast = in.readBoolean();
+      isContextBroadcast = in.readBoolean();
+      final int sizeOrIndex = in.readInt();
 
-      final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection =
+      dataDirection =
         (flags & ((byte) (1 << 2))) == 0
           ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
 
       if (isContextBroadcast) {
-        LOG.info("IsContextBroadcast!!");
-        if (in.readableBytes() < Integer.BYTES) {
-          return false;
-        }
-
-        final int size = in.readInt();
-
-        LOG.info("IsContextBroadcast size {}!!", size);
-        if (in.readableBytes() < Integer.BYTES * size + Integer.BYTES) {
-          return false;
-        }
-
-        broadcast = true;
-
-        currTransferIndices = new ArrayList<>(size);
-        inputContexts = new ArrayList<>(size);
-
-        for (int i = 0; i < size; i++) {
-          currTransferIndices.add(in.readInt());
-          inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
-        }
-
-        LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
-
+        broadcastSize = sizeOrIndex;
+        return onBroadcastRead(ctx, in);
       } else {
-        if (in.readableBytes() < Integer.BYTES + Integer.BYTES) {
-          return false;
-        }
-
+        broadcastSize = 0;
         broadcast = false;
 
-        final int transferIndex = in.readInt();
-        currTransferIndex = transferIndex;
-        inputContext = contextManager.getInputContext(dataDirection, transferIndex);
-      }
+        currTransferIndex = sizeOrIndex;
+        inputContext = contextManager.getInputContext(dataDirection, currTransferIndex);
 
-      final long length = in.readUnsignedInt();
+        final long length = in.readUnsignedInt();
 
-      // setup context for reading data frame body
-      dataBodyBytesToRead = length;
+        // setup context for reading data frame body
+        dataBodyBytesToRead = length;
 
-      final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-      isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-      isStop = (flags & ((byte) (1 << 4))) != 0;
+        final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
+        isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+        isStop = (flags & ((byte) (1 << 4))) != 0;
 
-      if (dataBodyBytesToRead == 0) {
-        onDataFrameEnd();
+        if (dataBodyBytesToRead == 0) {
+          onDataFrameEnd();
+        }
       }
     }
     return true;

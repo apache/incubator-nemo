@@ -78,7 +78,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
       header.writeByte(flags);
       header.writeBoolean(in.isBroadcast);
-
       header.writeInt(in.contextId.getTransferIndex());
     } else {
       header = ctx.alloc().ioBuffer(HEADER_LENGTH
@@ -89,7 +88,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
       header.writeByte(flags);
       header.writeBoolean(in.isBroadcast);
-
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
         header.writeInt(contextId.getTransferIndex());
