@@ -57,7 +57,9 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     flags |= (byte) (1 << 3);
-    if (in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
+    if (!in.isBroadcast &&
+      in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA
+      || (in.isBroadcast && in.contextIds.get(0).getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA)) {
       flags |= (byte) (1 << 2);
     }
     if (in.opensSubStream) {
@@ -69,10 +71,10 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (!in.contextList) {
+    if (!in.isBroadcast) {
       header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
       header.writeByte(flags);
-      header.writeBoolean(in.contextList);
+      header.writeBoolean(in.isBroadcast);
 
       header.writeInt(in.contextId.getTransferIndex());
     } else {
@@ -83,7 +85,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         + in.contextIds.size() * Integer.BYTES);
 
       header.writeByte(flags);
-      header.writeBoolean(in.contextList);
+      header.writeBoolean(in.isBroadcast);
 
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
@@ -115,8 +117,9 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     flags |= (byte) (1 << 3);
-    if (in.contextList &&
-      in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
+    if (!in.isBroadcast &&
+      in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA
+      || (in.isBroadcast && in.contextIds.get(0).getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA)) {
       flags |= (byte) (1 << 2);
     }
     if (in.opensSubStream) {
@@ -128,10 +131,10 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (!in.contextList) {
+    if (!in.isBroadcast) {
       header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
       header.writeByte(flags);
-      header.writeBoolean(in.contextList);
+      header.writeBoolean(in.isBroadcast);
 
       header.writeInt(in.contextId.getTransferIndex());
     } else {
@@ -142,7 +145,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         + in.contextIds.size() * Integer.BYTES);
 
       header.writeByte(flags);
-      header.writeBoolean(in.contextList);
+      header.writeBoolean(in.isBroadcast);
 
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
@@ -191,7 +194,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     public final Recycler.Handle handle;
     public ByteTransferContext.ContextId contextId;
-    public boolean contextList = false;
+    public boolean isBroadcast = false;
     public List<ByteTransferContext.ContextId> contextIds;
     @Nullable
     public Object body;
@@ -210,7 +213,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
                                         final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextIds = contextIds;
-      dataFrame.contextList = true;
+      dataFrame.isBroadcast = true;
       dataFrame.body = body;
       dataFrame.length = length;
       dataFrame.opensSubStream = opensSubStream;
@@ -235,7 +238,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
                                  final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
-      dataFrame.contextList = false;
+      dataFrame.isBroadcast = false;
       dataFrame.contextIds = null;
       dataFrame.body = body;
       dataFrame.length = length;
@@ -253,7 +256,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     public static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
-      dataFrame.contextList = false;
+      dataFrame.isBroadcast = false;
       dataFrame.contextIds = null;
       dataFrame.body = null;
       dataFrame.length = 0;
@@ -266,7 +269,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     public static DataFrame newInstanceForStop(final ByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
-      dataFrame.contextList = false;
+      dataFrame.isBroadcast = false;
       dataFrame.contextIds = null;
       dataFrame.body = null;
       dataFrame.length = 0;

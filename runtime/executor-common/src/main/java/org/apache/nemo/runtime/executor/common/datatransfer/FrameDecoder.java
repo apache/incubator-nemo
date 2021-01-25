@@ -159,6 +159,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
 
       if (isContextBroadcast) {
+        LOG.info("IsContextBroadcast!!");
         if (in.readableBytes() < Integer.BYTES) {
           return false;
         }
