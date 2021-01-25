@@ -179,7 +179,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
         for (int i = 0; i < size; i++) {
           currTransferIndices.add(in.readInt());
-          inputContexts.set(i, contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
+          inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
         }
 
         LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
