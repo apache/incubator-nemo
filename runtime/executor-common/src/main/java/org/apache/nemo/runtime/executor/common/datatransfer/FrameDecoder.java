@@ -166,6 +166,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
         final int size = in.readInt();
 
+        LOG.info("IsContextBroadcast size {}!!", size);
         if (in.readableBytes() < Integer.BYTES * size + Integer.BYTES) {
           return false;
         }
@@ -179,6 +180,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           currTransferIndices.add(in.readInt());
           inputContexts.set(i, contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
         }
+
+        LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
 
       } else {
         if (in.readableBytes() < Integer.BYTES + Integer.BYTES) {
@@ -200,7 +203,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
       isStop = (flags & ((byte) (1 << 4))) != 0;
-
 
       if (dataBodyBytesToRead == 0) {
         onDataFrameEnd();

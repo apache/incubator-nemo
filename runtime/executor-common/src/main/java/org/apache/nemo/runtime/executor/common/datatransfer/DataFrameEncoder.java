@@ -25,6 +25,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -36,6 +38,7 @@ import java.util.List;
  */
 @ChannelHandler.Sharable
 public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.DataFrame> {
+  private static final Logger LOG = LoggerFactory.getLogger(DataFrameEncoder.class.getName());
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -147,6 +150,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       header.writeByte(flags);
       header.writeBoolean(in.isBroadcast);
 
+      LOG.info("Broadcast write to contexts {}", in.contextIds);
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
         header.writeInt(contextId.getTransferIndex());
