@@ -137,7 +137,7 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
   /**
    * Listener for channel write.
    */
-  private final class ChannelWriteFutureListener implements ChannelFutureListener {
+   final class ChannelWriteFutureListener implements ChannelFutureListener {
     @Override
     public void operationComplete(final ChannelFuture future) {
       if (future.isSuccess()) {

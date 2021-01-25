@@ -22,6 +22,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -131,8 +133,24 @@ public final class PipeManagerWorker {
         throw new RuntimeException(e);
       }
 
-      channel.write(DataFrameEncoder.DataFrame.newInstance(
-        contextManagerListMap.get(remoteExecutorId), byteBuf, byteBuf.readableBytes(), true));
+      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
+        contextManagerListMap.get(remoteExecutorId), byteBuf, byteBuf.readableBytes(), true))
+        .addListener(new GenericFutureListener<Future<? super Void>>() {
+          @Override
+          public void operationComplete(Future<? super Void> future) throws Exception {
+            if (future.isSuccess()) {
+              return;
+            } else {
+              LOG.warn(future.cause().getMessage());
+              try {
+                throw future.cause();
+              } catch (Throwable throwable) {
+                throwable.printStackTrace();
+                new RuntimeException(throwable);
+              }
+            }
+          }
+        });
     }
   }
 

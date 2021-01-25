@@ -150,9 +150,9 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       header.writeByte(flags);
       header.writeBoolean(in.isBroadcast);
 
-      LOG.info("Broadcast write to contexts {}", in.contextIds);
       header.writeInt(in.contextIds.size());
       in.contextIds.forEach(contextId -> {
+        LOG.info("Broadcast write to contexts {}", in.contextIds);
         header.writeInt(contextId.getTransferIndex());
       });
     }
