@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -109,12 +110,15 @@ public final class StreamingScheduler implements Scheduler {
       LOG.info("Task schedule {}", stageToSchedule.getId());
 
       taskIdsToSchedule.forEach(taskId -> {
-        final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
         stageIncomingEdges.forEach(inEdge -> {
-          final String srcTask =
-            RuntimeIdManager.generateTaskId(inEdge.getSrc().getId(), index, 0);
-          pipeIndexMaster.onTaskScheduled(srcTask, inEdge.getId(), taskId);
-          pipeManagerMaster.onTaskScheduled(inEdge.getId(), index);
+          final int srcParallelism = ((StageEdge) inEdge)
+            .getDst().getPropertyValue(ParallelismProperty.class).get();
+          for (int i = 0; i < srcParallelism; i++) {
+            final String srcTask =
+              RuntimeIdManager.generateTaskId(inEdge.getSrc().getId(), i, 0);
+            pipeIndexMaster.onTaskScheduled(srcTask, inEdge.getId(), taskId);
+            pipeManagerMaster.onTaskScheduled(inEdge.getId(), i);
+          }
         });
         // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
       });
