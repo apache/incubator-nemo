@@ -109,14 +109,12 @@ public final class TaskScheduledMapMaster {
     // broadcast
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
-        if (!executor.equals(representer)) {
-          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
           .setType(ControlMessage.MessageType.TaskScheduled)
           .setRegisteredExecutor(task.getTaskId() + "," + representer.getExecutorId())
           .build());
-        }
       });
     });
   }

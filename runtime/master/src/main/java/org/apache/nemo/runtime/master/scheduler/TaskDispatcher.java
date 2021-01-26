@@ -303,8 +303,8 @@ public final class TaskDispatcher {
 
               LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
-              selectedExecutor.onTaskScheduled(task);
               taskScheduledMap.addTask(selectedExecutor, task);
+              selectedExecutor.onTaskScheduled(task);
             } else {
               couldNotSchedule.add(task);
             }
