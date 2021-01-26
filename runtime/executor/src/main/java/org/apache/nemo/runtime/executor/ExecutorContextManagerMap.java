@@ -38,6 +38,7 @@ public final class ExecutorContextManagerMap {
     this.executorId = executorId;
     this.toMaster = persistentConnectionToMasterMap;
     this.byteTransfer = byteTransfer;
+    initConnectToExecutor(executorId);
   }
 
   public void init() {
