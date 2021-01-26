@@ -31,9 +31,11 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.EmptyElement;
@@ -263,12 +265,27 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
       // bidrectional !!
-      pipeManagerWorker.registerTaskForInput(
-        RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
-        task.getTaskId(),
-        new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
-          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread)
-      );
+      final int parallelism = edge
+        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      final CommunicationPatternProperty.Value comm =
+        edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+        pipeManagerWorker.registerTaskForInput(
+          RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+          task.getTaskId(),
+          new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
+          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
+      } else {
+        for (int i = 0; i < parallelism; i++) {
+          pipeManagerWorker.registerTaskForInput(
+            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, i),
+            task.getTaskId(),
+            new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
+          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
+        }
+      }
     });
 
     samplingMap.putAll(evalConf.samplingJson);
@@ -790,10 +807,25 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             //metricCollectors.add(Pair.of(omc, outputCollector));
 
             if (parentTaskReader instanceof PipeInputReader) {
-              pipeManagerWorker.registerTaskForInput(
-                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
-                task.getTaskId(),
-                parentTaskReader);
+              final int parallelism = edge
+                .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+              final CommunicationPatternProperty.Value comm =
+                edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+              if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+                pipeManagerWorker.registerTaskForInput(
+                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                  task.getTaskId(),
+                  parentTaskReader);
+              } else {
+                for (int i = 0; i < parallelism; i++) {
+                  pipeManagerWorker.registerTaskForInput(
+                    RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, i),
+                    task.getTaskId(),
+                    parentTaskReader);
+                }
+              }
 
               isStateless = false;
               final DataFetcher df = new MultiThreadParentTaskDataFetcher(
@@ -980,10 +1012,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Deprecated
   @Override
   public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
+    throw new RuntimeException();
   }
 
   @Override
   public void handleOffloadingEvent(final Object data) {
+    throw new RuntimeException();
   }
 
   private void offloadingEventHandler(final Object data) {
