@@ -52,6 +52,7 @@ public final class ByteTransfer {
   }
 
   public ContextManager getRemoteExecutorContetxManager(final String remoteExecutor) {
+    LOG.info("Getting remoteExecutor context {}", remoteExecutor);
     return executorIdToChannelFutureMap.get(remoteExecutor).channel().pipeline().get(ContextManager.class);
   }
 
@@ -136,8 +137,10 @@ public final class ByteTransfer {
       if (future.isSuccess()) {
         completableFuture.complete(channelFuture.channel().pipeline().get(ContextManager.class));
       } else {
+        LOG.info("Exception !!!! " + future.cause());
         executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);
         completableFuture.completeExceptionally(future.cause());
+        throw new RuntimeException(future.cause());
       }
     });
     return completableFuture;
