@@ -36,7 +36,7 @@ import java.util.List;
 public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferContextSetupMessage> {
 
   // 1 byte: flag, 1 byte: broadcast, integer byte: transferindex or broadcast size, integer byte: body length
-  public static final int ZEROS_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
+  public static final int ZEROS_LENGTH = 2 + Integer.BYTES;
   public static final int BODY_LENGTH_LENGTH = Integer.BYTES;
   public static final ByteBuf ZEROS = Unpooled.directBuffer(ZEROS_LENGTH, ZEROS_LENGTH).writeZero(ZEROS_LENGTH);
 

@@ -33,20 +33,23 @@ import java.util.concurrent.CompletableFuture;
  */
 @ThreadSafe
 public interface PipeManagerWorker {
-  void registerTaskForInput(final String srcTaskId,
-                            final String dstTaskId,
-                            InputReader inputReader);
+  void registerInputPipe(final String srcTaskId,
+                          final String edgeId,
+                          final String dstTaskId,
+                          InputReader inputReader);
 
   void broadcast(final String srcTaskId,
+                 final String edgeId,
                  final List<String> dstTasks,
                  final Serializer serializer, Object event);
 
   void writeData(final String srcTaskId,
+                 final String edgeId,
                  final String dstTaskId,
                  final Serializer serializer,
                  final Object event);
 
-  void addInputData(int srcTaskINdex, int dstTaskIndex, ByteBuf event);
+  void addInputData(int index, ByteBuf event);
 
   // flush data
   void flush();

@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.data;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.coder.IntDecoderFactory;
@@ -21,7 +22,6 @@ import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.master.PipeManagerMaster;
-import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -64,7 +64,10 @@ public final class PipeManagerWorkerTest {
   private final String task3 = "t3";
   private final String task4 = "t4";
 
-  private final Map<String, Integer> taskIndexMap = new HashMap<>();
+  private final String edge1 = "edge1";
+  private final String edge2 = "edge2";
+
+  private final Map<Triple<String, String, String>, Integer> pipeIndexMap = new HashMap<>();
 
   private final Map<String, String> taskScheduledMap = new HashMap<>();
 
@@ -81,10 +84,9 @@ public final class PipeManagerWorkerTest {
     pipeManagerMaster = injector.getInstance(PipeManagerMaster.class);
     masterHandler = new MasterHandler();
 
-    taskIndexMap.put(task1, 1);
-    taskIndexMap.put(task2, 2);
-    taskIndexMap.put(task3, 3);
-    taskIndexMap.put(task4, 4);
+    pipeIndexMap.put(Triple.of(task1, edge1, task2), 1);
+    pipeIndexMap.put(Triple.of(task1, edge1, task3), 2);
+    pipeIndexMap.put(Triple.of(task1, edge1, task4), 3);
 
     final MessageEnvironment messageEnvironment = injector.getInstance(MessageEnvironment.class);
 
@@ -127,19 +129,19 @@ public final class PipeManagerWorkerTest {
     pair2.right().getInstance(ExecutorContextManagerMap.class).init();
 
     final TestInputReader task1reader = new TestInputReader();
-    pipeManagerWorker1.registerTaskForInput(task2, task1, task1reader);
+    // pipeManagerWorker1.registerInputPipe(task2, task1, task1reader);
 
     final TestInputReader task2reader = new TestInputReader();
-    pipeManagerWorker2.registerTaskForInput(task1, task2, task2reader);
+    pipeManagerWorker2.registerInputPipe(task1, edge1, task2, task2reader);
 
     final TestInputReader task3reader = new TestInputReader();
-    pipeManagerWorker2.registerTaskForInput(task1, task3, task3reader);
+    pipeManagerWorker2.registerInputPipe(task1, edge1, task3, task3reader);
 
     // send data from worker1 to worker2
-    pipeManagerWorker1.writeData(task1, task2, intSerializer, 10);
-    pipeManagerWorker1.writeData(task1, task2, intSerializer, 5);
-    pipeManagerWorker1.writeData(task1, task2, intSerializer, 1);
-    pipeManagerWorker1.writeData(task1, task2, intSerializer, 3);
+    pipeManagerWorker1.writeData(task1, edge1, task2, intSerializer, 10);
+    pipeManagerWorker1.writeData(task1, edge1, task2, intSerializer, 5);
+    pipeManagerWorker1.writeData(task1, edge1, task2, intSerializer, 1);
+    pipeManagerWorker1.writeData(task1, edge1, task2, intSerializer, 3);
 
     pipeManagerWorker1.flush();
 
@@ -165,7 +167,8 @@ public final class PipeManagerWorkerTest {
     assertEquals(3, intSerializer.getDecoderFactory().create(bis).decode());
 
     // Broadcast testing
-    pipeManagerWorker1.broadcast(task1, Arrays.asList(task2, task3), intSerializer, 100);
+    pipeManagerWorker1.broadcast(task1, edge1,
+      Arrays.asList(task2, task3), intSerializer, 100);
     pipeManagerWorker1.flush();
 
     Thread.sleep(1000);
@@ -343,6 +346,14 @@ public final class PipeManagerWorkerTest {
         }
         case RequestTaskIndex: {
           System.out.println(message.getRequestTaskIndexMsg());
+          final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage =
+            message.getRequestTaskIndexMsg();
+
+          final String srcTaskId = requestTaskIndexMessage.getSrcTaskId();
+          final String edgeId = requestTaskIndexMessage.getEdgeId();
+          final String dstTaskId = requestTaskIndexMessage.getDstTaskId();
+          final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
+
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
@@ -350,7 +361,7 @@ public final class PipeManagerWorkerTest {
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
-                .setTaskIndex(taskIndexMap.get(message.getRequestTaskIndexMsg().getTaskId()))
+                .setTaskIndex(pipeIndexMap.get(key))
                 .build())
               .build());
           break;

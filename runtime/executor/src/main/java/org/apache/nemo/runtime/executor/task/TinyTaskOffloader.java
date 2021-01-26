@@ -288,20 +288,6 @@ public final class TinyTaskOffloader implements Offloader {
     }
   }
 
-  private CompletableFuture<ControlMessage.Message> requestTaskIndex() {
-    return toMaster
-      .getMessageSender(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID).request(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestTaskIndex)
-          .setRequestTaskIndexMsg(ControlMessage.RequestTaskIndexMessage.newBuilder()
-            .setTaskId(taskId)
-            .setExecutorId(executorId)
-            .build())
-          .build());
-  }
-
   @Override
   public synchronized void handleStartOffloadingEvent(final TinyTaskWorker worker) {
 

@@ -196,7 +196,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     while (!taskAddPairQueue.isEmpty()) {
       final Pair<IteratorWithNumBytes, Integer> pair = taskAddPairQueue.poll();
       //LOG.info("Receive iterator task {} at {} edge {}"
-      //  , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
+      //  , pair.right(), readersForParentTask.getPipeIndex(), edge.getId());
       final IteratorWithNumBytes iterator = pair.left();
       final int taskIndex = pair.right();
 

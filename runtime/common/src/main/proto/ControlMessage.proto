@@ -349,8 +349,9 @@ message PipeLocationInfoMessage {
 
 
 message RequestTaskIndexMessage {
-  required string executorId = 1;
-  required string taskId = 2;
+  required string srcTaskId = 1;
+  required string edgeId = 2;
+  required string dstTaskId = 3;
 }
 
 message TaskIndexInfoMessage {

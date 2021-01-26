@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.master;
 
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -39,26 +41,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @ThreadSafe
 @DriverSide
-public final class TaskIndexMaster {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskIndexMaster.class.getName());
+public final class PipeIndexMaster {
+  private static final Logger LOG = LoggerFactory.getLogger(PipeIndexMaster.class.getName());
 
   /**
    * Constructor.
    * @param masterMessageEnvironment the message environment.
    */
 
-  private final Map<String, Integer> taskIndexMap = new ConcurrentHashMap<>();
+  private final Map<Triple<String, String, String>, Integer> taskIndexMap = new ConcurrentHashMap<>();
   private final AtomicInteger atomicInteger = new AtomicInteger();
 
   @Inject
-  private TaskIndexMaster(final MessageEnvironment masterMessageEnvironment) {
+  private PipeIndexMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
       new TaskIndexMessageReceiver());
   }
 
-  public void onTaskScheduled(final String taskId) {
-    if (!taskIndexMap.containsKey(taskId)) {
-      taskIndexMap.put(taskId, atomicInteger.getAndIncrement());
+  public void onTaskScheduled(final String srcTaskId,
+                              final String edgeId,
+                              final String dstTaskId) {
+    if (!taskIndexMap.containsKey(Triple.of(srcTaskId, edgeId, dstTaskId))) {
+      taskIndexMap.put(Triple.of(srcTaskId, edgeId, dstTaskId), atomicInteger.getAndIncrement());
     }
   }
 
@@ -75,13 +79,17 @@ public final class TaskIndexMaster {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
         case RequestTaskIndex:
-          final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage = message.getRequestTaskIndexMsg();
-          final String taskId = requestTaskIndexMessage.getTaskId();
+          final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage =
+            message.getRequestTaskIndexMsg();
+          final String srcTaskId = requestTaskIndexMessage.getSrcTaskId();
+          final String edgeId = requestTaskIndexMessage.getEdgeId();
+          final String dstTaskId = requestTaskIndexMessage.getDstTaskId();
+          final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
 
-          LOG.info("Task index of stage: {}", taskId, taskIndexMap.get(taskId));
+          LOG.info("Task index of stage: {}", key, taskIndexMap.get(key));
 
-          if (!taskIndexMap.containsKey(taskId)) {
-            throw new RuntimeException("No task index for task " + taskId);
+          if (!taskIndexMap.containsKey(key)) {
+            throw new RuntimeException("No task index for task " + key);
           }
 
           messageContext.reply(
@@ -91,7 +99,7 @@ public final class TaskIndexMaster {
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
-                .setTaskIndex(taskIndexMap.get(taskId))
+                .setTaskIndex(taskIndexMap.get(key))
                 .build())
               .build());
 

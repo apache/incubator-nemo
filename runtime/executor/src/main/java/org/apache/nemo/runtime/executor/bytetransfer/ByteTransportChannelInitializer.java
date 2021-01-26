@@ -28,7 +28,7 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.TaskIndexMapWorker;
+import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -79,7 +79,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
-  private final TaskIndexMapWorker taskTransferIndexMap;
+  private final PipeIndexMapWorker taskTransferIndexMap;
 
 
   private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
@@ -104,7 +104,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private ByteTransportChannelInitializer(
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
-                                          final TaskIndexMapWorker taskTransferIndexMap,
+                                          final PipeIndexMapWorker taskTransferIndexMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                           final PersistentConnectionToMasterMap toMaster,
                                           final EvalConf evalConf,

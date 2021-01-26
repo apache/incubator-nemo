@@ -18,32 +18,21 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.ExecutorContextManagerMap;
-import org.apache.nemo.runtime.executor.TaskIndexMapWorker;
+import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,9 +62,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   // 여기서 pipe manager worker끼리 N-to-N connection 맺어야.
   private final ExecutorContextManagerMap executorContextManagerMap;
   private final TaskScheduledMapWorker taskScheduledMapWorker;
-  private final TaskIndexMapWorker taskIndexMapWorker;
-  private final Map<Pair<Integer, Integer>,
-    InputReader> taskInputReaderMap = new ConcurrentHashMap<>();
+  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final Map<Integer, InputReader> taskInputReaderMap = new ConcurrentHashMap<>();
   private final ScheduledExecutorService scheduledExecutorService;
 
   @Inject
@@ -83,13 +71,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final ByteTransfer byteTransfer,
                                 final ExecutorContextManagerMap executorContextManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
-                                final TaskIndexMapWorker taskIndexMapWorker,
+                                final PipeIndexMapWorker pipeIndexMapWorker,
                                 @Parameter(EvalConf.FlushPeriod.class) final int flushPeriod) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.executorContextManagerMap = executorContextManagerMap;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
-    this.taskIndexMapWorker = taskIndexMapWorker;
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       flush();
@@ -97,34 +85,35 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   @Override
-  public void registerTaskForInput(final String srcTaskId,
-                                   final String dstTaskId,
-                                   final InputReader reader) {
+  public void registerInputPipe(final String srcTaskId,
+                                final String edgeId,
+                                final String dstTaskId,
+                                final InputReader reader) {
     // taskId로부터 받는 data를 위한 input reader
-    final int srcTaskIndex = taskIndexMapWorker.getTaskIndex(srcTaskId);
-    final int dstTaskIndex = taskIndexMapWorker.getTaskIndex(dstTaskId);
-    final Pair<Integer, Integer> key = Pair.of(srcTaskIndex, dstTaskIndex);
+    final int taskIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
 
-    LOG.info("Registering task for input reader {}->{} / {}->{}",
-      srcTaskId, dstTaskId, srcTaskIndex, dstTaskIndex);
+    LOG.info("Registering pipe for input reader {}/{}/{} . index: {}",
+      srcTaskId, edgeId, dstTaskId, taskIndex);
 
-    if (taskInputReaderMap.containsKey(key)) {
-      throw new RuntimeException("Task is already registered " + key);
+    if (taskInputReaderMap.containsKey(taskIndex)) {
+      throw new RuntimeException("Task is already registered " + taskIndex);
     }
 
-    taskInputReaderMap.put(key, reader);
+    taskInputReaderMap.put(taskIndex, reader);
   }
 
   @Override
   public void broadcast(final String srcTaskId,
+                        final String edgeId,
                         List<String> dstTasks, Serializer serializer, Object event) {
     // LOG.info("Broadcast watermark in pipeline Manager worker {}", event);
     final Map<String, List<Integer>> executorDstTaskIndicesMap = new HashMap<>();
+
     dstTasks.forEach(dstTask -> {
       final String executorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask);
       executorDstTaskIndicesMap.putIfAbsent(executorId, new LinkedList<>());
       executorDstTaskIndicesMap.get(executorId).add(
-      taskIndexMapWorker.getTaskIndex(dstTask));
+      pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTask));
     });
 
     for (final String remoteExecutorId : executorDstTaskIndicesMap.keySet()) {
@@ -147,7 +136,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       }
 
       channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-        taskIndexMapWorker.getTaskIndex(srcTaskId),
         executorDstTaskIndicesMap.get(remoteExecutorId), byteBuf, byteBuf.readableBytes(), true))
         .addListener(listener);
     }
@@ -161,6 +149,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public void writeData(final String srcTaskId,
+                        final String edgeId,
                         final String dstTaskId,
                         final Serializer serializer,
                         final Object event) {
@@ -180,23 +169,19 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       throw new RuntimeException(e);
     }
 
-    final int srcTaskIndex = taskIndexMapWorker.getTaskIndex(srcTaskId);
-    final int dstTaskIndex = taskIndexMapWorker.getTaskIndex(dstTaskId);
-    LOG.info("Write {}->{} / {}", srcTaskId, dstTaskId, event);
+    final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    // LOG.info("Write {}->{} / {}", srcTaskId, dstTaskId, event);
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-      srcTaskIndex,
-      Collections.singletonList(dstTaskIndex), byteBuf, byteBuf.readableBytes(), true))
+      Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true))
       .addListener(listener);
   }
 
   @Override
-  public void addInputData(final int srcTaskIndex,
-                           final int dstTaskIndex, ByteBuf event) {
-    final Pair<Integer, Integer> key = Pair.of(srcTaskIndex, dstTaskIndex);
-    if (!taskInputReaderMap.containsKey(key)) {
-      throw new RuntimeException("Invalid task index " + srcTaskIndex + "->" + dstTaskIndex);
+  public void addInputData(final int index, ByteBuf event) {
+    if (!taskInputReaderMap.containsKey(index)) {
+      throw new RuntimeException("Invalid task index " + index);
     }
-    taskInputReaderMap.get(key).addData(event);
+    taskInputReaderMap.get(index).addData(event);
   }
 
   @Override

@@ -257,7 +257,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.taskInputContextMap = taskInputContextMap;
+
     task.getTaskOutgoingEdges().forEach(edge -> {
+      LOG.info("Task outgoing edge {}", edge);
       final IRVertex src = edge.getSrcIRVertex();
       final IRVertex dst = edge.getDstIRVertex();
       taskOutgoingEdges.putIfAbsent(src.getId(), new LinkedList<>());
@@ -272,15 +274,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
       if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
-        pipeManagerWorker.registerTaskForInput(
+        pipeManagerWorker.registerInputPipe(
           RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
+          edge.getId(),
           task.getTaskId(),
           new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
       } else {
         for (int i = 0; i < parallelism; i++) {
-          pipeManagerWorker.registerTaskForInput(
+          pipeManagerWorker.registerInputPipe(
             RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
+            edge.getId(),
             task.getTaskId(),
             new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
@@ -814,14 +818,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
               if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
-                pipeManagerWorker.registerTaskForInput(
+                pipeManagerWorker.registerInputPipe(
                   RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                  edge.getId(),
                   task.getTaskId(),
                   parentTaskReader);
               } else {
                 for (int i = 0; i < parallelism; i++) {
-                  pipeManagerWorker.registerTaskForInput(
+                  pipeManagerWorker.registerInputPipe(
                     RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
+                    edge.getId(),
                     task.getTaskId(),
                     parentTaskReader);
                 }

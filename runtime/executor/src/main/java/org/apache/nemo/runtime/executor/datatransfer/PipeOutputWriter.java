@@ -93,7 +93,7 @@ public final class PipeOutputWriter implements OutputWriter {
   private void writeData(final Object element,
                          final List<String> dstList, final boolean flush) {
     dstList.forEach(dstTask -> {
-      pipeManagerWorker.writeData(srcTaskId, dstTask, serializer, element);
+      pipeManagerWorker.writeData(srcTaskId, runtimeEdge.getId(), dstTask, serializer, element);
     });
   }
 
@@ -122,6 +122,7 @@ public final class PipeOutputWriter implements OutputWriter {
   public void writeWatermark(final Watermark watermark) {
     // LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
     pipeManagerWorker.broadcast(srcTaskId,
+      runtimeEdge.getId(),
       dstTaskIds, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));
 
     // writeData(new WatermarkWithIndex(watermark, srcTaskIndex), pipes, false);

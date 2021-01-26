@@ -64,7 +64,7 @@ import java.util.*;
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
-  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES + Integer.BYTES;
+  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
 
   private final PipeManagerWorker pipeManagerWorker;
 
@@ -91,9 +91,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private boolean isStop;
 
 
-  private int srcTaskIndex;
-  private int dtTaskIndex;
-  private List<Integer> currTaskIndices;
+  private int pipeIndex;
+  private List<Integer> currPipeIndices;
 
   public FrameDecoder(final PipeManagerWorker pipeManagerWorker) {
     this.pipeManagerWorker = pipeManagerWorker;
@@ -135,10 +134,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     broadcast = true;
 
-    currTaskIndices = new ArrayList<>(broadcastSize);
+    currPipeIndices = new ArrayList<>(broadcastSize);
 
     for (int i = 0; i < broadcastSize; i++) {
-      currTaskIndices.add(in.readInt());
+      currPipeIndices.add(in.readInt());
     }
 
     // LOG.info("IsContextBroadcast transfier ids {}!!", currTaskIndices);
@@ -183,7 +182,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       // rm zero byte
       in.readByte();
       in.readInt();
-      in.readInt();
       final long length = in.readUnsignedInt();
       LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
@@ -192,7 +190,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       }
 
     } else {
-      srcTaskIndex = in.readInt();
       isContextBroadcast = in.readBoolean();
       final int sizeOrIndex = in.readInt();
 
@@ -208,7 +205,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         broadcastSize = 0;
         broadcast = false;
 
-        dtTaskIndex = sizeOrIndex;
+        pipeIndex = sizeOrIndex;
         final long length = in.readUnsignedInt();
 
         // LOG.info("Receive srcTaskIndex {}->{}, body size: {}", srcTaskIndex, dtTaskIndex, length);
@@ -316,14 +313,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     if (broadcast) {
       // buf.retain(inputContexts.size() - 1);
       // LOG.info("Broadcast variable !! ");
-      for (int i = 0; i < currTaskIndices.size(); i++) {
-        final Integer ti = currTaskIndices.get(i);
-        pipeManagerWorker.addInputData(srcTaskIndex, ti, buf.retainedDuplicate());
+      for (int i = 0; i < currPipeIndices.size(); i++) {
+        final Integer ti = currPipeIndices.get(i);
+        pipeManagerWorker.addInputData(ti, buf.retainedDuplicate());
       }
 
       buf.release();
     } else {
-      pipeManagerWorker.addInputData(srcTaskIndex, dtTaskIndex, buf);
+      pipeManagerWorker.addInputData(pipeIndex, buf);
     }
 
     onDataFrameEnd();

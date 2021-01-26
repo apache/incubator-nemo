@@ -71,27 +71,23 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (in.taskIndices.size() <= 1) {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH + Integer.BYTES, HEADER_LENGTH + Integer.BYTES);
+    if (in.pipeIndices.size() <= 1) {
+      header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
       header.writeByte(flags);
-      header.writeInt(in.srcTask);
       header.writeBoolean(false);
-      header.writeInt(in.taskIndices.get(0));
+      header.writeInt(in.pipeIndices.get(0));
     } else {
       header = ctx.alloc().ioBuffer(HEADER_LENGTH
         + Integer.BYTES
+        + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
         + Integer.BYTES
-        + in.taskIndices.size() * Integer.BYTES, HEADER_LENGTH
-        + Integer.BYTES
-        + Integer.BYTES
-        + in.taskIndices.size() * Integer.BYTES);
+        + in.pipeIndices.size() * Integer.BYTES);
 
       header.writeByte(flags);
-      header.writeInt(in.srcTask);
       header.writeBoolean(true);
-      header.writeInt(in.taskIndices.size());
-      in.taskIndices.forEach(taskIndex -> {
-        header.writeInt(taskIndex);
+      header.writeInt(in.pipeIndices.size());
+      in.pipeIndices.forEach(pipeIndex -> {
+        header.writeInt(pipeIndex);
       });
     }
 
@@ -130,27 +126,23 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (in.taskIndices.size() <= 1) {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH + Integer.BYTES, HEADER_LENGTH + Integer.BYTES);
+    if (in.pipeIndices.size() <= 1) {
+      header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
       header.writeByte(flags);
-      header.writeInt(in.srcTask);
       header.writeBoolean(false);
-      header.writeInt(in.taskIndices.get(0));
+      header.writeInt(in.pipeIndices.get(0));
     } else {
       header = ctx.alloc().ioBuffer(HEADER_LENGTH
         + Integer.BYTES
+        + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
         + Integer.BYTES
-        + in.taskIndices.size() * Integer.BYTES, HEADER_LENGTH
-        + Integer.BYTES
-        + Integer.BYTES
-        + in.taskIndices.size() * Integer.BYTES);
+        + in.pipeIndices.size() * Integer.BYTES);
 
       header.writeByte(flags);
-      header.writeInt(in.srcTask);
       header.writeBoolean(true);
-      header.writeInt(in.taskIndices.size());
-      in.taskIndices.forEach(taskIndex -> {
-        header.writeInt(taskIndex);
+      header.writeInt(in.pipeIndices.size());
+      in.pipeIndices.forEach(pipeIndex -> {
+        header.writeInt(pipeIndex);
       });
     }
 
@@ -198,8 +190,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     public final Recycler.Handle handle;
-    public List<Integer> taskIndices;
-    public int srcTask;
+    public List<Integer> pipeIndices;
     @Nullable
     public Object body;
     public long length;
@@ -211,17 +202,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     /**
      * For broadcast!!
      */
-    public static DataFrame newInstance(final Integer srcTask,
-                                        final List<Integer> taskIndices,
+    public static DataFrame newInstance(final List<Integer> pipeIndicies,
                                         @Nullable final Object body,
                                         final long length,
                                         final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();
-      if (taskIndices.size() < 1) {
+      if (pipeIndicies.size() < 1) {
         throw new RuntimeException("Invalid task index");
       }
-      dataFrame.srcTask = srcTask;
-      dataFrame.taskIndices = taskIndices;
+      dataFrame.pipeIndices = pipeIndicies;
       dataFrame.body = body;
       dataFrame.length = length;
       dataFrame.opensSubStream = opensSubStream;

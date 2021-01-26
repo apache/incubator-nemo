@@ -244,7 +244,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case RequestPipeLoc:
         return controlMessage.getRequestPipeLocMsg().getExecutorId();
       case RequestTaskIndex:
-        return controlMessage.getRequestTaskIndexMsg().getExecutorId();
+        // return controlMessage.getRequestTaskIndexMsg().getExecutorId();
       case RequestTransferIndex:
         return controlMessage.getRequestTransferIndexMsg().getExecutorId();
       case RequestStageOffloading:

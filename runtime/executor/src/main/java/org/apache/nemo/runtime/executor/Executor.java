@@ -58,7 +58,6 @@ import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.PipeInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
@@ -143,7 +142,7 @@ public final class Executor {
 
   private final OutputWriterFlusher outputWriterFlusher;
 
-  final TaskIndexMapWorker taskTransferIndexMap;
+  final PipeIndexMapWorker taskTransferIndexMap;
 
   private final JobScalingHandlerWorker jobScalingHandlerWorker;
 
@@ -181,7 +180,7 @@ public final class Executor {
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
                    final TaskInputContextMap taskInputContextMap,
-                   final TaskIndexMapWorker taskTransferIndexMap,
+                   final PipeIndexMapWorker taskTransferIndexMap,
                    final RelayServer relayServer,
                    final TaskLocationMap taskLocationMap,
                    final StageExecutorThreadMap stageExecutorThreadMap,

@@ -58,7 +58,7 @@ public final class StreamingScheduler implements Scheduler {
   private final ExecutorRegistry executorRegistry;
   private final PlanStateManager planStateManager;
   private final PipeManagerMaster pipeManagerMaster;
-  private final TaskIndexMaster taskIndexMaster;
+  private final PipeIndexMaster pipeIndexMaster;
   private final TransferIndexMaster transferIndexMaster;
   private final TaskOffloadingManager taskOffloadingManager;
 
@@ -68,7 +68,7 @@ public final class StreamingScheduler implements Scheduler {
                      final ExecutorRegistry executorRegistry,
                      final PlanStateManager planStateManager,
                      final PipeManagerMaster pipeManagerMaster,
-                     final TaskIndexMaster taskIndexMaster,
+                     final PipeIndexMaster pipeIndexMaster,
                      final TransferIndexMaster transferIndexMaster,
                      final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
@@ -76,7 +76,7 @@ public final class StreamingScheduler implements Scheduler {
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
     this.pipeManagerMaster = pipeManagerMaster;
-    this.taskIndexMaster = taskIndexMaster;
+    this.pipeIndexMaster = pipeIndexMaster;
     this.transferIndexMaster = transferIndexMaster;
     this.taskOffloadingManager = taskOffloadingManager;
   }
@@ -110,9 +110,12 @@ public final class StreamingScheduler implements Scheduler {
 
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
-        taskIndexMaster.onTaskScheduled(taskId);
-        stageIncomingEdges.forEach(inEdge ->
-          pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
+        stageIncomingEdges.forEach(inEdge -> {
+          final String srcTask =
+            RuntimeIdManager.generateTaskId(inEdge.getSrc().getId(), index, 0);
+          pipeIndexMaster.onTaskScheduled(srcTask, inEdge.getId(), taskId);
+          pipeManagerMaster.onTaskScheduled(inEdge.getId(), index);
+        });
         // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
       });
 
