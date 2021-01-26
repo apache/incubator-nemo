@@ -79,7 +79,7 @@ public final class ExecutorContextManagerMap {
     // TODO: todo
   }
 
-  public void initConnectToExecutor(final String remoteExecutorId) {
+  public synchronized void initConnectToExecutor(final String remoteExecutorId) {
     if (executorContextManagerMap.containsKey(remoteExecutorId)) {
       throw new RuntimeException("Executor " + remoteExecutorId + " already registered");
     }
@@ -88,6 +88,7 @@ public final class ExecutorContextManagerMap {
 
     try {
       executorContextManagerMap.put(remoteExecutorId, byteTransfer.connectTo(remoteExecutorId).get());
+      LOG.info("Putting done  {} -> {}", executorId, remoteExecutorId);
     } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -98,7 +99,8 @@ public final class ExecutorContextManagerMap {
     return executorContextManagerMap.values();
   }
 
-  public ContextManager getExecutorContextManager(final String executorId) {
+  public synchronized ContextManager getExecutorContextManager(final String executorId) {
+    LOG.info("Getting executor context manager {}", executorId);
     return executorContextManagerMap.get(executorId);
   }
 }
