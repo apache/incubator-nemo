@@ -76,23 +76,28 @@ public final class PipeManagerWorker {
 
   private final PersistentConnectionToMasterMap toMaster;
 
-  // boolean: output context?
+  // dst task to target executor map
+  // this must be modified when a task is moved to another executor
   private final ConcurrentMap<String, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
-  private final EvalConf evalConf;
+  // 여기서 pipe manager worker끼리 N-to-N connection 맺어야.
+
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
                             final SerializerManager serializerManager,
-                            final PersistentConnectionToMasterMap toMaster,
-                            final EvalConf evalConf) {
+                            final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.serializerManager = serializerManager;
     this.pipeContainer = new PipeContainer();
     this.toMaster = toMaster;
-    this.evalConf = evalConf;
+  }
+
+  public void registerTask(final String taskId) {
+    // taskId로부터 받는 data를 위한 input reader
+
   }
 
   public Map<String, String> getTaskExecutorIdMap() {
@@ -154,6 +159,13 @@ public final class PipeManagerWorker {
     }
   }
 
+  public void writeData(final int srcTaskIndex,
+                        final RuntimeEdge runtimeEdge,
+                        final int dstTaskIndex,
+                        final Object event) {
+
+  }
+
   public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,
                                                     final RuntimeEdge runtimeEdge,
                                                     final int dstTaskIndex) {
@@ -161,10 +173,6 @@ public final class PipeManagerWorker {
     // Get the location of the dst task (blocking call)
 
     final long messageId = RuntimeIdManager.generateMessageId();
-
-    if (evalConf.controlLogging) {
-      //LOG.info("Send message id {}", messageId);
-    }
 
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
       .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(

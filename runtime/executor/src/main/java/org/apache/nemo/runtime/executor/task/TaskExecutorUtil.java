@@ -97,7 +97,7 @@ public final class TaskExecutorUtil {
         if (isPipe(outEdgeForThisVertex)) {
           outputWriter = intermediateDataIOFactory
             .createPipeWriter(
-              taskId, outEdgeForThisVertex, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
+              taskId, outEdgeForThisVertex, rendevousServerClient, executorThread, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, outEdgeForThisVertex);
@@ -141,7 +141,7 @@ public final class TaskExecutorUtil {
 
         if (isPipe(edge)) {
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskId, edge, expectedWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
+            .createPipeWriter(taskId, edge, rendevousServerClient, executorThread, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, edge);

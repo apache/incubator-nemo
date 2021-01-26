@@ -72,12 +72,11 @@ import java.util.concurrent.Executors;
  */
 public final class ByteTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
-  private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
-  private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
-  private final InjectionFuture<ByteTransfer> byteTransfer;
-  private final InjectionFuture<ByteTransport> byteTransport;
-  //private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
-  private final InjectionFuture<AckScheduledService> ackScheduledService;
+  private PipeManagerWorker pipeManagerWorker;
+  private BlockManagerWorker blockManagerWorker;
+  private ByteTransfer byteTransfer;
+  private ByteTransport byteTransport;
+  private AckScheduledService ackScheduledService;
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
@@ -98,21 +97,12 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   /**
    * Creates a netty channel initializer.
    *
-   * @param pipeManagerWorker   provides handler for new contexts by remote executors
-   * @param blockManagerWorker  provides handler for new contexts by remote executors
-   * @param byteTransfer        provides channel caching
-   * @param byteTransport       provides {@link io.netty.channel.group.ChannelGroup}
    * @param controlFrameEncoder encodes control frames
    * @param dataFrameEncoder    encodes data frames
    * @param localExecutorId     the id of this executor
    */
   @Inject
-  private ByteTransportChannelInitializer(final InjectionFuture<PipeManagerWorker> pipeManagerWorker,
-                                          final InjectionFuture<BlockManagerWorker> blockManagerWorker,
-                                          final InjectionFuture<ByteTransfer> byteTransfer,
-                                          final InjectionFuture<ByteTransport> byteTransport,
-                                          final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport,
-                                          final InjectionFuture<AckScheduledService> ackScheduledService,
+  private ByteTransportChannelInitializer(
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
                                           final TaskTransferIndexMap taskTransferIndexMap,
@@ -121,15 +111,10 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final EvalConf evalConf,
                                           final RelayServer relayServer,
                                           final TaskLocationMap taskLocationMap) {
-    this.pipeManagerWorker = pipeManagerWorker;
-    this.blockManagerWorker = blockManagerWorker;
-    this.byteTransfer = byteTransfer;
-    this.byteTransport = byteTransport;
+
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
-    //this.vmScalingClientTransport = vmScalingClientTransport;
-    this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.channelServiceExecutor = Executors.newCachedThreadPool();
     this.toMaster = toMaster;
@@ -138,18 +123,30 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.taskLocationMap = taskLocationMap;
   }
 
+  public void initSetup(final PipeManagerWorker pipeManagerWorker,
+                        final BlockManagerWorker blockManagerWorker,
+                        final ByteTransfer byteTransfer,
+                        final ByteTransport byteTransport,
+                        final AckScheduledService ackScheduledService) {
+    this.pipeManagerWorker = pipeManagerWorker;
+    this.blockManagerWorker = blockManagerWorker;
+    this.byteTransfer = byteTransfer;
+    this.byteTransport = byteTransport;
+    this.ackScheduledService = ackScheduledService;
+  }
+
   @Override
   protected void initChannel(final SocketChannel ch) {
     final ContextManager contextManager = new DefaultContextManagerImpl(
       channelServiceExecutor,
-      pipeManagerWorker.get(),
-      blockManagerWorker.get(),
-      Optional.of(byteTransfer.get()),
-      byteTransport.get().getChannelGroup(),
+      pipeManagerWorker,
+      blockManagerWorker,
+      Optional.of(byteTransfer),
+      byteTransport.getChannelGroup(),
       localExecutorId,
       ch,
       //vmScalingClientTransport.get(),
-      ackScheduledService.get(),
+      ackScheduledService,
       taskTransferIndexMap.getMap(),
       inputContexts,
       outputContexts,

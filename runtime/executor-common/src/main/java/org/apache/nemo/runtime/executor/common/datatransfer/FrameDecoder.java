@@ -325,7 +325,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     if (broadcast) {
       // buf.retain(inputContexts.size() - 1);
       // LOG.info("Broadcast variable !! ");
-
       for (int i = 0; i < inputContexts.size(); i++) {
         final ByteInputContext ic = inputContexts.get(i);
         final Integer ti = currTransferIndices.get(i);

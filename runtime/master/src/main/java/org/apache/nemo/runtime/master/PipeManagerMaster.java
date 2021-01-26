@@ -76,6 +76,11 @@ public final class PipeManagerMaster {
     }
   }
 
+  // For test
+  public Map<Pair<String, Long>, String> getRuntimeEdgeIndexToExecutor() {
+    return runtimeEdgeIndexToExecutor;
+  }
+
   /**
    * Handler for control messages received.
    */
@@ -160,7 +165,7 @@ public final class PipeManagerMaster {
               messageContext.reply(
                 ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                  .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID) // not used
                   .setType(ControlMessage.MessageType.PipeLocInfo)
                   .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
                     .setRequestId(message.getId())

@@ -46,37 +46,14 @@ public final class ByteTransfer {
 
   private final ByteTransport byteTransport;
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, ContextManager> executorIdLocalContextManagerMap = new ConcurrentHashMap<>();
-
-  private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
-  private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
-  private final InjectionFuture<ByteTransfer> byteTransfer;
-  private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
-  private final InjectionFuture<AckScheduledService> ackScheduledService;
-  private final String localExecutorId;
-  private TaskTransferIndexMap taskTransferIndexMap;
 
   /**
    * Creates a byte transfer.
    * @param byteTransport provides channels to other executors
    */
   @Inject
-  private ByteTransfer(final ByteTransport byteTransport,
-                       @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-                       final InjectionFuture<PipeManagerWorker> pipeManagerWorker,
-                       final InjectionFuture<BlockManagerWorker> blockManagerWorker,
-                       final InjectionFuture<ByteTransfer> byteTransfer,
-                       final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport,
-                       final InjectionFuture<AckScheduledService> ackScheduledService,
-                       final TaskTransferIndexMap taskTransferIndexMap) {
+  private ByteTransfer(final ByteTransport byteTransport) {
     this.byteTransport = byteTransport;
-    this.localExecutorId = localExecutorId;
-    this.pipeManagerWorker = pipeManagerWorker;
-    this.blockManagerWorker = blockManagerWorker;
-    this.byteTransfer = byteTransfer;
-    this.vmScalingClientTransport = vmScalingClientTransport;
-    this.ackScheduledService = ackScheduledService;
-    this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
   public ContextManager getRemoteExecutorContetxManager(final String remoteExecutor) {

@@ -54,6 +54,7 @@ import org.apache.nemo.runtime.executor.burstypolicy.JobScalingHandlerWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
@@ -187,6 +188,7 @@ public final class Executor {
                    final ScalingOutCounter scalingOutCounter,
                    final SFTaskMetrics sfTaskMetrics,
                    final HDFStateStore stateStore,
+                   final CyclicDependencyHandler cyclicDependencyHandler,
                    final TaskDoneHandler taskDoneHandler) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {

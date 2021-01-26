@@ -83,13 +83,11 @@ public final class IntermediateDataIOFactory {
   public OutputWriter createPipeWriter(
     final String srcTaskId,
     final RuntimeEdge<?> runtimeEdge,
-    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-    final Map<Long, Integer> watermarkCounterMap,
     final RendevousServerClient rendevousServerClient,
     final ExecutorThread executorThread,
     final TaskMetrics taskMetrics) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      expectedWatermarkMap, watermarkCounterMap, relayServer, rendevousServerClient, executorThread, taskMetrics);
+      relayServer, rendevousServerClient, executorThread, taskMetrics);
   }
 
   /**

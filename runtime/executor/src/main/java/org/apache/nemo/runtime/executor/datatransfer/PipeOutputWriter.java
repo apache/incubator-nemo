@@ -63,8 +63,6 @@ public final class PipeOutputWriter implements OutputWriter {
   private final Serializer serializer;
   private final List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
-  final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
-  final Map<Long, Integer> watermarkCounterMap;
   private final StageEdge stageEdge;
   private final RelayServer relayServer;
 
@@ -86,8 +84,6 @@ public final class PipeOutputWriter implements OutputWriter {
   PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
-                   final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-                   final Map<Long, Integer> watermarkCounterMap,
                    final RelayServer relayServer,
                    final RendevousServerClient rendevousServerClient,
                    final ExecutorThread executorThread,
@@ -104,8 +100,6 @@ public final class PipeOutputWriter implements OutputWriter {
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
     this.pipeAndStreamMap = new HashMap<>();
-    this.expectedWatermarkMap = expectedWatermarkMap;
-    this.watermarkCounterMap = watermarkCounterMap;
     this.relayServer = relayServer;
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
     this.rendevousServerClient = rendevousServerClient;
