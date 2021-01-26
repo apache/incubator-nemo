@@ -62,7 +62,11 @@ public final class PipeIndexMaster {
                               final String edgeId,
                               final String dstTaskId) {
     if (!taskIndexMap.containsKey(Triple.of(srcTaskId, edgeId, dstTaskId))) {
-      taskIndexMap.put(Triple.of(srcTaskId, edgeId, dstTaskId), atomicInteger.getAndIncrement());
+      taskIndexMap.putIfAbsent(Triple.of(srcTaskId, edgeId, dstTaskId), atomicInteger.getAndIncrement());
+    }
+
+    if (!taskIndexMap.containsKey(Triple.of(dstTaskId, edgeId, srcTaskId))) {
+      taskIndexMap.putIfAbsent(Triple.of(dstTaskId, edgeId, srcTaskId), atomicInteger.getAndIncrement());
     }
   }
 
