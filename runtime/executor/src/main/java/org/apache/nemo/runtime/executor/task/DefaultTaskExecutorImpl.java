@@ -273,14 +273,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
         pipeManagerWorker.registerTaskForInput(
-          RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
           task.getTaskId(),
           new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
       } else {
         for (int i = 0; i < parallelism; i++) {
           pipeManagerWorker.registerTaskForInput(
-            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
+            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
             task.getTaskId(),
             new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
