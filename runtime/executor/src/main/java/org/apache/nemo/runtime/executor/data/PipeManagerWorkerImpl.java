@@ -96,7 +96,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }, flushPeriod, flushPeriod, TimeUnit.MILLISECONDS);
   }
 
-
   @Override
   public void registerTaskForInput(final String srcTaskId,
                                    final String dstTaskId,
@@ -105,6 +104,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final int srcTaskIndex = taskIndexMapWorker.getTaskIndex(srcTaskId);
     final int dstTaskIndex = taskIndexMapWorker.getTaskIndex(dstTaskId);
     final Pair<Integer, Integer> key = Pair.of(srcTaskIndex, dstTaskIndex);
+
+    LOG.info("Registering task for input reader {}->{} / {}->{}",
+      srcTaskId, dstTaskId, srcTaskIndex, dstTaskIndex);
 
     if (taskInputReaderMap.containsKey(key)) {
       throw new RuntimeException("Task is already registered " + key);
