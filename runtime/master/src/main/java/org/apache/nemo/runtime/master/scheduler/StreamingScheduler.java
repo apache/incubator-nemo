@@ -117,7 +117,7 @@ public final class StreamingScheduler implements Scheduler {
             final String srcTask =
               RuntimeIdManager.generateTaskId(inEdge.getSrc().getId(), i, 0);
             pipeIndexMaster.onTaskScheduled(srcTask, inEdge.getId(), taskId);
-            pipeManagerMaster.onTaskScheduled(inEdge.getId(), i);
+            // pipeManagerMaster.onTaskScheduled(inEdge.getId(), i);
           }
         });
         // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
