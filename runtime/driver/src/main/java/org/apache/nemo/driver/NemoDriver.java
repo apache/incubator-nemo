@@ -31,6 +31,8 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.JobScaler;
@@ -308,7 +310,16 @@ public final class NemoDriver {
     final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
     final Configuration evalConfiguration = evalConf.getConfiguration();
 
-    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration, evalConfiguration);
+    final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
+      .build();
+
+    return Configurations.merge(c,
+      executorConfiguration,
+      contextConfiguration,
+      ncsConfiguration,
+      messageConfiguration,
+      evalConfiguration);
   }
 
   private Configuration getExecutorNcsConfiguration() {
