@@ -280,7 +280,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       } else {
         for (int i = 0; i < parallelism; i++) {
           pipeManagerWorker.registerTaskForInput(
-            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, i),
+            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
             task.getTaskId(),
             new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThread));
@@ -821,7 +821,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               } else {
                 for (int i = 0; i < parallelism; i++) {
                   pipeManagerWorker.registerTaskForInput(
-                    RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, i),
+                    RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
                     task.getTaskId(),
                     parentTaskReader);
                 }
