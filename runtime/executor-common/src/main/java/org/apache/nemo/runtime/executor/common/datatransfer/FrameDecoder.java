@@ -20,8 +20,6 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.slf4j.Logger;
@@ -66,9 +64,9 @@ import java.util.*;
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
-  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
+  private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES + Integer.BYTES;
 
-  private final ContextManager contextManager;
+  private final PipeManagerWorker pipeManagerWorker;
 
   /**
    * The number of bytes consisting body of a control frame to be read next.
@@ -84,9 +82,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   /**
    * The {@link ByteInputContext} to which received bytes are added.
    */
-  private ByteInputContext inputContext;
-  private List<ByteInputContext> inputContexts;
-
   private boolean broadcast = false;
 
   /**
@@ -95,14 +90,13 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private boolean isLastFrame;
   private boolean isStop;
 
-  private final Map<Integer, Collection<ByteBuf>> pendingByteBufMap;
 
-  private int currTransferIndex;
-  private List<Integer> currTransferIndices;
+  private int srcTaskIndex;
+  private int dtTaskIndex;
+  private List<Integer> currTaskIndices;
 
-  public FrameDecoder(final ContextManager contextManager) {
-    this.contextManager = contextManager;
-    this.pendingByteBufMap = new HashMap<>();
+  public FrameDecoder(final PipeManagerWorker pipeManagerWorker) {
+    this.pipeManagerWorker = pipeManagerWorker;
   }
 
   @Override
@@ -141,15 +135,13 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
     broadcast = true;
 
-    currTransferIndices = new ArrayList<>(broadcastSize);
-    inputContexts = new ArrayList<>(broadcastSize);
+    currTaskIndices = new ArrayList<>(broadcastSize);
 
     for (int i = 0; i < broadcastSize; i++) {
-      currTransferIndices.add(in.readInt());
-      inputContexts.add(contextManager.getInputContext(dataDirection, currTransferIndices.get(i)));
+      currTaskIndices.add(in.readInt());
     }
 
-    // LOG.info("IsContextBroadcast transfier ids {}!!", currTransferIndices);
+    // LOG.info("IsContextBroadcast transfier ids {}!!", currTaskIndices);
 
     final long length = in.readUnsignedInt();
 
@@ -178,7 +170,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private boolean onFrameStarted(final ChannelHandlerContext ctx, final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead == 0);
-    assert (inputContext == null);
 
     if (in.readableBytes() < HEADER_LENGTH) {
       // cannot read a frame header frame now
@@ -192,14 +183,16 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       // rm zero byte
       in.readByte();
       in.readInt();
+      in.readInt();
       final long length = in.readUnsignedInt();
-      // LOG.info("Control message...?? length {}", length);
+      LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
       if (length < 0) {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
       }
 
     } else {
+      srcTaskIndex = in.readInt();
       isContextBroadcast = in.readBoolean();
       final int sizeOrIndex = in.readInt();
 
@@ -215,10 +208,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         broadcastSize = 0;
         broadcast = false;
 
-        currTransferIndex = sizeOrIndex;
-        inputContext = contextManager.getInputContext(dataDirection, currTransferIndex);
-
+        dtTaskIndex = sizeOrIndex;
         final long length = in.readUnsignedInt();
+
+        // LOG.info("Receive srcTaskIndex {}->{}, body size: {}", srcTaskIndex, dtTaskIndex, length);
 
         // setup context for reading data frame body
         dataBodyBytesToRead = length;
@@ -247,7 +240,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       throws InvalidProtocolBufferException {
     assert (controlBodyBytesToRead > 0);
     assert (dataBodyBytesToRead == 0);
-    assert (inputContext == null);
 
     assert (controlBodyBytesToRead <= Integer.MAX_VALUE);
 
@@ -295,7 +287,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private boolean onDataBodyAdded(final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead > 0);
-    assert (inputContext != null);
 
     if (dataBodyBytesToRead == 0) {
       throw new RuntimeException("Data body bytes zero");
@@ -325,43 +316,14 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     if (broadcast) {
       // buf.retain(inputContexts.size() - 1);
       // LOG.info("Broadcast variable !! ");
-      for (int i = 0; i < inputContexts.size(); i++) {
-        final ByteInputContext ic = inputContexts.get(i);
-        final Integer ti = currTransferIndices.get(i);
-
-        if (ic == null) {
-          LOG.info("Add bytebuf for null transferIndex {}", ti);
-          pendingByteBufMap.putIfAbsent(ti, new LinkedList<>());
-          pendingByteBufMap.get(ti).add(buf.retainedDuplicate());
-        } else {
-          if (pendingByteBufMap.containsKey(ti)) {
-            LOG.info("Flushing pending bytebuf for transferIndex {}", ti);
-            for (final ByteBuf pendingByte : pendingByteBufMap.remove(ti)) {
-              ic.onByteBuf(pendingByte);
-            }
-          }
-          //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
-          ic.onByteBuf(buf.retainedDuplicate());
-        }
+      for (int i = 0; i < currTaskIndices.size(); i++) {
+        final Integer ti = currTaskIndices.get(i);
+        pipeManagerWorker.addInputData(srcTaskIndex, ti, buf.retainedDuplicate());
       }
 
       buf.release();
     } else {
-      if (inputContext == null) {
-        LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
-        pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
-        pendingByteBufMap.get(currTransferIndex).add(buf);
-      } else {
-        if (pendingByteBufMap.containsKey(currTransferIndex)) {
-          LOG.info("Flushing pending bytebuf for transferIndex {}", currTransferIndex);
-          for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
-            inputContext.onByteBuf(pendingByte);
-          }
-        }
-
-        //LOG.info("Add body to input context {}", inputContext.getContextId().getTransferIndex());
-        inputContext.onByteBuf(buf);
-      }
+      pipeManagerWorker.addInputData(srcTaskIndex, dtTaskIndex, buf);
     }
 
     onDataFrameEnd();

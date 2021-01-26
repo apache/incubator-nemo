@@ -1,16 +1,8 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
-import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
@@ -24,18 +16,12 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.task.TinyTaskOffloader;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.vmscaling.VMScalingWorkerConnector;
-import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.TaskEndEvent;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.annotations.Parameter;
-import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,6 +83,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
   private final VMScalingFromSfToVmHandler vmScalingHandler;
 
+  private final TaskScheduledMapWorker taskScheduledMapWorker;
+
   @Inject
   private JobScalingHandlerWorker(
     @Parameter(NameResolverNameServerAddr.class) final String serverAddr,
@@ -120,6 +108,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     final ScalingOutCounter scalingOutCounter,
     final SFTaskMetrics sfTaskMetrics,
     final PipeManagerWorker pipeManagerWorker,
+    final TaskScheduledMapWorker taskScheduledMapWorker,
     final VMScalingWorkerConnector vmScalingWorkerConnector,
     final VMScalingFromSfToVmHandler vmScalingHandler) {
     this.nameServerAddr = serverAddr;
@@ -139,6 +128,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     this.pipeManagerWorker = pipeManagerWorker;
     this.vmScalingWorkerConnector = vmScalingWorkerConnector;
     this.vmScalingHandler = vmScalingHandler;
+    this.taskScheduledMapWorker = taskScheduledMapWorker;
     LOG.info("Start JobScalingHandlerWorker");
 
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
@@ -517,8 +507,8 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
         if (mvToVmScaling) {
           // sf -> vm -> vm scaling
-          final String newExecutorId = pipeManagerWorker
-            .getTaskExecutorIdMap().get(offloadedTask.getId());
+          final String newExecutorId =  taskScheduledMapWorker
+            .getRemoteExecutorId(offloadedTask.getId());
 
           final Channel workerChannel = vmScalingWorkerConnector
             .connectTo(newExecutorId, stageId,
@@ -747,7 +737,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
             } else {
               final List<ControlMessage.TaskLocation> taskLocations = scalingMsg.getTaskLocationList();
-              final Map<String, String> taskExecutorIdMap = pipeManagerWorker.getTaskExecutorIdMap();
+              final Map<String, String> taskExecutorIdMap = null; // TODO pipeManagerWorker.getTaskExecutorIdMap();
 
               // update task location
               taskLocationMap.locationMap.clear();
@@ -796,7 +786,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             }
           } else {
 
-            final Map<String, String> taskExecutorIdMap = pipeManagerWorker.getTaskExecutorIdMap();
+            final Map<String, String> taskExecutorIdMap = null; // TODO pipeManagerWorker.getTaskExecutorIdMap();
             final List<ControlMessage.TaskExecutorIdEntryMessage> taskExecutorIdEntryMessages =
               scalingMsg.getTaskExecutorIdList();
 

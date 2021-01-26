@@ -18,11 +18,13 @@
  */
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.Serializer;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -46,14 +48,14 @@ public interface InputReader {
    */
   List<CompletableFuture<IteratorWithNumBytes>> read();
 
+  // TODO
+  void addControl();
 
-  // input stream and src task index pair
-  void readAsync(String taskId,
-                 EventHandler<Pair<IteratorWithNumBytes, Integer>> handler);
-
-  List<IteratorWithNumBytes> readBlocking();
+  void addData(ByteBuf data);
 
   IRVertex getSrcIrVertex();
+
+  Serializer getSerializer();
 
   int getTaskIndex();
 

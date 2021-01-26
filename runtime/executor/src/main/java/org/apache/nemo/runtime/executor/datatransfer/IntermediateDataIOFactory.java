@@ -18,12 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.TaskLocationMap;
@@ -31,15 +29,14 @@ import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Map;
 import java.util.Optional;
-import java.util.PriorityQueue;
 
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
@@ -50,21 +47,21 @@ public final class IntermediateDataIOFactory {
   private final TaskInputContextMap taskInputContextMap;
   private final String executorId;
   private final RelayServer relayServer;
-  private final TaskLocationMap taskLocationMap;
+  private final SerializerManager serializerManager;
 
   @Inject
   private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
                                     @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                     final PipeManagerWorker pipeManagerWorker,
+                                    final SerializerManager serializerManager,
                                     final TaskInputContextMap taskInputContextMap,
-                                    final TaskLocationMap taskLocationMap,
                                     final RelayServer relayServer) {
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskInputContextMap = taskInputContextMap;
     this.executorId = localExecutorId;
     this.relayServer = relayServer;
-    this.taskLocationMap = taskLocationMap;
+    this.serializerManager = serializerManager;
   }
 
   /**
@@ -87,7 +84,7 @@ public final class IntermediateDataIOFactory {
     final ExecutorThread executorThread,
     final TaskMetrics taskMetrics) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      relayServer, rendevousServerClient, executorThread, taskMetrics);
+      serializerManager.getSerializer(runtimeEdge.getId()), taskMetrics);
   }
 
   /**
@@ -99,12 +96,13 @@ public final class IntermediateDataIOFactory {
    * @return the {@link InputReader} created.
    */
   public InputReader createReader(final int dstTaskIdx,
+                                  final String taskId,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge,
-                                  final TaskExecutor taskExecutor) {
+                                  final ExecutorThread executorThread) {
     if (isPipe(runtimeEdge)) {
-      return new PipeInputReader(executorId, dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap,
-        relayServer, taskExecutor);
+      return new PipeInputReader(srcIRVertex, taskId, runtimeEdge,
+        serializerManager.getSerializer(runtimeEdge.getId()), executorThread);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

@@ -18,6 +18,7 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.TaskMoveEvent;
 import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
@@ -92,8 +93,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
-                            final Map<String, String> taskExecutorIdMap,
-                            final Map<TransferKey, Integer> taskTransferIndexMap,
+                            // final Map<String, String> taskExecutorIdMap,
+                            // final Map<TransferKey, Integer> taskTransferIndexMap,
                             final String relayServerAddress,
                             final int relayServerPort,
                             final String rendevousServerAddress,
@@ -106,8 +107,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.executorId = executorId;
     this.executorAddressMap = executorAddressMap;
     this.serializerMap = serializerMap;
-    this.taskExecutorIdMap = taskExecutorIdMap;
-    this.taskTransferIndexMap = taskTransferIndexMap;
+    // this.taskExecutorIdMap = taskExecutorIdMap;
+    // this.taskTransferIndexMap = taskTransferIndexMap;
+    // TODO:
+    this.taskExecutorIdMap = null;
+    this.taskTransferIndexMap = null;
     this.taskAssignedMap = new ConcurrentHashMap<>();
     this.taskExecutorStartTimeMap = new ConcurrentHashMap<>();
     this.relayServerAddress = relayServerAddress;
@@ -264,11 +268,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       initializer.setByteTransfer(byteTransfer);
       relayServerClientChannelInitializer.setByteTransfer(byteTransfer);
 
-      pipeManagerWorker =
-        new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient, isSf);
+      // pipeManagerWorker =
+      //  new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient, isSf);
 
-      intermediateDataIOFactory =
-        new IntermediateDataIOFactory(pipeManagerWorker);
+      // intermediateDataIOFactory =
+      //  new IntermediateDataIOFactory(pipeManagerWorker);
     } else {
 
       /*

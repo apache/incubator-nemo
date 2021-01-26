@@ -25,7 +25,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RendevousServer;
-import org.apache.nemo.runtime.master.TaskScheduledMap;
+import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
 import org.apache.nemo.runtime.master.VMScalingAddresses;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
@@ -65,7 +65,7 @@ public final class TaskDispatcher {
   private final ExecutorRegistry executorRegistry;
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
-  private final TaskScheduledMap taskScheduledMap;
+  private final TaskScheduledMapMaster taskScheduledMap;
   private final RendevousServer rendevousServer;
 
   @Inject
@@ -74,7 +74,7 @@ public final class TaskDispatcher {
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager,
-                         final TaskScheduledMap taskScheduledMap,
+                         final TaskScheduledMapMaster taskScheduledMap,
                          final RendevousServer rendevousServer) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->

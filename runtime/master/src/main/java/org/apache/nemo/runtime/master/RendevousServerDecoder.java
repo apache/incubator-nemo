@@ -28,13 +28,13 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
-  private final TaskScheduledMap taskScheduledMap;
+  private final TaskScheduledMapMaster taskScheduledMap;
 
   public RendevousServerDecoder(final ConcurrentMap<String, List<Channel>> dstRequestChannelMap,
                                 final ConcurrentMap<String, Channel> rendevousChannelMap,
                                 final ScheduledExecutorService scheduledExecutorService,
                                 final WatermarkManager watermarkManager,
-                                final TaskScheduledMap taskScheduledMap) {
+                                final TaskScheduledMapMaster taskScheduledMap) {
     this.dstRequestChannelMap = dstRequestChannelMap;
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = scheduledExecutorService;

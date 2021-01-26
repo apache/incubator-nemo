@@ -33,7 +33,7 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
 import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
@@ -73,7 +73,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
   private final AckScheduledService ackScheduledService;
 
   // key: runtimeId, taskIndex, outputStream , value: transferIndex
-  private final Map<TransferKey, Integer> taskTransferIndexMap;
 
   private final ExecutorService channelExecutorService;
   private final PersistentConnectionToMasterMap toMaster;
@@ -98,7 +97,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
                                    final String localExecutorId,
                                    final Channel channel,
                                    final AckScheduledService ackScheduledService,
-                                   final Map<TransferKey, Integer> taskTransferIndexMap,
                                    final ConcurrentMap<Integer, ByteInputContext> inputContexts,
                                    final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
                                    //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
@@ -114,7 +112,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.ackScheduledService = ackScheduledService;
-    this.taskTransferIndexMap = taskTransferIndexMap;
     this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;
     this.inputContexts = inputContexts;
@@ -262,101 +259,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
         break;
       }
       case CONTROL: {
-        if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
-          //LOG.info("inputContextsInitiatedByRemote: {}", inputContexts.size());
-
-          final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-          //LOG.info("Input Receive transfer index : {}/{} {}->{}", transferIndex, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), cd.getDstTaskIndex());
-          if (inputContexts.containsKey(transferIndex)) {
-            throw new RuntimeException(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-              transferIndex));
-            /*
-            // THIS always should be in SF
-            taskLocationMap.locationMap.put(
-              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.TaskLoc.SF);
-            final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-            // reset the channel!
-            inputContext.setContextManager(this);
-            */
-
-            //return inputContextsInitiatedByRemote.get(transferIndex);
-          } else {
-            final ByteInputContext c = new StreamRemoteByteInputContext(
-              remoteExecutorId, contextId, contextDescriptor, this,
-              ackScheduledService.ackService, relayServer);
-
-            if (inputContexts.putIfAbsent(transferIndex, c) != null) {
-              LOG.warn(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-                transferIndex));
-            } else {
-
-              // ADD Task Transfer Index !!
-              final TransferKey key =
-                new TransferKey(cd.getRuntimeEdgeId(),
-                  (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
-
-              taskTransferIndexMap.put(key, transferIndex);
-              toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
-                ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
-                  .setType(ControlMessage.MessageType.RegisterTransferIndex)
-                  .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
-                    .setKey(ControlMessage.TransferKeyProto.newBuilder()
-                      .setEdgeId(key.edgeId)
-                      .setSrcTaskIndex(key.srcTaskIndex)
-                      .setDstTaskIndex(key.dstTaskIndex)
-                      .setIsOutputTransfer(key.isOutputTransfer)
-                      .build())
-                    .setIndex(transferIndex)
-                    .build())
-                  .build());
-
-              if (isPipe) {
-                try {
-                  pipeManagerWorker.onInputContext(c);
-                } catch (InvalidProtocolBufferException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
-                }
-              } else {
-                blockManagerWorker.onInputContext(c);
-              }
-              inputContexts.putIfAbsent(transferIndex, c);
-            }
-          }
-
-        } else {
-          //LOG.info("outputContextsInitiatedByRemote: {}", outputContexts.size());
-          //LOG.info("Output Receive transfer index : {}", transferIndex);
-          if (outputContexts.containsKey(transferIndex)) {
-            throw new RuntimeException(String.format("Duplicate output context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-              transferIndex));
-
-            /*
-            final String addr = ctx.channel().remoteAddress().toString().split(":")[0];
-            LOG.info("Remote byte output address: {} ", addr);
-            final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-            outputContext.scaleoutToVm(channel);
-            */
-          } else {
-            final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
-              contextDescriptor, this, taskLocationMap);
-            try {
-              if (isPipe) {
-                pipeManagerWorker.onOutputContext(c);
-              } else {
-                blockManagerWorker.onOutputContext(c);
-              }
-            } catch (InvalidProtocolBufferException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-
-            outputContexts.putIfAbsent(transferIndex, c);
-          }
-        }
-        break;
+        throw new RuntimeException("Unknow control message " + message);
       }
       default:
         throw new RuntimeException("Unsupported type: " + message.getMessageType());
@@ -436,47 +339,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
   }
 
   /**
-   * Initiates a context and stores to the specified map.
-   * @param contexts map for storing context
-   * @param dataDirection data direction to include in the context id
-   * @param contextGenerator a function that returns context from context id
-   * @param executorId id of the remote executor
-   * @param <T> {@link ByteInputContext} or {@link ByteOutputContext}
-   * @param isPipe is a pipe context
-   * @return generated context
-   */
-  <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
-                                               final int transferIndex,
-                                               final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
-                                               final Function<ByteTransferContext.ContextId, T> contextGenerator,
-                                               final String executorId,
-                                               final boolean isPipe,
-                                               final boolean isLocal) {
-    setRemoteExecutorId(executorId);
-    final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
-    final T context = contexts.compute(transferIndex, (index, existingContext) -> {
-      if (existingContext != null) {
-        throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
-      }
-      return contextGenerator.apply(contextId);
-    });
-
-    final ByteTransferContextSetupMessage message =
-      new ByteTransferContextSetupMessage(localExecutorId,
-        context.getContextId().getTransferIndex(),
-        context.getContextId().getDataDirection(),
-        context.getContextDescriptor(),
-        context.getContextId().isPipe());
-
-    if (isLocal) {
-      // do nothing
-    } else {
-      channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
-    }
-    return context;
-  }
-
-  /**
    * Create a new {@link ByteInputContext}.
    * @param executorId target executor id
    * @param contextDescriptor the context descriptor
@@ -485,33 +347,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
    */
   @Override
   public ByteInputContext newInputContext(final String executorId, final PipeTransferContextDescriptor contextDescriptor, final boolean isPipe) {
-    final TransferKey key = new TransferKey(contextDescriptor.getRuntimeEdgeId(),
-      (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), false);
-
-    final int transferIndex = requestTransferIndex(true);
-    //LOG.info("Requesting input transferIndex: {}", transferIndex);
-    taskTransferIndexMap.put(key, transferIndex);
-    toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
-      ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
-        .setType(ControlMessage.MessageType.RegisterTransferIndex)
-        .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
-          .setKey(ControlMessage.TransferKeyProto.newBuilder()
-            .setEdgeId(key.edgeId)
-            .setSrcTaskIndex(key.srcTaskIndex)
-            .setDstTaskIndex(key.dstTaskIndex)
-            .setIsOutputTransfer(key.isOutputTransfer)
-            .build())
-          .setIndex(transferIndex)
-          .build())
-        .build());
-
-    return newContext(inputContexts, transferIndex,
-      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
-      contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(),
-        this, ackScheduledService.ackService, relayServer),
-      executorId, isPipe, false);
+    throw new RuntimeException("New input context " + executorId + ", " + contextDescriptor.toString());
   }
 
   /**
@@ -524,68 +360,8 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
   public ByteOutputContext newOutputContext(final String executorId,
                                             final PipeTransferContextDescriptor descriptor,
                                             final boolean isPipe) {
-    final TransferKey key = new TransferKey(descriptor.getRuntimeEdgeId(),
-      (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
-    final int transferIndex = requestTransferIndex(false);
-    //LOG.info("Requesting output transferIndex: {}, local: {}->{}, " +
-    //  "{}, {}->{}", transferIndex, localExecutorId, executorId,
-    //  descriptor.getRuntimeEdgeId(), descriptor.getSrcTaskIndex(), descriptor.getDstTaskIndex());
-
-    taskTransferIndexMap.put(key, transferIndex);
-
-    toMaster.getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).send(
-      ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
-        .setType(ControlMessage.MessageType.RegisterTransferIndex)
-        .setRegisterTransferIndexMsg(ControlMessage.RegisterTransferIndexMessage.newBuilder()
-          .setKey(ControlMessage.TransferKeyProto.newBuilder()
-            .setEdgeId(key.edgeId)
-            .setSrcTaskIndex(key.srcTaskIndex)
-            .setDstTaskIndex(key.dstTaskIndex)
-            .setIsOutputTransfer(key.isOutputTransfer)
-            .build())
-          .setIndex(transferIndex)
-          .build())
-        .build());
-
-    return newContext(outputContexts, transferIndex,
-      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-      contextId -> new RemoteByteOutputContext(executorId, contextId,
-        descriptor.encode(), this, taskLocationMap),
-      executorId, isPipe, false);
-
-    /*
-    if (localExecutorId.equals(executorId)) {
-      final Queue<Object> queue = new ConcurrentLinkedQueue<>();
-      return newContext(outputContextsInitiatedByLocal, transferIndex,
-        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> {
-        final LocalByteOutputContext localByteOutputContext =
-          new LocalByteOutputContext(executorId, contextId,
-            contextDescriptor, this, queue, vmScalingClientTransport);
-        final LocalByteInputContext localByteInputContext =
-          new LocalByteInputContext(executorId, contextId, contextDescriptor, this, queue, localByteOutputContext, ackScheduledService.ackService);
-        localByteOutputContext.setLocalByteInputContext(localByteInputContext);
-          inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), localByteInputContext);
-          try {
-            pipeManagerWorker.onInputContext(localByteInputContext);
-          } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-          return localByteOutputContext;
-        },
-        executorId, isPipe, true);
-    } else {
-      return newContext(outputContextsInitiatedByLocal, transferIndex,
-        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> new RemoteByteOutputContext(executorId, contextId,
-          contextDescriptor, this, vmScalingClientTransport),
-        executorId, isPipe, false);
-    }
-    */
+    throw new RuntimeException("New input context " + executorId + ", " + descriptor.toString());
   }
 
   /**

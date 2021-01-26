@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.master;
 
-import com.amazonaws.transform.PathMarshallers;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
@@ -40,6 +39,7 @@ import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -50,7 +50,6 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -67,6 +66,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
@@ -97,49 +97,32 @@ public final class RuntimeMaster {
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
-  private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final ClientRPC clientRPC;
-  private final MetricManagerMaster metricManagerMaster;
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-  private final String jobId;
-  private final String dagDirectory;
-  private final String dbAddress;
-  private final String dbId;
-  private final String dbPassword;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
-  // REST API server for web metric visualization ui.
-  private final Server metricServer;
-  private final MetricStore metricStore;
 
-  private final ServerlessContainerWarmer warmer;
+  private final TaskScheduledMapMaster taskScheduledMap;
 
-  private final TaskScheduledMap taskScheduledMap;
+  private final ExecutorRegistry executorRegistry;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
-                        final TaskScheduledMap taskScheduledMap,
+                        final TaskScheduledMapMaster taskScheduledMap,
                         final ContainerManager containerManager,
-                        final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
-                        final MetricManagerMaster metricManagerMaster,
-                        final ServerlessContainerWarmer warmer,
-                        final EvalConf evalConf,
                         final PlanStateManager planStateManager,
-                        @Parameter(JobConf.JobId.class) final String jobId,
-                        @Parameter(JobConf.DBAddress.class) final String dbAddress,
-                        @Parameter(JobConf.DBId.class) final String dbId,
-                        @Parameter(JobConf.DBPasswd.class) final String dbPassword,
-                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) throws IOException {
+                        final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.executorRegistry = executorRegistry;
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> {
           final Thread t = new Thread(runnable, "RuntimeMaster thread");
@@ -170,25 +153,14 @@ public final class RuntimeMaster {
 
     this.scheduler = scheduler;
     this.containerManager = containerManager;
-    this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
-    this.metricManagerMaster = metricManagerMaster;
-    this.jobId = jobId;
-    this.dagDirectory = dagDirectory;
-    this.dbAddress = dbAddress;
-    this.dbId = dbId;
-    this.dbPassword = dbPassword;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.metricServer = startRestMetricServer();
-    this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
-    this.warmer = warmer;
-    this.warmer.start(evalConf.poolSize);
   }
 
   public ExecutorService getRuntimeMasterThread() {
@@ -229,11 +201,13 @@ public final class RuntimeMaster {
    */
   public void flushMetrics() {
     // send metric flush request to all executors
+    /*
     metricManagerMaster.sendMetricFlushRequest();
 
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
     metricStore.saveOptimizationMetricsToDB(dbAddress, dbId, dbPassword);
+    */
   }
 
   /**
@@ -294,15 +268,7 @@ public final class RuntimeMaster {
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
-        metricMessageHandler.terminate();
         containerManager.terminate();
-
-        try {
-          metricServer.stop();
-          metricServer.destroy();
-        } catch (final Exception e) {
-          throw new MetricException("Failed to stop rest api server: " + e);
-        }
       });
     }
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
@@ -415,6 +381,20 @@ public final class RuntimeMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
+        case CurrentExecutor: {
+          executorRegistry.viewExecutors(executors -> {
+            final Set<String> executorIds =
+              executors.stream().map(e -> e.getExecutorId()).collect(Collectors.toSet());
+            messageContext.reply(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.CurrentExecutor)
+                .addAllCurrExecutors(executorIds)
+                .build());
+          });
+          break;
+        }
         case RequestBroadcastVariable:
           final Serializable broadcastId =
             SerializationUtils.deserialize(message.getRequestbroadcastVariableMsg().getBroadcastId().toByteArray());
@@ -468,10 +448,12 @@ public final class RuntimeMaster {
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+        /*
         metricList.forEach(metric ->
             metricMessageHandler.onMetricMessageReceived(
                 metric.getMetricType(), metric.getMetricId(),
                 metric.getMetricField(), metric.getMetricValue().toByteArray()));
+                */
         break;
       case ExecutorDataCollected:
         final String serializedData = message.getDataCollected().getData();

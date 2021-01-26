@@ -18,18 +18,18 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,152 +46,38 @@ public final class PipeInputReader implements InputReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(PipeInputReader.class.getName());
 
-  private final PipeManagerWorker pipeManagerWorker;
 
-  private final int dstTaskIndex;
 
   /**
    * Attributes that specify how we should read the input.
    */
   private final IRVertex srcVertex;
+  private final String taskId;
   private final RuntimeEdge runtimeEdge;
-  private final TaskInputContextMap taskInputContextMap;
-
-  private final Set<ByteInputContext> byteInputContexts;
-
-  private final String executorId;
-  private final RelayServer relayServer;
-
-  private final AtomicBoolean stopped = new AtomicBoolean(false);
-
-  private final TaskExecutor taskExecutor;
+  private final Serializer serializer;
+  private final ExecutorThread executorThread;
   private DataFetcher dataFetcher;
 
-  PipeInputReader(final String executorId,
-                  final int dstTaskIdx,
-                  final IRVertex srcIRVertex,
-                  final RuntimeEdge runtimeEdge,
-                  final PipeManagerWorker pipeManagerWorker,
-                  final TaskInputContextMap taskInputContextMap,
-                  final RelayServer relayServer,
-                  final TaskExecutor taskExecutor) {
-    this.executorId = executorId;
-    this.dstTaskIndex = dstTaskIdx;
-    this.taskExecutor = taskExecutor;
+  public PipeInputReader(final IRVertex srcIRVertex,
+                         final String taskId,
+                         final RuntimeEdge runtimeEdge,
+                         final Serializer serializer,
+                         final ExecutorThread executorThread) {
     this.srcVertex = srcIRVertex;
-    this.taskInputContextMap = taskInputContextMap;
+    this.taskId = taskId;
     this.runtimeEdge = runtimeEdge;
-    this.pipeManagerWorker = pipeManagerWorker;
-    this.byteInputContexts = new HashSet<>();
-    this.relayServer = relayServer;
-    this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
+    this.serializer = serializer;
+    this.executorThread = executorThread;
   }
 
 
   @Override
   public Future<Integer> stop(final String taskId) {
-    if (!stopped.compareAndSet(false, true)) {
-      return new Future<Integer>() {
-        @Override
-        public boolean cancel(boolean mayInterruptIfRunning) {
-          return false;
-        }
-
-        @Override
-        public boolean isCancelled() {
-          return false;
-        }
-
-        @Override
-        public boolean isDone() {
-          return true;
-        }
-
-        @Override
-        public Integer get() throws InterruptedException, ExecutionException {
-          return 1;
-        }
-
-        @Override
-        public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-          return null;
-        }
-      };
-    }
-
-    final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
-
-    for (final ByteInputContext byteInputContext : byteInputContexts) {
-      //LOG.info("Send message from {}, {}, edge: {}", taskId, pendingMsg, runtimeEdge.getId());
-
-      byteInputContext.sendStopMessage((m) -> {
-        atomicInteger.decrementAndGet();
-        //LOG.info("receive ack at {}, {}!!", taskId, );
-
-        //byteInputContext.sendStopMessage();
-        //throw new RuntimeException("TODO");
-      });
-
-    }
-
-    return new Future<Integer>() {
-      @Override
-      public boolean cancel(boolean mayInterruptIfRunning) {
-        return false;
-      }
-
-      @Override
-      public boolean isCancelled() {
-        return false;
-      }
-
-      @Override
-      public boolean isDone() {
-        return atomicInteger.get() == 0;
-      }
-
-      @Override
-      public Integer get() throws InterruptedException, ExecutionException {
-        return byteInputContexts.size();
-      }
-
-      @Override
-      public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        final long st = System.currentTimeMillis();
-        while (System.currentTimeMillis() - st < unit.toMillis(timeout)) {
-          if (isDone()) {
-            return get();
-          } else {
-            Thread.sleep(200);
-          }
-        }
-
-        throw new TimeoutException();
-      }
-    };
+    return null;
   }
 
   @Override
   public synchronized void restart() {
-    stopped.set(false);
-    final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
-
-    for (final ByteInputContext byteInputContext : byteInputContexts) {
-
-
-      LOG.info("Send resume message {}", taskExecutor.getId());
-
-      byteInputContext.restart(taskExecutor.getId());
-      /*
-      byteInputContext.sendStopMessage(pendingMsg, (m) -> {
-        LOG.info("receive ack!!");
-        atomicInteger.decrementAndGet();
-        //byteInputContext.sendStopMessage();
-        //throw new RuntimeException("TODO");
-      });
-      */
-
-    }
   }
 
   @Override
@@ -201,6 +87,8 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
+    return null;
+    /*
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
@@ -217,53 +105,18 @@ public final class PipeInputReader implements InputReader {
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
+    */
   }
 
   @Override
-  public void readAsync(final String taskId,
-                        final EventHandler<Pair<IteratorWithNumBytes, Integer>> handler) {
-    pipeManagerWorker
-      .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
-        final ByteInputContext context = pair.left();
-
-        context.setTaskId(taskId);
-        taskInputContextMap.put(taskId, context);
-
-        byteInputContexts.add(context);
-
-        final int srcTaskIndex = pair.right();
-
-        //if (context instanceof LocalByteInputContext) {
-        //  final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
-        //  handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
-        //} else
-        if (context instanceof StreamRemoteByteInputContext) {
-          handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()), taskExecutor, dataFetcher),
-            srcTaskIndex));
-        } else {
-          throw new RuntimeException("Unsupported type " + context);
-        }
-      });
+  public void addControl() {
+    // TODO
   }
 
-  public List<IteratorWithNumBytes> readBlocking() {
-
-    /**********************************************************/
-    /* 여기서 pipe container 같은거 사용하기
-    /**********************************************************/
-    final List<ByteInputContext> byteInputContexts = pipeManagerWorker.getInputContexts(runtimeEdge, dstTaskIndex);
-
-    return byteInputContexts.stream()
-      .map(context -> {
-        return new DataUtil.InputStreamIterator(context.getInputStreams(),
-          pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()));
-      })
-      .collect(Collectors.toList());
-
-
-    /**********************************************************/
-    /**********************************************************/
+  @Override
+  public void addData(ByteBuf data) {
+    executorThread.queue.add(
+      new TaskHandlingDataEvent(taskId, dataFetcher, data, serializer));
   }
 
   @Override
@@ -272,8 +125,13 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public Serializer getSerializer() {
+    return serializer;
+  }
+
+  @Override
   public int getTaskIndex() {
-    return dstTaskIndex;
+    return -10;
   }
 
 }

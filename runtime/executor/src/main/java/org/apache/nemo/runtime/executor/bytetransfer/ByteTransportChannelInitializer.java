@@ -27,10 +27,9 @@ import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.TaskIndexMapWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -80,7 +79,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
-  private final TaskTransferIndexMap taskTransferIndexMap;
+  private final TaskIndexMapWorker taskTransferIndexMap;
 
 
   private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
@@ -105,7 +104,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private ByteTransportChannelInitializer(
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
-                                          final TaskTransferIndexMap taskTransferIndexMap,
+                                          final TaskIndexMapWorker taskTransferIndexMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                           final PersistentConnectionToMasterMap toMaster,
                                           final EvalConf evalConf,
@@ -147,7 +146,6 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       ch,
       //vmScalingClientTransport.get(),
       ackScheduledService,
-      taskTransferIndexMap.getMap(),
       inputContexts,
       outputContexts,
       toMaster,
@@ -157,7 +155,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
 
     ch.pipeline()
       // inbound
-      .addLast(new FrameDecoder(contextManager))
+      .addLast(new FrameDecoder(pipeManagerWorker))
       // outbound
       .addLast(controlFrameEncoder)
       .addLast(dataFrameEncoder)

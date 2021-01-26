@@ -7,7 +7,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -45,7 +44,7 @@ public final class JobScaler {
 
   private static final Logger LOG = LoggerFactory.getLogger(JobScaler.class.getName());
 
-  private final TaskScheduledMap taskScheduledMap;
+  private final TaskScheduledMapMaster taskScheduledMap;
 
   private Map<ExecutorRepresenter, Map<String, Integer>> prevScalingCountMap;
 
@@ -108,7 +107,7 @@ public final class JobScaler {
   private final PlanStateManager planStateManager;
 
   @Inject
-  private JobScaler(final TaskScheduledMap taskScheduledMap,
+  private JobScaler(final TaskScheduledMapMaster taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
                     final TaskLocationMap taskLocationMap,
                     final TaskOffloadingManager taskOffloadingManager,

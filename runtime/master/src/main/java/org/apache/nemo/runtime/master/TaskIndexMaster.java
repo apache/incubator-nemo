@@ -41,24 +41,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 @DriverSide
 public final class TaskIndexMaster {
   private static final Logger LOG = LoggerFactory.getLogger(TaskIndexMaster.class.getName());
-  private final Map<String, AtomicInteger> stageIndexMap;
 
   /**
    * Constructor.
    * @param masterMessageEnvironment the message environment.
    */
+
+  private final Map<String, Integer> taskIndexMap = new ConcurrentHashMap<>();
+  private final AtomicInteger atomicInteger = new AtomicInteger();
+
   @Inject
   private TaskIndexMaster(final MessageEnvironment masterMessageEnvironment) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID,
+    masterMessageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
       new TaskIndexMessageReceiver());
-
-    this.stageIndexMap = new ConcurrentHashMap<>();
   }
 
   public void onTaskScheduled(final String taskId) {
-    final String stageId  = RuntimeIdManager.getStageIdFromTaskId(taskId);
-    if (stageIndexMap.putIfAbsent(stageId, new AtomicInteger(1)) != null) {
-      stageIndexMap.get(stageId).getAndIncrement();
+    if (!taskIndexMap.containsKey(taskId)) {
+      taskIndexMap.put(taskId, atomicInteger.getAndIncrement());
     }
   }
 
@@ -76,19 +76,22 @@ public final class TaskIndexMaster {
       switch (message.getType()) {
         case RequestTaskIndex:
           final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage = message.getRequestTaskIndexMsg();
-          final String stageId = RuntimeIdManager.getStageIdFromTaskId(requestTaskIndexMessage.getTaskId());
-          final int index = stageIndexMap.get(stageId).getAndIncrement();
+          final String taskId = requestTaskIndexMessage.getTaskId();
 
-          LOG.info("Task index of stage: {}, {}", stageId, index);
+          LOG.info("Task index of stage: {}", taskId, taskIndexMap.get(taskId));
+
+          if (!taskIndexMap.containsKey(taskId)) {
+            throw new RuntimeException("No task index for task " + taskId);
+          }
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID)
+              .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
-                .setTaskIndex(index)
+                .setTaskIndex(taskIndexMap.get(taskId))
                 .build())
               .build());
 

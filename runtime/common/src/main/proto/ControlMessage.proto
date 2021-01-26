@@ -121,6 +121,16 @@ enum MessageType {
     // For task migration
     StopTask = 40; // master -> worker
     StopTaskDone = 41; // worker -> master
+
+
+    // Master -> worker
+    ExecutorRegistered = 42;
+    ExecutorRemoved = 43;
+    TaskScheduled = 46;
+
+    // Worker -> master
+    CurrentExecutor = 44;
+    CurrentScheduledTask = 45;
 }
 
 message Message {
@@ -171,6 +181,10 @@ message Message {
 
     optional StopTaskMessage stopTaskMsg = 41;
     optional StopTaskDoneMessage stopTaskDoneMsg = 42;
+
+    optional string registeredExecutor = 43;
+    repeated string currExecutors = 44;
+    repeated string currScheduledTasks = 45;
 }
 
 message BroadcastInfoMessage {

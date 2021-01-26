@@ -12,9 +12,6 @@ import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.reef.io.network.naming.NameServer;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -51,7 +48,7 @@ public final class VMWorkerManagerInMaster {
     final NameServer nameServer,
     final LocalAddressProvider localAddressProvider,
     final EvalConf evalConf,
-    final TaskScheduledMap taskScheduledMap,
+    final TaskScheduledMapMaster taskScheduledMap,
     final TransferIndexMaster transferIndexMaster,
     final ExecutorCpuUseMap cpuMap) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();

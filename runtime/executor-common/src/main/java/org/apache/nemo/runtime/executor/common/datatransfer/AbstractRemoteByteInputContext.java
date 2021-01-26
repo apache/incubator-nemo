@@ -223,12 +223,6 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
     //LOG.info("Ack from parent stop output {}/{}", taskId, getContextId().getTransferIndex());
     // for guarantee
     taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
-
-    taskExecutor.getExecutorThread().decoderThread.execute(() -> {
-      taskExecutor.getExecutorThread().queue.add(() -> {
-        ackHandler.onNext(1);
-      });
-    });
   }
 
 

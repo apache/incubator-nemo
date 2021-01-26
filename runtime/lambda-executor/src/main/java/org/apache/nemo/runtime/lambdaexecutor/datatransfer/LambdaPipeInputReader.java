@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -25,6 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
@@ -104,18 +106,24 @@ public final class LambdaPipeInputReader implements InputReader {
   }
 
   @Override
-  public void readAsync(final String taskId,
-                        final EventHandler<Pair<IteratorWithNumBytes, Integer>> handler) {
-    throw new RuntimeException("Unsupported");
+  public void addControl() {
+
   }
 
-  public List<IteratorWithNumBytes> readBlocking() {
-    throw new RuntimeException("Unsupported");
+  @Override
+  public void addData(ByteBuf data) {
+
   }
+
 
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
+  }
+
+  @Override
+  public Serializer getSerializer() {
+    return null;
   }
 
   @Override

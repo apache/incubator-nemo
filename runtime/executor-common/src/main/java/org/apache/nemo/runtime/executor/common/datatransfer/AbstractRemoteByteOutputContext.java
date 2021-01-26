@@ -191,6 +191,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         //LOG.info("Output stop {}/{}", taskId, getContextId().getTransferIndex());
         channelStatus = ChannelStatus.OUTPUT_STOP;
 
+        /*
         executorThread.queue.add(() -> {
           try {
             currStatus = Status.PENDING;
@@ -200,6 +201,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
             throw new RuntimeException(e);
           }
         });
+        */
 
         //LOG.info("Executor queue size {} {}/{}", executorThread.hashCode(), taskId, executorThread.queue.size());
         break;
@@ -232,8 +234,10 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
     if (!pendingRunnables.isEmpty()) {
       //LOG.info("pending runnalbes! {}", taskId);
+      /*
       executorThread.queue.addAll(pendingRunnables);
       pendingRunnables.clear();
+      */
     }
 
     return new RemoteByteOutputStream();
@@ -256,15 +260,18 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
           //LOG.info("Receive input stop from {} after sending output stop {}/{}",
           //  msg.getTaskId(), taskId, getContextId().getTransferIndex());
 
+          /*
           executorThread.queue.add(() -> {
             setupOutputChannelToParentVM(msg, sdt);
             ackHandler.onNext(1);
           });
+          */
           break;
         }
         case RUNNING: {
           //LOG.info("Receive input stop from {}.. {}/{}", msg.getTaskId(), taskId, getContextId().getTransferIndex());
           channelStatus = ChannelStatus.INPUT_STOP;
+          /*
           executorThread.queue.add(() -> {
             currStatus = Status.PENDING;
             final ByteTransferContextSetupMessage message =
@@ -281,6 +288,7 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
             setupOutputChannelToParentVM(msg, sdt);
             sendControlFrame(message);
           });
+          */
           break;
         }
         default:
@@ -331,9 +339,11 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
         currStatus = Status.NO_PENDING;
       });
     } else {
+      /*
       executorThread.queue.add(() -> {
         currStatus = Status.NO_PENDING;
       });
+      */
     }
   }
 
@@ -369,9 +379,11 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
 
       channelStatus = RUNNING;
       channel.writeAndFlush(message).addListener(getChannelWriteListener());
+      /*
       executorThread.queue.add(() -> {
         currStatus = Status.NO_PENDING;
       });
+      */
     } else {
       restarted = true;
     }
@@ -411,9 +423,11 @@ public abstract class AbstractRemoteByteOutputContext extends AbstractByteTransf
       // channel에 restart signal 날림.
       channelStatus = RUNNING;
       channel.writeAndFlush(message).addListener(getChannelWriteListener());
+      /*
       executorThread.queue.add(() -> {
         currStatus = Status.NO_PENDING;
       });
+      */
 
       //LOG.info("Restart {} output", taskId);
 

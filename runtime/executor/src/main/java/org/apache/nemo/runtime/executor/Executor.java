@@ -55,12 +55,12 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.datatransfer.PipeInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
@@ -143,7 +143,7 @@ public final class Executor {
 
   private final OutputWriterFlusher outputWriterFlusher;
 
-  final TaskTransferIndexMap taskTransferIndexMap;
+  final TaskIndexMapWorker taskTransferIndexMap;
 
   private final JobScalingHandlerWorker jobScalingHandlerWorker;
 
@@ -159,6 +159,9 @@ public final class Executor {
   private final SFTaskMetrics sfTaskMetrics;
 
   private final StateStore stateStore;
+
+  private final ExecutorContextManagerMap executorContextManagerMap;
+  private final TaskScheduledMapWorker scheduledTaskMap;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -178,7 +181,7 @@ public final class Executor {
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
                    final TaskInputContextMap taskInputContextMap,
-                   final TaskTransferIndexMap taskTransferIndexMap,
+                   final TaskIndexMapWorker taskTransferIndexMap,
                    final RelayServer relayServer,
                    final TaskLocationMap taskLocationMap,
                    final StageExecutorThreadMap stageExecutorThreadMap,
@@ -188,6 +191,8 @@ public final class Executor {
                    final ScalingOutCounter scalingOutCounter,
                    final SFTaskMetrics sfTaskMetrics,
                    final HDFStateStore stateStore,
+                   final ExecutorContextManagerMap executorContextManagerMap,
+                   final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler,
                    final TaskDoneHandler taskDoneHandler) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
@@ -195,6 +200,7 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.executorContextManagerMap = executorContextManagerMap;
     this.stateStore = (StateStore) stateStore;
     this.executorThreads = executorThreads;
     this.jobScalingHandlerWorker = jobScalingHandlerWorker;
@@ -349,6 +355,11 @@ public final class Executor {
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
+
+    this.scheduledTaskMap = taskScheduledMapWorker;
+    taskScheduledMapWorker.init();
+    executorContextManagerMap.init();
+
     this.stageExecutorThreadMap = stageExecutorThreadMap;
 
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
@@ -440,18 +451,23 @@ public final class Executor {
   private void launchTask(final Task task,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
 
-    for (final StageEdge stageEdge : task.getTaskIncomingEdges()) {
-      final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
-      final String edgeId = runtimeEdge.getId();
-      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-    }
-
-
-    for (final StageEdge stageEdge : task.getTaskOutgoingEdges()) {
-      final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
-      final String edgeId = runtimeEdge.getId();
-      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-    }
+    task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
+      getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+      getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+      e.getPropertyValue(CompressionProperty.class).orElse(null),
+      e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+    task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
+      getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+      getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+      e.getPropertyValue(CompressionProperty.class).orElse(null),
+      e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+    irDag.getVertices().forEach(v -> {
+      irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
+        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+        e.getPropertyValue(CompressionProperty.class).orElse(null),
+        e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+    });
 
     LOG.info("{} Launch task: {}", executorId, task.getTaskId());
 
@@ -466,23 +482,6 @@ public final class Executor {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-      task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-          e.getPropertyValue(CompressionProperty.class).orElse(null),
-          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-      task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
-          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-          e.getPropertyValue(CompressionProperty.class).orElse(null),
-          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-      irDag.getVertices().forEach(v -> {
-        irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-            getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-            getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-            e.getPropertyValue(CompressionProperty.class).orElse(null),
-            e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-      });
 
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
@@ -496,12 +495,10 @@ public final class Executor {
         executorId,
         byteTransport,
         persistentConnectionToMasterMap,
-        pipeManagerWorker,
         task,
         irDag,
         copyOutgoingEdges,
         copyIncomingEdges,
-        taskStateManager,
         intermediateDataIOFactory,
         broadcastManagerWorker,
         metricMessageSender,
@@ -511,13 +508,13 @@ public final class Executor {
         tinyWorkerManager,
         evalConf,
         taskInputContextMap,
-        relayServer,
         taskLocationMap,
         prepareService,
         executorGlobalInstances,
         rendevousServerClient,
         executorThread,
         scalingOutCounter,
+        pipeManagerWorker,
         stateStore);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
@@ -604,7 +601,16 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-
+        case ExecutorRegistered: {
+          LOG.info("Executor registered message received {}", message.getRegisteredExecutor());
+          executorContextManagerMap.initConnectToExecutor(message.getRegisteredExecutor());
+          break;
+        }
+        case ExecutorRemoved: {
+          LOG.info("Executor removed message received {}", message.getRegisteredExecutor());
+          executorContextManagerMap.removeExecutor(message.getRegisteredExecutor());
+          break;
+        }
         case GlobalExecutorAddressInfo: {
           final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
 
@@ -640,7 +646,6 @@ public final class Executor {
                   return Pair.of(entry.getAddress(), entry.getPort());
                 }));
 
-
           rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
 
           LOG.info("{} Setting global relay server info {}", executorId, m);
@@ -649,8 +654,8 @@ public final class Executor {
             evalConf.offExecutorThreadNum,
             byteTransport.getExecutorAddressMap(),
             serializerManager.runtimeEdgeIdToSerializer,
-            pipeManagerWorker.getTaskExecutorIdMap(),
-            taskTransferIndexMap.getMap(),
+            // pipeManagerWorker.getTaskExecutorIdMap(),
+            // taskTransferIndexMap.getMap(),
             relayServer.getPublicAddress(),
             relayServer.getPort(),
             msg.getRendevousAddress(),

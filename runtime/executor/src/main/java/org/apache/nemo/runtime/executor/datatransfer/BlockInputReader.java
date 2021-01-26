@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
@@ -30,6 +31,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
@@ -94,18 +96,22 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
-  public void readAsync(String taskId, EventHandler<Pair<IteratorWithNumBytes, Integer>> handler) {
-    throw new UnsupportedOperationException("Not support");
+  public void addControl() {
+
   }
 
   @Override
-  public List<IteratorWithNumBytes> readBlocking() {
-    throw new UnsupportedOperationException("Not support");
+  public void addData(ByteBuf data) {
   }
 
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
+  }
+
+  @Override
+  public Serializer getSerializer() {
+    return null;
   }
 
   @Override

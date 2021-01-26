@@ -140,7 +140,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
         .addLast(controlFrameEncoder)
         .addLast(dataFrameEncoder)
         // inbound
-        .addLast(new FrameDecoder(contextManager))
+        .addLast(new FrameDecoder(/* TODO contextManager */ null))
         .addLast(contextManager);
   }
 

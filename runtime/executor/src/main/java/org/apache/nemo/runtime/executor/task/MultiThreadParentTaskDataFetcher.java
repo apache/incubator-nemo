@@ -128,7 +128,6 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.taskAddPairQueue = new ConcurrentLinkedQueue<>();
     this.taskExecutor = taskExecutor;
 
-    fetchNonBlocking();
     /*
     this.executorGlobalInstances = executorGlobalInstances;
     executorGlobalInstances.registerWatermarkService(dataSource, () -> {
@@ -295,90 +294,6 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     });
     */
     readersForParentTask.restart();
-  }
-
-  private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
-
-    readersForParentTask.readAsync(taskId, pair -> {
-      //LOG.info("Task input context added {}", taskId, pair.left());
-      taskAddPairQueue.add(pair);
-    });
-  }
-
-
-  private void fetchAsync() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
-
-
-    readersForParentTask.readAsync(taskId, pair -> {
-
-      LOG.info("Receive iterator task {} at {} edge {}"
-        , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
-      final IteratorWithNumBytes iterator = pair.left();
-      final int taskIndex = pair.right();
-
-      queueInsertionThreads.submit(() -> {
-        // Consume this iterator to the end.
-        while (iterator.hasNext()) {
-          // blocked on the iterator.
-          final Object element = iterator.next();
-            // data element
-            elementQueue.offer(element);
-        }
-
-        // This iterator is finished.
-        LOG.info("Task index {} finished at {}", taskIndex);
-      });
-    });
-  }
-
-  private void fetchBlocking() {
-    // 갯수 동적으로 받아야함. handler 같은거 등록하기
-    final List<IteratorWithNumBytes> inputs = readersForParentTask.readBlocking();
-    numOfIterators = inputs.size();
-
-    for (final IteratorWithNumBytes iterator : inputs) {
-      // A thread for each iterator
-      queueInsertionThreads.submit(() -> {
-        // Consume this iterator to the end.
-        while (iterator.hasNext()) { // blocked on the iterator.
-          final Object element = iterator.next();
-          // data element
-          elementQueue.offer(element);
-        }
-
-        // This iterator is finished.
-        countBytesSynchronized(iterator);
-        elementQueue.offer(Finishmark.getInstance());
-      });
-    }
-  }
-
-
-  private void fetchDataLazily() {
-    final List<CompletableFuture<IteratorWithNumBytes>> futures = readersForParentTask.read();
-    numOfIterators = futures.size();
-
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      // A thread for each iterator
-      queueInsertionThreads.submit(() -> {
-        if (exception == null) {
-          // Consume this iterator to the end.
-          while (iterator.hasNext()) { // blocked on the iterator.
-            final Object element = iterator.next();
-            // data element
-            elementQueue.offer(element);
-          }
-
-          // This iterator is finished.
-          countBytesSynchronized(iterator);
-          elementQueue.offer(Finishmark.getInstance());
-        } else {
-          exception.printStackTrace();
-          throw new RuntimeException(exception);
-        }
-      });
-
-    }));
   }
 
   public final long getSerializedBytes() {

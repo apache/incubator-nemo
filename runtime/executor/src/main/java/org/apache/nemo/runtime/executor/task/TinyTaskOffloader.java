@@ -354,6 +354,7 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Task is not ready pending but " + pendingStatus);
     }
 
+    /*
     executorThread.queue.add(() -> {
       if (tinyTaskWorker.isReady()) {
         // Source stop!!
@@ -369,10 +370,12 @@ public final class TinyTaskOffloader implements Offloader {
         throw new RuntimeException("Worker should be ready... " + taskId);
       }
     });
+    */
   }
 
   // 3. taskIsReady가 trigger함
   private void schedulePendingCheck() {
+    /*
     executorThread.queue.add(() -> {
       if (hasPendingStraemingWorkers()) {
         handlePendingStreamingWorkers();
@@ -380,6 +383,7 @@ public final class TinyTaskOffloader implements Offloader {
         scheduledExecutorService.schedule(this::schedulePendingCheck, 100, TimeUnit.MILLISECONDS);
       }
     });
+    */
   }
 
   // 4. 여기서 state check

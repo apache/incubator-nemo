@@ -27,7 +27,7 @@ import java.util.concurrent.Future;
 /**
  * Represents the output data transfer from a task.
  */
-public interface OutputWriter extends Flushable {
+public interface OutputWriter {
   /**
    * Writes output element depending on the communication pattern of the edge.
    *

@@ -4,6 +4,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransportChannelInitializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.AckScheduledService;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 
 import javax.inject.Inject;
 

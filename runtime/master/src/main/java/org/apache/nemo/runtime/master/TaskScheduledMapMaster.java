@@ -4,20 +4,23 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
-public final class TaskScheduledMap {
+public final class TaskScheduledMapMaster {
 
   private final ConcurrentMap<ExecutorRepresenter,
     Map<String, List<Task>>> scheduledStageTasks;
@@ -39,14 +42,17 @@ public final class TaskScheduledMap {
   private Map<String, String> prevTaskExecutorIdMap = new ConcurrentHashMap<>();
 
   @Inject
-  private TaskScheduledMap(final ExecutorRegistry executorRegistry,
-                           final TaskLocationMap taskLocationMap) {
+  private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
+                                 final MessageEnvironment messageEnvironment,
+                                 final TaskLocationMap taskLocationMap) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorIdRepresentorMap = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.taskLocationMap = taskLocationMap;
+    messageEnvironment.setupListener(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID,
+      new TaskScheduleMapReceiver());
   }
 
   private boolean copied = false;
@@ -99,6 +105,20 @@ public final class TaskScheduledMap {
 
       stageTasks.add(task);
     }
+
+    // broadcast
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (!executor.equals(representer)) {
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setType(ControlMessage.MessageType.TaskScheduled)
+          .setRegisteredExecutor(task.getTaskId() + "," + representer.getExecutorId())
+          .build());
+        }
+      });
+    });
   }
 
   public synchronized void setExecutorAddressInfo(final String executorId,
@@ -156,5 +176,41 @@ public final class TaskScheduledMap {
 
   public ExecutorRepresenter getExecutorRepresenter(final String executorId) {
     return executorIdRepresentorMap.get(executorId);
+  }
+
+
+
+  /**
+   * Handler for control messages received.
+   */
+  final class TaskScheduleMapReceiver implements MessageListener<ControlMessage.Message> {
+    @Override
+    public void onMessage(final ControlMessage.Message message) {
+      throw new RuntimeException("Exception " + message);
+    }
+
+    @Override
+    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+        case CurrentScheduledTask: {
+          final Collection<String> c = taskExecutorIdMap
+            .entrySet()
+            .stream()
+            .map(entry -> entry.getKey() + "," + entry.getValue())
+            .collect(Collectors.toList());
+
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+              .setType(ControlMessage.MessageType.CurrentScheduledTask)
+              .addAllCurrScheduledTasks(c)
+              .build());
+          break;
+        }
+        default:
+          throw new IllegalMessageException(new Exception(message.toString()));
+      }
+    }
   }
 }

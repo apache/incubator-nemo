@@ -19,7 +19,11 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -59,8 +63,39 @@ public final class ExecutorRegistry {
     if (executors.containsKey(executorId)) {
       throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
     } else {
+      // broadcast executors
+      executors.values().forEach(val -> {
+        final ExecutorRepresenter remote = val.left();
+        remote.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ExecutorRegistered)
+          .setRegisteredExecutor(executorId)
+          .build());
+      });
+
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
     }
+  }
+
+  // TODO: call this method
+  synchronized void removeExecutor(final String executor) {
+    if (!executors.containsKey(executor)) {
+      throw new IllegalArgumentException("No executor: " + executor);
+    }
+
+    executors.remove(executor);
+
+    // broadcast executors
+    executors.values().forEach(val -> {
+      final ExecutorRepresenter remote = val.left();
+      remote.sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.ExecutorRemoved)
+        .setRegisteredExecutor(executor)
+        .build());
+    });
   }
 
   public synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {

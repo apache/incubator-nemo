@@ -782,6 +782,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void handleControl(Object t) {
+
+  }
+
+  @Override
+  public void handleData(DataFetcher dataFetcher, Object t) {
+
+  }
+
   // exeutor thread가 바로 부르는 method
   @Override
   public boolean handleSourceData() {
@@ -795,6 +805,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
     }
     return processed;
+  }
+
+  @Override
+  public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
+
   }
 
   @Override
@@ -843,15 +858,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     return sourceVertexDataFetchers.size() > 0;
   }
 
-  @Override
-  public void handleIntermediateWatermarkEvent(final Object element, final DataFetcher dataFetcher) {
-    executorThread.decoderThread.execute(() -> {
-      executorThread.queue.add(() -> {
-        onEventFromDataFetcher(element, dataFetcher);
-      });
-    });
-  }
 
+  /*
   @Override
   public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
     if (iterator.hasNext()) {
@@ -870,6 +878,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       });
     }
   }
+  */
 
   @Override
   public void handleOffloadingEvent(Object data) {

@@ -1,6 +1,11 @@
 package org.apache.nemo.runtime.executor.common;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +37,8 @@ public final class ExecutorThread {
   private final List<TaskExecutor> finishedTasks;
   private final List<TaskExecutor> finishWaitingTasks;
 
-  public final ConcurrentLinkedQueue<Runnable> queue;
+  // <taskId, serializer, bytebuf>
+  public final ConcurrentLinkedQueue<TaskHandlingEvent> queue;
 
   private final List<TaskExecutor> sourceTasks;
   private final List<TaskExecutor> pendingSourceTasks;
@@ -42,6 +48,8 @@ public final class ExecutorThread {
   private final String executorId;
 
   private final EventHandler<String> taskDoneHandler;
+
+  private final Map<String, TaskExecutor> taskIdExecutorMap = new ConcurrentHashMap<>();
 
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
@@ -89,6 +97,8 @@ public final class ExecutorThread {
 
   public void addNewTask(final TaskExecutor task) {
     LOG.info("Add task {}", task.getId());
+    taskIdExecutorMap.put(task.getId(), task);
+
     if (task.isSource()) {
       synchronized (pendingSourceTasks) {
         pendingSourceTasks.add(task);
@@ -185,13 +195,22 @@ public final class ExecutorThread {
           }
 
           // process intermediate data
-          final Iterator<Runnable> runnableIterator = queue.iterator();
-          while (runnableIterator.hasNext()) {
-            final Runnable runnable = runnableIterator.next();
-            runnableIterator.remove();
+          final Iterator<TaskHandlingEvent> iterator = queue.iterator();
+          while (iterator.hasNext()) {
+            final TaskHandlingEvent event = iterator.next();
             //LOG.info("Polling queue");
-            runnable.run();
-            processed = true;
+
+            if (event.isControlMessage()) {
+              // TODO
+            } else {
+              final String taskId = event.getTaskId();
+              final Object data = event.getData();
+              final TaskExecutor taskExecutor = taskIdExecutorMap.get(taskId);
+              taskExecutor.handleData(event.getDataFetcher(), data);
+              processed = true;
+            }
+
+            iterator.remove();
           }
 
           if (throttle.get() && !processed ||
@@ -200,6 +219,7 @@ public final class ExecutorThread {
           }
         }
         // Done event while loop
+
 
         // After Finished !!
         final List<TaskExecutor> tasks = new ArrayList<>(deletedTasks.size());

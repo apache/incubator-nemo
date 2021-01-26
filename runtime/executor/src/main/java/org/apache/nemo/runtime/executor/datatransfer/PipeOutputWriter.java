@@ -18,30 +18,22 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import io.netty.channel.Channel;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -61,15 +53,11 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private boolean initialized;
   private final Serializer serializer;
-  private final List<ByteOutputContext> pipes;
-  private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
+  private final List<String> dstTaskIds;
   private final StageEdge stageEdge;
-  private final RelayServer relayServer;
 
   private volatile boolean stopped = false;
 
-  private final RendevousServerClient rendevousServerClient;
-  private final ExecutorThread executorThread;
 
   private final String stageId;
   private final TaskMetrics taskMetrics;
@@ -84,9 +72,7 @@ public final class PipeOutputWriter implements OutputWriter {
   PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
-                   final RelayServer relayServer,
-                   final RendevousServerClient rendevousServerClient,
-                   final ExecutorThread executorThread,
+                   final Serializer serializer,
                    final TaskMetrics taskMetrics) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
@@ -99,36 +85,15 @@ public final class PipeOutputWriter implements OutputWriter {
       .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
-    this.pipeAndStreamMap = new HashMap<>();
-    this.relayServer = relayServer;
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
-    this.rendevousServerClient = rendevousServerClient;
-    this.executorThread = executorThread;
-    this.pipes = doInitialize();
+    // this.serializer = serializerManager.getSerializer(runtimeEdge.getId());
+    this.serializer = serializer;
+    this.dstTaskIds = doInitialize();
   }
 
   private void writeData(final Object element,
-                         final List<ByteOutputContext> pipeList, final boolean flush) {
-    pipeList.forEach(pipe -> {
-      final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(pipe.getContextDescriptor());
-      //LOG.info("Send data from {} to {} in edge {}", cd.getSrcTaskIndex(), cd.getDstTaskIndex(), cd.getRuntimeEdgeId());
-      final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
-      //LOG.info("Write element at {}/{}", srcTaskId, runtimeEdge.getSrc().getId());
-      stream.writeElement(element,
-        serializer,
-        runtimeEdge.getId(),
-        stageEdge.getDstIRVertex().getId());
-
-      /*
-      if (flush) {
-        try {
-          stream.flush();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-      */
+                         final List<String> dstList, final boolean flush) {
+    dstList.forEach(dstTask -> {
+      pipeManagerWorker.writeData(srcTaskId, dstTask, serializer, element);
     });
   }
 
@@ -156,26 +121,13 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public void writeWatermark(final Watermark watermark) {
     // LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
-    pipeManagerWorker.broadcast(pipes, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));
+    pipeManagerWorker.broadcast(srcTaskId,
+      dstTaskIds, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));
 
     // writeData(new WatermarkWithIndex(watermark, srcTaskIndex), pipes, false);
 
     // 여기서 마스터에게 보내면됨.
-    rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
-  }
-
-  @Override
-  public void flush() {
-    if (!stopped) {
-      pipes.forEach(pipe -> {
-        try {
-          pipeAndStreamMap.get(pipe).flush();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      });
-    }
+    // rendevousServerClient.sendWatermark(srcTaskId, watermark.getTimestamp());
   }
 
   @Override
@@ -185,29 +137,17 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void close() {
-    /*
-    if (!initialized) {
-      // In order to "wire-up" with the receivers waiting for us.:w
-      doInitialize();
-    }
-    */
-
-    pipes.forEach(pipe -> {
-      try {
-        pipeAndStreamMap.get(pipe).close();
-        pipe.close();
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    });
+    // Send control message and receive ack !!
+    // TODO
   }
 
   @Override
   public Future<Boolean> stop(final String taskId) {
     // send stop message!
     stopped = true;
+    throw new RuntimeException("Stop exception " + taskId);
 
+    /*
     final CountDownLatch count = new CountDownLatch(pipes.size());
 
     for (final ByteOutputContext byteOutputContext : pipes) {
@@ -245,6 +185,7 @@ public final class PipeOutputWriter implements OutputWriter {
         return count.getCount() == 0;
       }
     };
+    */
 
     // DO nothing
 
@@ -258,14 +199,16 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void restart(final String taskId) {
+    /*
     pipes.forEach(pipe -> {
       pipe.restart(taskId);
     });
+    */
 
     stopped = false;
   }
 
-  private List<ByteOutputContext> doInitialize() {
+  private List<String> doInitialize() {
     LOG.info("Start - doInitialize() {}", runtimeEdge);
     initialized = true;
 
@@ -274,75 +217,38 @@ public final class PipeOutputWriter implements OutputWriter {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
-    final List<CompletableFuture<ByteOutputContext>> byteOutputContexts;
+    final List<String> dstTaskIds;
     if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
-      byteOutputContexts = Collections.singletonList(
-        pipeManagerWorker.write(srcTaskIndex, runtimeEdge, srcTaskIndex));
+      dstTaskIds = Collections.singletonList(
+        RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(),srcTaskIndex, 0));
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
 
       final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
-      byteOutputContexts =
+      dstTaskIds =
         dstIndices.stream()
           .map(dstTaskIndex ->
-            pipeManagerWorker.write(srcTaskIndex, runtimeEdge, dstTaskIndex))
+            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), dstTaskIndex, 0))
           .collect(Collectors.toList());
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, dstIndices);
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
-
-    return byteOutputContexts.stream()
-      .map(byteOutputContext -> {
-        try {
-          final ByteOutputContext context = byteOutputContext.get();
-          pipeAndStreamMap.put(context, context.newOutputStream(executorThread));
-          //LOG.info("Context {}, at {}", context, srcTaskId);
-          return context;
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }).collect(Collectors.toList());
-
-
-    /**********************************************************/
-
-    // Blocking call
-    /*
-    this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
-    LOG.info("Finish - doInitialize() {}", runtimeEdge);
-    pipes.forEach(pipe -> {
-      try {
-        final LambdaByteOutputContext.ByteOutputStream bis = pipe.newOutputStream();
-        pipeAndStreamMap.put(pipe, bis);
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    });
-    */
+    return dstTaskIds;
   }
 
-  private List<ByteOutputContext> getPipeToWrite(final TimestampAndValue element) {
+  private List<String> getPipeToWrite(final TimestampAndValue element) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
     if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
-      return Collections.singletonList(pipes.get(0));
+      return Collections.singletonList(dstTaskIds.get(0));
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
-      return pipes;
+      return dstTaskIds;
     } else {
       final int partitionKey = (int) partitioner.partition(element.value);
       //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
-      return Collections.singletonList(pipes.get(partitionKey));
+      return Collections.singletonList(dstTaskIds.get(partitionKey));
     }
   }
 }

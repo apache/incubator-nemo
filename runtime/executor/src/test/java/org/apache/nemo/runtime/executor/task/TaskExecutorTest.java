@@ -119,7 +119,7 @@ public final class TaskExecutorTest {
     // Mock a IntermediateDataIOFactory.
     runtimeEdgeToOutputData = new HashMap<>();
     intermediateDataIOFactory = mock(IntermediateDataIOFactory.class);
-    when(intermediateDataIOFactory.createReader(anyInt(), any(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(intermediateDataIOFactory.createReader(anyInt(), any(), any(), any(), any())).then(new ParentTaskReaderAnswer());
     when(intermediateDataIOFactory.createWriter(any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.

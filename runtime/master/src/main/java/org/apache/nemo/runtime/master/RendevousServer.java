@@ -37,13 +37,13 @@ public final class RendevousServer {
   private int bindingPort;
 
   private final ConcurrentMap<String, Channel> channelMap = new ConcurrentHashMap<>();
-  private final TaskScheduledMap taskScheduledMap;
+  private final TaskScheduledMapMaster taskScheduledMap;
 
   @Inject
   private RendevousServer(final TcpPortProvider tcpPortProvider,
                           @Parameter(EvalConf.Ec2.class) final boolean ec2,
                           final WatermarkManager watermarkManager,
-                          final TaskScheduledMap taskScheduledMap) {
+                          final TaskScheduledMapMaster taskScheduledMap) {
 
     final String host;
     try {

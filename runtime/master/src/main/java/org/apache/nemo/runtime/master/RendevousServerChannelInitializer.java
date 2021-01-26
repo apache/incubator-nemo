@@ -22,12 +22,12 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
   private final ConcurrentMap<String, List<Channel>> channelListMap;
   private final ScheduledExecutorService scheduledExecutorService;
   private final WatermarkManager watermarkManager;
-  private final TaskScheduledMap taskScheduledMap;
+  private final TaskScheduledMapMaster taskScheduledMap;
 
   public RendevousServerChannelInitializer(
     final ConcurrentMap<String, Channel> rendevousChannelMap,
     final WatermarkManager watermarkManager,
-    final TaskScheduledMap taskScheduledMap) {
+    final TaskScheduledMapMaster taskScheduledMap) {
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.channelListMap = new ConcurrentHashMap<>();

@@ -19,14 +19,9 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.channel.*;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
-import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
-import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +114,7 @@ public final class ByteTransfer {
    * @param remoteExecutorId id of the remote executor
    * @return {@link ContextManager} for the channel to the specified executor
    */
-  private CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
+  public CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
     final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
     try {
