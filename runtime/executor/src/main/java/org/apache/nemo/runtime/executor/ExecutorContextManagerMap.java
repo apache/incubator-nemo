@@ -38,7 +38,6 @@ public final class ExecutorContextManagerMap {
     this.executorId = executorId;
     this.toMaster = persistentConnectionToMasterMap;
     this.byteTransfer = byteTransfer;
-    initConnectToExecutor(executorId);
   }
 
   public void init() {
@@ -54,6 +53,9 @@ public final class ExecutorContextManagerMap {
       final ControlMessage.Message msg = future.get();
       final List<String> executors = msg.getCurrExecutorsList();
       final ExecutorService es = Executors.newCachedThreadPool();
+
+      initConnectToExecutor(executorId);
+
       executors.forEach(eid -> {
         if (!eid.equals(executorId)) {
           LOG.info("Initializing executor connection {} -> {}...", executorId, eid);
