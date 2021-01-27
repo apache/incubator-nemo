@@ -57,7 +57,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private final String taskId;
 
-  private final ExecutorGlobalInstances executorGlobalInstances;
 
   private boolean watermarkProgressed = false;
 
@@ -69,8 +68,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
-                                 final long pt,
-                                 final ExecutorGlobalInstances executorGlobalInstances,
                                  final AtomicBoolean globalPreapred) {
     super(dataSource, edge, outputCollector);
     this.readable = r;
@@ -79,8 +76,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
     this.prepareService = prepareService;
     this.taskId = taskId;
     this.prevWatermarkTimestamp = 0;
-    this.executorGlobalInstances = executorGlobalInstances;
 
+    /*
     if (!bounded) {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
         if (isPrepared && globalPreapred.get()) {
@@ -88,33 +85,13 @@ public class SourceVertexDataFetcher extends DataFetcher {
          //LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
           if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
            // LOG.info("Watermark progressed at {} {}", taskId, watermarkTimestamp);
-            watermarkProgressed = true;
             prevWatermarkTimestamp = watermarkTimestamp;
+            watermarkProgressed = true;
           }
         }
       });
     }
-  }
-
-  public SourceVertexDataFetcher(final SourceVertex dataSource,
-                                 final RuntimeEdge edge,
-                                 final Readable readable,
-                                 final OutputCollector outputCollector,
-                                 final ExecutorService prepareService,
-                                 final String taskId,
-                                 final ExecutorGlobalInstances executorGlobalInstances,
-                                 final AtomicBoolean globalPrepared) {
-    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, executorGlobalInstances, globalPrepared);
-  }
-
-  public SourceVertexDataFetcher(final SourceVertex dataSource,
-                                 final RuntimeEdge edge,
-                                 final Readable readable,
-                                 final OutputCollector outputCollector,
-                                 final ExecutorService prepareService,
-                                 final String taskId,
-                                 final AtomicBoolean globalPrepared) {
-    this(dataSource, edge, readable, outputCollector, prepareService, taskId, -1, null, globalPrepared);
+    */
   }
 
   public void setReadable(final Readable r) {
@@ -182,7 +159,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public Future<Integer> stop(final String taskId) {
     isFinishd = true;
-    executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
+    // executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     // do nothing
     return new Future<Integer>() {
       @Override
@@ -214,6 +191,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void restart() {
+    /*
     executorGlobalInstances.registerWatermarkService((SourceVertex) getDataSource(), () -> {
       if (isPrepared && globalPrepared.get()) {
         final long watermarkTimestamp = readable.readWatermark();
@@ -223,6 +201,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
         }
       }
     });
+    */
     //finishedAck = false;
     isFinishd = false;
   }
@@ -233,7 +212,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public void close() throws Exception {
-    executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
+    // executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     readable.close();
   }
 
@@ -260,13 +239,22 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private Object retrieveElement() {
     // Emit watermark
+    final long watermarkTimestamp = readable.readWatermark();
+    //LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
+    if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
+      // LOG.info("Watermark progressed at {} {}", taskId, watermarkTimestamp);
+      prevWatermarkTimestamp = watermarkTimestamp;
+      watermarkProgressed = true;
+      return new Watermark(prevWatermarkTimestamp);
+    } else {
+      // Data
+      final Object element = readable.readCurrent();
+      eturn element;
+    }
+    /*
     if (watermarkProgressed) {
       watermarkProgressed = false;
-      return new Watermark(prevWatermarkTimestamp);
     }
-
-    // Data
-    final Object element = readable.readCurrent();
-    return element;
+    */
   }
 }

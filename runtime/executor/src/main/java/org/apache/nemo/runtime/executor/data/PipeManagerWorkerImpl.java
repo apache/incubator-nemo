@@ -64,7 +64,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   private final TaskScheduledMapWorker taskScheduledMapWorker;
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final Map<Integer, InputReader> taskInputReaderMap = new ConcurrentHashMap<>();
-  private final ScheduledExecutorService scheduledExecutorService;
 
   @Inject
   private PipeManagerWorkerImpl(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -79,9 +78,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      flush();
-    }, flushPeriod, flushPeriod, TimeUnit.MILLISECONDS);
   }
 
   @Override
@@ -198,13 +194,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public void close() {
-    scheduledExecutorService.shutdown();
-    try {
-      scheduledExecutorService.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
     executorContextManagerMap.getExecutorContextManagers().forEach(contextManager -> {
       contextManager.getChannel().close();
     });

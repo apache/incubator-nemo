@@ -770,7 +770,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           outputCollector,
           prepareService,
           taskId,
-          executorGlobalInstances,
           prepared);
 
         sourceVertexDataFetchers.add(fe);

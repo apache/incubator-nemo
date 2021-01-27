@@ -321,7 +321,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
           beamUnboundedSourceVertex, edge, null /* readable */, outputCollector, prepareService, offloadingTask.taskId,
-          executorGlobalInstances, prepared);
+          prepared);
         allFetchers.add(dataFetcher);
         sourceVertexDataFetchers.add(dataFetcher);
       }
