@@ -270,7 +270,9 @@ public final class GBKFinalTransform<K, InputT>
   public void onWatermark(final Watermark watermark) {
 
     if (watermark.getTimestamp() <= inputWatermark.getTimestamp()) {
-      LOG.info("Input watermark {} is before the prev watermark: {}", new Instant(watermark.getTimestamp()),
+      LOG.info("Task {} Input watermark {} is before the prev watermark: {}",
+        getContext().getTaskId(),
+        new Instant(watermark.getTimestamp()),
         new Instant(inputWatermark.getTimestamp()));
       return;
     }
