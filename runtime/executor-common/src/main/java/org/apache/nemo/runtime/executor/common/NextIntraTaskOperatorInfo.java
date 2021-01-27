@@ -37,18 +37,15 @@ public final class NextIntraTaskOperatorInfo {
   private final int edgeIndex;
   private final Edge edgeInfo;
   private final OperatorVertex nextOperator;
-  private final InputWatermarkManager watermarkManager;
 
   private long inputTimestamp;
 
   public NextIntraTaskOperatorInfo(final int edgeIndex,
                                    final Edge edgeInfo,
-                                   final OperatorVertex nextOperator,
-                                   final InputWatermarkManager watermarkManager) {
+                                   final OperatorVertex nextOperator) {
     this.edgeIndex = edgeIndex;
     this.edgeInfo = edgeInfo;
     this.nextOperator = nextOperator;
-    this.watermarkManager = watermarkManager;
   }
 
   public void setTimestamp(final long timestamp) {
@@ -71,7 +68,4 @@ public final class NextIntraTaskOperatorInfo {
     return nextOperator;
   }
 
-  public InputWatermarkManager getWatermarkManager() {
-    return watermarkManager;
-  }
 }

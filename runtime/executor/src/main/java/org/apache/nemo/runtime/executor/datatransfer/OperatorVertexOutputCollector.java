@@ -275,14 +275,12 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     }
     */
 
-    //LOG.info("Emit watermark {} from {}", watermark, irVertex.getId());
+    LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
     currWatermark = watermark.getTimestamp();
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
-
-
 
     List<String> offloadingIds = null;
 
@@ -298,7 +296,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
         //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
 
-        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+        internalVertex.getNextOperator().getTransform().onWatermark(watermark);
       }
     }
 
@@ -313,9 +311,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           final Pair<OperatorMetricCollector, OutputCollector> pair =
             outputCollectorMap.get(internalVertex.getNextOperator().getId());
           //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
-
-
-          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+          internalVertex.getNextOperator().getTransform().onWatermark(watermark);
         }
       }
     }

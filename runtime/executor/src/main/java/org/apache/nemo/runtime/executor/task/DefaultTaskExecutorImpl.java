@@ -631,31 +631,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     serializedDag = SerializationUtils.serialize(irVertexDag);
 
-    // Build a map for InputWatermarkManager for each operator vertex
-    // This variable is used for creating NextIntraTaskOperatorInfo
-    // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap = new HashMap<>();
-    reverseTopologicallySorted.forEach(childVertex -> {
-
-      if (childVertex instanceof OperatorVertex) {
-        final List<Edge> edges = TaskExecutorUtil.getAllIncomingEdges(task, irVertexDag, childVertex);
-
-        if (edges.size() == 1) {
-          operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new SingleInputWatermarkManager(
-              new OperatorWatermarkCollector((OperatorVertex) childVertex),
-              childVertex,
-              expectedWatermarkMap,
-              prevWatermarkMap,
-              watermarkCounterMap));
-        } else {
-          operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(childVertex, edges.size(),
-              new OperatorWatermarkCollector((OperatorVertex) childVertex), taskId));
-        }
-      }
-    });
-
     // Create a harness for each vertex
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
 
@@ -667,7 +642,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
-        getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+        getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap);
 
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
@@ -706,7 +681,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           stream().map(edge -> edge.getDst()).collect(Collectors.toList());
 
         OperatorMetricCollector omc;
-
 
         if (!dstVertices.isEmpty()) {
           omc = new OperatorMetricCollector(irVertex,
@@ -802,7 +776,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, edgeIndex);
+                outputCollector, edgeIndex, taskId);
 
             //final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
             //  Arrays.asList(edge.getDstIRVertex()),
@@ -984,7 +958,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         if (elem instanceof Watermark) {
           final Watermark watermark = (Watermark) elem;
           LOG.info("Receive watermark {} for {}", watermark, interOp.getNextOperator().getId());
-          interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
+          // interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), watermark);
 
         } else if (elem instanceof TimestampAndValue) {
           final TimestampAndValue tsv = (TimestampAndValue) elem;
@@ -1076,14 +1050,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * @param irVertex source irVertex
    * @param irVertexDag DAG of IRVertex and RuntimeEdge
    * @param edgeIndexMap Map of edge and index
-   * @param operatorWatermarkManagerMap Map of irVertex and InputWatermarkManager
    * @return Map<OutputTag, List<NextIntraTaskOperatorInfo>>
    */
   private Map<String, List<NextIntraTaskOperatorInfo>> getInternalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge, Integer> edgeIndexMap,
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
+    final Map<Edge, Integer> edgeIndexMap) {
     // Add all intra-task tags to additional output map.
     final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
 
@@ -1099,8 +1071,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           }
           final int index = edgeIndexMap.get(edge);
           final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
-          final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-          return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
+          return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator));
         })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());

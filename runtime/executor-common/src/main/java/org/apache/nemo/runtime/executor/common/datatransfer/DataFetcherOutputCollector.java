@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,7 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
   private final OperatorVertex nextOperatorVertex;
   private final int edgeIndex;
   private final OutputCollector nextOutputCollector;
+  private final String taskId;
 
   /**
    * It forwards output to the next operator.
@@ -46,11 +48,13 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
   public DataFetcherOutputCollector(final IRVertex srcVertex,
                                     final OperatorVertex nextOperatorVertex,
                                     final OutputCollector nextOutputCollector,
-                                    final int edgeIndex) {
+                                    final int edgeIndex,
+                                    final String taskId) {
     this.srcVertex = srcVertex;
     this.nextOperatorVertex = nextOperatorVertex;
     this.nextOutputCollector = nextOutputCollector;
     this.edgeIndex = edgeIndex;
+    this.taskId = taskId;
   }
 
   @Override
@@ -61,7 +65,9 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    nextOutputCollector.emitWatermark(watermark);
+    LOG.info("Task {} dat fetcher output collector emit wtermark {}",
+      taskId, new Instant(watermark.getTimestamp()));
+    nextOperatorVertex.getTransform().onWatermark(watermark);
     // watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
   }
 
