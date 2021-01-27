@@ -906,7 +906,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskWatermarkManager.updateWatermark(dataFetcher, d.getIndex(), d.getWatermark().getTimestamp());
 
       if (watermark.isPresent()) {
-        LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
+        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
         processWatermark(dataFetcher.getOutputCollector(), watermark.get());
       }
     } else if (event instanceof Watermark) {

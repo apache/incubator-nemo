@@ -54,7 +54,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    LOG.info("Task {} at flatten emit watermark {}", cont.getTaskId(), new Instant(watermark.getTimestamp()));
+    // LOG.info("Task {} at flatten emit watermark {}", cont.getTaskId(), new Instant(watermark.getTimestamp()));
     outputCollector.emitWatermark(watermark);
   }
 

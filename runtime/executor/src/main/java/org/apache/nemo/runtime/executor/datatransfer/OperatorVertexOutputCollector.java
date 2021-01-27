@@ -147,42 +147,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       operatorMetricCollector.processDone(inputTimestamp);
     }
 
-    // offloading
-    /* TODO: for middleOffloader
-    if (taskExecutor.isOffloaded() && !offloadingMainIds.isEmpty()) {
-      //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
-      taskExecutor.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingMainIds, currWatermark, edgeId);
-      return;
-    }
-    */
-
-    /*
-    if (endOffloading) {
-      LOG.info("Operator {} end to offload", irVertex.getId());
-      offloading = false;
-      operatorMetricCollector.endOffloading();
-      endOffloading = false;
-      currOffloadingContext = null;
-
-      if (startOffloading) {
-        // this means that it does not receive any event during offloading
-        // we then disable the start offloading
-        startOffloading = false;
-      }
-    }
-
-    if (startOffloading) {
-      LOG.info("Operator {} start to offload", irVertex.getId());
-      operatorMetricCollector.startOffloading();
-      startOffloading = false;
-      offloading = true;
-    }
-    */
-
     // For offloading
-    List<String> offloadingIds = null;
-
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
@@ -199,19 +164,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
     }
 
-
-    // calculate thp
-    // if (isSourceVertex) {
-
-
-      /*
-      if (currTime - prevLogTime >= 1000) {
-        LOG.info("Thp: {} at {}", (1000* proceseedCnt / (currTime - prevLogTime)),
-          taskId);
-        proceseedCnt = 0;
-        prevLogTime = currTime;
-      }
-      */
     if (!irVertex.isSink) {
       proceseedCnt += 1;
       if (random.nextDouble() < samplingRate) {
@@ -275,7 +227,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     }
     */
 
-    LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
+    // LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
     currWatermark = watermark.getTimestamp();
 
     if (LOG.isDebugEnabled()) {
