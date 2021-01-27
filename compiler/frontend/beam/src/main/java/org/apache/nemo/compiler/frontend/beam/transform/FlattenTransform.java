@@ -21,6 +21,9 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Flatten transform implementation.
@@ -28,6 +31,8 @@ import org.apache.nemo.common.punctuation.Watermark;
  */
 public final class FlattenTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
+  private static final Logger LOG = LoggerFactory.getLogger(FlattenTransform.class);
+  private Context cont;
 
   /**
    * FlattenTransform Constructor.
@@ -37,6 +42,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
+    cont = context;
     this.outputCollector = oc;
   }
 
@@ -48,6 +54,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    LOG.info("Task {} at flatten emit watermark {}", cont.getTaskId(), new Instant(watermark.getTimestamp()));
     outputCollector.emitWatermark(watermark);
   }
 
