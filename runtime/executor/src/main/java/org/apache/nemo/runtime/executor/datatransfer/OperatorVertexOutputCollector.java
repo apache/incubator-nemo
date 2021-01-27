@@ -59,18 +59,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   // for logging
   private long inputTimestamp;
   private final OperatorMetricCollector operatorMetricCollector;
-  private final Map<Long, Long> prevWatermarkMap;
-
-  private long currWatermark = 0;
-
-  private OffloadingContext currOffloadingContext;
-  public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
-  private final TaskExecutor taskExecutor;
-
-  private final String edgeId;
-
-  private final boolean isSourceVertex;
-
   private final String taskId;
   private final double samplingRate;
 
@@ -90,10 +78,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
     final OperatorMetricCollector operatorMetricCollector,
-    final Map<Long, Long> prevWatermarkMap,
-    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-    final TaskExecutor taskExecutor,
-    final String edgeId,
     final String taskId,
     final Map<String, Double> samplingMap) {
     this.outputCollectorMap = outputCollectorMap;
@@ -104,12 +88,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
-    this.prevWatermarkMap = prevWatermarkMap;
-    this.expectedWatermarkMap = expectedWatermarkMap;
-    this.taskExecutor = taskExecutor;
-    this.edgeId = edgeId;
     this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
-    this.isSourceVertex = irVertex instanceof SourceVertex;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -228,7 +207,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     */
 
     // LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
-    currWatermark = watermark.getTimestamp();
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);

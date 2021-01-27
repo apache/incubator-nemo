@@ -42,8 +42,6 @@ public final class OperatorMetricCollector {
 
   private long watermark;
 
-  private final Map<Long, Integer> watermarkCounterMap;
-
   private final boolean isMonitor;
 
   final double samplingRate;
@@ -56,7 +54,6 @@ public final class OperatorMetricCollector {
                                  final Serializer serializer,
                                  final Edge edge,
                                  final EvalConf evalConf,
-                                 final Map<Long, Integer> watermarkCounterMap,
                                  final Map<String, Double> samplingMap,
                                  final String taskId) {
     this.irVertex = srcVertex;
@@ -65,7 +62,6 @@ public final class OperatorMetricCollector {
     this.evalConf = evalConf;
     this.serializer = serializer;
     this.edge = edge;
-    this.watermarkCounterMap = watermarkCounterMap;
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
@@ -132,8 +128,6 @@ public final class OperatorMetricCollector {
 
     LOG.info("Flush to serverless in vertex {}, watermark: {}: {}", irVertex.getId(), serializedCnt,
       watermark);
-    watermarkCounterMap.put(watermark,
-      watermarkCounterMap.getOrDefault(watermark, 0) + 1);
 
     compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
     // execute

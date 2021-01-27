@@ -107,7 +107,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final SerializerManager serializerManager;
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
-  private final Set<PipeOutputWriter> pipeOutputWriters;
 
   // Variables for offloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
@@ -122,18 +121,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private byte[] serializedDag;
 
-  private transient OffloadingContext currOffloadingContext = null;
-
-  //private final ConcurrentLinkedQueue<ControlEvent> controlEventQueue = new ConcurrentLinkedQueue<>();
-
-  private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
-  private final Map<Long, Long> prevWatermarkMap = new HashMap<>();
-
-  // key: offloading sink, val:
-  //                            - left: watermarks emitted from the offloading header
-  //                            - right: pending watermarks
-  public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap = new HashMap<>();
-
 
   final Map<String, Double> samplingMap = new HashMap<>();
 
@@ -145,7 +132,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
   private final String executorId;
-  private final PersistentConnectionToMasterMap toMaster;
 
   private final long threadId;
 
@@ -155,23 +141,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private EventHandler<Integer> offloadingDoneHandler;
   private EventHandler<Object> endOffloadingHandler;
 
-  private final TaskInputContextMap taskInputContextMap;
-
   private final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private long offloadedExecutionTime = 0;
-  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
-
-  private final List<StageEdge> copyOutgoingEdges;
-  private final List<StageEdge> copyIncomingEdges;
-
-  private final TaskLocationMap taskLocationMap;
 
   private final ExecutorService prepareService;
-
-  private final ExecutorGlobalInstances executorGlobalInstances;
-
-  private final RendevousServerClient rendevousServerClient;
 
   private final ExecutorThread executorThread;
 
@@ -180,8 +154,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private GBKFinalTransform gbkFinalTransform;
 
   private final TaskMetrics taskMetrics;
-
-  private final ScalingOutCounter scalingOutCounter;
 
   private final StateStore stateStore;
 
@@ -200,64 +172,38 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    */
   public DefaultTaskExecutorImpl(final long threadId,
                                  final String executorId,
-                                 final ByteTransport byteTransport,
-                                 final PersistentConnectionToMasterMap toMaster,
                                  final Task task,
                                  final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                 final List<StageEdge> copyOutgoingEdges,
-                                 final List<StageEdge> copyIncomingEdges,
                                  final IntermediateDataIOFactory intermediateDataIOFactory,
                                  final BroadcastManagerWorker broadcastManagerWorker,
                                  final MetricMessageSender metricMessageSender,
                                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                  final SerializerManager serializerManager,
                                  final ServerlessExecutorProvider serverlessExecutorProvider,
-                                 final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                                  final EvalConf evalConf,
-                                 final TaskInputContextMap taskInputContextMap,
-                                 final TaskLocationMap taskLocationMap,
                                  final ExecutorService prepareService,
-                                 final ExecutorGlobalInstances executorGlobalInstances,
-                                 final RendevousServerClient rendevousServerClient,
                                  final ExecutorThread executorThread,
-                                 final ScalingOutCounter scalingOutCounter,
                                  final PipeManagerWorker pipeManagerWorker,
                                  final StateStore stateStore) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.stateStore = stateStore;
     this.taskMetrics = new TaskMetrics();
-    this.copyOutgoingEdges = copyOutgoingEdges;
     this.executorThread = executorThread;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
-    this.copyIncomingEdges = copyIncomingEdges;
     this.prepareService = prepareService;
-    this.executorGlobalInstances = executorGlobalInstances;
     this.pipeManagerWorker = pipeManagerWorker;
-
-    this.rendevousServerClient = rendevousServerClient;
-
-    this.taskLocationMap = taskLocationMap;
-
-    this.scalingOutCounter = scalingOutCounter;
-
     this.taskWatermarkManager = new TaskInputWatermarkManager();
-
-    this.pipeOutputWriters = new HashSet<>();
-
     this.threadId = threadId;
     this.executorId = executorId;
-    this.toMaster = toMaster;
     this.sourceVertexDataFetchers = new ArrayList<>();
     this.task = task;
     this.irVertexDag = irVertexDag;
     this.taskId = task.getTaskId();
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.tinyWorkerManager = tinyWorkerManager;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
-    this.taskInputContextMap = taskInputContextMap;
 
     task.getTaskOutgoingEdges().forEach(edge -> {
       LOG.info("Task outgoing edge {}", edge);
@@ -318,9 +264,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
-    this.offloader = getOffloader();
-
-    LOG.info("Executor address map: {}", byteTransport.getExecutorAddressMap());
+    this.offloader = Optional.empty();
+    // getOffloader();
 
     /*
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -446,44 +391,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     */
   }
 
-  private Optional<Offloader> getOffloader() {
-
-    final Optional<Offloader> offloader;
-
-    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-
-      offloader = Optional.of(new TinyTaskOffloader(
-          executorId,
-          this,
-          evalConf,
-          serializedDag,
-          copyOutgoingEdges,
-          copyIncomingEdges,
-          tinyWorkerManager,
-          taskOutgoingEdges,
-          sourceVertexDataFetchers,
-          taskId,
-          sourceVertexDataFetchers.size() > 0 ? sourceVertexDataFetchers.get(0) : null,
-          status,
-          prevOffloadStartTime,
-          prevOffloadEndTime,
-          toMaster,
-          outputWriterMap,
-          irVertexDag,
-        taskLocationMap,
-        executorThread,
-        allFetchers,
-        scalingOutCounter,
-        null /* TODO
-        pipeManagerWorker.getTaskExecutorIdMap()*/));
-
-    } else {
-      offloader = Optional.empty();
-    }
-
-    return offloader;
-  }
-
   @Override
   public long getThreadId() {
     return threadId;
@@ -584,7 +491,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * @param intermediateDataIOFactory intermediate IO.
    * @return fetchers and harnesses.
    */
-  private List<VertexHarness> prepare(
+  private void prepare(
     final Task task,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IntermediateDataIOFactory intermediateDataIOFactory) {
@@ -607,9 +514,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Set GBK final transform");
         }
       }
-
-      // FOR OFFLOADING
-      expectedWatermarkMap.put(childVertex.getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
@@ -647,7 +551,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
+          executorThread, taskMetrics);
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
@@ -666,7 +570,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId, outputWriterMap,
-          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, rendevousServerClient, executorThread, taskMetrics);
+          executorThread, taskMetrics);
 
       OutputCollector outputCollector;
 
@@ -688,7 +592,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             serializerManager.getSerializer(edges.get(0).getId()),
             edges.get(0),
             evalConf,
-            watermarkCounterMap,
             samplingMap,
             taskId);
 
@@ -696,8 +599,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             vertexIdAndCollectorMap,
             irVertex, internalMainOutputs, internalAdditionalOutputMap,
             externalMainOutputs, externalAdditionalOutputMap, omc,
-            prevWatermarkMap, expectedWatermarkMap, this,
-            edges.get(0).getId(), taskId, samplingMap);
+            taskId, samplingMap);
 
         } else {
           omc = new OperatorMetricCollector(irVertex,
@@ -705,7 +607,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             null,
             null,
             evalConf,
-            watermarkCounterMap,
             samplingMap,
             taskId);
 
@@ -713,7 +614,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             vertexIdAndCollectorMap,
             irVertex, internalMainOutputs, internalAdditionalOutputMap,
             externalMainOutputs, externalAdditionalOutputMap, omc,
-            prevWatermarkMap, expectedWatermarkMap, this, null,
             taskId, samplingMap);
         }
 
@@ -778,12 +678,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
                 outputCollector, edgeIndex, taskId);
 
-            //final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
-            //  Arrays.asList(edge.getDstIRVertex()),
-            //  serializerManager.getSerializer(edge.getId()), edge, evalConf, shutdownExecutor);
-
-            //metricCollectors.add(Pair.of(omc, outputCollector));
-
             if (parentTaskReader instanceof PipeInputReader) {
               final int parallelism = edge
                 .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
@@ -796,11 +690,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 parentTaskReader.getSrcIrVertex(),
                 edge,
                 parentTaskReader,
-                dataFetcherOutputCollector,
-                rendevousServerClient,
-                executorGlobalInstances,
-                this,
-                prepared);
+                dataFetcherOutputCollector);
 
               if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
                 pipeManagerWorker.registerInputPipe(
@@ -839,14 +729,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     });
 
 
+    /*
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
       .stream()
       .map(vertex -> vertexIdToHarness.get(vertex.getId()))
       .collect(Collectors.toList());
+      */
 
 
 
-    return sortedHarnessList;
+    // return sortedHarnessList;
   }
 
   /**

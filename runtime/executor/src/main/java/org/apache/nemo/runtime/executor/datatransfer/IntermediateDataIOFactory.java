@@ -80,8 +80,6 @@ public final class IntermediateDataIOFactory {
   public OutputWriter createPipeWriter(
     final String srcTaskId,
     final RuntimeEdge<?> runtimeEdge,
-    final RendevousServerClient rendevousServerClient,
-    final ExecutorThread executorThread,
     final TaskMetrics taskMetrics) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
       serializerManager.getSerializer(runtimeEdge.getId()), taskMetrics);

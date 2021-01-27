@@ -79,10 +79,6 @@ public final class TaskExecutorUtil {
                                                           final IntermediateDataIOFactory intermediateDataIOFactory,
                                                           final String taskId,
                                                           final Set<OutputWriter> outputWriterMap,
-                                                          final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-                                                          final Map<Long, Long> prevWatermarkMap,
-                                                          final Map<Long, Integer> watermarkCounterMap,
-                                                          final RendevousServerClient rendevousServerClient,
                                                           final ExecutorThread executorThread,
                                                           final TaskMetrics taskMetrics) {
     return outEdgesToChildrenTasks
@@ -91,13 +87,12 @@ public final class TaskExecutorUtil {
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex);
-        expectedWatermarkMap.put(outEdgeForThisVertex.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
 
         final OutputWriter outputWriter;
         if (isPipe(outEdgeForThisVertex)) {
           outputWriter = intermediateDataIOFactory
             .createPipeWriter(
-              taskId, outEdgeForThisVertex, rendevousServerClient, executorThread, taskMetrics);
+              taskId, outEdgeForThisVertex, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, outEdgeForThisVertex);
@@ -121,10 +116,6 @@ public final class TaskExecutorUtil {
     final IntermediateDataIOFactory intermediateDataIOFactory,
     final String taskId,
     final Set<OutputWriter> outputWriterMap,
-    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-    final Map<Long, Long> prevWatermarkMap,
-    final Map<Long, Integer> watermarkCounterMap,
-    final RendevousServerClient rendevousServerClient,
     final ExecutorThread executorThread,
     final TaskMetrics taskMetrics) {
     // Add all inter-task additional tags to additional output map.
@@ -137,11 +128,10 @@ public final class TaskExecutorUtil {
       .map(edge -> {
         final OutputWriter outputWriter;
         LOG.info("Set expected watermark map for vertex {}", edge);
-        expectedWatermarkMap.put(edge.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
 
         if (isPipe(edge)) {
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskId, edge, rendevousServerClient, executorThread, taskMetrics);
+            .createPipeWriter(taskId, edge, taskMetrics);
         } else {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, edge);
