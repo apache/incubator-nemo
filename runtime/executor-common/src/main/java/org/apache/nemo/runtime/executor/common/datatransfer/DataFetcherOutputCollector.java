@@ -65,8 +65,9 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    LOG.info("Task {} dat fetcher output collector emit wtermark {}",
-      taskId, new Instant(watermark.getTimestamp()));
+    // LOG.info("Task {} dat fetcher output collector emit wtermark {}",
+    //  taskId, new Instant(watermark.getTimestamp()));
+
     nextOperatorVertex.getTransform().onWatermark(watermark);
     // watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
   }
