@@ -26,14 +26,12 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.ExecutorThreadQueue;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -44,23 +42,14 @@ import java.util.Optional;
 public final class IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
-  private final TaskInputContextMap taskInputContextMap;
-  private final String executorId;
-  private final RelayServer relayServer;
   private final SerializerManager serializerManager;
 
   @Inject
   private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
-                                    @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                     final PipeManagerWorker pipeManagerWorker,
-                                    final SerializerManager serializerManager,
-                                    final TaskInputContextMap taskInputContextMap,
-                                    final RelayServer relayServer) {
+                                    final SerializerManager serializerManager) {
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
-    this.taskInputContextMap = taskInputContextMap;
-    this.executorId = localExecutorId;
-    this.relayServer = relayServer;
     this.serializerManager = serializerManager;
   }
 
@@ -97,10 +86,10 @@ public final class IntermediateDataIOFactory {
                                   final String taskId,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge,
-                                  final ExecutorThread executorThread) {
+                                  final ExecutorThreadQueue executorThreadQueue) {
     if (isPipe(runtimeEdge)) {
       return new PipeInputReader(srcIRVertex, taskId, runtimeEdge,
-        serializerManager.getSerializer(runtimeEdge.getId()), executorThread);
+        serializerManager.getSerializer(runtimeEdge.getId()), executorThreadQueue);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

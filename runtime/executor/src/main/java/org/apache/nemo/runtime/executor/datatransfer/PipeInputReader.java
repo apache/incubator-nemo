@@ -55,19 +55,19 @@ public final class PipeInputReader implements InputReader {
   private final String taskId;
   private final RuntimeEdge runtimeEdge;
   private final Serializer serializer;
-  private final ExecutorThread executorThread;
+  private final ExecutorThreadQueue executorThreadQueue;
   private DataFetcher dataFetcher;
 
   public PipeInputReader(final IRVertex srcIRVertex,
                          final String taskId,
                          final RuntimeEdge runtimeEdge,
                          final Serializer serializer,
-                         final ExecutorThread executorThread) {
+                         final ExecutorThreadQueue executorThreadQueue) {
     this.srcVertex = srcIRVertex;
     this.taskId = taskId;
     this.runtimeEdge = runtimeEdge;
     this.serializer = serializer;
-    this.executorThread = executorThread;
+    this.executorThreadQueue = executorThreadQueue;
   }
 
 
@@ -115,23 +115,13 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public void addData(ByteBuf data) {
-    executorThread.queue.add(
+    executorThreadQueue.addEvent(
       new TaskHandlingDataEvent(taskId, dataFetcher, data, serializer));
   }
 
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
-  }
-
-  @Override
-  public Serializer getSerializer() {
-    return serializer;
-  }
-
-  @Override
-  public int getTaskIndex() {
-    return -10;
   }
 
 }

@@ -183,7 +183,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
 
         final SourceVertexDataFetcher sourceVertexDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-        sourceVertexDataFetcher.setReadable(readable);
+        // sourceVertexDataFetcher.setReadable(readable);
 
       } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
 
@@ -348,11 +348,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, edgeIndex);
+                outputCollector, edgeIndex, "0");
             allFetchers.add(
               new LambdaParentTaskDataFetcher(
                 offloadingTask.taskId,
-                parentTaskReader.getSrcIrVertex(),
+                edge.getSrcIRVertex(),
                 edge,
                 parentTaskReader,
                 dataFetcherOutputCollector,
@@ -565,7 +565,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager);
+        return new NextIntraTaskOperatorInfo(index, edge, nextOperator);
       })
       .collect(Collectors.toList());
   }
@@ -586,7 +586,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
+        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator));
       })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());
@@ -679,7 +679,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
-    return finished && allPendingDone() && executorThread.queue.isEmpty();
+    return finished && allPendingDone() && executorThread.isEmpty();
   }
 
   @Override
@@ -848,10 +848,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     return taskMetrics;
   }
 
-  @Override
-  public ExecutorThread getExecutorThread() {
-    return executorThread;
-  }
 
   @Override
   public boolean isSource() {

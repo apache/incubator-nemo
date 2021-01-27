@@ -79,7 +79,6 @@ public final class TaskExecutorUtil {
                                                           final IntermediateDataIOFactory intermediateDataIOFactory,
                                                           final String taskId,
                                                           final Set<OutputWriter> outputWriterMap,
-                                                          final ExecutorThread executorThread,
                                                           final TaskMetrics taskMetrics) {
     return outEdgesToChildrenTasks
       .stream()
@@ -116,7 +115,6 @@ public final class TaskExecutorUtil {
     final IntermediateDataIOFactory intermediateDataIOFactory,
     final String taskId,
     final Set<OutputWriter> outputWriterMap,
-    final ExecutorThread executorThread,
     final TaskMetrics taskMetrics) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<OutputWriter>> map = new HashMap<>();

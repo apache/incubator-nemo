@@ -178,7 +178,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         //System.out.println("Sink Emit watermark " + watermark);
       } else {
         //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
-        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+        internalVertex.getNextOperator().getTransform().onWatermark(watermark);
       }
     }
 
@@ -191,7 +191,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
           nextOpIds.add(internalVertex.getNextOperator().getId());
         } else {
           //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
-          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+          internalVertex.getNextOperator().getTransform().onWatermark(watermark);
         }
       }
     }

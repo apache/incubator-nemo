@@ -77,6 +77,17 @@ public class SourceVertexDataFetcher extends DataFetcher {
     this.taskId = taskId;
     this.prevWatermarkTimestamp = 0;
 
+    if (!isStarted && readable != null) {
+      isStarted = true;
+      LOG.info("Reset readable: {} for {}", readable, taskId);
+      prepareService.execute(() -> {
+        this.readable.prepare();
+        LOG.info("Prepare finished {}", taskId);
+        isPrepared = true;
+      });
+    }
+
+
     /*
     if (!bounded) {
       this.executorGlobalInstances.registerWatermarkService(dataSource, () -> {
@@ -94,12 +105,14 @@ public class SourceVertexDataFetcher extends DataFetcher {
     */
   }
 
+  /*
   public void setReadable(final Readable r) {
     LOG.info("Set readable for {}", taskId);
     readable = r;
     isPrepared = false;
     isStarted = false;
   }
+  */
 
   @Override
   public void prepare() {
@@ -128,21 +141,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
     if (isFinishd) {
       //finishedAck = true;
       LOG.info("Fetch data element after isFinished set for {}", taskId);
-      return EmptyElement.getInstance();
-    }
-
-    if (!isStarted && readable != null) {
-      isStarted = true;
-      LOG.info("Reset readable: {} for {}", readable, taskId);
-      prepareService.execute(() -> {
-        this.readable.prepare();
-        LOG.info("Prepare finished {}", taskId);
-        isPrepared = true;
-      });
-    }
-
-    if (!isPrepared || !globalPrepared.get()) {
-      LOG.info("Not prepared for {}...", taskId);
       return EmptyElement.getInstance();
     }
 
@@ -221,10 +219,6 @@ public class SourceVertexDataFetcher extends DataFetcher {
   public boolean isAvailable() {
     //LOG.info("Source {} available: {}, {}, {}, {}",
     //  taskId, isStarted, isFinishd, readable.isAvailable(), watermarkProgressed);
-    if (!isStarted) {
-      return true;
-    }
-
     if (!isPrepared) {
       return false;
     }

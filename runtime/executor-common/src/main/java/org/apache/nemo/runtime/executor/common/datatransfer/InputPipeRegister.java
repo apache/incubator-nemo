@@ -22,7 +22,7 @@ import io.netty.buffer.ByteBuf;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -32,25 +32,9 @@ import java.util.concurrent.CompletableFuture;
  *                         or retrieves a saved pipe connection (write)
  */
 @ThreadSafe
-public interface PipeManagerWorker extends InputPipeRegister {
-
-  void broadcast(final String srcTaskId,
-                 final String edgeId,
-                 final List<String> dstTasks,
-                 final Serializer serializer, Object event);
-
-  void writeData(final String srcTaskId,
-                 final String edgeId,
-                 final String dstTaskId,
-                 final Serializer serializer,
-                 final Object event);
-
-  void addInputData(int index, ByteBuf event);
-
-  // flush data
-  void flush();
-
-  <T> CompletableFuture<T> request(int taskIndex, Object event);
-
-  void close();
+public interface InputPipeRegister {
+  void registerInputPipe(final String srcTaskId,
+                         final String edgeId,
+                         final String dstTaskId,
+                         InputReader inputReader);
 }

@@ -1,11 +1,6 @@
 package org.apache.nemo.runtime.executor.common;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
-import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +9,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class ExecutorThread {
+public final class ExecutorThread implements ExecutorThreadQueue {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
 
   private final ConcurrentLinkedQueue<TaskExecutor> deletedTasks;
@@ -38,7 +33,7 @@ public final class ExecutorThread {
   private final List<TaskExecutor> finishWaitingTasks;
 
   // <taskId, serializer, bytebuf>
-  public final ConcurrentLinkedQueue<TaskHandlingEvent> queue;
+  private final ConcurrentLinkedQueue<TaskHandlingEvent> queue;
 
   private final List<TaskExecutor> sourceTasks;
   private final List<TaskExecutor> pendingSourceTasks;
@@ -104,6 +99,16 @@ public final class ExecutorThread {
         pendingSourceTasks.add(task);
       }
     }
+  }
+
+  @Override
+  public void addEvent(TaskHandlingEvent event) {
+    queue.add(event);
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return queue.isEmpty();
   }
 
   private volatile boolean loggingTime = false;

@@ -109,15 +109,6 @@ public final class BlockInputReader implements InputReader {
     return srcVertex;
   }
 
-  @Override
-  public Serializer getSerializer() {
-    return null;
-  }
-
-  @Override
-  public int getTaskIndex() {
-    return dstTaskIndex;
-  }
 
   /**
    * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.

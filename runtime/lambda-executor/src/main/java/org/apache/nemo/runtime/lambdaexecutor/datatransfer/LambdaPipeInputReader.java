@@ -120,14 +120,4 @@ public final class LambdaPipeInputReader implements InputReader {
   public IRVertex getSrcIrVertex() {
     return srcVertex;
   }
-
-  @Override
-  public Serializer getSerializer() {
-    return null;
-  }
-
-  @Override
-  public int getTaskIndex() {
-    return dstTaskIndex;
-  }
 }

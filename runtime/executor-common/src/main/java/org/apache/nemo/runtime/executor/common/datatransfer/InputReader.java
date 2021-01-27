@@ -19,12 +19,9 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.common.Serializer;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -54,10 +51,6 @@ public interface InputReader {
   void addData(ByteBuf data);
 
   IRVertex getSrcIrVertex();
-
-  Serializer getSerializer();
-
-  int getTaskIndex();
 
   static int getSourceParallelism(final InputReader inputReader) {
     return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)

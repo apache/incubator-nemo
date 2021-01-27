@@ -132,8 +132,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
         if (d instanceof Watermark) {
           final Watermark watermark = (Watermark) d;
-          nextOp.getWatermarkManager()
-            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
+          nextOp.getNextOperator().getTransform().onWatermark(watermark);
         } else {
           final TimestampAndValue tsv = (TimestampAndValue) d;
           outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
@@ -176,7 +175,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager);
+        return new NextIntraTaskOperatorInfo(index, edge, nextOperator);
       })
       .collect(Collectors.toList());
   }
@@ -198,7 +197,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
+        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator));
       })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());

@@ -185,7 +185,7 @@ public final class TinyTaskOffloader implements Offloader {
       final UnboundedSourceReadable newReadable =
         new UnboundedSourceReadable(oSource, null, checkpointMark);
 
-      sourceVertexDataFetcher.setReadable(newReadable);
+      // sourceVertexDataFetcher.setReadable(newReadable);
 
       // set state
       if (output.stateMap != null) {

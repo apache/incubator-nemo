@@ -24,7 +24,6 @@ public final class OperatorMetricCollector {
   long adjustTime;
 
   public final IRVertex irVertex;
-  private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;
 
   private ByteBuf inputBuffer;
@@ -53,13 +52,11 @@ public final class OperatorMetricCollector {
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
                                  final Edge edge,
-                                 final EvalConf evalConf,
                                  final Map<String, Double> samplingMap,
                                  final String taskId) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
-    this.evalConf = evalConf;
     this.serializer = serializer;
     this.edge = edge;
     this.processedEvents = new LinkedList<>();
@@ -107,15 +104,6 @@ public final class OperatorMetricCollector {
     isOffloading = false;
   }
 
-  private boolean isFlusheable() {
-    if (serverlessExecutorService == null || serverlessExecutorService.isShutdown()) {
-      throw new RuntimeException("Serverless executor is null or shutdowned: " + serverlessExecutorService);
-    }
-
-    return  (inputBuffer.readableBytes() > evalConf.flushBytes
-      || serializedCnt > evalConf.flushCount);
-  }
-
   public boolean hasFlushableData() {
     return inputBuffer.readableBytes() > 0;
   }
@@ -161,10 +149,10 @@ public final class OperatorMetricCollector {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      if (isFlusheable()) {
+      // if (isFlusheable()) {
         // flush
         flushToServerless();
-      }
+      // }
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

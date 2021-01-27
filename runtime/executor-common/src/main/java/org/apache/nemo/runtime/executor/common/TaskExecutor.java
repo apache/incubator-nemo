@@ -65,8 +65,6 @@ public interface TaskExecutor extends AutoCloseable {
 
   TaskMetrics getTaskMetrics();
 
-  ExecutorThread getExecutorThread();
-
   boolean isSource();
 
   boolean isSourceAvailable();
