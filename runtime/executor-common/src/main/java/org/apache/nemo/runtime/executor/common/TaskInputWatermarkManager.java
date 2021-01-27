@@ -20,11 +20,10 @@ public final class TaskInputWatermarkManager {
 
   }
 
-  public void addDataFetcher(DataFetcher dataFetcher, StageEdge incomingEdge) {
-    LOG.info("Add data fetcher for edge {}", incomingEdge);
+  public void addDataFetcher(DataFetcher dataFetcher, int parallelism) {
+    LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", dataFetcher, parallelism);
     dataFetcherWatermarkMap.put(dataFetcher, 0L);
-    dataFetcherWatermarkTracker.put(dataFetcher, new StageWatermarkTracker(incomingEdge
-      .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get()));
+    dataFetcherWatermarkTracker.put(dataFetcher, new StageWatermarkTracker(parallelism));
   }
 
   public Optional<Watermark> updateWatermark(final DataFetcher dataFetcher,
@@ -100,7 +99,7 @@ public final class TaskInputWatermarkManager {
           minWatermarkIndex = nextMinWatermarkIndex;
           //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
           //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
-        } else if (nextMinWatermark > currMinWatermark) {
+        } else {
           // Watermark timestamp progress!
           // Emit the min watermark
           minWatermarkIndex = nextMinWatermarkIndex;

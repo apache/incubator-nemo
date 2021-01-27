@@ -71,6 +71,7 @@ import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -816,12 +817,26 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               final CommunicationPatternProperty.Value comm =
                 edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
+              final DataFetcher df = new MultiThreadParentTaskDataFetcher(
+                taskId,
+                parentTaskReader.getSrcIrVertex(),
+                edge,
+                parentTaskReader,
+                dataFetcherOutputCollector,
+                rendevousServerClient,
+                executorGlobalInstances,
+                this,
+                prepared);
+
               if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
                 pipeManagerWorker.registerInputPipe(
                   RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
                   edge.getId(),
                   task.getTaskId(),
                   parentTaskReader);
+
+                taskWatermarkManager.addDataFetcher(df, 1);
+
               } else {
                 for (int i = 0; i < parallelism; i++) {
                   pipeManagerWorker.registerInputPipe(
@@ -830,23 +845,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                     task.getTaskId(),
                     parentTaskReader);
                 }
+
+                taskWatermarkManager.addDataFetcher(df, parallelism);
               }
 
               isStateless = false;
-              final DataFetcher df = new MultiThreadParentTaskDataFetcher(
-                  taskId,
-                  parentTaskReader.getSrcIrVertex(),
-                  edge,
-                  parentTaskReader,
-                  dataFetcherOutputCollector,
-                  rendevousServerClient,
-                  executorGlobalInstances,
-                  this,
-                  prepared);
-
-              taskWatermarkManager.addDataFetcher(df, edge);
-
               allFetchers.add(df);
+
             } else {
               allFetchers.add(
                 new ParentTaskDataFetcher(
@@ -927,7 +932,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         taskWatermarkManager.updateWatermark(dataFetcher, d.getIndex(), d.getWatermark().getTimestamp());
 
       if (watermark.isPresent()) {
-        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
+        LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
         processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
       }
     } else if (event instanceof Watermark) {

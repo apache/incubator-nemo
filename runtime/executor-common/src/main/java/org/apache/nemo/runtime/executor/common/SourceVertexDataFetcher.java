@@ -249,7 +249,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
     } else {
       // Data
       final Object element = readable.readCurrent();
-      eturn element;
+      return element;
     }
     /*
     if (watermarkProgressed) {

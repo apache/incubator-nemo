@@ -70,14 +70,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final ByteTransfer byteTransfer,
                                 final ExecutorContextManagerMap executorContextManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
-                                final PipeIndexMapWorker pipeIndexMapWorker,
-                                @Parameter(EvalConf.FlushPeriod.class) final int flushPeriod) {
+                                final PipeIndexMapWorker pipeIndexMapWorker) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.executorContextManagerMap = executorContextManagerMap;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   }
 
   @Override

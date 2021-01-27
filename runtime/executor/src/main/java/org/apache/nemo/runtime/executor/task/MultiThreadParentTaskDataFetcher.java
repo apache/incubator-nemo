@@ -330,6 +330,6 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public String toString() {
-    return "dataFetcher" + taskId;
+    return "dataFetcher" + taskId + "-" + edge.getId();
   }
 }
