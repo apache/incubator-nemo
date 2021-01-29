@@ -31,6 +31,7 @@ public class PolicyUtils {
 
       taskIdTaskExecutorMap.put(taskExecutor.getId(), taskExecutor);
 
+      /*
       if (taskExecutor.isRunning()) {
         if (taskExecutor.isStateless()) {
           stateless += 1;
@@ -48,6 +49,8 @@ public class PolicyUtils {
       } else if (taskExecutor.isDeoffloadPending()) {
         deoffpending += 1;
       }
+      */
+
       // }
     }
 

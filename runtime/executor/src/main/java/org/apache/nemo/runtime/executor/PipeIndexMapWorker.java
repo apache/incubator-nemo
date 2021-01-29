@@ -18,15 +18,44 @@ public final class PipeIndexMapWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeIndexMapWorker.class.getName());
 
   private final ConcurrentMap<Triple<String, String, String>, Integer> map;
+  private final ConcurrentMap<Integer, Triple<String, String, String>> keyMap;
   private final PersistentConnectionToMasterMap toMaster;
 
   @Inject
   private PipeIndexMapWorker(final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.toMaster = persistentConnectionToMasterMap;
     this.map = new ConcurrentHashMap<>();
+    this.keyMap = new ConcurrentHashMap<>();
+  }
 
-    // messageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
-    //  new Receiver());
+  public Triple<String, String, String> getKey(final int index) {
+
+    if (!keyMap.containsKey(index)) {
+      final CompletableFuture<ControlMessage.Message> future = toMaster
+        .getMessageSender(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+        .request(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestPipeKey)
+          .setRequestPipeKeyMsg(ControlMessage.RequestPipeKeyMessage
+            .newBuilder()
+            .setPipeIndex(index)
+            .build())
+          .build());
+
+      try {
+        final ControlMessage.Message msg = future.get();
+        final ControlMessage.ResponsePipeKeyMessage m = msg.getResponsePipeKeyMsg();
+        final Triple<String, String, String> key = Triple.of(m.getSrcTask(), m.getEdgeId(), m.getDstTask());
+        keyMap.put(index, key);
+        return key;
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    } else {
+      return keyMap.get(index);
+    }
   }
 
   public int getPipeIndex(final String srcTaskId,

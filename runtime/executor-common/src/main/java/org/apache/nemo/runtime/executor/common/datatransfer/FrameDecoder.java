@@ -20,8 +20,10 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,7 +185,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       in.readByte();
       in.readInt();
       final long length = in.readUnsignedInt();
-      LOG.info("Control message...?? length {}", length);
+      // LOG.info("Control message...?? length {}", length);
       controlBodyBytesToRead = length;
       if (length < 0) {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
@@ -245,6 +247,12 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       return false;
     }
 
+    final ByteBufInputStream bis = new ByteBufInputStream(in);
+    final TaskControlMessage taskControlMessage = TaskControlMessage.decode(bis);
+
+    pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
+
+    /*
     final byte[] bytes;
     final int offset;
 
@@ -257,11 +265,12 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       offset = 0;
     }
 
-    final ByteTransferContextSetupMessage controlMessage =
+    final TaskControlMessage controlMessage =
         ByteTransferContextSetupMessage.decode(bytes, offset, (int) controlBodyBytesToRead);
 
     out.add(controlMessage);
     in.skipBytes((int) controlBodyBytesToRead);
+    */
 
     /*
     final ByteTransferContextSetupMessage controlMessage =

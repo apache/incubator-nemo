@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.offloading.common.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,56 +11,43 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ExecutorThread implements ExecutorThreadQueue {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
 
-  private final ConcurrentLinkedQueue<TaskExecutor> deletedTasks;
-
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
-  private volatile boolean isPollingTime = false;
   private final ScheduledExecutorService dispatcher;
   public final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
-  private final String executorThreadName;
-
-  private final ConcurrentMap<String, Integer> taskCounterMap = new ConcurrentHashMap<>();
 
   private volatile boolean closed = false;
 
   private final AtomicBoolean throttle;
 
-
-  private final List<TaskExecutor> finishedTasks;
-  private final List<TaskExecutor> finishWaitingTasks;
-
   // <taskId, serializer, bytebuf>
   private final ConcurrentLinkedQueue<TaskHandlingEvent> queue;
 
-  private final List<TaskExecutor> sourceTasks;
-  private final List<TaskExecutor> pendingSourceTasks;
-
-  public final ExecutorService decoderThread = Executors.newSingleThreadExecutor();
+  private final List<ExecutorThreadTask> sourceTasks;
+  private final List<ExecutorThreadTask> pendingSourceTasks;
 
   private final String executorId;
 
-  private final EventHandler<String> taskDoneHandler;
+  private final Map<String, ExecutorThreadTask> taskIdExecutorMap = new ConcurrentHashMap<>();
 
-  private final Map<String, TaskExecutor> taskIdExecutorMap = new ConcurrentHashMap<>();
+  private ConcurrentLinkedQueue<TaskHandlingEvent> controlShortcutQueue;
+
+  private final ControlEventHandler controlEventHandler;
 
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
-                        final EventHandler<String> taskDoneHandler) {
+                        final ControlEventHandler controlEventHandler) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-    this.deletedTasks = new ConcurrentLinkedQueue<>();
-    this.finishedTasks = new ArrayList<>();
-    this.finishWaitingTasks = new ArrayList<>();
-    this.executorThreadName = executorId + "-" + executorThreadIndex;
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
     this.queue = new ConcurrentLinkedQueue<>();
+    this.controlShortcutQueue = new ConcurrentLinkedQueue<>();
     this.sourceTasks = new ArrayList<>();
     this.pendingSourceTasks = new ArrayList<>();
     this.executorId = executorId;
-    this.taskDoneHandler = taskDoneHandler;
+    this.controlEventHandler = controlEventHandler;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -71,9 +57,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           LOG.info("Pending source tasks: {}", pendingSourceTasks.size());
           l.set(System.currentTimeMillis());
         }
-        final Iterator<TaskExecutor> iterator = pendingSourceTasks.iterator();
+        final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
         while (iterator.hasNext()) {
-          final TaskExecutor sourceTask = iterator.next();
+          final ExecutorThreadTask sourceTask = iterator.next();
           if (sourceTask.isSourceAvailable()) {
             iterator.remove();
             synchronized (sourceTasks) {
@@ -86,11 +72,21 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }, 20, 20, TimeUnit.MILLISECONDS);
   }
 
-  public void deleteTask(final TaskExecutor task) {
-    deletedTasks.add(task);
+  public void deleteTask(final ExecutorThreadTask task) {
+    if (task.isSource()) {
+      synchronized (pendingSourceTasks) {
+       pendingSourceTasks.remove(task);
+      }
+
+      synchronized (sourceTasks) {
+        sourceTasks.remove(task);
+      }
+
+      taskIdExecutorMap.remove(task.getId());
+    }
   }
 
-  public void addNewTask(final TaskExecutor task) {
+  public void addNewTask(final ExecutorThreadTask task) {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
 
@@ -99,6 +95,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         pendingSourceTasks.add(task);
       }
     }
+  }
+
+  public void addShortcutEvent(final TaskHandlingEvent event) {
+    controlShortcutQueue.add(event);
   }
 
   @Override
@@ -117,52 +117,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     return throttle;
   }
 
-  private void checkDeleteTasks() {
-    while (!deletedTasks.isEmpty()) {
-      final TaskExecutor deletedTask = deletedTasks.poll();
-
-      synchronized (pendingSourceTasks) {
-        pendingSourceTasks.remove(deletedTask);
-        synchronized (sourceTasks) {
-          sourceTasks.remove(deletedTask);
-        }
-      }
-
-      LOG.info("Deleting task {}", deletedTask.getId());
-      //availableTasks.remove(deletedTask);
-      //pendingTasks.remove(deletedTask);
-
-      try {
-        deletedTask.close();
-        finishedTasks.add(deletedTask);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-
-    if (!finishedTasks.isEmpty()) {
-      final Iterator<TaskExecutor> iterator = finishedTasks.iterator();
-      while (iterator.hasNext()) {
-        final TaskExecutor finishedExecutor = iterator.next();
-        if (finishedExecutor.isFinished()) {
-          finishedExecutor.finish();
-          finishWaitingTasks.add(finishedExecutor);
-          iterator.remove();
-        }
-      }
-    }
-
-    if (!finishWaitingTasks.isEmpty()) {
-      finishWaitingTasks.removeIf(executor -> {
-        if (executor.isFinishDone()) {
-          // Task stop handler
-          taskDoneHandler.onNext(executor.getId());
-          return true;
-        } else {
-          return false;
-        }
-      });
+  private void handlingControlEvent() {
+    final Iterator<TaskHandlingEvent> controlIterator = controlShortcutQueue.iterator();
+    while (controlIterator.hasNext()) {
+      // Handling control event
+      final TaskHandlingEvent event = controlIterator.next();
+      controlEventHandler.handleControlEvent(event);
+      controlIterator.remove();
     }
   }
 
@@ -172,18 +133,16 @@ public final class ExecutorThread implements ExecutorThreadQueue {
       try {
         while (!finished) {
 
-          checkDeleteTasks();
-
           // process source tasks
-          final List<TaskExecutor> pendings = new ArrayList<>();
+          final List<ExecutorThreadTask> pendings = new ArrayList<>();
 
           boolean processed = false;
 
           if (!throttle.get()) {
             synchronized (sourceTasks) {
-              final Iterator<TaskExecutor> iterator = sourceTasks.iterator();
+              final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
               while (iterator.hasNext()) {
-                final TaskExecutor sourceTask = iterator.next();
+                final ExecutorThreadTask sourceTask = iterator.next();
                 if (sourceTask.isSourceAvailable()) {
                   sourceTask.handleSourceData();
                 } else {
@@ -199,18 +158,23 @@ public final class ExecutorThread implements ExecutorThreadQueue {
             pendingSourceTasks.addAll(pendings);
           }
 
+          handlingControlEvent();
+
           // process intermediate data
           final Iterator<TaskHandlingEvent> iterator = queue.iterator();
           while (iterator.hasNext()) {
+            // check control message
+            handlingControlEvent();
+
             final TaskHandlingEvent event = iterator.next();
             //LOG.info("Polling queue");
-
             if (event.isControlMessage()) {
-              // TODO
+              controlEventHandler.handleControlEvent(event);
             } else {
+              // Handling data
               final String taskId = event.getTaskId();
               final Object data = event.getData();
-              final TaskExecutor taskExecutor = taskIdExecutorMap.get(taskId);
+              final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
               taskExecutor.handleData(event.getDataFetcher(), data);
               processed = true;
             }
@@ -224,54 +188,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           }
         }
         // Done event while loop
-
-
-        // After Finished !!
-        final List<TaskExecutor> tasks = new ArrayList<>(deletedTasks.size());
-
-        while (!deletedTasks.isEmpty()) {
-          final TaskExecutor deletedTask = deletedTasks.poll();
-          tasks.add(deletedTask);
-
-          LOG.info("Deleting task {}", deletedTask.getId());
-          //availableTasks.remove(deletedTask);
-          //pendingTasks.remove(deletedTask);
-
-          try {
-            deletedTask.close();
-            LOG.info("Call {} close", deletedTask.getId());
-          } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
-
-        LOG.info("deleted tasks: {}", tasks.size());
-
-        for (final TaskExecutor deletedTask : tasks) {
-          LOG.info("Finishing task {}", deletedTask.getId());
-          while (!deletedTask.isFinished()) {
-            Thread.sleep(10);
-          }
-
-          deletedTask.finish();
-          finishWaitingTasks.add(deletedTask);
-          LOG.info("Finished task {}", deletedTask.getId());
-        }
-
-
-        while (!finishWaitingTasks.isEmpty()) {
-          finishWaitingTasks.removeIf(executor -> {
-            if (executor.isFinishDone()) {
-              // Task stop handler
-              taskDoneHandler.onNext(executor.getId());
-              return true;
-            } else {
-              return false;
-            }
-          });
-          Thread.sleep(10);
-        }
 
         closed = true;
       } catch (final Exception e) {

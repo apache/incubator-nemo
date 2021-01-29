@@ -16,16 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.plan;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
@@ -33,11 +39,14 @@ import java.util.*;
 public final class Task implements Serializable {
   private final String planId;
   private final String taskId;
+  private final int taskIndex;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
+  private final Map<RuntimeEdge, List<String>> downstreamTasks;
+  private final Map<RuntimeEdge, List<String>> upstreamTasks;
 
   /**
    * Constructor.
@@ -59,11 +68,14 @@ public final class Task implements Serializable {
               final Map<String, Readable> irVertexIdToReadable) {
     this.planId = planId;
     this.taskId = taskId;
+    this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
     this.serializedIRDag = serializedIRDag;
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.irVertexIdToReadable = irVertexIdToReadable;
+    this.downstreamTasks = calculateDownstreamTasks();
+    this.upstreamTasks = calculateUpstreamTasks();
   }
 
   /**
@@ -99,6 +111,52 @@ public final class Task implements Serializable {
    */
   public List<StageEdge> getTaskOutgoingEdges() {
     return taskOutgoingEdges;
+  }
+
+  public Map<RuntimeEdge, List<String>> getDownstreamTasks() {
+    return downstreamTasks;
+  }
+
+  public Map<RuntimeEdge, List<String>> getUpstreamTasks() {
+    return upstreamTasks;
+  }
+
+  private Map<RuntimeEdge, List<String>> calculateDownstreamTasks() {
+    return taskOutgoingEdges.stream().map(edge -> {
+      final int parallelism = edge
+        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      final CommunicationPatternProperty.Value comm =
+        edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+        return Pair.of(edge, Collections.singletonList(
+          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0)));
+      } else {
+        return Pair.of(edge, IntStream.range(0, parallelism).boxed()
+          .map(i -> RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0))
+          .collect(Collectors.toList()));
+      }
+    }).collect(Collectors.toMap(Pair::left, Pair::right));
+  }
+
+  private Map<RuntimeEdge, List<String>> calculateUpstreamTasks() {
+    return taskIncomingEdges.stream().map(edge -> {
+      final int parallelism = edge
+        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      final CommunicationPatternProperty.Value comm =
+        edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+        return Pair.of(edge, Collections.singletonList(
+          RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0)));
+      } else {
+        return Pair.of(edge, IntStream.range(0, parallelism).boxed()
+          .map(i -> RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0))
+          .collect(Collectors.toList()));
+      }
+    }).collect(Collectors.toMap(Pair::left, Pair::right));
   }
 
   /**

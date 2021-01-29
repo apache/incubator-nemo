@@ -3,10 +3,7 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 import avro.shaded.com.google.common.collect.Lists;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ScalingPolicyParameters;
-import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.common.Util;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -407,7 +404,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
   }
 
-  @Override
   public void close() {
     for (final DataFetcher dataFetcher : allFetchers) {
       LOG.info("Stopping data fetcher of {}/ {}", offloadingTask.taskId, dataFetcher);
@@ -436,7 +432,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public boolean isFinishDone() {
+  public boolean checkpoint() {
 
     try {
       for (final Future future : outputfutures) {
@@ -513,7 +509,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     return true;
   }
 
-  @Override
   public void finish() {
 
     LOG.info("Finishing {}", offloadingTask.taskId);
@@ -672,20 +667,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     return true;
   }
 
-  @Override
-  public PendingState getPendingStatus() {
-    throw new RuntimeException("Not supported");
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isInputFinished() {
     return finished && allPendingDone() && executorThread.isEmpty();
   }
 
-  @Override
-  public void setOffloadedTaskTime(long t) {
 
-  }
 
   @Override
   public AtomicLong getTaskExecutionTime() {
@@ -693,38 +679,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public OutputCollector getVertexOutputCollector(String vertexId) {
-    return null;
-  }
-
-  @Override
-  public long calculateOffloadedTaskTime() {
-    return 0;
-  }
-
-  @Override
   public long getThreadId() {
     return 0;
-  }
-
-  @Override
-  public boolean isRunning() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isOffloadPending() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isOffloaded() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public boolean isDeoffloadPending() {
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -752,42 +708,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public AtomicLong getPrevOffloadStartTime() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public AtomicLong getPrevOffloadEndTime() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void startOffloading(long baseTime, Object worker, EventHandler<Integer> doneHandler) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void endOffloading(EventHandler<Object> m,
-                            boolean a) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void execute() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void sendToServerless(Object event, List<String> nextOperatorIds, long wm, String edgeId) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void handleControl(Object t) {
-
-  }
-
-  @Override
   public void handleData(DataFetcher dataFetcher, Object t) {
 
   }
@@ -808,11 +728,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
-
-  }
-
-  @Override
   public boolean isSourceAvailable() {
     for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
       if (sourceVertexDataFetcher.isAvailable()) {
@@ -823,14 +738,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   private boolean deleteForMove = false;
-  @Override
-  public boolean deleteForMoveToVmScaling() {
-    return deleteForMove;
-  }
 
   @Override
-  public void setDeleteForMoveToVmScaling(boolean v) {
-    deleteForMove = v;
+  public Task getTask() {
+    return null;
   }
 
   @Override
@@ -875,11 +786,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
   }
   */
-
-  @Override
-  public void handleOffloadingEvent(Object data) {
-    throw new UnsupportedOperationException();
-  }
 
   @Override
   public void setIRVertexPutOnHold(IRVertex irVertex) {

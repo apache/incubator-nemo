@@ -57,6 +57,7 @@ public final class VMScalingFromSfToVmHandler {
   }
 
   public void moveToVMScaling() {
+    /*
     LOG.info("Start to moving tasks to vm scaling workers");
 
     for (final Wrapper wrapper : moveTaskList) {
@@ -135,6 +136,7 @@ public final class VMScalingFromSfToVmHandler {
         }
       });
     }
+    */
   }
 
   final class Wrapper {

@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.*;
@@ -46,6 +47,13 @@ public interface PipeManagerWorker extends InputPipeRegister {
                  final Object event);
 
   void addInputData(int index, ByteBuf event);
+
+  void addControlData(int index, TaskControlMessage controlMessage);
+
+  void stopOutputPipe(int index, String taskId);
+  void restartOutputPipe(int index, String taskId);
+
+  boolean isOutputPipeStopped(String taskId);
 
   // flush data
   void flush();

@@ -57,7 +57,7 @@ public class VMScalingWorkerEventHandler implements EventHandler {
     } else if (msg instanceof OffloadingResultEvent) {
       if (((OffloadingResultEvent) msg).data.size() > 0) {
         // LOG.info("Result received from vm-scaling: cnt {}", ((OffloadingResultEvent) msg).data.size());
-        te.handleOffloadingEvent(msg);
+        // te.handleOffloadingEvent(msg);
       }
     } else if (msg instanceof ThpEvent) {
       // just print the log
@@ -91,7 +91,7 @@ public class VMScalingWorkerEventHandler implements EventHandler {
     } else {
 
       LOG.info("Handling offloading event for {}: {}", te.getId(), msg);
-      te.handleOffloadingEvent(msg);
+      // te.handleOffloadingEvent(msg);
     }
   }
 }

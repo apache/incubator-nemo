@@ -10,16 +10,19 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
 
   private final String taskId;
   private final ByteBuf byteBuf;
+  private final int pipeIndex;
   private final DataFetcher dataFetcher;
   private final Serializer serializer;
 
   public TaskHandlingDataEvent(final String taskId,
                                final DataFetcher dataFetcher,
+                               final int pipeIndex,
                                final ByteBuf byteBuf,
                                final Serializer serializer) {
     this.taskId = taskId;
     this.dataFetcher = dataFetcher;
     this.byteBuf = byteBuf;
+    this.pipeIndex = pipeIndex;
     this.serializer = serializer;
   }
 
@@ -55,6 +58,11 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
   @Override
   public String getTaskId() {
     return taskId;
+  }
+
+  @Override
+  public int getInputPipeIndex() {
+    return pipeIndex;
   }
 
   @Override

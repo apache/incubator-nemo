@@ -85,15 +85,15 @@ public final class TaskOffloader {
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
         if (taskExecutor.getId().contains(stageId)
-          &&  taskExecutor.isRunning()
+          // &&  taskExecutor.isRunning()
           && offloadCnt < cnt
           && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
           //LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           LOG.info("Offloading task {}", taskExecutor.getId());
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis(), null, (m) -> {
-            stageOffloadingWorkerManager.endOffloading(stageId);
-          });
+          // taskExecutor.startOffloading(System.currentTimeMillis(), null, (m) -> {
+          //  stageOffloadingWorkerManager.endOffloading(stageId);
+          // });
           offloadCnt += 1;
         }
       }
@@ -114,11 +114,11 @@ public final class TaskOffloader {
         if (pair.left().getId().contains(stageId)) {
           if (deoffloadCnt < cnt && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
             LOG.info("Deoffloading {}", pair.left().getId());
-            pair.left().endOffloading((m) -> {
-              LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
-              stageOffloadingWorkerManager.endOffloading(stageId);
+            // pair.left().endOffloading((m) -> {
+            //  LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
+            //  stageOffloadingWorkerManager.endOffloading(stageId);
               //sendOffloadingDoneEvent(pair.left().getId());
-            }, false);
+            // }, false);
             iterator.remove();
             deoffloadCnt += 1;
           }

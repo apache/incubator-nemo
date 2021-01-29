@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * This contains a watermark and the src task index.
@@ -29,6 +30,21 @@ import java.io.Serializable;
 public final class WatermarkWithIndex implements Serializable {
   private final Watermark watermark;
   private final int index;
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    WatermarkWithIndex that = (WatermarkWithIndex) o;
+    return index == that.index &&
+      Objects.equals(watermark, that.watermark);
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(watermark, index);
+  }
 
   public WatermarkWithIndex(final Watermark watermark, final int index) {
     this.watermark = watermark;

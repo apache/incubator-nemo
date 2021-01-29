@@ -51,9 +51,11 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByMaster;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopAck;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
@@ -78,6 +80,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Executes a task.
@@ -114,12 +117,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   final Map<String, Double> samplingMap = new HashMap<>();
 
   private final AtomicInteger processedCnt = new AtomicInteger(0);
-  private final AtomicLong prevOffloadStartTime = new AtomicLong(System.currentTimeMillis());
-  private final AtomicLong prevOffloadEndTime = new AtomicLong(System.currentTimeMillis());
 
   private boolean isStateless = true;
 
-  private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
   private final String executorId;
 
   private final long threadId;
@@ -127,12 +127,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final List<DataFetcher> allFetchers = new ArrayList<>();
   public final Optional<Offloader> offloader;
 
-  private EventHandler<Integer> offloadingDoneHandler;
-  private EventHandler<Object> endOffloadingHandler;
-
   private final AtomicLong taskExecutionTime = new AtomicLong(0);
-
-  private long offloadedExecutionTime = 0;
 
   private final ExecutorService prepareService;
 
@@ -301,22 +296,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public void callTaskOffloadingDone() {
-    LOG.info("Call task offloading done in task executor {}", taskId);
-    /*
-    executorThread.queue.add(() -> {
-      offloader.get().callTaskOffloadingDone();
-    });
-    */
-  }
-
-  @Override
-  public boolean deleteForMoveToVmScaling() {
-    return false;
-  }
-
-  @Override
-  public void setDeleteForMoveToVmScaling(boolean v) {
+  public Task getTask() {
+    return task;
   }
 
   public TaskMetrics getTaskMetrics() {
@@ -339,62 +320,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public PendingState getPendingStatus() {
-    if (offloader.isPresent()) {
-      return offloader.get().getPendingStatus();
-    }
-
-    throw new RuntimeException("not supported");
-  }
-
-
-  @Override
-  public void setOffloadedTaskTime(long t) {
-    offloadedExecutionTime = t;
-  }
-
-  @Override
   public AtomicLong getTaskExecutionTime() {
     return taskExecutionTime;
-  }
-
-  @Override
-  public OutputCollector getVertexOutputCollector(final String vertexId) {
-    return vertexIdAndCollectorMap.get(vertexId).right();
-  }
-
-  public long calculateOffloadedTaskTime() {
-    return offloadedExecutionTime;
-    /*
-    long sum = 0L;
-    for (final Long val : offloadedTaskTimeMap.values()) {
-      sum += (val / 1000);
-    }
-    //return offloadedTaskTimeMap.values().stream().reduce(0L, (x,y) -> x/1000+y/1000);
-    return sum;
-    */
   }
 
   @Override
   public long getThreadId() {
     return threadId;
   }
-  @Override
-  public boolean isRunning() {
-    return status.get() == Status.RUNNING;
-  }
-  @Override
-  public boolean isOffloadPending() {
-    return status.get() == Status.OFFLOAD_PENDING;
-  }
-  @Override
-  public boolean isOffloaded() {
-    return status.get() == Status.OFFLOADED;
-  }
-  @Override
-  public boolean isDeoffloadPending() {
-    return status.get() == Status.DEOFFLOAD_PENDING;
-  }
+
   @Override
   public String getId() {
     return taskId;
@@ -407,49 +341,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public AtomicInteger getProcessedCnt() {
     return processedCnt;
-  }
-  @Override
-  public AtomicLong getPrevOffloadStartTime() {
-    return prevOffloadStartTime;
-  }
-  @Override
-  public AtomicLong getPrevOffloadEndTime() {
-    return prevOffloadEndTime;
-  }
-
-  @Override
-  public void startOffloading(final long baseTime,
-                              final Object worker,
-                              final EventHandler<Integer> doneHandler) {
-    offloadingDoneHandler = doneHandler;
-    /*
-    executorThread.queue.add(() -> {
-      if (offloader != null && offloader.isPresent()) {
-        LOG.info("Start -- handle start offloading kafka event {}", taskId);
-        offloader.get().handleStartOffloadingEvent((TinyTaskWorker) worker);
-        LOG.info("End -- handle start offloading kafka event {}", taskId);
-      }
-    });
-    */
-
-    //offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime,
-    //  (TinyTaskWorker) worker));
-  }
-
-  @Override
-  public void endOffloading(final EventHandler<Object> handler,
-                            final boolean moveToVMScaling) {
-    endOffloadingHandler = handler;
-    /*
-    executorThread.queue.add(() -> {
-      if (offloader.isPresent()) {
-        LOG.info("Start -- Receive end offloading event {}", taskId);
-        offloader.get().handleEndOffloadingEvent(moveToVMScaling);
-        LOG.info("End -- Receive end offloading event {}", taskId);
-      }
-
-    });
-    */
   }
 
 
@@ -647,7 +538,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(taskIndex, taskId,
+            .createReader(
+              taskIndex,
+              taskId,
               incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
         })
         .forEach(pair -> {
@@ -709,17 +602,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           }
         });
     });
-
-
-    /*
-    final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
-      .stream()
-      .map(vertex -> vertexIdToHarness.get(vertex.getId()))
-      .collect(Collectors.toList());
-      */
-
-
-
     // return sortedHarnessList;
   }
 
@@ -741,31 +623,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private void processWatermark(final OutputCollector outputCollector,
                                 final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
-  }
-
-  /**
-   * Execute a task, while handling unrecoverable errors and exceptions.
-   */
-  @Override
-  public void execute() {
-    throw new RuntimeException("Not supported");
-  }
-
-  private void finalizeVertex(final VertexHarness vertexHarness) {
-    closeTransform(vertexHarness);
-    finalizeOutputWriters(vertexHarness);
-  }
-  @Override
-  public void sendToServerless(final Object event,
-                               final List<String> nextOperatorIds,
-                               final long wm,
-                               final String edgeId) {
-    offloader.get().offloadingData(event, nextOperatorIds, wm, edgeId);
-  }
-
-  @Override
-  public void handleControl(Object t) {
-    // TODO
   }
 
   @Override
@@ -867,55 +724,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   public boolean offloaded = false;
 
-  @Deprecated
-  @Override
-  public void handleIntermediateData(IteratorWithNumBytes iterator, DataFetcher dataFetcher) {
-    throw new RuntimeException();
-  }
-
-  @Override
-  public void handleOffloadingEvent(final Object data) {
-    throw new RuntimeException();
-  }
-
-  private void offloadingEventHandler(final Object data) {
-    if (data instanceof OffloadingResultEvent) {
-      final OffloadingResultEvent msg = (OffloadingResultEvent) data;
-      LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
-
-      for (final Triple<List<String>, String, Object> triple : msg.data) {
-        //LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
-        handleOffloadingEvent(triple);
-      }
-    }  else if (data instanceof OffloadingResultTimestampEvent) {
-      final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
-      final long currTime = System.currentTimeMillis();
-      final long latency = currTime - event.timestamp;
-      LOG.info("Event Latency {} from lambda {} in {}, ts: {}", latency, event.vertexId, taskId, event.timestamp);
-
-    } else if (data instanceof KafkaOffloadingOutput) {
-
-      if (offloader.isPresent()) {
-        offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
-      }
-      endOffloadingHandler.onNext(data);
-
-    } else if (data instanceof StateOutput) {
-
-      if (offloader.isPresent()) {
-        offloader.get().handleStateOutput((StateOutput) data);
-      }
-      endOffloadingHandler.onNext(data);
-
-    } else if (data instanceof OffloadingDoneEvent) {
-      final OffloadingDoneEvent e = (OffloadingDoneEvent) data;
-      LOG.info("Offloading done of {}", e.taskId);
-      offloadingDoneHandler.onNext(1);
-
-    } else {
-      throw new RuntimeException("Unsupported type: " + data);
-    }
-  }
 
   /**
    * Return a map of Internal Outputs associated with their output tag.
@@ -1058,52 +866,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
 
-  private final List<Future<Integer>> pendingFutures = new ArrayList<>();
   private boolean finished = false;
 
   @Override
-  public void close() throws Exception {
-    for (final DataFetcher dataFetcher : allFetchers) {
-      LOG.info("Stopping data fetcher of {}/ {}", taskId, dataFetcher);
-      pendingFutures.add(dataFetcher.stop(taskId));
-    }
-
-    LOG.info("Waiting pending futures haha {}...", taskId);
-    finished = true;
-  }
-
-  private boolean allPendingDone() {
-    for (final Future<Integer> pendingFuture : pendingFutures) {
-      if (!pendingFuture.isDone()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public boolean isFinished() {
-    return finished && allPendingDone() && executorThreadQueue.isEmpty();
-  }
-
-  private final List<Future> outputfutures = new ArrayList<>();
-
-  @Override
-  public void finish() {
-    // TODO: finish output writer for intermediate tasks.
-    LOG.info("Finishing {}", taskId);
-    /*
-    outputfutures.addAll(outputWriterMap.stream()
-      .forEach(outputWriter -> {
-        outputWriter.close();
-      });
-
-    LOG.info("Closing output writer {}", taskId);
-    */
-  }
-
-  @Override
-  public boolean isFinishDone() {
+  public boolean checkpoint() {
     // TODO: waiting for pending output writer
     // Here, we serialize states
 

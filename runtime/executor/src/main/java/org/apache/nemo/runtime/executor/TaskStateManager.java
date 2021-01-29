@@ -25,7 +25,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.metric.StateTransitionEvent;
-import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.common.Task;
 
 import java.util.*;
 

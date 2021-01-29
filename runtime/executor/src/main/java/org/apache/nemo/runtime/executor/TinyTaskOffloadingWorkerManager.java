@@ -148,7 +148,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         } else if (msg instanceof OffloadingResultEvent) {
           if (((OffloadingResultEvent) msg).data.size() > 0) {
             //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
-            te.handleOffloadingEvent(msg);
+            // te.handleOffloadingEvent(msg);
           }
         } else if (msg instanceof ThpEvent) {
           // just print the log
@@ -168,10 +168,10 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
             removeRunningWorker(taskWorker);
           }
 
-          te.handleOffloadingEvent(msg);
+          // te.handleOffloadingEvent(msg);
         } else {
 
-          te.handleOffloadingEvent(msg);
+          // te.handleOffloadingEvent(msg);
         }
       });
 

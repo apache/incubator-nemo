@@ -48,7 +48,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.burstypolicy.JobScalingHandlerWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
@@ -481,11 +481,9 @@ public final class Executor {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
       final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
-
 
 
       final TaskExecutor taskExecutor =

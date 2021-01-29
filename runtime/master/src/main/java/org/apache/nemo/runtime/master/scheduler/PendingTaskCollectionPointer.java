@@ -18,14 +18,13 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.common.Task;
 
 import net.jcip.annotations.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;

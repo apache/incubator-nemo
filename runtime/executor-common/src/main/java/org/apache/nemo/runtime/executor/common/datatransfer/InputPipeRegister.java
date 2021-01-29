@@ -33,8 +33,29 @@ import java.util.concurrent.CompletableFuture;
  */
 @ThreadSafe
 public interface InputPipeRegister {
+  public enum Signal {
+    INPUT_STOP,
+    INPUT_RESTART,
+  }
+
+  enum InputPipeState {
+    WAITING_ACK,
+    STOPPED,
+    RUNNING
+  }
+
   void registerInputPipe(final String srcTaskId,
                          final String edgeId,
                          final String dstTaskId,
                          InputReader inputReader);
+
+  void sendSignalForPipes(final List<String> srcTasks,
+                          final String edgeId,
+                          final String dstTaskId,
+                          final Signal signal);
+
+  // return true if the all of the pipe is stopped.
+  void receiveAckInputStopSignal(String taskId, int pipeIndex);
+
+  InputPipeState getInputPipeState(String taskId);
 }

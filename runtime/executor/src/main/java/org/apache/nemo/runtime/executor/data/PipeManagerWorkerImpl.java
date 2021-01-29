@@ -19,18 +19,22 @@
 package org.apache.nemo.runtime.executor.data;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.ExecutorContextManagerMap;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByDownstreamTask;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -42,6 +46,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 /**
  * Two threads use this class
@@ -63,8 +68,24 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   private final ExecutorContextManagerMap executorContextManagerMap;
   private final TaskScheduledMapWorker taskScheduledMapWorker;
   private final PipeIndexMapWorker pipeIndexMapWorker;
-  private final Map<Integer, InputReader> taskInputReaderMap = new ConcurrentHashMap<>();
 
+  // Pipe input
+  private final Map<Integer, InputReader> pipeIndexInputReaderMap = new ConcurrentHashMap<>();
+  private final Map<String, Set<InputReader>> taskInputReaderMap = new ConcurrentHashMap<>();
+  private final Map<InputReader, Set<Integer>> inputReaderPipeIndicesMap = new ConcurrentHashMap<>();
+
+  // Input pipe state
+  private final Map<String, InputPipeState> taskInputPipeState = new ConcurrentHashMap<>();
+
+
+  // For pipe stop restart
+  private final Map<Integer, List<Object>> pendingOutputPipeMap = new ConcurrentHashMap<>();
+  private final Map<String, Set<Integer>> pendingTaskPipeIndicesMap = new ConcurrentHashMap<>();
+
+  //          edge1                                               edge2
+  //  T1  --(index)-->  [InputReader (T4, edge1)]  --> <T4> --> [OutputWriter]  --(index)-->   T5
+  //  T2  --(index)-->                                                        --(index)-->   T6
+  //  T3  --(index)-->                                                        --(index)-->   T7
   @Inject
   private PipeManagerWorkerImpl(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                 final ByteTransfer byteTransfer,
@@ -84,16 +105,89 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final String dstTaskId,
                                 final InputReader reader) {
     // taskId로부터 받는 data를 위한 input reader
-    final int taskIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    final int pipeIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
 
     LOG.info("Registering pipe for input reader {}/{}/{} . index: {}",
-      srcTaskId, edgeId, dstTaskId, taskIndex);
+      srcTaskId, edgeId, dstTaskId, pipeIndex);
 
-    if (taskInputReaderMap.containsKey(taskIndex)) {
-      throw new RuntimeException("Task is already registered " + taskIndex);
+    taskInputReaderMap.putIfAbsent(dstTaskId, new HashSet<>());
+    taskInputReaderMap.get(dstTaskId).add(reader);
+
+    taskInputPipeState.putIfAbsent(dstTaskId, InputPipeState.RUNNING);
+
+    inputReaderPipeIndicesMap.putIfAbsent(reader, new HashSet<>());
+    inputReaderPipeIndicesMap.get(reader).add(pipeIndex);
+
+    if (pipeIndexInputReaderMap.containsKey(pipeIndex)) {
+      throw new RuntimeException("Pipe is already registered " + pipeIndex);
+    }
+    pipeIndexInputReaderMap.put(pipeIndex, reader);
+  }
+
+  private final Map<String, List<Integer>> inputStopSignalPipes = new ConcurrentHashMap<>();
+  @Override
+  public void sendSignalForPipes(final List<String> srcTasks,
+                                 final String edgeId,
+                                 final String dstTaskId,
+                                 final Signal signal) {
+    inputStopSignalPipes.putIfAbsent(dstTaskId, new ArrayList<>(srcTasks.size()));
+    for (final String srcTask : srcTasks) {
+      final int pipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
+      inputStopSignalPipes.get(dstTaskId).add(pipeIndex);
     }
 
-    taskInputReaderMap.put(taskIndex, reader);
+    for (final String srcTask : srcTasks) {
+      final ContextManager contextManager = getContextManagerForDstTask(srcTask);
+      final Channel channel = contextManager.getChannel();
+      final int pipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
+      final int targetPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
+
+      TaskControlMessage controlMessage = null;
+      switch (signal) {
+        case INPUT_STOP: {
+          taskInputPipeState.put(dstTaskId, InputPipeState.WAITING_ACK);
+          controlMessage = new TaskControlMessage(
+            TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
+            pipeIndex,
+            targetPipeIndex,
+            srcTask,
+            new TaskStopSignalByDownstreamTask(dstTaskId, edgeId, srcTask));
+          break;
+        }
+        case INPUT_RESTART: {
+          break;
+        }
+        default: {
+          throw new RuntimeException("Invalid type " + signal);
+        }
+      }
+
+      channel.writeAndFlush(controlMessage)
+        .addListener(listener);
+    }
+  }
+
+  @Override
+  public void receiveAckInputStopSignal(String taskId, int pipeIndex) {
+
+    if (!inputStopSignalPipes.containsKey(taskId)) {
+      throw new RuntimeException("Invalid pipe stop ack " + taskId + ", " + pipeIndex);
+    }
+
+    final List<Integer> stopPipes = inputStopSignalPipes.get(taskId);
+    synchronized (stopPipes) {
+      stopPipes.remove((Integer) pipeIndex);
+
+      if (stopPipes.isEmpty()) {
+        inputStopSignalPipes.remove(taskId);
+        taskInputPipeState.put(taskId, InputPipeState.STOPPED);
+      }
+    }
+  }
+
+  @Override
+  public InputPipeState getInputPipeState(String taskId) {
+    return taskInputPipeState.get(taskId);
   }
 
   @Override
@@ -129,8 +223,31 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         throw new RuntimeException(e);
       }
 
+      // pending pipe checks
+      final List<Integer> pipeIndices = executorDstTaskIndicesMap.get(remoteExecutorId);
+      List<Integer> pendingPipes = null;
+      final Iterator<Integer> iterator = pipeIndices.iterator();
+      while (iterator.hasNext()) {
+        final int index = iterator.next();
+        if (pendingOutputPipeMap.containsKey(index)) {
+          if (pendingPipes == null) {
+            pendingPipes = new LinkedList<>();
+          }
+          pendingPipes.add(index);
+          iterator.remove();
+        }
+      }
+
+      if (pendingPipes != null) {
+        pendingPipes.forEach(pendingIndex -> {
+          pendingOutputPipeMap.get(pendingIndex).add(
+          DataFrameEncoder.DataFrame.newInstance(
+            Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+        });
+      }
+
       channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-        executorDstTaskIndicesMap.get(remoteExecutorId), byteBuf, byteBuf.readableBytes(), true))
+        pipeIndices, byteBuf, byteBuf.readableBytes(), true))
         .addListener(listener);
     }
   }
@@ -147,35 +264,120 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                         final String dstTaskId,
                         final Serializer serializer,
                         final Object event) {
-    final ContextManager contextManager = getContextManagerForDstTask(dstTaskId);
-    final Channel channel = contextManager.getChannel();
-
-    final ByteBuf byteBuf = channel.alloc().ioBuffer();
-    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
-
-    try {
-      final OutputStream wrapped = byteBufOutputStream;
-      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-      encoder.encode(event);
-      wrapped.close();
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
-    // LOG.info("Write {}->{} / {}", srcTaskId, dstTaskId, event);
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true))
-      .addListener(listener);
+
+    Stream.of(pendingOutputPipeMap.containsKey(index))
+      .map(outputStopped -> {
+        if (outputStopped) {
+          final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
+          return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), (Channel) null);
+        } else {
+          final ContextManager contextManager = getContextManagerForDstTask(dstTaskId);
+          final Channel channel = contextManager.getChannel();
+          final ByteBuf byteBuf = channel.alloc().ioBuffer();
+          return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), channel);
+        }
+      })
+      .forEach(triple -> {
+        final ByteBufOutputStream byteBufOutputStream = triple.getMiddle();
+        try {
+          final OutputStream wrapped = byteBufOutputStream;
+          final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+          encoder.encode(event);
+          wrapped.close();
+        } catch (final IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        final ByteBuf byteBuf = byteBufOutputStream.buffer();
+
+        final Object finalData = DataFrameEncoder.DataFrame.newInstance(
+          Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
+
+        if (triple.getLeft()) {
+          // this is pending output pipe
+          pendingOutputPipeMap.get(index).add(finalData);
+        } else {
+          triple.getRight().writeAndFlush(finalData)
+            .addListener(listener);
+        }
+      });
   }
 
   @Override
   public void addInputData(final int index, ByteBuf event) {
-    if (!taskInputReaderMap.containsKey(index)) {
+    if (!pipeIndexInputReaderMap.containsKey(index)) {
       throw new RuntimeException("Invalid task index " + index);
     }
-    taskInputReaderMap.get(index).addData(event);
+    pipeIndexInputReaderMap.get(index).addData(index, event);
+  }
+
+  @Override
+  public void addControlData(int index, TaskControlMessage controlMessage) {
+     if (!pipeIndexInputReaderMap.containsKey(index)) {
+       throw new RuntimeException("Invalid task index " + index);
+     }
+     pipeIndexInputReaderMap.get(index).addControl(controlMessage);
+  }
+
+  @Override
+  public void stopOutputPipe(int index, String taskId) {
+    if (pendingOutputPipeMap.containsKey(index)) {
+      throw new RuntimeException("Output pipe already stopped " + index + " " + taskId);
+    }
+
+    if (taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED)) {
+      LOG.info("Task is already removed " + taskId);
+    } else {
+      pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
+      pendingTaskPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
+
+      synchronized (pendingTaskPipeIndicesMap.get(taskId)) {
+        pendingTaskPipeIndicesMap.get(taskId).add(index);
+      }
+    }
+
+    // send control message
+    final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+    final ContextManager contextManager = getContextManagerForDstTask(key.getRight());
+    final Channel channel = contextManager.getChannel();
+
+
+    channel.writeAndFlush(new TaskControlMessage(
+      TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
+      index,
+      index,
+      key.getRight(),
+      null));
+  }
+
+  @Override
+  public void restartOutputPipe(int index, String taskId) {
+    // restart pending output
+    if (pendingOutputPipeMap.containsKey(index)) {
+      LOG.info("Restart pipe " + index);
+      final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+      final ContextManager contextManager = getContextManagerForDstTask(key.getRight());
+      final Channel channel = contextManager.getChannel();
+
+      final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+      pendingData.forEach(data -> channel.write(data));
+
+      channel.flush();
+
+      pendingTaskPipeIndicesMap.get(taskId).remove((Integer) index);
+      if (pendingTaskPipeIndicesMap.get(taskId).isEmpty()) {
+        pendingTaskPipeIndicesMap.remove(taskId);
+      }
+    } else {
+      LOG.info("Start pipe " + index);
+    }
+  }
+
+  @Override
+  public boolean isOutputPipeStopped(String taskId) {
+    return pendingTaskPipeIndicesMap.containsKey(taskId);
   }
 
   @Override

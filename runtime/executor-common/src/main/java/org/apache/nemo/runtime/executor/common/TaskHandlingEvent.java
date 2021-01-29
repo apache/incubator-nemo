@@ -15,5 +15,7 @@ public interface TaskHandlingEvent {
 
   String getTaskId();
 
+  int getInputPipeIndex();
+
   Object getControl();
 }

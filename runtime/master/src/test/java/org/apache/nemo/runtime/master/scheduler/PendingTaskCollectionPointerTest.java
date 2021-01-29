@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.common.Task;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;

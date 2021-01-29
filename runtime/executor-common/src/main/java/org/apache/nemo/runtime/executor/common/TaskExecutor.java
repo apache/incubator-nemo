@@ -17,15 +17,11 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.common;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,108 +29,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * Executes a task.
  * Should be accessed by a single thread.
  */
-public interface TaskExecutor extends AutoCloseable {
+public interface TaskExecutor extends ExecutorThreadTask {
 
-
-  public enum PendingState {
-    WORKER_PENDING,
-    TASK_READY_PENDING,
-    INPUT_PENDING,
-    OUTPUT_PENDING,
-    OTHER_TASK_WAITING,
-    DONE,
-  }
-
-  public enum Status {
-    RUNNING,
-    OFFLOAD_PENDING,
-    OFFLOADED,
-    DEOFFLOAD_PENDING
-  }
-
-  default void callTaskOffloadingDone() {
-    // do nothing
-  };
-
-  // it is used for deleting the task in lambda to check
-  // whether it is deleted for moving to vm scaling or not
-  boolean deleteForMoveToVmScaling();
-  void setDeleteForMoveToVmScaling(boolean v);
-
+  Task getTask();
   public int getNumKeys();
-
   TaskMetrics getTaskMetrics();
-
-  boolean isSource();
-
-  boolean isSourceAvailable();
-
-  PendingState getPendingStatus();
-
-  boolean isFinished();
-
-  void finish();
-
-  // after finish called
-  boolean isFinishDone();
-
-  public void setOffloadedTaskTime(final long t);
-
+  boolean checkpoint();
   AtomicLong getTaskExecutionTime();
-
-  OutputCollector getVertexOutputCollector(String vertexId);
-
-  long calculateOffloadedTaskTime();
-
   long getThreadId();
-
-  boolean isRunning();
-
-  boolean isOffloadPending();
-
-  boolean isOffloaded();
-
-  boolean isDeoffloadPending();
-
-  String getId();
-
-  //boolean hasData();
-
   boolean isStateless();
-
   AtomicInteger getProcessedCnt();
-
-  AtomicLong getPrevOffloadStartTime();
-
-  AtomicLong getPrevOffloadEndTime();
-
-  void startOffloading(final long baseTime,
-                       final Object worker,
-                       EventHandler<Integer> offloadingDoneHandler);
-
-  void endOffloading(final EventHandler<Object> endOffloadingHandler,
-                     boolean moveToVmScaling);
-
-  void execute();
-
-  void sendToServerless(final Object event,
-                               final List<String> nextOperatorIds,
-                               final long wm,
-                               final String edgeId);
-
-  /**
-   * This method is non-blocking call and only process one event.
-   * Executor should call this function.
-   * @return true if an event is processed
-   */
-  //int handleData();
-
-  void handleControl(Object t);
-  void handleData(DataFetcher dataFetcher, Object t);
-
-  boolean handleSourceData();
-  void handleIntermediateData(final IteratorWithNumBytes iterator, DataFetcher dataFetcher);
-  void handleOffloadingEvent(final Object data);
 
   ////////////////////////////////////////////// Misc
 

@@ -31,6 +31,9 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
+import org.apache.nemo.runtime.executor.common.ControlEventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
@@ -312,6 +315,8 @@ public final class NemoDriver {
 
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
+      .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
+      .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .build();
 
     return Configurations.merge(c,

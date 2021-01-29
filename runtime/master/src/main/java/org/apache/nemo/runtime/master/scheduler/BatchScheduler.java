@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.Stage;

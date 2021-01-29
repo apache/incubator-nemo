@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
+import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -28,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
+ * Metric class for {@link Task}.
  */
 public class TaskMetric implements StateMetric<TaskState.State> {
   private String id;

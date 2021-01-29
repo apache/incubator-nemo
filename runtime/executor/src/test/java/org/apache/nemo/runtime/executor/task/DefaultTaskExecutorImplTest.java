@@ -18,9 +18,16 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.coder.IntDecoderFactory;
+import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -29,7 +36,6 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -37,36 +43,33 @@ import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.executor.MasterSetupHelper;
-import org.apache.nemo.runtime.executor.MetricMessageSender;
-import org.apache.nemo.runtime.executor.PipeManagerTestHelper;
-import org.apache.nemo.runtime.executor.TaskStateManager;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.ExecutorThreadQueue;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.TaskHandlingEvent;
+import org.apache.nemo.common.Task;
+import org.apache.nemo.runtime.executor.*;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.statestore.StateStore;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.task.util.EventOrWatermark;
+import org.apache.nemo.runtime.executor.task.util.StreamTransformNoEmit;
+import org.apache.nemo.runtime.executor.task.util.TestUnboundedSourceReadable;
+import org.apache.nemo.runtime.executor.task.util.TestUnboundedSourceVertex;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -75,8 +78,8 @@ import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -84,8 +87,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -113,91 +114,341 @@ public final class DefaultTaskExecutorImplTest {
         RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
   }
 
-  // private MasterSetupHelper masterSetupHelper;
+
+  private List<EventOrWatermark> events1;
+  private List<EventOrWatermark> events2;
+  private MasterSetupHelper masterSetupHelper;
+  private StateStore stateStore;
+
+  @After
+  public void tearDown() throws Exception {
+    masterSetupHelper.close();
+  }
 
   @Before
   public void setUp() throws Exception {
     stageId = new AtomicInteger(1);
-    // masterSetupHelper = new MasterSetupHelper();
     runtimeEdgeToOutputData = new HashMap<>();
+
+    masterSetupHelper = new MasterSetupHelper();
+
+    stateStore = new StateStore() {
+      final Map<String, ByteBuf> stateMap = new HashMap<>();
+
+      @Override
+      public synchronized  InputStream getStateStream(String taskId) {
+        return new ByteBufInputStream(stateMap.get(taskId).retainedDuplicate());
+      }
+
+      @Override
+      public synchronized OutputStream getOutputStreamForStoreTaskState(String taskId) {
+        stateMap.put(taskId, ByteBufAllocator.DEFAULT.buffer());
+        return new ByteBufOutputStream(stateMap.get(taskId));
+      }
+
+      @Override
+      public synchronized boolean containsState(String taskId) {
+        return stateMap.containsKey(taskId);
+      }
+    };
+
+    events1 = new LinkedList<>();
+
+    events1.add(new EventOrWatermark(10));
+    events1.add(new EventOrWatermark(11));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS,true));
+    events1.add(new EventOrWatermark(12));
+    events1.add(new EventOrWatermark(13));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 2,true));
+    events1.add(new EventOrWatermark(12));
+    events1.add(new EventOrWatermark(13));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 3,true));
+    events1.add(new EventOrWatermark(14));
+    events1.add(new EventOrWatermark(15));
+
+    events2 = new LinkedList<>();
+
+    events1.add(new EventOrWatermark(100));
+    events1.add(new EventOrWatermark(110));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS,true));
+    events1.add(new EventOrWatermark(120));
+    events1.add(new EventOrWatermark(130));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 2,true));
+    events1.add(new EventOrWatermark(120));
+    events1.add(new EventOrWatermark(130));
+    events1.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 3,true));
+    events1.add(new EventOrWatermark(140));
+    events1.add(new EventOrWatermark(150));
   }
+
+  private Pair<IRVertex, Map<String, Readable>> createSource(final List<EventOrWatermark> events) {
+    final IRVertex sourceIRVertex = new TestUnboundedSourceVertex();
+    final Readable readable = new TestUnboundedSourceReadable(events);
+    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
+    vertexIdToReadable.put(sourceIRVertex.getId(), readable);
+    return Pair.of(sourceIRVertex, vertexIdToReadable);
+  }
+
+  // [stage1]  [stage2]
+  // Task1 -> Task2
+
+  // [      stage 1      ]   [ stage 2]
+  // (src) -> (op flatten) -> (op noemit)
+  @Test
+  public void testMultipleTaskExecutors() throws Exception {
+
+    // Stage setup
+    final int stage1Parallelism = 1;
+    final int stage2Parallelism = 1;
+    final String stage1Id = "stage1";
+    final String stage2Id = "stage2";
+    final String executor1 = "executor1";
+    final String executor2 = "executor2";
+
+    final String task1Id = RuntimeIdManager.generateTaskId(stage1Id, 0, 0);
+    final String task2Id = RuntimeIdManager.generateTaskId(stage2Id, 0, 0);
+
+    masterSetupHelper.taskScheduledMap.put(task1Id, executor1);
+    masterSetupHelper.taskScheduledMap.put(task2Id, executor2);
+
+    masterSetupHelper.executorIds.add(executor1);
+    masterSetupHelper.executorIds.add(executor2);
+
+    final LinkedList<Watermark> emittedWatermarks = new LinkedList<>();
+    final LinkedList<Object> emittedEvents = new LinkedList<>();
+
+
+    final Pair<IRVertex, Map<String, Readable>> srcPair1 = createSource(events1);
+    final Map<String, Readable> vertexIdToReadable1 = srcPair1.right();
+
+
+    // stage 1 vertex
+    final IRVertex sourceIRVertex = srcPair1.left();
+    final OperatorVertex operatorVertex1 = new OperatorVertex(new FlattenTransform());
+    operatorVertex1.setProperty(ParallelismProperty.of(stage1Parallelism));
+
+    // stage 2 vertex
+    final OperatorVertex operatorVertex2 = new OperatorVertex(
+      new StreamTransformNoEmit(emittedWatermarks, emittedEvents));
+    operatorVertex2.setProperty(ParallelismProperty.of(stage2Parallelism));
+
+    // stage1 dag
+    final RuntimeEdge innerEdge = createEdge(sourceIRVertex, operatorVertex1, "edge0");
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> stage1Dag =
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(sourceIRVertex)
+        .addVertex(operatorVertex1)
+        .connectVertices(innerEdge)
+        .buildWithoutSourceSinkCheck();
+
+    final ExecutionPropertyMap<VertexExecutionProperty> stage1Properties =
+      new ExecutionPropertyMap<>(stage1Id);
+    stage1Properties.put(ParallelismProperty.of(stage1Parallelism), true);
+    // TODO
+    final List<Map<String, Readable>> vertexIdReadables = new LinkedList<>();
+
+    final Stage stage1 = new Stage(stage1Id,
+      IntStream.range(0, stage1Parallelism).boxed().collect(Collectors.toList()),
+      stage1Dag,
+      stage1Properties,
+      vertexIdReadables);
+
+    // stage2 dag
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> stage2Dag =
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(operatorVertex2)
+        .buildWithoutSourceSinkCheck();
+
+    final ExecutionPropertyMap<VertexExecutionProperty> stage2Properties =
+      new ExecutionPropertyMap<>(stage2Id);
+    stage2Properties.put(ParallelismProperty.of(stage2Parallelism), true);
+    // TODO
+    final List<Map<String, Readable>> vertexIdReadables2 = new LinkedList<>();
+
+    final Stage stage2 = new Stage(stage2Id,
+      IntStream.range(0, stage2Parallelism).boxed().collect(Collectors.toList()),
+      stage2Dag,
+      stage2Properties,
+      vertexIdReadables2);
+
+    // stage1 outgling edge
+    final ExecutionPropertyMap executionPropertyMap =
+      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
+    executionPropertyMap.put(DataStoreProperty.of(DataStoreProperty.Value.Pipe), true);
+
+    // Stage edge
+    final StageEdge s1ToS2 = new StageEdge("edge1",
+      executionPropertyMap,
+      operatorVertex1,
+      operatorVertex2,
+      stage1,
+      stage2);
+
+    masterSetupHelper.pipeIndexMap.put(Triple.of(task1Id, s1ToS2.getId(), task2Id), 1);
+    masterSetupHelper.pipeIndexMap.put(Triple.of(task2Id, s1ToS2.getId(), task1Id), 2);
+
+     final Task task1 =
+      new Task(
+        "testSourceVertexDataFetching",
+        task1Id,
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.emptyList(),
+        Collections.singletonList(s1ToS2),
+        vertexIdToReadable1);
+
+     final Task task2 =
+      new Task(
+        "task2plan",
+        task2Id,
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.singletonList(s1ToS2),
+        Collections.emptyList(),
+        new HashMap<>());
+
+
+    // Execute the task.
+    final List<TaskHandlingEvent> inputHandlingQueue = new LinkedList<>();
+    final Pair<TaskExecutor, Injector> taskExecutor1Pair = getTaskExecutor(0, "executor1", task1, stage1Dag, Collections.emptyList());
+    final Pair<TaskExecutor, Injector> taskExecutor2Pair = getTaskExecutor(1, "executor2", task2, stage2Dag, inputHandlingQueue);
+
+    // Wait for registering name server
+    Thread.sleep(1000);
+
+    taskExecutor1Pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    taskExecutor1Pair.right().getInstance(TaskScheduledMapWorker.class).init();
+
+    taskExecutor2Pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    taskExecutor2Pair.right().getInstance(TaskScheduledMapWorker.class).init();
+
+    final TaskExecutor taskExecutor1 = taskExecutor1Pair.left();
+    final TaskExecutor taskExecutor2 = taskExecutor2Pair.left();
+    // Check the output.
+    while (!taskExecutor1.isSourceAvailable()) { Thread.sleep(100); }
+
+    taskExecutor1.handleSourceData();
+    Thread.sleep(100);
+
+    assertEquals(10, getValuesInput(inputHandlingQueue.remove(0)));
+
+    taskExecutor1.handleSourceData();
+    Thread.sleep(100);
+    assertEquals(11, getValuesInput(inputHandlingQueue.remove(0)));
+
+    taskExecutor1.handleSourceData();
+    Thread.sleep(100);
+    assertEquals(12, getValuesInput(inputHandlingQueue.remove(0)));
+
+    taskExecutor1.handleSourceData();
+    Thread.sleep(100);
+    assertEquals(new WatermarkWithIndex(new Watermark(Util.WATERMARK_PROGRESS), 0),
+      inputHandlingQueue.remove(0).getData());
+
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+    // Task Move
+  }
+
+  private Object getValuesInput(final TaskHandlingEvent event) {
+    return ((TimestampAndValue)event.getData()).value;
+
+  }
+
 
   /**
    * This test emits data and watermark by emulating an unbounded source readable.
    */
   @Test()
-  public void testUnboundedSourceVertexDataFetching() throws Exception {
-    final IRVertex sourceIRVertex = new TestUnboundedSourceVertex();
-    final List<EventOrWatermark> events = new LinkedList<>();
+  public void testSingleTaskExecutor() throws Exception {
 
-    events.add(new EventOrWatermark(10));
-    events.add(new EventOrWatermark(11));
-    events.add(new EventOrWatermark(Util.WATERMARK_PROGRESS,true));
-    events.add(new EventOrWatermark(12));
-    events.add(new EventOrWatermark(13));
-    events.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 2,true));
-    events.add(new EventOrWatermark(12));
-    events.add(new EventOrWatermark(13));
-    events.add(new EventOrWatermark(Util.WATERMARK_PROGRESS * 3,true));
-    events.add(new EventOrWatermark(14));
-    events.add(new EventOrWatermark(15));
+    final Pair<IRVertex, Map<String, Readable>> srcPair = createSource(events1);
+    final IRVertex sourceIRVertex = srcPair.left();
+    final Map<String, Readable> vertexIdToReadable = srcPair.right();
 
-    final Readable readable = new TestUnboundedSourceReadable(events);
+    final LinkedList<Watermark> emittedWatermarks = new LinkedList<>();
+    final LinkedList<Object> emittedEvents = new LinkedList<>();
 
-    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
-    vertexIdToReadable.put(sourceIRVertex.getId(), readable);
-    final List<Watermark> emittedWatermarks = new LinkedList<>();
-
-    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks);
+    final Transform transform = new StreamTransformNoEmit(emittedWatermarks, emittedEvents);
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
     operatorVertex.setProperty(ParallelismProperty.of(1));
 
+    final RuntimeEdge innerEdge = createEdge(sourceIRVertex, operatorVertex, "edge1");
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
       new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(sourceIRVertex)
         .addVertex(operatorVertex)
-        .connectVertices(createEdge(sourceIRVertex, operatorVertex, "edge1"))
+        .connectVertices(innerEdge)
         .buildWithoutSourceSinkCheck();
 
-    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorVertex);
-    final Task task =
+    // TAsk setup
+    final String stage1Id = "stage1";
+    final ExecutionPropertyMap<VertexExecutionProperty> stageProperties =
+      new ExecutionPropertyMap<>(stage1Id);
+    stageProperties.put(ParallelismProperty.of(1), true);
+    final List<Map<String, Readable>> vertexIdReadables = new LinkedList<>();
+    vertexIdReadables.add(vertexIdToReadable);
+
+    final Stage stage1 = new Stage(stage1Id,
+      Collections.singletonList(0),
+      taskDag,
+      stageProperties,
+      vertexIdReadables);
+
+    final Task task1 =
       new Task(
         "testSourceVertexDataFetching",
-        generateTaskId(),
+        RuntimeIdManager.generateTaskId(stage1Id, 0, 0),
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.emptyList(),
-        Collections.singletonList(taskOutEdge),
+        Collections.emptyList(),
         vertexIdToReadable);
 
     // Execute the task.
-    final TaskExecutor taskExecutor = getTaskExecutor(0, "executor1", task, taskDag);
+    final TaskExecutor taskExecutor = getTaskExecutor(0, "executor1", task1, taskDag, Collections.emptyList()).left();
 
     // Check the output.
     while (!taskExecutor.isSourceAvailable()) { Thread.sleep(100); }
 
     taskExecutor.handleSourceData();
-    assertEquals(Arrays.asList(10), getValues(taskOutEdge.getId()));
+    assertEquals(Arrays.asList(10), emittedEvents);
 
     taskExecutor.handleSourceData();
-    assertEquals(Arrays.asList(10, 11), getValues(taskOutEdge.getId()));
+    assertEquals(Arrays.asList(10, 11), emittedEvents);
 
     taskExecutor.handleSourceData();
-    assertEquals(Arrays.asList(10, 11, 12), getValues(taskOutEdge.getId()));
+    assertEquals(Arrays.asList(10, 11, 12), emittedEvents);
     assertEquals(0, emittedWatermarks.size());
 
     taskExecutor.handleSourceData();
     assertEquals(Arrays.asList(new Watermark(Util.WATERMARK_PROGRESS)), emittedWatermarks);
 
     taskExecutor.handleSourceData();
-    assertEquals(Arrays.asList(10, 11, 12, 13), getValues(taskOutEdge.getId()));
+    assertEquals(Arrays.asList(10, 11, 12, 13), emittedEvents);
 
     taskExecutor.handleSourceData();
-    assertEquals(Arrays.asList(10, 11, 12, 13, 12), getValues(taskOutEdge.getId()));
+    assertEquals(Arrays.asList(10, 11, 12, 13, 12), emittedEvents);
 
     taskExecutor.handleSourceData();
     assertEquals(Arrays.asList(new Watermark(Util.WATERMARK_PROGRESS),
       new Watermark(Util.WATERMARK_PROGRESS * 2)), emittedWatermarks);
+  }
+
+  private List<Object> getValues(final List<Object> list) {
+    return (List<Object>) list.stream()
+      .map(f -> ((TimestampAndValue) f).value).collect(Collectors.toList());
   }
 
   private List<Object> getValues(final String edgeId) {
@@ -208,13 +459,15 @@ public final class DefaultTaskExecutorImplTest {
   private RuntimeEdge<IRVertex> createEdge(final IRVertex src,
                                            final IRVertex dst,
                                            final String runtimeIREdgeId) {
-    ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
-    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new
+      ExecutionPropertyMap<>(runtimeIREdgeId);
+    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.Pipe));
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 
   }
 
-  private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
+  private StageEdge mockStageEdgeFrom(final IRVertex irVertex,
+                                      final String dstTaskId) {
     final IREdge edge = mock(IREdge.class);
 
     final ExecutionPropertyMap map = ExecutionPropertyMap.of(edge, CommunicationPatternProperty.Value.OneToOne);
@@ -263,140 +516,6 @@ public final class DefaultTaskExecutorImplTest {
     }
   }
 
-  /**
-   * This transform does not emit watermark to OutputWriter
-   * because OutputWriter currently does not support watermarks (TODO #245)
-   * @param <T> type
-   */
-  private class StreamTransformNoWatermarkEmit<T> implements Transform<T, T> {
-    private OutputCollector<T> outputCollector;
-    private final List<Watermark> emittedWatermarks;
-
-    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
-      this.emittedWatermarks = emittedWatermarks;
-    }
-
-    @Override
-    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
-      this.outputCollector = outputCollector;
-    }
-
-    @Override
-    public void onWatermark(Watermark watermark) {
-      emittedWatermarks.add(watermark);
-    }
-
-    @Override
-    public void onData(final Object element) {
-      outputCollector.emit((T) element);
-    }
-
-    @Override
-    public void close() {
-      // Do nothing.
-    }
-  }
-
-  /**
-   * Source vertex for unbounded source test.
-   */
-  private final class TestUnboundedSourceVertex extends SourceVertex {
-
-    @Override
-    public boolean isBounded() {
-      return false;
-    }
-
-    @Override
-    public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
-      return null;
-    }
-
-    @Override
-    public void clearInternalStates() {
-
-    }
-
-    @Override
-    public IRVertex getClone() {
-      return null;
-    }
-  }
-
-  private final class EventOrWatermark {
-    public Object event;
-    public long watermark;
-    private final boolean data;
-
-    public EventOrWatermark(final Object event) {
-      this.event = event;
-      this.data = true;
-    }
-
-    public EventOrWatermark(final long watermark,
-                            final boolean watermarked) {
-      this.watermark = watermark;
-      this.data = false;
-    }
-
-    public boolean isWatermark() {
-      return !data;
-    }
-  }
-
-  // This emulates unbounded source that throws NoSuchElementException
-  // It reads current data until middle point and throws NoSuchElementException at the middle point.
-  // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
-  private final class TestUnboundedSourceReadable implements Readable {
-    final List<EventOrWatermark> elements;
-
-    private long currWatermark = 0;
-
-    public TestUnboundedSourceReadable(final List<EventOrWatermark> events) {
-      this.elements = events;
-    }
-
-    @Override
-    public boolean isAvailable() {
-      return !elements.isEmpty() && !(elements.size() == 1 && elements.get(0).isWatermark());
-    }
-
-    @Override
-    public void prepare() {
-
-    }
-
-    @Override
-    public Object readCurrent() throws NoSuchElementException {
-      while (true) {
-        final EventOrWatermark e = elements.remove(0);
-        if (e.isWatermark()) {
-          currWatermark = e.watermark;
-        } else {
-          return new TimestampAndValue<>(System.currentTimeMillis(), e.event);
-        }
-      }
-    }
-
-    @Override
-    public long readWatermark() {
-      return currWatermark;
-    }
-
-    @Override
-    public boolean isFinished() {
-      return false;
-    }
-
-    @Override
-    public List<String> getLocations() throws Exception {
-      return null;
-    }
-
-    @Override
-    public void close() throws IOException {
-    }
-  }
 
   /**
    * Simple identity function for testing.
@@ -426,78 +545,32 @@ public final class DefaultTaskExecutorImplTest {
     }
   }
 
-
-  /**
-   * Simple conditional identity function for testing additional outputs.
-   */
-  private class RoutingTransform implements Transform<Integer, Integer> {
-    private OutputCollector<Integer> outputCollector;
-    private final Collection<String> additionalTags;
-
-    public RoutingTransform(final Collection<String> additionalTags) {
-      this.additionalTags = additionalTags;
-    }
-
-    @Override
-    public void prepare(final Context context, OutputCollector<Integer> outputCollector) {
-      this.outputCollector = outputCollector;
-    }
-
-    @Override
-    public void onData(final Integer element) {
-      final int i = element;
-      if (i % 2 == 0) {
-        // route to all main outputs. Invoked if user calls c.output(element)
-        outputCollector.emit(i);
-      } else {
-        // route to all additional outputs. Invoked if user calls c.output(tupleTag, element)
-        additionalTags.forEach(tag -> outputCollector.emit(tag, i));
-      }
-    }
-
-    @Override
-    public void onWatermark(Watermark watermark) {
-      outputCollector.emitWatermark(watermark);
-    }
-
-    @Override
-    public void close() {
-      // Do nothing.
-    }
-  }
-
-  /**
-   * Gets a list of integer pair elements in range.
-   * @param start value of the range (inclusive).
-   * @param end   value of the range (exclusive).
-   * @return the list of elements.
-   */
-  private List<Integer> getRangedNumList(final int start, final int end) {
-    final List<Integer> numList = new ArrayList<>(end - start);
-    IntStream.range(start, end).forEach(number -> numList.add(number));
-    return numList;
-  }
-
-  private TaskExecutor getTaskExecutor(final long tid,
+  private Pair<TaskExecutor, Injector> getTaskExecutor(final long tid,
                                        final String executorId,
                                        final Task task,
-                                       final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) throws InjectionException {
-    // final Pair<PipeManagerWorker, Injector> pair = PipeManagerTestHelper
-    //  .createPipeManagerWorker("executor1", masterSetupHelper.nameServer);
+                                       final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag,
+                                       final List<TaskHandlingEvent> inputHandlingList) throws InjectionException {
+    final Pair<PipeManagerWorker, Injector> pair = PipeManagerTestHelper
+      .createPipeManagerWorker(executorId, masterSetupHelper.nameServer);
 
-    final IntermediateDataIOFactory ioFactory =
-      mock(IntermediateDataIOFactory.class);
+    final Injector injector = pair.right();
+    final IntermediateDataIOFactory ioFactory = injector.getInstance(IntermediateDataIOFactory.class);
 
-    when(ioFactory.createPipeWriter(any(), any(), any())).thenAnswer(new ChildTaskWriterAnswer());
+    // when(ioFactory.createPipeWriter(any(), any(), any())).thenAnswer(new ChildTaskWriterAnswer());
 
     final BroadcastManagerWorker bworker = mock(BroadcastManagerWorker.class);
 
     final MetricMessageSender ms = mock(MetricMessageSender.class);
 
-    final PersistentConnectionToMasterMap pmap = mock(PersistentConnectionToMasterMap.class);
+    final PersistentConnectionToMasterMap pmap = injector.getInstance(PersistentConnectionToMasterMap.class);
 
-    final SerializerManager serializerManager = mock(SerializerManager.class);
-    when(serializerManager.getSerializer(any())).thenReturn(PipeManagerTestHelper.INT_SERIALIZER);
+    final SerializerManager serializerManager = injector.getInstance(SerializerManager.class);
+    serializerManager.register("edge0", new NemoEventEncoderFactory(IntEncoderFactory.of()),
+      new NemoEventDecoderFactory(IntDecoderFactory.of()));
+    serializerManager.register("edge1", new NemoEventEncoderFactory(IntEncoderFactory.of()),
+      new NemoEventDecoderFactory(IntDecoderFactory.of()));
+    serializerManager.register("edge2", new NemoEventEncoderFactory(IntEncoderFactory.of()),
+      new NemoEventDecoderFactory(IntDecoderFactory.of()));
 
     final ServerlessExecutorProvider provider = mock(ServerlessExecutorProvider.class);
 
@@ -505,26 +578,25 @@ public final class DefaultTaskExecutorImplTest {
 
     final ExecutorService prepare = Executors.newSingleThreadExecutor();
 
+
     final ExecutorThreadQueue executorThreadQueue = new ExecutorThreadQueue() {
-      public final List<TaskHandlingEvent> list = new LinkedList<>();
 
       @Override
       public void addEvent(TaskHandlingEvent event) {
-        list.add(event);
+        inputHandlingList.add(event);
       }
 
       @Override
       public boolean isEmpty() {
-        return list.isEmpty();
+        return inputHandlingList.isEmpty();
       }
     };
 
-    final InputPipeRegister pipeManagerWorker = mock(InputPipeRegister.class);
+    final InputPipeRegister pipeManagerWorker = pair.left();
 
-    final StateStore stateStore = mock(StateStore.class);
-    when(stateStore.containsState(any())).thenReturn(false);
 
-    return new DefaultTaskExecutorImpl(
+
+    return Pair.of(new DefaultTaskExecutorImpl(
       tid,
       executorId,
       task,
@@ -539,6 +611,6 @@ public final class DefaultTaskExecutorImplTest {
       prepare,
       executorThreadQueue,
       pipeManagerWorker,
-      stateStore);
+      stateStore), injector);
   }
 }

@@ -222,7 +222,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
   public synchronized void receivePendingAck() {
     //LOG.info("Ack from parent stop output {}/{}", taskId, getContextId().getTransferIndex());
     // for guarantee
-    taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+    // taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
   }
 
 
@@ -338,7 +338,7 @@ public abstract class AbstractRemoteByteInputContext extends AbstractByteTransfe
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
       // add it to the queue
       if (taskExecutor != null && inputStreamIterator != null && dataFetcher != null) {
-        taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
+        // taskExecutor.handleIntermediateData(inputStreamIterator, dataFetcher);
       }
     } else {
       // ignore empty data frames

@@ -28,6 +28,7 @@ import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 
@@ -106,12 +107,17 @@ public final class LambdaPipeInputReader implements InputReader {
   }
 
   @Override
-  public void addControl() {
+  public String getTaskId() {
+    return null;
+  }
+
+  @Override
+  public void addControl(TaskControlMessage message) {
 
   }
 
   @Override
-  public void addData(ByteBuf data) {
+  public void addData(int pipeIndex, ByteBuf data) {
 
   }
 

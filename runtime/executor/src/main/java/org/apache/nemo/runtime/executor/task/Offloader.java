@@ -10,8 +10,6 @@ import java.util.*;
 public interface Offloader {
 
 
-  public TaskExecutor.PendingState getPendingStatus();
-
   public void handleOffloadingOutput(final KafkaOffloadingOutput output);
 
   void handleStateOutput(final StateOutput output);

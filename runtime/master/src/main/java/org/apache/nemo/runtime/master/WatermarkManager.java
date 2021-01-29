@@ -5,8 +5,6 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.plan.Task;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

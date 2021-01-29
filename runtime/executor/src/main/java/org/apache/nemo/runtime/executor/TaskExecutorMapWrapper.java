@@ -41,6 +41,13 @@ public final class TaskExecutorMapWrapper {
     }
   }
 
+  public TaskExecutor getTaskExecutor(final String taskId) {
+    if (!taskIdExecutorMap.containsKey(taskId)) {
+      throw new RuntimeException("No task executor " + taskId);
+    }
+    return taskIdExecutorMap.get(taskId);
+  }
+
   public void removeTask(String taskId) {
     final TaskExecutor e = taskIdExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(e);
@@ -52,6 +59,10 @@ public final class TaskExecutorMapWrapper {
         l.remove(e);
       }
     });
+  }
+
+  public void removeTask(final TaskExecutor taskExecutor) {
+    removeTask(taskExecutor.getId());
   }
 
   public ConcurrentMap<TaskExecutor, Boolean> getTaskExecutorMap() {

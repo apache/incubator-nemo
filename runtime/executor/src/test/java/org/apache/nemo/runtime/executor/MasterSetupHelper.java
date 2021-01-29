@@ -48,6 +48,11 @@ public class MasterSetupHelper {
       masterHandler);
   }
 
+  public void close() throws Exception {
+    messageEnvironment.close();
+    nameServer.close();
+  }
+
   final class MasterHandler implements MessageListener<ControlMessage.Message> {
 
 
@@ -106,6 +111,30 @@ public class MasterSetupHelper {
                 .setTaskIndex(pipeIndexMap.get(key))
                 .build())
               .build());
+          break;
+        }
+        case RequestPipeKey: {
+          final ControlMessage.RequestPipeKeyMessage requestPipeKeyMessage =
+            message.getRequestPipeKeyMsg();
+
+          final int pipeIndex = (int)requestPipeKeyMessage.getPipeIndex();
+
+          pipeIndexMap.entrySet().stream()
+            .filter(entry -> entry.getValue() == pipeIndex)
+            .forEach(entry -> {
+              messageContext.reply(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.RequestPipeKey)
+                  .setResponsePipeKeyMsg(ControlMessage.ResponsePipeKeyMessage.newBuilder()
+                    .setSrcTask(entry.getKey().getLeft())
+                    .setEdgeId(entry.getKey().getMiddle())
+                    .setDstTask(entry.getKey().getRight())
+                    .build())
+                  .build());
+            });
+
           break;
         }
         default:

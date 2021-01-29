@@ -171,7 +171,7 @@ public final class LocalByteInputContext implements ByteInputContext{
 //  private final IteratorWithNumBytes iteratorWithNumBytes;
 //  private final LocalByteOutputContext localByteOutputContext;
 //
-//  private  boolean isFinished = false;
+//  private  boolean isInputFinished = false;
 //  private EventHandler<Integer> ackHandler;
 //  private final ScheduledExecutorService ackService;
 //
@@ -299,8 +299,8 @@ public final class LocalByteInputContext implements ByteInputContext{
 //  }
 //
 //  @Override
-//  public boolean isFinished() {
-//    return isFinished;
+//  public boolean isInputFinished() {
+//    return isInputFinished;
 //  }
 //
 //  /**
@@ -308,18 +308,18 @@ public final class LocalByteInputContext implements ByteInputContext{
 //   */
 //  @Override
 //  public void onContextClose() {
-//    isFinished = true;
+//    isInputFinished = true;
 //  }
 //
 //  @Override
 //  public void onContextStop() {
 //    LOG.info("Local context finished true {}", getContextId());
-//    isFinished = true;
+//    isInputFinished = true;
 //  }
 //
 //  @Override
 //  public void onContextRestart() {
-//    isFinished = false;
+//    isInputFinished = false;
 //  }
 //
 //  @Override
@@ -333,8 +333,8 @@ public final class LocalByteInputContext implements ByteInputContext{
 //    private Object nextData;
 //
 //    @Override
-//    public boolean isFinished() {
-//      return isFinished;
+//    public boolean isInputFinished() {
+//      return isInputFinished;
 //    }
 //
 //    @Override
@@ -349,13 +349,13 @@ public final class LocalByteInputContext implements ByteInputContext{
 //
 //    @Override
 //    public boolean hasNext() {
-//      if (objectQueue.isEmpty() || isFinished) {
+//      if (objectQueue.isEmpty() || isInputFinished) {
 //        return false;
 //      }
 //
 //      return true;
 //      /*
-//      while (!isFinished) {
+//      while (!isInputFinished) {
 //        if (!objectQueue.isEmpty()) {
 //          final Object data = objectQueue.poll();
 //          nextData = data;

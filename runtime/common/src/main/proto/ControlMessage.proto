@@ -131,6 +131,7 @@ enum MessageType {
     // Worker -> master
     CurrentExecutor = 44;
     CurrentScheduledTask = 45;
+    RequestPipeKey = 47;
 }
 
 message Message {
@@ -185,6 +186,9 @@ message Message {
     optional string registeredExecutor = 43;
     repeated string currExecutors = 44;
     repeated string currScheduledTasks = 45;
+
+    optional RequestPipeKeyMessage requestPipeKeyMsg = 46;
+    optional ResponsePipeKeyMessage responsePipeKeyMsg = 47;
 }
 
 message BroadcastInfoMessage {
@@ -354,9 +358,19 @@ message RequestTaskIndexMessage {
   required string dstTaskId = 3;
 }
 
+message RequestPipeKeyMessage {
+  required int64 pipeIndex = 1;
+}
+
 message TaskIndexInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required int64 taskIndex = 2;
+}
+
+message ResponsePipeKeyMessage {
+  required string srcTask = 1; // To find the matching request msg
+  required string edgeId = 2;
+  required string dstTask = 3;
 }
 
 message RequestTransferIndexMessage {

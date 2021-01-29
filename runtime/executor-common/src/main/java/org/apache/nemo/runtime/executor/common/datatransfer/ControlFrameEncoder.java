@@ -19,13 +19,16 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -33,7 +36,7 @@ import java.util.List;
  *
  */
 @ChannelHandler.Sharable
-public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferContextSetupMessage> {
+public final class ControlFrameEncoder extends MessageToMessageEncoder<TaskControlMessage> {
 
   // 1 byte: flag, 1 byte: broadcast, integer byte: transferindex or broadcast size, integer byte: body length
   public static final int ZEROS_LENGTH = 2 + Integer.BYTES;
@@ -50,12 +53,20 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTrans
 
   @Override
   public void encode(final ChannelHandlerContext ctx,
-                     final ByteTransferContextSetupMessage message,
+                     final TaskControlMessage message,
                      final List out) {
 
 
     final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(3);
-    final ByteBuf data = message.encode();
+    final ByteBuf data = ctx.alloc().buffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(data);
+    message.encode(bos);
+    try {
+      bos.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     cbb.addComponents(true, ZEROS.retain(),
       ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)

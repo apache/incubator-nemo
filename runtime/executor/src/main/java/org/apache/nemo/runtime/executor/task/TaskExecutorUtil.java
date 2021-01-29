@@ -8,20 +8,12 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.runtime.common.metric.TaskMetric;
-import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

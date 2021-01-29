@@ -52,7 +52,7 @@ public final class ByteTransfer {
   }
 
   public ContextManager getRemoteExecutorContetxManager(final String remoteExecutor) {
-    LOG.info("Getting remoteExecutor context {}", remoteExecutor);
+    // LOG.info("Getting remoteExecutor context {}", remoteExecutor);
     return executorIdToChannelFutureMap.get(remoteExecutor).channel().pipeline().get(ContextManager.class);
   }
 

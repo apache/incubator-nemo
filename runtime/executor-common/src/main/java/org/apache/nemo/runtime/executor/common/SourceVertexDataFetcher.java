@@ -140,7 +140,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   public Object fetchDataElement() {
     if (isFinishd) {
       //finishedAck = true;
-      LOG.info("Fetch data element after isFinished set for {}", taskId);
+      LOG.info("Fetch data element after isInputFinished set for {}", taskId);
       return EmptyElement.getInstance();
     }
 

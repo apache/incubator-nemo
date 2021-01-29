@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -88,35 +89,22 @@ public final class PipeInputReader implements InputReader {
   @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     return null;
-    /*
-    final Optional<CommunicationPatternProperty.Value> comValue =
-      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
-
-    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
-      return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex));
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
-      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int numSrcTasks = InputReader.getSourceParallelism(this);
-      final List<CompletableFuture<IteratorWithNumBytes>> futures = new ArrayList<>();
-      for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-        futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
-      }
-      return futures;
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-    }
-    */
   }
 
   @Override
-  public void addControl() {
-    // TODO
+  public String getTaskId() {
+    return taskId;
   }
 
   @Override
-  public void addData(ByteBuf data) {
+  public void addControl(TaskControlMessage message) {
+    executorThreadQueue.addEvent(message);
+  }
+
+  @Override
+  public void addData(final int pipeIndex, ByteBuf data) {
     executorThreadQueue.addEvent(
-      new TaskHandlingDataEvent(taskId, dataFetcher, data, serializer));
+      new TaskHandlingDataEvent(taskId, dataFetcher, pipeIndex, data, serializer));
   }
 
   @Override

@@ -22,6 +22,7 @@ import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -45,10 +46,12 @@ public interface InputReader {
    */
   List<CompletableFuture<IteratorWithNumBytes>> read();
 
-  // TODO
-  void addControl();
+  String getTaskId();
 
-  void addData(ByteBuf data);
+  // TODO
+  void addControl(TaskControlMessage message);
+
+  void addData(int pipeIndex, ByteBuf data);
 
   IRVertex getSrcIrVertex();
 

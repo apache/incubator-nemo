@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -49,7 +48,8 @@ public final class PipeIndexMaster {
    * @param masterMessageEnvironment the message environment.
    */
 
-  private final Map<Triple<String, String, String>, Integer> taskIndexMap = new ConcurrentHashMap<>();
+  private final Map<Triple<String, String, String>, Integer> pipeKeyIndexMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Triple<String, String, String>> pipeIndexKeyMap = new ConcurrentHashMap<>();
   private final AtomicInteger atomicInteger = new AtomicInteger();
 
   @Inject
@@ -61,16 +61,18 @@ public final class PipeIndexMaster {
   public void onTaskScheduled(final String srcTaskId,
                               final String edgeId,
                               final String dstTaskId) {
-    if (!taskIndexMap.containsKey(Triple.of(srcTaskId, edgeId, dstTaskId))) {
+    if (!pipeKeyIndexMap.containsKey(Triple.of(srcTaskId, edgeId, dstTaskId))) {
       final int index = atomicInteger.getAndIncrement();
       LOG.info("Registering pipe {}/{}/{} to {}", srcTaskId, edgeId, dstTaskId, index);
-      taskIndexMap.putIfAbsent(Triple.of(srcTaskId, edgeId, dstTaskId), index);
+      pipeKeyIndexMap.putIfAbsent(Triple.of(srcTaskId, edgeId, dstTaskId), index);
+      pipeIndexKeyMap.putIfAbsent(index, Triple.of(srcTaskId, edgeId, dstTaskId));
     }
 
-    if (!taskIndexMap.containsKey(Triple.of(dstTaskId, edgeId, srcTaskId))) {
+    if (!pipeKeyIndexMap.containsKey(Triple.of(dstTaskId, edgeId, srcTaskId))) {
       final int index = atomicInteger.getAndIncrement();
       LOG.info("Registering pipe {}/{}/{} to {}", dstTaskId, edgeId, srcTaskId, index);
-      taskIndexMap.putIfAbsent(Triple.of(dstTaskId, edgeId, srcTaskId), index);
+      pipeKeyIndexMap.putIfAbsent(Triple.of(dstTaskId, edgeId, srcTaskId), index);
+      pipeIndexKeyMap.putIfAbsent(index, Triple.of(dstTaskId, edgeId, srcTaskId));
     }
   }
 
@@ -86,7 +88,7 @@ public final class PipeIndexMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-        case RequestTaskIndex:
+        case RequestTaskIndex: {
           final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage =
             message.getRequestTaskIndexMsg();
           final String srcTaskId = requestTaskIndexMessage.getSrcTaskId();
@@ -94,9 +96,9 @@ public final class PipeIndexMaster {
           final String dstTaskId = requestTaskIndexMessage.getDstTaskId();
           final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
 
-          LOG.info("Task index of stage: {}", key, taskIndexMap.get(key));
+          LOG.info("Task index of stage: {}", key, pipeKeyIndexMap.get(key));
 
-          if (!taskIndexMap.containsKey(key)) {
+          if (!pipeKeyIndexMap.containsKey(key)) {
             throw new RuntimeException("No task index for task " + key);
           }
 
@@ -107,11 +109,39 @@ public final class PipeIndexMaster {
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
-                .setTaskIndex(taskIndexMap.get(key))
+                .setTaskIndex(pipeKeyIndexMap.get(key))
                 .build())
               .build());
 
           break;
+        }
+        case RequestPipeKey: {
+          final ControlMessage.RequestPipeKeyMessage requestPipeKeyMessage =
+            message.getRequestPipeKeyMsg();
+          final int index = (int)requestPipeKeyMessage.getPipeIndex();
+
+          LOG.info("Task key of stage: {}", index, pipeIndexKeyMap.get(index));
+
+          if (!pipeIndexKeyMap.containsKey(index)) {
+            throw new RuntimeException("No task index for task " + index);
+          }
+
+          final Triple<String, String, String> key = pipeIndexKeyMap.get(index);
+
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.RequestPipeKey)
+              .setResponsePipeKeyMsg(ControlMessage.ResponsePipeKeyMessage.newBuilder()
+                .setSrcTask(key.getLeft())
+                .setEdgeId(key.getMiddle())
+                .setDstTask(key.getRight())
+                .build())
+              .build());
+
+          break;
+        }
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }

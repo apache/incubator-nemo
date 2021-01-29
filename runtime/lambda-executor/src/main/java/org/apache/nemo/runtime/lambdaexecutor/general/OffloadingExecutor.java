@@ -182,12 +182,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i, new EventHandler<String>() {
-          @Override
-          public void onNext(String msg) {
-            // do nothing
-          }
-        }));
+        new ExecutorThread(1, "lambda-" + i, null));
       executorThreads.get(i).start();
     }
 
@@ -381,7 +376,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
       taskExecutorStartTimeMap.remove(deletedTask);
 
-      deletedTask.setDeleteForMoveToVmScaling(false);
+      // deletedTask.setDeleteForMoveToVmScaling(false);
       executorThread.deleteTask(deletedTask);
 
     } else if (event instanceof TaskMoveEvent) {
@@ -393,7 +388,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final ExecutorThread executorThread = taskAssignedMap.remove(mvTask);
       taskExecutorStartTimeMap.remove(mvTask);
 
-      mvTask.setDeleteForMoveToVmScaling(true);
+      // mvTask.setDeleteForMoveToVmScaling(true);
       executorThread.deleteTask(mvTask);
 
     } else if (event instanceof ThrottlingEvent) {

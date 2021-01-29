@@ -293,12 +293,15 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
             scalingOutCounter.counter.getAndIncrement();
 
+
+            /*
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {} / {}", task.getId(), taskExecutorIdMap.get(task.getId()));
               // TODO: When it is ready, send ready message
               task.callTaskOffloadingDone();
               //stageOffloadingWorkerManager.endOffloading(stageId);
             });
+            */
           }
         }
       }
@@ -408,12 +411,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
             scalingOutCounter.counter.getAndIncrement();
 
+            /*
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
               // TODO: When it is ready, send ready message
               task.callTaskOffloadingDone();
               //stageOffloadingWorkerManager.endOffloading(stageId);
             });
+            */
           }
         }
       }
@@ -516,6 +521,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
           taskIdChannelMapForVmScaling.put(offloadedTask.getId(), workerChannel);
 
+          /*
           offloadedTask.endOffloading((m) -> {
             stageOffloadingWorkerManager.endOffloading(stageId);
             countDownLatch.countDown();
@@ -528,6 +534,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
             }
 
           }, mvToVmScaling);
+          */
         } else if (mvFromVmScalingIn) {
           // vm scaling -> vm
           LOG.info("Moving task from vm scaling to vm {}", taskId);
@@ -540,12 +547,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           iterator.remove();
         } else {
           // sf -> vm
+          /*
           offloadedTask.endOffloading((m) -> {
             // do sth
             LOG.info("Deoffloading done for {}", offloadedTask.getId());
             stageOffloadingWorkerManager.endOffloading(stageId);
             countDownLatch.countDown();
           }, mvToVmScaling);
+          */
 
           iterator.remove();
         }
@@ -643,12 +652,14 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
 
             LOG.info("Offloading {}, cnt: {}, ", task.getId(), offloadcnt);
 
+            /*
             task.startOffloading(System.currentTimeMillis(), worker, (m) -> {
               LOG.info("Offloading done for {}", task.getId());
               // TODO: When it is ready, send ready message
               task.callTaskOffloadingDone();
               //stageOffloadingWorkerManager.endOffloading(stageId);
             });
+            */
           }
         }
       }
