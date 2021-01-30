@@ -15,6 +15,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
+import static org.apache.nemo.runtime.common.message.MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class DefaultControlEventHandlerImpl implements ControlEventHandler {
@@ -42,8 +43,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
     switch (control.type) {
       case TASK_STOP_SIGNAL_BY_MASTER: {
-        final TaskStopSignalByMaster msg = (TaskStopSignalByMaster) control.event;
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(msg.taskId);
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
         if (taskExecutor.isSource()) {
           if (!pipeManagerWorker.isOutputPipeStopped(taskExecutor.getId())) {
@@ -55,7 +55,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           // Stop input pipe
           taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
             pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
-              entry.getKey().getId(), msg.taskId);
+              entry.getKey().getId(), control.getTaskId());
           });
         }
         break;
@@ -96,13 +96,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private void stopAndCheckpointTask(final String taskId) {
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
-    taskExecutorMapWrapper.removeTask(taskExecutor);
     taskExecutor.checkpoint();
 
-    toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
+    toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .setType(ControlMessage.MessageType.StopTaskDone)
           .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
             .setExecutorId(executorId)

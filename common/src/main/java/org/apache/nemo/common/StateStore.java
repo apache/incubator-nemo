@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.common.statestore;
+package org.apache.nemo.common;
 
 
 import java.io.InputStream;

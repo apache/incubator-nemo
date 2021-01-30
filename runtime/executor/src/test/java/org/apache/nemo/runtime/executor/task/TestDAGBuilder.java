@@ -95,6 +95,7 @@ public final class TestDAGBuilder {
     v1.setProperty(ParallelismProperty.of(parallelism));
 
     final IRVertex v2 = new OperatorVertex(new TestGBKTransform());
+    v2.isStateful = true;
     v2.setProperty(ParallelismProperty.of(parallelism));
 
     return new IRDAG(dagBuilder.addVertex(src)

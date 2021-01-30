@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -15,16 +17,23 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.Watermark;
 
 public final class TCPSourceReadable implements Readable {
 
-  List<EventOrWatermark> elements;
+  Queue<EventOrWatermark> elements;
+  Queue<EventOrWatermark> watermarks;
   private long currWatermark = 0;
+  private ReadableContext readableContext;
+  private EventLoopGroup eventLoopGroup;
+  private Channel channel;
 
   @Override
-  public void prepare() {
-    elements = new LinkedList<>();
-    EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+  public void prepare(final ReadableContext readableContext) {
+    elements = new ConcurrentLinkedQueue<>();
+    watermarks = new ConcurrentLinkedQueue<>();
+    eventLoopGroup = new NioEventLoopGroup();
+    this.readableContext = readableContext;
 
     // Help boot strapping a channel
     Bootstrap clientBootstrap = new Bootstrap();
@@ -36,6 +45,7 @@ public final class TCPSourceReadable implements Readable {
     try {
       // Connect to listening server
       ChannelFuture channelFuture = clientBootstrap.connect("localhost", TCPSourceGenerator.PORT).sync();
+      channel = channelFuture.channel();
       // Check if channel is connected
       if(!channelFuture.isSuccess()) {
         throw new RuntimeException("server not connected");
@@ -53,32 +63,23 @@ public final class TCPSourceReadable implements Readable {
   @Override
   public boolean isAvailable() {
     synchronized (elements) {
-      return !elements.isEmpty() && !(elements.size() == 1 && elements.get(0).isWatermark());
+      return !elements.isEmpty();
     }
   }
 
   @Override
   public Object readCurrent() throws NoSuchElementException {
-    while (true) {
-      if (elements.isEmpty()) {
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      } else {
-        final EventOrWatermark e = elements.remove(0);
-        if (e.isWatermark()) {
-          currWatermark = e.watermark;
-        } else {
-          return new TimestampAndValue<>(System.currentTimeMillis(), e.event);
-        }
-      }
+    synchronized (elements) {
+      final EventOrWatermark e = elements.poll();
+      return new TimestampAndValue<>(System.currentTimeMillis(), e.event);
     }
   }
 
   @Override
   public long readWatermark() {
+    while (!watermarks.isEmpty()) {
+      currWatermark =  watermarks.poll().watermark;
+    }
     return currWatermark;
   }
 
@@ -94,13 +95,16 @@ public final class TCPSourceReadable implements Readable {
 
   @Override
   public void close() throws IOException {
+    System.out.println("Closing TCPSourceReader in " + readableContext.getTaskId());
+    channel.close();
+    eventLoopGroup.shutdownGracefully();
   }
 
   class TCPClientChannelInitializer extends ChannelInitializer<SocketChannel > {
 
-    private final List<EventOrWatermark> eventOrWatermarks;
+    private final Queue<EventOrWatermark> eventOrWatermarks;
 
-    public TCPClientChannelInitializer(final List<EventOrWatermark> eventOrWatermarks) {
+    public TCPClientChannelInitializer(final Queue<EventOrWatermark> eventOrWatermarks) {
       this.eventOrWatermarks = eventOrWatermarks;
     }
 
@@ -117,9 +121,9 @@ public final class TCPSourceReadable implements Readable {
 
   class TCPClientInboundHandler extends SimpleChannelInboundHandler<EventOrWatermark> {
 
-    private final List<EventOrWatermark> events;
+    private final Queue<EventOrWatermark> events;
 
-    public TCPClientInboundHandler(final List<EventOrWatermark> events) {
+    public TCPClientInboundHandler(final Queue<EventOrWatermark> events) {
       this.events = events;
     }
 
@@ -127,9 +131,11 @@ public final class TCPSourceReadable implements Readable {
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, EventOrWatermark s) {
       if (s.isWatermark()) {
         System.out.println("Watermark recekved!!" + s.watermark);
-      }
-      synchronized (events) {
-        events.add(s);
+        watermarks.add(s);
+      } else {
+        synchronized (events) {
+          events.add(s);
+        }
       }
     }
   }

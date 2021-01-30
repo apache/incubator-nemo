@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.StateStore;
+
 import java.util.Iterator;
 
 /**
@@ -38,7 +40,7 @@ public abstract class BoundedIteratorReadable<O> implements Readable<O> {
    * Prepare reading data.
    */
   @Override
-  public final void prepare() {
+  public final void prepare(ReadableContext stateStore) {
     iterator = initializeIterator();
   }
 

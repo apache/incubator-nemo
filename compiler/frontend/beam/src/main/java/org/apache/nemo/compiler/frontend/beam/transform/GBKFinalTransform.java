@@ -98,10 +98,16 @@ public final class GBKFinalTransform<K, InputT>
     this.keyAndWatermarkHoldMap = new HashMap<>();
   }
 
+  @Override
   public int getNumKeys() {
     //LOG.info("TimerInteranslKey: {} StateInternalsKey: {}", inMemoryTimerInternalsFactory.getNumKey(),
     //  inMemoryStateInternalsFactory.getNumKeys());
     return inMemoryTimerInternalsFactory.getNumKey();
+  }
+
+  @Override
+  public void checkpoint() {
+
   }
 
   /**

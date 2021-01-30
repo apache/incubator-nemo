@@ -1,10 +1,12 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.kafka.KafkaUnboundedReader;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -13,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -33,14 +37,16 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   private boolean isFinished = false;
 
   private final PipelineOptions pipelineOptions;
-  private final M checkpointMark;
+  private M checkpointMark;
 
   private static final Logger LOG = LoggerFactory.getLogger(UnboundedSourceReadable.class.getName());
 
   private KafkaUnboundedReader kafkaReader;
 
-
   private ExecutorService readableService;
+
+  private ReadableContext readableContext;
+
   /**
    * Constructor.
    * @param unboundedSource unbounded source.
@@ -66,8 +72,49 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
-  public synchronized void prepare() {
+  public void checkpoint() {
+    final UnboundedSource.CheckpointMark checkpointMark = getReader().getCheckpointMark();
+    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = getUnboundedSource().getCheckpointMarkCoder();
+
+    final StateStore stateStore = readableContext.getStateStore();
+    final String taskId = readableContext.getTaskId();
+
+    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId);
+
+    LOG.info("Store checkpointmark of task {}/ {}", taskId, checkpointMark);
+    try {
+      checkpointMarkCoder.encode(checkpointMark, os);
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public synchronized void prepare(ReadableContext readableContext) {
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
+    final StateStore stateStore = readableContext.getStateStore();
+    final String taskId = readableContext.getTaskId();
+
+    if (stateStore.containsState(taskId)) {
+      LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it.");
+      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>)
+        unboundedSource.getCheckpointMarkCoder();
+
+      try {
+        final InputStream is = stateStore.getStateStream(taskId);
+        checkpointMark = (M) checkpointMarkCoder
+          .decode(is);
+        is.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
+    }
+
     try {
       readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);

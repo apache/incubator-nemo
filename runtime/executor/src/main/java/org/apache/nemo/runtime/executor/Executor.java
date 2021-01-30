@@ -24,10 +24,6 @@ import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
-import org.apache.nemo.offloading.common.OffloadingTransform;
-import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
@@ -41,7 +37,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -50,20 +45,16 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.executor.burstypolicy.JobScalingHandlerWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RendevousServerClient;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -136,6 +127,8 @@ public final class Executor {
 
   private final TaskScheduledMapWorker scheduledMapWorker;
 
+  private final ControlEventHandler controlEventHandler;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -160,6 +153,7 @@ public final class Executor {
                    // final ScalingOutCounter scalingOutCounter,
                    // final SFTaskMetrics sfTaskMetrics,
                    final StateStore stateStore,
+                   final ControlEventHandler controlEventHandler,
                    final ExecutorContextManagerMap executorContextManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler) {
@@ -174,6 +168,7 @@ public final class Executor {
     this.scheduledMapWorker = taskScheduledMapWorker;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
+    this.controlEventHandler = controlEventHandler;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskTransferIndexMap = taskTransferIndexMap;
@@ -544,7 +539,10 @@ public final class Executor {
         }
         case StopTask: {
           // TODO: receive stop task message
-          LOG.info("Stopping task " + message.getStopTaskMsg().getTaskId());
+          LOG.info("Stopping task {} in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
+          controlEventHandler.handleControlEvent(new TaskControlMessage(
+            TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
+            message.getStopTaskMsg().getTaskId(), null));
           taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
           break;
         }

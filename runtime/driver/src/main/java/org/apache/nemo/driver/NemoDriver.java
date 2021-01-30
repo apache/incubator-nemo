@@ -36,7 +36,7 @@ import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;

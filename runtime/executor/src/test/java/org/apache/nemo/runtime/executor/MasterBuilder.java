@@ -7,10 +7,7 @@ import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
-import org.apache.nemo.runtime.master.ClientRPC;
-import org.apache.nemo.runtime.master.PipeIndexMaster;
-import org.apache.nemo.runtime.master.PipeManagerMaster;
-import org.apache.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
@@ -44,6 +41,7 @@ public class MasterBuilder {
   public final RuntimeMaster runtimeMaster;
   public final ContainerManager containerManager;
   public final PhysicalPlanGenerator planGenerator;
+  public final TaskScheduledMapMaster taskScheduledMapMaster;
 
   public MasterBuilder() throws InjectionException {
     this.nameServer = PipeManagerTestHelper.createNameServer();
@@ -62,6 +60,7 @@ public class MasterBuilder {
     this.pipeIndexMaster = injector.getInstance(PipeIndexMaster.class);
     this.containerManager = injector.getInstance(ContainerManager.class);
     this.planGenerator = injector.getInstance(PhysicalPlanGenerator.class);
+    this.taskScheduledMapMaster = injector.getInstance(TaskScheduledMapMaster.class);
 
     this.pipeIndexMap = Whitebox.getInternalState(pipeIndexMaster, "pipeKeyIndexMap");
     this.pendingContextIdToResourceSpec = Whitebox.getInternalState(containerManager, "pendingContextIdToResourceSpec");

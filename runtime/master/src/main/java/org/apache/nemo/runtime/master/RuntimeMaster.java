@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.master;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -38,13 +39,11 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
-import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.scheduler.*;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
-import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -109,6 +108,8 @@ public final class RuntimeMaster {
   private final TaskScheduledMapMaster taskScheduledMap;
 
   private final ExecutorRegistry executorRegistry;
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
+  private final TaskDispatcher taskDispatcher;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -117,12 +118,16 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final PlanStateManager planStateManager,
+                        final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                        final TaskDispatcher taskDispatcher,
                         final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.executorRegistry = executorRegistry;
+    this.taskDispatcher = taskDispatcher;
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> {
           final Thread t = new Thread(runnable, "RuntimeMaster thread");
@@ -424,6 +429,21 @@ public final class RuntimeMaster {
 
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case StopTaskDone: {
+        getRuntimeMasterThread().execute(() -> {
+          final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
+          LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
+          final ExecutorRepresenter executorRepresenter =
+            executorRegistry.getExecutorRepresentor(stopTaskDone.getExecutorId());
+          executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+          final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+          LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
+          planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
+          pendingTaskCollectionPointer.addTask(task);
+          taskDispatcher.onNewPendingTaskCollectionAvailable();
+        });
+        break;
+      }
       case TaskStateChanged:
         final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
             = message.getTaskStateChangedMsg();

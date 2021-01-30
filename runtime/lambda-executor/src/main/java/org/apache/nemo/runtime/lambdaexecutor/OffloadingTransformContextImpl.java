@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -39,6 +40,11 @@ public final class OffloadingTransformContextImpl implements Transform.Context {
                                         final String taskId) {
     this.irVertex = irVertex;
     this.taskId = taskId;
+  }
+
+  @Override
+  public StateStore getStateStore() {
+    return null;
   }
 
   @Override

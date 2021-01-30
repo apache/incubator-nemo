@@ -68,7 +68,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
                                  final OutputCollector outputCollector,
                                  final ExecutorService prepareService,
                                  final String taskId,
-                                 final AtomicBoolean globalPreapred) {
+                                 final AtomicBoolean globalPreapred,
+                                 final Readable.ReadableContext readableContext) {
     super(dataSource, edge, outputCollector);
     this.readable = r;
     this.globalPrepared = globalPreapred;
@@ -81,7 +82,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       isStarted = true;
       LOG.info("Reset readable: {} for {}", readable, taskId);
       prepareService.execute(() -> {
-        this.readable.prepare();
+        this.readable.prepare(readableContext);
         LOG.info("Prepare finished {}", taskId);
         isPrepared = true;
       });
@@ -223,7 +224,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
       return false;
     }
 
-    return !isFinishd && (readable.isAvailable() || watermarkProgressed);
+    return isPrepared && !isFinishd;
   }
 
   @Override

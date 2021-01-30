@@ -45,7 +45,6 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -54,18 +53,12 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByMaster;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopAck;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.*;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
-import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,9 +71,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Executes a task.
@@ -135,7 +126,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
 
-  private GBKFinalTransform gbkFinalTransform;
+  private Transform statefulTransform;
 
   private final TaskMetrics taskMetrics;
 
@@ -296,6 +287,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
+  public boolean hasData() {
+    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
+      if (sourceVertexDataFetcher.hasData()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  @Override
   public Task getTask() {
     return task;
   }
@@ -310,7 +312,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       return 0;
     } else {
       //LOG.info("Key {}, {}", num, taskId);
-      return gbkFinalTransform.getNumKeys();
+      return statefulTransform.getNumKeys();
     }
   }
 
@@ -385,7 +387,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
-          gbkFinalTransform = (GBKFinalTransform) ov.getTransform();
+          statefulTransform = ov.getTransform();
           LOG.info("Set GBK final transform");
         }
       }
@@ -496,7 +498,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
         irVertex, outputCollector, new TransformContextImpl(
-          broadcastManagerWorker, irVertex, serverlessExecutorProvider, taskId),
+          broadcastManagerWorker, irVertex, serverlessExecutorProvider, taskId, stateStore),
         externalMainOutputs, externalAdditionalOutputMap);
 
       TaskExecutorUtil.prepareTransform(vertexHarness);
@@ -518,7 +520,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           outputCollector,
           prepareService,
           taskId,
-          prepared);
+          prepared,
+          new Readable.ReadableContext() {
+            @Override
+            public StateStore getStateStore() {
+              return stateStore;
+            }
+            @Override
+            public String getTaskId() {
+              return taskId;
+            }
+          });
 
         sourceVertexDataFetchers.add(fe);
         allFetchers.add(fe);
@@ -771,36 +783,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                                   final Map<String, Readable> irVertexIdToReadable) {
     if (irVertex instanceof SourceVertex) {
       final Readable readable = irVertexIdToReadable.get(irVertex.getId());
-      if (stateStore.containsState(taskId)) {
-
-        LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it.");
-        final UnboundedSource oSource = ((UnboundedSourceReadable)readable).getUnboundedSource();
-        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder =
-          ((UnboundedSourceReadable)readable).getUnboundedSource().getCheckpointMarkCoder();
-
-        final UnboundedSource.CheckpointMark checkpointMark;
-        try {
-          final InputStream is = stateStore.getStateStream(taskId);
-          checkpointMark = checkpointMarkCoder
-            .decode(is);
-          is.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-
-        LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
-
-        final UnboundedSourceReadable newReadable =
-          new UnboundedSourceReadable(oSource, null, checkpointMark);
-
-        return Optional.of((Readable) newReadable);
-      } else {
-        if (readable == null) {
-          throw new IllegalStateException(irVertex.toString());
-        }
-        return Optional.of(readable);
-      }
+      return Optional.of(readable);
     } else {
       return Optional.empty();
     }
@@ -870,8 +853,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean checkpoint() {
-    // TODO: waiting for pending output writer
-    // Here, we serialize states
 
     boolean hasChekpoint = false;
     for (final DataFetcher dataFetcher : allFetchers) {
@@ -879,22 +860,24 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         if (hasChekpoint) {
           throw new RuntimeException("Double checkpoint..." + taskId);
         }
+
         hasChekpoint = true;
         final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-        final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
-        final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
-        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
-
-        LOG.info("Store checkpointmark of task {}/ {}", taskId, checkpointMark);
-        final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId);
-        try {
-          checkpointMarkCoder.encode(checkpointMark, os);
-          os.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+        final Readable readable = srcDataFetcher.getReadable();
+        readable.checkpoint();
       }
+
+      try {
+        dataFetcher.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    // TOOD: stateful checkpointing
+    if (!isStateless) {
+      statefulTransform.checkpoint();
     }
 
     return true;

@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.task.util;
 
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 
 import java.io.IOException;
@@ -21,14 +22,15 @@ public final class TestUnboundedSourceReadable implements Readable {
   }
 
   @Override
+  public void prepare(ReadableContext stateStore) {
+
+  }
+
+  @Override
   public boolean isAvailable() {
     return !elements.isEmpty() && !(elements.size() == 1 && elements.get(0).isWatermark());
   }
 
-  @Override
-  public void prepare() {
-
-  }
 
   @Override
   public Object readCurrent() throws NoSuchElementException {

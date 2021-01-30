@@ -113,6 +113,11 @@ public final class ExecutorThreadTest {
     }
 
     @Override
+    public boolean hasData() {
+      return !data.isEmpty();
+    }
+
+    @Override
     public void handleData(DataFetcher dataFetcher, Object t) {
       throw new RuntimeException("Not supported");
     }
@@ -149,6 +154,11 @@ public final class ExecutorThreadTest {
     @Override
     public boolean isSourceAvailable() {
       throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public boolean hasData() {
+      return true;
     }
 
     @Override

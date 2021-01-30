@@ -58,9 +58,8 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorkerTest;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;

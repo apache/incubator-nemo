@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -90,7 +91,7 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public void prepare() {
+    public void prepare(ReadableContext stateStore) {
 
     }
 

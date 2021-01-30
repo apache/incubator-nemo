@@ -143,7 +143,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
               while (iterator.hasNext()) {
                 final ExecutorThreadTask sourceTask = iterator.next();
-                if (sourceTask.isSourceAvailable()) {
+                if (sourceTask.hasData()) {
                   sourceTask.handleSourceData();
                 } else {
                   iterator.remove();

@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.source;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -126,7 +127,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     }
 
     @Override
-    public void prepare() {
+    public void prepare(ReadableContext stateStore) {
       try {
         reader = boundedSource.createReader(null);
         finished = !reader.start();

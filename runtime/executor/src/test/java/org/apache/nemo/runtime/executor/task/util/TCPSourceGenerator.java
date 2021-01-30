@@ -14,6 +14,7 @@ import io.netty.handler.codec.string.StringEncoder;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,13 +22,15 @@ import java.util.NoSuchElementException;
 
 public final class TCPSourceGenerator {
 
-  public final List<Channel> channels;
+  public final Channel[] channels;
+  private int channelIndex = 0;
 
   public static final int PORT = 12512;
 
+
   public TCPSourceGenerator(final int parallelism) {
 
-    this.channels = new ArrayList<>(parallelism);
+    this.channels = new Channel[parallelism];
 
     EventLoopGroup bossGroup = new NioEventLoopGroup();	// (1)
     EventLoopGroup workerGroup = new NioEventLoopGroup(); // (2)
@@ -50,9 +53,8 @@ public final class TCPSourceGenerator {
     }
   }
 
-
   public void addEvent(final int index, final EventOrWatermark event) {
-    channels.get(index).writeAndFlush(event);
+    channels[index].writeAndFlush(event);
   }
 
 
@@ -67,23 +69,42 @@ public final class TCPSourceGenerator {
     }
   }
 
-  public class SimpleTCPChannelHandler extends SimpleChannelInboundHandler<String> {
+  public class SimpleTCPChannelHandler extends SimpleChannelInboundHandler<Object> {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
       synchronized (channels) {
-        channels.add(ctx.channel());
+        for (int i = 0; i < channelIndex + 1; i++) {
+          if (channels[i] == null) {
+            channels[i] = ctx.channel();
+
+            System.out.println("Channel registered for readable " + ctx.channel().remoteAddress() + ", index " + i);
+
+            if (i == channelIndex) {
+              channelIndex += 1;
+            }
+            break;
+          }
+        }
       }
-      System.out.print("Channel registered for readable " + ctx.channel().remoteAddress());
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, String s) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, Object object) throws Exception {
 
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
+      System.out.println("Channel inactive " + ctx.channel().remoteAddress());
+      for (int i = 0; i < channelIndex; i++) {
+        if (channels[i] == ctx.channel()) {
+          channels[i] = null;
+          System.out.println("Rm channel index " + i);
+          break;
+        }
+      }
+      ctx.channel().close();
     }
   }
 }

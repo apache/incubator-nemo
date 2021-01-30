@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -55,6 +56,14 @@ public interface Transform<I, O> extends Serializable {
    */
   void onWatermark(Watermark watermark);
 
+  default void checkpoint() {
+
+  }
+
+  default int getNumKeys() {
+    return 0;
+  }
+
   /**
    * Close the transform.
    */
@@ -64,6 +73,8 @@ public interface Transform<I, O> extends Serializable {
    * Context of the transform.
    */
   interface Context extends Serializable {
+
+    StateStore getStateStore();
 
     String getTaskId();
 

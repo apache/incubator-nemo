@@ -1,12 +1,10 @@
 package org.apache.nemo.runtime.executor;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.nemo.runtime.common.HDFSUtils;
-import org.apache.nemo.runtime.executor.common.statestore.StateStore;
+import org.apache.nemo.common.StateStore;
 
 import javax.inject.Inject;
 import java.io.IOException;

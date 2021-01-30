@@ -318,7 +318,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
           beamUnboundedSourceVertex, edge, null /* readable */, outputCollector, prepareService, offloadingTask.taskId,
-          prepared);
+          prepared, null);
         allFetchers.add(dataFetcher);
         sourceVertexDataFetchers.add(dataFetcher);
       }
@@ -688,15 +688,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     return offloadingTask.taskId;
   }
 
-  private boolean hasEventInFetchers() {
-    for (final DataFetcher fetcher : allFetchers) {
-      if (fetcher.isAvailable()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   @Override
   public boolean isStateless() {
     return false;
@@ -734,6 +725,17 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         return true;
       }
     }
+    return false;
+  }
+
+  @Override
+  public boolean hasData() {
+        for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
+      if (sourceVertexDataFetcher.hasData()) {
+        return true;
+      }
+    }
+
     return false;
   }
 

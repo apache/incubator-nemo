@@ -18,7 +18,10 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.StateStore;
+
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -29,13 +32,21 @@ import java.util.NoSuchElementException;
  */
 public interface Readable<O> extends Serializable {
 
+  interface ReadableContext {
+    StateStore getStateStore();
+    String getTaskId();
+  }
+
   /**
    * Prepare reading data.
    */
-  void prepare();
+  void prepare(ReadableContext readableContext);
 
   default boolean isAvailable() {
     return true;
+  }
+
+  default void checkpoint() {
   }
 
   /**

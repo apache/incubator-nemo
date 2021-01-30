@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -630,7 +631,7 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void prepare() {
+    public void prepare(ReadableContext stateStore) {
 
     }
 

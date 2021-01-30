@@ -26,6 +26,7 @@ public interface ExecutorThreadTask {
   String getId();
   boolean isSource();
   boolean isSourceAvailable();
+  boolean hasData();
   void handleData(DataFetcher dataFetcher, Object t);
   boolean handleSourceData();
   // downstream tasks are moving...
