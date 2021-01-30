@@ -21,17 +21,17 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ConcurrentMap<String, List<Channel>> channelListMap;
   private final ScheduledExecutorService scheduledExecutorService;
-  private final WatermarkManager watermarkManager;
+  // private final WatermarkManager watermarkManager;
   private final TaskScheduledMapMaster taskScheduledMap;
 
   public RendevousServerChannelInitializer(
     final ConcurrentMap<String, Channel> rendevousChannelMap,
-    final WatermarkManager watermarkManager,
+    // final WatermarkManager watermarkManager,
     final TaskScheduledMapMaster taskScheduledMap) {
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.channelListMap = new ConcurrentHashMap<>();
-    this.watermarkManager = watermarkManager;
+    // this.watermarkManager = watermarkManager;
     this.taskScheduledMap = taskScheduledMap;
   }
 
@@ -47,6 +47,6 @@ public final class RendevousServerChannelInitializer extends ChannelInitializer<
       .addLast(new RendevousMessageEncoder())
       .addLast(new RendevousServerDecoder(
         channelListMap, rendevousChannelMap,
-        scheduledExecutorService, watermarkManager, taskScheduledMap));
+        scheduledExecutorService, taskScheduledMap));
   }
 }

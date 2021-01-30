@@ -42,7 +42,6 @@ public final class RendevousServer {
   @Inject
   private RendevousServer(final TcpPortProvider tcpPortProvider,
                           @Parameter(EvalConf.Ec2.class) final boolean ec2,
-                          final WatermarkManager watermarkManager,
                           final TaskScheduledMapMaster taskScheduledMap) {
 
     final String host;
@@ -69,7 +68,7 @@ public final class RendevousServer {
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
       .group(serverListeningGroup, serverWorkingGroup)
       .channel(channelImplSelector.getServerChannelClass())
-      .childHandler(new RendevousServerChannelInitializer(channelMap, watermarkManager, taskScheduledMap))
+      .childHandler(new RendevousServerChannelInitializer(channelMap, taskScheduledMap))
       .option(ChannelOption.SO_REUSEADDR, true);
 
     this.taskScheduledMap = taskScheduledMap;

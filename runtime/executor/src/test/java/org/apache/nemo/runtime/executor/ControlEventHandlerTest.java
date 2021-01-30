@@ -21,7 +21,7 @@ public final class ControlEventHandlerTest {
     }
 
     @Override
-    public void sendSignalForPipes(List<String> srcTasks, String edgeId, String dstTaskId, Signal signal) {
+    public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId) {
 
     }
 

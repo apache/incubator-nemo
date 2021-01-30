@@ -99,7 +99,7 @@ public final class TaskDispatcher {
 
       VMScalingAddresses.check();
 
-      initialSetup();
+      // initialSetup();
 
       while (!isTerminated) {
         doScheduleTaskList();
@@ -303,7 +303,7 @@ public final class TaskDispatcher {
 
               LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
-              taskScheduledMap.addTask(selectedExecutor, task);
+              taskScheduledMap.addTask(task.getTaskId(), task);
               selectedExecutor.onTaskScheduled(task);
             } else {
               couldNotSchedule.add(task);

@@ -100,7 +100,7 @@ public final class ExecutorContextManagerMap {
   }
 
   public synchronized ContextManager getExecutorContextManager(final String executorId) {
-    LOG.info("Getting executor context manager {}", executorId);
+    // LOG.info("Getting executor context manager {}", executorId);
     return executorContextManagerMap.get(executorId);
   }
 }

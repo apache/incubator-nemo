@@ -54,7 +54,7 @@ public final class TestUnboundedSourceReadable implements Readable {
 
   @Override
   public List<String> getLocations() throws Exception {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

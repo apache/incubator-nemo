@@ -35,7 +35,7 @@ import java.util.concurrent.CompletableFuture;
 public interface InputPipeRegister {
   public enum Signal {
     INPUT_STOP,
-    INPUT_RESTART,
+    INPUT_START,
   }
 
   enum InputPipeState {
@@ -49,10 +49,9 @@ public interface InputPipeRegister {
                          final String dstTaskId,
                          InputReader inputReader);
 
-  void sendSignalForPipes(final List<String> srcTasks,
-                          final String edgeId,
-                          final String dstTaskId,
-                          final Signal signal);
+  void sendStopSignalForInputPipes(final List<String> srcTasks,
+                                   final String edgeId,
+                                   final String dstTaskId);
 
   // return true if the all of the pipe is stopped.
   void receiveAckInputStopSignal(String taskId, int pipeIndex);

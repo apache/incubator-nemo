@@ -16,6 +16,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
 import org.nustaq.serialization.FSTConfiguration;
@@ -106,6 +107,8 @@ public final class JobScaler {
 
   private final PlanStateManager planStateManager;
 
+  private final ExecutorRegistry executorRegistry;
+
   @Inject
   private JobScaler(final TaskScheduledMapMaster taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -115,6 +118,7 @@ public final class JobScaler {
                     final EvalConf evalConf,
                     final RuntimeMaster runtimeMaster,
                     final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                    final ExecutorRegistry executorRegistry,
                     final TaskDispatcher taskDispatcher,
                     final PlanStateManager planStateManager,
                     final ExecutorCpuUseMap m) {
@@ -131,6 +135,7 @@ public final class JobScaler {
     this.runtimeMaster = runtimeMaster;
     this.taskDispatcher = taskDispatcher;
     this.planStateManager = planStateManager;
+    this.executorRegistry = executorRegistry;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -972,27 +977,27 @@ public final class JobScaler {
 
       workerOffloadTaskMap.put(representer, new HashMap<>());
 
-      final Map<String, List<Task>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
+      final Map<String, List<String>> tasks = taskScheduledMap.getScheduledStageTasks(representer);
       final Map<String, List<String>> offloadTaskMap = workerOffloadTaskMap.get(representer);
       final int totalTasks = tasks.values().stream().map(l -> l.size()).reduce(0, (x,y) -> x+y);
 
       // If offloading ratio is empty, it means that just scaling with the divide value
       if (offloadingRatio.isEmpty()) {
 
-        for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+        for (final Map.Entry<String, List<String>> entry : tasks.entrySet()) {
 
           final int countToOffload = (int) (entry.getValue().size() - (entry.getValue().size() / divide));
           final List<String> offloadTask = new ArrayList<>();
           offloadTaskMap.put(entry.getKey(), offloadTask);
 
           int offloadedCnt = 0;
-          for (final Task task : entry.getValue()) {
+          for (final String taskId : entry.getValue()) {
             if (offloadedCnt < countToOffload) {
-              final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+              final TaskLoc loc = taskLocationMap.locationMap.get(taskId);
 
               if (loc == VM) {
-                offloadTask.add(task.getTaskId());
-                taskLocationMap.locationMap.put(task.getTaskId(), SF);
+                offloadTask.add(taskId);
+                taskLocationMap.locationMap.put(taskId, SF);
                 offloadedCnt += 1;
               }
             }
@@ -1011,7 +1016,7 @@ public final class JobScaler {
 
         LOG.info("Offloading ratio: {}, stageOffloadCnt: {}", offloadingRatio, stageOffloadCnt);
 
-        for (final Map.Entry<String, List<Task>> entry : tasks.entrySet()) {
+        for (final Map.Entry<String, List<String>> entry : tasks.entrySet()) {
 
           //LOG.info("Key {}", entry.getKey());
           final int countToOffload = stageOffloadCnt.getOrDefault(entry.getKey(), 0);
@@ -1019,14 +1024,14 @@ public final class JobScaler {
           offloadTaskMap.put(entry.getKey(), offloadTask);
 
           int offloadedCnt = 0;
-          for (final Task task : entry.getValue()) {
+          for (final String taskId : entry.getValue()) {
             if (offloadedCnt < countToOffload) {
-              final TaskLoc loc = taskLocationMap.locationMap.get(task.getTaskId());
+              final TaskLoc loc = taskLocationMap.locationMap.get(taskId);
 
               if (loc == VM) {
-                LOG.info("Offloading {} ", task.getTaskId());
-                offloadTask.add(task.getTaskId());
-                taskLocationMap.locationMap.put(task.getTaskId(), SF);
+                LOG.info("Offloading {} ", taskId);
+                offloadTask.add(taskId);
+                taskLocationMap.locationMap.put(taskId, SF);
                 offloadedCnt += 1;
               }
             }
@@ -1148,21 +1153,8 @@ public final class JobScaler {
       final String executorId = entry.getValue();
 
       if (!prevMovedTask.contains(taskId)) {
-        final long id = RuntimeIdManager.generateMessageId();
-
-        final ExecutorRepresenter representer = taskScheduledMap.getExecutorRepresenter(executorId);
-        LOG.info("Send task " + taskId + " stop to executor " + executorId);
-        representer.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(id)
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.StopTask)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(taskId)
-            .build())
-          .build());
-
+        taskScheduledMap.stopTask(taskId);
         stopped += 1;
-
         prevMovedTask.add(taskId);
 
         if (stopped == num) {
@@ -1207,7 +1199,7 @@ public final class JobScaler {
             final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
             LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
             final ExecutorRepresenter executorRepresenter =
-              taskScheduledMap.getExecutorRepresenter(stopTaskDone.getExecutorId());
+              executorRegistry.getExecutorRepresentor(stopTaskDone.getExecutorId());
             executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
             final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
             LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
@@ -1224,7 +1216,7 @@ public final class JobScaler {
 
           switch (type) {
             case 1: {
-              final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+              final ExecutorRepresenter executorRepresenter = executorRegistry.getExecutorRepresentor(executorId);
               LOG.info("Receive LocalScalingDone for {}", executorId);
 
               final int cnt = scalingExecutorCnt.decrementAndGet();
@@ -1259,7 +1251,7 @@ public final class JobScaler {
           final String executorId = taskStatMessage.getExecutorId();
           //LOG.info("Receive taskstatSignal from {}", executorId);
           final List<ControlMessage.TaskStatInfo> taskStatInfos = taskStatMessage.getTaskStatsList();
-          final ExecutorRepresenter executorRepresenter = taskScheduledMap.getExecutorRepresenter(executorId);
+          final ExecutorRepresenter executorRepresenter = executorRegistry.getExecutorRepresentor(executorId);
 
           if (executorRepresenter != null) {
             executorCpuUseMap.put(executorRepresenter.getExecutorId(),

@@ -513,7 +513,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         if (mvToVmScaling) {
           // sf -> vm -> vm scaling
           final String newExecutorId =  taskScheduledMapWorker
-            .getRemoteExecutorId(offloadedTask.getId());
+            .getRemoteExecutorId(offloadedTask.getId(), false);
 
           final Channel workerChannel = vmScalingWorkerConnector
             .connectTo(newExecutorId, stageId,
@@ -715,12 +715,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case StopTask: {
-          // TODO: receive stop task message
-          LOG.info("Stopping task " + message.getStopTaskMsg().getTaskId());
-          taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
-          break;
-        }
+
         case BroadcastInfo: {
           LOG.info("Receive info {}", message.getBroadcastInfoMsg().getInfo());
           break;

@@ -15,7 +15,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     TASK_STOP_SIGNAL_BY_MASTER,
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
-    PIPE_OUTPUT_RESTART_REQUEST_BY_DOWNSTREAM_TASK,
+    PIPE_INIT,
   }
 
   public final TaskControlMessageType type;
@@ -82,6 +82,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         ((TaskStopSignalByDownstreamTask) event).encode(bos);
         break;
       }
+      case PIPE_INIT:
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         break;
       }
@@ -103,6 +104,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           TaskStopSignalByDownstreamTask.decode(bis));
         break;
       }
+      case PIPE_INIT:
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
         break;

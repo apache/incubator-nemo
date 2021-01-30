@@ -54,11 +54,13 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorkerTest;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
@@ -98,10 +100,8 @@ import static org.mockito.Mockito.*;
   TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class DefaultTaskExecutorImplTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
-  private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
-  private static final int SOURCE_PARALLELISM = 5;
   private static final int FIRST_ATTEMPT = 0;
 
   private Map<String, List> runtimeEdgeToOutputData;
@@ -182,11 +182,28 @@ public final class DefaultTaskExecutorImplTest {
   }
 
   private Pair<IRVertex, Map<String, Readable>> createSource(final List<EventOrWatermark> events) {
-    final IRVertex sourceIRVertex = new TestUnboundedSourceVertex();
     final Readable readable = new TestUnboundedSourceReadable(events);
+    final IRVertex sourceIRVertex = new TestUnboundedSourceVertex(
+      (List<Readable>) Collections.singletonList(readable));
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     return Pair.of(sourceIRVertex, vertexIdToReadable);
+  }
+
+  private void checkPipeInitSignal(final String srcTask,
+                                   final String edge,
+                                   final String dstTask,
+                                   final List<TaskHandlingEvent> list) {
+    assertEquals(
+      // left
+      new TaskControlMessage(
+        TaskControlMessage.TaskControlMessageType.PIPE_INIT,
+        masterSetupHelper.pipeIndexMap.get(Triple.of(srcTask, edge, dstTask)),
+        masterSetupHelper.pipeIndexMap.get(Triple.of(dstTask, edge, srcTask)),
+        dstTask,
+        null),
+      // right
+      list.remove(0));
   }
 
   // [stage1]  [stage2]
@@ -208,11 +225,12 @@ public final class DefaultTaskExecutorImplTest {
     final String task1Id = RuntimeIdManager.generateTaskId(stage1Id, 0, 0);
     final String task2Id = RuntimeIdManager.generateTaskId(stage2Id, 0, 0);
 
-    masterSetupHelper.taskScheduledMap.put(task1Id, executor1);
-    masterSetupHelper.taskScheduledMap.put(task2Id, executor2);
 
     masterSetupHelper.executorIds.add(executor1);
     masterSetupHelper.executorIds.add(executor2);
+
+    masterSetupHelper.taskScheduledMap.put(task1Id, executor1);
+    masterSetupHelper.taskScheduledMap.put(task2Id, executor2);
 
     final LinkedList<Watermark> emittedWatermarks = new LinkedList<>();
     final LinkedList<Object> emittedEvents = new LinkedList<>();
@@ -309,9 +327,10 @@ public final class DefaultTaskExecutorImplTest {
 
 
     // Execute the task.
-    final List<TaskHandlingEvent> inputHandlingQueue = new LinkedList<>();
-    final Pair<TaskExecutor, Injector> taskExecutor1Pair = getTaskExecutor(0, "executor1", task1, stage1Dag, Collections.emptyList());
-    final Pair<TaskExecutor, Injector> taskExecutor2Pair = getTaskExecutor(1, "executor2", task2, stage2Dag, inputHandlingQueue);
+    final List<TaskHandlingEvent> inputHandlingQueue1 = new LinkedList<>();
+    final List<TaskHandlingEvent> inputHandlingQueue2 = new LinkedList<>();
+    final Pair<TaskExecutor, Injector> taskExecutor1Pair = getTaskExecutor(0, "executor1", task1, stage1Dag, inputHandlingQueue1);
+    final Pair<TaskExecutor, Injector> taskExecutor2Pair = getTaskExecutor(1, "executor2", task2, stage2Dag, inputHandlingQueue2);
 
     // Wait for registering name server
     Thread.sleep(1000);
@@ -322,6 +341,21 @@ public final class DefaultTaskExecutorImplTest {
     taskExecutor2Pair.right().getInstance(ExecutorContextManagerMap.class).init();
     taskExecutor2Pair.right().getInstance(TaskScheduledMapWorker.class).init();
 
+    Thread.sleep(500);
+    // Check init message
+    checkPipeInitSignal(task2Id, s1ToS2.getId(), task1Id, inputHandlingQueue1);
+    taskExecutor1Pair.right().getInstance(PipeManagerWorker.class)
+      .startOutputPipe(
+        masterSetupHelper.pipeIndexMap.get(Triple.of(task1Id, s1ToS2.getId(), task2Id)),
+        task1.getTaskId());
+
+    checkPipeInitSignal(task1Id, s1ToS2.getId(), task2Id, inputHandlingQueue2);
+    taskExecutor2Pair.right().getInstance(PipeManagerWorker.class)
+      .startOutputPipe(
+        masterSetupHelper.pipeIndexMap.get(Triple.of(task2Id, s1ToS2.getId(), task1Id)),
+        task2.getTaskId());
+
+
     final TaskExecutor taskExecutor1 = taskExecutor1Pair.left();
     final TaskExecutor taskExecutor2 = taskExecutor2Pair.left();
     // Check the output.
@@ -330,20 +364,20 @@ public final class DefaultTaskExecutorImplTest {
     taskExecutor1.handleSourceData();
     Thread.sleep(100);
 
-    assertEquals(10, getValuesInput(inputHandlingQueue.remove(0)));
+    assertEquals(10, getValuesInput(inputHandlingQueue2.remove(0)));
 
     taskExecutor1.handleSourceData();
     Thread.sleep(100);
-    assertEquals(11, getValuesInput(inputHandlingQueue.remove(0)));
+    assertEquals(11, getValuesInput(inputHandlingQueue2.remove(0)));
 
     taskExecutor1.handleSourceData();
     Thread.sleep(100);
-    assertEquals(12, getValuesInput(inputHandlingQueue.remove(0)));
+    assertEquals(12, getValuesInput(inputHandlingQueue2.remove(0)));
 
     taskExecutor1.handleSourceData();
     Thread.sleep(100);
     assertEquals(new WatermarkWithIndex(new Watermark(Util.WATERMARK_PROGRESS), 0),
-      inputHandlingQueue.remove(0).getData());
+      inputHandlingQueue2.remove(0).getData());
 
     // Task Move
     // Task Move
@@ -363,7 +397,6 @@ public final class DefaultTaskExecutorImplTest {
 
   private Object getValuesInput(final TaskHandlingEvent event) {
     return ((TimestampAndValue)event.getData()).value;
-
   }
 
 

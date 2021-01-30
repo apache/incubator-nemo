@@ -79,10 +79,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.nemo.common.TaskLoc.SF;
-import static org.apache.nemo.common.TaskLoc.VM;
-import static org.apache.nemo.common.TaskLoc.VM_SCALING;
-import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 
 /**
@@ -109,7 +105,6 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private final ServerlessExecutorProvider serverlessExecutorProvider;
 
   private volatile boolean started = false;
 
@@ -117,9 +112,7 @@ public final class Executor {
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
-
-  private final TaskOffloader taskOffloader;
+  // private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   private final ByteTransport byteTransport;
   private final PipeManagerWorker pipeManagerWorker;
@@ -130,37 +123,18 @@ public final class Executor {
   private final StageExecutorThreadMap stageExecutorThreadMap;
 
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
-  private final TaskInputContextMap taskInputContextMap;
-
-  private TinyTaskOffloadingWorkerManager tinyWorkerManager;
-  private final RelayServer relayServer;
-  private final TaskLocationMap taskLocationMap;
 
   private final ExecutorService prepareService = Executors.newCachedThreadPool();
 
-  private final ExecutorGlobalInstances executorGlobalInstances;
-
-  private final OutputWriterFlusher outputWriterFlusher;
-
   final PipeIndexMapWorker taskTransferIndexMap;
 
-  private final JobScalingHandlerWorker jobScalingHandlerWorker;
-
-  final AtomicInteger bursty = new AtomicInteger(0);
-
-
-  private RendevousServerClient rendevousServerClient;
-
   private final ExecutorThreads executorThreads;
-
-  private final ScalingOutCounter scalingOutCounter;
-
-  private final SFTaskMetrics sfTaskMetrics;
 
   private final StateStore stateStore;
 
   private final ExecutorContextManagerMap executorContextManagerMap;
-  private final TaskScheduledMapWorker scheduledTaskMap;
+
+  private final TaskScheduledMapWorker scheduledMapWorker;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -170,30 +144,25 @@ public final class Executor {
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
-                   final ServerlessExecutorProvider serverlessExecutorProvider,
-                   final TaskOffloader taskOffloader,
                    final ByteTransport byteTransport,
                    //final CpuBottleneckDetector bottleneckDetector,
-                   final OffloadingWorkerFactory offloadingWorkerFactory,
+                   // final OffloadingWorkerFactory offloadingWorkerFactory,
                    final EvalConf evalConf,
-                   final SystemLoadProfiler profiler,
+                   // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                   final TaskInputContextMap taskInputContextMap,
                    final PipeIndexMapWorker taskTransferIndexMap,
-                   final RelayServer relayServer,
-                   final TaskLocationMap taskLocationMap,
+                   // final RelayServer relayServer,
                    final StageExecutorThreadMap stageExecutorThreadMap,
-                   final JobScalingHandlerWorker jobScalingHandlerWorker,
+                   // final JobScalingHandlerWorker jobScalingHandlerWorker,
                    final ExecutorThreads executorThreads,
-                   final ExecutorMetrics executorMetrics,
-                   final ScalingOutCounter scalingOutCounter,
-                   final SFTaskMetrics sfTaskMetrics,
-                   final HDFStateStore stateStore,
+                   // final ExecutorMetrics executorMetrics,
+                   // final ScalingOutCounter scalingOutCounter,
+                   // final SFTaskMetrics sfTaskMetrics,
+                   final StateStore stateStore,
                    final ExecutorContextManagerMap executorContextManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
-                   final CyclicDependencyHandler cyclicDependencyHandler,
-                   final TaskDoneHandler taskDoneHandler) {
+                   final CyclicDependencyHandler cyclicDependencyHandler) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -202,16 +171,12 @@ public final class Executor {
     this.executorContextManagerMap = executorContextManagerMap;
     this.stateStore = (StateStore) stateStore;
     this.executorThreads = executorThreads;
-    this.jobScalingHandlerWorker = jobScalingHandlerWorker;
-    this.executorGlobalInstances = new ExecutorGlobalInstances();
-    this.relayServer = relayServer;
+    this.scheduledMapWorker = taskScheduledMapWorker;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
-    this.taskInputContextMap = taskInputContextMap;
     this.taskTransferIndexMap = taskTransferIndexMap;
-    this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool();
     //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
     //          .namingPattern("TaskExecutor thread-%d")
@@ -220,17 +185,12 @@ public final class Executor {
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
-    this.scalingOutCounter = scalingOutCounter;
-
-    this.sfTaskMetrics = sfTaskMetrics;
-
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      final double load = profiler.getCpuLoad();
-      LOG.info("Cpu load: {}", load);
+      // final double load = profiler.getCpuLoad();
+      // LOG.info("Cpu load: {}", load);
 
       /*
       if (isThrottleTime(load)) {
@@ -249,6 +209,7 @@ public final class Executor {
       }
       */
 
+      /*
       // Send task stats
       final Set<TaskExecutor> taskExecutors = taskExecutorMapWrapper.getTaskExecutorMap().keySet();
 
@@ -326,11 +287,13 @@ public final class Executor {
             .setSfCpuUse(sfCpuLoad)
             .build())
           .build());
+          */
 
     }, 1, 1, TimeUnit.SECONDS);
 
 
     // relayServer address/port 보내기!!
+    /*
     LOG.info("Sending local relay server info: {}/{}/{}",
       executorId, relayServer.getPublicAddress(), relayServer.getPort());
 
@@ -346,45 +309,18 @@ public final class Executor {
           .setPort(relayServer.getPort())
           .build())
         .build());
+    */
 
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
-    this.serverlessExecutorProvider = serverlessExecutorProvider;
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
+    // this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
-
-    this.scheduledTaskMap = taskScheduledMapWorker;
     taskScheduledMapWorker.init();
     executorContextManagerMap.init();
 
     this.stageExecutorThreadMap = stageExecutorThreadMap;
-
-    this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
-
-  }
-
-  private boolean isThrottleTime(final double cpuLoad) {
-
-    if (cpuLoad > 0.97) {
-      bursty.getAndIncrement();
-      if (bursty.get() >= 4) {
-        bursty.set(0);
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private boolean isUnthrottleTime(final double cpuLoad) {
-    if (cpuLoad < 0.8) {
-      bursty.set(0);
-      return true;
-    }
-
-    return false;
   }
 
   public String getExecutorId() {
@@ -401,11 +337,11 @@ public final class Executor {
     if (!started) {
 
       if (evalConf.enableOffloading) {
-        taskOffloader.start();
+        // taskOffloader.start();
       }
 
       if (evalConf.offloadingdebug) {
-        taskOffloader.startDownstreamDebugging();
+         // taskOffloader.startDownstreamDebugging();
         //taskOffloader.startDebugging();
       }
 
@@ -497,7 +433,7 @@ public final class Executor {
         metricMessageSender,
         persistentConnectionToMasterMap,
         serializerManager,
-        serverlessExecutorProvider,
+        null,
         evalConf,
         prepareService,
         executorThread,
@@ -510,6 +446,17 @@ public final class Executor {
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setType(ControlMessage.MessageType.TaskExecuting)
+        .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
+          .setExecutorId(executorId)
+          .setTaskId(task.getTaskId())
+          .build())
+          .build());
 
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
@@ -588,6 +535,19 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case TaskScheduled: {
+          LOG.info("Task scheduled {}", message.getRegisteredExecutor());
+          final String[] split = message.getRegisteredExecutor().split(",");
+          scheduledMapWorker.registerTask(split[0], split[1]);
+          pipeManagerWorker.taskScheduled(split[0]);
+          break;
+        }
+        case StopTask: {
+          // TODO: receive stop task message
+          LOG.info("Stopping task " + message.getStopTaskMsg().getTaskId());
+          taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
+          break;
+        }
         case ExecutorRegistered: {
           LOG.info("Executor registered message received {}", message.getRegisteredExecutor());
           executorContextManagerMap.initConnectToExecutor(message.getRegisteredExecutor());
@@ -599,6 +559,8 @@ public final class Executor {
           break;
         }
         case GlobalExecutorAddressInfo: {
+          throw new RuntimeException("hahahah GlobalExecutorAddressInfo.. what?");
+          /*
           final ControlMessage.GlobalExecutorAddressInfoMessage msg = message.getGlobalExecutorAddressInfoMsg();
 
           final Map<String, Pair<String, Integer>> m =
@@ -612,14 +574,15 @@ public final class Executor {
           LOG.info("{} Setting global executor address server info {}", executorId, m);
 
           byteTransport.setExecutorAddressMap(m);
+          */
 
+          /*
           if (offloadingWorkerFactory instanceof VMOffloadingWorkerFactory) {
             LOG.info("Set vm addresses");
             final VMOffloadingWorkerFactory vmOffloadingWorkerFactory = (VMOffloadingWorkerFactory) offloadingWorkerFactory;
             vmOffloadingWorkerFactory.setVMAddressAndIds(msg.getVmAddressesList(), msg.getVmIdsList());
           }
-
-          break;
+          */
         }
         case GlobalRelayServerInfo:
 
@@ -633,10 +596,11 @@ public final class Executor {
                   return Pair.of(entry.getAddress(), entry.getPort());
                 }));
 
-          rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
+          // rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
 
           LOG.info("{} Setting global relay server info {}", executorId, m);
 
+          /*
           final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
             evalConf.offExecutorThreadNum,
             byteTransport.getExecutorAddressMap(),
@@ -658,7 +622,7 @@ public final class Executor {
             sfTaskMetrics);
 
           jobScalingHandlerWorker.setTinyWorkerManager(tinyWorkerManager);
-
+          */
           break;
         case ScheduleTask:
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();

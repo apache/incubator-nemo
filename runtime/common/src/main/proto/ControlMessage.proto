@@ -132,6 +132,7 @@ enum MessageType {
     CurrentExecutor = 44;
     CurrentScheduledTask = 45;
     RequestPipeKey = 47;
+    TaskExecuting = 48;
 }
 
 message Message {
@@ -189,6 +190,13 @@ message Message {
 
     optional RequestPipeKeyMessage requestPipeKeyMsg = 46;
     optional ResponsePipeKeyMessage responsePipeKeyMsg = 47;
+
+    optional TaskExecutingMessage taskExecutingMsg = 48;
+}
+
+message TaskExecutingMessage {
+  required string executorId = 1;
+  required string taskId = 2;
 }
 
 message BroadcastInfoMessage {

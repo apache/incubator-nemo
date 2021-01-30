@@ -12,6 +12,8 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -21,11 +23,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public final class TaskScheduledMapMaster {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskScheduledMapMaster.class.getName());
 
   private final ConcurrentMap<ExecutorRepresenter,
-    Map<String, List<Task>>> scheduledStageTasks;
-
-  private final Map<String, ExecutorRepresenter> executorIdRepresentorMap;
+    Map<String, List<String>>> scheduledStageTasks;
 
   private final Map<String, Pair<String, Integer>> executorRelayServerInfoMap;
 
@@ -35,18 +36,17 @@ public final class TaskScheduledMapMaster {
 
   private final TaskLocationMap taskLocationMap;
 
-  private final Map<String, Task> taskIdMap = new ConcurrentHashMap<>();
-
   private final Map<String, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   private Map<String, String> prevTaskExecutorIdMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Task> taskIdTaskMap = new ConcurrentHashMap<>();
 
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final MessageEnvironment messageEnvironment,
                                  final TaskLocationMap taskLocationMap) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
-    this.executorIdRepresentorMap = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
@@ -57,20 +57,33 @@ public final class TaskScheduledMapMaster {
 
   private boolean copied = false;
 
-  public Task removeTask(final String taskId) {
+  public synchronized void stopTask(final String taskId) {
     final String executorId = taskExecutorIdMap.remove(taskId);
     prevTaskExecutorIdMap.remove(taskId);
 
-    final ExecutorRepresenter representer = executorIdRepresentorMap.get(executorId);
-    final Map<String, List<Task>> stageTaskMap = scheduledStageTasks.get(representer);
+    LOG.info("Send task " + taskId + " stop to executor " + executorId);
+
+    final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
+    final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
+
+    representer.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.StopTask)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(taskId)
+            .build())
+          .build());
 
     synchronized (stageTaskMap) {
       final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-      final List<Task> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
-      stageTasks.removeIf(task -> task.getTaskId().equals(taskId));
+      final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
+      stageTasks.removeIf(task -> task.equals(taskId));
     }
+  }
 
-    return taskIdMap.remove(taskId);
+  public synchronized Task removeTask(final String taskId) {
+    return taskIdTaskMap.remove(taskId);
   }
 
   public synchronized void keepOnceCurrentTaskExecutorIdMap() {
@@ -86,24 +99,27 @@ public final class TaskScheduledMapMaster {
     return prevTaskExecutorIdMap;
   }
 
-  public void addTask(final ExecutorRepresenter representer, final Task task) {
+  public void addTask(final String taskId, final Task task) {
+    taskIdTaskMap.put(taskId, task);
+  }
 
-    taskIdMap.put(task.getTaskId(), task);
+  private void executingTask(final String executorId, final String taskId) {
+    final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
+
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
-    executorIdRepresentorMap.putIfAbsent(representer.getExecutorId(), representer);
-    taskExecutorIdMap.put(task.getTaskId(), representer.getExecutorId());
+    taskExecutorIdMap.put(taskId, representer.getExecutorId());
 
     // Add task location to VM
-    taskLocationMap.locationMap.put(task.getTaskId(), TaskLoc.VM);
+    taskLocationMap.locationMap.put(taskId, TaskLoc.VM);
 
-    final Map<String, List<Task>> stageTaskMap = scheduledStageTasks.get(representer);
+    final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
 
     synchronized (stageTaskMap) {
-      final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
-      final List<Task> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+      final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
       stageTaskMap.put(stageId, stageTasks);
 
-      stageTasks.add(task);
+      stageTasks.add(taskId);
     }
 
     // broadcast
@@ -111,9 +127,9 @@ public final class TaskScheduledMapMaster {
       executors.forEach(executor -> {
         executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
           .setType(ControlMessage.MessageType.TaskScheduled)
-          .setRegisteredExecutor(task.getTaskId() + "," + representer.getExecutorId())
+          .setRegisteredExecutor(taskId + "," + representer.getExecutorId())
           .build());
       });
     });
@@ -160,23 +176,13 @@ public final class TaskScheduledMapMaster {
     return taskExecutorIdMap;
   }
 
-  public ConcurrentMap<ExecutorRepresenter, Map<String, List<Task>>> getScheduledStageTasks() {
+  public ConcurrentMap<ExecutorRepresenter, Map<String, List<String>>> getScheduledStageTasks() {
     return scheduledStageTasks;
   }
 
-  public Map<String, Task> getTaskIdMap() {
-    return taskIdMap;
-  }
-
-  public Map<String, List<Task>> getScheduledStageTasks(final ExecutorRepresenter representer) {
+  public Map<String, List<String>> getScheduledStageTasks(final ExecutorRepresenter representer) {
     return scheduledStageTasks.get(representer);
   }
-
-  public ExecutorRepresenter getExecutorRepresenter(final String executorId) {
-    return executorIdRepresentorMap.get(executorId);
-  }
-
-
 
   /**
    * Handler for control messages received.
@@ -184,12 +190,34 @@ public final class TaskScheduledMapMaster {
   final class TaskScheduleMapReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      throw new RuntimeException("Exception " + message);
+      switch (message.getType()) {
+        case TaskExecuting: {
+          final ControlMessage.TaskExecutingMessage m = message.getTaskExecutingMsg();
+          executingTask(m.getExecutorId(), m.getTaskId());
+          break;
+        }
+        default: {
+          throw new RuntimeException("Unsupported message type");
+        }
+      }
     }
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
+        case TaskScheduled: {
+          final String requestedTaskId = message.getRegisteredExecutor();
+          final String executorId = taskExecutorIdMap.get(requestedTaskId);
+
+          messageContext.reply(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.TaskScheduled)
+          .setRegisteredExecutor(requestedTaskId + "," + executorId)
+          .build());
+          break;
+        }
+
         case CurrentScheduledTask: {
           final Collection<String> c = taskExecutorIdMap
             .entrySet()

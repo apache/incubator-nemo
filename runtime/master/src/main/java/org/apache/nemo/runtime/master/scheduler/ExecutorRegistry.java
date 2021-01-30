@@ -57,7 +57,7 @@ public final class ExecutorRegistry {
     this.executors = new HashMap<>();
   }
 
-  synchronized void registerExecutor(final ExecutorRepresenter executor) {
+  public synchronized void registerExecutor(final ExecutorRepresenter executor) {
     final String executorId = executor.getExecutorId();
     if (executors.containsKey(executorId)) {
       throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
@@ -136,12 +136,16 @@ public final class ExecutorRegistry {
     return Optional.empty();
   }
 
-  private Set<ExecutorRepresenter> getRunningExecutors() {
+  public Set<ExecutorRepresenter> getRunningExecutors() {
     return executors.values()
         .stream()
         .filter(pair -> pair.right().equals(ExecutorState.RUNNING))
         .map(Pair::left)
         .collect(Collectors.toSet());
+  }
+
+  public synchronized ExecutorRepresenter getExecutorRepresentor(final String executorId) {
+    return executors.get(executorId).left();
   }
 
   @Override

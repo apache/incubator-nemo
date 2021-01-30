@@ -46,12 +46,16 @@ public interface PipeManagerWorker extends InputPipeRegister {
                  final Serializer serializer,
                  final Object event);
 
+  void taskScheduled(final String taskId);
+
   void addInputData(int index, ByteBuf event);
 
   void addControlData(int index, TaskControlMessage controlMessage);
 
   void stopOutputPipe(int index, String taskId);
-  void restartOutputPipe(int index, String taskId);
+
+  // When input pipe is initiated
+  void startOutputPipe(int index, String taskId);
 
   boolean isOutputPipeStopped(String taskId);
 

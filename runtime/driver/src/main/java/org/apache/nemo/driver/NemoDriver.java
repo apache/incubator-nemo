@@ -32,9 +32,11 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
+import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
@@ -316,6 +318,7 @@ public final class NemoDriver {
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
+      .bindImplementation(StateStore.class, HDFStateStore.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .build();
 
@@ -329,12 +332,12 @@ public final class NemoDriver {
 
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
-        .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+      .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
+      .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(OffloadingWorkerFactory.class,
         evalConf.offloadingType.equals("vm")
-        ? VMOffloadingWorkerFactory.class : LambdaOffloadingWorkerFactory.class)
+          ? VMOffloadingWorkerFactory.class : LambdaOffloadingWorkerFactory.class)
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }

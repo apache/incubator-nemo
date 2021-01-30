@@ -250,17 +250,18 @@ public final class RuntimeMaster {
 
       planStateManager.shutdown();
 
-      try {
-        // wait for metric flush
-        if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
-          LOG.warn("Terminating master before all executor terminated messages arrived.");
+      if (metricCountDownLatch != null) {
+        try {
+          // wait for metric flush
+          if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
+            LOG.warn("Terminating master before all executor terminated messages arrived.");
+          }
+        } catch (final InterruptedException e) {
+          LOG.warn("Waiting executor terminating process interrupted: " + e);
+          // clean up state...
+          Thread.currentThread().interrupt();
         }
-      } catch (final InterruptedException e) {
-        LOG.warn("Waiting executor terminating process interrupted: " + e);
-        // clean up state...
-        Thread.currentThread().interrupt();
       }
-
       runtimeMasterThread.execute(() -> {
         scheduler.terminate();
         try {

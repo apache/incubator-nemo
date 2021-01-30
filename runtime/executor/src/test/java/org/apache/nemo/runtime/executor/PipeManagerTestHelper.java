@@ -5,13 +5,18 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.offloading.client.ServerlessExecutorProviderImpl;
+import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.MessageParameters;
+import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.statestore.StateStore;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
@@ -75,6 +80,7 @@ public class PipeManagerTestHelper {
       TANG.newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .bindImplementation(Scheduler.class, StreamingScheduler.class)
+        .bindNamedParameter(JobConf.JobId.class, "test-job")
         .build(),
       createNameResolverConf(ns),
       createGrpcMessageEnvironmentConf(MessageEnvironment.MASTER_COMMUNICATION_ID));
@@ -106,5 +112,27 @@ public class PipeManagerTestHelper {
     final CyclicDependencyHandler dependencyHandler = injector.getInstance(CyclicDependencyHandler.class);
 
     return Pair.of(pipeManagerWorker, injector);
+  }
+
+  public static Pair<Executor, Injector>
+  createExecutor(final String executorId,
+                 final NameServer nameServer,
+                 final StateStore stateStore) throws InjectionException {
+
+    final Configuration conf = TANG.newConfigurationBuilder()
+      .bindNamedParameter(JobConf.ExecutorId.class, executorId)
+      .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+      .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
+      .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
+      .build();
+
+    final Configuration nameResolverConf = PipeManagerTestHelper.createNameResolverConf(nameServer);
+    final Configuration grpcConf = PipeManagerTestHelper.createGrpcMessageEnvironmentConf(executorId);
+
+    final Injector injector = TANG.newInjector(Configurations.merge(conf, nameResolverConf, grpcConf));
+    injector.bindVolatileInstance(StateStore.class, stateStore);
+    injector.bindVolatileInstance(BlockManagerWorker.class, mock(BlockManagerWorker.class));
+
+    return Pair.of(injector.getInstance(Executor.class), injector);
   }
 }

@@ -198,7 +198,6 @@ public final class ContainerManager {
       messageSender = new FailedMessageSender();
     }
 
-
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
         new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,

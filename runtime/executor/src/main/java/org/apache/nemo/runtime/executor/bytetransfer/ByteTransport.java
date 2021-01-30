@@ -71,8 +71,6 @@ public final class ByteTransport implements AutoCloseable {
   private final Channel serverListeningChannel;
   private final String publicAddress;
   private int bindingPort;
-  private final ConcurrentMap<String, InetSocketAddress> executorAddressMap = new ConcurrentHashMap<>();
-
   private final String localExecutorId;
 
   /**
@@ -221,20 +219,6 @@ public final class ByteTransport implements AutoCloseable {
     }
 
     LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
-  }
-
-  public void setExecutorAddressMap(final Map<String, Pair<String, Integer>> map) {
-    LOG.info("Setting executor address map");
-    for (final Map.Entry<String, Pair<String, Integer>> entry : map.entrySet()) {
-      executorAddressMap.put(entry.getKey(), new InetSocketAddress(entry.getValue().left(), entry.getValue().right()));
-    }
-  }
-
-  public ConcurrentMap<String, InetSocketAddress> getExecutorAddressMap() {
-    if (executorAddressMap == null) {
-      throw new RuntimeException("Executor address map is null");
-    }
-    return executorAddressMap;
   }
 
   /**

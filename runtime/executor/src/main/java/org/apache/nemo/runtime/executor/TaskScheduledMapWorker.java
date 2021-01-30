@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 
 public final class TaskScheduledMapWorker {
@@ -28,9 +29,6 @@ public final class TaskScheduledMapWorker {
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
     final MessageEnvironment messageEnvironment) {
     this.toMaster = persistentConnectionToMasterMap;
-
-    messageEnvironment.setupListener(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID,
-      new Receiver());
   }
 
   public void init() {
@@ -63,28 +61,35 @@ public final class TaskScheduledMapWorker {
     map.put(taskId, executorId);
   }
 
-  public String getRemoteExecutorId(final String dstTaskId) {
-    return map.get(dstTaskId);
-  }
+  public String getRemoteExecutorId(final String dstTaskId,
+                                    final boolean syncMaster) {
+    if (syncMaster) {
+      final CompletableFuture<ControlMessage.Message> future = toMaster
+        .getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .request(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setType(ControlMessage.MessageType.TaskScheduled)
+          .setRegisteredExecutor(dstTaskId)
+          .build());
 
-  final class Receiver implements MessageListener<ControlMessage.Message> {
-    @Override
-    public void onMessage(ControlMessage.Message message) {
-      switch (message.getType()) {
-        case TaskScheduled: {
-          LOG.info("Task scheduled {}", message.getRegisteredExecutor());
-          final String[] split = message.getRegisteredExecutor().split(",");
-          registerTask(split[0], split[1]);
-          break;
-        }
-        default:
-          throw new RuntimeException("Invalid message type " + message.getType());
+      final ControlMessage.Message msg;
+      try {
+        msg = future.get();
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
-    }
 
-    @Override
-    public void onMessageWithContext(ControlMessage.Message message, MessageContext messageContext) {
-      throw new RuntimeException("Invalid message type " + message.getType());
+      final String[] split = msg.getRegisteredExecutor().split(",");
+
+      if (split[1].equals("null")) {
+        return null;
+      }
+
+      return map.get(dstTaskId);
+    } else {
+      return map.get(dstTaskId);
     }
   }
 }

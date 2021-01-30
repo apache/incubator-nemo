@@ -47,16 +47,16 @@ public final class HDFSUtils {
 
   public static void createStateDirIfNotExistsAndDelete() throws IOException {
     LOG.info("Creating sponge state dir");
-    final Path path = new Path(STATE_PATH);
-    final FileSystem fileSystem = path.getFileSystem(CONF);
     try {
+      final Path path = new Path(STATE_PATH);
+      final FileSystem fileSystem = path.getFileSystem(CONF);
       if (!fileSystem.exists(path)) {
         fileSystem.mkdirs(path);
       } else {
         fileSystem.delete(path, true);
         fileSystem.mkdirs(path);
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       // Ignore this exception, if there is a problem it'll fail when trying to read or write.
       LOG.warn("Error while trying to set permission: ", e);
     }

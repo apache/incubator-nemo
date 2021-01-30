@@ -27,18 +27,18 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
   private final ConcurrentMap<String, List<Channel>> dstRequestChannelMap;
   private final ConcurrentMap<String, Channel> rendevousChannelMap;
   private final ScheduledExecutorService scheduledExecutorService;
-  private final WatermarkManager watermarkManager;
+  // private final WatermarkManager watermarkManager;
   private final TaskScheduledMapMaster taskScheduledMap;
 
   public RendevousServerDecoder(final ConcurrentMap<String, List<Channel>> dstRequestChannelMap,
                                 final ConcurrentMap<String, Channel> rendevousChannelMap,
                                 final ScheduledExecutorService scheduledExecutorService,
-                                final WatermarkManager watermarkManager,
+                                // final WatermarkManager watermarkManager,
                                 final TaskScheduledMapMaster taskScheduledMap) {
     this.dstRequestChannelMap = dstRequestChannelMap;
     this.rendevousChannelMap = rendevousChannelMap;
     this.scheduledExecutorService = scheduledExecutorService;
-    this.watermarkManager = watermarkManager;
+    // this.watermarkManager = watermarkManager;
     this.taskScheduledMap = taskScheduledMap;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
@@ -118,18 +118,24 @@ public class RendevousServerDecoder extends MessageToMessageDecoder<ByteBuf> {
         break;
       }
       case WATERMARK_SEND: {
+        throw new RuntimeException("watermark send");
+        /*
         final String taskId = bis.readUTF();
         final long watermark = bis.readLong();
         watermarkManager.updateWatermark(taskId, watermark);
         break;
+        */
       }
       case WATERMARK_REQUEST: {
+        throw new RuntimeException("watermark request");
+        /*
         final String taskId = bis.readUTF();
         final long watermark = watermarkManager.getInputWatermark(taskId);
         //LOG.info("Watermark manager input watermark {}, {}", stageId, watermark);
         final WatermarkResponse watermarkResponse = new WatermarkResponse(taskId, watermark);
         ctx.channel().writeAndFlush(watermarkResponse);
         break;
+        */
       }
       default:
         throw new RuntimeException("Unsupported");

@@ -25,7 +25,6 @@ import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.ExecutorContextManagerMap;
@@ -70,7 +69,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   private final PipeIndexMapWorker pipeIndexMapWorker;
 
   // Pipe input
-  private final Map<Integer, InputReader> pipeIndexInputReaderMap = new ConcurrentHashMap<>();
+  private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
   private final Map<String, Set<InputReader>> taskInputReaderMap = new ConcurrentHashMap<>();
   private final Map<InputReader, Set<Integer>> inputReaderPipeIndicesMap = new ConcurrentHashMap<>();
 
@@ -80,7 +79,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   // For pipe stop restart
   private final Map<Integer, List<Object>> pendingOutputPipeMap = new ConcurrentHashMap<>();
-  private final Map<String, Set<Integer>> pendingTaskPipeIndicesMap = new ConcurrentHashMap<>();
+  private final Map<String, Set<Integer>> taskStoppedOutputPipeIndicesMap = new ConcurrentHashMap<>();
+
+  private final Map<String, Set<Integer>> pipeOuptutIndicesForDstTask = new ConcurrentHashMap<>();
 
   //          edge1                                               edge2
   //  T1  --(index)-->  [InputReader (T4, edge1)]  --> <T4> --> [OutputWriter]  --(index)-->   T5
@@ -105,10 +106,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final String dstTaskId,
                                 final InputReader reader) {
     // taskId로부터 받는 data를 위한 input reader
-    final int pipeIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    final int inputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
 
-    LOG.info("Registering pipe for input reader {}/{}/{} . index: {}",
-      srcTaskId, edgeId, dstTaskId, pipeIndex);
+    LOG.info("Registering input pipe index {}/{}/{} . index: {}",
+      srcTaskId, edgeId, dstTaskId, inputPipeIndex);
 
     taskInputReaderMap.putIfAbsent(dstTaskId, new HashSet<>());
     taskInputReaderMap.get(dstTaskId).add(reader);
@@ -116,20 +117,47 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     taskInputPipeState.putIfAbsent(dstTaskId, InputPipeState.RUNNING);
 
     inputReaderPipeIndicesMap.putIfAbsent(reader, new HashSet<>());
-    inputReaderPipeIndicesMap.get(reader).add(pipeIndex);
+    inputReaderPipeIndicesMap.get(reader).add(inputPipeIndex);
 
-    if (pipeIndexInputReaderMap.containsKey(pipeIndex)) {
-      throw new RuntimeException("Pipe is already registered " + pipeIndex);
+    if (inputPipeIndexInputReaderMap.containsKey(inputPipeIndex)) {
+      throw new RuntimeException("Pipe is already registered " + inputPipeIndex);
     }
-    pipeIndexInputReaderMap.put(pipeIndex, reader);
+    inputPipeIndexInputReaderMap.put(inputPipeIndex, reader);
+
+    // Send init message
+    // If the dst task is not scheduled yet
+    // We should buffer the message and flush when the dst task is scheduled and pipe is initiated
+    final int outputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTaskId);
+
+    // A -> B [*] inputPipeIndex of B == outputPipeIndex of A
+    // B -> A  (outputPipeIndex) of B  == (inputPIpeInex) of A
+    final TaskControlMessage controlMessage = new TaskControlMessage(
+      TaskControlMessage.TaskControlMessageType.PIPE_INIT,
+      outputPipeIndex, // A's input pipe index
+      inputPipeIndex, // A's output pipe index
+      srcTaskId,
+      null);
+
+    final Optional<ContextManager> optional = getContextManagerForDstTask(srcTaskId, true);
+    if (optional.isPresent()) {
+      optional.get().getChannel().writeAndFlush(controlMessage);
+    } else {
+      // this is pending output pipe
+      // the task is not sheduled yet
+      LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {}",
+        dstTaskId, edgeId, srcTaskId, srcTaskId);
+      pendingOutputPipeMap.putIfAbsent(outputPipeIndex, new LinkedList<>());
+      pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
+      pipeOuptutIndicesForDstTask.putIfAbsent(srcTaskId, new HashSet<>());
+      pipeOuptutIndicesForDstTask.get(srcTaskId).add(outputPipeIndex);
+    }
   }
 
   private final Map<String, List<Integer>> inputStopSignalPipes = new ConcurrentHashMap<>();
   @Override
-  public void sendSignalForPipes(final List<String> srcTasks,
-                                 final String edgeId,
-                                 final String dstTaskId,
-                                 final Signal signal) {
+  public void sendStopSignalForInputPipes(final List<String> srcTasks,
+                                          final String edgeId,
+                                          final String dstTaskId) {
     inputStopSignalPipes.putIfAbsent(dstTaskId, new ArrayList<>(srcTasks.size()));
     for (final String srcTask : srcTasks) {
       final int pipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
@@ -137,30 +165,23 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
 
     for (final String srcTask : srcTasks) {
-      final ContextManager contextManager = getContextManagerForDstTask(srcTask);
-      final Channel channel = contextManager.getChannel();
-      final int pipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
-      final int targetPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
-
-      TaskControlMessage controlMessage = null;
-      switch (signal) {
-        case INPUT_STOP: {
-          taskInputPipeState.put(dstTaskId, InputPipeState.WAITING_ACK);
-          controlMessage = new TaskControlMessage(
-            TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
-            pipeIndex,
-            targetPipeIndex,
-            srcTask,
-            new TaskStopSignalByDownstreamTask(dstTaskId, edgeId, srcTask));
-          break;
-        }
-        case INPUT_RESTART: {
-          break;
-        }
-        default: {
-          throw new RuntimeException("Invalid type " + signal);
-        }
+      final Optional<ContextManager> optional = getContextManagerForDstTask(srcTask, true);
+      if (!optional.isPresent()) {
+        throw new RuntimeException("Task is not deployed ... " + srcTask);
       }
+
+      final ContextManager contextManager = optional.get();
+      final Channel channel = contextManager.getChannel();
+      final int myOutputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
+      final int myInputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
+
+      taskInputPipeState.put(dstTaskId, InputPipeState.WAITING_ACK);
+      final TaskControlMessage controlMessage = new TaskControlMessage(
+        TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
+        myOutputPipeIndex,
+        myInputPipeIndex,
+        srcTask,
+        new TaskStopSignalByDownstreamTask(dstTaskId, edgeId, srcTask));
 
       channel.writeAndFlush(controlMessage)
         .addListener(listener);
@@ -198,7 +219,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final Map<String, List<Integer>> executorDstTaskIndicesMap = new HashMap<>();
 
     dstTasks.forEach(dstTask -> {
-      final String executorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask);
+      final String executorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask, false);
       executorDstTaskIndicesMap.putIfAbsent(executorId, new LinkedList<>());
       executorDstTaskIndicesMap.get(executorId).add(
       pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTask));
@@ -252,10 +273,15 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
   }
 
-  private ContextManager getContextManagerForDstTask(final String dstTaskId) {
-    return executorContextManagerMap
-      .getExecutorContextManager(
-      taskScheduledMapWorker.getRemoteExecutorId(dstTaskId));
+  private Optional<ContextManager> getContextManagerForDstTask(final String dstTaskId,
+                                                               final boolean syncToMaster) {
+    if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster) == null) {
+      return Optional.empty();
+    } else {
+      return Optional.of(executorContextManagerMap
+        .getExecutorContextManager(
+          taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster)));
+    }
   }
 
   @Override
@@ -272,10 +298,17 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
           return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), (Channel) null);
         } else {
-          final ContextManager contextManager = getContextManagerForDstTask(dstTaskId);
-          final Channel channel = contextManager.getChannel();
-          final ByteBuf byteBuf = channel.alloc().ioBuffer();
-          return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), channel);
+          final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
+          if (optional.isPresent()) {
+            final ContextManager contextManager = optional.get();
+            final Channel channel = contextManager.getChannel();
+            final ByteBuf byteBuf = channel.alloc().ioBuffer();
+            return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), channel);
+          } else {
+            // Keep if the dsk task is not scheduled yet
+            final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
+            return Triple.of(true, new ByteBufOutputStream(byteBuf), (Channel) null);
+          }
         }
       })
       .forEach(triple -> {
@@ -295,9 +328,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         final Object finalData = DataFrameEncoder.DataFrame.newInstance(
           Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
 
-        if (triple.getLeft()) {
+        if (triple.getRight() == null) {
           // this is pending output pipe
+          pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
           pendingOutputPipeMap.get(index).add(finalData);
+          pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
+          pipeOuptutIndicesForDstTask.get(dstTaskId).add(index);
         } else {
           triple.getRight().writeAndFlush(finalData)
             .addListener(listener);
@@ -307,22 +343,22 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public void addInputData(final int index, ByteBuf event) {
-    if (!pipeIndexInputReaderMap.containsKey(index)) {
+    if (!inputPipeIndexInputReaderMap.containsKey(index)) {
       throw new RuntimeException("Invalid task index " + index);
     }
-    pipeIndexInputReaderMap.get(index).addData(index, event);
+    inputPipeIndexInputReaderMap.get(index).addData(index, event);
   }
 
   @Override
   public void addControlData(int index, TaskControlMessage controlMessage) {
-     if (!pipeIndexInputReaderMap.containsKey(index)) {
+     if (!inputPipeIndexInputReaderMap.containsKey(index)) {
        throw new RuntimeException("Invalid task index " + index);
      }
-     pipeIndexInputReaderMap.get(index).addControl(controlMessage);
+     inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
   }
 
   @Override
-  public void stopOutputPipe(int index, String taskId) {
+  public synchronized void stopOutputPipe(int index, String taskId) {
     if (pendingOutputPipeMap.containsKey(index)) {
       throw new RuntimeException("Output pipe already stopped " + index + " " + taskId);
     }
@@ -331,18 +367,21 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       LOG.info("Task is already removed " + taskId);
     } else {
       pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
-      pendingTaskPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
+      taskStoppedOutputPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
 
-      synchronized (pendingTaskPipeIndicesMap.get(taskId)) {
-        pendingTaskPipeIndicesMap.get(taskId).add(index);
+      synchronized (taskStoppedOutputPipeIndicesMap.get(taskId)) {
+        taskStoppedOutputPipeIndicesMap.get(taskId).add(index);
       }
     }
 
     // send control message
     final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-    final ContextManager contextManager = getContextManagerForDstTask(key.getRight());
-    final Channel channel = contextManager.getChannel();
+    final Optional<ContextManager> optional = getContextManagerForDstTask(key.getRight(), false);
+    if (!optional.isPresent()) {
+      throw new RuntimeException("Contextmanager should exist for " + key);
+    }
 
+    final Channel channel = optional.get().getChannel();
 
     channel.writeAndFlush(new TaskControlMessage(
       TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
@@ -353,22 +392,42 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   @Override
-  public void restartOutputPipe(int index, String taskId) {
+  public synchronized void taskScheduled(final String taskId) {
+    LOG.info("Task scheduled !! {}", taskId);
+    if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
+      final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
+      indices.forEach(index -> {
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+        startOutputPipe(index, key.getLeft());
+      });
+    }
+  }
+
+  @Override
+  public synchronized void startOutputPipe(int index, String taskId) {
     // restart pending output
     if (pendingOutputPipeMap.containsKey(index)) {
-      LOG.info("Restart pipe " + index);
       final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-      final ContextManager contextManager = getContextManagerForDstTask(key.getRight());
-      final Channel channel = contextManager.getChannel();
+      LOG.info("Emit pending data when pipe is initiated {}", key);
+      Optional<ContextManager> optional = getContextManagerForDstTask(key.getRight(), true);
+
+      if (!optional.isPresent()) {
+        LOG.warn("{} is not schedule yet... we buffer the event and it will be emitted when task is scheduled", key);
+        return;
+      }
+
+      final Channel channel = optional.get().getChannel();
 
       final List<Object> pendingData = pendingOutputPipeMap.remove(index);
       pendingData.forEach(data -> channel.write(data));
 
       channel.flush();
 
-      pendingTaskPipeIndicesMap.get(taskId).remove((Integer) index);
-      if (pendingTaskPipeIndicesMap.get(taskId).isEmpty()) {
-        pendingTaskPipeIndicesMap.remove(taskId);
+      if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
+        taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
+        if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
+          taskStoppedOutputPipeIndicesMap.remove(taskId);
+        }
       }
     } else {
       LOG.info("Start pipe " + index);
@@ -377,7 +436,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public boolean isOutputPipeStopped(String taskId) {
-    return pendingTaskPipeIndicesMap.containsKey(taskId);
+    return taskStoppedOutputPipeIndicesMap.containsKey(taskId);
   }
 
   @Override
