@@ -32,8 +32,10 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -43,6 +45,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,7 +113,22 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   public void checkpoint() {
+    final StateStore stateStore = getContext().getStateStore();
+    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(getContext().getTaskId());
+    final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
 
+    try {
+      coder.encode(new GBKFinalState<>(inMemoryTimerInternalsFactory,
+        inMemoryStateInternalsFactory,
+        prevOutputWatermark,
+        keyAndWatermarkHoldMap,
+        inputWatermark), os);
+
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -119,18 +140,50 @@ public final class GBKFinalTransform<K, InputT>
   protected DoFn wrapDoFn(final DoFn doFn) {
     final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
 
-    if (inMemoryStateInternalsFactory == null) {
-      this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
-    } else {
-      LOG.info("InMemoryStateInternalFactroy is already set");
-    }
+    final StateStore stateStore = getContext().getStateStore();
 
-    if (inMemoryTimerInternalsFactory == null) {
-      this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
-    } else {
-      LOG.info("InMemoryTimerInternalsFactory is already set");
-    }
+    if (stateStore.containsState(getContext().getTaskId())) {
+      final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
+      final GBKFinalState<K> state;
+      try {
+        state = coder.decode(is);
+        is.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
 
+      // TODO set ...
+      if (inMemoryStateInternalsFactory == null) {
+        inMemoryStateInternalsFactory = state.stateInternalsFactory;
+        inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+      } else {
+        inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
+        inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+      }
+
+      inputWatermark = state.inputWatermark;
+      prevOutputWatermark = state.prevOutputWatermark;
+
+      keyAndWatermarkHoldMap.clear();
+      keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
+
+    } else {
+
+      if (inMemoryStateInternalsFactory == null) {
+        this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
+      } else {
+        LOG.info("InMemoryStateInternalFactroy is already set");
+      }
+
+      if (inMemoryTimerInternalsFactory == null) {
+        this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
+      } else {
+        LOG.info("InMemoryTimerInternalsFactory is already set");
+
+      }
+    }
 
     // This function performs group by key and window operation
     return

@@ -531,7 +531,7 @@ public final class Executor {
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
         case TaskScheduled: {
-          LOG.info("Task scheduled {}", message.getRegisteredExecutor());
+          LOG.info("Task scheduled {} received at {}", message.getRegisteredExecutor(), executorId);
           final String[] split = message.getRegisteredExecutor().split(",");
           scheduledMapWorker.registerTask(split[0], split[1]);
           pipeManagerWorker.taskScheduled(split[0]);
@@ -543,7 +543,6 @@ public final class Executor {
           controlEventHandler.handleControlEvent(new TaskControlMessage(
             TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
             message.getStopTaskMsg().getTaskId(), null));
-          taskExecutorMapWrapper.removeTask(message.getStopTaskMsg().getTaskId());
           break;
         }
         case ExecutorRegistered: {

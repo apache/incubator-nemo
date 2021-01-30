@@ -143,10 +143,10 @@ public final class ExecutorTest {
   @Test
   public void testMultipleTaskExecutors() throws Exception {
 
-    final Pair<Executor, Injector> pair1 = launchExecutor(2);
-    final Pair<Executor, Injector> pair2 = launchExecutor(2);
+    final Pair<Executor, Injector> pair1 = launchExecutor(3);
+    final Pair<Executor, Injector> pair2 = launchExecutor(3);
 
-    final int parallelism = 2;
+    final int parallelism = 3;
     final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
 
     final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
@@ -157,7 +157,7 @@ public final class ExecutorTest {
     Thread.sleep(2000);
 
     for (int i = 0; i < 500; i++) {
-      sourceGenerator.addEvent(i % 2, new EventOrWatermark(Pair.of(i % 5, 1)));
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i) % 50 == 0) {
         sourceGenerator.addEvent(0, new EventOrWatermark((i) + 200, true));
@@ -168,25 +168,59 @@ public final class ExecutorTest {
 
     // move task
     Thread.sleep(3000);
-    final Pair<Executor, Injector> pair3 = launchExecutor(2);
+    final Pair<Executor, Injector> pair3 = launchExecutor(parallelism);
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
-    Thread.sleep(5000);
+    Thread.sleep(3000);
 
     for (int i = 500; i < 1000; i++) {
-      sourceGenerator.addEvent(i % 2, new EventOrWatermark(Pair.of(i % 5, 1)));
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i + 1) % 50 == 0) {
         sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
         sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
-
+        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
         Thread.sleep(1);
       }
     }
 
-    Thread.sleep(2000);
-
+    Thread.sleep(3000);
 
     // move stateful task
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
+    Thread.sleep(3000);
+
+
+    for (int i = 1000; i < 1500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i + 1) % 50 == 0) {
+        sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
+        sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
+        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
+        Thread.sleep(1);
+      }
+    }
+
+    Thread.sleep(3000);
+
+
+    // move again
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
+
+    Thread.sleep(5000);
+
+    for (int i = 1500; i < 2000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i + 1) % 50 == 0) {
+        sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
+        sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
+        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
+        Thread.sleep(1);
+      }
+    }
+
   }
 
   private void scheduleTask() {

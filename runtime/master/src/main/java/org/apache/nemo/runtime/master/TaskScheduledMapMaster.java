@@ -59,7 +59,7 @@ public final class TaskScheduledMapMaster {
 
   public synchronized void stopTask(final String taskId) {
     final String executorId = taskExecutorIdMap.remove(taskId);
-    prevTaskExecutorIdMap.remove(taskId);
+    prevTaskExecutorIdMap.put(taskId, executorId);
 
     LOG.info("Send task " + taskId + " stop to executor " + executorId);
 

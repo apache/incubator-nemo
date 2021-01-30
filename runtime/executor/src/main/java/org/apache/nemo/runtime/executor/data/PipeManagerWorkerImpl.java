@@ -70,8 +70,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   // Pipe input
   private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
-  private final Map<String, Set<InputReader>> taskInputReaderMap = new ConcurrentHashMap<>();
-  private final Map<InputReader, Set<Integer>> inputReaderPipeIndicesMap = new ConcurrentHashMap<>();
+  // private final Map<String, Set<InputReader>> taskInputReaderMap = new ConcurrentHashMap<>();
+  // private final Map<InputReader, Set<Integer>> inputReaderPipeIndicesMap = new ConcurrentHashMap<>();
 
   // Input pipe state
   private final Map<String, InputPipeState> taskInputPipeState = new ConcurrentHashMap<>();
@@ -101,7 +101,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   @Override
-  public void registerInputPipe(final String srcTaskId,
+  public synchronized void registerInputPipe(final String srcTaskId,
                                 final String edgeId,
                                 final String dstTaskId,
                                 final InputReader reader) {
@@ -111,17 +111,19 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     LOG.info("Registering input pipe index {}/{}/{} . index: {}",
       srcTaskId, edgeId, dstTaskId, inputPipeIndex);
 
-    taskInputReaderMap.putIfAbsent(dstTaskId, new HashSet<>());
-    taskInputReaderMap.get(dstTaskId).add(reader);
+    // taskInputReaderMap.putIfAbsent(dstTaskId, new HashSet<>());
+    // taskInputReaderMap.get(dstTaskId).add(reader);
+    // inputReaderPipeIndicesMap.putIfAbsent(reader, new HashSet<>());
+    // inputReaderPipeIndicesMap.get(reader).add(inputPipeIndex);
 
-    taskInputPipeState.putIfAbsent(dstTaskId, InputPipeState.RUNNING);
 
-    inputReaderPipeIndicesMap.putIfAbsent(reader, new HashSet<>());
-    inputReaderPipeIndicesMap.get(reader).add(inputPipeIndex);
+    taskInputPipeState.put(dstTaskId, InputPipeState.RUNNING);
 
     if (inputPipeIndexInputReaderMap.containsKey(inputPipeIndex)) {
-      throw new RuntimeException("Pipe is already registered " + inputPipeIndex);
+      LOG.warn("Pipe was already registered.. because the task was running in this executor {}/{}/{}  index {} ",
+        srcTaskId, edgeId, dstTaskId, inputPipeIndex);
     }
+
     inputPipeIndexInputReaderMap.put(inputPipeIndex, reader);
 
     // Send init message
@@ -155,7 +157,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   private final Map<String, List<Integer>> inputStopSignalPipes = new ConcurrentHashMap<>();
   @Override
-  public void sendStopSignalForInputPipes(final List<String> srcTasks,
+  public synchronized void sendStopSignalForInputPipes(final List<String> srcTasks,
                                           final String edgeId,
                                           final String dstTaskId) {
     inputStopSignalPipes.putIfAbsent(dstTaskId, new ArrayList<>(srcTasks.size()));
@@ -165,7 +167,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
 
     for (final String srcTask : srcTasks) {
-      final Optional<ContextManager> optional = getContextManagerForDstTask(srcTask, true);
+      final Optional<ContextManager> optional = getContextManagerForDstTask(srcTask, false);
       if (!optional.isPresent()) {
         throw new RuntimeException("Task is not deployed ... " + srcTask);
       }
@@ -267,9 +269,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         });
       }
 
-      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-        pipeIndices, byteBuf, byteBuf.readableBytes(), true))
-        .addListener(listener);
+      if (pipeIndices.size() > 0) {
+        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
+          pipeIndices, byteBuf, byteBuf.readableBytes(), true))
+          .addListener(listener);
+      }
     }
   }
 
@@ -359,19 +363,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public synchronized void stopOutputPipe(int index, String taskId) {
-    if (pendingOutputPipeMap.containsKey(index)) {
+    if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)
+      && taskStoppedOutputPipeIndicesMap.get(taskId).contains((Integer) index)) {
       throw new RuntimeException("Output pipe already stopped " + index + " " + taskId);
-    }
-
-    if (taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED)) {
-      LOG.info("Task is already removed " + taskId);
-    } else {
-      pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
-      taskStoppedOutputPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
-
-      synchronized (taskStoppedOutputPipeIndicesMap.get(taskId)) {
-        taskStoppedOutputPipeIndicesMap.get(taskId).add(index);
-      }
     }
 
     // send control message
@@ -383,17 +377,38 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
     final Channel channel = optional.get().getChannel();
 
+    if (taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED)) {
+      LOG.info("Task is already removed " + taskId);
+      // flush data
+      if (pendingOutputPipeMap.containsKey(index)) {
+        pendingOutputPipeMap.get(index);
+        final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+        pendingData.forEach(data -> channel.write(data));
+        channel.flush();
+      }
+    } else {
+      pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
+      taskStoppedOutputPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
+      pipeOuptutIndicesForDstTask.putIfAbsent(key.getRight(), new HashSet<>());
+      pipeOuptutIndicesForDstTask.get(key.getRight()).add(index);
+
+      synchronized (taskStoppedOutputPipeIndicesMap.get(taskId)) {
+        taskStoppedOutputPipeIndicesMap.get(taskId).add(index);
+      }
+    }
+
     channel.writeAndFlush(new TaskControlMessage(
       TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
       index,
       index,
       key.getRight(),
       null));
+
   }
 
   @Override
   public synchronized void taskScheduled(final String taskId) {
-    LOG.info("Task scheduled !! {}", taskId);
+    LOG.info("Task scheduled !! {}, pipeOutputIndicesForDstTask: {}", taskId, pipeOuptutIndicesForDstTask);
     if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
       final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
       indices.forEach(index -> {
@@ -423,14 +438,15 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
       channel.flush();
 
-      if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
-        taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
-        if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
-          taskStoppedOutputPipeIndicesMap.remove(taskId);
-        }
-      }
     } else {
       LOG.info("Start pipe " + index);
+    }
+
+    if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
+      taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
+      if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
+        taskStoppedOutputPipeIndicesMap.remove(taskId);
+      }
     }
   }
 

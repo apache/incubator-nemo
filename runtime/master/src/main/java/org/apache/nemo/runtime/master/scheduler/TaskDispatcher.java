@@ -291,12 +291,21 @@ public final class TaskDispatcher {
               }
             });
 
-            LOG.info("Candidate executor for {}: {}", task.getTaskId(), candidateExecutors.getValue().isEmpty());
+            final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
+              .stream().filter(executor -> {
+                return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
+                  &&  taskScheduledMap.getPrevTaskExecutorIdMap()
+                  .get(task.getTaskId()).equals(executor.getExecutorId()));
+              }).collect(Collectors.toSet());
 
-            if (!candidateExecutors.getValue().isEmpty()) {
+            LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
+
+            if (!finalCandidates.isEmpty()) {
               // Select executor
               final ExecutorRepresenter selectedExecutor
-                = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+                = schedulingPolicy.selectExecutor(finalCandidates, task);
+
+              taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
 
               // update metadata first
               planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);

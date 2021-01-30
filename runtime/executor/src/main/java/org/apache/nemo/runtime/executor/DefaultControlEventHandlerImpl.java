@@ -98,6 +98,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
     taskExecutor.checkpoint();
 
+    taskExecutorMapWrapper.removeTask(taskId);
+
     toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())

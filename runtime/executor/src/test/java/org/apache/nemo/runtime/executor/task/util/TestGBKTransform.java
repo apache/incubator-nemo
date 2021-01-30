@@ -1,6 +1,8 @@
 package org.apache.nemo.runtime.executor.task.util;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -8,6 +10,9 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,6 +31,33 @@ public final class TestGBKTransform implements Transform<Pair<Integer, Integer>,
   public void prepare(Context context, OutputCollector outputCollector) {
     this.context = context;
     this.outputCollector = outputCollector;
+
+    final StateStore stateStore = context.getStateStore();
+    if (stateStore.containsState(context.getTaskId())) {
+      final InputStream is = stateStore.getStateStream(context.getTaskId());
+      final Map<Integer, Integer> s = SerializationUtils.deserialize(is);
+      map.putAll(s);
+
+      try {
+        is.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
+  public void checkpoint() {
+    final StateStore stateStore = context.getStateStore();
+    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(context.getTaskId());
+    SerializationUtils.serialize((HashMap) map, os);
+    try {
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

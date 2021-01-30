@@ -64,8 +64,7 @@ public final class TaskScheduledMapWorker {
   public String getRemoteExecutorId(final String dstTaskId,
                                     final boolean syncMaster) {
 
-    return map.get(dstTaskId);
-    /*
+    // return map.get(dstTaskId);
     if (syncMaster) {
       final CompletableFuture<ControlMessage.Message> future = toMaster
         .getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
@@ -94,6 +93,5 @@ public final class TaskScheduledMapWorker {
     } else {
       return map.get(dstTaskId);
     }
-    */
   }
 }
