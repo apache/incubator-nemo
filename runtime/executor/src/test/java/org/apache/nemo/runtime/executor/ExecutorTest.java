@@ -242,8 +242,26 @@ public final class ExecutorTest {
       }
     }
 
-    Thread.sleep(3000);
+    Thread.sleep(1000);
 
+    // 500~800: move complex
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-1-0");
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-1-0");
+
+
+    for (int i = 2500; i < 4000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i + 1) % 50 == 0) {
+        sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
+        sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
+        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
+      }
+    }
+
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-2-0");
+
+    Thread.sleep(3000);
   }
 
   private void scheduleTask() {

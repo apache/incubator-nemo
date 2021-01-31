@@ -812,43 +812,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
   }
 
-  /**
-   * Finalize the output write of this vertex.
-   * As element-wise output write is done and the block is in memory,
-   * flush the block into the designated data store and commit it.
-   *
-   * @param vertexHarness harness.
-   */
-  private void finalizeOutputWriters(final VertexHarness vertexHarness) {
-    final List<Long> writtenBytesList = new ArrayList<>();
-
-    // finalize OutputWriters for main children
-    vertexHarness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
-      outputWriter.close();
-      final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
-      writtenBytes.ifPresent(writtenBytesList::add);
-    });
-
-    // finalize OutputWriters for additional tagged children
-    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriters -> {
-      outputWriters.forEach(outputWriter -> {
-        outputWriter.close();
-        final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
-        writtenBytes.ifPresent(writtenBytesList::add);
-      });
-    });
-
-    long totalWrittenBytes = 0;
-    for (final Long writtenBytes : writtenBytesList) {
-      totalWrittenBytes += writtenBytes;
-    }
-
-    // TODO #236: Decouple metric collection and sending logic
-    metricMessageSender.send("TaskMetric", taskId,
-      "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
-  }
-
-
   private boolean finished = false;
 
   @Override
@@ -875,7 +838,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     }
 
-    // TOOD: stateful checkpointing
     if (!isStateless) {
       statefulTransform.checkpoint();
     }

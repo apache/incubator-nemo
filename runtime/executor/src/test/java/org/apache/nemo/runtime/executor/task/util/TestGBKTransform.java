@@ -34,6 +34,7 @@ public final class TestGBKTransform implements Transform<Pair<Integer, Integer>,
 
     final StateStore stateStore = context.getStateStore();
     if (stateStore.containsState(context.getTaskId())) {
+      LOG.info("Restore state for TestGBK in {}", context.getTaskId());
       final InputStream is = stateStore.getStateStream(context.getTaskId());
       final Map<Integer, Integer> s = SerializationUtils.deserialize(is);
       map.putAll(s);
@@ -49,6 +50,7 @@ public final class TestGBKTransform implements Transform<Pair<Integer, Integer>,
 
   @Override
   public void checkpoint() {
+    LOG.info("Checkpoint state for TestGBK in {}", context.getTaskId());
     final StateStore stateStore = context.getStateStore();
     final OutputStream os = stateStore.getOutputStreamForStoreTaskState(context.getTaskId());
     SerializationUtils.serialize((HashMap) map, os);
