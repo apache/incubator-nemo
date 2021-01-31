@@ -127,8 +127,6 @@ public final class Executor {
 
   private final TaskScheduledMapWorker scheduledMapWorker;
 
-  private final ControlEventHandler controlEventHandler;
-
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -153,7 +151,6 @@ public final class Executor {
                    // final ScalingOutCounter scalingOutCounter,
                    // final SFTaskMetrics sfTaskMetrics,
                    final StateStore stateStore,
-                   final ControlEventHandler controlEventHandler,
                    final ExecutorContextManagerMap executorContextManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler) {
@@ -168,7 +165,6 @@ public final class Executor {
     this.scheduledMapWorker = taskScheduledMapWorker;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
-    this.controlEventHandler = controlEventHandler;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskTransferIndexMap = taskTransferIndexMap;
@@ -540,7 +536,8 @@ public final class Executor {
         case StopTask: {
           // TODO: receive stop task message
           LOG.info("Stopping task {} in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
-          controlEventHandler.handleControlEvent(new TaskControlMessage(
+          final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+          executorThread.addShortcutEvent(new TaskControlMessage(
             TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
             message.getStopTaskMsg().getTaskId(), null));
           break;

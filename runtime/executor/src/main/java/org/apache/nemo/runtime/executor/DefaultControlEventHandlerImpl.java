@@ -40,7 +40,6 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
-
     switch (control.type) {
       case TASK_STOP_SIGNAL_BY_MASTER: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());

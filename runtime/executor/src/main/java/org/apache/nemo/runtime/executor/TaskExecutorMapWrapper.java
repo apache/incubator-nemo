@@ -62,6 +62,10 @@ public final class TaskExecutorMapWrapper {
     });
   }
 
+  public ExecutorThread getTaskExecutorThread(final String taskId) {
+    return taskExecutorThreadMap.get(taskIdExecutorMap.get(taskId));
+  }
+
   public ConcurrentMap<TaskExecutor, Boolean> getTaskExecutorMap() {
     return taskExecutorMap;
   }

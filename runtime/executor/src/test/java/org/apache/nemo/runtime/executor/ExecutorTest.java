@@ -188,7 +188,7 @@ public final class ExecutorTest {
 
     Thread.sleep(3000);
 
-    // move stateful task
+    // 300: move stateful task
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
     Thread.sleep(3000);
 
@@ -206,8 +206,7 @@ public final class ExecutorTest {
 
     Thread.sleep(3000);
 
-
-    // move again
+    // 400: move again
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
 
@@ -227,7 +226,6 @@ public final class ExecutorTest {
     Thread.sleep(3000);
 
     // 500: move again
-    /*
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
 
@@ -243,7 +241,6 @@ public final class ExecutorTest {
         Thread.sleep(1);
       }
     }
-    */
 
     Thread.sleep(4000);
 
