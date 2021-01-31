@@ -157,6 +157,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public Future<Integer> stop(final String taskId) {
+    LOG.info("IsFinished true for {}", taskId);
     isFinishd = true;
     // executorGlobalInstances.deregisterWatermarkService((SourceVertex) getDataSource());
     // do nothing

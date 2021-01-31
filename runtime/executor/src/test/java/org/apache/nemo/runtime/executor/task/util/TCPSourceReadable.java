@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -18,20 +19,36 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class TCPSourceReadable implements Readable {
+  private static final Logger LOG = LoggerFactory.getLogger(TCPSourceReadable.class.getName());
 
-  Queue<EventOrWatermark> elements;
-  Queue<EventOrWatermark> watermarks;
+  // Queue<EventOrWatermark> elements;
+  // Queue<EventOrWatermark> watermarks;
   private long currWatermark = 0;
   private ReadableContext readableContext;
   private EventLoopGroup eventLoopGroup;
   private Channel channel;
 
+  public final int index;
+
+  private CountDownLatch hasEventLatch;
+  private volatile boolean hasEvent;
+
+  private CountDownLatch currEventLatch;
+  private volatile EventOrWatermark currEvent;
+
+  public TCPSourceReadable(final int index) {
+    this.index = index;
+  }
+
   @Override
   public void prepare(final ReadableContext readableContext) {
-    elements = new ConcurrentLinkedQueue<>();
-    watermarks = new ConcurrentLinkedQueue<>();
+    // elements = new ConcurrentLinkedQueue<>();
+    // watermarks = new ConcurrentLinkedQueue<>();
     eventLoopGroup = new NioEventLoopGroup();
     this.readableContext = readableContext;
 
@@ -40,7 +57,7 @@ public final class TCPSourceReadable implements Readable {
     clientBootstrap
       .group(eventLoopGroup) // associate event loop to channel
       .channel(NioSocketChannel.class) // create a NIO socket channel
-      .handler(new TCPClientChannelInitializer(elements)); // Add channel initializer
+      .handler(new TCPClientChannelInitializer()); // Add channel initializer
 
     try {
       // Connect to listening server
@@ -62,24 +79,47 @@ public final class TCPSourceReadable implements Readable {
 
   @Override
   public boolean isAvailable() {
-    synchronized (elements) {
-      return !elements.isEmpty();
+//    if (index == 2) {
+//      LOG.info("Available start for index {}", 2);
+//    }
+    hasEventLatch = new CountDownLatch(1);
+    channel.writeAndFlush(new TCPHasEvent(index));
+
+    try {
+      hasEventLatch.await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
+//     if (index == 2) {
+//      LOG.info("Available end for index {}, isAvailable {}", 2, hasEvent);
+//    }
+
+    return hasEvent;
   }
 
   @Override
   public Object readCurrent() throws NoSuchElementException {
-    synchronized (elements) {
-      final EventOrWatermark e = elements.poll();
-      return new TimestampAndValue<>(System.currentTimeMillis(), e.event);
+
+    while (true) {
+      currEventLatch = new CountDownLatch(1);
+      channel.writeAndFlush(new TCPRequstEvent(index));
+
+      try {
+        currEventLatch.await();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      if (currEvent.isWatermark()) {
+        currWatermark = currEvent.watermark;
+      } else {
+        return new TimestampAndValue<>(System.currentTimeMillis(), currEvent.event);
+      }
     }
   }
 
   @Override
   public long readWatermark() {
-    while (!watermarks.isEmpty()) {
-      currWatermark =  watermarks.poll().watermark;
-    }
     return currWatermark;
   }
 
@@ -102,10 +142,7 @@ public final class TCPSourceReadable implements Readable {
 
   class TCPClientChannelInitializer extends ChannelInitializer<SocketChannel > {
 
-    private final Queue<EventOrWatermark> eventOrWatermarks;
-
-    public TCPClientChannelInitializer(final Queue<EventOrWatermark> eventOrWatermarks) {
-      this.eventOrWatermarks = eventOrWatermarks;
+    public TCPClientChannelInitializer() {
     }
 
     @Override
@@ -115,27 +152,32 @@ public final class TCPSourceReadable implements Readable {
         .cacheDisabled(getClass().getClassLoader())));// (2)
       socketChannel.pipeline().addLast(new ObjectEncoder());
       // Add Custom Inbound handler to handle incoming traffic
-      socketChannel.pipeline().addLast(new TCPClientInboundHandler(eventOrWatermarks));
+      socketChannel.pipeline().addLast(new TCPClientInboundHandler());
     }
   }
 
-  class TCPClientInboundHandler extends SimpleChannelInboundHandler<EventOrWatermark> {
+  class TCPClientInboundHandler extends SimpleChannelInboundHandler<Object> {
 
-    private final Queue<EventOrWatermark> events;
 
-    public TCPClientInboundHandler(final Queue<EventOrWatermark> events) {
-      this.events = events;
+    public TCPClientInboundHandler() {
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, EventOrWatermark s) {
-      if (s.isWatermark()) {
-        System.out.println("Watermark recekved!!" + s.watermark);
-        watermarks.add(s);
-      } else {
-        synchronized (events) {
-          events.add(s);
-        }
+    public void channelActive(ChannelHandlerContext ctx) {
+      // send my index
+      System.out.println("TCP Init Channel index send " + index);
+      ctx.writeAndFlush(new TCPInitChannel(index));
+    }
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object s) {
+      if (s instanceof TCPSendEvent) {
+        final EventOrWatermark event = ((TCPSendEvent) s).event;
+        currEvent = event;
+        currEventLatch.countDown();
+      } else if (s instanceof TCPResponseHasEvent) {
+        hasEvent = ((TCPResponseHasEvent) s).hasEvent;
+        hasEventLatch.countDown();
       }
     }
   }

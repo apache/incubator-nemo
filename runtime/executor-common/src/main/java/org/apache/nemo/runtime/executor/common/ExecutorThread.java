@@ -54,7 +54,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
         if (System.currentTimeMillis() - l.get() >= 1000) {
-          LOG.info("Pending source tasks: {}", pendingSourceTasks.size());
+          LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
           l.set(System.currentTimeMillis());
         }
         final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
@@ -73,17 +73,23 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   }
 
   public void deleteTask(final ExecutorThreadTask task) {
-    if (task.isSource()) {
-      synchronized (pendingSourceTasks) {
-       pendingSourceTasks.remove(task);
-      }
+    LOG.info("Deleting task {} in executor {}", task.getId(), executorId);
+    try {
+      if (task.isSource()) {
+        synchronized (pendingSourceTasks) {
+          synchronized (sourceTasks) {
+            pendingSourceTasks.remove(task);
+            sourceTasks.remove(task);
+          }
+        }
 
-      synchronized (sourceTasks) {
-        sourceTasks.remove(task);
+        taskIdExecutorMap.remove(task.getId());
       }
-
-      taskIdExecutorMap.remove(task.getId());
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
+    LOG.info("Deleting done task {} in executor {}", task.getId(), executorId);
   }
 
   public void addNewTask(final ExecutorThreadTask task) {
@@ -134,28 +140,24 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         while (!finished) {
 
           // process source tasks
-          final List<ExecutorThreadTask> pendings = new ArrayList<>();
-
           boolean processed = false;
 
           if (!throttle.get()) {
-            synchronized (sourceTasks) {
-              final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
-              while (iterator.hasNext()) {
-                final ExecutorThreadTask sourceTask = iterator.next();
-                if (sourceTask.hasData()) {
-                  sourceTask.handleSourceData();
-                } else {
-                  iterator.remove();
-                  //LOG.info("Add pending task {}", sourceTask.getId());
-                  pendings.add(sourceTask);
+            synchronized (pendingSourceTasks) {
+              synchronized (sourceTasks) {
+                final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
+                while (iterator.hasNext()) {
+                  final ExecutorThreadTask sourceTask = iterator.next();
+                  if (sourceTask.hasData()) {
+                    sourceTask.handleSourceData();
+                  } else {
+                    iterator.remove();
+                    pendingSourceTasks.add(sourceTask);
+                    //LOG.info("Add pending task {}", sourceTask.getId());
+                  }
                 }
               }
             }
-          }
-
-          synchronized (pendingSourceTasks) {
-            pendingSourceTasks.addAll(pendings);
           }
 
           handlingControlEvent();

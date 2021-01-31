@@ -156,13 +156,15 @@ public final class ExecutorTest {
 
     Thread.sleep(2000);
 
+    // 100
     for (int i = 0; i < 500; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i) % 50 == 0) {
-        sourceGenerator.addEvent(0, new EventOrWatermark((i) + 200, true));
-        sourceGenerator.addEvent(1, new EventOrWatermark((i) + 250, true));
-        Thread.sleep(1);
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+        // Thread.sleep(1);
       }
     }
 
@@ -172,14 +174,15 @@ public final class ExecutorTest {
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
     Thread.sleep(3000);
 
+    // 200
     for (int i = 500; i < 1000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i + 1) % 50 == 0) {
-        sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
-        sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
-        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
-        Thread.sleep(1);
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+        // Thread.sleep(1);
       }
     }
 
@@ -197,7 +200,7 @@ public final class ExecutorTest {
         sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
         sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
         sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
-        Thread.sleep(1);
+        // Thread.sleep(1);
       }
     }
 
@@ -220,6 +223,29 @@ public final class ExecutorTest {
         Thread.sleep(1);
       }
     }
+
+    Thread.sleep(3000);
+
+    // 500: move again
+    /*
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
+    masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
+
+    Thread.sleep(4000);
+
+    for (int i = 2000; i < 2500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i + 1) % 50 == 0) {
+        sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
+        sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
+        sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
+        Thread.sleep(1);
+      }
+    }
+    */
+
+    Thread.sleep(4000);
 
   }
 

@@ -108,7 +108,7 @@ public final class TestDAGBuilder {
 
   public static IRVertex createSource(final int parallelism) {
     final List<Readable> readables = IntStream.range(0, parallelism)
-      .boxed().map(l -> new TCPSourceReadable()).collect(Collectors.toList());
+      .boxed().map(l -> new TCPSourceReadable(l)).collect(Collectors.toList());
 
     final IRVertex sourceIRVertex = new TestUnboundedSourceVertex(readables);
     return sourceIRVertex;

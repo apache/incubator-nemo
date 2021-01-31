@@ -51,6 +51,8 @@ public final class TaskExecutorMapWrapper {
   public void removeTask(String taskId) {
     final TaskExecutor e = taskIdExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(e);
+    et.deleteTask(e);
+
     taskExecutorMap.remove(e);
 
     stageTaskMap.values().forEach(l -> {
