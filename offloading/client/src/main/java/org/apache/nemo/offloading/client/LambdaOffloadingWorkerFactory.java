@@ -1,29 +1,21 @@
 package org.apache.nemo.offloading.client;
 
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
-import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
-import com.amazonaws.services.lambda.model.InvokeResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
-import org.apache.nemo.offloading.common.Pair;
-import org.apache.nemo.offloading.common.OffloadingWorker;
-import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
+import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.offloading.common.OffloadingWorkerDeprec;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,10 +73,10 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   @Override
-  public OffloadingWorker createStreamingWorker(final ByteBuf vmScalingInfoBuf,
-                                                final ByteBuf workerInitBuffer,
-                                                final OffloadingSerializer offloadingSerializer,
-                                                final EventHandler eventHandler) {
+  public OffloadingWorkerDeprec createStreamingWorker(final ByteBuf vmScalingInfoBuf,
+                                                      final ByteBuf workerInitBuffer,
+                                                      final OffloadingSerializer offloadingSerializer,
+                                                      final EventHandler eventHandler) {
     createChannelRequest();
     final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
 
@@ -134,8 +126,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   @Override
-  public OffloadingWorker createOffloadingWorker(final ByteBuf workerInitBuffer,
-                                                 final OffloadingSerializer offloadingSerializer) {
+  public OffloadingWorkerDeprec createOffloadingWorker(final ByteBuf workerInitBuffer,
+                                                       final OffloadingSerializer offloadingSerializer) {
 
     // TODO: not supported!
     createChannelRequest();
@@ -205,7 +197,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   @Override
-  public void deleteOffloadingWorker(OffloadingWorker worker) {
+  public void deleteOffloadingWorker(OffloadingWorkerDeprec worker) {
     // work stealing here!
     // extra request for pending job
 

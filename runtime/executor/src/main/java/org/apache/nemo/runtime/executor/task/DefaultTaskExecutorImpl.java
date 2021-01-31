@@ -47,12 +47,14 @@ import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.offloading.common.TaskOffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
@@ -135,6 +137,19 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final TaskInputWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
+  private enum CurrentState {
+    RUNNING,
+    OFFLOAD_PENDING,
+    OFFLOADED,
+    DEOFFLOAD_PENDING
+  }
+
+  private CurrentState currentState = CurrentState.RUNNING;
+
+  private final OffloadingManager offloadingManager;
+
+  private final PipeManagerWorker pipeManagerWorker;
+
   /**
    * Constructor.
    *
@@ -159,9 +174,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorService prepareService,
                                  final ExecutorThreadQueue executorThreadQueue,
                                  final InputPipeRegister inputPipeRegister,
-                                 final StateStore stateStore) {
+                                 final StateStore stateStore,
+                                 final OffloadingManager offloadingManager,
+                                 final PipeManagerWorker pipeManagerWorker) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.pipeManagerWorker = pipeManagerWorker;
+    this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
@@ -637,8 +656,72 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     outputCollector.emitWatermark(watermark);
   }
 
+  private final List<TaskHandlingEvent> bufferedData = new LinkedList<>();
+
   @Override
-  public void handleData(final DataFetcher dataFetcher, Object event) {
+  public void handleData(final DataFetcher dataFetcher,
+                         final TaskHandlingEvent taskHandlingEvent) {
+    if (taskHandlingEvent.isOffloadingMessage()) {
+      // control message for offloading
+      final TaskOffloadingEvent event = (TaskOffloadingEvent) taskHandlingEvent.getData();
+      final TaskOffloadingEvent.ControlType type = event.getType();
+
+      switch (type) {
+        case SEND_TO_OFFLOADING_WORKER: {
+          checkpoint();
+          offloadingManager.offloading(taskId, task.getSerializedIRDag());
+          currentState = CurrentState.OFFLOAD_PENDING;
+          break;
+        }
+        case OFFLOAD_DONE: {
+          currentState = CurrentState.OFFLOADED;
+          break;
+        }
+        case DEOFFLOADING: {
+          currentState = CurrentState.DEOFFLOAD_PENDING;
+          break;
+        }
+        default:
+          throw new RuntimeException("Invalid offloading control type " + type);
+      }
+    } else {
+      if (taskHandlingEvent instanceof TaskOffloadedDataOutputEvent) {
+        // This is the output of the offloaded task
+        final TaskOffloadedDataOutputEvent output = (TaskOffloadedDataOutputEvent) taskHandlingEvent;
+        pipeManagerWorker.writeData(output.getInputPipeIndex(), output.getDataByteBuf());
+
+      } else if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+        // input
+        switch (currentState) {
+          case OFFLOADED: {
+            // We should redirect the data to remote if it is offloaded
+            offloadingManager.writeData(taskId, taskHandlingEvent);
+            break;
+          }
+          case DEOFFLOAD_PENDING:
+          case OFFLOAD_PENDING:
+            bufferedData.add(taskHandlingEvent);
+            break;
+          case RUNNING: {
+            // Decoding
+            if (!bufferedData.isEmpty()) {
+              // flush buffered data
+              bufferedData.forEach(e -> handleInternalData(e.getDataFetcher(), e.getData()));
+              bufferedData.clear();
+            }
+
+            final Object data = taskHandlingEvent.getData();
+            handleInternalData(dataFetcher, data);
+            break;
+          }
+          default:
+            throw new RuntimeException("Invalid state " + currentState);
+        }
+      }
+    }
+  }
+
+  private void handleInternalData(final DataFetcher dataFetcher, Object event) {
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof WatermarkWithIndex) {
@@ -676,7 +759,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
       final Object event = dataFetcher.fetchDataElement();
       if (!event.equals(EmptyElement.getInstance()))  {
-        handleData(dataFetcher, event);
+        handleInternalData(dataFetcher, event);
         processed = true;
         //executorMetrics.increaseInputCounter(stageId);
       }

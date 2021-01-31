@@ -3,8 +3,6 @@ package org.apache.nemo.offloading.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
@@ -14,7 +12,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.*;
 
-public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
+public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorkerDeprec<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
   private volatile Channel channel;
   //private volatile int dataProcessingCnt = 0;

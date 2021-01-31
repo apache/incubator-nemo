@@ -594,6 +594,8 @@ public final class DefaultTaskExecutorImplTest {
 
     final MetricMessageSender ms = mock(MetricMessageSender.class);
 
+    final OffloadingManager offloadingManager = mock(OffloadingManager.class);
+
     final PersistentConnectionToMasterMap pmap = injector.getInstance(PersistentConnectionToMasterMap.class);
 
     final SerializerManager serializerManager = injector.getInstance(SerializerManager.class);
@@ -643,6 +645,7 @@ public final class DefaultTaskExecutorImplTest {
       prepare,
       executorThreadQueue,
       pipeManagerWorker,
-      stateStore), injector);
+      stateStore,
+      offloadingManager), injector);
   }
 }

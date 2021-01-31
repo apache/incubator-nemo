@@ -2,28 +2,21 @@ package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
 
 import java.io.IOException;
 
-public final class TaskHandlingDataEvent implements TaskHandlingEvent {
+public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
 
   private final String taskId;
   private final ByteBuf byteBuf;
   private final int pipeIndex;
-  private final DataFetcher dataFetcher;
-  private final Serializer serializer;
 
-  public TaskHandlingDataEvent(final String taskId,
-                               final DataFetcher dataFetcher,
-                               final int pipeIndex,
-                               final ByteBuf byteBuf,
-                               final Serializer serializer) {
+  public TaskOffloadedDataOutputEvent(final String taskId,
+                                      final int pipeIndex,
+                                      final ByteBuf byteBuf) {
     this.taskId = taskId;
-    this.dataFetcher = dataFetcher;
     this.byteBuf = byteBuf;
     this.pipeIndex = pipeIndex;
-    this.serializer = serializer;
   }
 
   @Override
@@ -43,21 +36,12 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
 
   @Override
   public DataFetcher getDataFetcher() {
-    return dataFetcher ;
+    return null;
   }
 
   @Override
   public Object getData() {
-    final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-    final Object t;
-    try {
-      t = serializer.getDecoderFactory().create(bis).decode();
-      bis.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-    return t;
+    throw new RuntimeException("not support");
   }
 
   @Override

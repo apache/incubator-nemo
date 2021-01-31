@@ -1,11 +1,8 @@
 package org.apache.nemo.runtime.executor;
 
 import io.netty.buffer.*;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
 import org.apache.nemo.offloading.common.*;
@@ -22,10 +19,8 @@ import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -419,7 +414,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   // This function is actually requesting tasks
   // createStreamWorker -> requestToSendTask
   @Override
-  public OffloadingWorker createStreamWorker() {
+  public OffloadingWorkerDeprec createStreamWorker() {
     throw new RuntimeException("Unsupported operation");
   }
 

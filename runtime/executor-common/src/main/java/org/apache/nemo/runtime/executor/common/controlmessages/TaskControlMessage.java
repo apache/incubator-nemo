@@ -42,6 +42,11 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   @Override
+  public boolean isOffloadingMessage() {
+    return false;
+  }
+
+  @Override
   public ByteBuf getDataByteBuf() {
     throw new RuntimeException("This is control message");
   }

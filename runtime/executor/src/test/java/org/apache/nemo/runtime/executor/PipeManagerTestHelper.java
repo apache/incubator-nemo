@@ -7,6 +7,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
+import org.apache.nemo.runtime.executor.common.OffloadingManager;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.common.StateStore;
@@ -115,6 +116,7 @@ public class PipeManagerTestHelper {
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
+      .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
       .build();
 
     final Configuration nameResolverConf = PipeManagerTestHelper.createNameResolverConf(nameServer);

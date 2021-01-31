@@ -3,7 +3,6 @@ package org.apache.nemo.offloading.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
-import io.netty.util.IllegalReferenceCountException;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,10 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * This should be called by one thread.
@@ -25,7 +22,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   private static final Logger LOG = LoggerFactory.getLogger(StreamingWorkerService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
-  private final List<Pair<Long, OffloadingWorker>> streamingWorkers;
+  private final List<Pair<Long, OffloadingWorkerDeprec>> streamingWorkers;
 
   // buffer that contains bytes for initializing workers
   private final ByteBuf workerInitBuffer;
@@ -39,7 +36,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
 
   //private final StatePartitioner<I, S> statePartitioner;
   //private final List<ByteBuf> states;
-  //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
+  //private final Map<Integer, OffloadingWorkerDeprec<I, O>> stateIndexAndWorkerMap;
 
   private long totalProcessingTime = 0;
   private long totalWorkerInitTime = 0;
@@ -101,7 +98,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   // we don't have to send data to streaming workers
   // because it will pull the data
   @Override
-  public OffloadingWorker createStreamWorker() {
+  public OffloadingWorkerDeprec createStreamWorker() {
     createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
@@ -110,7 +107,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
       copiedBuf = workerInitBuffer.retainedDuplicate();
     }
 
-    final OffloadingWorker<I, O> worker =
+    final OffloadingWorkerDeprec<I, O> worker =
       workerFactory.createStreamingWorker(null, copiedBuf, offloadingSerializer, eventHandler);
 
     synchronized (streamingWorkers) {
@@ -130,7 +127,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
     synchronized (streamingWorkers) {
       if (!streamingWorkers.isEmpty()) {
         LOG.info("Shutting down streaming workers: {}", streamingWorkers.size());
-        for (final Pair<Long, OffloadingWorker> pair : streamingWorkers) {
+        for (final Pair<Long, OffloadingWorkerDeprec> pair : streamingWorkers) {
           pair.right().finishOffloading();
         }
       }

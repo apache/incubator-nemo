@@ -7,6 +7,8 @@ public interface TaskHandlingEvent {
 
   boolean isControlMessage();
 
+  boolean isOffloadingMessage();
+
   ByteBuf getDataByteBuf();
 
   DataFetcher getDataFetcher();

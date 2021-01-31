@@ -308,60 +308,55 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   @Override
+  public void writeData(final int pipeIndex,
+                        final ByteBuf byteBuf) {
+    final Triple<String, String, String> key = pipeIndexMapWorker.getKey(pipeIndex);
+    final Object finalData = DataFrameEncoder.DataFrame.newInstance(
+      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
+    final String dstTaskId = key.getRight();
+
+    final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
+    if (pendingOutputPipeMap.containsKey(pipeIndex) || !optional.isPresent()) {
+      // this is pending output pipe
+      pendingOutputPipeMap.putIfAbsent(pipeIndex, new LinkedList<>());
+      pendingOutputPipeMap.get(pipeIndex).add(finalData);
+      pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
+      pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
+    } else {
+      optional.get().getChannel().writeAndFlush(finalData).addListener(listener);
+    }
+  }
+
+  @Override
   public void writeData(final String srcTaskId,
                         final String edgeId,
                         final String dstTaskId,
                         final Serializer serializer,
                         final Object event) {
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
 
-    Stream.of(pendingOutputPipeMap.containsKey(index))
-      .map(outputStopped -> {
-        if (outputStopped) {
-          final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
-          return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), (Channel) null);
-        } else {
-          final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
-          if (optional.isPresent()) {
-            final ContextManager contextManager = optional.get();
-            final Channel channel = contextManager.getChannel();
-            final ByteBuf byteBuf = channel.alloc().ioBuffer();
-            return Triple.of(outputStopped, new ByteBufOutputStream(byteBuf), channel);
-          } else {
-            // Keep if the dsk task is not scheduled yet
-            final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
-            return Triple.of(true, new ByteBufOutputStream(byteBuf), (Channel) null);
-          }
-        }
-      })
-      .forEach(triple -> {
-        final ByteBufOutputStream byteBufOutputStream = triple.getMiddle();
-        try {
-          final OutputStream wrapped = byteBufOutputStream;
-          final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-          encoder.encode(event);
-          wrapped.close();
-        } catch (final IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+    ByteBuf byteBuf;
+    if (pendingOutputPipeMap.containsKey(index) || !optional.isPresent()) {
+      byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
+    } else {
+      final ContextManager contextManager = optional.get();
+      final Channel channel = contextManager.getChannel();
+      byteBuf = channel.alloc().ioBuffer();
+    }
 
-        final ByteBuf byteBuf = byteBufOutputStream.buffer();
+    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+    try {
+      final OutputStream wrapped = byteBufOutputStream;
+      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+      encoder.encode(event);
+      wrapped.close();
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
-        final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-          Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
-
-        if (triple.getRight() == null) {
-          // this is pending output pipe
-          pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
-          pendingOutputPipeMap.get(index).add(finalData);
-          pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
-          pipeOuptutIndicesForDstTask.get(dstTaskId).add(index);
-        } else {
-          triple.getRight().writeAndFlush(finalData)
-            .addListener(listener);
-        }
-      });
+    writeData(index, byteBuf);
   }
 
   @Override

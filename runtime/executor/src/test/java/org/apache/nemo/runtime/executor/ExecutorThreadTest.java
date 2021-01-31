@@ -118,7 +118,7 @@ public final class ExecutorThreadTest {
     }
 
     @Override
-    public void handleData(DataFetcher dataFetcher, Object t) {
+    public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
       throw new RuntimeException("Not supported");
     }
 
@@ -162,9 +162,9 @@ public final class ExecutorThreadTest {
     }
 
     @Override
-    public void handleData(DataFetcher dataFetcher, Object t) {
+    public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
       dataFetcherListMap.putIfAbsent(dataFetcher, new LinkedList<>());
-      dataFetcherListMap.get(dataFetcher).add(t);
+      dataFetcherListMap.get(dataFetcher).add(t.getData());
     }
 
     @Override

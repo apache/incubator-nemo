@@ -54,6 +54,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -127,6 +128,10 @@ public final class Executor {
 
   private final TaskScheduledMapWorker scheduledMapWorker;
 
+  private final RelayServer relayServer;
+
+  private final OffloadingManager offloadingManager;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -153,12 +158,16 @@ public final class Executor {
                    final StateStore stateStore,
                    final ExecutorContextManagerMap executorContextManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
-                   final CyclicDependencyHandler cyclicDependencyHandler) {
+                   final RelayServer relayServer,
+                   final CyclicDependencyHandler cyclicDependencyHandler,
+                   final OffloadingManager offloadingManager) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.offloadingManager = offloadingManager;
+    this.relayServer = relayServer;
     this.executorContextManagerMap = executorContextManagerMap;
     this.stateStore = (StateStore) stateStore;
     this.executorThreads = executorThreads;
@@ -429,7 +438,8 @@ public final class Executor {
         prepareService,
         executorThread,
         pipeManagerWorker,
-        stateStore);
+        stateStore,
+        offloadingManager);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);

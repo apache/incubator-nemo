@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.offloading.common.OffloadingWorker;
+import org.apache.nemo.offloading.common.OffloadingWorkerDeprec;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.*;
 
-public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
+public final class LambdaWorkerProxy<I, O> implements OffloadingWorkerDeprec<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWorkerProxy.class.getName());
   private volatile Channel channel;
   private volatile int dataProcessingCnt = 0;

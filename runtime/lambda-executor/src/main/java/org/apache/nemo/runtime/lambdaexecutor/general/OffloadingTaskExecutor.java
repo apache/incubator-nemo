@@ -698,11 +698,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     throw new UnsupportedOperationException();
   }
 
-  @Override
-  public void handleData(DataFetcher dataFetcher, Object t) {
-
-  }
-
   // exeutor thread가 바로 부르는 method
   @Override
   public boolean handleSourceData() {
@@ -737,6 +732,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
 
     return false;
+  }
+
+  @Override
+  public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
+
   }
 
   private boolean deleteForMove = false;

@@ -40,6 +40,10 @@ public interface PipeManagerWorker extends InputPipeRegister {
                  final List<String> dstTasks,
                  final Serializer serializer, Object event);
 
+
+  void writeData(final int pipeIndex,
+                 final ByteBuf byteBuf);
+
   void writeData(final String srcTaskId,
                  final String edgeId,
                  final String dstTaskId,

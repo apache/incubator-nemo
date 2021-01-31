@@ -33,7 +33,9 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.HDFStateStore;
+import org.apache.nemo.runtime.executor.OffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
+import org.apache.nemo.runtime.executor.common.OffloadingManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.common.StateStore;
@@ -319,6 +321,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, HDFStateStore.class)
+      .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .build();
 
