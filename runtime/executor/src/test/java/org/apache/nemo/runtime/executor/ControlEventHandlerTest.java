@@ -35,5 +35,10 @@ public final class ControlEventHandlerTest {
       return null;
     }
 
+    @Override
+    public boolean isInputPipeStopped(String taskId) {
+      return false;
+    }
+
   }
 }

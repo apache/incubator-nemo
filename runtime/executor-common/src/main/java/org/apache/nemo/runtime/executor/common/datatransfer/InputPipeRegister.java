@@ -57,4 +57,6 @@ public interface InputPipeRegister {
   void receiveAckInputStopSignal(String taskId, int pipeIndex);
 
   InputPipeState getInputPipeState(String taskId);
+
+  boolean isInputPipeStopped(String taskId);
 }

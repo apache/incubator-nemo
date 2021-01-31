@@ -8,17 +8,18 @@ import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByMaster;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
-import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class DefaultControlEventHandlerImpl implements ControlEventHandler {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultControlEventHandlerImpl.class.getName());
 
   private final String executorId;
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
@@ -48,6 +49,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           if (!pipeManagerWorker.isOutputPipeStopped(taskExecutor.getId())) {
             // stop and remove task now
             // there is no pending event
+            pipeManagerWorker.setTaskStop(taskExecutor.getId());
             stopAndCheckpointTask(taskExecutor.getId());
           }
         } else {
@@ -62,6 +64,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
         // do not send data any more
         final int pipeIndex = control.targetPipeIndex;
+        LOG.info("Receive PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK of index {} for task {} in executor {}", pipeIndex, control.getTaskId(), executorId);
         pipeManagerWorker.stopOutputPipe(pipeIndex, control.getTaskId());
         break;
       }
@@ -74,9 +77,14 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         break;
       }
       case PIPE_INIT: {
+
+        LOG.info("Pipe init message, targetIndex: {}, targetTask {}, in executor {}", control.targetPipeIndex, control.getTaskId(), executorId);
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
 
         if (canTaskMoved(control.getTaskId())) {
+          LOG.info("Task can be moved {}, inputStateStopped {}, isOutputStoped: {}",
+            control.getTaskId(), pipeManagerWorker.isInputPipeStopped(control.getTaskId()), pipeManagerWorker.isOutputPipeStopped(control.getTaskId())
+            );
           stopAndCheckpointTask(control.getTaskId());
         }
         break;
@@ -88,7 +96,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
   private boolean canTaskMoved(final String taskId) {
     // output stopped means that it is waiting for moving downstream task
-    return pipeManagerWorker.getInputPipeState(taskId).equals(InputPipeRegister.InputPipeState.STOPPED)
+    return pipeManagerWorker.isInputPipeStopped(taskId)
       && !pipeManagerWorker.isOutputPipeStopped(taskId);
   }
 

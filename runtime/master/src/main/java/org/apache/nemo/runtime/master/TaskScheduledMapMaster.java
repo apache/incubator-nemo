@@ -59,9 +59,10 @@ public final class TaskScheduledMapMaster {
 
   public synchronized void stopTask(final String taskId) {
     final String executorId = taskExecutorIdMap.remove(taskId);
-    prevTaskExecutorIdMap.put(taskId, executorId);
 
     LOG.info("Send task " + taskId + " stop to executor " + executorId);
+
+    prevTaskExecutorIdMap.put(taskId, executorId);
 
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
     final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
@@ -193,6 +194,7 @@ public final class TaskScheduledMapMaster {
       switch (message.getType()) {
         case TaskExecuting: {
           final ControlMessage.TaskExecutingMessage m = message.getTaskExecutingMsg();
+          LOG.info("Receive task executing message {} from {}", m.getTaskId(), m.getExecutorId());
           executingTask(m.getExecutorId(), m.getTaskId());
           break;
         }

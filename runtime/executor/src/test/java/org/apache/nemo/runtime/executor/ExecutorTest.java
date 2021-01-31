@@ -204,13 +204,13 @@ public final class ExecutorTest {
       }
     }
 
-    Thread.sleep(3000);
+    Thread.sleep(2000);
 
     // 400: move again
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
 
-    Thread.sleep(5000);
+    Thread.sleep(3000);
 
     for (int i = 1500; i < 2000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
@@ -223,13 +223,13 @@ public final class ExecutorTest {
       }
     }
 
-    Thread.sleep(3000);
+    Thread.sleep(2000);
 
     // 500: move again
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-0-0");
 
-    Thread.sleep(4000);
+    Thread.sleep(3000);
 
     for (int i = 2000; i < 2500; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
@@ -242,7 +242,7 @@ public final class ExecutorTest {
       }
     }
 
-    Thread.sleep(4000);
+    Thread.sleep(3000);
 
   }
 

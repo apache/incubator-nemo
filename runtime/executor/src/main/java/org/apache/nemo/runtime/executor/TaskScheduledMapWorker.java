@@ -89,6 +89,7 @@ public final class TaskScheduledMapWorker {
         return null;
       }
 
+      map.put(split[0], split[1]);
       return map.get(dstTaskId);
     } else {
       return map.get(dstTaskId);
