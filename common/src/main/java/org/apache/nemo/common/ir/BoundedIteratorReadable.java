@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.StateStore;
-
 import java.util.Iterator;
 
 /**

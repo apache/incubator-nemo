@@ -176,7 +176,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               // Handling data
               final String taskId = event.getTaskId();
               final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-              taskExecutor.handleData(event.getDataFetcher(), event);
+              taskExecutor.handleData(event.getEdgeId(), event);
               processed = true;
             }
 

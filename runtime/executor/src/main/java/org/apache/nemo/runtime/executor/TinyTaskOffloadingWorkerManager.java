@@ -414,7 +414,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   // This function is actually requesting tasks
   // createStreamWorker -> requestToSendTask
   @Override
-  public OffloadingWorkerDeprec createStreamWorker() {
+  public OffloadingWorker createStreamWorker() {
     throw new RuntimeException("Unsupported operation");
   }
 

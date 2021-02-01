@@ -1,14 +1,12 @@
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

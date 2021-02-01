@@ -5,11 +5,9 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,8 +21,7 @@ public final class VMScalingClientTransport {
   private final ConcurrentMap<String, ChannelFuture> channelMap;
   private final ConcurrentMap<String, AtomicInteger> channelCounterMap;
 
-  @Inject
-  public VMScalingClientTransport() {
+  public VMScalingClientTransport(final ChannelInitializer initializer) {
               this.clientWorkerGroup = new NioEventLoopGroup(10,
         new DefaultThreadFactory("VMScalingClient"));
     this.clientBootstrap = new Bootstrap();
@@ -32,7 +29,7 @@ public final class VMScalingClientTransport {
     this.channelCounterMap = new ConcurrentHashMap<>();
     this.clientBootstrap.group(clientWorkerGroup)
         .channel(NioSocketChannel.class)
-        .handler(new NettyChannelInitializer(new VMLambdaInboundHandler()))
+        .handler(initializer)
         .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_KEEPALIVE, true);
   }
@@ -83,22 +80,6 @@ public final class VMScalingClientTransport {
       }
       LOG.info("Get cached channel {}", address);
       return channelMap.get(key);
-    }
-  }
-
-  final class VMLambdaInboundHandler extends ChannelInboundHandlerAdapter {
-    @Override
-    public void channelRead(
-      final ChannelHandlerContext ctx, final Object msg) throws Exception {
-
-    }
-
-    @Override
-    public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-      cause.printStackTrace();
-      System.out.println("Exception1!: " + cause.toString());
-      ctx.close();
-      //channelMap.remove(ctx.channel());
     }
   }
 }

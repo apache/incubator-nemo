@@ -6,7 +6,7 @@ import org.apache.beam.sdk.io.kafka.KafkaUnboundedReader;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 
 /**

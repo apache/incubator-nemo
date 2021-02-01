@@ -13,6 +13,7 @@ import java.util.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public final class ExecutorThreadTest {
 
@@ -49,7 +50,9 @@ public final class ExecutorThreadTest {
     executorThread.addNewTask(inter1);
 
     final DataFetcher d1 = mock(DataFetcher.class);
+    when(d1.getEdgeId()).thenReturn("d1");
     final DataFetcher d2 = mock(DataFetcher.class);
+    when(d2.getEdgeId()).thenReturn("d2");
 
     for (int i = 0; i < 1000; i++) {
 
@@ -57,10 +60,10 @@ public final class ExecutorThreadTest {
         executorThread.addEvent(new TaskControlMessage(
           TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK, 0, 0, "t1", null));
       } else {
-        executorThread.addEvent(new TaskHandlingDataEvent("t3", d1,
+        executorThread.addEvent(new TaskHandlingDataEvent("t3", d1.getEdgeId(),
           0,
           ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer));
-        executorThread.addEvent(new TaskHandlingDataEvent("t3", d2,
+        executorThread.addEvent(new TaskHandlingDataEvent("t3", d2.getEdgeId(),
           0,
           ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer));
       }
@@ -118,8 +121,8 @@ public final class ExecutorThreadTest {
     }
 
     @Override
-    public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
-      throw new RuntimeException("Not supported");
+    public void handleData(String edgeId, TaskHandlingEvent t) {
+
     }
 
     @Override
@@ -133,7 +136,7 @@ public final class ExecutorThreadTest {
   final class TestExecutorThreadIntermediateTask implements ExecutorThreadTask {
 
     private final String id;
-    private final Map<DataFetcher, List<Object>> dataFetcherListMap;
+    private final Map<String, List<Object>> dataFetcherListMap;
 
     public TestExecutorThreadIntermediateTask(
       final String id) {
@@ -162,9 +165,9 @@ public final class ExecutorThreadTest {
     }
 
     @Override
-    public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
-      dataFetcherListMap.putIfAbsent(dataFetcher, new LinkedList<>());
-      dataFetcherListMap.get(dataFetcher).add(t.getData());
+    public void handleData(String edgeId, TaskHandlingEvent t) {
+      dataFetcherListMap.putIfAbsent(edgeId, new LinkedList<>());
+      dataFetcherListMap.get(edgeId).add(t.getData());
     }
 
     @Override

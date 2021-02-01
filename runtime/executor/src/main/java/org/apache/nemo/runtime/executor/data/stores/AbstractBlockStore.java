@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 /**

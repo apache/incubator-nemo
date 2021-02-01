@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.stores;
 
-import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
 
 import java.util.Map;

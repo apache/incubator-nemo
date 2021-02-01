@@ -7,40 +7,34 @@ import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.EmptyElement;
-import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
-import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,11 +52,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final OffloadingResultCollector resultCollector;
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
-  private final Map<String, KafkaOperatorVertexOutputCollector> outputCollectorMap;
+  // private final Map<String, KafkaOperatorVertexOutputCollector> outputCollectorMap;
   private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
 
   private final Map<String, Serializer> serializerMap;
-  private final Set<PipeOutputWriter> pipeOutputWriters;
+ // private final Set<OffloadingPipeOutputWriter> pipeOutputWriters;
 
   private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
 
@@ -81,6 +75,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final RendevousServerClient rendevousServerClient;
 
+  private Transform statefulTransform;
+
   private final ExecutorThread executorThread;
 
   // TODO: we should get checkpoint mark in constructor!
@@ -89,7 +85,27 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final List<Future> outputfutures = new ArrayList<>();
 
+  final Map<String, Double> samplingMap;
+
   final TaskMetrics taskMetrics;
+
+  private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
+
+  private final String taskId;
+
+  private final OutputCollectorGenerator outputCollectorGenerator;
+
+  private final SerializerManager serializerManager;
+
+  private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
+
+  private final StateStore stateStore;
+
+  private final Map<String, DataFetcher> edgeToDataFetcherMap = new HashMap<>();
+
+  private final ExecutorThreadQueue executorThreadQueue;
+
+  private final InputPipeRegister inputPipeRegister;
 
   // TODO: Data fetcher watermark manager
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
@@ -99,21 +115,36 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final ExecutorService prepareService,
                                 final ExecutorGlobalInstances executorGlobalInstances,
                                 final RendevousServerClient rendevousServerClient,
-                                final ExecutorThread executorThread) {
+                                final ExecutorThread executorThread,
+                                final Map<String, Double> samplingMap,
+                                final Task task,
+                                final OutputCollectorGenerator outputCollectorGenerator,
+                                final SerializerManager serializerManager,
+                                final StateStore stateStore,
+                                final ExecutorThreadQueue executorThreadQueue,
+                                final InputPipeRegister inputPipeRegister) {
     this.offloadingTask = offloadingTask;
+    this.inputPipeRegister = inputPipeRegister;
     this.serializerMap = serializerMap;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.oc = oc;
     this.sourceVertexDataFetchers = new ArrayList<>();
-    this.outputCollectorMap = new HashMap<>();
+    // this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
-    this.pipeOutputWriters = new HashSet<>();
+  //  this.pipeOutputWriters = new HashSet<>();
     this.resultCollector = new OffloadingResultCollector(oc);
     this.prepareService = prepareService;
     this.executorGlobalInstances = executorGlobalInstances;
     this.rendevousServerClient = rendevousServerClient;
     this.executorThread = executorThread;
     this.taskMetrics = new TaskMetrics();
+    this.samplingMap = samplingMap;
+    this.taskId = task.getTaskId();
+    this.outputCollectorGenerator = outputCollectorGenerator;
+    this.serializerManager = serializerManager;
+    this.vertexIdAndCollectorMap = new HashMap<>();
+    this.stateStore = stateStore;
+    this.executorThreadQueue = executorThreadQueue;
 
     /*
     pollingTrigger.scheduleAtFixedRate(() -> {
@@ -121,7 +152,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
     */
 
-    prepare();
+    prepare(task);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -141,10 +172,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
 
     // pipe output writer prepare
-    LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
-    pipeOutputWriters.forEach(pipeOutputWriter -> {
-      pipeOutputWriter.doInitialize();
-    });
+//    LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
+//    pipeOutputWriters.forEach(pipeOutputWriter -> {
+//      pipeOutputWriter.doInitialize();
+//    });
 
     reverseTopologicallySorted.forEach(irVertex -> {
       final Transform transform;
@@ -165,8 +196,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           }
         }
 
-        final OutputCollector outputCollector = outputCollectorMap.get(irVertex.getId());
-        transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
+//        final OutputCollector outputCollector = outputCollectorMap.get(irVertex.getId());
+//        transform.prepare(new OffloadingTransformContextImpl(irVertex, offloadingTask.taskId), outputCollector);
       }
     });
 
@@ -192,176 +223,169 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     prepared.set(true);
   }
 
-  private synchronized void prepare() {
+  private synchronized void prepare(final Task task) {
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     System.out.println("OffloadingTaskExecutor prepare");
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag = offloadingTask.irDag;
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
-    final List<IRVertex> reverseTopologicallySorted = Lists.reverse(offloadingTask.irDag.getTopologicalSort());
+    final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
-    final AtomicInteger sourceCnt = new AtomicInteger(0);
-    final Map<Edge, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
 
-      if (childVertex instanceof BeamUnboundedSourceVertex) {
-        sourceCnt.getAndIncrement();
-      }
-
-      final List<Edge> edges = getAllIncomingEdges(offloadingTask.irDag,
-        childVertex, offloadingTask.incomingEdges);
-      for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
-        final Edge edge = edges.get(edgeIndex);
-        edgeIndexMap.putIfAbsent(edge, edgeIndex);
-      }
-    });
-
-    // Build a map for InputWatermarkManager for each operator vertex
-    // This variable is used for creating NextIntraTaskOperatorInfo
-    // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap = new HashMap<>();
-    reverseTopologicallySorted.forEach(childVertex -> {
-
-      if (childVertex instanceof OperatorVertex) {
-        final List<Edge> edges = getAllIncomingEdges(offloadingTask.irDag,
-          childVertex, offloadingTask.incomingEdges);
-        if (edges.size() == 1) {
-          operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new SingleInputWatermarkManager(
-              new OperatorWatermarkCollector((OperatorVertex) childVertex),
-              null, null, null, null));
-        } else {
-          operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(null, edges.size(),
-              new OperatorWatermarkCollector((OperatorVertex) childVertex),
-              offloadingTask.taskId));
+      if (childVertex.isStateful) {
+        isStateless = false;
+        if (childVertex instanceof OperatorVertex) {
+          final OperatorVertex ov = (OperatorVertex) childVertex;
+          statefulTransform = ov.getTransform();
+          LOG.info("Set GBK final transform");
         }
       }
+
+      if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
+        childVertex.isSink = true;
+        // If it is sink or emit to next stage, we log the latency
+        LOG.info("MonitoringVertex: {}", childVertex.getId());
+        if (!samplingMap.containsKey(childVertex.getId())) {
+          samplingMap.put(childVertex.getId(), 1.0);
+        }
+        LOG.info("Sink vertex: {}", childVertex.getId());
+      }
     });
 
+    // Create a harness for each vertex
     reverseTopologicallySorted.forEach(irVertex -> {
+      final Optional<Readable> sourceReader = TaskExecutorUtil
+        .getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
 
-      // Additional outputs
-      final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
-        getInternalAdditionalOutputMap(irVertex, offloadingTask.irDag, edgeIndexMap, operatorWatermarkManagerMap);
+      if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
+        throw new IllegalStateException(irVertex.toString());
+      }
 
-      // Main outputs
-      final List<NextIntraTaskOperatorInfo> internalMainOutputs =
-        getInternalMainOutputs(irVertex, offloadingTask.irDag, edgeIndexMap, operatorWatermarkManagerMap);
+      final OutputCollector outputCollector = outputCollectorGenerator
+        .generate(irVertex,
+          taskId,
+          irVertexDag,
+          this,
+          serializerManager,
+          samplingMap,
+          vertexIdAndCollectorMap,
+          taskMetrics,
+          task.getTaskOutgoingEdges(),
+          operatorInfoMap);
 
-      for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
-        for (final NextIntraTaskOperatorInfo interOp : interOps) {
-          operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
+      // Create VERTEX HARNESS
+      final Transform.Context context =  new TransformContextImpl(
+        irVertex, null, taskId, stateStore);
+
+      TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector);
+
+      // Prepare data READ
+      // Source read
+      // TODO[SLS]: should consider multiple outgoing edges
+      // All edges will have the same encoder/decoder!
+      if (irVertex instanceof SourceVertex) {
+        final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
+        LOG.info("SourceVertex: {}, edge: {}", irVertex.getId(), edge.getId());
+
+        // Source vertex read
+        final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
+          (SourceVertex) irVertex,
+          edge,
+          sourceReader.get(),
+          outputCollector,
+          prepareService,
+          taskId,
+          prepared,
+          new Readable.ReadableContext() {
+            @Override
+            public StateStore getStateStore() {
+              return stateStore;
+            }
+            @Override
+            public String getTaskId() {
+              return taskId;
+            }
+          });
+
+        edgeToDataFetcherMap.put(edge.getId(), fe);
+
+        sourceVertexDataFetchers.add(fe);
+        allFetchers.add(fe);
+
+        if (sourceVertexDataFetchers.size() > 1) {
+          throw new RuntimeException("Source vertex data fetcher is larger than one");
         }
       }
 
-      final Map<String, List<PipeOutputWriter>> externalAdditionalOutputMap =
-        getExternalAdditionalOutputMap(
-          irVertex,
-          offloadingTask.outgoingEdges,
-          intermediateDataIOFactory,
-          offloadingTask.taskIndex,
-          offloadingTask.taskIndex,
-          serializerMap, pipeOutputWriters,
-          offloadingTask.taskId,
-          rendevousServerClient,
-          executorThread,
-          taskMetrics);
-
-      LOG.info("External additional outputs at {}: {}", offloadingTask.taskId, externalAdditionalOutputMap);
-
-      final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
-        irVertex, offloadingTask.outgoingEdges,
-        intermediateDataIOFactory,
-        offloadingTask.taskIndex,
-        offloadingTask.taskIndex, serializerMap, pipeOutputWriters,
-        offloadingTask.taskId,
-        rendevousServerClient,
-        executorThread,
-        taskMetrics);
-
-      LOG.info("External main outputs at {}: {}", offloadingTask.taskId, externalMainOutputs);
-
-      for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
-        operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
-      }
-
-      final boolean isSink = irVertex.isSink;
-      // skip sink
-      System.out.println("vertex " + irVertex.getId() + " outgoing edges: " + offloadingTask.irDag.getOutgoingEdgesOf(irVertex)
-        + ", isSink: " + isSink);
-
-      final RuntimeEdge<IRVertex> e = getEdge(offloadingTask.irDag, irVertex);
-      KafkaOperatorVertexOutputCollector outputCollector =
-        new KafkaOperatorVertexOutputCollector(
-          offloadingTask.taskId,
-          irVertex,
-          offloadingTask.samplingMap.getOrDefault(irVertex.getId(), 1.0),
-          e, /* just use first edge for encoding */
-          internalMainOutputs,
-          internalAdditionalOutputMap,
-          oc,
-          outputCollectorMap,
-          offloadingTask.taskOutgoingEdges,
-          externalAdditionalOutputMap,
-          externalMainOutputs);
-
-      outputCollectorMap.put(irVertex.getId(), outputCollector);
-
-      // TODO: fix
-      // DATA FETCHERS!!
-      // get source
-      if (irVertex instanceof BeamUnboundedSourceVertex) {
-        final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
-        final RuntimeEdge edge = offloadingTask.irDag.getOutgoingEdgesOf(irVertex).get(0);
-
-        final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-          beamUnboundedSourceVertex, edge, null /* readable */, outputCollector, prepareService, offloadingTask.taskId,
-          prepared, null);
-        allFetchers.add(dataFetcher);
-        sourceVertexDataFetchers.add(dataFetcher);
-      }
-
-      // task incoming edges!!
-      offloadingTask.incomingEdges
+      // Parent-task read
+      // TODO #285: Cache broadcasted data
+      task.getTaskIncomingEdges()
         .stream()
-        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
+        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge -> {
 
-          LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, offloadingTask.taskIndex,
-            offloadingTask.taskId);
+          LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(offloadingTask.taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge,
-              offloadingTask.taskId, this));
+            .createReader(
+              taskIndex,
+              taskId,
+              incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
         })
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
 
             final StageEdge edge = pair.left();
-            final int edgeIndex = edgeIndexMap.get(edge);
-            final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, edgeIndex, "0");
-            allFetchers.add(
-              new LambdaParentTaskDataFetcher(
-                offloadingTask.taskId,
-                edge.getSrcIRVertex(),
-                edge,
-                parentTaskReader,
-                dataFetcherOutputCollector,
-                rendevousServerClient,
-                this,
-                prepared,
-                prepareService));
+                outputCollector, taskId);
 
+            final int parallelism = edge
+              .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+            final CommunicationPatternProperty.Value comm =
+              edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+            final DataFetcher df = new MultiThreadParentTaskDataFetcher(
+              taskId,
+              edge.getSrcIRVertex(),
+              edge,
+              dataFetcherOutputCollector);
+
+            edgeToDataFetcherMap.put(edge.getId(), df);
+
+            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+              inputPipeRegister.registerInputPipe(
+                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                edge.getId(),
+                task.getTaskId(),
+                parentTaskReader);
+
+//              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+
+            } else {
+              for (int i = 0; i < parallelism; i++) {
+                inputPipeRegister.registerInputPipe(
+                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
+                  edge.getId(),
+                  task.getTaskId(),
+                  parentTaskReader);
+              }
+
+//              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
+            }
+
+            isStateless = false;
+            allFetchers.add(df);
           }
         });
-
     });
+
   }
 
   private void processWatermark(final OutputCollector outputCollector,
@@ -525,10 +549,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     */
 
     // TODO: fix
-    outputfutures.addAll(pipeOutputWriters.stream()
-      .map(outputWriter -> {
-        return outputWriter.close(offloadingTask.taskId);
-      }).collect(Collectors.toList()));
+//    outputfutures.addAll(pipeOutputWriters.stream()
+//      .map(outputWriter -> {
+//        return outputWriter.close(offloadingTask.taskId);
+//      }).collect(Collectors.toList()));
 
     LOG.info("Closing output writer {}", offloadingTask.taskId);
   }
@@ -545,117 +569,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       .collect(Collectors.toList());
     edges.addAll(taskEdges);
     return edges;
-  }
-
-  public static List<NextIntraTaskOperatorInfo> getInternalMainOutputs(
-    final IRVertex irVertex,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge, Integer> edgeIndexMap,
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
-
-    return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
-      .stream()
-      .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge -> {
-        final int index = edgeIndexMap.get(edge);
-        final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
-        final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, edge, nextOperator);
-      })
-      .collect(Collectors.toList());
-  }
-
-  private static Map<String, List<NextIntraTaskOperatorInfo>> getInternalAdditionalOutputMap(
-    final IRVertex irVertex,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge, Integer> edgeIndexMap,
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
-    // Add all intra-task additional tags to additional output map.
-    final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
-
-    irVertexDag.getOutgoingEdgesOf(irVertex.getId())
-      .stream()
-      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge -> {
-        final String outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
-        final int index = edgeIndexMap.get(edge);
-        final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
-        final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator));
-      })
-      .forEach(pair -> {
-        map.putIfAbsent(pair.left(), new ArrayList<>());
-        map.get(pair.left()).add(pair.right());
-      });
-
-    return map;
-  }
-
-  public static Map<String, List<PipeOutputWriter>> getExternalAdditionalOutputMap(
-    final IRVertex irVertex,
-    final List<StageEdge> outEdgesToChildrenTasks,
-    final IntermediateDataIOFactory intermediateDataIOFactory,
-    final int taskIndex,
-    final int originTaskIndex,
-    final Map<String, Serializer> serializerMap,
-    final Set<PipeOutputWriter> outputWriters,
-    final String taskId,
-    final RendevousServerClient client,
-    final ExecutorThread et,
-    final TaskMetrics taskMetrics) {
-    // Add all inter-task additional tags to additional output map.
-    final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
-
-    outEdgesToChildrenTasks
-      .stream()
-      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge -> {
-        final PipeOutputWriter outputWriter;
-
-        // TODO fix
-          outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap, taskId, client, et, taskMetrics);
-
-
-          outputWriters.add(outputWriter);
-
-        final Pair<String, PipeOutputWriter> pair =
-          Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), outputWriter);
-        return pair;
-      })
-      .forEach(pair -> {
-        map.putIfAbsent(pair.left(), new ArrayList<>());
-        map.get(pair.left()).add(pair.right());
-      });
-
-    return map;
-  }
-
-  public static List<PipeOutputWriter> getExternalMainOutputs(final IRVertex irVertex,
-                                                              final List<StageEdge> outEdgesToChildrenTasks,
-                                                              final IntermediateDataIOFactory intermediateDataIOFactory,
-                                                              final int taskIndex,
-                                                              final int originTaskIndex,
-                                                              final Map<String, Serializer> serializerMap,
-                                                              final Set<PipeOutputWriter> pipeOutputWriters,
-                                                              final String taskId,
-                                                              final RendevousServerClient client,
-                                                              final ExecutorThread et,
-                                                              final TaskMetrics taskMetrics) {
-    return outEdgesToChildrenTasks
-      .stream()
-      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-      .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(outEdgeForThisVertex -> {
-        LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
-          final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex,
-              originTaskIndex, outEdgeForThisVertex, serializerMap,taskId,  client, et, taskMetrics);
-        pipeOutputWriters.add(outputWriter);
-        return outputWriter;
-      })
-      .collect(Collectors.toList());
   }
 
   private boolean allPendingDone() {
@@ -735,7 +648,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void handleData(DataFetcher dataFetcher, TaskHandlingEvent t) {
+  public void handleData(String edgeId, TaskHandlingEvent t) {
 
   }
 

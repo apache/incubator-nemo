@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.executor.common.TransformContextImpl;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +45,7 @@ public class TransformContextImplTest {
   public void setUp() {
     final BroadcastManagerWorker broadcastManagerWorker = mock(BroadcastManagerWorker.class);
     when(broadcastManagerWorker.get("a")).thenReturn("b");
-    this.context = new TransformContextImpl(broadcastManagerWorker, null, null, "!", null);
+    this.context = new TransformContextImpl(null, null, "!", null);
   }
 
   @Test

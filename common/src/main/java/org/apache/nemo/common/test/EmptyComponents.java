@@ -20,7 +20,6 @@ package org.apache.nemo.common.test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAGBuilder;

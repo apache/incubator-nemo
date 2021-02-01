@@ -6,13 +6,14 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.*;
 
-public final class TaskInputWatermarkManager {
+public final class TaskInputWatermarkManager implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(TaskInputWatermarkManager.class.getName());
 
-  private final Map<DataFetcher, Long> dataFetcherWatermarkMap = new HashMap<>();
-  private final Map<DataFetcher, StageWatermarkTracker> dataFetcherWatermarkTracker = new HashMap<>();
+  private final Map<String, Long> dataFetcherWatermarkMap = new HashMap<>();
+  private final Map<String, StageWatermarkTracker> dataFetcherWatermarkTracker = new HashMap<>();
 
   private long prevWatermark = 0L;
 
@@ -20,25 +21,25 @@ public final class TaskInputWatermarkManager {
 
   }
 
-  public void addDataFetcher(DataFetcher dataFetcher, int parallelism) {
-    LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", dataFetcher, parallelism);
-    dataFetcherWatermarkMap.put(dataFetcher, 0L);
-    dataFetcherWatermarkTracker.put(dataFetcher, new StageWatermarkTracker(parallelism));
+  public void addDataFetcher(String edgeId, int parallelism) {
+    LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", edgeId, parallelism);
+    dataFetcherWatermarkMap.put(edgeId, 0L);
+    dataFetcherWatermarkTracker.put(edgeId, new StageWatermarkTracker(parallelism));
   }
 
-  public Optional<Watermark> updateWatermark(final DataFetcher dataFetcher,
+  public Optional<Watermark> updateWatermark(final String edgeId,
                               final int taskIndex, final long watermark) {
-    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(dataFetcher);
+    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
     final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, watermark);
 
     if (val.isPresent()) {
       // update output watermark!
-      final long outputW = dataFetcherWatermarkMap.get(dataFetcher);
+      final long outputW = dataFetcherWatermarkMap.get(edgeId);
       if (outputW > val.get()) {
-        throw new RuntimeException("Output watermark of " + dataFetcher + " is greater than the emitted watermark " + outputW + ", " + val.get());
+        throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
       }
 
-      dataFetcherWatermarkMap.put(dataFetcher, val.get());
+      dataFetcherWatermarkMap.put(edgeId, val.get());
       final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
 
       if (minWatermark > prevWatermark) {
@@ -52,7 +53,7 @@ public final class TaskInputWatermarkManager {
   }
 
 
-  private final class StageWatermarkTracker {
+  private final class StageWatermarkTracker implements Serializable {
 
     private final List<Long> watermarks;
     private int minWatermarkIndex;

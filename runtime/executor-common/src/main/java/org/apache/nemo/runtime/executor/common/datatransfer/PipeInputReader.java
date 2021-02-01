@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.exception.UnsupportedCommPatternException;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * Represents the input data transfer to a task.
@@ -57,7 +46,6 @@ public final class PipeInputReader implements InputReader {
   private final RuntimeEdge runtimeEdge;
   private final Serializer serializer;
   private final ExecutorThreadQueue executorThreadQueue;
-  private DataFetcher dataFetcher;
 
   public PipeInputReader(final IRVertex srcIRVertex,
                          final String taskId,
@@ -82,11 +70,6 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
-  public void setDataFetcher(DataFetcher df) {
-    dataFetcher = df;
-  }
-
-  @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     return null;
   }
@@ -104,7 +87,7 @@ public final class PipeInputReader implements InputReader {
   @Override
   public void addData(final int pipeIndex, ByteBuf data) {
     executorThreadQueue.addEvent(
-      new TaskHandlingDataEvent(taskId, dataFetcher, pipeIndex, data, serializer));
+      new TaskHandlingDataEvent(taskId, runtimeEdge.getId(), pipeIndex, data, serializer));
   }
 
   @Override

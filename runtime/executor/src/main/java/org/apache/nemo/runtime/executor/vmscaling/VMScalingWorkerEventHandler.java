@@ -7,7 +7,7 @@ import org.apache.nemo.runtime.executor.SFTaskMetrics;
 import org.apache.nemo.runtime.executor.StageOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -71,8 +71,8 @@ public class VMScalingWorkerEventHandler implements EventHandler {
 
       LOG.info("Offloading done event (kafkaOffloadingOutput) {}", e.taskId);
 
-      ((DefaultTaskExecutorImpl) te).offloader.get()
-        .handleOffloadingOutput(e);
+      // ((DefaultTaskExecutorImpl) te).offloader.get()
+      //  .handleOffloadingOutput(e);
 
       // handle stageOffloadingDone
       stageOffloadingWorkerManager.endOffloading(stageId);
@@ -82,8 +82,8 @@ public class VMScalingWorkerEventHandler implements EventHandler {
 
       LOG.info("Offloading done event (StateOutput) {}", e.taskId);
 
-      ((DefaultTaskExecutorImpl) te).offloader.get()
-        .handleStateOutput((StateOutput) msg);
+      // ((DefaultTaskExecutorImpl) te).offloader.get()
+      //  .handleStateOutput((StateOutput) msg);
 
       // handle stageOffloadingDone
       stageOffloadingWorkerManager.endOffloading(stageId);

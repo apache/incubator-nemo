@@ -47,8 +47,8 @@ import static org.apache.nemo.common.TaskLoc.SF;
  *                         or retrieves a saved pipe connection (write)
  */
 @ThreadSafe
-public final class PipeManagerWorker {
-  private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
+public final class PipeManagerWorkerImpl {
+  private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorkerImpl.class.getName());
 
   private final String executorId;
   private final Map<String, String> taskExecutorIdMap;
@@ -65,13 +65,13 @@ public final class PipeManagerWorker {
   private final RelayServerClient relayServerClient;
   private final boolean isSf;
 
-  public PipeManagerWorker(final String executorId,
-                           final ByteTransfer byteTransfer,
-                           final Map<String, String> taskExecutorIdMap,
-                           final Map<String, Serializer> serializerMap,
-                           final Map<String, TaskLoc> taskLocationMap,
-                           final RelayServerClient relayServerClient,
-                           final boolean isSf) {
+  public PipeManagerWorkerImpl(final String executorId,
+                               final ByteTransfer byteTransfer,
+                               final Map<String, String> taskExecutorIdMap,
+                               final Map<String, Serializer> serializerMap,
+                               final Map<String, TaskLoc> taskLocationMap,
+                               final RelayServerClient relayServerClient,
+                               final boolean isSf) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.taskExecutorIdMap = taskExecutorIdMap;

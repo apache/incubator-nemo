@@ -4,16 +4,19 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.nemo.runtime.executor.common.ControlEventHandler;
-import org.apache.nemo.runtime.executor.common.OffloadingManager;
-import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
+import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
+import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -117,6 +120,10 @@ public class PipeManagerTestHelper {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
+      .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
+      .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
+      .bindImplementation(OffloadingWorkerFactory.class, VMOffloadingWorkerFactory.class) // todo: fix
+      .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .build();
 
     final Configuration nameResolverConf = PipeManagerTestHelper.createNameResolverConf(nameServer);

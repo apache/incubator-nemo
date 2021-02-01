@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
 
-public final class VMOffloadingRequester {
+public final class VMOffloadingRequester implements OffloadingRequester {
 
   private static final Logger LOG = LoggerFactory.getLogger(VMOffloadingRequester.class.getName());
 
@@ -131,6 +131,7 @@ public final class VMOffloadingRequester {
     }, 2, 2, TimeUnit.SECONDS);
   }
 
+  @Override
   public void start() {
     // ping pong
 
@@ -143,6 +144,7 @@ public final class VMOffloadingRequester {
     instanceIds = ids;
   }
 
+  @Override
   public synchronized void destroyChannel(final Channel channel) {
     final String addr = channel.remoteAddress().toString().split(":")[0];
     final String instanceId = vmChannelMap.remove(addr);
@@ -151,6 +153,7 @@ public final class VMOffloadingRequester {
     stopVM(instanceId);
   }
 
+  @Override
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
 
@@ -297,6 +300,7 @@ public final class VMOffloadingRequester {
     });
   }
 
+  @Override
   public void destroy() {
     /*
     synchronized (readyVMs) {
@@ -318,6 +322,7 @@ public final class VMOffloadingRequester {
 
   }
 
+  @Override
   public void close() {
 
   }

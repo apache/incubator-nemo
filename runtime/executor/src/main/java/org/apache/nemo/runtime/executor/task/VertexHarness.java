@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,31 +60,10 @@ final class VertexHarness {
   }
 
   /**
-   * @return id of irVertex.
-   */
-  String getId() {
-    return irVertex.getId();
-  }
-
-  /**
    * @return OffloadingOutputCollector of this irVertex.
    */
   OutputCollector getOutputCollector() {
     return outputCollector;
-  }
-
-  /**
-   * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
-   */
-  List<OutputWriter> getWritersToMainChildrenTasks() {
-    return externalOutputWriter;
-  }
-
-  /**
-   * @return OutputWriters for additional tagged outputs of this irVertex. (empty if none exists)
-   */
-  Map<String, List<OutputWriter>> getWritersToAdditionalChildrenTasks() {
-    return externalAdditionalOutputWriter;
   }
 
   /**

@@ -66,57 +66,16 @@ public final class ByteTransfer {
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
                                                              final PipeTransferContextDescriptor contextDescriptor,
                                                              final boolean isPipe) {
-    return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
-  }
-
-  /**
-   * Initiate a transfer context to send data.
-   * @param executorId         the id of the remote executor
-   * @param contextDescriptor  user-provided descriptor for the new context
-   * @param isPipe            is pipe
-   * @return a {@link ByteOutputContext} to which data can be written
-   */
-  public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
-                                                               final PipeTransferContextDescriptor contextDescriptor,
-                                                               final boolean isPipe,
-                                                               final boolean isLocal) {
-
-    //LOG.info("New remote output context: {}, {}, {}->{}",
-    //  executorId, contextDescriptor.getRuntimeEdgeId(), contextDescriptor.getSrcTaskIndex(),
-    //  contextDescriptor.getDstTaskIndex());
-    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
-
-    /*
-    if (isLocal) {
-      LOG.info("New local output context: {}", executorId);
-      byteTransport.getAndPutInetAddress(executorId);
-      executorIdLocalContextManagerMap.putIfAbsent(executorId,
-        new DefaultContextManagerImpl(pipeManagerWorker.get(),
-          blockManagerWorker.get(),
-          byteTransfer.get(),
-          null,
-          localExecutorId,
-          null,
-          vmScalingClientTransport.get(),
-          ackScheduledService.get(),
-          taskTransferIndexMap.getMap()));
-
-      final ContextManager contextManager = executorIdLocalContextManagerMap.get(executorId);
-      return CompletableFuture.completedFuture(
-        contextManager.newOutputContext(executorId, contextDescriptor, isPipe));
-    } else {
-      LOG.info("New remote output context: {}", executorId);
-      return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
-    }
-    */
+    return null;
+    // return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**
    * @param remoteExecutorId id of the remote executor
    * @return {@link ContextManager} for the channel to the specified executor
    */
-  public CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
-    final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
+  public CompletableFuture<Channel> connectTo(final String remoteExecutorId) {
+    final CompletableFuture<Channel> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
     try {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
@@ -135,7 +94,7 @@ public final class ByteTransfer {
     }
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {
-        completableFuture.complete(channelFuture.channel().pipeline().get(ContextManager.class));
+        completableFuture.complete(channelFuture.channel());
       } else {
         LOG.info("Exception !!!! " + future.cause());
         executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);

@@ -16,6 +16,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
+    OFFLOAD_CONTROL
   }
 
   public final TaskControlMessageType type;
@@ -52,7 +53,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   @Override
-  public DataFetcher getDataFetcher() {
+  public String getEdgeId() {
     throw new RuntimeException("This is control message");
   }
 

@@ -34,16 +34,13 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
  */
 public final class NextIntraTaskOperatorInfo {
 
-  private final int edgeIndex;
   private final Edge edgeInfo;
   private final OperatorVertex nextOperator;
 
   private long inputTimestamp;
 
-  public NextIntraTaskOperatorInfo(final int edgeIndex,
-                                   final Edge edgeInfo,
+  public NextIntraTaskOperatorInfo(final Edge edgeInfo,
                                    final OperatorVertex nextOperator) {
-    this.edgeIndex = edgeIndex;
     this.edgeInfo = edgeInfo;
     this.nextOperator = nextOperator;
   }
@@ -58,10 +55,6 @@ public final class NextIntraTaskOperatorInfo {
 
   public Edge getEdge() {
     return edgeInfo;
-  }
-
-  public int getEdgeIndex() {
-    return edgeIndex;
   }
 
   public OperatorVertex getNextOperator() {

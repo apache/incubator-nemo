@@ -2,11 +2,10 @@ package org.apache.nemo.runtime.executor.task.util;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,8 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 public final class TestGBKTransform implements Transform<Pair<Integer, Integer>, Pair<Integer, Integer>> {

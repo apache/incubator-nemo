@@ -5,22 +5,23 @@ import io.netty.buffer.ByteBufInputStream;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 public final class TaskHandlingDataEvent implements TaskHandlingEvent {
 
   private final String taskId;
   private final ByteBuf byteBuf;
   private final int pipeIndex;
-  private final DataFetcher dataFetcher;
+  private final String edgeId;
   private final Serializer serializer;
 
   public TaskHandlingDataEvent(final String taskId,
-                               final DataFetcher dataFetcher,
+                               final String edgeId,
                                final int pipeIndex,
                                final ByteBuf byteBuf,
                                final Serializer serializer) {
     this.taskId = taskId;
-    this.dataFetcher = dataFetcher;
+    this.edgeId = edgeId;
     this.byteBuf = byteBuf;
     this.pipeIndex = pipeIndex;
     this.serializer = serializer;
@@ -42,8 +43,8 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
   }
 
   @Override
-  public DataFetcher getDataFetcher() {
-    return dataFetcher ;
+  public String getEdgeId() {
+    return edgeId;
   }
 
   @Override

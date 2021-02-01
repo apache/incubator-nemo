@@ -34,12 +34,14 @@ import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.OffloadingManagerImpl;
-import org.apache.nemo.runtime.executor.common.ControlEventHandler;
-import org.apache.nemo.runtime.executor.common.OffloadingManager;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
+import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
+import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
+import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.JobScaler;
@@ -323,6 +325,10 @@ public final class NemoDriver {
       .bindImplementation(StateStore.class, HDFStateStore.class)
       .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
+      .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
+      .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
+      .bindImplementation(OffloadingWorkerFactory.class, VMOffloadingWorkerFactory.class) // todo: fix
+      .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .build();
 
     return Configurations.merge(c,

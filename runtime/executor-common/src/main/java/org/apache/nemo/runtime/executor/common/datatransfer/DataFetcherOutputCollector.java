@@ -36,7 +36,6 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
   private static final Logger LOG = LoggerFactory.getLogger(DataFetcherOutputCollector.class.getName());
   private final IRVertex srcVertex;
   private final OperatorVertex nextOperatorVertex;
-  private final int edgeIndex;
   private final OutputCollector nextOutputCollector;
   private final String taskId;
 
@@ -48,12 +47,10 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
   public DataFetcherOutputCollector(final IRVertex srcVertex,
                                     final OperatorVertex nextOperatorVertex,
                                     final OutputCollector nextOutputCollector,
-                                    final int edgeIndex,
                                     final String taskId) {
     this.srcVertex = srcVertex;
     this.nextOperatorVertex = nextOperatorVertex;
     this.nextOutputCollector = nextOutputCollector;
-    this.edgeIndex = edgeIndex;
     this.taskId = taskId;
   }
 

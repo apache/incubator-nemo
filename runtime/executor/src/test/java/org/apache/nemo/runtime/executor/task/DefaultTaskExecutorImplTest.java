@@ -58,11 +58,11 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
+import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.task.util.EventOrWatermark;
 import org.apache.nemo.runtime.executor.task.util.StreamTransformNoEmit;
 import org.apache.nemo.runtime.executor.task.util.TestUnboundedSourceReadable;
@@ -334,10 +334,10 @@ public final class DefaultTaskExecutorImplTest {
     // Wait for registering name server
     Thread.sleep(1000);
 
-    taskExecutor1Pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    taskExecutor1Pair.right().getInstance(ExecutorChannelManagerMap.class).init();
     taskExecutor1Pair.right().getInstance(TaskScheduledMapWorker.class).init();
 
-    taskExecutor2Pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    taskExecutor2Pair.right().getInstance(ExecutorChannelManagerMap.class).init();
     taskExecutor2Pair.right().getInstance(TaskScheduledMapWorker.class).init();
 
     Thread.sleep(500);
@@ -629,7 +629,9 @@ public final class DefaultTaskExecutorImplTest {
     final InputPipeRegister pipeManagerWorker = pair.left();
 
 
+    return null;
 
+    /*
     return Pair.of(new DefaultTaskExecutorImpl(
       tid,
       executorId,
@@ -647,5 +649,6 @@ public final class DefaultTaskExecutorImplTest {
       pipeManagerWorker,
       stateStore,
       offloadingManager), injector);
+      */
   }
 }

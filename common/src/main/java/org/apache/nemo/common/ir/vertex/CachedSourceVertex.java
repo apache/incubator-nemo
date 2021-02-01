@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
-import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;

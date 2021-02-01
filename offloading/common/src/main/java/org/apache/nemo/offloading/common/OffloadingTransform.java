@@ -27,5 +27,7 @@ public interface OffloadingTransform<I, O> extends Serializable {
    */
   interface OffloadingContext extends Serializable {
 
+    StateStore getStateStore();
+
   }
 }

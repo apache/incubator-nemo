@@ -27,7 +27,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.ExecutorContextManagerMap;
+import org.apache.nemo.runtime.executor.ExecutorChannelManagerMap;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Stream;
 
 /**
  * Two threads use this class
@@ -64,7 +63,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   // Thread-safe container
 
   // 여기서 pipe manager worker끼리 N-to-N connection 맺어야.
-  private final ExecutorContextManagerMap executorContextManagerMap;
+  private final ExecutorChannelManagerMap executorChannelManagerMap;
   private final TaskScheduledMapWorker taskScheduledMapWorker;
   private final PipeIndexMapWorker pipeIndexMapWorker;
 
@@ -90,12 +89,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   @Inject
   private PipeManagerWorkerImpl(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                 final ByteTransfer byteTransfer,
-                                final ExecutorContextManagerMap executorContextManagerMap,
+                                final ExecutorChannelManagerMap executorChannelManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
                                 final PipeIndexMapWorker pipeIndexMapWorker) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
-    this.executorContextManagerMap = executorContextManagerMap;
+    this.executorChannelManagerMap = executorChannelManagerMap;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     LOG.info("PipeManagerWorkImpl instance {} in executor {}", hashCode(), executorId);
@@ -142,9 +141,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       srcTaskId,
       null);
 
-    final Optional<ContextManager> optional = getContextManagerForDstTask(srcTaskId, true);
+    final Optional<Channel> optional = getChannelForDstTask(srcTaskId, true);
     if (optional.isPresent()) {
-      optional.get().getChannel().writeAndFlush(controlMessage);
+      optional.get().writeAndFlush(controlMessage);
     } else {
       // this is pending output pipe
       // the task is not sheduled yet
@@ -169,14 +168,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
 
     for (final String srcTask : srcTasks) {
-      final Optional<ContextManager> optional = getContextManagerForDstTask(srcTask, true);
+      final Optional<Channel> optional = getChannelForDstTask(srcTask, true);
       if (!optional.isPresent()) {
         LOG.warn("Task {} is already removed... dont have to wait for the ack in executor {}", srcTask, executorId);
         final int pipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
         inputStopSignalPipes.get(dstTaskId).remove((Integer) pipeIndex);
       } else {
-        final ContextManager contextManager = optional.get();
-        final Channel channel = contextManager.getChannel();
+        final Channel channel = optional.get();
         final int myOutputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
         final int myInputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
 
@@ -284,25 +282,25 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         pendingPipes.forEach(pendingIndex -> {
           pendingOutputPipeMap.get(pendingIndex).add(
           DataFrameEncoder.DataFrame.newInstance(
-            Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+            Collections.singletonList(pendingIndex), false, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
         });
       }
 
       if (pipeIndices.size() > 0) {
         channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices, byteBuf, byteBuf.readableBytes(), true))
+          pipeIndices, false, byteBuf, byteBuf.readableBytes(), true))
           .addListener(listener);
       }
     }
   }
 
-  private Optional<ContextManager> getContextManagerForDstTask(final String dstTaskId,
-                                                               final boolean syncToMaster) {
+  private Optional<Channel> getChannelForDstTask(final String dstTaskId,
+                                                 final boolean syncToMaster) {
     if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster) == null) {
       return Optional.empty();
     } else {
-      return Optional.of(executorContextManagerMap
-        .getExecutorContextManager(
+      return Optional.of(executorChannelManagerMap
+        .getExecutorChannel(
           taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster)));
     }
   }
@@ -312,10 +310,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                         final ByteBuf byteBuf) {
     final Triple<String, String, String> key = pipeIndexMapWorker.getKey(pipeIndex);
     final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
+      Collections.singletonList(pipeIndex), false, byteBuf, byteBuf.readableBytes(), true);
     final String dstTaskId = key.getRight();
 
-    final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
+    final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
     if (pendingOutputPipeMap.containsKey(pipeIndex) || !optional.isPresent()) {
       // this is pending output pipe
       pendingOutputPipeMap.putIfAbsent(pipeIndex, new LinkedList<>());
@@ -323,7 +321,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
       pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
     } else {
-      optional.get().getChannel().writeAndFlush(finalData).addListener(listener);
+      optional.get().writeAndFlush(finalData).addListener(listener);
     }
   }
 
@@ -334,14 +332,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                         final Serializer serializer,
                         final Object event) {
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
-    final Optional<ContextManager> optional = getContextManagerForDstTask(dstTaskId, false);
+    final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
 
     ByteBuf byteBuf;
     if (pendingOutputPipeMap.containsKey(index) || !optional.isPresent()) {
       byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
     } else {
-      final ContextManager contextManager = optional.get();
-      final Channel channel = contextManager.getChannel();
+      final Channel channel = optional.get();
       byteBuf = channel.alloc().ioBuffer();
     }
 
@@ -387,12 +384,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
     // Why do not sync with master?
     // Because this should be sent to the downstream task even though it is removed from the master's scheduled map
-    final Optional<ContextManager> optional = getContextManagerForDstTask(key.getRight(), false);
+    final Optional<Channel> optional = getChannelForDstTask(key.getRight(), false);
     if (!optional.isPresent()) {
       throw new RuntimeException("Contextmanager should exist for " + key);
     }
 
-    final Channel channel = optional.get().getChannel();
+    final Channel channel = optional.get();
 
     if (taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED)) {
       LOG.info("Task is already removed {} in executor {}", taskId, executorId);
@@ -440,7 +437,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     // restart pending output
     if (pendingOutputPipeMap.containsKey(index)) {
       final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-      Optional<ContextManager> optional = getContextManagerForDstTask(key.getRight(), true);
+      Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
       final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), false);
       LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
 
@@ -449,7 +446,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         return;
       }
 
-      final Channel channel = optional.get().getChannel();
+      final Channel channel = optional.get();
 
       final List<Object> pendingData = pendingOutputPipeMap.remove(index);
       pendingData.forEach(data -> channel.write(data));
@@ -476,8 +473,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public void flush() {
-    executorContextManagerMap.getExecutorContextManagers().forEach(contextManager -> {
-      contextManager.getChannel().flush();
+    executorChannelManagerMap.getExecutorChannels().forEach(channel -> {
+      channel.flush();
     });
   }
 
@@ -488,8 +485,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public void close() {
-    executorContextManagerMap.getExecutorContextManagers().forEach(contextManager -> {
-      contextManager.getChannel().close();
+    executorChannelManagerMap.getExecutorChannels().forEach(channel -> {
+      channel.close();
     });
   }
 

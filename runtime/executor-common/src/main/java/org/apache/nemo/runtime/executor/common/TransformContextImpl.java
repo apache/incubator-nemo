@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -31,7 +30,6 @@ import java.util.Optional;
  * Transform Context Implementation.
  */
 public final class TransformContextImpl implements Transform.Context {
-  private final BroadcastManagerWorker broadcastManagerWorker;
   private String data;
   private final IRVertex irVertex;
   private final ServerlessExecutorProvider serverlessExecutorProvider;
@@ -40,14 +38,11 @@ public final class TransformContextImpl implements Transform.Context {
 
   /**
    * Constructor of Context Implementation.
-   * @param broadcastManagerWorker for broadcast variables.
    */
-  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
-                              final IRVertex irVertex,
+  public TransformContextImpl(final IRVertex irVertex,
                               final ServerlessExecutorProvider serverlessExecutorProvider,
                               final String taskId,
                               final StateStore stateStore) {
-    this.broadcastManagerWorker = broadcastManagerWorker;
     this.data = null;
     this.irVertex = irVertex;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -72,7 +67,7 @@ public final class TransformContextImpl implements Transform.Context {
 
   @Override
   public Object getBroadcastVariable(final Serializable tag) {
-    return broadcastManagerWorker.get(tag);
+    throw new RuntimeException("not supported");
   }
 
   @Override

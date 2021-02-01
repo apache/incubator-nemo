@@ -37,10 +37,11 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   */
 
 
-  private final VMOffloadingRequester requestor;
+  private final OffloadingRequester requestor;
 
   @Inject
-  private VMOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider) {
+  private VMOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider,
+                                    final OffloadingRequesterFactory requesterFactory) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
@@ -49,27 +50,29 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
 
-    this.requestor = new VMOffloadingRequester(nemoEventHandler, nettyServerTransport.getLocalAddress(),
+    this.requestor = requesterFactory.getInstance(
+      nemoEventHandler, nettyServerTransport.getLocalAddress(),
       nettyServerTransport.getPort());
   }
 
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
-
     requestor.createChannelRequest();
   }
 
   public void setVMAddressAndIds(final List<String> addr,
                                  final List<String> ids) {
     LOG.info("Set vm address and id in worker factory");
-    requestor.setVmAddessesAndIds(addr, ids);
+    if (requestor instanceof VMOffloadingRequester) {
+      ((VMOffloadingRequester) requestor).setVmAddessesAndIds(addr, ids);
+    }
   }
 
   @Override
-  public OffloadingWorkerDeprec createStreamingWorker(final ByteBuf vmScalingInfoBuffer,
-                                                      final ByteBuf workerInitBuffer,
-                                                      final OffloadingSerializer offloadingSerializer,
-                                                      final EventHandler eventHandler) {
+  public OffloadingWorker createStreamingWorker(final ByteBuf vmScalingInfoBuffer,
+                                                final ByteBuf workerInitBuffer,
+                                                final OffloadingSerializer offloadingSerializer,
+                                                final EventHandler eventHandler) {
     LOG.info("Create streaming worker request!");
     createChannelRequest();
     final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
@@ -120,8 +123,8 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   }
 
   @Override
-  public OffloadingWorkerDeprec createOffloadingWorker(final ByteBuf workerInitBuffer,
-                                                       final OffloadingSerializer offloadingSerializer) {
+  public OffloadingWorker createOffloadingWorker(final ByteBuf workerInitBuffer,
+                                                 final OffloadingSerializer offloadingSerializer) {
 
     createChannelRequest();
 
@@ -190,7 +193,7 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   }
 
   @Override
-  public void deleteOffloadingWorker(OffloadingWorkerDeprec worker) {
+  public void deleteOffloadingWorker(OffloadingWorker worker) {
 
     LOG.info("Delete offloading worker: {}", worker.getChannel().remoteAddress());
 

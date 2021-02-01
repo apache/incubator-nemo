@@ -22,7 +22,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   private static final Logger LOG = LoggerFactory.getLogger(StreamingWorkerService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
-  private final List<Pair<Long, OffloadingWorkerDeprec>> streamingWorkers;
+  private final List<Pair<Long, OffloadingWorker>> streamingWorkers;
 
   // buffer that contains bytes for initializing workers
   private final ByteBuf workerInitBuffer;
@@ -36,7 +36,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
 
   //private final StatePartitioner<I, S> statePartitioner;
   //private final List<ByteBuf> states;
-  //private final Map<Integer, OffloadingWorkerDeprec<I, O>> stateIndexAndWorkerMap;
+  //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
 
   private long totalProcessingTime = 0;
   private long totalWorkerInitTime = 0;
@@ -98,7 +98,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   // we don't have to send data to streaming workers
   // because it will pull the data
   @Override
-  public OffloadingWorkerDeprec createStreamWorker() {
+  public OffloadingWorker createStreamWorker() {
     createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
@@ -107,7 +107,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
       copiedBuf = workerInitBuffer.retainedDuplicate();
     }
 
-    final OffloadingWorkerDeprec<I, O> worker =
+    final OffloadingWorker<I, O> worker =
       workerFactory.createStreamingWorker(null, copiedBuf, offloadingSerializer, eventHandler);
 
     synchronized (streamingWorkers) {
@@ -127,7 +127,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
     synchronized (streamingWorkers) {
       if (!streamingWorkers.isEmpty()) {
         LOG.info("Shutting down streaming workers: {}", streamingWorkers.size());
-        for (final Pair<Long, OffloadingWorkerDeprec> pair : streamingWorkers) {
+        for (final Pair<Long, OffloadingWorker> pair : streamingWorkers) {
           pair.right().finishOffloading();
         }
       }

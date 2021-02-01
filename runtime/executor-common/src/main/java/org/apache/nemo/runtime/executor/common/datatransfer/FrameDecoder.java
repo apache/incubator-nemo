@@ -122,7 +122,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   }
 
   private ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
-  private boolean isContextBroadcast;
+  private DataFrameEncoder.DataType dataType;
   private int broadcastSize;
   private byte flags;
   private long headerRemain = 0;
@@ -192,7 +192,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       }
 
     } else {
-      isContextBroadcast = in.readBoolean();
+      dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
       final int sizeOrIndex = in.readInt();
 
       dataDirection =
@@ -200,30 +200,35 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
 
-      if (isContextBroadcast) {
-        broadcastSize = sizeOrIndex;
-        return onBroadcastRead(ctx, in);
-      } else {
-        broadcastSize = 0;
-        broadcast = false;
+      switch (dataType) {
+        case OFFLOAD_OUTPUT:
+        case NORMAL:
+          broadcastSize = 0;
+          broadcast = false;
 
-        pipeIndex = sizeOrIndex;
-        final long length = in.readUnsignedInt();
+          pipeIndex = sizeOrIndex;
+          final long length = in.readUnsignedInt();
 
-        // LOG.info("Receive srcTaskIndex {}->{}, body size: {}", srcTaskIndex, dtTaskIndex, length);
+          // LOG.info("Receive srcTaskIndex {}->{}, body size: {}", srcTaskIndex, dtTaskIndex, length);
 
-        // setup context for reading data frame body
-        dataBodyBytesToRead = length;
+          // setup context for reading data frame body
+          dataBodyBytesToRead = length;
 
-        final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-        isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-        isStop = (flags & ((byte) (1 << 4))) != 0;
+          final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
+          isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+          isStop = (flags & ((byte) (1 << 4))) != 0;
 
-        if (dataBodyBytesToRead == 0) {
-          onDataFrameEnd();
+          if (dataBodyBytesToRead == 0) {
+            onDataFrameEnd();
+          }
+          break;
+        case BROADCAST: {
+          broadcastSize = sizeOrIndex;
+          return onBroadcastRead(ctx, in);
         }
       }
     }
+
     return true;
   }
 
@@ -250,33 +255,12 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     final ByteBufInputStream bis = new ByteBufInputStream(in);
     final TaskControlMessage taskControlMessage = TaskControlMessage.decode(bis);
 
-    pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
-
-    /*
-    final byte[] bytes;
-    final int offset;
-
-    if (in.hasArray()) {
-      bytes = in.array();
-      offset = in.arrayOffset() + in.readerIndex();
+    if (taskControlMessage.type.equals(TaskControlMessage.TaskControlMessageType.OFFLOAD_CONTROL)) {
+      // For offloaded task
+      out.add(taskControlMessage);
     } else {
-      bytes = new byte[(int) controlBodyBytesToRead];
-      in.getBytes(in.readerIndex(), bytes, 0, (int) controlBodyBytesToRead);
-      offset = 0;
+      pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
     }
-
-    final TaskControlMessage controlMessage =
-        ByteTransferContextSetupMessage.decode(bytes, offset, (int) controlBodyBytesToRead);
-
-    out.add(controlMessage);
-    in.skipBytes((int) controlBodyBytesToRead);
-    */
-
-    /*
-    final ByteTransferContextSetupMessage controlMessage =
-      ByteTransferContextSetupMessage.decode(in);
-    out.add(controlMessage);
-    */
 
     controlBodyBytesToRead = 0;
     return true;
@@ -298,7 +282,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       throw new RuntimeException("Data body bytes zero");
     }
 
-
     if (in.readableBytes() < dataBodyBytesToRead) {
       // LOG.warn("Bytes to read smaller than dataBodyBytesToRead: "
       //  + in.readableBytes() + ", " + dataBodyBytesToRead);
@@ -319,17 +302,25 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       throw new RuntimeException(("DataBodyByesToRead should be zero"));
     }
 
-    if (broadcast) {
-      // buf.retain(inputContexts.size() - 1);
-      // LOG.info("Broadcast variable !! ");
-      for (int i = 0; i < currPipeIndices.size(); i++) {
-        final Integer ti = currPipeIndices.get(i);
-        pipeManagerWorker.addInputData(ti, buf.retainedDuplicate());
-      }
+    switch (dataType) {
+      case BROADCAST: {
+        for (int i = 0; i < currPipeIndices.size(); i++) {
+          final Integer ti = currPipeIndices.get(i);
+          pipeManagerWorker.addInputData(ti, buf.retainedDuplicate());
+        }
 
-      buf.release();
-    } else {
-      pipeManagerWorker.addInputData(pipeIndex, buf);
+        buf.release();
+        break;
+      }
+      case NORMAL: {
+        pipeManagerWorker.addInputData(pipeIndex, buf);
+        break;
+      }
+      case OFFLOAD_OUTPUT: {
+        // send to pipe output writer?
+        pipeManagerWorker.writeData(pipeIndex, buf);
+        break;
+      }
     }
 
     onDataFrameEnd();

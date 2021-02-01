@@ -1,43 +1,10 @@
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
-import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
-import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
-import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
-import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.common.TaskLocationMap;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class TinyTaskOffloader implements Offloader {
 

@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.dag.Edge;
@@ -120,7 +121,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
     if (nextOpIds != null) {
       //System.out.println("Emit to resultCollector in " + irVertex.getId());
-      resultCollector.result.add(new Triple<>(
+      resultCollector.result.add(Triple.of(
         nextOpIds,
         edge.getId(),
         new TimestampAndValue(inputTimestamp, output)));
@@ -148,7 +149,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
       if (nextOpIds != null) {
         //System.out.println("Emit to resultCollector in " + irVertex.getId());
-        resultCollector.result.add(new Triple<>(
+        resultCollector.result.add(Triple.of(
           nextOpIds,
           edge.getId(),
           new TimestampAndValue(inputTimestamp, output)));
@@ -208,7 +209,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
     if (nextOpIds != null) {
       //LOG.info("Offloading Watermark {} emit to {}", watermark, nextOpIds);
-      resultCollector.result.add(new Triple<>(
+      resultCollector.result.add(Triple.of(
         nextOpIds,
         edge.getId(),
         watermark));

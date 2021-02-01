@@ -24,10 +24,6 @@ import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.common.coder.BytesDecoderFactory;
-import org.apache.nemo.common.coder.BytesEncoderFactory;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
@@ -48,14 +44,14 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
+import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -71,6 +67,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
+import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
 
 
 /**
@@ -124,13 +122,15 @@ public final class Executor {
 
   private final StateStore stateStore;
 
-  private final ExecutorContextManagerMap executorContextManagerMap;
+  private final ExecutorChannelManagerMap executorChannelManagerMap;
 
   private final TaskScheduledMapWorker scheduledMapWorker;
 
   private final RelayServer relayServer;
 
   private final OffloadingManager offloadingManager;
+
+  private final OutputCollectorGenerator outputCollectorGenerator;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -156,11 +156,12 @@ public final class Executor {
                    // final ScalingOutCounter scalingOutCounter,
                    // final SFTaskMetrics sfTaskMetrics,
                    final StateStore stateStore,
-                   final ExecutorContextManagerMap executorContextManagerMap,
+                   final ExecutorChannelManagerMap executorChannelManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final RelayServer relayServer,
                    final CyclicDependencyHandler cyclicDependencyHandler,
-                   final OffloadingManager offloadingManager) {
+                   final OffloadingManager offloadingManager,
+                   final OutputCollectorGenerator outputCollectorGenerator) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
@@ -168,7 +169,7 @@ public final class Executor {
 
     this.offloadingManager = offloadingManager;
     this.relayServer = relayServer;
-    this.executorContextManagerMap = executorContextManagerMap;
+    this.executorChannelManagerMap = executorChannelManagerMap;
     this.stateStore = (StateStore) stateStore;
     this.executorThreads = executorThreads;
     this.scheduledMapWorker = taskScheduledMapWorker;
@@ -177,6 +178,7 @@ public final class Executor {
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskTransferIndexMap = taskTransferIndexMap;
+    this.outputCollectorGenerator = outputCollectorGenerator;
     this.executorService = Executors.newCachedThreadPool();
     //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
     //          .namingPattern("TaskExecutor thread-%d")
@@ -318,7 +320,7 @@ public final class Executor {
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
     taskScheduledMapWorker.init();
-    executorContextManagerMap.init();
+    executorChannelManagerMap.init();
 
     this.stageExecutorThreadMap = stageExecutorThreadMap;
   }
@@ -421,7 +423,6 @@ public final class Executor {
       final int index = numTask % evalConf.executorThreadNum;
       final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
 
-
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(
         Thread.currentThread().getId(),
@@ -429,17 +430,17 @@ public final class Executor {
         task,
         irDag,
         intermediateDataIOFactory,
-        broadcastManagerWorker,
-        metricMessageSender,
-        persistentConnectionToMasterMap,
         serializerManager,
         null,
-        evalConf,
+        evalConf.samplingJson,
+        evalConf.isLocalSource,
         prepareService,
         executorThread,
         pipeManagerWorker,
         stateStore,
-        offloadingManager);
+        offloadingManager,
+        pipeManagerWorker,
+        outputCollectorGenerator);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);
@@ -473,36 +474,6 @@ public final class Executor {
 
       e.printStackTrace();
       throw new RuntimeException(e);
-    }
-  }
-
-  /**
-   * This wraps the encoder with OffloadingEventEncoder.
-   * If the encoder is BytesEncoderFactory, we do not wrap the encoder.
-   * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
-   * @param encoderFactory encoder factory
-   * @return wrapped encoder
-   */
-  private EncoderFactory getEncoderFactory(final EncoderFactory encoderFactory) {
-    if (encoderFactory instanceof BytesEncoderFactory) {
-      return encoderFactory;
-    } else {
-      return new NemoEventEncoderFactory(encoderFactory);
-    }
-  }
-
-  /**
-   * This wraps the encoder with OffloadingEventDecoder.
-   * If the decoder is BytesDecoderFactory, we do not wrap the decoder.
-   * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
-   * @param decoderFactory decoder factory
-   * @return wrapped decoder
-   */
-  private DecoderFactory getDecoderFactory(final DecoderFactory decoderFactory) {
-    if (decoderFactory instanceof BytesDecoderFactory) {
-      return decoderFactory;
-    } else {
-      return new NemoEventDecoderFactory(decoderFactory);
     }
   }
 
@@ -554,12 +525,12 @@ public final class Executor {
         }
         case ExecutorRegistered: {
           LOG.info("Executor registered message received {}", message.getRegisteredExecutor());
-          executorContextManagerMap.initConnectToExecutor(message.getRegisteredExecutor());
+          executorChannelManagerMap.initConnectToExecutor(message.getRegisteredExecutor());
           break;
         }
         case ExecutorRemoved: {
           LOG.info("Executor removed message received {}", message.getRegisteredExecutor());
-          executorContextManagerMap.removeExecutor(message.getRegisteredExecutor());
+          executorChannelManagerMap.removeExecutor(message.getRegisteredExecutor());
           break;
         }
         case GlobalExecutorAddressInfo: {
@@ -605,7 +576,7 @@ public final class Executor {
           LOG.info("{} Setting global relay server info {}", executorId, m);
 
           /*
-          final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
+          final OffloadingTransform lambdaExecutor = new OffloadingExecutorDeprecated(
             evalConf.offExecutorThreadNum,
             byteTransport.getExecutorAddressMap(),
             serializerManager.runtimeEdgeIdToSerializer,

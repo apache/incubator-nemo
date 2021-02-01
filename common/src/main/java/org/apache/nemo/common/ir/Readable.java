@@ -18,10 +18,9 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.NoSuchElementException;

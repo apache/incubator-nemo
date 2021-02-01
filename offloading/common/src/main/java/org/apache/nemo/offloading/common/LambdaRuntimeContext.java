@@ -51,4 +51,9 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   public OffloadingHandler.LambdaEventHandler getLambdaEventHandler() {
     return lambdaEventHandler;
   }
+
+  @Override
+  public StateStore getStateStore() {
+    return null;
+  }
 }

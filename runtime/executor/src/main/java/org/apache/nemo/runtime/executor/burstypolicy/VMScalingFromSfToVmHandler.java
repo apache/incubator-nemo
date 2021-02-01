@@ -1,25 +1,9 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
-import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.coder.FSTSingleton;
-import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.task.TinyTaskOffloader;
 import org.apache.nemo.runtime.executor.vmscaling.VMScalingWorkerConnector;
-import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
-import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

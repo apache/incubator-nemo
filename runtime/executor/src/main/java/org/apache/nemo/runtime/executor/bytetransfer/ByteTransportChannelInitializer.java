@@ -137,21 +137,21 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   @Override
   protected void initChannel(final SocketChannel ch) {
     final ContextManager contextManager = new DefaultContextManagerImpl(
-      channelServiceExecutor,
-      pipeManagerWorker,
-      blockManagerWorker,
-      Optional.of(byteTransfer),
-      byteTransport.getChannelGroup(),
-      localExecutorId,
-      ch,
-      //vmScalingClientTransport.get(),
-      ackScheduledService,
-      inputContexts,
-      outputContexts,
-      toMaster,
-      outputWriterFlusher,
-      relayServer,
-      taskLocationMap);
+            channelServiceExecutor,
+            pipeManagerWorker,
+            blockManagerWorker,
+            Optional.of(byteTransfer),
+            byteTransport.getChannelGroup(),
+            localExecutorId,
+            ch,
+            //vmScalingClientTransport.get(),
+             ackScheduledService,
+            inputContexts,
+            outputContexts,
+            toMaster,
+            outputWriterFlusher,
+            relayServer,
+            taskLocationMap);
 
     ch.pipeline()
       // inbound

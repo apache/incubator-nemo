@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.*;
 
-public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorkerDeprec<I, O> {
+public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
   private volatile Channel channel;
   //private volatile int dataProcessingCnt = 0;

@@ -157,23 +157,23 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
     this.executorGlobalInstances = new ExecutorGlobalInstances();
     this.outputWriterFlusher = new OutputWriterFlusher(200);
 
-    executorThreads = new ArrayList<>();
-    for (int i = 0; i < executorThreadNum; i++) {
-      executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i, new EventHandler<String>() {
-          @Override
-          public void onNext(String msg) {
-            // do nothing
-          }
-        }));
-      executorThreads.get(i).start();
-    }
+//    executorThreads = new ArrayList<>();
+//    for (int i = 0; i < executorThreadNum; i++) {
+//      executorThreads.add(
+//        new ExecutorThread(1, "lambda-" + i, new EventHandler<String>() {
+//          @Override
+//          public void onNext(String msg) {
+//            // do nothing
+//          }
+//        }));
+//      executorThreads.get(i).start();
+//    }
 
     final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
     final ControlFrameEncoder controlFrameEncoder = new ControlFrameEncoder();
     final DataFrameEncoder dataFrameEncoder = new DataFrameEncoder();
 
-    this.clientTransport = new VMScalingClientTransport();
+//    this.clientTransport = new VMScalingClientTransport();
 
     scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
@@ -227,11 +227,11 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
 
     initializer.setByteTransfer(byteTransfer);
 
-    pipeManagerWorker =
-      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, null, false);
-
-    intermediateDataIOFactory =
-      new IntermediateDataIOFactory(pipeManagerWorker);
+//    pipeManagerWorker =
+//      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, null, false);
+//
+//    intermediateDataIOFactory =
+//      new IntermediateDataIOFactory(pipeManagerWorker);
   }
 
   private TaskExecutor findTaskExecutor(final String taskId) {
@@ -260,17 +260,17 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
 
       LOG.info("Receive task {}, assign it to executor-{}", task.taskId, executorIndex);
 
-      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
-        task,
-        serializerMap,
-        intermediateDataIOFactory,
-        oc,
-        prepareService,
-        executorGlobalInstances,
-        rendevousServerClient,
-        executorThread);
+//      final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
+//        task,
+//        serializerMap,
+//        intermediateDataIOFactory,
+//        oc,
+//        prepareService,
+//        executorGlobalInstances,
+//        rendevousServerClient,
+//        executorThread);
 
-      taskAssignedMap.put(taskExecutor, executorThread);
+//      taskAssignedMap.put(taskExecutor, executorThread);
 
       LOG.info("Pending task {}", task.taskId);
 
@@ -314,7 +314,7 @@ public final class VmOffloadingExecutor implements OffloadingTransform<Object, O
       LOG.info("Finishing task {}", endEvent.taskId);
       final ExecutorThread executorThread = taskAssignedMap.remove(deletedTask);
       taskExecutorStartTimeMap.remove(deletedTask);
-      deletedTask.setDeleteForMoveToVmScaling(false);
+//      deletedTask.setDeleteForMoveToVmScaling(false);
       executorThread.deleteTask(deletedTask);
 
     } else if (event instanceof ThrottlingEvent) {

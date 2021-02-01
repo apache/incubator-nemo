@@ -12,6 +12,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public final class TaskInputWatermarkTest {
 
@@ -20,43 +21,45 @@ public final class TaskInputWatermarkTest {
     final TaskInputWatermarkManager watermarkManager = new TaskInputWatermarkManager();
 
     final DataFetcher d1 = mock(DataFetcher.class);
+    when(d1.getEdgeId()).thenReturn("d1");
     final int parallelism1 = 5;
 
     final DataFetcher d2 = mock(DataFetcher.class);
+    when(d2.getEdgeId()).thenReturn("d2");
     final int parallelism2 = 3;
 
-    watermarkManager.addDataFetcher(d1, parallelism1);
-    watermarkManager.addDataFetcher(d2, parallelism2);
+    watermarkManager.addDataFetcher(d1.getEdgeId(), parallelism1);
+    watermarkManager.addDataFetcher(d2.getEdgeId(), parallelism2);
 
     // watermark 0
     // datafetcher1 watermark1
-    assertFalse(watermarkManager.updateWatermark(d1, 0, 1).isPresent());
-    assertFalse(watermarkManager.updateWatermark(d1, 1, 2).isPresent());
-    assertFalse(watermarkManager.updateWatermark(d1, 2, 3).isPresent());
-    assertFalse(watermarkManager.updateWatermark(d1, 3, 4).isPresent());
-    assertFalse(watermarkManager.updateWatermark(d1, 4, 3).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 0, 1).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 1, 2).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 2, 3).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 3, 4).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 4, 3).isPresent());
 
     // datafetcher2 watermark 2
-    assertFalse(watermarkManager.updateWatermark(d2, 0, 2).isPresent());
-    assertFalse(watermarkManager.updateWatermark(d2, 1, 3).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d2.getEdgeId(), 0, 2).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d2.getEdgeId(), 1, 3).isPresent());
 
     // emit watermark 1
-    final Optional<Watermark> w = watermarkManager.updateWatermark(d2, 2, 4);
+    final Optional<Watermark> w = watermarkManager.updateWatermark(d2.getEdgeId(), 2, 4);
 
     assertTrue(w.isPresent());
     assertEquals(1L, w.get().getTimestamp());
 
     // watermark 2
-    final Optional<Watermark> w2 = watermarkManager.updateWatermark(d1, 0, 4);
+    final Optional<Watermark> w2 = watermarkManager.updateWatermark(d1.getEdgeId(), 0, 4);
 
     assertTrue(w2.isPresent());
     assertEquals(2L, w2.get().getTimestamp());
 
 
-    assertFalse(watermarkManager.updateWatermark(d1, 1, 3).isPresent());
+    assertFalse(watermarkManager.updateWatermark(d1.getEdgeId(), 1, 3).isPresent());
 
     // watermark 3
-    final Optional<Watermark> w3 = watermarkManager.updateWatermark(d2, 0, 4);
+    final Optional<Watermark> w3 = watermarkManager.updateWatermark(d2.getEdgeId(), 0, 4);
 
     assertTrue(w3.isPresent());
     assertEquals(3L, w3.get().getTimestamp());

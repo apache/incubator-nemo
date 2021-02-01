@@ -1,11 +1,11 @@
 package org.apache.nemo.runtime.executor;
 
+import io.netty.channel.Channel;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
-import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,25 +13,24 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.apache.nemo.runtime.common.message.MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
-public final class ExecutorContextManagerMap {
+public final class ExecutorChannelManagerMap {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ExecutorContextManagerMap.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorChannelManagerMap.class.getName());
 
   // key: task id, value: executpr od
-  private final ConcurrentMap<String, ContextManager>
-    executorContextManagerMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Channel>
+    executorChannelMap = new ConcurrentHashMap<>();
 
   private final String executorId;
   private final PersistentConnectionToMasterMap toMaster;
   private final ByteTransfer byteTransfer;
 
   @Inject
-  private ExecutorContextManagerMap(
+  private ExecutorChannelManagerMap(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
     final ByteTransfer byteTransfer,
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
@@ -80,14 +79,14 @@ public final class ExecutorContextManagerMap {
   }
 
   public synchronized void initConnectToExecutor(final String remoteExecutorId) {
-    if (executorContextManagerMap.containsKey(remoteExecutorId)) {
+    if (executorChannelMap.containsKey(remoteExecutorId)) {
       throw new RuntimeException("Executor " + remoteExecutorId + " already registered");
     }
 
     LOG.info("Registering  {} -> {}", executorId, remoteExecutorId);
 
     try {
-      executorContextManagerMap.put(remoteExecutorId, byteTransfer.connectTo(remoteExecutorId).get());
+      executorChannelMap.put(remoteExecutorId, byteTransfer.connectTo(remoteExecutorId).get());
       LOG.info("Putting done  {} -> {}", executorId, remoteExecutorId);
     } catch (Exception e) {
       e.printStackTrace();
@@ -95,12 +94,12 @@ public final class ExecutorContextManagerMap {
     }
   }
 
-  public Collection<ContextManager> getExecutorContextManagers() {
-    return executorContextManagerMap.values();
+  public Collection<Channel> getExecutorChannels() {
+    return executorChannelMap.values();
   }
 
-  public synchronized ContextManager getExecutorContextManager(final String executorId) {
+  public synchronized Channel getExecutorChannel(final String executorId) {
     // LOG.info("Getting executor context manager {}", executorId);
-    return executorContextManagerMap.get(executorId);
+    return executorChannelMap.get(executorId);
   }
 }

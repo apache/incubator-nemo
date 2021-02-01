@@ -4,9 +4,6 @@ import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingInputDecoder;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingOutputDecoder;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingOutputEncoder;
 
 import java.util.Map;
 

@@ -58,6 +58,10 @@ public abstract class DataFetcher implements AutoCloseable {
   // just check data
   public abstract boolean hasData();
 
+  public String getEdgeId() {
+    return edge.getId();
+  }
+
   /**
    * Can block until the next data element becomes available.
    * @return data element

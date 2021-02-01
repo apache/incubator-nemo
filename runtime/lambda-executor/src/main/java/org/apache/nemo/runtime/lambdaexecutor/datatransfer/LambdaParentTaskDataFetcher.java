@@ -116,7 +116,7 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
                                      final ExecutorService prepareService) {
     super(dataSource, edge, outputCollector);
 
-    readerForParentTask.setDataFetcher(this);
+    // readerForParentTask.setDataFetcher(this);
     this.prepared = prepared;
     this.prepareService = prepareService;
 

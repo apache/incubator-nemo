@@ -5,11 +5,10 @@ import io.netty.buffer.ByteBufInputStream;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.runtime.executor.ExecutorContextManagerMap;
+import org.apache.nemo.runtime.executor.ExecutorChannelManagerMap;
 import org.apache.nemo.runtime.executor.MasterSetupHelper;
 import org.apache.nemo.runtime.executor.PipeManagerTestHelper;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
-import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByDownstreamTask;
@@ -189,13 +188,13 @@ public final class PipeManagerWorkerTest {
 
 
     pair.right().getInstance(TaskScheduledMapWorker.class).init();
-    pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    pair.right().getInstance(ExecutorChannelManagerMap.class).init();
 
     pair2.right().getInstance(TaskScheduledMapWorker.class).init();
-    pair2.right().getInstance(ExecutorContextManagerMap.class).init();
+    pair2.right().getInstance(ExecutorChannelManagerMap.class).init();
 
     pair3.right().getInstance(TaskScheduledMapWorker.class).init();
-    pair3.right().getInstance(ExecutorContextManagerMap.class).init();
+    pair3.right().getInstance(ExecutorChannelManagerMap.class).init();
 
     final List<Injector> injectors = Arrays.asList(pair.right(), pair2.right(), pair3.right());
     // INIT DONE
@@ -408,10 +407,10 @@ public final class PipeManagerWorkerTest {
     final PipeManagerWorker pipeManagerWorker2 = pair2.left();
 
     pair.right().getInstance(TaskScheduledMapWorker.class).init();
-    pair.right().getInstance(ExecutorContextManagerMap.class).init();
+    pair.right().getInstance(ExecutorChannelManagerMap.class).init();
 
     pair2.right().getInstance(TaskScheduledMapWorker.class).init();
-    pair2.right().getInstance(ExecutorContextManagerMap.class).init();
+    pair2.right().getInstance(ExecutorChannelManagerMap.class).init();
 
     final TestInputReader t1tot2 = new TestInputReader(task2);
     pipeManagerWorker2.registerInputPipe(task1, edge1, task2, t1tot2);
@@ -514,11 +513,6 @@ public final class PipeManagerWorkerTest {
 
     @Override
     public void restart() {
-
-    }
-
-    @Override
-    public void setDataFetcher(DataFetcher dataFetcher) {
 
     }
 

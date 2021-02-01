@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.common.Serializer;

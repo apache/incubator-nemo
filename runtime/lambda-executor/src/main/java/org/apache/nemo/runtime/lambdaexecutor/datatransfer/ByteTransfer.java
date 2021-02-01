@@ -41,7 +41,7 @@ public final class ByteTransfer {
   private final ConcurrentMap<Future, ContextManager> channelAndContextManagerMap =
     new ConcurrentHashMap<>();
   private final String localExecutorId;
-  private final VMScalingClientTransport clientTransport;
+ //  private final VMScalingClientTransport clientTransport;
 
   /**
    * Creates a byte transfer.
@@ -51,7 +51,7 @@ public final class ByteTransfer {
                       final String localExecutorId) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;
-    this.clientTransport = new VMScalingClientTransport();
+    // this.clientTransport = new VMScalingClientTransport();
   }
 
 

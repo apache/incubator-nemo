@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.runtime.executor.common.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

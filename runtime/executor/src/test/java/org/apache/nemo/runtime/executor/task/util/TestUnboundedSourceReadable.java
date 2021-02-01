@@ -1,10 +1,8 @@
 package org.apache.nemo.runtime.executor.task.util;
 
-import org.apache.nemo.common.StateStore;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.nemo.common.ir.Readable;

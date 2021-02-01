@@ -37,8 +37,6 @@ public interface InputReader {
 
   void restart();
 
-  void setDataFetcher(DataFetcher dataFetcher);
-
   /**
    * Reads input data depending on the communication pattern of the srcVertex.
    *

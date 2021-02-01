@@ -44,6 +44,12 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
   public static final int HEADER_LENGTH = Byte.BYTES  + Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
 
+  public enum DataType {
+    NORMAL,
+    BROADCAST,
+    OFFLOAD_OUTPUT
+  }
+
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
 
@@ -71,24 +77,29 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (in.pipeIndices.size() <= 1) {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
-      header.writeByte(flags);
-      header.writeBoolean(false);
-      header.writeInt(in.pipeIndices.get(0));
-    } else {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH
-        + Integer.BYTES
-        + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
-        + Integer.BYTES
-        + in.pipeIndices.size() * Integer.BYTES);
+    switch (in.type) {
+      case OFFLOAD_OUTPUT:
+      case NORMAL:
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndices.get(0));
+        break;
+      case BROADCAST: {
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH
+          + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
+          + in.pipeIndices.size() * Integer.BYTES);
 
-      header.writeByte(flags);
-      header.writeBoolean(true);
-      header.writeInt(in.pipeIndices.size());
-      in.pipeIndices.forEach(pipeIndex -> {
-        header.writeInt(pipeIndex);
-      });
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndices.size());
+        for (int pipeIndex : in.pipeIndices) {
+          header.writeInt(pipeIndex);
+        }
+        break;
+      }
+      default:
+        throw new RuntimeException("invalid type " + in.type);
     }
 
     // in.length should not exceed the range of unsigned int
@@ -126,24 +137,29 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     ByteBuf header;
 
-    if (in.pipeIndices.size() <= 1) {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
-      header.writeByte(flags);
-      header.writeBoolean(false);
-      header.writeInt(in.pipeIndices.get(0));
-    } else {
-      header = ctx.alloc().ioBuffer(HEADER_LENGTH
-        + Integer.BYTES
-        + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
-        + Integer.BYTES
-        + in.pipeIndices.size() * Integer.BYTES);
+    switch (in.type) {
+      case OFFLOAD_OUTPUT:
+      case NORMAL:
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndices.get(0));
+        break;
+      case BROADCAST: {
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH
+          + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
+          + in.pipeIndices.size() * Integer.BYTES);
 
-      header.writeByte(flags);
-      header.writeBoolean(true);
-      header.writeInt(in.pipeIndices.size());
-      in.pipeIndices.forEach(pipeIndex -> {
-        header.writeInt(pipeIndex);
-      });
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndices.size());
+        for (int pipeIndex : in.pipeIndices) {
+          header.writeInt(pipeIndex);
+        }
+        break;
+      }
+      default:
+        throw new RuntimeException("invalid type " + in.type);
     }
 
     // LOG.info("Encoding {}->{}, header: {}, body: {}",
@@ -191,6 +207,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     public final Recycler.Handle handle;
     public List<Integer> pipeIndices;
+    public DataType type;
     @Nullable
     public Object body;
     public long length;
@@ -203,6 +220,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
      * For broadcast!!
      */
     public static DataFrame newInstance(final List<Integer> pipeIndicies,
+                                        final boolean offloadOutput,
                                         @Nullable final Object body,
                                         final long length,
                                         final boolean opensSubStream) {
@@ -210,6 +228,17 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       if (pipeIndicies.size() < 1) {
         throw new RuntimeException("Invalid task index");
       }
+
+      if (offloadOutput) {
+        dataFrame.type = DataType.OFFLOAD_OUTPUT;
+      } else {
+        if (pipeIndicies.size() == 1) {
+          dataFrame.type = DataType.NORMAL;
+        } else {
+          dataFrame.type = DataType.BROADCAST;
+        }
+      }
+
       dataFrame.pipeIndices = pipeIndicies;
       dataFrame.body = body;
       dataFrame.length = length;
@@ -218,7 +247,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       dataFrame.stopContext = false;
       return dataFrame;
     }
-
 
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.

@@ -35,7 +35,7 @@ public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
   }
 
   @Override
-  public DataFetcher getDataFetcher() {
+  public String getEdgeId() {
     return null;
   }
 

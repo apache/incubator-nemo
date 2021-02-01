@@ -19,19 +19,12 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.TaskMetrics;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.TaskLocationMap;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.ExecutorThreadQueue;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.common.SerializerManager;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -39,16 +32,13 @@ import java.util.Optional;
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
  */
-public final class IntermediateDataIOFactory {
+public final class DefaltIntermediateDataIOFactoryImpl implements IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
-  private final BlockManagerWorker blockManagerWorker;
   private final SerializerManager serializerManager;
 
   @Inject
-  private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
-                                    final PipeManagerWorker pipeManagerWorker,
-                                    final SerializerManager serializerManager) {
-    this.blockManagerWorker = blockManagerWorker;
+  private DefaltIntermediateDataIOFactoryImpl(final PipeManagerWorker pipeManagerWorker,
+                                              final SerializerManager serializerManager) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.serializerManager = serializerManager;
   }
@@ -62,8 +52,9 @@ public final class IntermediateDataIOFactory {
    */
   public OutputWriter createWriter(final String srcTaskId,
                                    final RuntimeEdge<?> runtimeEdge) {
-    final StageEdge stageEdge = (StageEdge) runtimeEdge;
-    return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+    throw new RuntimeException("Block output writer created");
+    // final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    // return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, null);
   }
 
   public OutputWriter createPipeWriter(
@@ -91,7 +82,8 @@ public final class IntermediateDataIOFactory {
       return new PipeInputReader(srcIRVertex, taskId, runtimeEdge,
         serializerManager.getSerializer(runtimeEdge.getId()), executorThreadQueue);
     } else {
-      return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+      throw new RuntimeException("Block input reader created");
+      // return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, null);
     }
   }
 

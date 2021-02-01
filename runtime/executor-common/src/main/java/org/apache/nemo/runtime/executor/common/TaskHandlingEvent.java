@@ -11,7 +11,7 @@ public interface TaskHandlingEvent {
 
   ByteBuf getDataByteBuf();
 
-  DataFetcher getDataFetcher();
+  String getEdgeId();
 
   Object getData();
 

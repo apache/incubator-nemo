@@ -16,30 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.common;
 
-import com.google.protobuf.ByteString;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.executor.common.DecodeStreamChainer;
-import org.apache.nemo.runtime.executor.common.EncodeStreamChainer;
-import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
-import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,18 +34,18 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Mapping from RuntimeEdgeId to {@link Serializer}.
  */
-public final class SerializerManager implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
+public final class DefaultSerializerManagerImpl implements SerializerManager {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultSerializerManagerImpl.class.getName());
   public final ConcurrentMap<String, Serializer> runtimeEdgeIdToSerializer = new ConcurrentHashMap<>();
 
-  private final PersistentConnectionToMasterMap toMaster;
+  // private final PersistentConnectionToMasterMap toMaster;
 
   /**
    * Constructor.
    */
   @Inject
-  private SerializerManager(PersistentConnectionToMasterMap toMaster) {
-    this.toMaster = toMaster;
+  public DefaultSerializerManagerImpl() {
+    // this.toMaster = toMaster;
   }
 
   /**
@@ -96,6 +82,7 @@ public final class SerializerManager implements Serializable {
     final List<DecodeStreamChainer> decodeStreamChainers = new ArrayList<>();
 
     // Compression chain
+    /*
     if (compressionProperty != null && compressionProperty != CompressionProperty.Value.None) {
       LOG.debug("Adding {} compression chain for {}",
           compressionProperty, runtimeEdgeId);
@@ -106,11 +93,13 @@ public final class SerializerManager implements Serializable {
           decompressionProperty, runtimeEdgeId);
       decodeStreamChainers.add(new DecompressionStreamChainer(decompressionProperty));
     }
+    */
 
     final Serializer serializer =
         new Serializer(encoderFactory, decoderFactory, encodeStreamChainers, decodeStreamChainers);
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
 
+    /*
     try {
       final byte[] b = SerializationUtils.serialize(serializer);
 
@@ -127,6 +116,7 @@ public final class SerializerManager implements Serializable {
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
+    */
   }
 
   /**

@@ -35,10 +35,10 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.common.StateStore;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.task.TestDAGBuilder;
 import org.apache.nemo.runtime.executor.task.util.*;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -53,6 +53,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -71,6 +72,7 @@ import static org.mockito.Mockito.when;
  * Tests {@link TaskExecutor}.
  */
 @RunWith(PowerMockRunner.class)
+@PowerMockIgnore({ "javax.net.ssl.*" })
 @PrepareForTest({InputReader.class, OutputWriter.class, IntermediateDataIOFactory.class, BroadcastManagerWorker.class,
   TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class ExecutorTest {
@@ -248,14 +250,18 @@ public final class ExecutorTest {
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-1-0");
     masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-1-0");
 
-
     for (int i = 2500; i < 4000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if (i == 3200) {
+        masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-2-0");
+      }
 
       if ((i + 1) % 50 == 0) {
         sourceGenerator.addEvent(0, new EventOrWatermark((i+1) + 200, true));
         sourceGenerator.addEvent(1, new EventOrWatermark((i+1) + 250, true));
         sourceGenerator.addEvent(2, new EventOrWatermark((i+1) + 250, true));
+        Thread.sleep(10);
       }
     }
 

@@ -104,10 +104,15 @@ public final class TaskScheduledMapMaster {
     taskIdTaskMap.put(taskId, task);
   }
 
-  private void executingTask(final String executorId, final String taskId) {
+  private synchronized void executingTask(final String executorId, final String taskId) {
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
 
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
+    LOG.info("Put task {} to executor {}", taskId, representer.getExecutorId());
+
+    if (representer.getExecutorId() == null) {
+      throw new RuntimeException("Executor Id null for putting task scheduled " + executorId + ", " + taskId);
+    }
     taskExecutorIdMap.put(taskId, representer.getExecutorId());
 
     // Add task location to VM
