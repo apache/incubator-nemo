@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor.task.util;
 
-import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -9,18 +8,19 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.test.*;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+
+import static org.apache.nemo.common.test.TCPSourceReadable.PORT;
 
 public final class TCPSourceGenerator {
 
   public final Channel[] channels;
   public final List<List<EventOrWatermark>> events;
 
-  public static final int PORT = 12512;
 
 
   public TCPSourceGenerator(final int parallelism) {

@@ -6,8 +6,13 @@ import org.apache.nemo.runtime.executor.common.TaskHandlingEvent;
 public final class SimpleOffloadingManager implements OffloadingManager {
 
   @Override
-  public void offloading(String taskId, byte[] serializedDag) {
-    throw new RuntimeException("Not supported");
+  public void createWorker(int num) {
+
+  }
+
+  @Override
+  public void offloading(String taskId) {
+
   }
 
   @Override

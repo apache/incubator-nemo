@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.task.util;
+package org.apache.nemo.common.test;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
@@ -9,9 +9,9 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,10 +49,11 @@ public final class TestGBKTransform implements Transform<Pair<Integer, Integer>,
   public void checkpoint() {
     LOG.info("Checkpoint state for TestGBK in {}", context.getTaskId());
     final StateStore stateStore = context.getStateStore();
-    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(context.getTaskId());
-    SerializationUtils.serialize((HashMap) map, os);
+    final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
+    SerializationUtils.serialize((HashMap) map, bos);
     try {
-      os.close();
+      bos.close();
+      stateStore.put(context.getTaskId(), bos.toByteArray());
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

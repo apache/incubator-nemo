@@ -41,6 +41,7 @@ import java.util.List;
  * This means that there can be multiple StageEdges between two Stages.
  */
 public final class StageEdge extends RuntimeEdge<Stage> {
+  private static final long serialVersionUID = 1L;
   private static final Logger LOG = LoggerFactory.getLogger(StageEdge.class.getName());
 
   /**

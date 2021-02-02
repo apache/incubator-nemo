@@ -38,7 +38,22 @@ public final class HDFStateStore implements StateStore {
   }
 
   @Override
-  public OutputStream getOutputStreamForStoreTaskState(String taskId) {
+  public byte[] getBytes(String taskId) {
+    final Path path = new Path(HDFSUtils.STATE_PATH + "/" +  taskId);
+    try {
+      final FileSystem fileSystem = path.getFileSystem(conf);
+      final long len = fileSystem.getFileStatus(path).getLen();
+      final byte[] bytes = new byte[(int)len];
+      fileSystem.open(path).readFully(bytes);
+      return bytes;
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void put(String taskId, byte[] bytes) {
     LOG.info("Storing task state " + taskId + " into HDFS");
     final Path path = new Path(HDFSUtils.STATE_PATH + "/" +  taskId);
     try {
@@ -50,7 +65,8 @@ public final class HDFStateStore implements StateStore {
       }
 
       final FSDataOutputStream out = fileSystem.create(path);
-      return out;
+      out.write(bytes);
+      out.close();
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -26,6 +27,10 @@ public final class PipeIndexMapWorker {
     this.toMaster = persistentConnectionToMasterMap;
     this.map = new ConcurrentHashMap<>();
     this.keyMap = new ConcurrentHashMap<>();
+  }
+
+  public Map<Triple<String, String, String>, Integer> getIndexMap() {
+    return map;
   }
 
   public Triple<String, String, String> getKey(final int index) {

@@ -4,9 +4,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
@@ -26,9 +26,7 @@ import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,10 +45,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final ConcurrentMap<SocketChannel, Boolean> channels;
   private final String executorId;
   private final String parentExecutorAddress;
-  private final int parentExecutorPort;
+  private final int parentExecutorDataPort;
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final Map<String, Double> samplingMap;
   private final boolean isLocalSource;
+  private final int stateStorePort;
 
   private List<ExecutorThread> executorThreads;
   private StateStore stateStore;
@@ -66,12 +65,18 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
 
+
+
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
                             final boolean isLocalSource,
                             final String parentExecutorId,
                             final String parentExecutorAddress,
-                            final int parentExecutorPort) {
+                            final int parentExecutorDataPort,
+                            final int stateStorePort) {
+    LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
+      executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress, parentExecutorDataPort);
+    this.stateStorePort = stateStorePort;
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
     this.executorId = parentExecutorId;
@@ -80,26 +85,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.serializerManager = new DefaultSerializerManagerImpl();
     this.indexMap = new ConcurrentHashMap<>();
     this.parentExecutorAddress = parentExecutorAddress;
-    this.parentExecutorPort = parentExecutorPort;
-  }
-
-  public void encode(OutputStream os) {
-    SerializationUtils.serialize(executorThreadNum, os);
-    SerializationUtils.serialize((Serializable) samplingMap, os);
-    SerializationUtils.serialize(isLocalSource, os);
-    SerializationUtils.serialize(executorId, os);
-    SerializationUtils.serialize(parentExecutorAddress, os);
-    SerializationUtils.serialize(parentExecutorPort, os);
-  }
-
-  public static OffloadingExecutor decode(InputStream is) {
-    return new OffloadingExecutor(
-      (int) SerializationUtils.deserialize(is),
-      (Map<String, Double>) SerializationUtils.deserialize(is),
-      (boolean)  SerializationUtils.deserialize(is),
-      (String)  SerializationUtils.deserialize(is),
-      (String) SerializationUtils.deserialize(is),
-      (int) SerializationUtils.deserialize(is));
+    this.parentExecutorDataPort = parentExecutorDataPort;
   }
 
   @Override
@@ -107,8 +93,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     this.prepareService = Executors.newCachedThreadPool();
 
+
+
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
-    this.stateStore = context.getStateStore();
+    this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
 
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
@@ -138,13 +126,37 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.clientTransport = new VMScalingClientTransport(initializer);
 
     this.parentExecutorChannel = clientTransport
-      .connectTo(parentExecutorAddress, parentExecutorPort).channel();
+      .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
+  }
 
+  public String getDataChannelAddr() {
+    return parentExecutorChannel.localAddress().toString();
   }
 
   @Override
   public void onData(Object event, OffloadingOutputCollector a) {
+    if (event instanceof SendToOffloadingWorker) {
+      // offloading task
+      final SendToOffloadingWorker e = (SendToOffloadingWorker) event;
+      LOG.info("IndexMap: {}", e.indexMap);
+      final ByteArrayInputStream bis = new ByteArrayInputStream(e.taskByte);
+      try {
+        final Task task = (Task) FSTSingleton.getInstance().decodeFromStream(bis);
+        indexMap.putAll(e.indexMap);
 
+        LOG.info("Offload Executor [{}] received Task [{}] to execute.",
+          new Object[]{executorId, task.getTaskId()});
+
+        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
+          (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
+
+        launchTask(task, irDag);
+      } catch (Exception e1) {
+        e1.printStackTrace();
+        throw new RuntimeException(e1);
+      }
+
+    }
   }
 
   @Override
@@ -202,6 +214,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.get(index).addNewTask(taskExecutor);
 
+
       //taskExecutor.execute();
     } catch (final Exception e) {
       e.printStackTrace();
@@ -213,21 +226,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, TaskControlMessage msg) throws Exception {
-      final Object event = msg.event;
-      if (event instanceof SendToOffloadingWorker) {
-        // offloading task
-        final SendToOffloadingWorker e = (SendToOffloadingWorker) event;
-        final Task task = SerializationUtils.deserialize(e.taskByte);
-        indexMap.putAll(e.indexMap);
-
-        LOG.info("Offload Executor [{}] received Task [{}] to execute.",
-          new Object[]{executorId, task.getTaskId()});
-
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-          SerializationUtils.deserialize(task.getSerializedIRDag());
-
-        launchTask(task, irDag);
-      }
+      throw new RuntimeException();
     }
 
       @Override

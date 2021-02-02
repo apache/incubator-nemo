@@ -39,7 +39,6 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.offloading.common.TaskOffloadingEvent;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
@@ -47,9 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -545,7 +542,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                          final TaskHandlingEvent taskHandlingEvent) {
     if (taskHandlingEvent.isOffloadingMessage()) {
       // control message for offloading
-      final TaskOffloadingEvent event = (TaskOffloadingEvent) taskHandlingEvent.getData();
+      final TaskOffloadingEvent event = (TaskOffloadingEvent) taskHandlingEvent;
       final TaskOffloadingEvent.ControlType type = event.getType();
 
       switch (type) {
@@ -554,16 +551,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // TODO: partial computation offloading without checkpointing states
           checkpoint();
           // store watermark  manager
-          final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId + "-watermark");
-          SerializationUtils.serialize(taskWatermarkManager, os);
-          try {
-            os.close();
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
+          final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
+          stateStore.put(taskId + "-watermark", bytes);
           // offloading task
-          offloadingManager.offloading(taskId, task.getSerializedIRDag());
+          offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
           break;
         }
@@ -736,14 +727,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     boolean hasChekpoint = false;
 
-    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId + "-taskWatermarkManager");
-    SerializationUtils.serialize(taskWatermarkManager, os);
-    try {
-      os.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
+    stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
     for (final DataFetcher dataFetcher : allFetchers) {
       if (dataFetcher instanceof SourceVertexDataFetcher) {

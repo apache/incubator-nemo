@@ -18,10 +18,6 @@
  */
 package org.apache.nemo.runtime.executor;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.Readable;
@@ -31,6 +27,10 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.test.EventOrWatermark;
+import org.apache.nemo.common.test.TestUnboundedSourceReadable;
+import org.apache.nemo.common.test.TestUnboundedSourceVertex;
+import org.apache.nemo.runtime.executor.common.TaskOffloadingEvent;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.executor.common.*;
@@ -57,8 +57,8 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -109,17 +109,21 @@ public final class ExecutorTest {
     runtimeMaster = masterSetupHelper.runtimeMaster;
 
     stateStore = new StateStore() {
-      final Map<String, ByteBuf> stateMap = new HashMap<>();
+      final Map<String, byte[]> stateMap = new HashMap<>();
 
       @Override
       public synchronized  InputStream getStateStream(String taskId) {
-        return new ByteBufInputStream(stateMap.get(taskId).retainedDuplicate());
+        return new ByteArrayInputStream(stateMap.get(taskId));
       }
 
       @Override
-      public synchronized OutputStream getOutputStreamForStoreTaskState(String taskId) {
-        stateMap.put(taskId, ByteBufAllocator.DEFAULT.buffer());
-        return new ByteBufOutputStream(stateMap.get(taskId));
+      public byte[] getBytes(String taskId) {
+        return stateMap.get(taskId);
+      }
+
+      @Override
+      public void put(String taskId, byte[] bytes) {
+        stateMap.put(taskId, bytes);
       }
 
       @Override
@@ -135,6 +139,81 @@ public final class ExecutorTest {
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     return Pair.of(sourceIRVertex, vertexIdToReadable);
+  }
+
+  @Test
+  public void testOffloadingExecution() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(3);
+    final Pair<Executor, Injector> pair2 = launchExecutor(3);
+
+    final int parallelism = 3;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.TwoVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+    Thread.sleep(2000);
+
+    // 100
+    for (int i = 0; i < 500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+    final OffloadingManager offloadingManager = pair1.right().getInstance(OffloadingManager.class);
+    offloadingManager.createWorker(1);
+
+    Thread.sleep(4000);
+
+    final TaskExecutorMapWrapper wrapper = pair1.right().getInstance(TaskExecutorMapWrapper.class);
+    final ExecutorThread executorThread = wrapper.getTaskExecutorThread("Stage1-0-0");
+
+    executorThread.addEvent(new TaskOffloadingEvent("Stage1-0-0",
+      TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
+
+    Thread.sleep(3000);
+
+    // 200
+    for (int i = 500; i < 1000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+    Thread.sleep(2000);
+
+    /*
+    // launch offloading executor
+    final String executor1Addr = pair1.right().getInstance(ByteTransport.class).getPublicAddress();
+    final int executor1Port = pair1.right().getInstance(ByteTransport.class).getBindingPort();
+    final OffloadingExecutor offloadingExecutor =
+      new OffloadingExecutor(3, new HashMap<>(), true,
+        pair1.left().getExecutorId(), executor1Addr, executor1Port);
+
+    offloadingExecutor.prepare(new OffloadingTransform.OffloadingContext() {
+      @Override
+      public StateStore getStateStore() {
+        return stateStore;
+      }
+    }, new OffloadingOutputCollector() {
+      @Override
+      public void emit(Object output) {
+
+      }
+    });
+    */
   }
 
   // [stage1]  [stage2]

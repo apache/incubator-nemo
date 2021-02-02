@@ -18,10 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
@@ -63,10 +59,10 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.task.util.EventOrWatermark;
+import org.apache.nemo.common.test.EventOrWatermark;
 import org.apache.nemo.runtime.executor.task.util.StreamTransformNoEmit;
-import org.apache.nemo.runtime.executor.task.util.TestUnboundedSourceReadable;
-import org.apache.nemo.runtime.executor.task.util.TestUnboundedSourceVertex;
+import org.apache.nemo.common.test.TestUnboundedSourceReadable;
+import org.apache.nemo.common.test.TestUnboundedSourceVertex;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -79,8 +75,8 @@ import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -132,17 +128,21 @@ public final class DefaultTaskExecutorImplTest {
     masterSetupHelper = new MasterSetupHelper();
 
     stateStore = new StateStore() {
-      final Map<String, ByteBuf> stateMap = new HashMap<>();
+      final Map<String, byte[]> stateMap = new HashMap<>();
 
       @Override
       public synchronized  InputStream getStateStream(String taskId) {
-        return new ByteBufInputStream(stateMap.get(taskId).retainedDuplicate());
+        return new ByteArrayInputStream(stateMap.get(taskId));
       }
 
       @Override
-      public synchronized OutputStream getOutputStreamForStoreTaskState(String taskId) {
-        stateMap.put(taskId, ByteBufAllocator.DEFAULT.buffer());
-        return new ByteBufOutputStream(stateMap.get(taskId));
+      public byte[] getBytes(String taskId) {
+        return new byte[0];
+      }
+
+      @Override
+      public synchronized void put(String taskId, byte[] bytes) {
+        stateMap.put(taskId, bytes);
       }
 
       @Override

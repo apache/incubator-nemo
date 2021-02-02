@@ -317,7 +317,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         break;
       }
       case OFFLOAD_OUTPUT: {
-        // send to pipe output writer?
+        // received from offloaded task
+        // we redirect this event to origin executor
         pipeManagerWorker.writeData(pipeIndex, buf);
         break;
       }

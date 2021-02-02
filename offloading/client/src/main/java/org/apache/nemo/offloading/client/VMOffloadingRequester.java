@@ -284,7 +284,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
       // send handshake
       final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
         serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
-      openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+      openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.SEND_ADDRESS, bytes, bytes.length));
 
     /*
     synchronized (readyVMs) {

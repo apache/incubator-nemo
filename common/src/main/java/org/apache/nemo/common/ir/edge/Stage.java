@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir.edge;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
@@ -64,7 +65,7 @@ public final class Stage extends Vertex {
     super(stageId);
     this.taskIndices = taskIndices;
     this.irDag = irDag;
-    this.serializedIRDag = SerializationUtils.serialize(irDag);
+    this.serializedIRDag = FSTSingleton.getInstance().asByteArray(irDag);
     this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
   }

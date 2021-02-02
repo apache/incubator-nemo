@@ -7,6 +7,7 @@ import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -16,6 +17,7 @@ public final class TaskExecutorMapWrapper {
   private final ConcurrentMap<String, List<TaskExecutor>> stageTaskMap;
   private final ConcurrentMap<String, TaskExecutor> taskIdExecutorMap;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskExecutorThreadMap;
+  private final Map<String, byte[]> taskIdSerializedTaskMap;
 
   @Inject
   private TaskExecutorMapWrapper() {
@@ -23,6 +25,12 @@ public final class TaskExecutorMapWrapper {
     this.stageTaskMap = new ConcurrentHashMap<>();
     this.taskIdExecutorMap = new ConcurrentHashMap<>();
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
+    this.taskIdSerializedTaskMap = new ConcurrentHashMap<>();
+  }
+
+  public void putTaskSerializedByte(final String taskId,
+                                    final byte[] bytes) {
+    taskIdSerializedTaskMap.put(taskId, bytes);
   }
 
   public void putTaskExecutor(final TaskExecutor taskExecutor,
@@ -60,6 +68,10 @@ public final class TaskExecutorMapWrapper {
         l.remove(e);
       }
     });
+  }
+
+  public byte[] getTaskSerializedByte(final String taskId) {
+    return taskIdSerializedTaskMap.get(taskId);
   }
 
   public ExecutorThread getTaskExecutorThread(final String taskId) {

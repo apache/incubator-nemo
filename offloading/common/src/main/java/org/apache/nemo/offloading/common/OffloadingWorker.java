@@ -13,6 +13,10 @@ public interface OffloadingWorker<I, O> {
 
   String getId();
 
+  void writeControl(OffloadingEvent offloadingEvent);
+  void writeData(int pipeIndex, ByteBuf byteBuf);
+
+  @Deprecated
   Future<Optional<O>> execute(ByteBuf input, int dataId, boolean speculative);
   //Future<O> execute(I input);
 

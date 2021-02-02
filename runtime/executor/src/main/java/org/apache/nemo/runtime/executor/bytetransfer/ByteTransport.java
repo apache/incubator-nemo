@@ -221,6 +221,14 @@ public final class ByteTransport implements AutoCloseable {
     LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
   }
 
+  public String getPublicAddress() {
+    return publicAddress;
+  }
+
+  public int getBindingPort() {
+    return bindingPort;
+  }
+
   /**
    * Closes all channels and releases all resources.
    */

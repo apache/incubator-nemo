@@ -27,7 +27,6 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     this.nameServerPort = nameServerPort;
   }
 
-
   public String getNewExecutorId() {
     return newExecutorId;
   }
@@ -50,10 +49,5 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
 
   public OffloadingHandler.LambdaEventHandler getLambdaEventHandler() {
     return lambdaEventHandler;
-  }
-
-  @Override
-  public StateStore getStateStore() {
-    return null;
   }
 }

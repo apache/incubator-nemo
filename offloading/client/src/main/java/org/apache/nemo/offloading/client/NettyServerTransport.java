@@ -1,10 +1,7 @@
 package org.apache.nemo.offloading.client;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -32,7 +29,7 @@ public final class NettyServerTransport {
   private final String publicAddress;
 
   public NettyServerTransport(final TcpPortProvider tcpPortProvider,
-                              final ChannelInboundHandlerAdapter channelInboundHandlerAdapter) {
+                              final ChannelInitializer channelInitializer) {
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
     this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
@@ -41,7 +38,7 @@ public final class NettyServerTransport {
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
-      .childHandler(new NettyChannelInitializer(channelInboundHandlerAdapter))
+      .childHandler(channelInitializer)
       .option(ChannelOption.SO_BACKLOG, 128)
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.SO_KEEPALIVE, true);

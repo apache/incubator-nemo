@@ -67,6 +67,7 @@ public final class OffloadingHandler {
   private final OperatingSystemMXBean operatingSystemMXBean;
 
   private transient CountDownLatch workerInitLatch;
+  private transient String executorDataAddr;
 
   private final boolean isSf;
 
@@ -106,11 +107,9 @@ public final class OffloadingHandler {
 	  this.newExecutorId = id;
   }
 
-  private Channel channelOpen(final Map<String, Object> input) {
-    // 1) connect to the VM worker
-    final String address = (String) input.get("address");
-    final Integer port = (Integer) input.get("port");
 
+  private Channel channelOpen(final String address, final int port) {
+    // 1) connect to the VM worker
 
     final ChannelFuture channelFuture;
     channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
@@ -188,9 +187,10 @@ public final class OffloadingHandler {
       }
     }
 
-
     if (opendChannel == null) {
-      opendChannel = channelOpen(input);
+      final String address = (String) input.get("address");
+      final Integer port = (Integer) input.get("port");
+      opendChannel = channelOpen(address, port);
     }
 
     final int requestId = (Integer) input.get("requestId");
@@ -257,7 +257,8 @@ public final class OffloadingHandler {
     }
 
     if (workerInitLatch.getCount() == 0) {
-      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, new byte[0], 0));
+      final byte[] addrBytes = executorDataAddr.getBytes();
+      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrBytes, addrBytes.length));
       LOG.info("Sending worker init done");
     }
 
@@ -400,10 +401,11 @@ public final class OffloadingHandler {
           try {
             Thread.currentThread().setContextClassLoader(classLoader);
             ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
+            System.out.println("Before OffloadingTransform: ");
             offloadingTransform = (OffloadingTransform) ois.readObject();
+            System.out.println("After OffloadingTransform: ");
             decoder = (OffloadingDecoder) ois.readObject();
             outputEncoder = (OffloadingEncoder) ois.readObject();
-
 
             System.out.println("OffloadingTransform: " + offloadingTransform);
 
@@ -426,15 +428,15 @@ public final class OffloadingHandler {
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
               nameServerAddr, nameServerPort, newExecutorId), outputCollector);
 
-          System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 
           workerFinishTime = System.currentTimeMillis();
-
+          executorDataAddr = offloadingTransform.getDataChannelAddr();
+          System.out.println("End of worker init: " + (System.currentTimeMillis() - st) + ", data channel: " + executorDataAddr);
           workerInitLatch.countDown();
 
           break;
         }
-        case DATA: {
+        case TASK_SEND: {
           final long st = System.currentTimeMillis();
           Thread.currentThread().setContextClassLoader(classLoader);
           //System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
@@ -444,25 +446,19 @@ public final class OffloadingHandler {
 
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           try {
+            final String taskId = bis.readUTF();
             final Object data = decoder.decode(bis);
-            System.out.println("Remaining size: " + nemoEvent.getByteBuf().readableBytes());
-            if (nemoEvent.getByteBuf().readableBytes() > 0) {
-              final int dataId = bis.readInt();
-              outputCollector.setDataId(dataId);
-            } else {
-              outputCollector.setDataId(1);
-            }
-
-            //System.out.println("Read data " + dataId);
-
-            //System.out.println("Receive data: " + data);
             offloadingTransform.onData(data, null);
-
-            if (!outputCollector.hasDataReceived) {
-              outputCollector.emit(NoResult.INSTANCE);
-            }
-
             outputCollector.hasDataReceived = false;
+            //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
+            dataProcessingCnt += 1;
+
+            nemoEvent.getByteBuf().release();
+            final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
+            bos.writeUTF(taskId);
+            bos.close();
+            opendChannel.writeAndFlush(new OffloadingEvent(
+              OffloadingEvent.Type.TASK_READY, bos.buffer()));
 
           } catch (IOException e) {
             if (e.getMessage().contains("EOF")) {
@@ -472,12 +468,6 @@ public final class OffloadingHandler {
               throw new RuntimeException(e);
             }
           }
-
-          //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
-          dataProcessingCnt += 1;
-
-          nemoEvent.getByteBuf().release();
-
           break;
         }
         case END:

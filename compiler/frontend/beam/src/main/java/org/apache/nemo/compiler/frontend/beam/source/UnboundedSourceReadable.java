@@ -1,5 +1,6 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
+import io.netty.buffer.ByteBufOutputStream;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.kafka.KafkaUnboundedReader;
@@ -14,6 +15,7 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -78,12 +80,13 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
     final StateStore stateStore = readableContext.getStateStore();
     final String taskId = readableContext.getTaskId();
 
-    final OutputStream os = stateStore.getOutputStreamForStoreTaskState(taskId);
+    final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
 
     LOG.info("Store checkpointmark of task {}/ {}", taskId, checkpointMark);
     try {
-      checkpointMarkCoder.encode(checkpointMark, os);
-      os.close();
+      checkpointMarkCoder.encode(checkpointMark, bos);
+      bos.close();
+      stateStore.put(taskId, bos.toByteArray());
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

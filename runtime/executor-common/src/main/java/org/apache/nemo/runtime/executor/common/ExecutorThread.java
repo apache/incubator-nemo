@@ -54,8 +54,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
         if (System.currentTimeMillis() - l.get() >= 1000) {
-          LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
-          l.set(System.currentTimeMillis());
+          // LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
+         // l.set(System.currentTimeMillis());
         }
         final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
         while (iterator.hasNext()) {

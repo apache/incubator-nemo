@@ -56,7 +56,8 @@ public final class EvalConf {
   public final class SamplingJsonString implements Name<String> {
   }
 
-  @NamedParameter(short_name = "offloading_type", default_value = "lambda")
+  // local, lambda, vm
+  @NamedParameter(short_name = "offloading_type", default_value = "local")
   public final class OffloadingType implements Name<String> {
   }
 

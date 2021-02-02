@@ -1,11 +1,8 @@
-package org.apache.nemo.runtime.executor.task.util;
+package org.apache.nemo.common.test;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
 import io.netty.bootstrap.Bootstrap;
@@ -18,13 +15,12 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class TCPSourceReadable implements Readable {
   private static final Logger LOG = LoggerFactory.getLogger(TCPSourceReadable.class.getName());
+  public static final int PORT = 12512;
 
   // Queue<EventOrWatermark> elements;
   // Queue<EventOrWatermark> watermarks;
@@ -61,7 +57,7 @@ public final class TCPSourceReadable implements Readable {
 
     try {
       // Connect to listening server
-      ChannelFuture channelFuture = clientBootstrap.connect("localhost", TCPSourceGenerator.PORT).sync();
+      ChannelFuture channelFuture = clientBootstrap.connect("localhost", PORT).sync();
       channel = channelFuture.channel();
       // Check if channel is connected
       if(!channelFuture.isSuccess()) {

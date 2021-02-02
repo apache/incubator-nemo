@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 
 public interface OffloadingManager {
-  void offloading(String taskId, byte[] serializedDag);
+  void createWorker(int num);
+  void offloading(String taskId);
   void writeData(String taskId, TaskHandlingEvent data);
 }

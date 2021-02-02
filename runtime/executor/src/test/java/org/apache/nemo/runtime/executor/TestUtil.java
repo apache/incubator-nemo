@@ -25,10 +25,7 @@ import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.offloading.common.StateStore;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,12 +48,14 @@ public final class TestUtil {
     HDFSUtils.createStateDirIfNotExistsAndDelete();
 
     final StateStore stateStore = new HDFStateStore();
-    final OutputStream os = stateStore.getOutputStreamForStoreTaskState("T1");
 
+    final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
     final List<Integer> list = Arrays.asList(1, 2, 3, 4, 5, 6, 7);
-    SerializationUtils.serialize((Serializable) list, os);
+    SerializationUtils.serialize((Serializable) list, bos);
 
-    os.close();
+    bos.close();
+
+    stateStore.put("T1", bos.toByteArray());
 
     assertTrue(stateStore.containsState("T1"));
 

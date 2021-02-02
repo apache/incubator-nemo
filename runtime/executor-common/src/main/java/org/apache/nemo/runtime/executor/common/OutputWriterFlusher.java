@@ -64,4 +64,8 @@ public final class OutputWriterFlusher {
       channelList.remove(channel);
     }
   }
+
+  public void close() {
+    scheduledExecutorService.shutdown();
+  }
 }

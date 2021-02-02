@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.TaskMoveEvent;
 import org.apache.nemo.runtime.lambdaexecutor.ThrottlingEvent;
@@ -37,7 +38,7 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(inputStream);
+        return SendToOffloadingWorker.decode(inputStream);
       }
       case TASK_READY: {
         return ReadyTask.decode(inputStream);

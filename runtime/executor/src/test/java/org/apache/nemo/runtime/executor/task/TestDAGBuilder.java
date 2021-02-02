@@ -1,7 +1,5 @@
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
@@ -18,21 +16,14 @@ import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.test.EmptyComponents;
+import org.apache.nemo.common.test.TCPSourceReadable;
+import org.apache.nemo.common.test.TestGBKTransform;
+import org.apache.nemo.common.test.TestUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
-import org.apache.nemo.compiler.optimizer.policy.BasicPullPolicy;
-import org.apache.nemo.compiler.optimizer.policy.BasicPushPolicy;
-import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.compiler.optimizer.policy.StreamingPolicy;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
-import org.apache.nemo.runtime.executor.task.util.*;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

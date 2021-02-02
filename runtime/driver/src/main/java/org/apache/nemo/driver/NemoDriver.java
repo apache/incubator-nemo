@@ -20,18 +20,17 @@ package org.apache.nemo.driver;
 
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
+import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.ServerlessExecutorProviderImpl;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
+import org.apache.nemo.runtime.executor.DefaultOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.OffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.common.*;
@@ -327,7 +326,7 @@ public final class NemoDriver {
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
-      .bindImplementation(OffloadingWorkerFactory.class, VMOffloadingWorkerFactory.class) // todo: fix
+      .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .build();
 
@@ -339,14 +338,25 @@ public final class NemoDriver {
       evalConfiguration);
   }
 
+  private Class<? extends OffloadingRequesterFactory> getRequesterFactory() {
+
+    if (evalConf.offloadingType.equals("local")) {
+      return LocalExecutorOffloadingRequesterFactory.class;
+    } else if (evalConf.offloadingType.equals("vm")) {
+      return VMOffloadingRequesterFactory.class;
+    } else if (evalConf.offloadingType.equals("lambda")) {
+      return LambdaOffloadingRequesterFactory.class;
+    } else {
+      throw new RuntimeException("Invalid offloading requester " + evalConf.offloadingType);
+    }
+  }
+
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
       .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-      .bindImplementation(OffloadingWorkerFactory.class,
-        evalConf.offloadingType.equals("vm")
-          ? VMOffloadingWorkerFactory.class : LambdaOffloadingWorkerFactory.class)
+      .bindImplementation(OffloadingRequesterFactory.class, getRequesterFactory())
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }

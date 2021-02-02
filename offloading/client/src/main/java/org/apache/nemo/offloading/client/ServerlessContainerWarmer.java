@@ -8,6 +8,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -37,7 +38,8 @@ public final class ServerlessContainerWarmer {
   private ServerlessContainerWarmer(final TcpPortProvider tcpPortProvider) {
     this.nemoEventHandler = new OffloadingEventHandler();
     this.nettyServerTransport = new NettyServerTransport(
-      tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
+      tcpPortProvider, new NettyChannelInitializer(
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)));
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withRegion("ap-northeast-1")
       .withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();

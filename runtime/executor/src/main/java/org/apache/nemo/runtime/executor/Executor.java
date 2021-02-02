@@ -19,9 +19,11 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import io.netty.buffer.ByteBufInputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
@@ -334,7 +336,7 @@ public final class Executor {
         new Object[]{executorId, task.getTaskId()});
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-      SerializationUtils.deserialize(task.getSerializedIRDag());
+      (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
 
     if (!started) {
 
@@ -552,9 +554,9 @@ public final class Executor {
           */
 
           /*
-          if (offloadingWorkerFactory instanceof VMOffloadingWorkerFactory) {
+          if (offloadingWorkerFactory instanceof DefaultOffloadingWorkerFactory) {
             LOG.info("Set vm addresses");
-            final VMOffloadingWorkerFactory vmOffloadingWorkerFactory = (VMOffloadingWorkerFactory) offloadingWorkerFactory;
+            final DefaultOffloadingWorkerFactory vmOffloadingWorkerFactory = (DefaultOffloadingWorkerFactory) offloadingWorkerFactory;
             vmOffloadingWorkerFactory.setVMAddressAndIds(msg.getVmAddressesList(), msg.getVmIdsList());
           }
           */
@@ -601,8 +603,18 @@ public final class Executor {
           break;
         case ScheduleTask:
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
+          final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
           final Task task =
-              SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
+              SerializationUtils.deserialize(bytes);
+          final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
+          try {
+            FSTSingleton.getInstance().encodeToStream(bos, task);
+            bos.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bos.toByteArray());
           onTaskReceived(task);
           break;
         case RequestMetricFlush:

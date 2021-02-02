@@ -27,4 +27,9 @@ public class EmptyOffloadingTransform implements OffloadingTransform {
   public void close() {
 
   }
+
+  @Override
+  public String getDataChannelAddr() {
+    return null;
+  }
 }

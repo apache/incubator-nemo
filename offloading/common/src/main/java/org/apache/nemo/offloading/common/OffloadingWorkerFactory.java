@@ -5,11 +5,12 @@ import io.netty.buffer.ByteBuf;
 
 public interface OffloadingWorkerFactory {
 
+  int getDataTransportPort();
+
   OffloadingWorker createOffloadingWorker(ByteBuf workerInitBuf,
                                           OffloadingSerializer offloadingSerializer);
 
-  OffloadingWorker createStreamingWorker(ByteBuf vmScalingInfoBuf,
-                                         ByteBuf workerInitBuf,
+  OffloadingWorker createStreamingWorker(ByteBuf workerInitBuf,
                                          OffloadingSerializer offloadingSerializer,
                                          EventHandler eventHandler);
 

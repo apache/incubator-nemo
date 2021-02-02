@@ -4,7 +4,8 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
+import org.apache.nemo.offloading.client.LocalExecutorOffloadingRequesterFactory;
+import org.apache.nemo.offloading.client.OffloadingRequesterFactory;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
@@ -122,7 +123,8 @@ public class PipeManagerTestHelper {
       .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
-      .bindImplementation(OffloadingWorkerFactory.class, VMOffloadingWorkerFactory.class) // todo: fix
+      .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
+      .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .build();
 

@@ -10,6 +10,7 @@ import org.apache.nemo.common.VMWorkerConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -54,7 +55,8 @@ public final class VMWorkerManagerInMaster {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
-      tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
+      tcpPortProvider, new NettyChannelInitializer(
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)));
 
     this.executorCpuUseMap = cpuMap.getExecutorCpuUseMap();
 

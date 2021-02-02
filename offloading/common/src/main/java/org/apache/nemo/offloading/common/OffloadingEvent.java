@@ -8,6 +8,7 @@ public final class OffloadingEvent implements Serializable {
 
   public enum Type {
     VM_RUN,
+    SEND_ADDRESS,
     CLIENT_HANDSHAKE,
     CONNECT,
     CONNECT_DONE,
@@ -15,6 +16,8 @@ public final class OffloadingEvent implements Serializable {
     WORKER_INIT_DONE,
     STREAM_WORKER_INIT,
     DATA,
+    TASK_SEND,
+    TASK_READY,
     GBK_START,
     GBK,
     RESULT,

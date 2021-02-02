@@ -1,6 +1,8 @@
 package org.apache.nemo.offloading.common;
 
 
+import io.netty.channel.Channel;
+
 import java.io.Serializable;
 
 public interface OffloadingTransform<I, O> extends Serializable {
@@ -22,12 +24,11 @@ public interface OffloadingTransform<I, O> extends Serializable {
    */
   void close();
 
+  String getDataChannelAddr();
+
   /**
    * Context of the transform.
    */
   interface OffloadingContext extends Serializable {
-
-    StateStore getStateStore();
-
   }
 }

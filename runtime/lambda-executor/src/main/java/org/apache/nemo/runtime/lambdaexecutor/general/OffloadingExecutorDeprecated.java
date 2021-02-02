@@ -471,4 +471,9 @@ public final class OffloadingExecutorDeprecated implements OffloadingTransform<O
     rendevousServerClient.close();
     LOG.info("End of byte transport");
   }
+
+  @Override
+  public String getDataChannelAddr() {
+    return null;
+  }
 }
