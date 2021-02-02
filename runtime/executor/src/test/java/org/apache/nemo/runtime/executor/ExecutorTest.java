@@ -216,6 +216,61 @@ public final class ExecutorTest {
     */
   }
 
+  @Test
+  public void testThreeStage() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(5);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5);
+
+    final int parallelism = 3;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+    Thread.sleep(2000);
+
+    // 100
+    for (int i = 0; i < 500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+        // Thread.sleep(1);
+      }
+    }
+
+    // move task
+    Thread.sleep(3000);
+    final Pair<Executor, Injector> pair3 = launchExecutor(parallelism);
+
+
+    // 400
+    for (int i = 500; i < 2000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i + 1) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+
+      if (i == 1000) {
+        masterSetupHelper.taskScheduledMapMaster.stopTask("Stage1-0-0");
+        masterSetupHelper.taskScheduledMapMaster.stopTask("Stage0-1-0");
+        masterSetupHelper.taskScheduledMapMaster.stopTask("Stage2-1-0");
+      }
+
+      Thread.sleep(3);
+    }
+
+
+    Thread.sleep(2000);
+  }
+
   // [stage1]  [stage2]
   // Task1 -> Task2
 

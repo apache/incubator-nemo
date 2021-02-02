@@ -18,6 +18,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.TCPSourceReadable;
+import org.apache.nemo.common.test.TestGBKListTransform;
 import org.apache.nemo.common.test.TestGBKTransform;
 import org.apache.nemo.common.test.TestUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
@@ -39,6 +40,7 @@ public final class TestDAGBuilder {
    */
   public enum PlanType {
     TwoVertices,
+    ThreeVertices,
   }
 
   private static final String EMPTY_DAG_DIRECTORY = "";
@@ -63,6 +65,8 @@ public final class TestDAGBuilder {
     switch (planType) {
       case TwoVertices:
         return convertIRToPhysical(policy.runCompileTimeOptimization(getTwoVerticesDAG(), EMPTY_DAG_DIRECTORY));
+      case ThreeVertices:
+        return convertIRToPhysical(policy.runCompileTimeOptimization(getThreeVerticesDAG(), EMPTY_DAG_DIRECTORY));
       default:
         throw new IllegalArgumentException(planType.toString());
     }
@@ -71,6 +75,36 @@ public final class TestDAGBuilder {
   private PhysicalPlan convertIRToPhysical(final IRDAG irDAG) throws Exception {
     final DAG<Stage, StageEdge> physicalDAG = planGenerator.apply(irDAG);
     return new PhysicalPlan("TestPlan", physicalDAG);
+  }
+
+  /**
+   * @return a dag that joins two vertices.
+   */
+  private IRDAG getThreeVerticesDAG() {
+    final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
+    final IRVertex src = createSource(parallelism);
+    src.setProperty(ParallelismProperty.of(parallelism));
+
+    final Transform t = new FlattenTransform();
+    final IRVertex v1 = new OperatorVertex(t);
+    v1.setProperty(ParallelismProperty.of(parallelism));
+
+    final IRVertex v2 = new OperatorVertex(new TestGBKTransform());
+    v2.isStateful = true;
+    v2.setProperty(ParallelismProperty.of(parallelism));
+
+    final IRVertex v3 = new OperatorVertex(new TestGBKListTransform());
+    v3.isStateful = true;
+    v3.setProperty(ParallelismProperty.of(parallelism));
+
+    return new IRDAG(dagBuilder.addVertex(src)
+      .addVertex(v1)
+      .addVertex(v2)
+      .addVertex(v3)
+      .connectVertices(createEdge(src, v1, CommunicationPatternProperty.Value.OneToOne))
+      .connectVertices(createEdge(v1, v2, CommunicationPatternProperty.Value.Shuffle))
+      .connectVertices(createEdge(v2, v3, CommunicationPatternProperty.Value.Shuffle))
+      .buildWithoutSourceSinkCheck());
   }
 
   /**
