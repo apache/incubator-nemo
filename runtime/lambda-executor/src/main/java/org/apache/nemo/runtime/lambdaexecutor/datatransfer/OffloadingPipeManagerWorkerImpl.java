@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -85,9 +86,13 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       throw new RuntimeException(e);
     }
 
-    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(srcTaskId,
-      edgeId,
-      dstTasks,
+    final List<Integer> indices = new ArrayList<>(dstTasks.size());
+    for (final String dst : dstTasks) {
+      indices.add(map.get(Triple.of(srcTaskId, edgeId, dst)));
+    }
+
+    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(
+      indices,
       byteBuf,
       byteBuf.readableBytes()));
   }
@@ -116,9 +121,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       throw new RuntimeException(e);
     }
 
-    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(srcTaskId,
-      edgeId,
-      Collections.singletonList(dstTaskId),
+    final int index = map.get(Triple.of(srcTaskId, edgeId, dstTaskId));
+    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(
+      Collections.singletonList(index),
       byteBuf,
       byteBuf.readableBytes()));
   }

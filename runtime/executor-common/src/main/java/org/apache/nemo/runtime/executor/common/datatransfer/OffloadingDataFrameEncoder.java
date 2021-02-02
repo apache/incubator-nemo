@@ -58,9 +58,7 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
       case OFFLOAD_NORMAL_OUTPUT:  {
         try {
           final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
-          bos.writeUTF(in.srcTaskId);
-          bos.writeUTF(in.edgeId);
-          bos.writeUTF(in.dstTaskIds.get(0));
+          bos.writeInt(in.pipeIndices.get(0));
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -70,11 +68,9 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
       case OFFLOAD_BROADCAST_OUTPUT: {
         try {
           final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
-          bos.writeUTF(in.srcTaskId);
-          bos.writeUTF(in.edgeId);
-          bos.writeInt(in.dstTaskIds.size());
-          for (final String dst : in.dstTaskIds) {
-            bos.writeUTF(dst);
+          bos.writeInt(in.pipeIndices.size());
+          for (final int index : in.pipeIndices) {
+            bos.writeInt(index);
           }
         } catch (final Exception e) {
           e.printStackTrace();
@@ -129,31 +125,23 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
     public boolean opensSubStream;
     public boolean closesContext;
     public boolean stopContext;
-    public String srcTaskId;
-    public String edgeId;
-    public List<String> dstTaskIds;
 
-    public static DataFrame newInstance(final String srcTaskId,
-                                        final String edgId,
-                                        final List<String> dstIds,
+    public static DataFrame newInstance(final List<Integer> indices,
                                         @Nullable final Object body,
                                         final long length) {
 
       final DataFrame dataFrame = RECYCLER.get();
-      if (dstIds.size() < 1) {
+      if (indices.size() < 1) {
         throw new RuntimeException("Invalid task index");
       }
 
-      if (dstIds.size() == 1) {
+      if (indices.size() == 1) {
         dataFrame.type = DataFrameEncoder.DataType.OFFLOAD_NORMAL_OUTPUT;
       } else {
         dataFrame.type = DataFrameEncoder.DataType.OFFLOAD_BROADCAST_OUTPUT;
       }
 
-      dataFrame.srcTaskId = srcTaskId;
-      dataFrame.edgeId = edgId;
-      dataFrame.dstTaskIds = dstIds;
-      dataFrame.pipeIndices = null;
+      dataFrame.pipeIndices = indices;
       dataFrame.body = body;
       dataFrame.length = length;
       dataFrame.opensSubStream = true;
