@@ -145,7 +145,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
 
   @Override
   public void addControlData(int index, TaskControlMessage controlMessage) {
-    throw new RuntimeException("Not supported");
+    inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
   }
 
   @Override

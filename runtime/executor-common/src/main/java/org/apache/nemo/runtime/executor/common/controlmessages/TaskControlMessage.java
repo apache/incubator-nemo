@@ -3,8 +3,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.common.TaskHandlingEvent;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 import java.io.OutputStream;
 import java.util.Objects;
@@ -16,7 +15,10 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
-    OFFLOAD_CONTROL
+    OFFLOAD_CONTROL,
+
+    // For offloaded task
+    OFFLOAD_TASK_STOP
   }
 
   public final TaskControlMessageType type;
@@ -88,6 +90,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         ((TaskStopSignalByDownstreamTask) event).encode(bos);
         break;
       }
+      case OFFLOAD_TASK_STOP:
       case PIPE_INIT:
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         break;
@@ -110,6 +113,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           TaskStopSignalByDownstreamTask.decode(bis));
         break;
       }
+      case OFFLOAD_TASK_STOP:
       case PIPE_INIT:
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);

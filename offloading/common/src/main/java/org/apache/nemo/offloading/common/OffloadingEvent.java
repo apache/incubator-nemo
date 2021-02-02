@@ -16,8 +16,10 @@ public final class OffloadingEvent implements Serializable {
     WORKER_INIT_DONE,
     STREAM_WORKER_INIT,
     DATA,
-    TASK_SEND,
+    TASK_SEND, // **
+    TASK_FINISH, // **
     TASK_READY,
+    TASK_FINISH_DONE, // **
     GBK_START,
     GBK,
     RESULT,

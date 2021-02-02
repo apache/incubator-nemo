@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
@@ -13,6 +14,7 @@ import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
@@ -27,6 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 
@@ -110,12 +113,42 @@ public final class OffloadingManagerImpl implements OffloadingManager {
                 null));
             } catch (IOException e) {
               e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          } else if (oe.getType().equals(OffloadingEvent.Type.TASK_FINISH_DONE)) {
+            // TODO: task deoffload
+            final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
+            try {
+              final String taskId = bis.readUTF();
+              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
+              LOG.info("Receive task ready message from offloading worker in executor {}: {}", executorId, taskId);
+
+              executorThread.addEvent(new TaskOffloadingEvent(taskId,
+                TaskOffloadingEvent.ControlType.DEOFFLOADING_DONE,
+                null));
+
+            } catch (Exception e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
             }
           }
         }
       });
 
     workers.add(worker);
+  }
+
+  @Override
+  public void deoffloading(String taskId) {
+    final Triple<String, String, String> key = pipeIndexMapWorker.getIndexMap().keySet().stream()
+      .filter(k -> k.getRight().equals(taskId)).collect(Collectors.toList()).get(0);
+    final int pipeIndex = pipeIndexMapWorker.getPipeIndex(key.getLeft(), key.getMiddle(), key.getRight());
+    workers.get(0).writeData
+      (pipeIndex,
+      new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
+        pipeIndex,
+        pipeIndex,
+        taskId, null));
   }
 
   @Override
@@ -141,6 +174,6 @@ public final class OffloadingManagerImpl implements OffloadingManager {
 
   @Override
   public void writeData(String taskId, TaskHandlingEvent data) {
-    workers.get(0).writeData(data.getInputPipeIndex(), data.getDataByteBuf());
+    workers.get(0).writeData(data.getInputPipeIndex(), data);
   }
 }

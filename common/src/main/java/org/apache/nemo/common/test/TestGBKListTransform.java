@@ -24,10 +24,7 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
   private OutputCollector outputCollector;
 
   @Override
-  public void prepare(Context context, OutputCollector outputCollector) {
-    this.context = context;
-    this.outputCollector = outputCollector;
-
+  public void restore() {
     final StateStore stateStore = context.getStateStore();
     if (stateStore.containsState(context.getTaskId())) {
       LOG.info("Restore state for TestGBK in {}", context.getTaskId());
@@ -42,6 +39,13 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
         throw new RuntimeException(e);
       }
     }
+  }
+
+  @Override
+  public void prepare(Context context, OutputCollector outputCollector) {
+    this.context = context;
+    this.outputCollector = outputCollector;
+    restore();
   }
 
   @Override

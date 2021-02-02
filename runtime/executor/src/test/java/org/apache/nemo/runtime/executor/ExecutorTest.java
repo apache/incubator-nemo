@@ -197,6 +197,7 @@ public final class ExecutorTest {
     Thread.sleep(3000);
 
     LOG.info("Start to generate event after offloading");
+
     // 200
     for (int i = 500; i < 1000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
@@ -209,6 +210,22 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
     Thread.sleep(2000);
+
+    // 300
+    offloadingManager.deoffloading("Stage1-0-0");
+
+    Thread.sleep(2000);
+     for (int i = 1000; i < 1500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
 
     /*
     // launch offloading executor
@@ -230,6 +247,7 @@ public final class ExecutorTest {
       }
     });
     */
+    Thread.sleep(3000);
   }
 
   @Test

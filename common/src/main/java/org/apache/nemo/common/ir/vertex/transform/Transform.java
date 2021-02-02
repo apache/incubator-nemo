@@ -42,6 +42,10 @@ public interface Transform<I, O> extends Serializable {
    */
   void prepare(Context context, OutputCollector<O> outputCollector);
 
+  default void restore() {
+
+  }
+
   /**
    * On data received.
    * @param element data received.

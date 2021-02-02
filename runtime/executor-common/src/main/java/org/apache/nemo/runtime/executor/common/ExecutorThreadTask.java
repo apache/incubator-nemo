@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
+
 /**
  * Executes a task.
  * Should be accessed by a single thread.

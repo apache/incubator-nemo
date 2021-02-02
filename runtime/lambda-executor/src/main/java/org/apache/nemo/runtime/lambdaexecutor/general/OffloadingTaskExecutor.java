@@ -25,6 +25,7 @@ import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;

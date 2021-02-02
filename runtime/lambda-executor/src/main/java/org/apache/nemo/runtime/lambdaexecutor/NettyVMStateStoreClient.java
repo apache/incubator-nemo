@@ -95,7 +95,19 @@ public final class NettyVMStateStoreClient implements StateStore {
 
   @Override
   public void put(String taskId, byte[] bytes) {
+    final String key = "put-" + taskId;
+    latchMap.put(key, new CountDownLatch(1));
     channel.writeAndFlush(new PutState(taskId, bytes));
+
+    try {
+      latchMap.get(key).await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    latchMap.remove(key);
+    responseMap.remove(key);
   }
 
   @Override
@@ -138,6 +150,10 @@ public final class NettyVMStateStoreClient implements StateStore {
         final GetStateResponse cs = (GetStateResponse) msg;
         responseMap.put("get-"  + cs.taskId, cs);
         latchMap.get("get-" + cs.taskId).countDown();
+      } else if (msg instanceof PutStateResponse) {
+        final PutStateResponse cs = (PutStateResponse) msg;
+        responseMap.put("put-"  + cs.taskId, cs);
+        latchMap.get("put-" + cs.taskId).countDown();
       }
     }
   }

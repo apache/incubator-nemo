@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 public final class TaskOffloadingEvent implements TaskHandlingEvent {
 
@@ -8,6 +9,7 @@ public final class TaskOffloadingEvent implements TaskHandlingEvent {
     SEND_TO_OFFLOADING_WORKER,
     OFFLOAD_DONE,
     DEOFFLOADING,
+    DEOFFLOADING_DONE,
   }
 
   private final ControlType type;

@@ -41,6 +41,10 @@ public interface Readable<O> extends Serializable {
    */
   void prepare(ReadableContext readableContext);
 
+  default void restore() {
+
+  }
+
   default boolean isAvailable() {
     return true;
   }

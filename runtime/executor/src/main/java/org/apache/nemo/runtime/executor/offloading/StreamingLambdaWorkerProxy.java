@@ -6,6 +6,7 @@ import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,6 +108,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                 }
                 break;
               }
+              case TASK_FINISH_DONE:
               case TASK_READY: {
                 eventHandler.onNext(msg);
                 break;
@@ -181,10 +183,15 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
-  public void writeData(final int pipeIndex, final ByteBuf byteBuf) {
-    final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
-    dataChannel.write(finalData);
+  public void writeData(final int pipeIndex, final TaskHandlingEvent event) {
+    if (event.isControlMessage()) {
+      dataChannel.writeAndFlush(event);
+    } else {
+      final ByteBuf byteBuf = event.getDataByteBuf();
+      final Object finalData = DataFrameEncoder.DataFrame.newInstance(
+        Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
+      dataChannel.write(finalData);
+    }
   }
 
   @Override

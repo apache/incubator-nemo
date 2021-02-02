@@ -20,6 +20,7 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.TaskFinish;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
@@ -64,6 +65,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   // updated whenever task is submitted
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
+  private final Map<String, ExecutorThread> taskExecutorThreadMap;
+  private final Map<String, TaskExecutor> taskExecutorMap;
 
   private ScheduledExecutorService scheduledService;
 
@@ -87,6 +90,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.indexMap = new ConcurrentHashMap<>();
     this.parentExecutorAddress = parentExecutorAddress;
     this.parentExecutorDataPort = parentExecutorDataPort;
+    this.taskExecutorThreadMap = new ConcurrentHashMap<>();
+    this.taskExecutorMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -103,12 +108,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
     this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
 
-    executorThreads = new ArrayList<>();
-    for (int i = 0; i < executorThreadNum; i++) {
-      executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i, null));
-      executorThreads.get(i).start();
-    }
 
     final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
     final ControlFrameEncoder controlFrameEncoder = new ControlFrameEncoder();
@@ -131,6 +130,19 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     this.parentExecutorChannel = clientTransport
       .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
+
+
+    final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
+      new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
+        taskExecutorMap, context.getControlChannel());
+
+    executorThreads = new ArrayList<>();
+    for (int i = 0; i < executorThreadNum; i++) {
+      executorThreads.add(
+        new ExecutorThread(1, "lambda-" + i, taskControlEventHandler));
+      executorThreads.get(i).start();
+    }
+
   }
 
   public String getDataChannelAddr() {
@@ -160,6 +172,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         throw new RuntimeException(e1);
       }
 
+    } else {
+      throw new RuntimeException("invalid event " + event);
     }
   }
 
@@ -218,6 +232,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.get(index).addNewTask(taskExecutor);
+
+      taskExecutorThreadMap.put(taskExecutor.getId(), executorThread);
+      taskExecutorMap.put(taskExecutor.getId(), taskExecutor);
 
 
       //taskExecutor.execute();

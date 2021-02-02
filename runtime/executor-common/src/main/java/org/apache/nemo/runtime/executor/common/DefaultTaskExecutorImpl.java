@@ -40,6 +40,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
 import org.slf4j.Logger;
@@ -104,7 +105,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
-  private final TaskInputWatermarkManager taskWatermarkManager;
+  private TaskInputWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
   private enum CurrentState {
@@ -566,6 +567,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           currentState = CurrentState.DEOFFLOAD_PENDING;
           break;
         }
+        case DEOFFLOADING_DONE: {
+          // reload states
+          LOG.info("Deoffloading done of {}", taskId);
+          restore();
+          currentState = CurrentState.RUNNING;
+          break;
+        }
         default:
           throw new RuntimeException("Invalid offloading control type " + type);
       }
@@ -729,6 +737,23 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       return Optional.of(tm);
     }
     return Optional.empty();
+  }
+
+  private void restore() {
+    final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
+    taskWatermarkManager = SerializationUtils.deserialize(is);
+
+    for (final DataFetcher dataFetcher : allFetchers) {
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+        final Readable readable = srcDataFetcher.getReadable();
+        readable.restore();
+      }
+    }
+
+    if (!isStateless) {
+      statefulTransform.restore();
+    }
   }
 
   @Override

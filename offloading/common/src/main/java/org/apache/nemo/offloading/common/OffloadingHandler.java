@@ -426,7 +426,7 @@ public final class OffloadingHandler {
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
-              nameServerAddr, nameServerPort, newExecutorId), outputCollector);
+              nameServerAddr, nameServerPort, newExecutorId, opendChannel), outputCollector);
 
 
           workerFinishTime = System.currentTimeMillis();
@@ -453,6 +453,30 @@ public final class OffloadingHandler {
             //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
             dataProcessingCnt += 1;
 
+            nemoEvent.getByteBuf().release();
+            final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
+            bos.writeUTF(taskId);
+            bos.close();
+            opendChannel.writeAndFlush(new OffloadingEvent(
+              OffloadingEvent.Type.TASK_READY, bos.buffer()));
+
+          } catch (IOException e) {
+            if (e.getMessage().contains("EOF")) {
+              System.out.println("eof!");
+            } else {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          }
+          break;
+        }
+        case TASK_FINISH: {
+          Thread.currentThread().setContextClassLoader(classLoader);
+          final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
+          try {
+            final String taskId = bis.readUTF();
+            final Object data = decoder.decode(bis);
+            offloadingTransform.onData(data, null);
             nemoEvent.getByteBuf().release();
             final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
             bos.writeUTF(taskId);

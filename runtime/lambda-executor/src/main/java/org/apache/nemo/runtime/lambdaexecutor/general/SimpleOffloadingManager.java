@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import org.apache.nemo.runtime.executor.common.OffloadingManager;
-import org.apache.nemo.runtime.executor.common.TaskHandlingEvent;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 public final class SimpleOffloadingManager implements OffloadingManager {
 
@@ -12,6 +12,11 @@ public final class SimpleOffloadingManager implements OffloadingManager {
 
   @Override
   public void offloading(String taskId) {
+
+  }
+
+  @Override
+  public void deoffloading(String taskId) {
 
   }
 

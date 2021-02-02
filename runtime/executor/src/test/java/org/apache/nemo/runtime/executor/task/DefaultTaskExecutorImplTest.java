@@ -46,6 +46,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.*;

@@ -47,6 +47,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   private ExecutorService readableService;
 
   private ReadableContext readableContext;
+  private StateStore stateStore;
+  private String taskId;
 
   /**
    * Constructor.
@@ -94,10 +96,42 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   }
 
   @Override
+  public void restore() {
+    if (stateStore.containsState(taskId)) {
+      LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it for restore.");
+      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>)
+        unboundedSource.getCheckpointMarkCoder();
+
+      try {
+        final InputStream is = stateStore.getStateStream(taskId);
+        checkpointMark = (M) checkpointMarkCoder
+          .decode(is);
+        is.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
+    }
+
+    try {
+      readableService = ReadableService.getInstance();
+      reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
+      kafkaReader = (KafkaUnboundedReader) reader;
+
+      isCurrentAvailable = reader.start();
+
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
   public synchronized void prepare(ReadableContext readableContext) {
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
-    final StateStore stateStore = readableContext.getStateStore();
-    final String taskId = readableContext.getTaskId();
+    taskId = readableContext.getTaskId();
+    stateStore = readableContext.getStateStore();
 
     if (stateStore.containsState(taskId)) {
       LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it.");

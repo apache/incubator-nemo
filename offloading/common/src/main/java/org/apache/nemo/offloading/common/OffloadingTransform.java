@@ -30,5 +30,6 @@ public interface OffloadingTransform<I, O> extends Serializable {
    * Context of the transform.
    */
   interface OffloadingContext extends Serializable {
+    Channel getControlChannel();
   }
 }

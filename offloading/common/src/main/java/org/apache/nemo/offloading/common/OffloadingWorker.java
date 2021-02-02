@@ -14,7 +14,7 @@ public interface OffloadingWorker<I, O> {
   String getId();
 
   void writeControl(OffloadingEvent offloadingEvent);
-  void writeData(int pipeIndex, ByteBuf byteBuf);
+  void writeData(int pipeIndex, TaskHandlingEvent byteBuf);
 
   @Deprecated
   Future<Optional<O>> execute(ByteBuf input, int dataId, boolean speculative);

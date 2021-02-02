@@ -4,6 +4,7 @@ package org.apache.nemo.runtime.executor;
 import io.netty.buffer.ByteBufAllocator;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.junit.Test;

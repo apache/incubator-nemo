@@ -1,15 +1,9 @@
 package org.apache.nemo.runtime.executor;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
@@ -87,6 +81,8 @@ public final class NettyVMStateStore implements NettyStateStore {
       } else if (msg instanceof PutState) {
         final PutState m = (PutState) msg;
         stateStore.put(m.taskId, m.bytes);
+        ctx.channel().writeAndFlush(
+          new PutStateResponse(m.taskId));
       }
     }
   }

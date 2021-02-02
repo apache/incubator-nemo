@@ -1,9 +1,8 @@
 package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
+import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
-import java.io.IOException;
 import java.util.List;
 
 public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {

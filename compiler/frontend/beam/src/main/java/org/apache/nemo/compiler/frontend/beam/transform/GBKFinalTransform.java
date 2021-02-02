@@ -128,6 +128,55 @@ public final class GBKFinalTransform<K, InputT>
     }
   }
 
+  private StateStore stateStore;
+  private String taskId;
+
+  @Override
+  public void restore() {
+    if (stateStore.containsState(getContext().getTaskId())) {
+      final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
+      final GBKFinalState<K> state;
+      try {
+        state = coder.decode(is);
+        is.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      // TODO set ...
+      if (inMemoryStateInternalsFactory == null) {
+        inMemoryStateInternalsFactory = state.stateInternalsFactory;
+        inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+      } else {
+        inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
+        inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+      }
+
+      inputWatermark = state.inputWatermark;
+      prevOutputWatermark = state.prevOutputWatermark;
+
+      keyAndWatermarkHoldMap.clear();
+      keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
+
+    } else {
+
+      if (inMemoryStateInternalsFactory == null) {
+        this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
+      } else {
+        LOG.info("InMemoryStateInternalFactroy is already set");
+      }
+
+      if (inMemoryTimerInternalsFactory == null) {
+        this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
+      } else {
+        LOG.info("InMemoryTimerInternalsFactory is already set");
+
+      }
+    }
+  }
+
   /**
    * This creates a new DoFn that groups elements by key and window.
    * @param doFn original doFn.
@@ -137,7 +186,8 @@ public final class GBKFinalTransform<K, InputT>
   protected DoFn wrapDoFn(final DoFn doFn) {
     final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
 
-    final StateStore stateStore = getContext().getStateStore();
+    taskId = getContext().getTaskId();
+    stateStore = getContext().getStateStore();
 
     if (stateStore.containsState(getContext().getTaskId())) {
       final InputStream is = stateStore.getStateStream(getContext().getTaskId());

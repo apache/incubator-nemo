@@ -1,6 +1,8 @@
 package org.apache.nemo.offloading.common;
 
 
+import io.netty.channel.Channel;
+
 import java.util.Map;
 
 public final class LambdaRuntimeContext implements OffloadingTransform.OffloadingContext {
@@ -11,6 +13,7 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   private final String newExecutorId;
   private final String nameServerAddr;
   private final int nameServerPort;
+  private final Channel controlChannel;
 
   public LambdaRuntimeContext(
     final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap,
@@ -18,13 +21,15 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     final boolean isSf,
     final String nameServerAddr,
     final int nameServerPort,
-    final String newExecutorId) {
+    final String newExecutorId,
+    final Channel controlChannel) {
     this.taskAndEventHandlerMap = taskAndEventHandlerMap;
     this.lambdaEventHandler = lambdaEventHandler;
     this.isSf = isSf;
     this.newExecutorId = newExecutorId;
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
+    this.controlChannel = controlChannel;
   }
 
   public String getNewExecutorId() {
@@ -49,5 +54,10 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
 
   public OffloadingHandler.LambdaEventHandler getLambdaEventHandler() {
     return lambdaEventHandler;
+  }
+
+  @Override
+  public Channel getControlChannel() {
+    return controlChannel;
   }
 }
