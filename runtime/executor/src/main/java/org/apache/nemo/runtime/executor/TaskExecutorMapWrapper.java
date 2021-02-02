@@ -49,6 +49,11 @@ public final class TaskExecutorMapWrapper {
     }
   }
 
+  // for testing
+  public boolean containsTask(final String taskId) {
+    return taskIdExecutorMap.containsKey(taskId);
+  }
+
   public TaskExecutor getTaskExecutor(final String taskId) {
     if (!taskIdExecutorMap.containsKey(taskId)) {
       throw new RuntimeException("No task executor " + taskId);

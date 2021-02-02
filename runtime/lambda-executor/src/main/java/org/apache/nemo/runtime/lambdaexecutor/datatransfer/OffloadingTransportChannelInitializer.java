@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.OffloadingPipeManagerWorkerImpl;
@@ -65,23 +66,15 @@ import java.util.concurrent.Executors;
 public final class OffloadingTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
   private final PipeManagerWorker pipeManagerWorker;
-  private final ControlFrameEncoder controlFrameEncoder;
-  private final DataFrameEncoder dataFrameEncoder;
   private final SimpleChannelInboundHandler handler;
 
   /**
    * Creates a netty channel initializer.
    *
-   * @param controlFrameEncoder encodes control frames
-   * @param dataFrameEncoder    encodes data frames
    */
   public OffloadingTransportChannelInitializer(
-    final ControlFrameEncoder controlFrameEncoder,
-    final DataFrameEncoder dataFrameEncoder,
     final PipeManagerWorker pipeManagerWorker,
     final SimpleChannelInboundHandler handler) {
-    this.controlFrameEncoder = controlFrameEncoder;
-    this.dataFrameEncoder = dataFrameEncoder;
     this.pipeManagerWorker = pipeManagerWorker;
     this.handler = handler;
   }
@@ -91,11 +84,11 @@ public final class OffloadingTransportChannelInitializer extends ChannelInitiali
     ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).setChannel(ch);
 
     ch.pipeline()
+      .addLast("frameEncoder", new LengthFieldPrepender(4))
       // inbound
       .addLast(new FrameDecoder(pipeManagerWorker))
       // outbound
-      .addLast(controlFrameEncoder)
-      .addLast(dataFrameEncoder)
+      .addLast(new OffloadingDataFrameEncoder())
       .addLast()
       // inbound
       .addLast(handler);

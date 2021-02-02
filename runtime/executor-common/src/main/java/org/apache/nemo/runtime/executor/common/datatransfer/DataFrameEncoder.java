@@ -19,12 +19,14 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
+import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   public enum DataType {
     NORMAL,
     BROADCAST,
-    OFFLOAD_OUTPUT
+    OFFLOAD_NORMAL_OUTPUT,
+    OFFLOAD_BROADCAST_OUTPUT
   }
 
   // the maximum length of a frame body. 2**32 - 1
@@ -78,7 +81,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     ByteBuf header;
 
     switch (in.type) {
-      case OFFLOAD_OUTPUT:
       case NORMAL:
         header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
         header.writeByte(flags);
@@ -138,7 +140,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     ByteBuf header;
 
     switch (in.type) {
-      case OFFLOAD_OUTPUT:
       case NORMAL:
         header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
         header.writeByte(flags);
@@ -214,13 +215,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     public boolean opensSubStream;
     public boolean closesContext;
     public boolean stopContext;
+    public String srcTaskId;
+    public String edgeId;
+    public List<String> dstTaskIds;
 
 
     /**
      * For broadcast!!
      */
     public static DataFrame newInstance(final List<Integer> pipeIndicies,
-                                        final boolean offloadOutput,
                                         @Nullable final Object body,
                                         final long length,
                                         final boolean opensSubStream) {
@@ -229,14 +232,10 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         throw new RuntimeException("Invalid task index");
       }
 
-      if (offloadOutput) {
-        dataFrame.type = DataType.OFFLOAD_OUTPUT;
+      if (pipeIndicies.size() == 1) {
+        dataFrame.type = DataType.NORMAL;
       } else {
-        if (pipeIndicies.size() == 1) {
-          dataFrame.type = DataType.NORMAL;
-        } else {
-          dataFrame.type = DataType.BROADCAST;
-        }
+        dataFrame.type = DataType.BROADCAST;
       }
 
       dataFrame.pipeIndices = pipeIndicies;

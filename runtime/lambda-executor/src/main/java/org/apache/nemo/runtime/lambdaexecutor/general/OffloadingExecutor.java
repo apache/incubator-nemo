@@ -65,6 +65,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
 
+  private ScheduledExecutorService scheduledService;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -92,8 +93,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
 
     this.prepareService = Executors.newCachedThreadPool();
-
-
+    this.scheduledService = Executors.newSingleThreadScheduledExecutor();
+    this.scheduledService.scheduleAtFixedRate(() -> {
+      if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
+        parentExecutorChannel.flush();
+      }
+    }, 10, 10, TimeUnit.MILLISECONDS);
 
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
     this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
@@ -119,8 +124,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory);
 
     final OffloadingTransportChannelInitializer initializer =
-      new OffloadingTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder,
-        pipeManagerWorker,
+      new OffloadingTransportChannelInitializer(pipeManagerWorker,
         new ControlMessageHandler());
 
     this.clientTransport = new VMScalingClientTransport(initializer);
@@ -161,6 +165,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   @Override
   public void close() {
+    scheduledService.shutdown();
   }
 
   private void launchTask(final Task task,

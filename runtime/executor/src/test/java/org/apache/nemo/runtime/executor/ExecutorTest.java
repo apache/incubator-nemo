@@ -56,6 +56,8 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -76,6 +78,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, OutputWriter.class, IntermediateDataIOFactory.class, BroadcastManagerWorker.class,
   TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class ExecutorTest {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorTest.class.getName());
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
@@ -141,16 +144,29 @@ public final class ExecutorTest {
     return Pair.of(sourceIRVertex, vertexIdToReadable);
   }
 
+  private Pair<ExecutorThread, OffloadingManager> findExecutorThreadAndOffloadingManager(
+    final String taskId,
+    final Collection<Injector> injectors) throws InjectionException {
+    for (final Injector injector : injectors) {
+      final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
+      if (wrapper.containsTask(taskId)) {
+        return Pair.of(wrapper.getTaskExecutorThread(taskId), injector.getInstance(OffloadingManager.class));
+      }
+    }
+
+    throw new RuntimeException("Cannot find executor thread for " + taskId);
+  }
+
   @Test
   public void testOffloadingExecution() throws Exception {
-    final Pair<Executor, Injector> pair1 = launchExecutor(3);
-    final Pair<Executor, Injector> pair2 = launchExecutor(3);
+    final Pair<Executor, Injector> pair1 = launchExecutor(5);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5);
 
     final int parallelism = 3;
     final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
 
     final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
-    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.TwoVertices);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
 
     runtimeMaster.execute(plan, 1);
 
@@ -168,19 +184,19 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
-    final OffloadingManager offloadingManager = pair1.right().getInstance(OffloadingManager.class);
+    final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
+    final Pair<ExecutorThread, OffloadingManager> emOm = findExecutorThreadAndOffloadingManager("Stage1-0-0", injectors);
+    final OffloadingManager offloadingManager = emOm.right();
     offloadingManager.createWorker(1);
 
     Thread.sleep(4000);
 
-    final TaskExecutorMapWrapper wrapper = pair1.right().getInstance(TaskExecutorMapWrapper.class);
-    final ExecutorThread executorThread = wrapper.getTaskExecutorThread("Stage1-0-0");
-
-    executorThread.addEvent(new TaskOffloadingEvent("Stage1-0-0",
+    emOm.left().addEvent(new TaskOffloadingEvent("Stage1-0-0",
       TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
 
     Thread.sleep(3000);
 
+    LOG.info("Start to generate event after offloading");
     // 200
     for (int i = 500; i < 1000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));

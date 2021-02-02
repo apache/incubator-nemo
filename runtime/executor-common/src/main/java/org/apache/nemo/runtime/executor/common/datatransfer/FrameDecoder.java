@@ -201,7 +201,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
 
       switch (dataType) {
-        case OFFLOAD_OUTPUT:
         case NORMAL:
           broadcastSize = 0;
           broadcast = false;
@@ -225,6 +224,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         case BROADCAST: {
           broadcastSize = sizeOrIndex;
           return onBroadcastRead(ctx, in);
+        }
+        default: {
+          throw new RuntimeException("not supported data type " + dataType);
         }
       }
     }
@@ -316,11 +318,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
         pipeManagerWorker.addInputData(pipeIndex, buf);
         break;
       }
-      case OFFLOAD_OUTPUT: {
-        // received from offloaded task
-        // we redirect this event to origin executor
-        pipeManagerWorker.writeData(pipeIndex, buf);
-        break;
+      default: {
+        throw new RuntimeException("not supported data type " + dataType);
       }
     }
 

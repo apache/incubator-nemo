@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -7,6 +7,10 @@ import io.netty.buffer.ByteBufOutputStream;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.executor.NettyStateStore;
+import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.TinyTaskWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;

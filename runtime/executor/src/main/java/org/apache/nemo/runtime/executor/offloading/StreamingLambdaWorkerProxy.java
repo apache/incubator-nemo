@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -183,7 +183,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   @Override
   public void writeData(final int pipeIndex, final ByteBuf byteBuf) {
     final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), false, byteBuf, byteBuf.readableBytes(), true);
+      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
     dataChannel.write(finalData);
   }
 

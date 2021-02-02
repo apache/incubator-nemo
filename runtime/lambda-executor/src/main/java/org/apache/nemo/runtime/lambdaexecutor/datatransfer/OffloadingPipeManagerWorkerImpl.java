@@ -24,10 +24,10 @@ import io.netty.channel.Channel;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingDataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,28 +73,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
 
   @Override
   public void broadcast(String srcTaskId, String edgeId, List<String> dstTasks, Serializer serializer, Object event) {
-    throw new RuntimeException("not supported");
-  }
-
-  @Override
-  public void writeData(int pipeIndex, ByteBuf byteBuf) {
-    // redircet to original executor
-    final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), true, byteBuf, byteBuf.readableBytes(), true);
-    channel.write(finalData);
-  }
-
-  @Override
-  public void writeData(String srcTaskId,
-                        String edgeId,
-                        String dstTaskId,
-                        Serializer serializer,
-                        Object event) {
-    // redircet to original executor
     final ByteBuf byteBuf = channel.alloc().ioBuffer();
-    final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
-    final int index = map.get(key);
-
     final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
     try {
       final OutputStream wrapped = byteBufOutputStream;
@@ -106,7 +85,47 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
       throw new RuntimeException(e);
     }
 
-    writeData(index, byteBuf);
+    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(srcTaskId,
+      edgeId,
+      dstTasks,
+      byteBuf,
+      byteBuf.readableBytes()));
+  }
+
+  @Override
+  public void broadcast(String srcTaskId, String edgeId, List<String> dstTasks, ByteBuf event) {
+    throw new RuntimeException("not supported");
+  }
+
+  @Override
+  public void writeData(String srcTaskId,
+                        String edgeId,
+                        String dstTaskId,
+                        Serializer serializer,
+                        Object event) {
+    // redircet to original executor
+    final ByteBuf byteBuf = channel.alloc().ioBuffer();
+    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+    try {
+      final OutputStream wrapped = byteBufOutputStream;
+      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+      encoder.encode(event);
+      wrapped.close();
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    channel.write(OffloadingDataFrameEncoder.DataFrame.newInstance(srcTaskId,
+      edgeId,
+      Collections.singletonList(dstTaskId),
+      byteBuf,
+      byteBuf.readableBytes()));
+  }
+
+  @Override
+  public void writeData(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
+    throw new RuntimeException("not supported");
   }
 
   @Override

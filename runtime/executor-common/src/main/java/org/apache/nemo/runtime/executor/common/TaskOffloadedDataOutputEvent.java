@@ -4,19 +4,27 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 
 import java.io.IOException;
+import java.util.List;
 
 public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
 
   private final String taskId;
+  private final String edgeId;
+  private final List<String> dstIds;
   private final ByteBuf byteBuf;
-  private final int pipeIndex;
 
   public TaskOffloadedDataOutputEvent(final String taskId,
-                                      final int pipeIndex,
+                                      final String edgeId,
+                                      final List<String> dstIds,
                                       final ByteBuf byteBuf) {
     this.taskId = taskId;
     this.byteBuf = byteBuf;
-    this.pipeIndex = pipeIndex;
+    this.edgeId = edgeId;
+    this.dstIds = dstIds;
+  }
+
+  public List<String> getDstIds() {
+    return dstIds;
   }
 
   @Override
@@ -36,7 +44,7 @@ public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
 
   @Override
   public String getEdgeId() {
-    return null;
+    return edgeId;
   }
 
   @Override
@@ -51,7 +59,7 @@ public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
 
   @Override
   public int getInputPipeIndex() {
-    return pipeIndex;
+    throw new RuntimeException("not supported");
   }
 
   @Override

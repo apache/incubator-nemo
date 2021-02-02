@@ -106,13 +106,13 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
           while (true) {
             while (in.ready() && (line = in.readLine()) != null) {
-              LOG.info("[VMWworker]: " + line);
+              System.out.println("[VMWworker]: " + line);
             }
             // in.close();
             // LOG.info("End of read line !!!!!!!!!!!!!!!!!!!!");
 
             while (stdError.ready() && (line = stdError.readLine()) != null) {
-              LOG.info("[VMWworker]: " + line);
+              System.out.println("[VMWworker]: " + line);
             }
             // stdError.close();
 

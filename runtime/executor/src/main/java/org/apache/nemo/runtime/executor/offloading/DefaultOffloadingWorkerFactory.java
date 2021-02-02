@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -7,6 +7,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
@@ -52,20 +53,20 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
-  private final PipeManagerWorker pipeManagerWorker;
   private final Map<String, Channel> dataTransportChannelMap;
   private final OutputWriterFlusher outputWriterFlusher;
+  private final OffloadingFrameDecoder frameDecoder;
 
   @Inject
   private DefaultOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider,
                                          final OffloadingRequesterFactory requesterFactory,
                                          final ControlFrameEncoder controlFrameEncoder,
                                          final EvalConf evalConf,
-                                         final PipeManagerWorker pipeManagerWorker,
+                                         final OffloadingFrameDecoder frameDecoder,
                                          final DataFrameEncoder dataFrameEncoder) {
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
-    this.pipeManagerWorker = pipeManagerWorker;
+    this.frameDecoder = frameDecoder;
     this.dataTransportChannelMap = new ConcurrentHashMap<>();
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
@@ -195,8 +196,10 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
       dataTransportChannelMap.put(ch.remoteAddress().toString(), ch);
 
       ch.pipeline()
+        .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
+        Integer.MAX_VALUE, 0, 4, 0, 4))
         // inbound
-        .addLast(new FrameDecoder(pipeManagerWorker))
+        .addLast(frameDecoder)
         // outbound
         .addLast(controlFrameEncoder)
         .addLast(dataFrameEncoder);

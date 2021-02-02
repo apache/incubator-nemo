@@ -18,6 +18,8 @@ import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
+import org.apache.nemo.runtime.executor.offloading.OffloadingManagerImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;

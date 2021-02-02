@@ -573,8 +573,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       if (taskHandlingEvent instanceof TaskOffloadedDataOutputEvent) {
         // This is the output of the offloaded task
         final TaskOffloadedDataOutputEvent output = (TaskOffloadedDataOutputEvent) taskHandlingEvent;
-        pipeManagerWorker.writeData(output.getInputPipeIndex(), output.getDataByteBuf());
-
+        if (output.getDstIds().size() > 1) {
+          pipeManagerWorker.broadcast(output.getTaskId(),
+            output.getEdgeId(),
+            output.getDstIds(),
+            output.getDataByteBuf());
+        } else {
+          pipeManagerWorker.writeData(output.getTaskId(),
+            output.getEdgeId(),
+            output.getDstIds().get(0),
+            output.getDataByteBuf());
+        }
       } else if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
         // input
         switch (currentState) {

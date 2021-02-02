@@ -29,9 +29,12 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.ExecutorChannelManagerMap;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.TaskScheduledMapWorker;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByDownstreamTask;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
@@ -66,6 +69,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   private final ExecutorChannelManagerMap executorChannelManagerMap;
   private final TaskScheduledMapWorker taskScheduledMapWorker;
   private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   // Pipe input
   private final Map<Integer, InputReader> inputPipeIndexInputReaderMap = new ConcurrentHashMap<>();
@@ -91,9 +95,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final ByteTransfer byteTransfer,
                                 final ExecutorChannelManagerMap executorChannelManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
-                                final PipeIndexMapWorker pipeIndexMapWorker) {
+                                final PipeIndexMapWorker pipeIndexMapWorker,
+                                final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.executorChannelManagerMap = executorChannelManagerMap;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
@@ -282,16 +288,65 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         pendingPipes.forEach(pendingIndex -> {
           pendingOutputPipeMap.get(pendingIndex).add(
           DataFrameEncoder.DataFrame.newInstance(
-            Collections.singletonList(pendingIndex), false, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+            Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
         });
       }
 
       if (pipeIndices.size() > 0) {
         channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices, false, byteBuf, byteBuf.readableBytes(), true))
+          pipeIndices, byteBuf, byteBuf.readableBytes(), true))
           .addListener(listener);
       }
     }
+  }
+
+  @Override
+  public void broadcast(String srcTaskId, String edgeId, List<String> dstTasks, ByteBuf byteBuf) {
+    // LOG.info("Broadcast watermark in pipeline Manager worker {}", event);
+    final Map<String, List<Integer>> executorDstTaskIndicesMap = new HashMap<>();
+
+    dstTasks.forEach(dstTask -> {
+      final String executorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask, false);
+      executorDstTaskIndicesMap.putIfAbsent(executorId, new LinkedList<>());
+      executorDstTaskIndicesMap.get(executorId).add(
+        pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTask));
+    });
+
+    for (final String remoteExecutorId : executorDstTaskIndicesMap.keySet()) {
+      final ContextManager contextManager = byteTransfer.getRemoteExecutorContetxManager(remoteExecutorId);
+      final Channel channel = contextManager.getChannel();
+
+      // pending pipe checks
+      final List<Integer> pipeIndices = executorDstTaskIndicesMap.get(remoteExecutorId);
+      List<Integer> pendingPipes = null;
+      final Iterator<Integer> iterator = pipeIndices.iterator();
+      while (iterator.hasNext()) {
+        final int index = iterator.next();
+        if (pendingOutputPipeMap.containsKey(index)) {
+          if (pendingPipes == null) {
+            pendingPipes = new LinkedList<>();
+          }
+          pendingPipes.add(index);
+          iterator.remove();
+        }
+      }
+
+      if (pendingPipes != null) {
+        pendingPipes.forEach(pendingIndex -> {
+          pendingOutputPipeMap.get(pendingIndex).add(
+            DataFrameEncoder.DataFrame.newInstance(
+              Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+        });
+      }
+
+      if (pipeIndices.size() > 0) {
+        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
+          pipeIndices, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true))
+          .addListener(listener);
+      }
+    }
+
+    byteBuf.release();
   }
 
   private Optional<Channel> getChannelForDstTask(final String dstTaskId,
@@ -305,12 +360,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
   }
 
-  @Override
-  public void writeData(final int pipeIndex,
-                        final ByteBuf byteBuf) {
+  private void writeData(final int pipeIndex,
+                         final ByteBuf byteBuf) {
     final Triple<String, String, String> key = pipeIndexMapWorker.getKey(pipeIndex);
     final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), false, byteBuf, byteBuf.readableBytes(), true);
+      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
     final String dstTaskId = key.getRight();
 
     final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
@@ -354,6 +408,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
 
     writeData(index, byteBuf);
+  }
+
+  @Override
+  public void writeData(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
+    final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    writeData(index, event);
   }
 
   @Override
