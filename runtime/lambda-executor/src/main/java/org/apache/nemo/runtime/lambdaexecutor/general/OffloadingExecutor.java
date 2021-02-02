@@ -134,7 +134,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
       new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
-        taskExecutorMap, context.getControlChannel());
+        taskExecutorMap, parentExecutorChannel);
 
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {

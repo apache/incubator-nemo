@@ -18,18 +18,16 @@
  */
 package org.apache.nemo.runtime.executor.offloading;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageDecoder;
-import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
+import org.apache.nemo.runtime.executor.common.TaskOffloadingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +95,19 @@ public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBu
           e.printStackTrace();
           throw new RuntimeException(e);
         }
+        break;
+      }
+      case DEOFFLOAD_DONE: {
+        final ByteBufInputStream dis = new ByteBufInputStream(msg);
+        final String taskId = dis.readUTF();
+        final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
+
+        LOG.info("Receive deoffloading done {}", taskId);
+        msg.release();
+
+        executorThread.addEvent(new TaskOffloadingEvent(taskId,
+          TaskOffloadingEvent.ControlType.DEOFFLOADING_DONE,
+          null));
         break;
       }
       default: {

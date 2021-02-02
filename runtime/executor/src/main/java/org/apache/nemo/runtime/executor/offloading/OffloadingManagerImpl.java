@@ -115,22 +115,8 @@ public final class OffloadingManagerImpl implements OffloadingManager {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
-          } else if (oe.getType().equals(OffloadingEvent.Type.TASK_FINISH_DONE)) {
-            // TODO: task deoffload
-            final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
-            try {
-              final String taskId = bis.readUTF();
-              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
-              LOG.info("Receive task ready message from offloading worker in executor {}: {}", executorId, taskId);
-
-              executorThread.addEvent(new TaskOffloadingEvent(taskId,
-                TaskOffloadingEvent.ControlType.DEOFFLOADING_DONE,
-                null));
-
-            } catch (Exception e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
+          } else {
+            throw new RuntimeException("unsupported " + oe.getType());
           }
         }
       });

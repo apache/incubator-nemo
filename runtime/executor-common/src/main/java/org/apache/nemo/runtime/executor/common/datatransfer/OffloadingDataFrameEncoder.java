@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
@@ -30,10 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.List;
-
-import static org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder.DataType.OFFLOAD_BROADCAST_OUTPUT;
-import static org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder.DataType.OFFLOAD_NORMAL_OUTPUT;
 
 /**
  * Encodes a data frame into bytes.
@@ -73,6 +70,16 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
             bos.writeInt(index);
           }
         } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+        break;
+      }
+      case DEOFFLOAD_DONE: {
+        final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
+        try {
+          bos.writeUTF(in.taskId);
+        } catch (IOException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
@@ -125,6 +132,17 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
     public boolean opensSubStream;
     public boolean closesContext;
     public boolean stopContext;
+    public String taskId;
+
+    public static DataFrame newInstance(DataFrameEncoder.DataType type,
+                                        final String taskId) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.taskId = taskId;
+      dataFrame.type = type;
+      dataFrame.body = null;
+      dataFrame.pipeIndices = null;
+      return dataFrame;
+    }
 
     public static DataFrame newInstance(final List<Integer> indices,
                                         @Nullable final Object body,

@@ -28,10 +28,10 @@ public final class TestGBKTransform implements Transform<Pair<Integer, Integer>,
   public void restore() {
     final StateStore stateStore = context.getStateStore();
     if (stateStore.containsState(context.getTaskId())) {
-      LOG.info("Restore state for TestGBK in {}", context.getTaskId());
       final InputStream is = stateStore.getStateStream(context.getTaskId());
       final Map<Integer, Integer> s = SerializationUtils.deserialize(is);
       map.putAll(s);
+      LOG.info("Restore state for TestGBK in {} / {}", context.getTaskId(), map);
 
       try {
         is.close();

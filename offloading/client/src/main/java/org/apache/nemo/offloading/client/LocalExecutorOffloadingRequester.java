@@ -89,12 +89,16 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
     LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
   }
 
+  private final int port = new Random(System.currentTimeMillis()).nextInt(500)
+   + VM_WORKER_PORT;
+
   @Override
   public synchronized void createChannelRequest() {
+    LOG.info("Creating VM worker with port " + port);
     final String path = "/Users/taegeonum/Projects/CMS_SNU/incubator-nemo-lambda/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
       waitingExecutor.execute(() -> {
         try {
-          Process p = Runtime.getRuntime().exec( "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker");
+          Process p = Runtime.getRuntime().exec( "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port);
 
           String line;
           BufferedReader in = new BufferedReader(
@@ -140,7 +144,7 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
       ChannelFuture channelFuture;
       while (true) {
         final long st = System.currentTimeMillis();
-        channelFuture = clientBootstrap.connect(new InetSocketAddress("localhost", VM_WORKER_PORT));
+        channelFuture = clientBootstrap.connect(new InetSocketAddress("localhost", port));
         channelFuture.awaitUninterruptibly(waitingTime);
         assert channelFuture.isDone();
         if (!channelFuture.isSuccess()) {

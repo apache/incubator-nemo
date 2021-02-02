@@ -3,12 +3,13 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.OffloadingDataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,19 +25,19 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
   private final PipeManagerWorker pipeManagerWorker;
   private final Map<String, ExecutorThread> taskExecutorThreadMap;
   private final Map<String, TaskExecutor> taskExecutorMap;
-  private final Channel controlChannel;
+  private final Channel executorDataChannel;
 
   public OffloadingTaskControlEventHandlerImpl(
     final String executorId,
     final PipeManagerWorker pipeManagerWorker,
     final Map<String, ExecutorThread> taskExecutorThreadMap,
     final Map<String, TaskExecutor> taskExecutorMap,
-    final Channel controlChannel) {
+    final Channel executorDataChannel) {
     this.executorId = executorId;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskExecutorThreadMap = taskExecutorThreadMap;
     this.taskExecutorMap = taskExecutorMap;
-    this.controlChannel = controlChannel;
+    this.executorDataChannel = executorDataChannel;
   }
 
   @Override
@@ -47,15 +48,17 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
         final TaskExecutor taskExecutor = taskExecutorMap.get(control.getTaskId());
         stopAndCheckpointTask(taskExecutor.getId());
 
-        final ByteBuf buf = controlChannel.alloc().ioBuffer();
+        final ByteBuf buf = executorDataChannel.alloc().ioBuffer();
         final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
         try {
           bos.writeUTF(taskExecutor.getId());
           bos.close();
 
           LOG.info("Task finished {}", control.getTaskId());
-          controlChannel.writeAndFlush(
-            new OffloadingEvent(OffloadingEvent.Type.TASK_FINISH_DONE, buf));
+          executorDataChannel.writeAndFlush(
+            OffloadingDataFrameEncoder.DataFrame.newInstance(
+              DataFrameEncoder.DataType.DEOFFLOAD_DONE, control.getTaskId()));
+
         } catch (IOException e) {
           e.printStackTrace();
           throw new RuntimeException(e);

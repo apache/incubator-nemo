@@ -538,6 +538,27 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final List<TaskHandlingEvent> bufferedData = new LinkedList<>();
 
+  private void flushBuffer() {
+    if (!bufferedData.isEmpty()) {
+      // flush buffered data
+      if (currentState.equals(CurrentState.OFFLOADED)) {
+
+        // Write to offloaded task
+        bufferedData.forEach(e ->
+          offloadingManager.writeData(taskId, e));
+        bufferedData.clear();
+
+      } else if (currentState.equals(CurrentState.RUNNING)) {
+
+        bufferedData.forEach(e -> handleInternalData(
+          edgeToDataFetcherMap.get(e.getEdgeId()), e.getData()));
+        bufferedData.clear();
+      } else {
+        throw new RuntimeException("Invalid fliush " + currentState);
+      }
+    }
+  }
+
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
@@ -561,9 +582,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
         case OFFLOAD_DONE: {
           currentState = CurrentState.OFFLOADED;
+          flushBuffer();
           break;
         }
         case DEOFFLOADING: {
+          LOG.info("Deoffloading {}", taskId);
+          offloadingManager.deoffloading(taskId);
           currentState = CurrentState.DEOFFLOAD_PENDING;
           break;
         }
@@ -572,6 +596,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Deoffloading done of {}", taskId);
           restore();
           currentState = CurrentState.RUNNING;
+
+          flushBuffer();
           break;
         }
         default:
@@ -597,6 +623,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         switch (currentState) {
           case OFFLOADED: {
             // We should redirect the data to remote if it is offloaded
+            if (!bufferedData.isEmpty()) {
+              throw new RuntimeException("buffer should be empty");
+            }
             offloadingManager.writeData(taskId, taskHandlingEvent);
             break;
           }
@@ -607,10 +636,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           case RUNNING: {
             // Decoding
             if (!bufferedData.isEmpty()) {
-              // flush buffered data
-              bufferedData.forEach(e -> handleInternalData(
-                edgeToDataFetcherMap.get(e.getEdgeId()), e.getData()));
-              bufferedData.clear();
+              throw new RuntimeException("buffer should be empty");
             }
 
             final Object data = taskHandlingEvent.getData();

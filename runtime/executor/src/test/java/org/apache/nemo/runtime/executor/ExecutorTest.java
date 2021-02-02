@@ -144,17 +144,68 @@ public final class ExecutorTest {
     return Pair.of(sourceIRVertex, vertexIdToReadable);
   }
 
-  private Pair<ExecutorThread, OffloadingManager> findExecutorThreadAndOffloadingManager(
-    final String taskId,
-    final Collection<Injector> injectors) throws InjectionException {
+  private void offloading(final String taskId,
+                          final Collection<Injector> injectors) throws InjectionException {
     for (final Injector injector : injectors) {
       final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
       if (wrapper.containsTask(taskId)) {
-        return Pair.of(wrapper.getTaskExecutorThread(taskId), injector.getInstance(OffloadingManager.class));
+        wrapper.getTaskExecutorThread(taskId)
+          .addEvent(new TaskOffloadingEvent(taskId,
+          TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
       }
     }
+  }
 
-    throw new RuntimeException("Cannot find executor thread for " + taskId);
+  private void deoffloading(final String taskId,
+                          final Collection<Injector> injectors) throws InjectionException {
+    for (final Injector injector : injectors) {
+      final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
+      if (wrapper.containsTask(taskId)) {
+        wrapper.getTaskExecutorThread(taskId)
+          .addEvent(new TaskOffloadingEvent(taskId,
+          TaskOffloadingEvent.ControlType.DEOFFLOADING, null));
+      }
+    }
+  }
+
+  @Test
+  public void testOffloadingConcurrency() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(5);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5);
+
+    final int parallelism = 1;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
+    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
+
+    Thread.sleep(4000);
+
+    final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
+
+    // 400
+    for (int i = 0; i < 1000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if (i == 500) {
+        offloading("Stage1-0-0", injectors);
+      }
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+
+    Thread.sleep(3000);
   }
 
   @Test
@@ -184,17 +235,16 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
+    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
+    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
+
     final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
-    final Pair<ExecutorThread, OffloadingManager> emOm = findExecutorThreadAndOffloadingManager("Stage1-0-0", injectors);
-    final OffloadingManager offloadingManager = emOm.right();
-    offloadingManager.createWorker(1);
 
     Thread.sleep(4000);
 
-    emOm.left().addEvent(new TaskOffloadingEvent("Stage1-0-0",
-      TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
+    offloading("Stage1-0-0", injectors);
 
-    Thread.sleep(3000);
+    Thread.sleep(2000);
 
     LOG.info("Start to generate event after offloading");
 
@@ -212,7 +262,7 @@ public final class ExecutorTest {
     Thread.sleep(2000);
 
     // 300
-    offloadingManager.deoffloading("Stage1-0-0");
+    deoffloading("Stage1-0-0", injectors);
 
     Thread.sleep(2000);
      for (int i = 1000; i < 1500; i++) {
@@ -226,6 +276,52 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
+    // offloading two tasks
+    Thread.sleep(2000);
+
+    offloading("Stage1-0-0", injectors);
+    offloading("Stage2-0-0", injectors);
+    offloading("Stage1-1-0", injectors);
+
+    Thread.sleep(2000);
+
+    // 400
+    for (int i = 1500; i < 2000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+    Thread.sleep(2000);
+
+    // 400 >
+    for (int i = 2000; i < 4000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if (i == 2500) {
+        deoffloading("Stage1-0-0", injectors);
+        deoffloading("Stage2-0-0", injectors);
+      }
+
+      if (i == 3000) {
+        offloading("Stage1-2-0", injectors);
+        deoffloading("Stage1-1-0", injectors);
+        offloading("Stage2-2-0", injectors);
+        offloading("Stage2-1-0", injectors);
+      }
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
 
     /*
     // launch offloading executor

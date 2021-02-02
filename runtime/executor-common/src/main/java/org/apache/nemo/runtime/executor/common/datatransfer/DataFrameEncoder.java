@@ -50,7 +50,8 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     NORMAL,
     BROADCAST,
     OFFLOAD_NORMAL_OUTPUT,
-    OFFLOAD_BROADCAST_OUTPUT
+    OFFLOAD_BROADCAST_OUTPUT,
+    DEOFFLOAD_DONE
   }
 
   // the maximum length of a frame body. 2**32 - 1

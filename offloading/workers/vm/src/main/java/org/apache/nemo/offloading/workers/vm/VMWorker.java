@@ -41,7 +41,7 @@ public class VMWorker {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
 
-  private VMWorker() {
+  private VMWorker(final int port) {
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
 
@@ -110,7 +110,7 @@ public class VMWorker {
       .childOption(ChannelOption.SO_KEEPALIVE, true);
     try {
       acceptor = serverBootstrap.bind(
-        new InetSocketAddress(ADDRESS, Constants.VM_WORKER_PORT)).sync().channel();
+        new InetSocketAddress(ADDRESS, port)).sync().channel();
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -121,7 +121,12 @@ public class VMWorker {
   public static void main(final String[] args) throws InterruptedException {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     LOG.info("Start worker");
-    final VMWorker worker = new VMWorker();
+
+    if (args.length > 0) {
+      final VMWorker worker = new VMWorker(Integer.valueOf(args[0]));
+    } else {
+      final VMWorker worker = new VMWorker(Constants.VM_WORKER_PORT);
+    }
     LOG.info("Wait for request");
     countDownLatch.await();
   }
