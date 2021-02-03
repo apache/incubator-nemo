@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessExecutorService<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloadingWorkerManager.class.getName());
-  private final OffloadingWorkerFactory workerFactory;
+  private final DeprecatedOffloadingWorkerFactory workerFactory;
 
   private final List<Pair<Long, TinyTaskWorker>> workers;
 
@@ -63,7 +63,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   private final SFTaskMetrics sfTaskMetrics;
 
   public TinyTaskOffloadingWorkerManager(
-    final OffloadingWorkerFactory workerFactory,
+    final DeprecatedOffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
     final EvalConf evalConf,
     final SFTaskMetrics sfTaskMetrics) {
@@ -113,7 +113,9 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     // create new worker
     LOG.info("Creating new worker... current num: {}", workers.size());
+    return null;
 
+    /*
     final StreamingLambdaWorkerProxy worker = (StreamingLambdaWorkerProxy)
       workerFactory.createStreamingWorker(workerInitBuffer.retain(), offloadingSerializer, (event) -> {
         // TODO: We should retrieve states (checkpointmark, operator states, and so on)
@@ -169,8 +171,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           // te.handleOffloadingEvent(msg);
         }
       });
+      */
 
-    return worker;
   }
 
   private void removeRunningWorker(final TinyTaskWorker worker) {
@@ -230,6 +232,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         }
       }
 
+      /*
       final TinyTaskWorker newWorker = new TinyTaskWorker(
         createNewWorker(null), evalConf);
 
@@ -239,6 +242,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
       newWorker.prepareTaskIfPossible();
       return newWorker;
+      */
+      return null;
     }
   }
 
@@ -276,6 +281,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       bos.writeUTF(newExecutorId);
       bos.close();
 
+      /*
       final TinyTaskWorker newWorker = new TinyTaskWorker(
         createNewWorker(byteBuf), evalConf);
 
@@ -287,6 +293,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
       newWorker.prepareTaskIfPossible();
       return newWorker;
+      */
+      return null;
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -317,6 +325,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }
 
 
+    /*
     final TinyTaskWorker newWorker = new TinyTaskWorker(
       createNewWorker(null), evalConf);
 
@@ -327,7 +336,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     }
 
     newWorker.prepareTaskIfPossible();
-    return newWorker;
+    */
+    return null;
   }
 
   public void sendReadyTask(final ReadyTask readyTask,
@@ -414,7 +424,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   // This function is actually requesting tasks
   // createStreamWorker -> requestToSendTask
   @Override
-  public OffloadingWorker createStreamWorker() {
+  public DeprecatedOffloadingWorker createStreamWorker() {
     throw new RuntimeException("Unsupported operation");
   }
 

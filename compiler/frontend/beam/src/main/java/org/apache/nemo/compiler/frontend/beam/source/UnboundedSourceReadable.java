@@ -98,7 +98,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   @Override
   public void restore() {
     if (stateStore.containsState(taskId)) {
-      LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it for restore.");
+      LOG.info("Task " + taskId + " has checkpointMark state... we should deserialize it.");
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>)
         unboundedSource.getCheckpointMarkCoder();
 

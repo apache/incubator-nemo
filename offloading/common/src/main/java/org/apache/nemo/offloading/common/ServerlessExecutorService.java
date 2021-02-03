@@ -8,7 +8,7 @@ public interface ServerlessExecutorService<I, O> {
   void execute(final ByteBuf data);
   void execute(final String id, final ByteBuf data, EventHandler<O> eventHandler);
 
-  OffloadingWorker createStreamWorker();
+  DeprecatedOffloadingWorker createStreamWorker();
 
   void shutdown();
 

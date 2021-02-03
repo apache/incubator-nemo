@@ -318,7 +318,7 @@ public final class PipeManagerWorkerTest {
         new TaskStopSignalByDownstreamTask(task3, edge1, task2)), t3tot2.list.remove(0));
 
 
-    // TODO: Stop output pipe and test whether the output is buffered or not in broadcst and in writeData
+    // TODO: Stop output pipe and test whether the output is buffered or not in broadcst and in offloadIntermediateData
     pipeManagerWorker1.stopOutputPipe(
       pipeIndexMap.get(Triple.of(task1, edge1, task3)), task1);
 

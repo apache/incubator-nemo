@@ -44,7 +44,7 @@ public class PolicyUtils {
         running += 1;
       } else if (taskExecutor.isOffloadPending()) {
         offpending += 1;
-      } else if (taskExecutor.isOffloaded()) {
+      } else if (taskExecutor.isOffloadedTask()) {
         offloaded += 1;
       } else if (taskExecutor.isDeoffloadPending()) {
         deoffpending += 1;

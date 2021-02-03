@@ -17,10 +17,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.test.TCPSourceReadable;
-import org.apache.nemo.common.test.TestGBKListTransform;
-import org.apache.nemo.common.test.TestGBKTransform;
-import org.apache.nemo.common.test.TestUnboundedSourceVertex;
+import org.apache.nemo.common.test.*;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.compiler.optimizer.policy.StreamingPolicy;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
@@ -89,11 +86,11 @@ public final class TestDAGBuilder {
     final IRVertex v1 = new OperatorVertex(t);
     v1.setProperty(ParallelismProperty.of(parallelism));
 
-    final IRVertex v2 = new OperatorVertex(new TestGBKTransform());
+    final IRVertex v2 = new OperatorVertex(new TestGBKListTransform());
     v2.isStateful = true;
     v2.setProperty(ParallelismProperty.of(parallelism));
 
-    final IRVertex v3 = new OperatorVertex(new TestGBKListTransform());
+    final IRVertex v3 = new OperatorVertex(new TestGBKListAggTransform());
     v3.isStateful = true;
     v3.setProperty(ParallelismProperty.of(parallelism));
 
@@ -101,9 +98,9 @@ public final class TestDAGBuilder {
       .addVertex(v1)
       .addVertex(v2)
       .addVertex(v3)
-      .connectVertices(createEdge(src, v1, CommunicationPatternProperty.Value.OneToOne))
-      .connectVertices(createEdge(v1, v2, CommunicationPatternProperty.Value.Shuffle))
-      .connectVertices(createEdge(v2, v3, CommunicationPatternProperty.Value.Shuffle))
+      .connectVertices(pairIntCreateEdge(src, v1, CommunicationPatternProperty.Value.OneToOne))
+      .connectVertices(pairIntCreateEdge(v1, v2, CommunicationPatternProperty.Value.Shuffle))
+      .connectVertices(pairListCreateEdge(v2, v3, CommunicationPatternProperty.Value.Shuffle))
       .buildWithoutSourceSinkCheck());
   }
 
@@ -126,8 +123,8 @@ public final class TestDAGBuilder {
     return new IRDAG(dagBuilder.addVertex(src)
       .addVertex(v1)
       .addVertex(v2)
-      .connectVertices(createEdge(src, v1, CommunicationPatternProperty.Value.OneToOne))
-      .connectVertices(createEdge(v1, v2, CommunicationPatternProperty.Value.Shuffle))
+      .connectVertices(pairIntCreateEdge(src, v1, CommunicationPatternProperty.Value.OneToOne))
+      .connectVertices(pairIntCreateEdge(v1, v2, CommunicationPatternProperty.Value.Shuffle))
       .buildWithoutSourceSinkCheck());
   }
 
@@ -148,7 +145,7 @@ public final class TestDAGBuilder {
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
   }
 
-  public static IREdge createEdge(final IRVertex src, final IRVertex dst,
+  public static IREdge pairIntCreateEdge(final IRVertex src, final IRVertex dst,
                                   final CommunicationPatternProperty.Value comm) {
     // CommunicationPatternProperty.Value.Shuffle
     final IREdge edge = new IREdge(comm, src, dst);
@@ -158,6 +155,19 @@ public final class TestDAGBuilder {
     edge.setProperty(KeyDecoderProperty.of(IntDecoderFactory.of()));
     edge.setProperty(EncoderProperty.of(PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of())));
     edge.setProperty(DecoderProperty.of(PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of())));
+    return edge;
+  }
+
+  public static IREdge pairListCreateEdge(final IRVertex src, final IRVertex dst,
+                                          final CommunicationPatternProperty.Value comm) {
+    // CommunicationPatternProperty.Value.Shuffle
+    final IREdge edge = new IREdge(comm, src, dst);
+    edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.Pipe));
+    edge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
+    edge.setProperty(KeyEncoderProperty.of(IntEncoderFactory.of()));
+    edge.setProperty(KeyDecoderProperty.of(IntDecoderFactory.of()));
+    edge.setProperty(EncoderProperty.of(PairEncoderFactory.of(IntEncoderFactory.of(), ListEncoderFactory.of(IntEncoderFactory.of()))));
+    edge.setProperty(DecoderProperty.of(PairDecoderFactory.of(IntDecoderFactory.of(), ListDecoderFactory.of(IntDecoderFactory.of()))));
     return edge;
   }
 }

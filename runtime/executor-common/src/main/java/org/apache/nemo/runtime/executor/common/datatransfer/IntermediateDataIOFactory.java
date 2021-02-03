@@ -59,8 +59,7 @@ public interface IntermediateDataIOFactory {
    * @param runtimeEdge that connects the tasks belonging to srcIRVertex to dstTask.
    * @return the {@link InputReader} created.
    */
-  InputReader createReader(final int dstTaskIdx,
-                           final String taskId,
+  InputReader createReader(final String taskId,
                            final IRVertex srcIRVertex,
                            final RuntimeEdge runtimeEdge,
                            final ExecutorThreadQueue executorThreadQueue);

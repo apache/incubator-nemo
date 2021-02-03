@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
@@ -125,7 +127,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final OutputCollectorGenerator outputCollectorGenerator;
 
-  private final boolean isLocalSource;
+  private Serializer srcSerializer;
+
+  private final boolean offloaded;
+
   /**
    * Constructor.
    *
@@ -148,9 +153,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final StateStore stateStore,
                                  final OffloadingManager offloadingManager,
                                  final PipeManagerWorker pipeManagerWorker,
-                                 final OutputCollectorGenerator outputCollectorGenerator) {
+                                 final OutputCollectorGenerator outputCollectorGenerator,
+                                 final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.offloaded = offloaded;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
     this.offloadingManager = offloadingManager;
@@ -170,7 +177,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
-    this.isLocalSource = isLocalSource;
 
     task.getTaskOutgoingEdges().forEach(edge -> {
       LOG.info("Task outgoing edge {}", edge);
@@ -301,6 +307,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
+  public boolean isOffloadedTask() {
+    return offloaded;
+  }
+
+  @Override
   public AtomicLong getTaskExecutionTime() {
     return taskExecutionTime;
   }
@@ -417,7 +428,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // All edges will have the same encoder/decoder!
       if (irVertex instanceof SourceVertex) {
         final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
-        LOG.info("SourceVertex: {}, edge: {}", irVertex.getId(), edge.getId());
+        srcSerializer = serializerManager.getSerializer(edge.getId());
+        LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
+          srcSerializer);
 
         // Source vertex read
         final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
@@ -437,12 +450,27 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             public String getTaskId() {
               return taskId;
             }
-          });
+          },
+          offloaded);
 
         edgeToDataFetcherMap.put(edge.getId(), fe);
 
         sourceVertexDataFetchers.add(fe);
         allFetchers.add(fe);
+
+        // Register input pipe for offloaded source !!
+        if (offloaded) {
+          inputPipeRegister.registerInputPipe(
+            "Origin",
+            edge.getId(),
+            taskId,
+            intermediateDataIOFactory
+              .createReader(
+                taskId,
+                irVertex, edge, executorThreadQueue));
+        } else {
+          inputPipeRegister.retrieveIndexForOffloadingSource(taskId, edge.getId());
+        }
 
         if (sourceVertexDataFetchers.size() > 1) {
           throw new RuntimeException("Source vertex data fetcher is larger than one");
@@ -460,7 +488,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
           return Pair.of(incomingEdge, intermediateDataIOFactory
             .createReader(
-              taskIndex,
               taskId,
               incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
         })
@@ -537,6 +564,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   private final List<TaskHandlingEvent> bufferedData = new LinkedList<>();
+  private final List<Object> bufferedSourceData = new LinkedList<>();
 
   private void flushBuffer() {
     if (!bufferedData.isEmpty()) {
@@ -545,7 +573,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
         // Write to offloaded task
         bufferedData.forEach(e ->
-          offloadingManager.writeData(taskId, e));
+          offloadingManager.offloadIntermediateData(taskId, e));
         bufferedData.clear();
 
       } else if (currentState.equals(CurrentState.RUNNING)) {
@@ -553,6 +581,29 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         bufferedData.forEach(e -> handleInternalData(
           edgeToDataFetcherMap.get(e.getEdgeId()), e.getData()));
         bufferedData.clear();
+      } else {
+        throw new RuntimeException("Invalid fliush " + currentState);
+      }
+    }
+
+    if (!bufferedSourceData.isEmpty()) {
+      // flush buffered data
+      if (currentState.equals(CurrentState.OFFLOADED)) {
+
+        // Write to offloaded task
+        final String edgeId = sourceVertexDataFetchers.get(0).getEdgeId();
+        final Serializer serializer = serializerManager.getSerializer(edgeId);
+        bufferedSourceData.forEach(e ->
+          offloadingManager.offloadSourceData(taskId, edgeId, e, serializer));
+        bufferedSourceData.clear();
+
+      } else if (currentState.equals(CurrentState.RUNNING)) {
+
+        final String edgeId = sourceVertexDataFetchers.get(0).getEdgeId();
+
+        bufferedSourceData.forEach(e -> handleInternalData(
+          edgeToDataFetcherMap.get(edgeId), e));
+        bufferedSourceData.clear();
       } else {
         throw new RuntimeException("Invalid fliush " + currentState);
       }
@@ -571,7 +622,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         case SEND_TO_OFFLOADING_WORKER: {
           // Always checkpoint for task offloading
           // TODO: partial computation offloading without checkpointing states
-          checkpoint();
+          checkpoint(false);
           // store watermark  manager
           final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
           stateStore.put(taskId + "-watermark", bytes);
@@ -581,6 +632,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           break;
         }
         case OFFLOAD_DONE: {
+          LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
           flushBuffer();
           break;
@@ -626,7 +678,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             if (!bufferedData.isEmpty()) {
               throw new RuntimeException("buffer should be empty");
             }
-            offloadingManager.writeData(taskId, taskHandlingEvent);
+            offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
           }
           case DEOFFLOAD_PENDING:
@@ -684,12 +736,41 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public boolean handleSourceData() {
     boolean processed = false;
-
     for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
       final Object event = dataFetcher.fetchDataElement();
       if (!event.equals(EmptyElement.getInstance()))  {
-        handleInternalData(dataFetcher, event);
-        processed = true;
+        switch (currentState) {
+          case OFFLOADED: {
+            // We should redirect the data to remote if it is offloaded
+            if (!bufferedSourceData.isEmpty()) {
+              throw new RuntimeException("buffer should be empty");
+            }
+            final Serializer serializer = serializerManager.getSerializer(dataFetcher.getEdgeId());
+            // LOG.info("Offloading source for task {}", taskId);
+            offloadingManager.offloadSourceData(
+              taskId,
+              dataFetcher.getEdgeId(),
+              event,
+              serializer);
+            processed = true;
+            break;
+          }
+          case DEOFFLOAD_PENDING:
+          case OFFLOAD_PENDING:
+            bufferedSourceData.add(event);
+            break;
+          case RUNNING: {
+            // Decoding
+            if (!bufferedSourceData.isEmpty()) {
+              throw new RuntimeException("buffer should be empty");
+            }
+            handleInternalData(dataFetcher, event);
+            processed = true;
+            break;
+          }
+          default:
+            throw new RuntimeException("Invalid state " + currentState);
+        }
         //executorMetrics.increaseInputCounter(stageId);
       }
     }
@@ -746,8 +827,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
   }
 
-  public boolean offloaded = false;
-
   ////////////////////////////////////////////// Transform-specific helper methods
 
 
@@ -769,11 +848,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
     taskWatermarkManager = SerializationUtils.deserialize(is);
 
-    for (final DataFetcher dataFetcher : allFetchers) {
-      if (dataFetcher instanceof SourceVertexDataFetcher) {
-        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-        final Readable readable = srcDataFetcher.getReadable();
-        readable.restore();
+    if (!offloaded) {
+      for (final DataFetcher dataFetcher : allFetchers) {
+        if (dataFetcher instanceof SourceVertexDataFetcher) {
+          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+          final Readable readable = srcDataFetcher.getReadable();
+          readable.restore();
+        }
       }
     }
 
@@ -783,30 +864,33 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public boolean checkpoint() {
-
+  public boolean checkpoint(final boolean checkpointSource) {
     boolean hasChekpoint = false;
 
     final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
     stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
-    for (final DataFetcher dataFetcher : allFetchers) {
-      if (dataFetcher instanceof SourceVertexDataFetcher) {
-        if (hasChekpoint) {
-          throw new RuntimeException("Double checkpoint..." + taskId);
+    if (checkpointSource) {
+      // Do not checkpoint source if it is offloaded
+      // because source data will be redirected freom the origin executor
+      for (final DataFetcher dataFetcher : allFetchers) {
+        if (dataFetcher instanceof SourceVertexDataFetcher) {
+          if (hasChekpoint) {
+            throw new RuntimeException("Double checkpoint..." + taskId);
+          }
+
+          hasChekpoint = true;
+          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+          final Readable readable = srcDataFetcher.getReadable();
+          readable.checkpoint();
         }
 
-        hasChekpoint = true;
-        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-        final Readable readable = srcDataFetcher.getReadable();
-        readable.checkpoint();
-      }
-
-      try {
-        dataFetcher.close();
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+        try {
+          dataFetcher.close();
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     }
 

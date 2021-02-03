@@ -16,6 +16,11 @@ public final class ControlEventHandlerTest {
   final class TestInputPipeRegister implements InputPipeRegister {
 
     @Override
+    public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
+
+    }
+
+    @Override
     public void registerInputPipe(String srcTaskId, String edgeId, String dstTaskId, InputReader inputReader) {
 
     }

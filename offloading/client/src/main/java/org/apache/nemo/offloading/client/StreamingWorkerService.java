@@ -20,9 +20,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StreamingWorkerService<I, O> implements ServerlessExecutorService<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingWorkerService.class.getName());
-  private final OffloadingWorkerFactory workerFactory;
+  private final DeprecatedOffloadingWorkerFactory workerFactory;
 
-  private final List<Pair<Long, OffloadingWorker>> streamingWorkers;
+  private final List<Pair<Long, DeprecatedOffloadingWorker>> streamingWorkers;
 
   // buffer that contains bytes for initializing workers
   private final ByteBuf workerInitBuffer;
@@ -36,7 +36,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
 
   //private final StatePartitioner<I, S> statePartitioner;
   //private final List<ByteBuf> states;
-  //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
+  //private final Map<Integer, DeprecatedOffloadingWorker<I, O>> stateIndexAndWorkerMap;
 
   private long totalProcessingTime = 0;
   private long totalWorkerInitTime = 0;
@@ -52,7 +52,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   final AtomicLong st = new AtomicLong(System.currentTimeMillis());
 
   public StreamingWorkerService(
-    final OffloadingWorkerFactory workerFactory,
+    final DeprecatedOffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
     final OffloadingSerializer<I, O> offloadingSerializer,
     final EventHandler<O> eventHandler) {
@@ -98,7 +98,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   // we don't have to send data to streaming workers
   // because it will pull the data
   @Override
-  public OffloadingWorker createStreamWorker() {
+  public DeprecatedOffloadingWorker createStreamWorker() {
     createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
@@ -107,7 +107,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
       copiedBuf = workerInitBuffer.retainedDuplicate();
     }
 
-    final OffloadingWorker<I, O> worker =
+    final DeprecatedOffloadingWorker<I, O> worker =
       workerFactory.createStreamingWorker(copiedBuf, offloadingSerializer, eventHandler);
 
     synchronized (streamingWorkers) {
@@ -127,7 +127,7 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
     synchronized (streamingWorkers) {
       if (!streamingWorkers.isEmpty()) {
         LOG.info("Shutting down streaming workers: {}", streamingWorkers.size());
-        for (final Pair<Long, OffloadingWorker> pair : streamingWorkers) {
+        for (final Pair<Long, DeprecatedOffloadingWorker> pair : streamingWorkers) {
           pair.right().finishOffloading();
         }
       }

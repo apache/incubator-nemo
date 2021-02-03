@@ -63,6 +63,14 @@ public interface Readable<O> extends Serializable {
    */
   O readCurrent() throws NoSuchElementException;
 
+  default O readRawRecord() {
+    throw new RuntimeException("not supported");
+  }
+
+  default O encodeRawRecord(O rawRecord) {
+    throw new RuntimeException("not supported");
+  }
+
   /**
    * Read watermark.
    * @return watermark

@@ -68,13 +68,12 @@ public final class DefaltIntermediateDataIOFactoryImpl implements IntermediateDa
   /**
    * Creates an {@link InputReader} between two stages.
    *
-   * @param dstTaskIdx  the index of the destination task.
    * @param srcIRVertex the {@link IRVertex} that output the data to be read.
    * @param runtimeEdge that connects the tasks belonging to srcIRVertex to dstTask.
    * @return the {@link InputReader} created.
    */
-  public InputReader createReader(final int dstTaskIdx,
-                                  final String taskId,
+  @Override
+  public InputReader createReader(final String taskId,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge,
                                   final ExecutorThreadQueue executorThreadQueue) {

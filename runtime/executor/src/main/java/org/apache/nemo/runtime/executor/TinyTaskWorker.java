@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingWorker;
+import org.apache.nemo.offloading.common.DeprecatedOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.ReadyTask;
 import org.apache.nemo.runtime.lambdaexecutor.TaskMoveEvent;
@@ -24,12 +24,12 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final List<ReadyTask> readyTasks = new ArrayList<>();
 
-  private final OffloadingWorker offloadingWorker;
+  private final DeprecatedOffloadingWorker offloadingWorker;
   private final AtomicInteger deletePending = new AtomicInteger(0);
   private final AtomicInteger prepareRequest = new AtomicInteger(0);
   private final int SLOT;
 
-  public TinyTaskWorker(final OffloadingWorker offloadingWorker,
+  public TinyTaskWorker(final DeprecatedOffloadingWorker offloadingWorker,
                         final EvalConf evalConf) {
     this.offloadingWorker = offloadingWorker;
     this.SLOT = evalConf.taskSlot;

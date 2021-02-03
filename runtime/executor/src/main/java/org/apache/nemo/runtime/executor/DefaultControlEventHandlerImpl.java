@@ -102,7 +102,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private void stopAndCheckpointTask(final String taskId) {
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
-    taskExecutor.checkpoint();
+    taskExecutor.checkpoint(true);
 
     taskExecutorMapWrapper.removeTask(taskId);
 

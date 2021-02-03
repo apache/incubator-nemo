@@ -7,7 +7,7 @@ import org.apache.nemo.offloading.common.Pair;
 import java.util.Optional;
 import java.util.concurrent.Future;
 
-public interface OffloadingWorker<I, O> {
+public interface DeprecatedOffloadingWorker<I, O> {
 
   public double getLoad();
 

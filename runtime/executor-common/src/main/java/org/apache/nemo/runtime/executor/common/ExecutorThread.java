@@ -54,9 +54,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
-        if (System.currentTimeMillis() - l.get() >= 1000) {
-          // LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
-         // l.set(System.currentTimeMillis());
+        if (System.currentTimeMillis() - l.get() >= 2000) {
+          LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
+         l.set(System.currentTimeMillis());
         }
         final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
         while (iterator.hasNext()) {
@@ -97,7 +97,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
 
-    if (task.isSource()) {
+    if (task.isSource() && !task.isOffloadedTask()) {
       synchronized (pendingSourceTasks) {
         pendingSourceTasks.add(task);
       }
@@ -129,7 +129,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     while (controlIterator.hasNext()) {
       // Handling control event
       final TaskHandlingEvent event = controlIterator.next();
-      controlEventHandler.handleControlEvent(event);
+      if (event.isOffloadingMessage()) {
+        final String taskId = event.getTaskId();
+        final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+        taskExecutor.handleData(event.getEdgeId(), event);
+      } else {
+        controlEventHandler.handleControlEvent(event);
+      }
       controlIterator.remove();
     }
   }
@@ -149,6 +155,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                 final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
                 while (iterator.hasNext()) {
                   final ExecutorThreadTask sourceTask = iterator.next();
+
+                  handlingControlEvent();
+
                   if (sourceTask.hasData()) {
                     sourceTask.handleSourceData();
                   } else {

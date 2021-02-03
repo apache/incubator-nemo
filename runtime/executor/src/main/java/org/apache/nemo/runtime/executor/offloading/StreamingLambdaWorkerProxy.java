@@ -2,18 +2,19 @@ package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Optional;
 import java.util.concurrent.*;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
@@ -156,17 +157,6 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
-  public Pair<ByteBuf, Integer> getCurrentProcessingInput() {
-    return null;
-  }
-
-  @Override
-  public int getDataProcessingCnt() {
-    throw new RuntimeException("Not supported");
-    //return dataProcessingCnt;
-  }
-
-  @Override
   public double getLoad() {
     return cpuAverage.getMean();
   }
@@ -194,28 +184,28 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
-  public synchronized Future<Optional<O>> execute(final ByteBuf input, final int dataId,
-                                     final boolean speculative) {
-    input.writeInt(dataId);
+  public void writeSourceData(final int index,
+                              final Serializer serializer,
+                              final Object event) {
+    final ByteBuf byteBuf = dataChannel.alloc().ioBuffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
-    LOG.info("Write int for {}!!: readable bytes: {}", workerId, input.readableBytes());
+    try {
+      serializer.getEncoderFactory().create(bos).encode(event);
+      bos.close();
 
-    if (controlChannel != null) {
-      if (Constants.enableLambdaLogging) {
-        LOG.info("Write data from worker {}, id: {}", workerId, dataId);
-      }
-
-      controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
-    } else {
-      throw new RuntimeException("Channel is null");
+      final Object finalData = DataFrameEncoder.DataFrame.newInstance(
+        Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
+      dataChannel.write(finalData);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
-
-    return null;
   }
 
 
-  @Override
-  public synchronized void forceClose() {
+  @Deprecated
+  private synchronized void forceClose() {
     if (controlChannel != null) {
       //byteBufOutputStream.buffer().release();
       closeThread.execute(() -> {
@@ -240,25 +230,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     }
 
     finished = true;
-    offloadingWorkerFactory.deleteOffloadingWorker(this);
+    // offloadingWorkerFactory.deleteOffloadingWorker(this);
   }
 
-  @Override
-  public synchronized <T> T finishOffloading() {
-
-    if (controlChannel != null) {
-      //byteBufOutputStream.buffer().release();
-      controlChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
-    } else {
-      throw new RuntimeException("Channel cannot be null when finishOffloading");
-    }
-
-    //offloadingWorkerFactory.deleteOffloadingWorker(this);
-    //channelThread.shutdown();
-    finished = true;
-
-    return null;
-  }
 
   @Override
   public String toString() {

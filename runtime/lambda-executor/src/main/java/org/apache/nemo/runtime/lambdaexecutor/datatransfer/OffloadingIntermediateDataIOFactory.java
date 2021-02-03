@@ -50,8 +50,7 @@ public final class OffloadingIntermediateDataIOFactory implements IntermediateDa
   }
 
   @Override
-  public InputReader createReader(int dstTaskIdx,
-                                  String taskId,
+  public InputReader createReader(String taskId,
                                   IRVertex srcIRVertex,
                                   RuntimeEdge runtimeEdge,
                                   ExecutorThreadQueue executorThreadQueue) {

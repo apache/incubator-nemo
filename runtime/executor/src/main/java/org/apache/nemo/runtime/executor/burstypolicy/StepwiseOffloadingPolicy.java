@@ -313,7 +313,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 //            while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
 //              final Pair<TaskExecutor, Long> pair = iterator.next();
 //              final TaskExecutor taskExecutor = pair.left();
-//              if (taskExecutor.isOffloaded()) {
+//              if (taskExecutor.isOffloadedTask()) {
 //                final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
 //                if (System.currentTimeMillis() - offloadingTime >= deoffloadSlackTime) {
 //

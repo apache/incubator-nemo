@@ -34,7 +34,7 @@ public interface TaskExecutor extends ExecutorThreadTask {
   Task getTask();
   public int getNumKeys();
   TaskMetrics getTaskMetrics();
-  boolean checkpoint();
+  boolean checkpoint(boolean checkpointSource);
   AtomicLong getTaskExecutionTime();
   long getThreadId();
   boolean isStateless();

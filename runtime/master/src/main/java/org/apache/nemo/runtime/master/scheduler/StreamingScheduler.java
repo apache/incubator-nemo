@@ -22,6 +22,8 @@ import com.google.common.collect.Lists;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
@@ -107,9 +109,20 @@ public final class StreamingScheduler implements Scheduler {
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
 
+
       LOG.info("Task schedule {}", stageToSchedule.getId());
 
       taskIdsToSchedule.forEach(taskId -> {
+        submittedPhysicalPlan.getStageDAG().getRootVertices().forEach(rootStage -> {
+          rootStage.getIRDAG().getRootVertices().forEach(rootVertex -> {
+              rootStage.getIRDAG().getOutgoingEdgesOf(rootVertex).forEach(edge -> {
+                // register root source pipe for offloading
+                // THIS IS FAKE TASK SCHEDULED !!
+                pipeIndexMaster.onTaskScheduled("Origin", edge.getId(), taskId);
+              });
+          });
+        });
+
         stageIncomingEdges.forEach(inEdge -> {
           final int srcParallelism = ((StageEdge) inEdge)
             .getDst().getPropertyValue(ParallelismProperty.class).get();

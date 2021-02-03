@@ -12,11 +12,14 @@ public final class SendToOffloadingWorker {
 
   public final byte[] taskByte;
   public final Map<Triple<String, String, String>, Integer> indexMap;
+  public final boolean offloaded;
 
   public SendToOffloadingWorker(final byte[] taskByte,
-                                final Map<Triple<String, String, String>, Integer> indexMap) {
+                                final Map<Triple<String, String, String>, Integer> indexMap,
+                                final boolean offloaded) {
     this.taskByte = taskByte;
     this.indexMap = indexMap;
+    this.offloaded = offloaded;
   }
 
   public void encode(OutputStream os) {
@@ -36,6 +39,7 @@ public final class SendToOffloadingWorker {
           throw new RuntimeException(e);
         }
       });
+      dos.writeBoolean(offloaded);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -58,8 +62,9 @@ public final class SendToOffloadingWorker {
         final int index = dis.readInt();
         indexMap.put(Triple.of(src, edge, dst), index);
       }
+      final boolean offloaded = dis.readBoolean();
 
-      return new SendToOffloadingWorker(taskByte, indexMap);
+      return new SendToOffloadingWorker(taskByte, indexMap, offloaded);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

@@ -105,6 +105,11 @@ public final class ExecutorTest {
 
   @Before
   public void setUp() throws Exception {
+
+    // kill vm workers
+    LOG.info("Killing VM workers...");
+    Runtime.getRuntime().exec( "pkill -f VMWorker");
+
     stageId = new AtomicInteger(1);
     runtimeEdgeToOutputData = new HashMap<>();
 
@@ -149,8 +154,9 @@ public final class ExecutorTest {
     for (final Injector injector : injectors) {
       final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
       if (wrapper.containsTask(taskId)) {
+        LOG.info("Task offloading message added {}", taskId);
         wrapper.getTaskExecutorThread(taskId)
-          .addEvent(new TaskOffloadingEvent(taskId,
+          .addShortcutEvent(new TaskOffloadingEvent(taskId,
           TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
       }
     }
@@ -162,7 +168,7 @@ public final class ExecutorTest {
       final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
       if (wrapper.containsTask(taskId)) {
         wrapper.getTaskExecutorThread(taskId)
-          .addEvent(new TaskOffloadingEvent(taskId,
+          .addShortcutEvent(new TaskOffloadingEvent(taskId,
           TaskOffloadingEvent.ControlType.DEOFFLOADING, null));
       }
     }
@@ -206,6 +212,76 @@ public final class ExecutorTest {
 
 
     Thread.sleep(3000);
+  }
+
+  @Test
+  public void testOffloadingSource() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(5);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5);
+
+    final int parallelism = 3;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+    Thread.sleep(2000);
+
+    // 100
+    for (int i = 0; i < 500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
+    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
+
+    final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
+
+    Thread.sleep(4000);
+
+
+    // 200
+    for (int i = 500; i < 5000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if (i == 1200) {
+        offloading("Stage0-0-0", injectors);
+        offloading("Stage0-1-0", injectors);
+        offloading("Stage1-1-0", injectors);
+      }
+
+      if (i == 2400) {
+        deoffloading("Stage0-0-0", injectors);
+        offloading("Stage2-1-0", injectors);
+      }
+
+      if (i == 3400) {
+        deoffloading("Stage0-1-0", injectors);
+        offloading("Stage2-2-0", injectors);
+        offloading("Stage1-0-0", injectors);
+      }
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(2);
+    }
+
+    Thread.sleep(2000);
+
+
+    Thread.sleep(2000);
   }
 
   @Test

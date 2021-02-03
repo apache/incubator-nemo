@@ -125,8 +125,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
-      //LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
-      //  nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
+      //LOG.info("NexOp: {}, isOffloading: {}, isOffloadedTask: {}",
+      //  nextOperator.getId(), nextOperator.isOffloading, isOffloadedTask.get());
 
       final Pair<OperatorMetricCollector, OutputCollector> pair =
         outputCollectorMap.get(nextOperator.getId());
@@ -193,7 +193,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // offloading
     /* TODO: for middle offloader
-    if (taskExecutor.isOffloaded() && !offloadingIds.isEmpty()) {
+    if (taskExecutor.isOffloadedTask() && !offloadingIds.isEmpty()) {
       LOG.info("Offloading watermark to serverless: {} at {}", watermark, taskExecutor.getId());
       taskExecutor.sendToServerless(
         watermark, offloadingIds, currWatermark, edgeId);

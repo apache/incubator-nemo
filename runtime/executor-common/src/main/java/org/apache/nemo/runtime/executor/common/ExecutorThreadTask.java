@@ -27,6 +27,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 public interface ExecutorThreadTask {
   String getId();
   boolean isSource();
+  boolean isOffloadedTask();
   boolean isSourceAvailable();
   boolean hasData();
   void handleData(String edgeId, TaskHandlingEvent t);

@@ -15,8 +15,6 @@ import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.FrameDecoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,12 +165,6 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   }
 
   @Override
-  public OffloadingWorker createOffloadingWorker(final ByteBuf workerInitBuffer,
-                                                 final OffloadingSerializer offloadingSerializer) {
-    throw new RuntimeException("not supported");
-  }
-
-  @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
 
     LOG.info("Delete offloading worker: {}", worker.getChannel().remoteAddress());
@@ -180,11 +172,6 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     final Channel channel = worker.getChannel();
     requestor.destroyChannel(channel);
 
-  }
-
-  @Override
-  public int getAndIncreaseDataId() {
-    return dataId.getAndIncrement();
   }
 
   final class WorkerDataTransportChannelInitializer extends ChannelInitializer<SocketChannel> {

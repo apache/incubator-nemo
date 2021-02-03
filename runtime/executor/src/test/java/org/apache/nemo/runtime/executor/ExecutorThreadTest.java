@@ -112,6 +112,11 @@ public final class ExecutorThreadTest {
     }
 
     @Override
+    public boolean isOffloadedTask() {
+      return false;
+    }
+
+    @Override
     public boolean isSourceAvailable() {
       return !data.isEmpty();
     }
@@ -152,6 +157,11 @@ public final class ExecutorThreadTest {
 
     @Override
     public boolean isSource() {
+      return false;
+    }
+
+    @Override
+    public boolean isOffloadedTask() {
       return false;
     }
 

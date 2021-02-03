@@ -108,7 +108,7 @@ public final class OffloadingManagerImpl implements OffloadingManager {
               final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
               LOG.info("Receive task ready message from offloading worker in executor {}: {}", executorId, taskId);
 
-              executorThread.addEvent(new TaskOffloadingEvent(taskId,
+              executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
                 TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
                 null));
             } catch (IOException e) {
@@ -142,7 +142,7 @@ public final class OffloadingManagerImpl implements OffloadingManager {
     LOG.info("Offloading task {}, indexMap: {}", taskId, pipeIndexMapWorker.getIndexMap());
     final byte[] bytes = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
     final SendToOffloadingWorker taskSend =
-      new SendToOffloadingWorker(bytes, pipeIndexMapWorker.getIndexMap());
+      new SendToOffloadingWorker(bytes, pipeIndexMapWorker.getIndexMap(), true);
     final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
@@ -159,7 +159,17 @@ public final class OffloadingManagerImpl implements OffloadingManager {
   }
 
   @Override
-  public void writeData(String taskId, TaskHandlingEvent data) {
+  public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
     workers.get(0).writeData(data.getInputPipeIndex(), data);
+  }
+
+  @Override
+  public void offloadSourceData(final String taskId,
+                                final String edgeId,
+                                final Object data,
+                                final Serializer serializer) {
+    final int index = pipeIndexMapWorker.getPipeIndex("Origin", edgeId, taskId);
+    // LOG.info("Write source data for offloaded task {}", taskId);
+    workers.get(0).writeSourceData(index, serializer, data);
   }
 }

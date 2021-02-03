@@ -275,7 +275,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
 //          while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
 //            final Pair<TaskExecutor, Long> pair = iterator.next();
 //            final TaskExecutor taskExecutor = pair.left();
-//            if (taskExecutor.isOffloaded()) {
+//            if (taskExecutor.isOffloadedTask()) {
 //              final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
 //              final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime() / 1000;
 //

@@ -108,7 +108,7 @@ public final class SeepTaskOffloader {
 //  private int calculateOFfloadedTasks() {
 //    int cnt = 0;
 //    for (final Pair<TaskExecutor, Long> offloadExecutor : offloadedExecutors) {
-//      if (offloadExecutor.left().isOffloaded()) {
+//      if (offloadExecutor.left().isOffloadedTask()) {
 //        cnt += 1;
 //      }
 //    }
@@ -165,7 +165,7 @@ public final class SeepTaskOffloader {
 //           running += 1;
 //         } else if (taskExecutor.isOffloadPending()) {
 //           offpending += 1;
-//         } else if (taskExecutor.isOffloaded()) {
+//         } else if (taskExecutor.isOffloadedTask()) {
 //           offloaded += 1;
 //         } else if (taskExecutor.isDeoffloadPending()) {
 //           deoffpending += 1;

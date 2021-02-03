@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-public final class TestGBKListTransform implements Transform<Pair<Integer, Integer>, Pair<Integer, Integer>> {
+public final class TestGBKListAggTransform implements Transform<Pair<Integer, List<Integer>>, Pair<Integer, Integer>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TestGBKListTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(TestGBKListAggTransform.class.getName());
 
   public final Map<Integer, List<Integer>> map = new HashMap<>();
 
@@ -27,7 +27,7 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
   public void restore() {
     final StateStore stateStore = context.getStateStore();
     if (stateStore.containsState(context.getTaskId())) {
-      LOG.info("Restore state for TestGBK in {}", context.getTaskId());
+      LOG.info("Restore state for TestGBKAgg in {}", context.getTaskId());
       final InputStream is = stateStore.getStateStream(context.getTaskId());
       final Map<Integer, List<Integer>> s = SerializationUtils.deserialize(is);
       map.putAll(s);
@@ -50,7 +50,7 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
 
   @Override
   public void checkpoint() {
-    LOG.info("Checkpoint state for TestGBK in {}", context.getTaskId());
+    LOG.info("Checkpoint state for TestGBKAgg in {}", context.getTaskId());
     final StateStore stateStore = context.getStateStore();
     final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
     SerializationUtils.serialize((HashMap) map, bos);
@@ -63,30 +63,37 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
     }
   }
 
+  private Integer sum(final List<Integer> l) {
+    int s = 0;
+    for (int elem : l) {
+      s += elem;
+    }
+    return s;
+  }
+
   @Override
-  public void onData(Pair<Integer, Integer> element) {
+  public void onData(Pair<Integer, List<Integer>> element) {
 
     if (map.containsKey(element.left())) {
-      map.get(element.left()).add(element.right());
+      map.get(element.left()).add(sum(element.right()));
     } else {
       map.put(element.left(), new LinkedList<>());
-      map.get(element.left()).add(element.right());
+      map.get(element.left()).add(sum(element.right()));
     }
 
     // outputCollector.emit(Pair.of(element.left(), map.get(element.left())));
-    outputCollector.emit(Pair.of(element.left(), map.get(element.left())));
 
     if (map.get(element.left()).size() % 10 == 0) {
       Collections.sort(map.get(element.left()));
-      LOG.info("Receive {} from TestListGBK in {}, combine result: {} / {}",
-        element, context.getTaskId(), map.get(element.left()).size(), map.get(element.left()));
+      LOG.info(" TestListAggGBK in {},  agg result: {} / {}",
+        context.getTaskId(), map.get(element.left()).size(), map.get(element.left()));
     }
   }
 
   @Override
   public void onWatermark(Watermark watermark) {
-    LOG.info("Receive watermark {} from TestListGBK in {}", watermark.getTimestamp(), context.getTaskId());
-    outputCollector.emitWatermark(watermark);
+    LOG.info("Receive watermark {} from TestListAggGBK in {}", watermark.getTimestamp(), context.getTaskId());
+    // outputCollector.emitWatermark(watermark);
   }
 
   @Override

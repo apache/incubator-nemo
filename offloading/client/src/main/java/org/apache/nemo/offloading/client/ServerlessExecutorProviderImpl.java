@@ -6,11 +6,11 @@ import javax.inject.Inject;
 
 public final class ServerlessExecutorProviderImpl implements ServerlessExecutorProvider {
 
-  private final OffloadingWorkerFactory workerFactory;
+  private final DeprecatedOffloadingWorkerFactory workerFactory;
 
   @Inject
   private ServerlessExecutorProviderImpl(
-    final OffloadingWorkerFactory workerFactory) {
+    final DeprecatedOffloadingWorkerFactory workerFactory) {
     this.workerFactory = workerFactory;
   }
 

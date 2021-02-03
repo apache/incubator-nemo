@@ -6,5 +6,9 @@ public interface OffloadingManager {
   void createWorker(int num);
   void offloading(String taskId);
   void deoffloading(String taskId);
-  void writeData(String taskId, TaskHandlingEvent data);
+  void offloadIntermediateData(String taskId, TaskHandlingEvent data);
+  void offloadSourceData(final String taskId,
+                         final String edgeId,
+                         final Object data,
+                         final Serializer serializer);
 }

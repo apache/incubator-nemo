@@ -104,7 +104,7 @@ public final class Executor {
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
-  // private final OffloadingWorkerFactory offloadingWorkerFactory;
+  // private final DeprecatedOffloadingWorkerFactory offloadingWorkerFactory;
 
   private final ByteTransport byteTransport;
   private final PipeManagerWorker pipeManagerWorker;
@@ -144,7 +144,7 @@ public final class Executor {
                    final MetricManagerWorker metricMessageSender,
                    final ByteTransport byteTransport,
                    //final CpuBottleneckDetector bottleneckDetector,
-                   // final OffloadingWorkerFactory offloadingWorkerFactory,
+                   // final DeprecatedOffloadingWorkerFactory offloadingWorkerFactory,
                    final EvalConf evalConf,
                    // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
@@ -442,7 +442,8 @@ public final class Executor {
         stateStore,
         offloadingManager,
         pipeManagerWorker,
-        outputCollectorGenerator);
+        outputCollectorGenerator,
+        false);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);

@@ -53,6 +53,7 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
     try {
       t = serializer.getDecoderFactory().create(bis).decode();
       bis.close();
+      byteBuf.release();
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

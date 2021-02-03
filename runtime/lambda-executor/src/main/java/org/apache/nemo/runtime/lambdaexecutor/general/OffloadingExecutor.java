@@ -166,7 +166,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
           (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
 
-        launchTask(task, irDag);
+        launchTask(task, irDag, e.offloaded);
       } catch (Exception e1) {
         e1.printStackTrace();
         throw new RuntimeException(e1);
@@ -183,7 +183,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   private void launchTask(final Task task,
-                          final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+                          final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                          final boolean offloaded) {
 
     task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
       getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
@@ -228,7 +229,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         stateStore,
         new SimpleOffloadingManager(),
         pipeManagerWorker,
-        outputCollectorGenerator);
+        outputCollectorGenerator,
+        offloaded);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
       executorThreads.get(index).addNewTask(taskExecutor);

@@ -184,6 +184,11 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
+  public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
+    throw new RuntimeException("not suport");
+  }
+
+  @Override
   public void registerInputPipe(String srcTaskId,
                                 String edgeId,
                                 String dstTaskId,
