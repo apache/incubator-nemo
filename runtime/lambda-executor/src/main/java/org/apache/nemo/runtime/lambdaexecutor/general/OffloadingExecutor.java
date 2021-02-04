@@ -1,9 +1,12 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
@@ -14,11 +17,9 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.offloading.common.LambdaRuntimeContext;
-import org.apache.nemo.offloading.common.OffloadingOutputCollector;
-import org.apache.nemo.offloading.common.OffloadingTransform;
-import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.TaskFinish;
@@ -29,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -72,6 +75,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private ScheduledExecutorService scheduledService;
 
   private long throttleRate;
+  private ExecutorMetrics executorMetrics;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -101,6 +105,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
     final LambdaRuntimeContext context = (LambdaRuntimeContext)c;
 
+    this.executorMetrics = new ExecutorMetrics();
     this.throttleRate = context.throttleRate;
     this.prepareService = Executors.newCachedThreadPool();
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
@@ -144,10 +149,25 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i, taskControlEventHandler, throttleRate,
+        new ExecutorThread(1,
+          "lambda-" + i,
+          taskControlEventHandler,
+          throttleRate,
+          executorMetrics,
           context.testing));
       executorThreads.get(i).start();
     }
+
+    final Channel controlChannel = context.getControlChannel();
+
+    scheduledService.scheduleAtFixedRate(() -> {
+      final ByteBuf byteBuf = controlChannel.alloc().ioBuffer();
+      final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+      SerializationUtils.serialize(
+        (Serializable) executorMetrics, bos);
+      controlChannel.writeAndFlush(new OffloadingEvent(
+        OffloadingEvent.Type.EXECUTOR_METRICS, byteBuf));
+    }, 1, 1, TimeUnit.SECONDS);
 
   }
 

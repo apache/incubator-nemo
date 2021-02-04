@@ -26,6 +26,7 @@ public final class OffloadingEvent implements Serializable {
     WARMUP_END,
     END,
     CPU_LOAD,
+    EXECUTOR_METRICS,
 
     /// for vm scaling info
     VM_SCALING_INFO,

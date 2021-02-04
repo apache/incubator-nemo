@@ -383,11 +383,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
+
+        /*
         // If it is sink or emit to next stage, we log the latency
         LOG.info("MonitoringVertex: {}", childVertex.getId());
         if (!samplingMap.containsKey(childVertex.getId())) {
           samplingMap.put(childVertex.getId(), 1.0);
         }
+        */
+
         LOG.info("Sink vertex: {}", childVertex.getId());
       }
     });

@@ -8,6 +8,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
@@ -48,6 +49,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   private final ExecutorService closeThread = SharedCachedPool.POOL;
 
   private final DescriptiveStatistics cpuAverage;
+
+  private ExecutorMetrics executorMetrics;
 
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture,
@@ -109,6 +112,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                 }
                 break;
               }
+              case EXECUTOR_METRICS:
               case TASK_FINISH_DONE:
               case TASK_READY: {
                 eventHandler.onNext(Pair.of(StreamingLambdaWorkerProxy.this, msg));
@@ -202,6 +206,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void setMetric(ExecutorMetrics executorMetrics) {
+    this.executorMetrics = executorMetrics;
   }
 
 

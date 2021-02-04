@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -91,7 +92,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
   }
 
-
   protected List<OffloadingWorker> createWorkerBlocking(final int num) {
     // workerFactory.createStreamingWorker()
     offloadExecutorByteBuf.retain();
@@ -105,51 +105,64 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
               final OffloadingEvent oe = pair.right();
               final OffloadingWorker myWorker = pair.left();
 
-              if (oe.getType().equals(OffloadingEvent.Type.TASK_READY)) {
-                final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
-                try {
-                  final String taskId = bis.readUTF();
-                  final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
-                  LOG.info("Receive task ready message from prepareOffloading worker in executor {}: {}", executorId, taskId);
+              switch (oe.getType()) {
+                case TASK_READY: {
+                  final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
+                  try {
+                    final String taskId = bis.readUTF();
+                    final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
+                    LOG.info("Receive task ready message from prepareOffloading worker in executor {}: {}", executorId, taskId);
 
-                  executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
-                    TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
-                    null));
-                  oe.getByteBuf().release();
-                } catch (IOException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
-                }
-              } else if (oe.getType().equals(OffloadingEvent.Type.TASK_FINISH_DONE)) {
-                final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
-                try {
-                  final String taskId = bis.readUTF();
-                  synchronized (workers) {
-                    taskWorkerMap.get(taskId).remove(myWorker);
-                    workerTaskMap.get(myWorker).remove(taskId);
-
-                    if (workerTaskMap.get(myWorker).isEmpty()) {
-                      // Destroy worker !!
-                      LOG.info("Worker destroy...");
-                      myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
-                      workerTaskMap.remove(myWorker);
-                      workers.remove(myWorker);
-                    }
-
-                    if (taskWorkerMap.get(taskId).size() == 0) {
-                      taskWorkerMap.remove(taskId);
-                    }
+                    executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
+                      TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
+                      null));
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
                   }
-                  LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
-
-                  oe.getByteBuf().release();
-                } catch (IOException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
+                  break;
                 }
-              } else {
-                throw new RuntimeException("unsupported " + oe.getType());
+                case TASK_FINISH_DONE: {
+                  final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
+                  try {
+                    final String taskId = bis.readUTF();
+                    synchronized (workers) {
+                      taskWorkerMap.get(taskId).remove(myWorker);
+                      workerTaskMap.get(myWorker).remove(taskId);
+
+                      if (workerTaskMap.get(myWorker).isEmpty()) {
+                        // Destroy worker !!
+                        LOG.info("Worker destroy...");
+                        myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
+                        workerTaskMap.remove(myWorker);
+                        workers.remove(myWorker);
+                      }
+
+                      if (taskWorkerMap.get(taskId).size() == 0) {
+                        taskWorkerMap.remove(taskId);
+                      }
+                    }
+                    LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
+                  break;
+                }
+                case EXECUTOR_METRICS: {
+                  final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
+                  final ExecutorMetrics executorMetrics = SerializationUtils.deserialize(bis);
+                  LOG.info("Executor metrics recieved for worker {}: {}", myWorker.getId(), executorMetrics);
+                  myWorker.setMetric(executorMetrics);
+                  break;
+                }
+                default: {
+                  throw new RuntimeException("Not supported type " + oe.getType());
+                }
+
               }
+
+              oe.getByteBuf().release();
             }
           });
 

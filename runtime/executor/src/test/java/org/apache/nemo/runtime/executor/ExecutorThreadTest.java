@@ -24,7 +24,8 @@ public final class ExecutorThreadTest {
   @Test
   public void testExecutorThread() throws InterruptedException {
     final ExecutorThread executorThread = new ExecutorThread(0,
-      "executor1", controlEventHandler, Long.MAX_VALUE, false);
+      "executor1", controlEventHandler, Long.MAX_VALUE, new ExecutorMetrics(),
+      false);
 
     final List<Object> input = new LinkedList<>();
     input.addAll(Arrays.asList(0, 1, 2, 3, 4, 5));

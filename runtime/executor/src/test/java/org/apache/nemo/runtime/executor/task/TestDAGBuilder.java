@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
@@ -48,12 +49,14 @@ public final class TestDAGBuilder {
   public final int parallelism;
 
   public TestGBKTransform finalTransform;
+  public final Map<String, Double> samplingMap;
 
   public TestDAGBuilder(final PhysicalPlanGenerator planGenerator,
                         final int parallelism) {
     this.planGenerator = planGenerator;
     this.policy = new StreamingPolicy();
     this.parallelism = parallelism;
+    this.samplingMap = new HashMap<>();
     policy.build(parallelism);
   }
 
@@ -93,6 +96,9 @@ public final class TestDAGBuilder {
     final IRVertex v3 = new OperatorVertex(new TestGBKListAggTransform());
     v3.isStateful = true;
     v3.setProperty(ParallelismProperty.of(parallelism));
+    v3.isSink = true;
+
+    samplingMap.put(v3.getId(), 1.0);
 
     return new IRDAG(dagBuilder.addVertex(src)
       .addVertex(v1)

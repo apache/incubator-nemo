@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.Readable;
@@ -181,14 +182,17 @@ public final class ExecutorTest {
 
   @Test
   public void testOffloadingThrottling() throws Exception {
-    final Pair<Executor, Injector> pair1 = launchExecutor(5, 20);
-    final Pair<Executor, Injector> pair2 = launchExecutor(5, 20);
 
-    final int parallelism = 1;
-    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+    final int parallelism = 3;
 
     final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
     final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    final Pair<Executor, Injector> pair1 = launchExecutor(5, 20, testDAGBuilder.samplingMap);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5, 20, testDAGBuilder.samplingMap);
+
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
 
     runtimeMaster.execute(plan, 1);
 
@@ -734,15 +738,16 @@ public final class ExecutorTest {
 
   private final AtomicInteger nodeNumber = new AtomicInteger(0);
 
-  private Pair<Executor, Injector> launchExecutor(final int capacity) throws InjectionException {
-    return launchExecutor(capacity, Long.MAX_VALUE);
+  private Pair<Executor, Injector> launchExecutor(final int capacity) throws InjectionException, JsonProcessingException {
+    return launchExecutor(capacity, Long.MAX_VALUE, new HashMap<>());
   }
 
   private Pair<Executor, Injector> launchExecutor(final int capacity,
-                                                  final long offloadingThrottleRate) throws InjectionException {
+                                                  final long offloadingThrottleRate,
+                                                  final Map<String, Double> samplingMap) throws InjectionException, JsonProcessingException {
     final Pair<Executor, Injector> pair1 =
       PipeManagerTestHelper.createExecutor("executor" + nodeNumber.incrementAndGet(),
-        masterSetupHelper.nameServer, stateStore, offloadingThrottleRate);
+        masterSetupHelper.nameServer, stateStore, offloadingThrottleRate, samplingMap);
 
     final Executor executor = pair1.left();
     final ActiveContext activeContext = mock(ActiveContext.class);

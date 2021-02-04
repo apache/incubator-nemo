@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.executor;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
@@ -117,7 +119,9 @@ public class PipeManagerTestHelper {
   createExecutor(final String executorId,
                  final NameServer nameServer,
                  final StateStore stateStore,
-                 final long offloadingThrottleRate) throws InjectionException {
+                 final long offloadingThrottleRate,
+                 final Map<String, Double> samplingMap) throws InjectionException, JsonProcessingException {
+    final ObjectMapper objectMapper = new ObjectMapper();
 
     final Configuration conf = TANG.newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorId.class, executorId)
@@ -131,6 +135,7 @@ public class PipeManagerTestHelper {
       .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .bindNamedParameter(EvalConf.ThrottleRate.class, Long.toString(offloadingThrottleRate))
+      .bindNamedParameter(EvalConf.SamplingJsonString.class, objectMapper.writeValueAsString(samplingMap))
       .build();
 
     final Configuration nameResolverConf = PipeManagerTestHelper.createNameResolverConf(nameServer);

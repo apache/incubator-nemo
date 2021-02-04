@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class ExecutorThread implements ExecutorThreadQueue {
@@ -39,10 +41,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final boolean testing;
 
+  private final ExecutorMetrics executorMetrics;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
                         final ControlEventHandler controlEventHandler,
                         final long throttleRate,
+                        final ExecutorMetrics executorMetrics,
                         final boolean testing) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
@@ -55,6 +60,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     this.controlEventHandler = controlEventHandler;
     this.throttleRate = throttleRate;
     this.testing = testing;
+    this.executorMetrics = executorMetrics;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -102,6 +108,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   public void addNewTask(final ExecutorThreadTask task) {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
+    executorMetrics.taskInputProcessRateMap
+      .put(task.getId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
     if (task.isSource() && !task.isOffloadedTask()) {
       synchronized (pendingSourceTasks) {
@@ -117,6 +125,11 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   @Override
   public void addEvent(TaskHandlingEvent event) {
+    if (!event.isControlMessage() && !event.isOffloadingMessage()) {
+      executorMetrics.taskInputProcessRateMap
+        .get(event.getTaskId()).left().incrementAndGet();
+    }
+
     queue.add(event);
   }
 
@@ -196,10 +209,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                     currProcessedCnt += 1;
                     long st = System.nanoTime();
                     sourceTask.handleSourceData();
+                    // executorMetrics.eventProcessed.incrementAndGet();
                     long et = System.nanoTime();
                     elapsedTime += (et - st);
                   } else {
                     sourceTask.handleSourceData();
+                    // executorMetrics.eventProcessed.incrementAndGet();
                   }
                   processed = true;
                 } else {
@@ -233,10 +248,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               if (testing) {
                 long st = System.nanoTime();
                 taskExecutor.handleData(event.getEdgeId(), event);
+                executorMetrics.taskInputProcessRateMap
+                  .get(event.getTaskId()).right().incrementAndGet();
                 long et = System.nanoTime();
                 elapsedTime += (et - st);
               } else {
                 taskExecutor.handleData(event.getEdgeId(), event);
+                executorMetrics.taskInputProcessRateMap
+                  .get(event.getTaskId()).right().incrementAndGet();
               }
 
               processed = true;
