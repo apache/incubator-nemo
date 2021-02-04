@@ -84,4 +84,9 @@ public final class HDFStateStore implements StateStore {
       throw new RuntimeException(e);
     }
   }
+
+  @Override
+  public void close() {
+
+  }
 }

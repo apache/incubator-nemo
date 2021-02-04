@@ -38,7 +38,7 @@ public final class MultiplicativeIncrementOffloadingPolicy implements TaskOffloa
 //  private final int k;
 //  private final double threshold;
 //
-//  // key: offloaded task executor, value: start time of offloading
+//  // key: offloaded task executor, value: start time of prepareOffloading
 //  private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
 //  private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
 //  private long slackTime = 10000;

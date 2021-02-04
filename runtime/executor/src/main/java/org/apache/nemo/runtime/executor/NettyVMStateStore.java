@@ -55,6 +55,11 @@ public final class NettyVMStateStore implements NettyStateStore {
     return stateStore.containsState(taskId);
   }
 
+  @Override
+  public void close() {
+      nettyServerTransport.close();
+  }
+
   final class VMStatestoreChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     @Override

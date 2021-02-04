@@ -138,6 +138,11 @@ public final class ExecutorTest {
       public synchronized boolean containsState(String taskId) {
         return stateMap.containsKey(taskId);
       }
+
+      @Override
+      public void close() {
+
+      }
     };
   }
 
@@ -154,7 +159,7 @@ public final class ExecutorTest {
     for (final Injector injector : injectors) {
       final TaskExecutorMapWrapper wrapper = injector.getInstance(TaskExecutorMapWrapper.class);
       if (wrapper.containsTask(taskId)) {
-        LOG.info("Task offloading message added {}", taskId);
+        LOG.info("Task prepareOffloading message added {}", taskId);
         wrapper.getTaskExecutorThread(taskId)
           .addShortcutEvent(new TaskOffloadingEvent(taskId,
           TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
@@ -187,20 +192,48 @@ public final class ExecutorTest {
 
     runtimeMaster.execute(plan, 1);
 
-    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
-    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
 
     Thread.sleep(4000);
 
     final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
 
+    offloading("Stage1-0-0", injectors);
+
     // 400
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 2000; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
-      if (i == 500) {
-        offloading("Stage1-0-0", injectors);
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
       }
+      Thread.sleep(3);
+    }
+
+
+    Thread.sleep(3000);
+  }
+
+  @Test
+  public void testOffloadingDeoffloading() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(5);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5);
+
+    final int parallelism = 3;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+    Thread.sleep(2000);
+
+    // 100
+    for (int i = 0; i < 500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i) % 50 == 0) {
         for (int j = 0; j < parallelism; j++) {
@@ -211,7 +244,47 @@ public final class ExecutorTest {
     }
 
 
-    Thread.sleep(3000);
+    final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
+
+    Thread.sleep(4000);
+
+    // 200
+    for (int i = 500; i < 4000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if (i == 1000) {
+        offloading("Stage1-0-0", injectors);
+      }
+
+      if (i == 3000) {
+        deoffloading("Stage1-0-0", injectors);
+      }
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(3);
+    }
+
+    Thread.sleep(2000);
+
+    offloading("Stage1-0-0", injectors);
+
+    Thread.sleep(2000);
+    for (int i = 4000; i < 5000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(3);
+    }
+
+    Thread.sleep(2000);
   }
 
   @Test
@@ -241,8 +314,6 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
-    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
-    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
 
     final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
 
@@ -275,7 +346,7 @@ public final class ExecutorTest {
           sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
         }
       }
-      Thread.sleep(2);
+      Thread.sleep(3);
     }
 
     Thread.sleep(2000);
@@ -311,9 +382,6 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
-    pair1.right().getInstance(OffloadingManager.class).createWorker(1);
-    pair2.right().getInstance(OffloadingManager.class).createWorker(1);
-
     final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
 
     Thread.sleep(4000);
@@ -322,7 +390,7 @@ public final class ExecutorTest {
 
     Thread.sleep(2000);
 
-    LOG.info("Start to generate event after offloading");
+    LOG.info("Start to generate event after prepareOffloading");
 
     // 200
     for (int i = 500; i < 1000; i++) {
@@ -349,10 +417,10 @@ public final class ExecutorTest {
           sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
         }
       }
-      Thread.sleep(1);
+      Thread.sleep(2);
     }
 
-    // offloading two tasks
+    // prepareOffloading two tasks
     Thread.sleep(2000);
 
     offloading("Stage1-0-0", injectors);
@@ -396,11 +464,11 @@ public final class ExecutorTest {
           sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
         }
       }
-      Thread.sleep(1);
+      Thread.sleep(3);
     }
 
     /*
-    // launch offloading executor
+    // launch prepareOffloading executor
     final String executor1Addr = pair1.right().getInstance(ByteTransport.class).getPublicAddress();
     final int executor1Port = pair1.right().getInstance(ByteTransport.class).getBindingPort();
     final OffloadingExecutor offloadingExecutor =

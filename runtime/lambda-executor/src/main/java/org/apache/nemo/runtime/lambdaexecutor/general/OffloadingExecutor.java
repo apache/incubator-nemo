@@ -134,7 +134,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
       new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
-        taskExecutorMap, parentExecutorChannel);
+        taskExecutorMap, parentExecutorChannel, context.getControlChannel());
 
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
@@ -152,7 +152,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void onData(Object event, OffloadingOutputCollector a) {
     if (event instanceof SendToOffloadingWorker) {
-      // offloading task
+      // prepareOffloading task
       final SendToOffloadingWorker e = (SendToOffloadingWorker) event;
       LOG.info("IndexMap: {}", e.indexMap);
       final ByteArrayInputStream bis = new ByteArrayInputStream(e.taskByte);
@@ -180,6 +180,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void close() {
     scheduledService.shutdown();
+    stateStore.close();
+    clientTransport.close();
   }
 
   private void launchTask(final Task task,

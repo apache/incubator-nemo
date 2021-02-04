@@ -34,6 +34,11 @@ public final class VMScalingClientTransport {
         .option(ChannelOption.SO_KEEPALIVE, true);
   }
 
+  public void close() {
+    channelMap.values().forEach(channelFuture -> channelFuture.channel().close());
+    clientWorkerGroup.shutdownGracefully();
+  }
+
   public void disconnect(final String address, final int port) {
     final String key = address + ":" + port;
     final AtomicInteger counter = channelCounterMap.get(key);

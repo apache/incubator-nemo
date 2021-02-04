@@ -38,7 +38,7 @@ public final class StepwiseOffloadingPolicy implements TaskOffloadingPolicy {
 //  private final int k;
 //  private final double threshold;
 //
-//  // key: offloaded task executor, value: start time of offloading
+//  // key: offloaded task executor, value: start time of prepareOffloading
 //  private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
 //  private final List<TaskExecutor> offloadPendingExecutors;
 //  private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;

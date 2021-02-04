@@ -252,7 +252,7 @@ public final class TinyTaskOffloader implements Offloader {
 //
 //    prevOffloadEndTime.set(System.currentTimeMillis());
 //
-//    LOG.info("Handle end offloading event for {}, status {}",
+//    LOG.info("Handle end prepareOffloading event for {}, status {}",
 //      taskId, taskStatus);
 //
 //    if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
@@ -283,7 +283,7 @@ public final class TinyTaskOffloader implements Offloader {
 //    // TODO: 1) Remove available and pending fetchers!!
 //    // Stop sources and output emission!!
 //
-//    // Prepare task offloading
+//    // Prepare task prepareOffloading
 //    //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 //    //tinyTaskWorker = tinyWorkerManager.prepareSendTask(serializer);
 //
@@ -322,7 +322,7 @@ public final class TinyTaskOffloader implements Offloader {
 //  }
 //
 //
-//  // 2. 얘는 offloading done 받으면 trigger됨
+//  // 2. 얘는 prepareOffloading done 받으면 trigger됨
 //  @Override
 //  public void callTaskOffloadingDone() {
 //    if (pendingStatus != TaskExecutor.PendingState.TASK_READY_PENDING) {
@@ -399,7 +399,7 @@ public final class TinyTaskOffloader implements Offloader {
 //        return true;
 //        /*
 //        if (GlobalOffloadDone.getInstance().getBoolean().get()) {
-//          LOG.info("global offloading done {}", taskId);
+//          LOG.info("global prepareOffloading done {}", taskId);
 //          return true;
 //        } else {
 //          break;
@@ -425,7 +425,7 @@ public final class TinyTaskOffloader implements Offloader {
 //
 //  private void sendReadyTask() {
 //    // Send ready signal and other data
-//    // offloading done message 받은다음에 ready task 보내야함.
+//    // prepareOffloading done message 받은다음에 ready task 보내야함.
 //
 //    final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
 //      stateAndCoderMap = getStateAndCoderMap();

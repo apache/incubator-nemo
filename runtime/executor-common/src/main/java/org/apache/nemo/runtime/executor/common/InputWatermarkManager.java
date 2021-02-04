@@ -48,7 +48,7 @@ public interface InputWatermarkManager extends Serializable {
    */
   void trackAndEmitWatermarks(int edgeIndex, Watermark watermark);
 
-  // for offloading
+  // for prepareOffloading
   void setWatermarkSourceId(String sourceId);
   String getWatermarkSourceId();
 }

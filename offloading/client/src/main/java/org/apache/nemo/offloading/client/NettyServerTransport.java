@@ -56,6 +56,11 @@ public final class NettyServerTransport {
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
   }
 
+  public void close() {
+    serverWorkerGroup.shutdownGracefully();
+    serverBossGroup.shutdownGracefully();
+  }
+
   public int getPort() {
     return port;
   }

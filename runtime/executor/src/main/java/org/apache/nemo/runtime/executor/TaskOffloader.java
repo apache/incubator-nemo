@@ -23,7 +23,7 @@ public final class TaskOffloader {
 
   private final long r;
 
-  // key: offloaded task executor, value: start time of offloading
+  // key: offloaded task executor, value: start time of prepareOffloading
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
 
@@ -77,7 +77,7 @@ public final class TaskOffloader {
 
   private void offloading(String stageId, int time, final int cnt) {
     se.schedule(() -> {
-      LOG.info("Start offloading {}", stageId);
+      LOG.info("Start prepareOffloading {}", stageId);
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
@@ -115,7 +115,7 @@ public final class TaskOffloader {
           if (deoffloadCnt < cnt && stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
             LOG.info("Deoffloading {}", pair.left().getId());
             // pair.left().endOffloading((m) -> {
-            //  LOG.info("Receive end offloading of {} ... send offloding done event", pair.left().getId());
+            //  LOG.info("Receive end prepareOffloading of {} ... send offloding done event", pair.left().getId());
             //  stageOffloadingWorkerManager.endOffloading(stageId);
               //sendOffloadingDoneEvent(pair.left().getId());
             // }, false);
@@ -128,7 +128,7 @@ public final class TaskOffloader {
   }
 
   public void startDownstreamDebugging() {
-    // For offloading debugging
+    // For prepareOffloading debugging
     offloading("Stage0", 30, 4);
     deoffloading("Stage0", 50, 4);
 
@@ -139,28 +139,28 @@ public final class TaskOffloader {
     deoffloading("Stage0", 130, 4);
 
 /*
-    offloading("Stage0", 30, 8);
-    offloading("Stage1", 40, 8);
-    offloading("Stage2", 50, 8);
+    prepareOffloading("Stage0", 30, 8);
+    prepareOffloading("Stage1", 40, 8);
+    prepareOffloading("Stage2", 50, 8);
 
     deoffloading("Stage0", 80, 8);
     deoffloading("Stage1", 90, 8);
     deoffloading("Stage2", 100, 8);
 
-        // For offloading debugging
-    offloading("Stage0", 130, 8);
-    offloading("Stage1", 140, 8);
-    offloading("Stage2", 150, 8);
+        // For prepareOffloading debugging
+    prepareOffloading("Stage0", 130, 8);
+    prepareOffloading("Stage1", 140, 8);
+    prepareOffloading("Stage2", 150, 8);
 
 
     deoffloading("Stage0", 180, 8);
     deoffloading("Stage1", 190, 8);
     deoffloading("Stage2", 200, 8);
 
-        // For offloading debugging
-    offloading("Stage0", 230, 8);
-    offloading("Stage1", 240, 8);
-    offloading("Stage2", 250, 8);
+        // For prepareOffloading debugging
+    prepareOffloading("Stage0", 230, 8);
+    prepareOffloading("Stage1", 240, 8);
+    prepareOffloading("Stage2", 250, 8);
 
 
     deoffloading("Stage0", 280, 8);
@@ -169,11 +169,11 @@ public final class TaskOffloader {
 */
 
 
-    //offloading("Stage1", 80, 5);
+    //prepareOffloading("Stage1", 80, 5);
     //deoffloading("Stage1", 85, 5);
 
     /*
-    offloading("Stage0", 85, 3);
+    prepareOffloading("Stage0", 85, 3);
 
     deoffloading("Stage0", 110, 5);
     */
@@ -181,7 +181,7 @@ public final class TaskOffloader {
 
 
     /*
-    offloading("Stage0", 115);
+    prepareOffloading("Stage0", 115);
 
     deoffloading("Stage2", 135);
     deoffloading("Stage0", 160);

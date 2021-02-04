@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
@@ -167,18 +168,19 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
 
-    LOG.info("Delete offloading worker: {}", worker.getChannel().remoteAddress());
+    LOG.info("Delete prepareOffloading worker: {}", worker.getChannel().remoteAddress());
 
     final Channel channel = worker.getChannel();
     requestor.destroyChannel(channel);
 
   }
 
+  @ChannelHandler.Sharable
   final class WorkerDataTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
-      LOG.info("Data transport for offloading worker initialized {}", ch);
+      LOG.info("Data transport for prepareOffloading worker initialized {}", ch);
       outputWriterFlusher.registerChannel(ch);
       dataTransportChannelMap.put(ch.remoteAddress().toString(), ch);
 

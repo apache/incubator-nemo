@@ -90,7 +90,7 @@ public class VMScalingWorkerEventHandler implements EventHandler {
 
     } else {
 
-      LOG.info("Handling offloading event for {}: {}", te.getId(), msg);
+      LOG.info("Handling prepareOffloading event for {}: {}", te.getId(), msg);
       // te.handleOffloadingEvent(msg);
     }
   }

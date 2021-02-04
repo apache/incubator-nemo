@@ -109,7 +109,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   @Override
   public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
     final int inputPipeIndex = pipeIndexMapWorker.getPipeIndex("Origin", edgeId, srcTaskId);
-    LOG.info("Retrieve index for offloading {} / {}", srcTaskId, inputPipeIndex);
+    LOG.info("Retrieve index for prepareOffloading {} / {}", srcTaskId, inputPipeIndex);
   }
 
   @Override

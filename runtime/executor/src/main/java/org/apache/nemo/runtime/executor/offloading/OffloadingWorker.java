@@ -13,7 +13,7 @@ public interface OffloadingWorker<I, O> {
   String getId();
 
   void writeControl(OffloadingEvent offloadingEvent);
-  void writeData(int pipeIndex, TaskHandlingEvent byteBuf);
+  void writeData(int pipeIndex, TaskHandlingEvent event);
   void writeSourceData(int pipeIndex,
                        Serializer serializer,
                        Object event);

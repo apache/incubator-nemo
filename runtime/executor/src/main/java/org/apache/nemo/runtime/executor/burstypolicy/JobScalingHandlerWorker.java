@@ -37,7 +37,7 @@ import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DE
 public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(JobScalingHandlerWorker.class.getName());
 
-  // key: offloaded task executor, value: start time of offloading
+  // key: offloaded task executor, value: start time of prepareOffloading
   //private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
 
   private final List<List<TaskExecutor>> offloadedTasksPerStage;
@@ -244,7 +244,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 
     remainingOffloadTasks.set(totalOffloadTasks);
-    LOG.info("# of offloading tasks: {}", totalOffloadTasks);
+    LOG.info("# of prepareOffloading tasks: {}", totalOffloadTasks);
 
 
     final int len = largestLength(stageTasks);
@@ -364,7 +364,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     //final OffloadingSerializer serializer = new OffloadingExecutorSerializer();
 
     remainingOffloadTasks.set(totalOffloadTasks);
-    LOG.info("# of offloading tasks: {}", totalOffloadTasks);
+    LOG.info("# of prepareOffloading tasks: {}", totalOffloadTasks);
 
     final int len = largestLength(stageTasks);
 
@@ -488,7 +488,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
 
         while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-          // waiting for stage offloading
+          // waiting for stage prepareOffloading
           LOG.info("Waiting for stage deoffloading {}", stageId);
           try {
             Thread.sleep(1000);
@@ -613,11 +613,11 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       final int offloadTaskNum = (e.size() - (int) (e.size() / divideNum));
       totalOffloadTasks += offloadTaskNum;
       stageOffloadCntMap.put(RuntimeIdManager.getStageIdFromTaskId(e.get(0).getId()), offloadTaskNum);
-      LOG.info("Stage offloading num {}: {}",
+      LOG.info("Stage prepareOffloading num {}: {}",
         RuntimeIdManager.getStageIdFromTaskId(e.get(0).getId()), offloadTaskNum);
     }
 
-    LOG.info("# of offloading tasks: {}", totalOffloadTasks);
+    LOG.info("# of prepareOffloading tasks: {}", totalOffloadTasks);
 
     final int len = largestLength(stageTasks);
 
@@ -680,7 +680,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     scalingService.execute(() -> {
       LOG.info("Send LocalScalingDone {}", executorId);
 
-      // Send local offloading done
+      // Send local prepareOffloading done
       toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())

@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
@@ -72,12 +70,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
-  // Variables for offloading - start
+  // Variables for prepareOffloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
-  // Variables for offloading - end
+  // Variables for prepareOffloading - end
 
   private final long adjustTime;
 
@@ -112,6 +110,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private enum CurrentState {
     RUNNING,
+    WAIT_WORKER,
     OFFLOAD_PENDING,
     OFFLOADED,
     DEOFFLOAD_PENDING
@@ -614,19 +613,24 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     if (taskHandlingEvent.isOffloadingMessage()) {
-      // control message for offloading
+      // control message for prepareOffloading
       final TaskOffloadingEvent event = (TaskOffloadingEvent) taskHandlingEvent;
       final TaskOffloadingEvent.ControlType type = event.getType();
 
       switch (type) {
         case SEND_TO_OFFLOADING_WORKER: {
-          // Always checkpoint for task offloading
-          // TODO: partial computation offloading without checkpointing states
+          // prepareOffloading task
+          offloadingManager.prepareOffloading(taskId, executorThreadQueue);
+          currentState = CurrentState.WAIT_WORKER;
+          break;
+        }
+        case WORKER_READY: {
+          // Always checkpoint for task prepareOffloading
+          // TODO: partial computation prepareOffloading without checkpointing states
           checkpoint(false);
           // store watermark  manager
           final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
           stateStore.put(taskId + "-watermark", bytes);
-          // offloading task
           offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
           break;
@@ -653,7 +657,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           break;
         }
         default:
-          throw new RuntimeException("Invalid offloading control type " + type);
+          throw new RuntimeException("Invalid prepareOffloading control type " + type);
       }
     } else {
       if (taskHandlingEvent instanceof TaskOffloadedDataOutputEvent) {
@@ -685,6 +689,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           case OFFLOAD_PENDING:
             bufferedData.add(taskHandlingEvent);
             break;
+          case WAIT_WORKER:
           case RUNNING: {
             // Decoding
             if (!bufferedData.isEmpty()) {
@@ -759,6 +764,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           case OFFLOAD_PENDING:
             bufferedSourceData.add(event);
             break;
+          case WAIT_WORKER:
           case RUNNING: {
             // Decoding
             if (!bufferedSourceData.isEmpty()) {
@@ -778,7 +784,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
 
-  // For offloading!
+  // For prepareOffloading!
   private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
     //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
 

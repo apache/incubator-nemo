@@ -114,14 +114,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emit(final O output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output);
 
-    //LOG.info("Offloading {}, Start offloading {}, End offloading {}, in {}",
-    //  offloading, startOffloading, endOffloading, irVertex.getId());
+    //LOG.info("Offloading {}, Start prepareOffloading {}, End prepareOffloading {}, in {}",
+    //  prepareOffloading, startOffloading, endOffloading, irVertex.getId());
 
     if (irVertex.isSink) {
       operatorMetricCollector.processDone(inputTimestamp);
     }
 
-    // For offloading
+    // For prepareOffloading
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertex nextOperator = internalVertex.getNextOperator();
 
@@ -191,7 +191,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emitWatermark(final Watermark watermark) {
 
 
-    // offloading
+    // prepareOffloading
     /* TODO: for middle offloader
     if (taskExecutor.isOffloadedTask() && !offloadingIds.isEmpty()) {
       LOG.info("Offloading watermark to serverless: {} at {}", watermark, taskExecutor.getId());

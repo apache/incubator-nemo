@@ -15,7 +15,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   private volatile boolean finished = false;
   //private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
   private final ScheduledExecutorService dispatcher;
-  public final ScheduledExecutorService scheduledExecutorService;
   private final ExecutorService executorService;
 
   private volatile boolean closed = false;
@@ -40,7 +39,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                         final String executorId,
                         final ControlEventHandler controlEventHandler) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
     this.queue = new ConcurrentLinkedQueue<>();
@@ -104,6 +102,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }
   }
 
+  @Override
   public void addShortcutEvent(final TaskHandlingEvent event) {
     controlShortcutQueue.add(event);
   }

@@ -88,7 +88,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
           if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
             LOG.warn("This may be emitted from the internal {}: {}, we don't have to emit it again", irVertex.getId(), ts);
             pendingWatermarkQueue.poll();
-            //LOG.info("Emit watermark {} at {} by processing offloading watermark",
+            //LOG.info("Emit watermark {} at {} by processing prepareOffloading watermark",
             //  watermarkToBeEmitted, irVertex.getId());
             //watermarkCollector.emitWatermark(watermarkToBeEmitted);
           } else {
@@ -96,7 +96,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
               LOG.warn("This may be deleted of prev watermark: {}", ts);
               final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
               pendingWatermarkQueue.poll();
-              LOG.info("Emit watermark {} at {} by processing offloading watermark",
+              LOG.info("Emit watermark {} at {} by processing prepareOffloading watermark",
                 watermarkToBeEmitted, irVertex.getId());
               watermarkCollector.emitWatermark(watermarkToBeEmitted);
             } else {
@@ -108,7 +108,7 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
                 prevWatermarkMap.remove(prevWatermark);
                 watermarkCounterMap.remove(prevWatermark);
 
-                LOG.info("Emit watermark {} at {} by processing offloading watermark",
+                LOG.info("Emit watermark {} at {} by processing prepareOffloading watermark",
                   watermarkToBeEmitted, irVertex.getId());
                 watermarkCollector.emitWatermark(watermarkToBeEmitted);
               } else {

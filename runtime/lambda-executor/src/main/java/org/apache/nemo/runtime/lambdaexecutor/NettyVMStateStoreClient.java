@@ -127,6 +127,12 @@ public final class NettyVMStateStoreClient implements StateStore {
     return response.result;
   }
 
+  @Override
+  public void close() {
+    channel.close();
+    eventLoopGroup.shutdownGracefully();
+  }
+
   final class VMStatestoreClientChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     @Override

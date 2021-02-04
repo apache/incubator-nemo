@@ -150,6 +150,11 @@ public final class DefaultTaskExecutorImplTest {
       public synchronized boolean containsState(String taskId) {
         return stateMap.containsKey(taskId);
       }
+
+      @Override
+      public void close() {
+
+      }
     };
 
     events1 = new LinkedList<>();
@@ -615,6 +620,11 @@ public final class DefaultTaskExecutorImplTest {
 
 
     final ExecutorThreadQueue executorThreadQueue = new ExecutorThreadQueue() {
+
+      @Override
+      public void addShortcutEvent(TaskHandlingEvent event) {
+
+      }
 
       @Override
       public void addEvent(TaskHandlingEvent event) {

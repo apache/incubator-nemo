@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -17,6 +18,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
+import static org.apache.nemo.offloading.common.OffloadingEvent.Type.TASK_FINISH_DONE;
+
 
 public final class OffloadingTaskControlEventHandlerImpl implements ControlEventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingTaskControlEventHandlerImpl.class.getName());
@@ -26,18 +29,21 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
   private final Map<String, ExecutorThread> taskExecutorThreadMap;
   private final Map<String, TaskExecutor> taskExecutorMap;
   private final Channel executorDataChannel;
+  private final Channel executorControlChannel;
 
   public OffloadingTaskControlEventHandlerImpl(
     final String executorId,
     final PipeManagerWorker pipeManagerWorker,
     final Map<String, ExecutorThread> taskExecutorThreadMap,
     final Map<String, TaskExecutor> taskExecutorMap,
-    final Channel executorDataChannel) {
+    final Channel executorDataChannel,
+    final Channel executorControlChannel) {
     this.executorId = executorId;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskExecutorThreadMap = taskExecutorThreadMap;
     this.taskExecutorMap = taskExecutorMap;
     this.executorDataChannel = executorDataChannel;
+    this.executorControlChannel = executorControlChannel;
   }
 
   @Override
@@ -55,9 +61,12 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
           bos.close();
 
           LOG.info("Task finished {}", control.getTaskId());
+          buf.retain();
           executorDataChannel.writeAndFlush(
             OffloadingDataFrameEncoder.DataFrame.newInstance(
               DataFrameEncoder.DataType.DEOFFLOAD_DONE, control.getTaskId()));
+
+          executorControlChannel.writeAndFlush(new OffloadingEvent(TASK_FINISH_DONE, buf));
 
         } catch (IOException e) {
           e.printStackTrace();

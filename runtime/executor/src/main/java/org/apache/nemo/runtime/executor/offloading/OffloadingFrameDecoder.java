@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.commons.lang3.tuple.Triple;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.*;
 
+@ChannelHandler.Sharable
 public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBuf> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingFrameDecoder.class.getName());
 

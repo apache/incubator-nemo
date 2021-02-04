@@ -18,8 +18,9 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
-import org.apache.nemo.runtime.executor.offloading.OffloadingManagerImpl;
+import org.apache.nemo.runtime.executor.offloading.AbstractOffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
+import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -122,7 +123,7 @@ public class PipeManagerTestHelper {
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
-      .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
+      .bindImplementation(OffloadingManager.class, OneTaskOneWorkerOffloadingManagerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
       .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)

@@ -10,4 +10,5 @@ public interface StateStore {
   byte[] getBytes(final String taskId);
   void put(final String taskId, byte[] bytes);
   boolean containsState(final String taskId);
+  void close();
 }

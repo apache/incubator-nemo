@@ -92,13 +92,16 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
   private final int port = new Random(System.currentTimeMillis()).nextInt(500)
    + VM_WORKER_PORT;
 
+  private final AtomicInteger atomicInteger = new AtomicInteger(0);
+
   @Override
   public synchronized void createChannelRequest() {
-    LOG.info("Creating VM worker with port " + port);
+    final int myPort = port + atomicInteger.getAndIncrement();
+    LOG.info("Creating VM worker with port " + myPort);
     final String path = "/Users/taegeonum/Projects/CMS_SNU/incubator-nemo-lambda/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
       waitingExecutor.execute(() -> {
         try {
-          Process p = Runtime.getRuntime().exec( "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port);
+          Process p = Runtime.getRuntime().exec( "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort);
 
           String line;
           BufferedReader in = new BufferedReader(
@@ -110,13 +113,13 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
           while (true) {
             while (in.ready() && (line = in.readLine()) != null) {
-              System.out.println("[VMWworker]: " + line);
+              System.out.println("[VMWworker " + myPort + "]: " + line);
             }
             // in.close();
             // LOG.info("End of read line !!!!!!!!!!!!!!!!!!!!");
 
             while (stdError.ready() && (line = stdError.readLine()) != null) {
-              System.out.println("[VMWworker]: " + line);
+              System.out.println("[VMWworker " + myPort + "]: " + line);
             }
             // stdError.close();
 
@@ -132,19 +135,19 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
           throw new RuntimeException(e);
         }
       });
-      waitInstance();
+      waitInstance(myPort);
     LOG.info("Create request at VMOffloadingREquestor");
   }
 
 
-  private void waitInstance() {
+  private void waitInstance(final int myPort) {
     final long waitingTime = 2000;
 
     waitingExecutor.execute(() -> {
       ChannelFuture channelFuture;
       while (true) {
         final long st = System.currentTimeMillis();
-        channelFuture = clientBootstrap.connect(new InetSocketAddress("localhost", port));
+        channelFuture = clientBootstrap.connect(new InetSocketAddress("localhost", myPort));
         channelFuture.awaitUninterruptibly(waitingTime);
         assert channelFuture.isDone();
         if (!channelFuture.isSuccess()) {

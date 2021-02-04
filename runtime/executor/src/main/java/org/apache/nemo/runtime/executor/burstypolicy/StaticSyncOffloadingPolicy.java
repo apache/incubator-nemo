@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentMap;
 public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(StaticSyncOffloadingPolicy.class.getName());
 
-  // key: offloaded task executor, value: start time of offloading
+  // key: offloaded task executor, value: start time of prepareOffloading
   //private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
 
   private final List<List<TaskExecutor>> offloadedTasksPerStage;
@@ -165,7 +165,7 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
 
           remainingOffloadTasks.set(totalOffloadTasks);
 
-          LOG.info("# of offloading tasks: {}, offload divide: {}", totalOffloadTasks, offloadDivide);
+          LOG.info("# of prepareOffloading tasks: {}, offload divide: {}", totalOffloadTasks, offloadDivide);
 
           for (final List<TaskExecutor> tasks : stageTasks) {
             int offloadCnt = 0;
@@ -203,7 +203,7 @@ public final class StaticSyncOffloadingPolicy implements TaskOffloadingPolicy {
               final String stageId = RuntimeIdManager.getStageIdFromTaskId(offloadedTask.getId());
 
               while (!stageOffloadingWorkerManager.isStageOffloadable(stageId)) {
-                // waiting for stage offloading
+                // waiting for stage prepareOffloading
                 LOG.info("Waiting for stage deoffloading {}", stageId);
                 try {
                   Thread.sleep(1000);

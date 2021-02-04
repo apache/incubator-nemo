@@ -31,7 +31,7 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.HDFStateStore;
-import org.apache.nemo.runtime.executor.offloading.OffloadingManagerImpl;
+import org.apache.nemo.runtime.executor.offloading.AbstractOffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
@@ -41,6 +41,7 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
+import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.JobScaler;
@@ -149,7 +150,7 @@ public final class NemoDriver {
         LOG.info("Receive scaling decision {}", decision);
 
         if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
-          // Op: priority offloading
+          // Op: priority prepareOffloading
           jobScaler.scalingOut(message.getScalingMsg());
         } else if (decision.equals("i")) {
           jobScaler.scalingIn();
@@ -322,7 +323,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, HDFStateStore.class)
-      .bindImplementation(OffloadingManager.class, OffloadingManagerImpl.class)
+      .bindImplementation(OffloadingManager.class, OneTaskOneWorkerOffloadingManagerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
@@ -347,7 +348,7 @@ public final class NemoDriver {
     } else if (evalConf.offloadingType.equals("lambda")) {
       return LambdaOffloadingRequesterFactory.class;
     } else {
-      throw new RuntimeException("Invalid offloading requester " + evalConf.offloadingType);
+      throw new RuntimeException("Invalid prepareOffloading requester " + evalConf.offloadingType);
     }
   }
 

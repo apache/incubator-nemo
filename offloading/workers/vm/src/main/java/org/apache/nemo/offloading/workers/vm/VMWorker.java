@@ -40,6 +40,7 @@ public class VMWorker {
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+  private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
   private VMWorker(final int port) {
 
@@ -70,6 +71,8 @@ public class VMWorker {
                 final JSONObject jsonObj = new JSONObject(str);
                 final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
                 handler.handleRequest(map);
+                // Finish handler and worker here
+                countDownLatch.countDown();
                 break;
               }
               case DATA: {
@@ -117,18 +120,32 @@ public class VMWorker {
     }
   }
 
+  // blocking
+  public void start() {
+    try {
+      countDownLatch.await();
+
+      serverWorkerGroup.shutdownGracefully();
+      serverBossGroup.shutdownGracefully();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
 
   public static void main(final String[] args) throws InterruptedException {
-    final CountDownLatch countDownLatch = new CountDownLatch(1);
     LOG.info("Start worker");
 
     if (args.length > 0) {
       final VMWorker worker = new VMWorker(Integer.valueOf(args[0]));
+      worker.start();
     } else {
       final VMWorker worker = new VMWorker(Constants.VM_WORKER_PORT);
+      worker.start();
     }
-    LOG.info("Wait for request");
-    countDownLatch.await();
+    LOG.info("End of worker");
+    System.exit(0);
   }
 
 

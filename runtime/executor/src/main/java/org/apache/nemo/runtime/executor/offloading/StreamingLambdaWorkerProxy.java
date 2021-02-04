@@ -109,8 +109,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                 }
                 break;
               }
+              case TASK_FINISH_DONE:
               case TASK_READY: {
-                eventHandler.onNext(msg);
+                eventHandler.onNext(Pair.of(StreamingLambdaWorkerProxy.this, msg));
                 break;
               }
               case CPU_LOAD: {

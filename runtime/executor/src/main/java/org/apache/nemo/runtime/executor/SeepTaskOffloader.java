@@ -31,7 +31,7 @@ public final class SeepTaskOffloader {
   private final TaskEventRateCalculator taskEventRateCalculator;
   private final CpuEventModel cpuEventModel;
 
-  // key: offloaded task executor, value: start time of offloading
+  // key: offloaded task executor, value: start time of prepareOffloading
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
@@ -180,9 +180,9 @@ public final class SeepTaskOffloader {
 //  }
 //
 //  public void startDebugging() {
-//    // For offloading debugging
+//    // For prepareOffloading debugging
 //    se.scheduleAtFixedRate(() -> {
-//      LOG.info("Start offloading kafka (only first stage)");
+//      LOG.info("Start prepareOffloading kafka (only first stage)");
 //      int cnt = 0;
 //
 //      final int offloadCnt = taskExecutorMap.keySet().stream()
@@ -199,7 +199,7 @@ public final class SeepTaskOffloader {
 //    }, 25, 50, TimeUnit.SECONDS);
 //
 //    se.scheduleAtFixedRate(() -> {
-//      LOG.info("End offloading kafka");
+//      LOG.info("End prepareOffloading kafka");
 //      while (!offloadedExecutors.isEmpty()) {
 //        final TaskExecutor endTask = offloadedExecutors.remove(0).left();
 //        LOG.info("End task {}", endTask);

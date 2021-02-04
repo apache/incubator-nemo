@@ -55,7 +55,7 @@ public final class VMScalingFromSfToVmHandler {
         newExecutorId);
 
       // move task to vm!!
-      // 1. offloading task
+      // 1. prepareOffloading task
       final TinyTaskOffloader offloader =
         (TinyTaskOffloader) ((DefaultTaskExecutorImpl) offloadedTask).offloader.get();
 
@@ -69,7 +69,7 @@ public final class VMScalingFromSfToVmHandler {
         offloader.copyOutgoingEdges,
         offloader.copyIncomingEdges);
 
-      LOG.info("Sending offloading task {} to {}", offloader.taskId, newExecutorId);
+      LOG.info("Sending prepareOffloading task {} to {}", offloader.taskId, newExecutorId);
 
       executorService.execute(() -> {
         workerChannel.writeAndFlush(

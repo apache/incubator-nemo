@@ -128,11 +128,11 @@ public final class Executor {
 
   private final TaskScheduledMapWorker scheduledMapWorker;
 
-  private final RelayServer relayServer;
-
   private final OffloadingManager offloadingManager;
 
   private final OutputCollectorGenerator outputCollectorGenerator;
+
+  private final NettyStateStore nettyStateStore;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -158,9 +158,9 @@ public final class Executor {
                    // final ScalingOutCounter scalingOutCounter,
                    // final SFTaskMetrics sfTaskMetrics,
                    final StateStore stateStore,
+                   final NettyStateStore nettyStateStore,
                    final ExecutorChannelManagerMap executorChannelManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
-                   final RelayServer relayServer,
                    final CyclicDependencyHandler cyclicDependencyHandler,
                    final OffloadingManager offloadingManager,
                    final OutputCollectorGenerator outputCollectorGenerator) {
@@ -169,8 +169,8 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.nettyStateStore = nettyStateStore;
     this.offloadingManager = offloadingManager;
-    this.relayServer = relayServer;
     this.executorChannelManagerMap = executorChannelManagerMap;
     this.stateStore = (StateStore) stateStore;
     this.executorThreads = executorThreads;
@@ -446,8 +446,8 @@ public final class Executor {
         false);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
-      executorThreads.getExecutorThreads().get(index).addNewTask(taskExecutor);
-      taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThreads.getExecutorThreads().get(index));
+      executorThread.addNewTask(taskExecutor);
+      taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThread);
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
@@ -490,6 +490,7 @@ public final class Executor {
       executorService.shutdownNow();
       taskEventExecutorService.shutdownNow();
       prepareService.shutdownNow();
+      nettyStateStore.close();
 
       for (final ExecutorThread t : executorThreads.getExecutorThreads()) {
         t.close();
@@ -671,7 +672,7 @@ public final class Executor {
               int cnt = 0;
               for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
                 if (taskExecutor.isStateless()) {
-                  LOG.info("Start offloading of {}", taskExecutor.getId());
+                  LOG.info("Start prepareOffloading of {}", taskExecutor.getId());
                   taskExecutor.startOffloading(event.startTime);
                   prevOffloadingExecutors.add(taskExecutor);
 
@@ -689,7 +690,7 @@ public final class Executor {
             if (started) {
               started = false;
               for (final TaskExecutor taskExecutor : prevOffloadingExecutors) {
-                LOG.info("End offloading of {}", taskExecutor.getId());
+                LOG.info("End prepareOffloading of {}", taskExecutor.getId());
                 taskExecutor.endOffloading();
               }
 
