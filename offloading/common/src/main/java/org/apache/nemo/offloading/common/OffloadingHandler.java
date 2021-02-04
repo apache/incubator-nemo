@@ -75,11 +75,18 @@ public final class OffloadingHandler {
   private int nameServerPort;
   private String newExecutorId;
 
+  private final long throttleRate;
+  private final boolean testing;
+
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
-                           final boolean isSf) {
+                           final boolean isSf,
+                           final long throttleRate,
+                           final boolean testing) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
     this.isSf = isSf;
+    this.throttleRate = throttleRate;
+    this.testing = testing;
 
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -426,7 +433,8 @@ public final class OffloadingHandler {
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
-              nameServerAddr, nameServerPort, newExecutorId, opendChannel), outputCollector);
+              nameServerAddr, nameServerPort, newExecutorId, opendChannel, throttleRate,
+              testing), outputCollector);
 
 
           workerFinishTime = System.currentTimeMillis();

@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.runtime.executor.offloading;
 
 
 import com.amazonaws.services.ec2.AmazonEC2;
@@ -15,6 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

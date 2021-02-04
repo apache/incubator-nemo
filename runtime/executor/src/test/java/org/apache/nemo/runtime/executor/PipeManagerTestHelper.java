@@ -3,9 +3,10 @@ package org.apache.nemo.runtime.executor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.LocalExecutorOffloadingRequesterFactory;
-import org.apache.nemo.offloading.client.OffloadingRequesterFactory;
+import org.apache.nemo.runtime.executor.offloading.LocalExecutorOffloadingRequesterFactory;
+import org.apache.nemo.runtime.executor.offloading.OffloadingRequesterFactory;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.common.*;
@@ -18,7 +19,6 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
-import org.apache.nemo.runtime.executor.offloading.AbstractOffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
@@ -116,7 +116,8 @@ public class PipeManagerTestHelper {
   public static Pair<Executor, Injector>
   createExecutor(final String executorId,
                  final NameServer nameServer,
-                 final StateStore stateStore) throws InjectionException {
+                 final StateStore stateStore,
+                 final long offloadingThrottleRate) throws InjectionException {
 
     final Configuration conf = TANG.newConfigurationBuilder()
       .bindNamedParameter(JobConf.ExecutorId.class, executorId)
@@ -129,6 +130,7 @@ public class PipeManagerTestHelper {
       .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
       .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
+      .bindNamedParameter(EvalConf.ThrottleRate.class, Long.toString(offloadingThrottleRate))
       .build();
 
     final Configuration nameResolverConf = PipeManagerTestHelper.createNameResolverConf(nameServer);

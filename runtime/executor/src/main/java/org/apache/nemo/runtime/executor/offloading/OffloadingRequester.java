@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.channel.Channel;
 

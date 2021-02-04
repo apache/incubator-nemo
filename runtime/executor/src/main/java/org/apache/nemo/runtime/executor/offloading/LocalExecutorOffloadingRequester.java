@@ -1,20 +1,14 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.runtime.executor.offloading;
 
 
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
-import com.amazonaws.services.ec2.model.*;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
@@ -59,14 +53,17 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
   private final AtomicInteger numVMs = new AtomicInteger(0);
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
+  private final long throttleRate;
 
   public LocalExecutorOffloadingRequester(final String serverAddress,
-                                          final int port) {
+                                          final int port,
+                                          final long throttleRate) {
     this.serverAddress = serverAddress;
     this.serverPort = port;
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
+    this.throttleRate = throttleRate;
     this.map = new ConcurrentHashMap<>();
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
@@ -101,7 +98,10 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
     final String path = "/Users/taegeonum/Projects/CMS_SNU/incubator-nemo-lambda/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
       waitingExecutor.execute(() -> {
         try {
-          Process p = Runtime.getRuntime().exec( "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort);
+
+          LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + throttleRate);
+          Process p = Runtime.getRuntime().exec(
+            "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + throttleRate);
 
           String line;
           BufferedReader in = new BufferedReader(

@@ -126,7 +126,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "aws_region", default_value = "ap-northeast-1")
   public static final class AWSRegion implements Name<String> {}
 
-
+  // Throttling vm worker for testing !!
+  @NamedParameter(short_name = "throttle_rate", default_value = "10000000")
+  public static final class ThrottleRate implements Name<Long> {}
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -158,6 +160,7 @@ public final class EvalConf {
   public final double scalingAlpha;
   public final boolean sfToVm;
   public final String awsRegion;
+  public final long throttleRate;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -187,6 +190,7 @@ public final class EvalConf {
                    @Parameter(RandomSelection.class) final boolean randomSelection,
                    @Parameter(ScalingAlpha.class) final double scalingAlpha,
                    @Parameter(SftoVm.class) final boolean sfToVm,
+                   @Parameter(ThrottleRate.class) final long throttleRate,
                    @Parameter(AWSRegion.class) final String awsRegion) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -197,6 +201,7 @@ public final class EvalConf {
     this.ec2 = ec2;
     this.flushCount = flushCount;
     this.flushPeriod = flushPeriod;
+    this.throttleRate = throttleRate;
     this.bottleneckDetectionPeriod = bottleneckDetectionPeriod;
     this.bottleneckDetectionConsecutive = bottleneckDetectionConsecutive;
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
@@ -255,6 +260,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(ScalingAlpha.class, Double.toString(scalingAlpha));
     jcb.bindNamedParameter(SftoVm.class, Boolean.toString(sfToVm));
     jcb.bindNamedParameter(AWSRegion.class, awsRegion);
+    jcb.bindNamedParameter(ThrottleRate.class, Long.toString(throttleRate));
     return jcb.build();
   }
 
@@ -288,6 +294,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(ScalingAlpha.class);
     cl.registerShortNameOfClass(SftoVm.class);
     cl.registerShortNameOfClass(AWSRegion.class);
+    cl.registerShortNameOfClass(ThrottleRate.class);
   }
 
   @Override
@@ -321,6 +328,7 @@ public final class EvalConf {
     sb.append("autoscaling: "); sb.append(autoscaling); sb.append("\n");
     sb.append("randomselection: "); sb.append(randomSelection); sb.append("\n");
     sb.append("awsRegion: "); sb.append(awsRegion); sb.append("\n");
+    sb.append("throttleRate: "); sb.append(throttleRate); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

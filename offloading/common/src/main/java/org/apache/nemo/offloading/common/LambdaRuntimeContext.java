@@ -14,6 +14,8 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   private final String nameServerAddr;
   private final int nameServerPort;
   private final Channel controlChannel;
+  public final long throttleRate;
+  public final boolean testing;
 
   public LambdaRuntimeContext(
     final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap,
@@ -22,7 +24,9 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     final String nameServerAddr,
     final int nameServerPort,
     final String newExecutorId,
-    final Channel controlChannel) {
+    final Channel controlChannel,
+    final long throttleRate,
+    final boolean testing) {
     this.taskAndEventHandlerMap = taskAndEventHandlerMap;
     this.lambdaEventHandler = lambdaEventHandler;
     this.isSf = isSf;
@@ -30,6 +34,8 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
     this.controlChannel = controlChannel;
+    this.throttleRate = throttleRate;
+    this.testing = testing;
   }
 
   public String getNewExecutorId() {

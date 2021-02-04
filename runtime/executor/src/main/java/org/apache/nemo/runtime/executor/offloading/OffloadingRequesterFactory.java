@@ -1,5 +1,6 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.runtime.executor.offloading;
 
+import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 @DefaultImplementation(VMOffloadingRequesterFactory.class)

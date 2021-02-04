@@ -1,4 +1,6 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.runtime.executor.offloading;
+
+import org.apache.nemo.offloading.client.OffloadingEventHandler;
 
 import javax.inject.Inject;
 

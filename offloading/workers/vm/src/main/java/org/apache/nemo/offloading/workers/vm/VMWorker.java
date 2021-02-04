@@ -42,7 +42,7 @@ public class VMWorker {
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
-  private VMWorker(final int port) {
+  private VMWorker(final int port, final int throttleRate) {
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
 
@@ -61,7 +61,8 @@ public class VMWorker {
           executorService.execute(() -> {
             switch (event.getType()) {
               case SEND_ADDRESS: {
-                final OffloadingHandler handler = new OffloadingHandler(lambdaEventHandlerMap, false);
+                final OffloadingHandler handler =
+                  new OffloadingHandler(lambdaEventHandlerMap, false, throttleRate, true);
                 handlers.add(handler);
                 final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
                 event.getByteBuf().readBytes(bytes);
@@ -135,13 +136,15 @@ public class VMWorker {
 
 
   public static void main(final String[] args) throws InterruptedException {
-    LOG.info("Start worker");
 
     if (args.length > 0) {
-      final VMWorker worker = new VMWorker(Integer.valueOf(args[0]));
+      final int port = Integer.valueOf(args[0]);
+      final int throttleRate = Integer.valueOf(args[1]);
+      LOG.info("Start worker with args {}, {}", args[0], args[1]);
+      final VMWorker worker = new VMWorker(port, throttleRate);
       worker.start();
     } else {
-      final VMWorker worker = new VMWorker(Constants.VM_WORKER_PORT);
+      final VMWorker worker = new VMWorker(Constants.VM_WORKER_PORT, 100000);
       worker.start();
     }
     LOG.info("End of worker");

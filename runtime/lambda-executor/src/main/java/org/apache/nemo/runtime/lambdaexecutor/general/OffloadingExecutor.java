@@ -14,6 +14,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.offloading.common.LambdaRuntimeContext;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.StateStore;
@@ -70,6 +71,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private ScheduledExecutorService scheduledService;
 
+  private long throttleRate;
+
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
@@ -95,8 +98,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   @Override
-  public void prepare(OffloadingContext context, OffloadingOutputCollector outputCollector) {
+  public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
+    final LambdaRuntimeContext context = (LambdaRuntimeContext)c;
 
+    this.throttleRate = context.throttleRate;
     this.prepareService = Executors.newCachedThreadPool();
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
     this.scheduledService.scheduleAtFixedRate(() -> {
@@ -139,7 +144,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     executorThreads = new ArrayList<>();
     for (int i = 0; i < executorThreadNum; i++) {
       executorThreads.add(
-        new ExecutorThread(1, "lambda-" + i, taskControlEventHandler));
+        new ExecutorThread(1, "lambda-" + i, taskControlEventHandler, throttleRate,
+          context.testing));
       executorThreads.get(i).start();
     }
 

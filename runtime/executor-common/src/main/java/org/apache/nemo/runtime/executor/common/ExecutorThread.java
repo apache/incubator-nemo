@@ -35,9 +35,15 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final ControlEventHandler controlEventHandler;
 
+  private final long throttleRate;
+
+  private final boolean testing;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
-                        final ControlEventHandler controlEventHandler) {
+                        final ControlEventHandler controlEventHandler,
+                        final long throttleRate,
+                        final boolean testing) {
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
@@ -47,6 +53,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     this.pendingSourceTasks = new ArrayList<>();
     this.executorId = executorId;
     this.controlEventHandler = controlEventHandler;
+    this.throttleRate = throttleRate;
+    this.testing = testing;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -139,6 +147,32 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }
   }
 
+  long currProcessedCnt = 0;
+  long elapsedTime = 0L;
+
+  private void throttling() {
+    if (testing) {
+      // throttling
+      // nano to sec
+      final long elapsedTimeMs = TimeUnit.NANOSECONDS.toMillis(elapsedTime);
+      if (elapsedTimeMs >= 10) {
+        final long desiredElapsedTime = (long) (currProcessedCnt * 1000 / throttleRate);
+        if (desiredElapsedTime > elapsedTimeMs) {
+          LOG.info("Throttling.. current processed cnt: {}/elapsed: {} ms, throttleRate: {}, sleep {} ms",
+            currProcessedCnt, elapsedTimeMs, throttleRate, desiredElapsedTime - elapsedTimeMs);
+          try {
+            Thread.sleep(desiredElapsedTime - elapsedTimeMs);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
+        elapsedTime = 0;
+        currProcessedCnt = 0;
+      }
+    }
+  }
+
   public void start() {
 
     executorService.execute(() -> {
@@ -148,22 +182,30 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           // process source tasks
           boolean processed = false;
 
-          if (!throttle.get()) {
-            synchronized (pendingSourceTasks) {
-              synchronized (sourceTasks) {
-                final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
-                while (iterator.hasNext()) {
-                  final ExecutorThreadTask sourceTask = iterator.next();
+          synchronized (pendingSourceTasks) {
+            synchronized (sourceTasks) {
+              final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
+              while (iterator.hasNext()) {
+                final ExecutorThreadTask sourceTask = iterator.next();
 
-                  handlingControlEvent();
+                handlingControlEvent();
+                throttling();
 
-                  if (sourceTask.hasData()) {
+                if (sourceTask.hasData()) {
+                  if (testing) {
+                    currProcessedCnt += 1;
+                    long st = System.nanoTime();
                     sourceTask.handleSourceData();
+                    long et = System.nanoTime();
+                    elapsedTime += (et - st);
                   } else {
-                    iterator.remove();
-                    pendingSourceTasks.add(sourceTask);
-                    //LOG.info("Add pending task {}", sourceTask.getId());
+                    sourceTask.handleSourceData();
                   }
+                  processed = true;
+                } else {
+                  iterator.remove();
+                  pendingSourceTasks.add(sourceTask);
+                  //LOG.info("Add pending task {}", sourceTask.getId());
                 }
               }
             }
@@ -185,15 +227,26 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               // Handling data
               final String taskId = event.getTaskId();
               final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-              taskExecutor.handleData(event.getEdgeId(), event);
+
+              throttling();
+
+              if (testing) {
+                long st = System.nanoTime();
+                taskExecutor.handleData(event.getEdgeId(), event);
+                long et = System.nanoTime();
+                elapsedTime += (et - st);
+              } else {
+                taskExecutor.handleData(event.getEdgeId(), event);
+              }
+
               processed = true;
+              currProcessedCnt += 1;
             }
 
             iterator.remove();
           }
 
-          if (throttle.get() && !processed ||
-            (sourceTasks.isEmpty() && queue.isEmpty())) {
+          if (!processed || (sourceTasks.isEmpty() && queue.isEmpty())) {
             Thread.sleep(5);
           }
         }

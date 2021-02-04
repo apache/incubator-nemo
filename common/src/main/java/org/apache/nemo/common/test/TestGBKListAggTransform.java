@@ -81,7 +81,7 @@ public final class TestGBKListAggTransform implements Transform<Pair<Integer, Li
       map.get(element.left()).add(sum(element.right()));
     }
 
-    // outputCollector.emit(Pair.of(element.left(), map.get(element.left())));
+    outputCollector.emit(Pair.of(element.left(), map.get(element.left())));
 
     if (map.get(element.left()).size() % 10 == 0) {
       Collections.sort(map.get(element.left()));
@@ -93,7 +93,7 @@ public final class TestGBKListAggTransform implements Transform<Pair<Integer, Li
   @Override
   public void onWatermark(Watermark watermark) {
     LOG.info("Receive watermark {} from TestListAggGBK in {}", watermark.getTimestamp(), context.getTaskId());
-    // outputCollector.emitWatermark(watermark);
+    outputCollector.emitWatermark(watermark);
   }
 
   @Override

@@ -180,6 +180,56 @@ public final class ExecutorTest {
   }
 
   @Test
+  public void testOffloadingThrottling() throws Exception {
+    final Pair<Executor, Injector> pair1 = launchExecutor(5, 20);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5, 20);
+
+    final int parallelism = 1;
+    final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
+
+    final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
+    final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
+
+    runtimeMaster.execute(plan, 1);
+
+
+    Thread.sleep(4000);
+
+    final Collection<Injector> injectors = Arrays.asList(pair1.right(), pair2.right());
+
+
+    // 400
+    for (int i = 0; i < 500; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+    offloading("Stage1-0-0", injectors);
+    Thread.sleep(3000);
+
+    // 400
+    for (int i = 500; i < 1000; i++) {
+      sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
+
+      if ((i) % 50 == 0) {
+        for (int j = 0; j < parallelism; j++) {
+          sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
+        }
+      }
+      Thread.sleep(1);
+    }
+
+    Thread.sleep(30000);
+  }
+
+  @Test
   public void testOffloadingConcurrency() throws Exception {
     final Pair<Executor, Injector> pair1 = launchExecutor(5);
     final Pair<Executor, Injector> pair2 = launchExecutor(5);
@@ -683,9 +733,16 @@ public final class ExecutorTest {
   }
 
   private final AtomicInteger nodeNumber = new AtomicInteger(0);
+
   private Pair<Executor, Injector> launchExecutor(final int capacity) throws InjectionException {
+    return launchExecutor(capacity, Long.MAX_VALUE);
+  }
+
+  private Pair<Executor, Injector> launchExecutor(final int capacity,
+                                                  final long offloadingThrottleRate) throws InjectionException {
     final Pair<Executor, Injector> pair1 =
-      PipeManagerTestHelper.createExecutor("executor" + nodeNumber.incrementAndGet(), masterSetupHelper.nameServer, stateStore);
+      PipeManagerTestHelper.createExecutor("executor" + nodeNumber.incrementAndGet(),
+        masterSetupHelper.nameServer, stateStore, offloadingThrottleRate);
 
     final Executor executor = pair1.left();
     final ActiveContext activeContext = mock(ActiveContext.class);
