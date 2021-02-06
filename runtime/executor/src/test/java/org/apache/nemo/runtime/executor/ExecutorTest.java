@@ -40,6 +40,8 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.offloading.IncrementWorkerOffloadingManagerImpl;
+import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.executor.task.TestDAGBuilder;
 import org.apache.nemo.runtime.executor.task.util.*;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -188,8 +190,10 @@ public final class ExecutorTest {
     final TestDAGBuilder testDAGBuilder = new TestDAGBuilder(masterSetupHelper.planGenerator, parallelism);
     final PhysicalPlan plan = testDAGBuilder.generatePhysicalPlan(TestDAGBuilder.PlanType.ThreeVertices);
 
-    final Pair<Executor, Injector> pair1 = launchExecutor(5, 20, testDAGBuilder.samplingMap);
-    final Pair<Executor, Injector> pair2 = launchExecutor(5, 20, testDAGBuilder.samplingMap);
+    final Pair<Executor, Injector> pair1 = launchExecutor(5, 30, testDAGBuilder.samplingMap,
+      IncrementWorkerOffloadingManagerImpl.class);
+    final Pair<Executor, Injector> pair2 = launchExecutor(5, 30, testDAGBuilder.samplingMap,
+      IncrementWorkerOffloadingManagerImpl.class);
 
     final TCPSourceGenerator sourceGenerator = new TCPSourceGenerator(parallelism);
 
@@ -215,11 +219,11 @@ public final class ExecutorTest {
       Thread.sleep(1);
     }
 
-    offloading("Stage1-0-0", injectors);
+    offloading("Stage0-0-0", injectors);
     Thread.sleep(3000);
 
     // 400
-    for (int i = 500; i < 1000; i++) {
+    for (int i = 500; i < 2500; i++) {
       sourceGenerator.addEvent(i % parallelism, new EventOrWatermark(Pair.of(i % 5, 1)));
 
       if ((i) % 50 == 0) {
@@ -227,10 +231,10 @@ public final class ExecutorTest {
           sourceGenerator.addEvent(j, new EventOrWatermark((i) + 200, true));
         }
       }
-      Thread.sleep(1);
+      Thread.sleep(3);
     }
 
-    Thread.sleep(30000);
+    Thread.sleep(20000);
   }
 
   @Test
@@ -739,15 +743,18 @@ public final class ExecutorTest {
   private final AtomicInteger nodeNumber = new AtomicInteger(0);
 
   private Pair<Executor, Injector> launchExecutor(final int capacity) throws InjectionException, JsonProcessingException {
-    return launchExecutor(capacity, Long.MAX_VALUE, new HashMap<>());
+    return launchExecutor(capacity, Long.MAX_VALUE, new HashMap<>(),
+      OneTaskOneWorkerOffloadingManagerImpl.class);
   }
 
   private Pair<Executor, Injector> launchExecutor(final int capacity,
                                                   final long offloadingThrottleRate,
-                                                  final Map<String, Double> samplingMap) throws InjectionException, JsonProcessingException {
+                                                  final Map<String, Double> samplingMap,
+                                                  final Class<? extends OffloadingManager> offloadingManager) throws InjectionException, JsonProcessingException {
     final Pair<Executor, Injector> pair1 =
       PipeManagerTestHelper.createExecutor("executor" + nodeNumber.incrementAndGet(),
-        masterSetupHelper.nameServer, stateStore, offloadingThrottleRate, samplingMap);
+        masterSetupHelper.nameServer, stateStore, offloadingThrottleRate, samplingMap,
+        offloadingManager);
 
     final Executor executor = pair1.left();
     final ActiveContext activeContext = mock(ActiveContext.class);

@@ -141,7 +141,7 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
 
   private void waitInstance(final int myPort) {
-    final long waitingTime = 2000;
+    final long waitingTime = 1000;
 
     waitingExecutor.execute(() -> {
       ChannelFuture channelFuture;
@@ -154,7 +154,7 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
           LOG.warn("A connection failed for localhost  waiting...");
           final long elapsedTime = System.currentTimeMillis() - st;
           try {
-            Thread.sleep(Math.max(1, waitingTime - elapsedTime));
+            Thread.sleep(waitingTime);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }

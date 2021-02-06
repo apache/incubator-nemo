@@ -57,13 +57,13 @@ public final class OneTaskOneWorkerOffloadingManagerImpl extends AbstractOffload
   }
 
   @Override
-  OffloadingWorker selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
-    return taskWorkerMap.get(taskId).get(0);
+  Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
+    return Optional.of(taskWorkerMap.get(taskId).get(0));
   }
 
   @Override
-  OffloadingWorker selectWorkerForSourceOffloading(String taskId, Object data) {
-    return taskWorkerMap.get(taskId).get(0);
+  Optional<OffloadingWorker> selectWorkerForSourceOffloading(String taskId, Object data) {
+    return Optional.of(taskWorkerMap.get(taskId).get(0));
   }
 
 }

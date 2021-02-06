@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
@@ -31,12 +32,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
@@ -101,6 +104,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskExecutorMap = new ConcurrentHashMap<>();
   }
 
+  private final AtomicLong prevProcessingSum = new AtomicLong(0);
+
   @Override
   public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
     final LambdaRuntimeContext context = (LambdaRuntimeContext)c;
@@ -160,11 +165,39 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final Channel controlChannel = context.getControlChannel();
 
+
+    final OperatingSystemMXBean operatingSystemMXBean =
+      (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
     scheduledService.scheduleAtFixedRate(() -> {
+      long inputSum = 0L;
+      long processSum = 0L;
+
+      for (final String key : executorMetrics.taskInputProcessRateMap.keySet()) {
+        inputSum += executorMetrics.taskInputProcessRateMap.get(key).left().get();
+        processSum += executorMetrics.taskInputProcessRateMap.get(key).right().get();
+      }
+
+
+      if (context.testing) {
+        if (processSum == 0) {
+          executorMetrics.load = 0;
+        } else {
+          executorMetrics.load = inputSum / processSum;
+        }
+      } else {
+        executorMetrics.load = operatingSystemMXBean.getProcessCpuLoad();
+      }
+
+      executorMetrics.processingRate = processSum - prevProcessingSum.get();
+      prevProcessingSum.set(processSum);
+
       final ByteBuf byteBuf = controlChannel.alloc().ioBuffer();
       final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
       SerializationUtils.serialize(
         (Serializable) executorMetrics, bos);
+
+
       controlChannel.writeAndFlush(new OffloadingEvent(
         OffloadingEvent.Type.EXECUTOR_METRICS, byteBuf));
     }, 1, 1, TimeUnit.SECONDS);

@@ -8,11 +8,6 @@ import org.apache.nemo.runtime.executor.common.Serializer;
 public final class SimpleOffloadingManager implements OffloadingManager {
 
   @Override
-  public void prepareOffloading(String taskId, ExecutorThreadQueue et) {
-    throw new RuntimeException("not supported");
-  }
-
-  @Override
   public void offloading(String taskId) {
     throw new RuntimeException("Not supported");
   }
@@ -30,5 +25,10 @@ public final class SimpleOffloadingManager implements OffloadingManager {
   @Override
   public void offloadSourceData(String taskId, String edgeId, Object data, Serializer serializer) {
     throw new RuntimeException("Not supported");
+  }
+
+  @Override
+  public void close() {
+
   }
 }

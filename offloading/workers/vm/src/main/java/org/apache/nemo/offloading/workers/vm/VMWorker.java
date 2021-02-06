@@ -42,7 +42,7 @@ public class VMWorker {
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
-  private VMWorker(final int port, final int throttleRate) {
+  private VMWorker(final int port, final long throttleRate) {
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
 
@@ -139,7 +139,7 @@ public class VMWorker {
 
     if (args.length > 0) {
       final int port = Integer.valueOf(args[0]);
-      final int throttleRate = Integer.valueOf(args[1]);
+      final long throttleRate = Long.valueOf(args[1]);
       LOG.info("Start worker with args {}, {}", args[0], args[1]);
       final VMWorker worker = new VMWorker(port, throttleRate);
       worker.start();

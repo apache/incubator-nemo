@@ -10,9 +10,12 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ExecutorMetrics implements Serializable {
 
   public final Map<String, Pair<AtomicLong, AtomicLong>> taskInputProcessRateMap = new ConcurrentHashMap<>();
+  public double load;
+  public long processingRate;
 
   @Override
   public String toString() {
-    return taskInputProcessRateMap.toString();
+    return "Rate: " + taskInputProcessRateMap.toString();
   }
 }
+

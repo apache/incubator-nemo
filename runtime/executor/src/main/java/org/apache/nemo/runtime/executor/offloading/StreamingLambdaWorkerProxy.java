@@ -16,7 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
@@ -26,16 +30,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   private volatile boolean finished = false;
   private final BlockingQueue<OffloadingEvent> endQueue;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
-
-  //private final OffloadingEncoder inputEncoderFactory;
-  //private final OffloadingDecoder outputDecoderFactory;
-
-
-  //private OffloadingEncoder.Encoder encoder;
-
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
-
   private final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture;
+
+  private final AtomicInteger numTasks = new AtomicInteger(0);
 
   // two data stream: when channel is null, we buffer byte in byte array output
   // otherwise, we use byteBufOutputStream directly.
@@ -49,8 +46,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   private final ExecutorService closeThread = SharedCachedPool.POOL;
 
   private final DescriptiveStatistics cpuAverage;
+  private final DescriptiveStatistics processingRateAverage;
 
   private ExecutorMetrics executorMetrics;
+
+  private final Set<String> readyTasks = new HashSet<>();
 
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture,
@@ -61,8 +61,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                                     final EventHandler eventHandler) {
     this.workerId = Integer.toString(workerId);
     this.channelFuture = channelFuture;
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.cpuAverage = new DescriptiveStatistics();
+    this.processingRateAverage = new DescriptiveStatistics();
+    this.processingRateAverage.setWindowSize(3);
     cpuAverage.setWindowSize(3);
 
     this.channelEventHandlerMap = channelEventHandlerMap;
@@ -172,6 +173,27 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
+  public void addReadyTask(String taskId) {
+    synchronized (readyTasks) {
+      readyTasks.add(taskId);
+    }
+  }
+
+  @Override
+  public void removeDoneTask(String taskId) {
+    synchronized (readyTasks) {
+      readyTasks.remove(taskId);
+    }
+  }
+
+  @Override
+  public boolean hasReadyTask(String taskId) {
+    synchronized (readyTasks) {
+      return readyTasks.contains(taskId);
+    }
+  }
+
+  @Override
   public void writeControl(OffloadingEvent offloadingEvent) {
     controlChannel.writeAndFlush(offloadingEvent);
   }
@@ -211,6 +233,21 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   @Override
   public void setMetric(ExecutorMetrics executorMetrics) {
     this.executorMetrics = executorMetrics;
+    processingRateAverage.addValue(executorMetrics.processingRate);
+  }
+
+  @Override
+  public double getProcessingRate() {
+    return processingRateAverage.getMean();
+  }
+
+  @Override
+  public Optional<ExecutorMetrics> getExecutorMetrics() {
+    if (executorMetrics == null) {
+      return Optional.empty();
+    } else {
+      return Optional.of(executorMetrics);
+    }
   }
 
 
@@ -246,6 +283,6 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public String toString() {
-    return workerId;
+    return workerId + "/" + executorMetrics;
   }
 }

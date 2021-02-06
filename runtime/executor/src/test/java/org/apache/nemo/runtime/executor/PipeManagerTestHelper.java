@@ -120,7 +120,8 @@ public class PipeManagerTestHelper {
                  final NameServer nameServer,
                  final StateStore stateStore,
                  final long offloadingThrottleRate,
-                 final Map<String, Double> samplingMap) throws InjectionException, JsonProcessingException {
+                 final Map<String, Double> samplingMap,
+                 final Class<? extends OffloadingManager> offloadingManager) throws InjectionException, JsonProcessingException {
     final ObjectMapper objectMapper = new ObjectMapper();
 
     final Configuration conf = TANG.newConfigurationBuilder()
@@ -128,12 +129,12 @@ public class PipeManagerTestHelper {
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
-      .bindImplementation(OffloadingManager.class, OneTaskOneWorkerOffloadingManagerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
       .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
       .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
+      .bindImplementation(OffloadingManager.class, offloadingManager)
       .bindNamedParameter(EvalConf.ThrottleRate.class, Long.toString(offloadingThrottleRate))
       .bindNamedParameter(EvalConf.SamplingJsonString.class, objectMapper.writeValueAsString(samplingMap))
       .build();

@@ -168,7 +168,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
       // throttling
       // nano to sec
       final long elapsedTimeMs = TimeUnit.NANOSECONDS.toMillis(elapsedTime);
-      if (elapsedTimeMs >= 10) {
+      if (elapsedTimeMs >= 1) {
         final long desiredElapsedTime = (long) (currProcessedCnt * 1000 / throttleRate);
         if (desiredElapsedTime > elapsedTimeMs) {
           LOG.info("Throttling.. current processed cnt: {}/elapsed: {} ms, throttleRate: {}, sleep {} ms",

@@ -624,13 +624,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       switch (type) {
         case SEND_TO_OFFLOADING_WORKER: {
           // prepareOffloading task
-          offloadingManager.prepareOffloading(taskId, executorThreadQueue);
-          currentState = CurrentState.WAIT_WORKER;
-          break;
-        }
-        case WORKER_READY: {
-          // Always checkpoint for task prepareOffloading
-          // TODO: partial computation prepareOffloading without checkpointing states
           checkpoint(false);
           // store watermark  manager
           final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);

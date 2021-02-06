@@ -8,7 +8,6 @@ public final class TaskOffloadingEvent implements TaskHandlingEvent {
   public enum ControlType {
     SEND_TO_OFFLOADING_WORKER,
     OFFLOAD_DONE,
-    WORKER_READY,
     DEOFFLOADING,
     DEOFFLOADING_DONE,
   }
