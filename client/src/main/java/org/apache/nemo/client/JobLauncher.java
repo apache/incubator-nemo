@@ -712,7 +712,6 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.ExecutorMem.class);
     cl.registerShortNameOfClass(JobConf.ExecutorYarnCore.class);
     cl.registerShortNameOfClass(JobConf.NumExecutor.class);
-    cl.registerShortNameOfClass(EvalConf.TaskSlot.class);
 
     EvalConf.registerCommandLineArgument(cl);
 
