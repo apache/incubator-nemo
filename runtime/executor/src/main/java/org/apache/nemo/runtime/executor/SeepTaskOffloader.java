@@ -4,6 +4,9 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
+import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
+import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +16,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public final class SeepTaskOffloader {
   private static final Logger LOG = LoggerFactory.getLogger(SeepTaskOffloader.class.getName());

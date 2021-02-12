@@ -1,6 +1,7 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.monitoring;
 
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.runtime.executor.TaskEventRateCalculator;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
@@ -107,6 +108,7 @@ public final class CpuBottleneckDetector {
 
 
   public void close() {
+    profiler.close();
     monitorThread.shutdown();
   }
 

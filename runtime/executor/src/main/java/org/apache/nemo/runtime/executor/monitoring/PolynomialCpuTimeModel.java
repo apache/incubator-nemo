@@ -1,8 +1,9 @@
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor.monitoring;
 
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
 
 import javax.inject.Inject;
 import java.util.ArrayDeque;

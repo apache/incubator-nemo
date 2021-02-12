@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import io.netty.buffer.ByteBufInputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
@@ -52,7 +51,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.executor.monitoring.CpuBottleneckDetector;
 import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -134,6 +133,8 @@ public final class Executor {
 
   private final NettyStateStore nettyStateStore;
 
+  private final CpuBottleneckDetector bottleneckDetector;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -143,7 +144,7 @@ public final class Executor {
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
                    final ByteTransport byteTransport,
-                   //final CpuBottleneckDetector bottleneckDetector,
+                   final CpuBottleneckDetector bottleneckDetector,
                    // final DeprecatedOffloadingWorkerFactory offloadingWorkerFactory,
                    final EvalConf evalConf,
                    // final SystemLoadProfiler profiler,
@@ -169,6 +170,8 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.bottleneckDetector = bottleneckDetector;
+    bottleneckDetector.start();
     this.nettyStateStore = nettyStateStore;
     this.offloadingManager = offloadingManager;
     this.executorChannelManagerMap = executorChannelManagerMap;
@@ -491,6 +494,7 @@ public final class Executor {
       taskEventExecutorService.shutdownNow();
       prepareService.shutdownNow();
       nettyStateStore.close();
+      bottleneckDetector.close();
 
       for (final ExecutorThread t : executorThreads.getExecutorThreads()) {
         t.close();

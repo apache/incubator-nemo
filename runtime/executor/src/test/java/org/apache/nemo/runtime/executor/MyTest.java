@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
