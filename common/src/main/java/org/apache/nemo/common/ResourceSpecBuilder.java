@@ -18,6 +18,10 @@
  */
 package org.apache.nemo.common;
 
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -37,9 +41,18 @@ public final class ResourceSpecBuilder {
   public ResourceSpecBuilder addResource(final ResourceType resourceType,
                                          final int memory_mb,
                                          final int capacity) {
+    return addResource(resourceType, memory_mb, capacity, 1, 1);
+  }
 
-    resources.add(String.format("{\"type\":\"%s\",\"memory_mb\":%d,\"capacity\":%d}",
-      resourceType.name(), memory_mb, capacity));
+
+  public ResourceSpecBuilder addResource(final ResourceType resourceType,
+                                         final int memory_mb,
+                                         final int capacity,
+                                         final int taskSlot,
+                                         final int numExecutor) {
+
+    resources.add(String.format("{\"type\":\"%s\",\"memory_mb\":%d,\"capacity\":%d,\"slot\":%d,\"num\":%d}",
+      resourceType.name(), memory_mb, capacity, taskSlot, numExecutor));
     return this;
   }
 

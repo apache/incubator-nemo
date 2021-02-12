@@ -295,10 +295,12 @@ public final class RuntimeMaster {
           final String type = resourceNode.get("type").traverse().nextTextValue();
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
+          final int slot = resourceNode.get("slot").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
           resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory, poisonSec));
+          containerManager.requestContainer(executorNum,
+            new ResourceSpecification(type, capacity, slot, memory, poisonSec));
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {

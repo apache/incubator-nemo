@@ -174,7 +174,7 @@ public final class ExecutorRepresenter {
    * @return how many Tasks can this executor simultaneously run
    */
   public int getExecutorCapacity() {
-    return resourceSpecification.getCapacity();
+    return resourceSpecification.getSlot();
   }
 
   /**

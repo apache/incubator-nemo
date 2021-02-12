@@ -196,6 +196,30 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * Executor memory (mb)
+   */
+  @NamedParameter(short_name = "executor_mem",
+      default_value = "1024")
+  public final class ExecutorMem implements Name<Integer> {
+  }
+
+  /**
+   * Executor memory (mb)
+   */
+  @NamedParameter(short_name = "executor_num",
+      default_value = "1")
+  public final class NumExecutor implements Name<Integer> {
+  }
+
+  /**
+   * Executor memory (mb)
+   */
+  @NamedParameter(short_name = "executor_yarn_core",
+      default_value = "1")
+  public final class ExecutorYarnCore implements Name<Integer> {
+  }
+
+  /**
    * Contents of the JSON file that specifies bandwidth between locations.
    */
   @NamedParameter(doc = "Contents of JSON file that specifies bandwidth between locations")

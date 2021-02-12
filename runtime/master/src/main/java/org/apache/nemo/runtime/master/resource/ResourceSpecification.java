@@ -28,21 +28,25 @@ public final class ResourceSpecification {
   private final String resourceSpecId;
   private final String containerType;
   private final int capacity;
+  private final int slot;
   private final int memory;
   private final int poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
+                               final int slot,
                                final int memory) {
-    this(containerType, capacity, memory, -1);
+    this(containerType, capacity, slot, memory, -1);
   }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
+                               final int slot,
                                final int memory,
                                final int poisonSec) {
     this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
+    this.slot = slot;
     this.capacity = capacity;
     this.memory = memory;
     this.poisonSec = poisonSec;
@@ -60,6 +64,10 @@ public final class ResourceSpecification {
    */
   public int getCapacity() {
     return capacity;
+  }
+
+  public int getSlot() {
+    return slot;
   }
 
   /**

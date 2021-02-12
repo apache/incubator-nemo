@@ -20,6 +20,7 @@ package org.apache.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.EvalConf.SamplingPath;
@@ -176,8 +177,24 @@ public final class JobLauncher {
     final Configuration driverMessageConfig = getDriverMessageConf();
     final String defaultExecutorResourceConfig = "[{\"type\":\"Transient\",\"memory_mb\":512,\"capacity\":5},"
       + "{\"type\":\"Reserved\",\"memory_mb\":512,\"capacity\":5}]";
-    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
-      JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
+
+    final Injector confInjector = TANG.newInjector(builtJobConf);
+
+    final String resources = ResourceSpecBuilder.builder().addResource(
+      ResourceSpecBuilder.ResourceType.Reserved,
+      confInjector.getNamedInstance(JobConf.ExecutorMem.class),
+      confInjector.getNamedInstance(JobConf.ExecutorYarnCore.class),
+      confInjector.getNamedInstance(EvalConf.TaskSlot.class),
+      confInjector.getNamedInstance(JobConf.NumExecutor.class)).build();
+
+    final Configuration executorResourceConfig = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(JobConf.ExecutorJSONContents.class, resources)
+      .build();
+
+    // final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
+    //  JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
+
+
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
     final Configuration clientConf = getClientConf();
@@ -692,6 +709,10 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorMem.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorYarnCore.class);
+    cl.registerShortNameOfClass(JobConf.NumExecutor.class);
+    cl.registerShortNameOfClass(EvalConf.TaskSlot.class);
 
     EvalConf.registerCommandLineArgument(cl);
 

@@ -24,7 +24,6 @@ public final class MonitoringThread extends Thread {
     private Map<Long, ThreadTime> threadTimeMap = new HashMap<Long, ThreadTime>();
     private ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
     private OperatingSystemMXBean opBean = ManagementFactory.getOperatingSystemMXBean();
-
     private final double numCores;
 
     public MonitoringThread(long refreshInterval,
