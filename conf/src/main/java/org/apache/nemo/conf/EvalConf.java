@@ -137,10 +137,10 @@ public final class EvalConf {
 
   // 1.0: 100%
   @NamedParameter(short_name = "cpu_limit", default_value = "1.0")
-  public static final class CpuLimit implements Name<Boolean> {}
+  public static final class CpuLimit implements Name<Double> {}
 
   @NamedParameter(short_name = "offloading_cpu_limit", default_value = "1.0")
-  public static final class OffloadingCpuLimit implements Name<Boolean> {}
+  public static final class OffloadingCpuLimit implements Name<Double> {}
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
