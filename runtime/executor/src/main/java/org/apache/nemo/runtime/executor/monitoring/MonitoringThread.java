@@ -1,5 +1,9 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
+import org.apache.reef.util.EnvironmentUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
@@ -9,7 +13,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+// https://stackoverflow.com/questions/634580/cpu-load-from-java
 public final class MonitoringThread extends Thread {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MonitoringThread.class.getName());
 
     private long refreshInterval;
     private boolean stopped;
@@ -18,8 +25,27 @@ public final class MonitoringThread extends Thread {
     private ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
     private OperatingSystemMXBean opBean = ManagementFactory.getOperatingSystemMXBean();
 
+    private final double numCores;
+
+    public MonitoringThread(long refreshInterval,
+                            final double targetCpuLimit) {
+        this.refreshInterval = refreshInterval;
+        this.numCores = targetCpuLimit;
+
+        LOG.info("Refresh interval: {}, cpu limit: {}",
+          refreshInterval, targetCpuLimit);
+
+        setName("MonitoringThread");
+
+        start();
+    }
+
     public MonitoringThread(long refreshInterval) {
         this.refreshInterval = refreshInterval;
+        this.numCores = opBean.getAvailableProcessors();
+
+        LOG.info("Refresh interval: {}, allocated cores: {}",
+          refreshInterval, numCores);
 
         setName("MonitoringThread");
 
@@ -106,7 +132,7 @@ public final class MonitoringThread extends Thread {
     }
 
     public double getAvarageUsagePerCPU() {
-        return getTotalUsage() / opBean.getAvailableProcessors();
+        return getTotalUsage() / numCores;
     }
 
     public double getUsageByThread(Thread t) {

@@ -130,6 +130,18 @@ public final class EvalConf {
   @NamedParameter(short_name = "throttle_rate", default_value = "10000000")
   public static final class ThrottleRate implements Name<Long> {}
 
+  // 1.0: 100 %, if available core = 4, allocated_cores = 1.0, and cpu-limit = 0.5,
+  // actual cores = 4 * 1.0 * 0.5
+  @NamedParameter(short_name = "allocated_cores", default_value = "1.0")
+  public static final class AllocatedCores implements Name<Double> {}
+
+  // 1.0: 100%
+  @NamedParameter(short_name = "cpu_limit", default_value = "1.0")
+  public static final class CpuLimit implements Name<Boolean> {}
+
+  @NamedParameter(short_name = "offloading_cpu_limit", default_value = "1.0")
+  public static final class OffloadingCpuLimit implements Name<Boolean> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -162,6 +174,10 @@ public final class EvalConf {
   public final String awsRegion;
   public final long throttleRate;
 
+  public final double allocatedCores; // (for testing)
+  public final double cpuLimit; // cpu limit for executor  (for testing)
+  public final double offloadingCpuLimit; // cpu limit for offloading container (for testing)
+
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
                    @Parameter(LambdaWarmupPool.class) final int poolSize,
@@ -191,7 +207,10 @@ public final class EvalConf {
                    @Parameter(ScalingAlpha.class) final double scalingAlpha,
                    @Parameter(SftoVm.class) final boolean sfToVm,
                    @Parameter(ThrottleRate.class) final long throttleRate,
-                   @Parameter(AWSRegion.class) final String awsRegion) throws IOException {
+                   @Parameter(AWSRegion.class) final String awsRegion,
+                   @Parameter(AllocatedCores.class) final double allocatedCores,
+                   @Parameter(CpuLimit.class) final double cpuLimit,
+                   @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -221,6 +240,9 @@ public final class EvalConf {
     this.scalingAlpha = scalingAlpha;
     this.sfToVm = sfToVm;
     this.awsRegion = awsRegion;
+    this.allocatedCores = allocatedCores;
+    this.cpuLimit = cpuLimit;
+    this.offloadingCpuLimit = offloadingCpuLimit;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -261,6 +283,9 @@ public final class EvalConf {
     jcb.bindNamedParameter(SftoVm.class, Boolean.toString(sfToVm));
     jcb.bindNamedParameter(AWSRegion.class, awsRegion);
     jcb.bindNamedParameter(ThrottleRate.class, Long.toString(throttleRate));
+    jcb.bindNamedParameter(AllocatedCores.class, Double.toString(allocatedCores));
+    jcb.bindNamedParameter(CpuLimit.class, Double.toString(cpuLimit));
+    jcb.bindNamedParameter(OffloadingCpuLimit.class, Double.toString(offloadingCpuLimit));
     return jcb.build();
   }
 
@@ -295,6 +320,9 @@ public final class EvalConf {
     cl.registerShortNameOfClass(SftoVm.class);
     cl.registerShortNameOfClass(AWSRegion.class);
     cl.registerShortNameOfClass(ThrottleRate.class);
+    cl.registerShortNameOfClass(AllocatedCores.class);
+    cl.registerShortNameOfClass(CpuLimit.class);
+    cl.registerShortNameOfClass(OffloadingCpuLimit.class);
   }
 
   @Override
@@ -329,6 +357,9 @@ public final class EvalConf {
     sb.append("randomselection: "); sb.append(randomSelection); sb.append("\n");
     sb.append("awsRegion: "); sb.append(awsRegion); sb.append("\n");
     sb.append("throttleRate: "); sb.append(throttleRate); sb.append("\n");
+    sb.append("allocatedCores: "); sb.append(allocatedCores); sb.append("\n");
+    sb.append("cpuLimit: "); sb.append(cpuLimit); sb.append("\n");
+    sb.append("offloadingCpuLimit: "); sb.append(offloadingCpuLimit); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

@@ -1,8 +1,10 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
 import com.sun.management.OperatingSystemMXBean;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.lang.management.ManagementFactory;
@@ -17,13 +19,21 @@ public final class SystemLoadProfiler {
   // private final ThreadMXBean threadMXBean;
   private final MonitoringThread monitoringThread;
 
+
   @Inject
-  private SystemLoadProfiler(final TaskExecutorMapWrapper wrapper) {
+  private SystemLoadProfiler(final TaskExecutorMapWrapper wrapper,
+                             @Parameter(EvalConf.Ec2.class) final boolean ec2,
+                             @Parameter(EvalConf.CpuLimit.class) final double cpuLimit) {
     // this.operatingSystemMXBean =
     //  (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     this.taskExecutors = wrapper.getTaskExecutorMap();
     // this.threadMXBean = ManagementFactory.getThreadMXBean();
-    this.monitoringThread = new MonitoringThread(1000);
+
+    if (ec2) {
+      this.monitoringThread = new MonitoringThread(500);
+    } else {
+      this.monitoringThread = new MonitoringThread(500, cpuLimit);
+    }
   }
 
   public double getCpuLoad() {
