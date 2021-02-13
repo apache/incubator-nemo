@@ -157,13 +157,15 @@ public final class NemoDriver {
           jobScaler.broadcastInfo(message.getScalingMsg());
         } else if (decision.equals("add-yarn")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
+          /*
           final int mem = new Integer(args[1]);
           final int capactiy = new Integer(args[2]);
           final String spec = ResourceSpecBuilder.builder()
             .addResource(ResourceSpecBuilder.ResourceType.Reserved, mem, capactiy)
             .build();
           LOG.info("Requesting new yarn executor!! " + spec);
-          runtimeMaster.requestContainer(spec);
+          */
+          runtimeMaster.requestContainer(resourceSpecificationString);
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
