@@ -57,7 +57,7 @@ public final class IncrementWorkerOffloadingManagerImpl extends AbstractOffloadi
   }
 
   @Override
-  void createWorkers(String taskId) {
+  public void createWorkers(String taskId) {
     // Find available workers
     synchronized (workers) {
       // final List<OffloadingWorker> offloadingWorkers = workers.stream().filter(worker ->

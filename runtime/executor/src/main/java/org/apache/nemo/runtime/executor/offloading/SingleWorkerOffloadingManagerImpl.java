@@ -12,24 +12,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 
-public final class OneTaskOneWorkerOffloadingManagerImpl extends AbstractOffloadingManagerImpl {
-  private static final Logger LOG = LoggerFactory.getLogger(OneTaskOneWorkerOffloadingManagerImpl.class.getName());
+public final class SingleWorkerOffloadingManagerImpl extends AbstractOffloadingManagerImpl {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleWorkerOffloadingManagerImpl.class.getName());
 
 
   @Inject
-  private OneTaskOneWorkerOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
-                                                final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                                                final EvalConf evalConf,
-                                                final PipeIndexMapWorker pipeIndexMapWorker,
-                                                @Parameter(JobConf.ExecutorId.class) final String executorId,
-                                                final ByteTransport byteTransport,
-                                                final NettyStateStore nettyStateStore) {
+  private SingleWorkerOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
+                                            final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                                            final EvalConf evalConf,
+                                            final PipeIndexMapWorker pipeIndexMapWorker,
+                                            @Parameter(JobConf.ExecutorId.class) final String executorId,
+                                            final ByteTransport byteTransport,
+                                            final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
       byteTransport.getPublicAddress(), nettyStateStore.getPort());
   }
@@ -51,7 +48,8 @@ public final class OneTaskOneWorkerOffloadingManagerImpl extends AbstractOffload
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
-        return Optional.empty();
+        taskWorkerMap.put(taskId, workers);
+        return Optional.of(taskWorkerMap.get(taskId));
       }
     }
   }

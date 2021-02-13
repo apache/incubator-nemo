@@ -885,11 +885,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           hasChekpoint = true;
           final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
           final Readable readable = srcDataFetcher.getReadable();
+          LOG.info("Checkpointing readable for task {}", taskId);
           readable.checkpoint();
+          LOG.info("End of Checkpointing readable for task {}", taskId);
         }
 
         try {
+          LOG.info("Closing data fetcher for task {}", taskId);
           dataFetcher.close();
+          LOG.info("End of Closing data fetcher for task {}", taskId);
         } catch (Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);

@@ -277,6 +277,6 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public void close() throws IOException {
-    reader.close();
+    // reader.close();
   }
 }

@@ -53,17 +53,17 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
   private final AtomicInteger numVMs = new AtomicInteger(0);
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
-  private final long throttleRate;
+  private final double cpulimit;
 
   public LocalExecutorOffloadingRequester(final String serverAddress,
                                           final int port,
-                                          final long throttleRate) {
+                                          final double cpulimit) {
     this.serverAddress = serverAddress;
     this.serverPort = port;
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
-    this.throttleRate = throttleRate;
+    this.cpulimit = cpulimit;
     this.map = new ConcurrentHashMap<>();
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
@@ -94,14 +94,15 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
   @Override
   public synchronized void createChannelRequest() {
     final int myPort = port + atomicInteger.getAndIncrement();
+    final String nemo_home = System.getenv("NEMO_HOME");
     LOG.info("Creating VM worker with port " + myPort);
-    final String path = "/Users/taegeonum/Projects/CMS_SNU/incubator-nemo-lambda/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
+    final String path = nemo_home + "/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
       waitingExecutor.execute(() -> {
         try {
 
-          LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + throttleRate);
+          LOG.info("cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
           Process p = Runtime.getRuntime().exec(
-            "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + throttleRate);
+            "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
 
           String line;
           BufferedReader in = new BufferedReader(

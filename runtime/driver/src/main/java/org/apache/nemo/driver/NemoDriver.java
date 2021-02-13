@@ -166,6 +166,13 @@ public final class NemoDriver {
           LOG.info("Requesting new yarn executor!! " + spec);
           */
           runtimeMaster.requestContainer(resourceSpecificationString);
+        } else if (decision.equals("add-offloading-executor")) {
+          runtimeMaster.createOffloadingExecutor();
+        } else if (decision.equals("offload-task")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.offloadTask(num);
+
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
@@ -322,7 +329,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, HDFStateStore.class)
-      .bindImplementation(OffloadingManager.class, OneTaskOneWorkerOffloadingManagerImpl.class)
+      .bindImplementation(OffloadingManager.class, SingleWorkerOffloadingManagerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)

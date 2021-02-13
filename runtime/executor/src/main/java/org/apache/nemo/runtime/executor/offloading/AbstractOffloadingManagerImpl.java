@@ -144,6 +144,11 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
   }
 
+  @Override
+  public void createWorker(final int num) {
+    workers.addAll(createWorkerBlocking(num));
+  }
+
   protected List<OffloadingWorker> createWorkerBlocking(final int num) {
     // workerFactory.createStreamingWorker()
     offloadExecutorByteBuf.retain();
@@ -266,7 +271,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     });
   }
 
-  abstract void createWorkers(final String taskId);
+  public abstract void createWorkers(final String taskId);
   abstract Optional<List<OffloadingWorker>> selectWorkersForOffloading(final String taskId);
 
   protected final ExecutorService executorService = Executors.newCachedThreadPool();

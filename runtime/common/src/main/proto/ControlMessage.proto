@@ -127,12 +127,15 @@ enum MessageType {
     ExecutorRegistered = 42;
     ExecutorRemoved = 43;
     TaskScheduled = 46;
+    CreateOffloadingExecutor = 49;
+    OffloadingTask = 50;
 
     // Worker -> master
     CurrentExecutor = 44;
     CurrentScheduledTask = 45;
     RequestPipeKey = 47;
     TaskExecuting = 48;
+
 }
 
 message Message {
@@ -192,6 +195,12 @@ message Message {
     optional ResponsePipeKeyMessage responsePipeKeyMsg = 47;
 
     optional TaskExecutingMessage taskExecutingMsg = 48;
+
+    optional OffloadingTaskMessage offloadingTaskMsg = 49;
+}
+
+message OffloadingTaskMessage {
+  required int64 numOffloadingTask = 1;
 }
 
 message TaskExecutingMessage {

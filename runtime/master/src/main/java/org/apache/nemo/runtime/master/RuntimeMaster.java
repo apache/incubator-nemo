@@ -376,6 +376,38 @@ public final class RuntimeMaster {
     });
   }
 
+
+  public void createOffloadingExecutor() {
+    LOG.info("Create offloading executor");
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        LOG.info("Create offloading executor for executor {}", executor.getExecutorId());
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
+          .build());
+      });
+    });
+  }
+
+  public void offloadTask(final int num) {
+    LOG.info("Offloading tasks {}", num);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        LOG.info("Offloading task for executor {}", executor.getExecutorId());
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.OffloadingTask)
+          .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
+            .setNumOffloadingTask(num)
+            .build())
+          .build());
+      });
+    });
+  }
+
   /**
    * Handler for control messages received by Master.
    */
@@ -396,7 +428,7 @@ public final class RuntimeMaster {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.CurrentExecutor)
                 .addAllCurrExecutors(executorIds)
                 .build());

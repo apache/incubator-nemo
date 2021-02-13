@@ -515,6 +515,33 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case CreateOffloadingExecutor: {
+          LOG.info("Create offloadfing executor for {}", executorId);
+          offloadingManager.createWorker(1);
+          break;
+        }
+        case OffloadingTask: {
+          LOG.info("Offloading task in {}", executorId);
+          final ControlMessage.OffloadingTaskMessage m = message.getOffloadingTaskMsg();
+          int cnt = 0;
+          for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
+            if (cnt == m.getNumOffloadingTask()) {
+              break;
+            }
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
+
+            LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
+
+            executorThread.addShortcutEvent(
+              new TaskOffloadingEvent(te.getId(),
+                TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
+
+            cnt += 1;
+          }
+
+          break;
+        }
         case TaskScheduled: {
           LOG.info("Task scheduled {} received at {}", message.getRegisteredExecutor(), executorId);
           final String[] split = message.getRegisteredExecutor().split(",");

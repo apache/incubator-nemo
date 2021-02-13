@@ -66,16 +66,16 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
     dispatcher.scheduleAtFixedRate(() -> {
       synchronized (pendingSourceTasks) {
-        if (System.currentTimeMillis() - l.get() >= 2000) {
-          LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
-         l.set(System.currentTimeMillis());
-        }
-        final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
-        while (iterator.hasNext()) {
-          final ExecutorThreadTask sourceTask = iterator.next();
-          if (sourceTask.isSourceAvailable()) {
-            iterator.remove();
-            synchronized (sourceTasks) {
+        synchronized (sourceTasks) {
+          if (System.currentTimeMillis() - l.get() >= 2000) {
+            LOG.info("Pending source tasks: {} / active source tasks {} in executor {}", pendingSourceTasks, sourceTasks, executorId);
+            l.set(System.currentTimeMillis());
+          }
+          final Iterator<ExecutorThreadTask> iterator = pendingSourceTasks.iterator();
+          while (iterator.hasNext()) {
+            final ExecutorThreadTask sourceTask = iterator.next();
+            if (sourceTask.isSourceAvailable()) {
+              iterator.remove();
               //LOG.info("Add available source: {}", sourceTask.getId());
               sourceTasks.add(sourceTask);
             }
@@ -201,7 +201,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               while (iterator.hasNext()) {
                 final ExecutorThreadTask sourceTask = iterator.next();
 
-                handlingControlEvent();
                 throttling();
 
                 if (sourceTask.hasData()) {

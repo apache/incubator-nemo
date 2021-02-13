@@ -434,7 +434,7 @@ public final class JobLauncher {
                   .build())
                 .build());
 
-            } else if (decision.equals("add-yarn")) {
+            } else if (decision.equals("add-yarn") || decision.equals("add-offloading-executor")) {
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)
                 .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
@@ -443,7 +443,8 @@ public final class JobLauncher {
                   .build())
                 .build());
 
-            } else if (decision.equals("move-task")) {
+            } else if (decision.equals("move-task") ||
+              decision.equals("offload-task")) {
               LOG.info("Send move task " + lastLine);
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)

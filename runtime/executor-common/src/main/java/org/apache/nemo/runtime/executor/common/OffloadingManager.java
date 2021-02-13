@@ -4,6 +4,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 public interface OffloadingManager {
   // void prepareOffloading(String taskId, ExecutorThreadQueue et);
+  void createWorker(int num);
   void offloading(String taskId);
   void deoffloading(String taskId);
   void offloadIntermediateData(String taskId, TaskHandlingEvent data);

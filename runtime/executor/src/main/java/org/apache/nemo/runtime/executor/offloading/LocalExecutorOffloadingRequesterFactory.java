@@ -8,16 +8,16 @@ import javax.inject.Inject;
 
 public final class LocalExecutorOffloadingRequesterFactory implements OffloadingRequesterFactory {
 
-  private final long throttleRate;
+  private final double cpulimit;
 
   @Inject
   private LocalExecutorOffloadingRequesterFactory(
-    @Parameter(EvalConf.ThrottleRate.class) final long throttleRate) {
-    this.throttleRate = throttleRate;
+    @Parameter(EvalConf.OffloadingCpuLimit.class) final double cpulimit) {
+    this.cpulimit = cpulimit;
   }
 
   @Override
   public OffloadingRequester getInstance(OffloadingEventHandler eventHandler, String address, int port) {
-    return new LocalExecutorOffloadingRequester(address, port, throttleRate);
+    return new LocalExecutorOffloadingRequester(address, port, cpulimit);
   }
 }
