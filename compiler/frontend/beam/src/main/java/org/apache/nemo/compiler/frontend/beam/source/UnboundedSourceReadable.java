@@ -130,6 +130,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
   @Override
   public synchronized void prepare(ReadableContext readableContext) {
     LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
+    this.readableContext = readableContext;
     taskId = readableContext.getTaskId();
     stateStore = readableContext.getStateStore();
 
