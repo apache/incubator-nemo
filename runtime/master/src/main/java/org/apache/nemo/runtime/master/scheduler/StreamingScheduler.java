@@ -123,9 +123,13 @@ public final class StreamingScheduler implements Scheduler {
           });
         });
 
+        LOG.info("Stage incoming edges of {}: {}", stageToSchedule.getId(), stageIncomingEdges);
         stageIncomingEdges.forEach(inEdge -> {
           final int srcParallelism = ((StageEdge) inEdge)
             .getDst().getPropertyValue(ParallelismProperty.class).get();
+          LOG.info("Stage incoming edges of parallelism {}: {}", srcParallelism,
+            stageToSchedule.getId(), stageIncomingEdges);
+
           for (int i = 0; i < srcParallelism; i++) {
             final String srcTask =
               RuntimeIdManager.generateTaskId(inEdge.getSrc().getId(), i, 0);

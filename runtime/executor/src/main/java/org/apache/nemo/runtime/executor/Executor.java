@@ -481,17 +481,6 @@ public final class Executor {
           .build());
 
     } catch (final Exception e) {
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ExecutorFailed)
-              .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
-                  .setExecutorId(executorId)
-                  .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
-                  .build())
-              .build());
-
       e.printStackTrace();
       throw new RuntimeException(e);
     }

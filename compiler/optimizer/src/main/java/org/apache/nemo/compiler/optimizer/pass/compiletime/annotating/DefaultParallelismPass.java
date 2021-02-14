@@ -86,6 +86,8 @@ public final class DefaultParallelismPass extends AnnotatingPass {
               .max().orElse(1);
           final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> CommunicationPatternProperty.Value.Shuffle
+                  .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())
+              || CommunicationPatternProperty.Value.RoundRobin
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .map(i -> i / shuffleDecreaseFactor)
