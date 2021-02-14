@@ -654,17 +654,18 @@ public final class Executor {
           final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
           final Task task =
             (Task) FSTSingleton.getInstance().asObject(bytes);
-          /*
-          final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
-          try {
-            FSTSingleton.getInstance().encodeToStream(bos, task);
-            bos.close();
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+
+          if (!taskExecutorMapWrapper.containsTaskSerializedTask(task.getTaskId())) {
+            final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
+            try {
+              FSTSingleton.getInstance().encodeToStream(bos, task);
+              bos.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bos.toByteArray());
           }
-          */
-          taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bytes);
 
           LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
           onTaskReceived(task);

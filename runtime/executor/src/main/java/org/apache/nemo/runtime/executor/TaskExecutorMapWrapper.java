@@ -33,6 +33,10 @@ public final class TaskExecutorMapWrapper {
     taskIdSerializedTaskMap.put(taskId, bytes);
   }
 
+  public boolean containsTaskSerializedTask(final String taskId) {
+    return taskIdSerializedTaskMap.containsKey(taskId);
+  }
+
   public void putTaskExecutor(final TaskExecutor taskExecutor,
                               ExecutorThread thread) {
     taskExecutorMap.put(taskExecutor, true);
