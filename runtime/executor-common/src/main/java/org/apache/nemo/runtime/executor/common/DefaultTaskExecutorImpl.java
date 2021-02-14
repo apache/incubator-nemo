@@ -553,7 +553,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
               }
 
-              isStateless = false;
               allFetchers.add(df);
           }
         });
