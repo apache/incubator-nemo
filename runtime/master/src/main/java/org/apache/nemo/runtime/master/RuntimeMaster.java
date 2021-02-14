@@ -301,6 +301,9 @@ public final class RuntimeMaster {
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
 
+          LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
+            type, memory, capacity, slot, executorNum);
+
           if (onlyCompute) {
             if (type.equals(ResourcePriorityProperty.COMPUTE)) {
               resourceRequestCount.getAndAdd(executorNum);
