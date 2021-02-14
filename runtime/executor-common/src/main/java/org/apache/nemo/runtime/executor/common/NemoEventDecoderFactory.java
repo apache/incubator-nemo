@@ -84,9 +84,10 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
         throw new EOFException();
       }
 
+      final DataInputStream dis = new DataInputStream(inputStream);
+
       if (isWatermark == 0x00) {
         // this is not a watermark
-        final DataInputStream dis = new DataInputStream(inputStream);
         final long timestamp = dis.readLong();
         final Object value = valueDecoder.decode();
         //LOG.info("Decode {}", value);
@@ -94,23 +95,9 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
       } else if (isWatermark == 0x01) {
         // this is a watermark
-        final WatermarkWithIndex watermarkWithIndex;
-        try {
-          watermarkWithIndex = (WatermarkWithIndex) FSTSingleton.getInstance().decodeFromStream(inputStream);
-        } catch (Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-        return watermarkWithIndex;
+        return WatermarkWithIndex.decode(dis);
       } else if (isWatermark == 0x02) {
-        final Watermark watermark;
-        try {
-          watermark = (Watermark) FSTSingleton.getInstance().decodeFromStream(inputStream);
-        } catch (Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-        return watermark;
+        return Watermark.decode(dis);
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }

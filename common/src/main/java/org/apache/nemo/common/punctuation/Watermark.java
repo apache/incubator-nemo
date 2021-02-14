@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.punctuation;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -40,6 +42,25 @@ public final class Watermark implements Serializable, Comparable<Watermark> {
    */
   public long getTimestamp() {
     return timestamp;
+  }
+
+
+  public void encode(DataOutputStream dos) {
+    try {
+      dos.writeLong(timestamp);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static Watermark decode(DataInputStream dis) {
+    try {
+      return new Watermark(dis.readLong());
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

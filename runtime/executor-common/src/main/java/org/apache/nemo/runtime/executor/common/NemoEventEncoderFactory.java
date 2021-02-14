@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
@@ -77,10 +76,12 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
     public void encode(final T element) throws IOException {
       if (element instanceof WatermarkWithIndex) {
         outputStream.write(0x01); // this is watermark
-        outputStream.write(FSTSingleton.getInstance().asByteArray(element));
+        final DataOutputStream dos = new DataOutputStream(outputStream);
+        ((WatermarkWithIndex) element).encode(dos);
       } else if (element instanceof Watermark) {
         outputStream.write(0x02);
-        outputStream.write(FSTSingleton.getInstance().asByteArray(element));
+        final DataOutputStream dos = new DataOutputStream(outputStream);
+        ((Watermark) element).encode(dos);
       } else if (element instanceof TimestampAndValue) {
         final TimestampAndValue tsv = (TimestampAndValue) element;
         outputStream.write(0x00); // this is a data element

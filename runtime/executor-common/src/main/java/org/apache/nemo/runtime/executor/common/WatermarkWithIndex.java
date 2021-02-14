@@ -20,6 +20,9 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -44,6 +47,27 @@ public final class WatermarkWithIndex implements Serializable {
   public int hashCode() {
 
     return Objects.hash(watermark, index);
+  }
+
+  public void encode(final DataOutputStream dos) {
+     try {
+       dos.writeInt(index);
+       dos.writeLong(watermark.getTimestamp());
+     } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static WatermarkWithIndex decode(final DataInputStream is) {
+    try {
+      final int index = is.readInt();
+      final long wm = is.readLong();
+      return new WatermarkWithIndex(new Watermark(wm), index);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   public WatermarkWithIndex(final Watermark watermark, final int index) {
