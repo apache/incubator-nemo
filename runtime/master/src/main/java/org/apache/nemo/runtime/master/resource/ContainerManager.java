@@ -157,7 +157,8 @@ public final class ContainerManager {
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess();
+    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+      .addOption("-XX:-OmitStackTraceInFastThrow");
       // .addOption("-verbose:class");
     // LOG.info("Add jvm process for verbose:class");
 

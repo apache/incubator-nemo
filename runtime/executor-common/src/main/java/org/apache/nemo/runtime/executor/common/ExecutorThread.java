@@ -283,6 +283,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
     LOG.info("Closing executor thread...");
 
+    /*
     while (!queue.isEmpty()) {
       LOG.info("Waiting for executor {}, numEvent: {}",  executorId, queue);
       try {
@@ -291,6 +292,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         e.printStackTrace();
       }
     }
+    */
 
     while (!closed) {
       try {

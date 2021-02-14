@@ -129,8 +129,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final OutputCollectorGenerator outputCollectorGenerator;
 
-  private Serializer srcSerializer;
-
   private final boolean offloaded;
 
   /**
@@ -444,10 +442,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // TODO[SLS]: should consider multiple outgoing edges
       // All edges will have the same encoder/decoder!
       if (irVertex instanceof SourceVertex) {
-        final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
-        srcSerializer = serializerManager.getSerializer(edge.getId());
-        LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
-          srcSerializer);
+        // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
+        final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
+        // srcSerializer = serializerManager.getSerializer(edge.getId());
+        // LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
+        // srcSerializer);
 
         // Source vertex read
         final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
@@ -475,6 +474,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         sourceVertexDataFetchers.add(fe);
         allFetchers.add(fe);
 
+        /*
         // Register input pipe for offloaded source !!
         if (offloaded) {
           inputPipeRegister.registerInputPipe(
@@ -488,6 +488,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         } else {
           inputPipeRegister.retrieveIndexForOffloadingSource(taskId, edge.getId());
         }
+        */
 
         if (sourceVertexDataFetchers.size() > 1) {
           throw new RuntimeException("Source vertex data fetcher is larger than one");

@@ -96,7 +96,7 @@ public final class PipeIndexMaster {
           final String dstTaskId = requestTaskIndexMessage.getDstTaskId();
           final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
 
-          LOG.info("Task index of stage: {}", key, pipeKeyIndexMap.get(key));
+          LOG.info("Task index of stage: {}: {}", key, pipeKeyIndexMap.get(key));
 
           if (!pipeKeyIndexMap.containsKey(key)) {
             throw new RuntimeException("No task index for task " + key);
