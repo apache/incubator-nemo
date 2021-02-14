@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -1153,12 +1154,15 @@ public final class JobScaler {
       final String executorId = entry.getValue();
 
       if (!prevMovedTask.contains(taskId)) {
-        taskScheduledMap.stopTask(taskId);
-        stopped += 1;
-        prevMovedTask.add(taskId);
+        if (!executorRegistry.getExecutorRepresentor(executorId)
+          .getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+          taskScheduledMap.stopTask(taskId);
+          stopped += 1;
+          prevMovedTask.add(taskId);
 
-        if (stopped == num) {
-          break;
+          if (stopped == num) {
+            break;
+          }
         }
       }
     }

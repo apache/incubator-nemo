@@ -392,12 +392,14 @@ public final class RuntimeMaster {
     LOG.info("Create offloading executor");
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
-        LOG.info("Create offloading executor for executor {}", executor.getExecutorId());
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
-          .build());
+        if (!executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+          LOG.info("Create offloading executor for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
+            .build());
+        }
       });
     });
   }
@@ -406,15 +408,18 @@ public final class RuntimeMaster {
     LOG.info("Offloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
-        LOG.info("Offloading task for executor {}", executor.getExecutorId());
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.OffloadingTask)
-          .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
-            .setNumOffloadingTask(num)
-            .build())
-          .build());
+        if (!executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+
+          LOG.info("Offloading task for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.OffloadingTask)
+            .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
+              .setNumOffloadingTask(num)
+              .build())
+            .build());
+        }
       });
     });
   }
