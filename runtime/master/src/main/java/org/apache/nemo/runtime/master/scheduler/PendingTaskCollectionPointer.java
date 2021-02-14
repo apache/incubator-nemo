@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.Optional;
 
 /**
@@ -54,7 +55,8 @@ public final class PendingTaskCollectionPointer {
   public synchronized void addTask(final Task task) {
     LOG.info("Add task " + task.getTaskId());
     if (this.curTaskCollection == null) {
-      this.curTaskCollection = Collections.singletonList(task);
+      this.curTaskCollection = new LinkedList<>();
+      curTaskCollection.add(task);
     } else {
       this.curTaskCollection.add(task);
     }

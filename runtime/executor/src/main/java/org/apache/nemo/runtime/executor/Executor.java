@@ -338,8 +338,14 @@ public final class Executor {
     LOG.info("Executor [{}] received Task [{}] to execute.",
         new Object[]{executorId, task.getTaskId()});
 
+    final long st = System.currentTimeMillis();
+
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
       (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
+
+    final long et = System.currentTimeMillis();
+
+    LOG.info("Task {} irDag deser time {}", task.getTaskId(), et - st);
 
     if (!started) {
 
@@ -359,7 +365,9 @@ public final class Executor {
 
     executorService.execute(() -> {
     try {
+      final long s = System.currentTimeMillis();
       launchTask(task, irDag);
+      LOG.info("Task launch time {} : time {}", task.getTaskId(), System.currentTimeMillis() - s);
     } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException();
@@ -393,6 +401,8 @@ public final class Executor {
   private void launchTask(final Task task,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
 
+    final long st = System.currentTimeMillis();
+
     task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
       getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
       getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
@@ -411,19 +421,18 @@ public final class Executor {
         e.getPropertyValue(DecompressionProperty.class).orElse(null)));
     });
 
-    LOG.info("{} Launch task: {}", executorId, task.getTaskId());
+    LOG.info("{} Launch task: {}, edge register time {}", executorId, task.getTaskId(), System.currentTimeMillis() - st);
 
+    /*
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
     final List<StageEdge> copyOutgoingEdges = SerializationUtils.deserialize(bytes);
     //LOG.info("Copied outgoing edges {}, bytes: {}", copyOutgoingEdges, bytes.length);
     final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
     final List<StageEdge> copyIncomingEdges = SerializationUtils.deserialize(bytes2);
+    */
 
     try {
-      final TaskStateManager taskStateManager =
-          new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
-
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
       final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
@@ -448,9 +457,14 @@ public final class Executor {
         outputCollectorGenerator,
         false);
 
-      LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
+      LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
+        System.currentTimeMillis() - st);
+
       executorThread.addNewTask(taskExecutor);
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThread);
+
+      final TaskStateManager taskStateManager =
+        new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
@@ -635,10 +649,12 @@ public final class Executor {
           */
           break;
         case ScheduleTask:
+          final long st = System.currentTimeMillis();
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
           final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
           final Task task =
-              SerializationUtils.deserialize(bytes);
+            (Task) FSTSingleton.getInstance().asObject(bytes);
+          /*
           final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
           try {
             FSTSingleton.getInstance().encodeToStream(bos, task);
@@ -647,7 +663,10 @@ public final class Executor {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
-          taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bos.toByteArray());
+          */
+          taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bytes);
+
+          LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
           onTaskReceived(task);
           break;
         case RequestMetricFlush:

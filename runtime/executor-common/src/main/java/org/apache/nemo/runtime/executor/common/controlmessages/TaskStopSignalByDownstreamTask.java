@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor.common.controlmessages;
 
-import org.apache.commons.lang3.SerializationUtils;
-
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Objects;
@@ -21,17 +21,30 @@ public final class TaskStopSignalByDownstreamTask {
   }
 
   public void encode(final OutputStream bos) {
-    SerializationUtils.serialize(srcTaskId, bos);
-    SerializationUtils.serialize(edgeId, bos);
-    SerializationUtils.serialize(dstTaskId, bos);
+    final DataOutputStream dos = new DataOutputStream(bos);
+    try {
+      dos.writeUTF(srcTaskId);
+      dos.writeUTF(edgeId);
+      dos.writeUTF(dstTaskId);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   public static TaskStopSignalByDownstreamTask decode(final InputStream is) {
-    return new TaskStopSignalByDownstreamTask(
-      SerializationUtils.deserialize(is),
-      SerializationUtils.deserialize(is),
-      SerializationUtils.deserialize(is)
-    );
+    try {
+      final DataInputStream dis = new DataInputStream(is);
+      final String stid = dis.readUTF();
+      final String eid = dis.readUTF();
+      final String dtid = dis.readUTF();
+
+      return new TaskStopSignalByDownstreamTask(
+        stid, eid, dtid);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

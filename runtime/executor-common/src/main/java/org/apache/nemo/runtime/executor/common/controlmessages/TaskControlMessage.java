@@ -2,9 +2,10 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.OutputStream;
 import java.util.Objects;
 
@@ -80,12 +81,18 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   public void encode(final OutputStream bos) {
-    SerializationUtils.serialize(type, bos);
-    SerializationUtils.serialize(inputPipeIndex, bos);
-    SerializationUtils.serialize(targetPipeIndex, bos);
-    SerializationUtils.serialize(targetTaskId, bos);
+    final DataOutputStream dos = new DataOutputStream(bos);
+    try {
+      dos.writeInt(type.ordinal());
+      dos.writeInt(inputPipeIndex);
+      dos.writeInt(targetPipeIndex);
+      dos.writeUTF(targetTaskId);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
-    switch (type) {
+      switch (type) {
       case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
         ((TaskStopSignalByDownstreamTask) event).encode(bos);
         break;
@@ -101,28 +108,34 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   public static TaskControlMessage decode(final ByteBufInputStream bis) {
-    final TaskControlMessageType type = SerializationUtils.deserialize(bis);
-    final int inputPipeIndex = SerializationUtils.deserialize(bis);
-    final int targetPipeIndex = SerializationUtils.deserialize(bis);
-    final String targetTaskId = SerializationUtils.deserialize(bis);
-    TaskControlMessage msg = null;
+    try {
+      final TaskControlMessageType type = TaskControlMessageType.values()[bis.readInt()];
+      final int inputPipeIndex = bis.readInt();
+      final int targetPipeIndex = bis.readInt();
+      final String targetTaskId = bis.readUTF();
 
-    switch (type) {
-      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
-        msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
-          TaskStopSignalByDownstreamTask.decode(bis));
-        break;
+      TaskControlMessage msg = null;
+
+      switch (type) {
+        case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
+          msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
+            TaskStopSignalByDownstreamTask.decode(bis));
+          break;
+        }
+        case OFFLOAD_TASK_STOP:
+        case PIPE_INIT:
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
+          msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
+          break;
+        }
+        default:
+          throw new RuntimeException("invalid control message decoding " + type);
       }
-      case OFFLOAD_TASK_STOP:
-      case PIPE_INIT:
-      case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
-        msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
-        break;
-      }
-      default:
-        throw new RuntimeException("invalid control message decoding " + type);
+      return msg;
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
-    return msg;
   }
 
   @Override

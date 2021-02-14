@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
@@ -194,8 +195,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       final ByteBuf byteBuf = controlChannel.alloc().ioBuffer();
       final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-      SerializationUtils.serialize(
-        (Serializable) executorMetrics, bos);
+      try {
+        FSTSingleton.getInstance().encodeToStream(bos, executorMetrics);
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
 
 
       controlChannel.writeAndFlush(new OffloadingEvent(

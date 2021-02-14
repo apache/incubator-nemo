@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
@@ -93,11 +94,22 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
       } else if (isWatermark == 0x01) {
         // this is a watermark
-        final WatermarkWithIndex watermarkWithIndex =
-          (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
+        final WatermarkWithIndex watermarkWithIndex;
+        try {
+          watermarkWithIndex = (WatermarkWithIndex) FSTSingleton.getInstance().decodeFromStream(inputStream);
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
         return watermarkWithIndex;
       } else if (isWatermark == 0x02) {
-        final Watermark watermark = (Watermark) SerializationUtils.deserialize(inputStream);
+        final Watermark watermark;
+        try {
+          watermark = (Watermark) FSTSingleton.getInstance().decodeFromStream(inputStream);
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
         return watermark;
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);

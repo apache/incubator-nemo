@@ -102,6 +102,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>)
         unboundedSource.getCheckpointMarkCoder();
 
+      final long st = System.currentTimeMillis();
+
       try {
         final InputStream is = stateStore.getStateStream(taskId);
         checkpointMark = (M) checkpointMarkCoder
@@ -112,15 +114,28 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
         throw new RuntimeException(e);
       }
 
+      final long et = System.currentTimeMillis();
+
+      LOG.info("Task {} checkpoint deserialize time {}", taskId, et - st);
+
       LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
     }
 
     try {
+
+      final long et = System.currentTimeMillis();
+
       readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
       kafkaReader = (KafkaUnboundedReader) reader;
 
+      final long et2 = System.currentTimeMillis();
+
+      LOG.info("Task {} reader create time {}", taskId, et2 - et);
+
       isCurrentAvailable = reader.start();
+
+      LOG.info("Task {} reader start time {}", taskId, System.currentTimeMillis() - et2);
 
     } catch (final Exception e) {
       throw new RuntimeException(e);
@@ -139,6 +154,8 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = (Coder<UnboundedSource.CheckpointMark>)
         unboundedSource.getCheckpointMarkCoder();
 
+      final long st = System.currentTimeMillis();
+
       try {
         final InputStream is = stateStore.getStateStream(taskId);
         checkpointMark = (M) checkpointMarkCoder
@@ -149,15 +166,28 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
         throw new RuntimeException(e);
       }
 
+      final long et = System.currentTimeMillis();
+
+      LOG.info("Task {} checkpoint deserialize time {}", taskId, et - st);
+
       LOG.info("Task " + taskId + " checkpoint mark " + checkpointMark);
     }
 
     try {
+
+      final long et = System.currentTimeMillis();
+
       readableService = ReadableService.getInstance();
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
       kafkaReader = (KafkaUnboundedReader) reader;
 
+      final long et2 = System.currentTimeMillis();
+
+      LOG.info("Task {} reader create time {}", taskId, et2 - et);
+
       isCurrentAvailable = reader.start();
+
+      LOG.info("Task {} reader start time {}", taskId, System.currentTimeMillis() - et2);
 
     } catch (final Exception e) {
       throw new RuntimeException(e);

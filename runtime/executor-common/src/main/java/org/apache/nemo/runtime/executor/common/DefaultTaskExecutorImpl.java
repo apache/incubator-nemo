@@ -22,6 +22,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -166,16 +167,22 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
+    this.taskId = task.getTaskId();
+
+    final long restoresSt = System.currentTimeMillis();
     this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+    LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
+
     this.threadId = threadId;
     this.executorId = executorId;
     this.sourceVertexDataFetchers = new ArrayList<>();
     this.task = task;
     this.irVertexDag = irVertexDag;
-    this.taskId = task.getTaskId();
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
+
+    final long st = System.currentTimeMillis();
 
     task.getTaskOutgoingEdges().forEach(edge -> {
       LOG.info("Task outgoing edge {}", edge);
@@ -211,6 +218,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     });
 
+    LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
+
     // samplingMap.putAll(evalConf.samplingJson);
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -221,7 +230,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // TODO: restart output writers and sources if it is moved
 
     // Prepare data structures
+    final long st1 = System.currentTimeMillis();
     prepare(task, irVertexDag, intermediateDataIOFactory);
+
+    LOG.info("Task {} prepar time: {}", taskId, System.currentTimeMillis() - st1);
     prepared.set(true);
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
@@ -626,8 +638,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // prepareOffloading task
           checkpoint(false);
           // store watermark  manager
-          final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
-          stateStore.put(taskId + "-watermark", bytes);
+          final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
+          stateStore.put(taskId + "-taskWatermarkManager", bytes);
           offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
           break;
@@ -840,16 +852,26 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private Optional<TaskInputWatermarkManager> restoreTaskInputWatermarkManager() {
     if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
-      final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-      final TaskInputWatermarkManager tm = SerializationUtils.deserialize(is);
-      return Optional.of(tm);
+      try {
+        final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
+        final TaskInputWatermarkManager tm = (TaskInputWatermarkManager) FSTSingleton.getInstance().decodeFromStream(is);
+        return Optional.of(tm);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
     return Optional.empty();
   }
 
   private void restore() {
-    final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-    taskWatermarkManager = SerializationUtils.deserialize(is);
+    try {
+      final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
+      taskWatermarkManager = (TaskInputWatermarkManager) FSTSingleton.getInstance().decodeFromStream(is);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     if (!offloaded) {
       for (final DataFetcher dataFetcher : allFetchers) {
@@ -870,7 +892,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public boolean checkpoint(final boolean checkpointSource) {
     boolean hasChekpoint = false;
 
-    final byte[] bytes = SerializationUtils.serialize(taskWatermarkManager);
+    final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
     if (checkpointSource) {

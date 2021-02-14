@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.master.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -119,7 +120,7 @@ public final class ExecutorRepresenter {
     failedTasks.remove(task);
 
     serializationExecutorService.execute(() -> {
-      final byte[] serialized = SerializationUtils.serialize(task);
+      final byte[] serialized = FSTSingleton.getInstance().asByteArray(task);
       sendControlMessage(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())

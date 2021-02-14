@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
@@ -219,7 +220,13 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                 }
                 case EXECUTOR_METRICS: {
                   final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
-                  final ExecutorMetrics executorMetrics = SerializationUtils.deserialize(bis);
+                  final ExecutorMetrics executorMetrics;
+                  try {
+                    executorMetrics = (ExecutorMetrics) FSTSingleton.getInstance().decodeFromStream(bis);
+                  } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                  }
                   LOG.info("Executor metrics recieved for worker {}: {}", myWorker.getId(), executorMetrics);
                   myWorker.setMetric(executorMetrics);
                   break;
