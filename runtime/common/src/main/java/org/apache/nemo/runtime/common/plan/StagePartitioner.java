@@ -67,9 +67,11 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
     final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // Base case: for root vertices
+      boolean isRoot = false;
       if (vertexToStageIdMap.get(irVertex) == null) {
         vertexToStageIdMap.put(irVertex, nextStageIndex.getValue());
         nextStageIndex.increment();
+        isRoot = true;
       }
       // Get stage id of irVertex
       final int stageId = vertexToStageIdMap.get(irVertex);
@@ -81,7 +83,10 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
           continue;
         }
         // Assign stageId
-        if (testMergeability(edge, irDAG)) {
+        if (isRoot) {
+          vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());
+          nextStageIndex.increment();
+        } else if (testMergeability(edge, irDAG)) {
           vertexToStageIdMap.put(connectedIRVertex, stageId);
         } else {
           vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());

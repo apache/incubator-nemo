@@ -26,8 +26,6 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
-import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
@@ -224,7 +222,8 @@ public final class PipeOutputWriter implements OutputWriter {
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(),srcTaskIndex, 0));
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
-      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
+      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 
       final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
       dstTaskIds =
@@ -239,6 +238,8 @@ public final class PipeOutputWriter implements OutputWriter {
     return dstTaskIds;
   }
 
+  final Random random = new Random();
+
   private List<String> getPipeToWrite(final TimestampAndValue element) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
@@ -246,7 +247,11 @@ public final class PipeOutputWriter implements OutputWriter {
       return Collections.singletonList(dstTaskIds.get(0));
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return dstTaskIds;
+    } else if (comm.equals(CommunicationPatternProperty.Value.RoundRobin)) {
+      // RoundRobin
+      return Collections.singletonList(dstTaskIds.get(random.nextInt(dstTaskIds.size())));
     } else {
+      // Shuffle
       final int partitionKey = (int) partitioner.partition(element.value);
       //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
       return Collections.singletonList(dstTaskIds.get(partitionKey));

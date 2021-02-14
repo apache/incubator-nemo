@@ -49,6 +49,7 @@ public final class CommunicationPatternProperty
   public enum Value {
     OneToOne,
     BroadCast,
+    RoundRobin,
     Shuffle
   }
 }
