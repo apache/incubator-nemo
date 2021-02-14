@@ -89,14 +89,16 @@ public final class ExecutorRegistry {
       final Set<String> existingExecutors =
         executors.values().stream().map(e -> e.left().getExecutorId())
           .collect(Collectors.toSet());
-      final String executorString = String.join(",", existingExecutors);
 
-      executor.sendControlMessage(ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.ExecutorRegistered)
-        .setRegisteredExecutor(executorString)
-        .build());
+      if (existingExecutors.size() > 0) {
+        final String executorString = String.join(",", existingExecutors);
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ExecutorRegistered)
+          .setRegisteredExecutor(executorString)
+          .build());
+      }
 
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
     }
