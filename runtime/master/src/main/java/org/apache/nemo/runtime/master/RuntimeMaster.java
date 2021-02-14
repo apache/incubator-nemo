@@ -21,10 +21,12 @@ package org.apache.nemo.runtime.master;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.conf.JobConf;
@@ -285,7 +287,7 @@ public final class RuntimeMaster {
    *
    * @param resourceSpecificationString the resource specification.
    */
-  public void requestContainer(final String resourceSpecificationString) {
+  public void requestContainer(final String resourceSpecificationString, final boolean onlyCompute) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
@@ -298,9 +300,18 @@ public final class RuntimeMaster {
           final int slot = resourceNode.get("slot").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
-          resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum,
-            new ResourceSpecification(type, capacity, slot, memory, poisonSec));
+
+          if (onlyCompute) {
+            if (type.equals(ResourcePriorityProperty.COMPUTE)) {
+              resourceRequestCount.getAndAdd(executorNum);
+              containerManager.requestContainer(executorNum,
+                new ResourceSpecification(type, capacity, slot, memory, poisonSec));
+            }
+          } else {
+            resourceRequestCount.getAndAdd(executorNum);
+            containerManager.requestContainer(executorNum,
+              new ResourceSpecification(type, capacity, slot, memory, poisonSec));
+          }
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {

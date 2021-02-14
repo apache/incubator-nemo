@@ -78,6 +78,10 @@ public final class Task implements Serializable {
     this.upstreamTasks = calculateUpstreamTasks();
   }
 
+  public boolean isSourceTask() {
+    return !irVertexIdToReadable.isEmpty();
+  }
+
   /**
    * @return the id of the plan.
    */

@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.PipeTransferForAllEdgesPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.StreamingResourceAffinityPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
@@ -40,6 +41,7 @@ public final class StreamingPolicy implements Policy {
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new DefaultCompositePass(parallelism));
     builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
+    builder.registerCompileTimePass(new StreamingResourceAffinityPass());
     this.policy = builder.build();
   }
 

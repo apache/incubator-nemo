@@ -165,7 +165,7 @@ public final class NemoDriver {
             .build();
           LOG.info("Requesting new yarn executor!! " + spec);
           */
-          runtimeMaster.requestContainer(resourceSpecificationString);
+          runtimeMaster.requestContainer(resourceSpecificationString, true);
         } else if (decision.equals("add-offloading-executor")) {
           runtimeMaster.createOffloadingExecutor();
         } else if (decision.equals("offload-task")) {
@@ -223,7 +223,7 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      runtimeMaster.requestContainer(resourceSpecificationString);
+      runtimeMaster.requestContainer(resourceSpecificationString, false);
     }
   }
 

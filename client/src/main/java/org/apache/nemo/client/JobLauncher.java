@@ -187,13 +187,12 @@ public final class JobLauncher {
       confInjector.getNamedInstance(EvalConf.TaskSlot.class),
       confInjector.getNamedInstance(JobConf.NumExecutor.class)).build();
 
-    final Configuration executorResourceConfig = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(JobConf.ExecutorJSONContents.class, resources)
-      .build();
+    // final Configuration executorResourceConfig = Tang.Factory.getTang().newConfigurationBuilder()
+    //  .bindNamedParameter(JobConf.ExecutorJSONContents.class, resources)
+    //  .build();
 
-    // final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
-    //  JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
-
+    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
+     JobConf.ExecutorJSONContents.class, defaultExecutorResourceConfig);
 
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
       JobConf.BandwidthJSONContents.class, "");
