@@ -207,10 +207,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
-    if (samplingRate > 0) {
-      LOG.info("{} emits watermark {}", irVertex.getId(), watermark);
-    }
-
     List<String> offloadingIds = null;
 
     // Emit watermarks to internal vertices

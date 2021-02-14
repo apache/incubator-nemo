@@ -38,7 +38,7 @@ public final class Util {
   // Assume that this tag is never used in user application
   public static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
 
-  public static final long WATERMARK_PROGRESS = 200; // ms
+  public static final long WATERMARK_PROGRESS = 300; // ms
 
   /**
    * Private constructor for utility class.
