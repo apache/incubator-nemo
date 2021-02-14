@@ -8,6 +8,7 @@ public interface StateStore {
 
   InputStream getStateStream(final String taskId);
   byte[] getBytes(final String taskId);
+  OutputStream getOutputStream(final String taskId);
   void put(final String taskId, byte[] bytes);
   boolean containsState(final String taskId);
   void close();

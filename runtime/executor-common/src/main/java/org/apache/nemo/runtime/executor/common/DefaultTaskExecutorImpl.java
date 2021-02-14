@@ -48,7 +48,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -638,8 +640,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // prepareOffloading task
           checkpoint(false);
           // store watermark  manager
-          final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
-          stateStore.put(taskId + "-taskWatermarkManager", bytes);
+          // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
+          final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+          try {
+            FSTSingleton.getInstance().encodeToStream(os, taskWatermarkManager);
+            os.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          // stateStore.put(taskId + "-taskWatermarkManager", bytes);
           offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
           break;
@@ -892,8 +902,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public boolean checkpoint(final boolean checkpointSource) {
     boolean hasChekpoint = false;
 
-    final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
-    stateStore.put(taskId + "-taskWatermarkManager", bytes);
+    // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
+    // stateStore.put(taskId + "-taskWatermarkManager", bytes);
+
+    final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+    try {
+      FSTSingleton.getInstance().encodeToStream(os, taskWatermarkManager);
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     if (checkpointSource) {
       // Do not checkpoint source if it is offloaded

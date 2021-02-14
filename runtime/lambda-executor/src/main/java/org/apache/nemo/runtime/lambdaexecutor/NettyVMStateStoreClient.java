@@ -13,6 +13,7 @@ import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -91,6 +92,11 @@ public final class NettyVMStateStoreClient implements StateStore {
     latchMap.remove(key);
     final GetStateResponse response = (GetStateResponse) responseMap.remove(key);
     return response.bytes;
+  }
+
+  @Override
+  public OutputStream getOutputStream(String taskId) {
+    throw new RuntimeException("Not supported");
   }
 
   @Override

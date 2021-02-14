@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -130,6 +131,11 @@ public final class ExecutorTest {
       @Override
       public byte[] getBytes(String taskId) {
         return stateMap.get(taskId);
+      }
+
+      @Override
+      public OutputStream getOutputStream(String taskId) {
+        return null;
       }
 
       @Override

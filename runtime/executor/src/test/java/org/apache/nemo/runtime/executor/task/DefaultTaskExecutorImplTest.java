@@ -78,6 +78,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -139,6 +140,11 @@ public final class DefaultTaskExecutorImplTest {
       @Override
       public byte[] getBytes(String taskId) {
         return new byte[0];
+      }
+
+      @Override
+      public OutputStream getOutputStream(String taskId) {
+        return null;
       }
 
       @Override
