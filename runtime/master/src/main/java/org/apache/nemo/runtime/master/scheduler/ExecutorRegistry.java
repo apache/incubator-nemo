@@ -63,15 +63,40 @@ public final class ExecutorRegistry {
       throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
     } else {
       // broadcast executors
+
+      // 1. First, send new executor to others
       executors.values().forEach(val -> {
+
+        final Set<String> existingExecutors =
+          executors.values().stream().map(e -> e.left().getExecutorId())
+            .collect(Collectors.toSet());
+        existingExecutors.remove(val.left().getExecutorId());
+        existingExecutors.add(executorId);
+
+        final String executorString = String.join(",", existingExecutors);
+
         final ExecutorRepresenter remote = val.left();
         remote.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
           .setType(ControlMessage.MessageType.ExecutorRegistered)
-          .setRegisteredExecutor(executorId)
+          .setRegisteredExecutor(executorString)
           .build());
+
       });
+
+      // 2. Second, send current registered executors for me
+      final Set<String> existingExecutors =
+        executors.values().stream().map(e -> e.left().getExecutorId())
+          .collect(Collectors.toSet());
+      final String executorString = String.join(",", existingExecutors);
+
+      executor.sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.ExecutorRegistered)
+        .setRegisteredExecutor(executorString)
+        .build());
 
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
     }

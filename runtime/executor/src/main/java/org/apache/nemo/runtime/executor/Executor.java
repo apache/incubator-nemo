@@ -569,7 +569,10 @@ public final class Executor {
         }
         case ExecutorRegistered: {
           LOG.info("Executor registered message received {}", message.getRegisteredExecutor());
-          executorChannelManagerMap.initConnectToExecutor(message.getRegisteredExecutor());
+          final String[] registeredExecutors = message.getRegisteredExecutor().split(",");
+          for (int i = 0; i < registeredExecutors.length; i++) {
+            executorChannelManagerMap.initConnectToExecutor(registeredExecutors[i]);
+          }
           break;
         }
         case ExecutorRemoved: {

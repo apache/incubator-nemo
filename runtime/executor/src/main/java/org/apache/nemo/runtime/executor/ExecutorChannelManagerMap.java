@@ -79,8 +79,10 @@ public final class ExecutorChannelManagerMap {
   }
 
   public synchronized void initConnectToExecutor(final String remoteExecutorId) {
+
     if (executorChannelMap.containsKey(remoteExecutorId)) {
-      throw new RuntimeException("Executor " + remoteExecutorId + " already registered");
+      LOG.warn("Executor " + remoteExecutorId + " already registered");
+      return;
     }
 
     LOG.info("Registering  {} -> {}", executorId, remoteExecutorId);
