@@ -521,6 +521,8 @@ public final class Executor {
     }
   }
 
+
+  private final Set<String> offloadedTasks = new HashSet<>();
   /**
    * MessageListener for Executor.
    */
@@ -543,15 +545,19 @@ public final class Executor {
               break;
             }
 
-            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
+            if (!offloadedTasks.contains(te.getId())) {
+              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
 
-            LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
+              LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
 
-            executorThread.addShortcutEvent(
-              new TaskOffloadingEvent(te.getId(),
-                TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
+              offloadedTasks.add(te.getId());
 
-            cnt += 1;
+              executorThread.addShortcutEvent(
+                new TaskOffloadingEvent(te.getId(),
+                  TaskOffloadingEvent.ControlType.SEND_TO_OFFLOADING_WORKER, null));
+
+              cnt += 1;
+            }
           }
 
           break;

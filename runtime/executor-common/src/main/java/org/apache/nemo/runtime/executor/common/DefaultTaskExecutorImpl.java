@@ -658,6 +658,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
           flushBuffer();
+          LOG.info("End of flush buffer {}", taskId);
           break;
         }
         case DEOFFLOADING: {
