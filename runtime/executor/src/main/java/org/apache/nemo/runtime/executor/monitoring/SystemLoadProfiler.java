@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
@@ -18,14 +19,18 @@ public final class SystemLoadProfiler {
   // private final ThreadMXBean threadMXBean;
   private final MonitoringThread monitoringThread;
 
+  private final String executorId;
+
 
   @Inject
   private SystemLoadProfiler(final TaskExecutorMapWrapper wrapper,
+                             @Parameter(JobConf.ExecutorId.class) final String executorId,
                              @Parameter(EvalConf.Ec2.class) final boolean ec2,
                              @Parameter(EvalConf.CpuLimit.class) final double cpuLimit) {
     // this.operatingSystemMXBean =
     //  (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     this.taskExecutors = wrapper.getTaskExecutorMap();
+    this.executorId = executorId;
     // this.threadMXBean = ManagementFactory.getThreadMXBean();
 
     if (ec2) {
@@ -37,7 +42,7 @@ public final class SystemLoadProfiler {
 
   public double getCpuLoad() {
     // return operatingSystemMXBean.getSystemCpuLoad();
-    LOG.info("Average CPU Load: {}", monitoringThread.getAvarageUsagePerCPU());
+    LOG.info("Average CPU Load: {} in {}", monitoringThread.getAvarageUsagePerCPU(), executorId);
     return monitoringThread.getTotalUsage();
   }
 

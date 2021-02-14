@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.TaskEventRateCalculator;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -27,6 +28,8 @@ public final class CpuBottleneckDetector {
   private final TaskEventRateCalculator taskEventRateCalculator;
   private final CpuEventModel cpuEventModel;
 
+  private final String executorId;
+
   // TODO: high threshold
   // TODO: low threshold ==> threshold 2개 놓기
 
@@ -36,6 +39,7 @@ public final class CpuBottleneckDetector {
     @Parameter(EvalConf.BottleneckDetectionPeriod.class) final long r,
     @Parameter(EvalConf.BottleneckDetectionConsecutive.class) final int k,
     @Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
+    @Parameter(JobConf.ExecutorId.class) final String executorId,
     final TaskEventRateCalculator taskEventRateCalculator,
     final CpuEventModel cpuEventModel) {
     this.r = r;
@@ -46,14 +50,15 @@ public final class CpuBottleneckDetector {
     this.monitorThread = Executors.newSingleThreadScheduledExecutor();
     this.taskEventRateCalculator = taskEventRateCalculator;
     this.cpuEventModel = cpuEventModel;
+    this.executorId = executorId;
   }
 
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
       final double curCpuLoad = profiler.getCpuLoad();
       final int processedEvent = taskEventRateCalculator.calculateProcessedEvent();
-      LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {}",
-        curCpuLoad, processedEvent, currConsecutive, k, threshold);
+      LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {} in {}",
+        curCpuLoad, processedEvent, currConsecutive, k, threshold, executorId);
 
       if (currConsecutive <= k || curCpuLoad < threshold) {
         // prevent bias
