@@ -10,10 +10,12 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -25,11 +27,14 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final IntermediateDataIOFactory intermediateDataIOFactory;
+  private final String executorId;
 
   @Inject
   private DefaultOutputCollectorGeneratorImpl(
+    @Parameter(JobConf.ExecutorId.class) final String executorId,
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
     final IntermediateDataIOFactory intermediateDataIOFactory) {
+    this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
   }
@@ -97,6 +102,7 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           taskId);
 
         outputCollector = new OperatorVertexOutputCollector(
+          executorId,
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc,
@@ -111,6 +117,7 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           taskId);
 
         outputCollector = new OperatorVertexOutputCollector(
+          executorId,
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc,

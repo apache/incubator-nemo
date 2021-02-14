@@ -20,10 +20,13 @@ import java.util.stream.Collectors;
 public final class OffloadingOutputCollectorGeneratorImpl implements OutputCollectorGenerator {
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
+  private final String executorId;
 
   public OffloadingOutputCollectorGeneratorImpl(
-    final IntermediateDataIOFactory intermediateDataIOFactory) {
+    final IntermediateDataIOFactory intermediateDataIOFactory,
+    final String executorId) {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
+    this.executorId = executorId;
   }
 
   @Override
@@ -83,6 +86,7 @@ public final class OffloadingOutputCollectorGeneratorImpl implements OutputColle
         taskId);
 
       outputCollector = new OperatorVertexOutputCollector(
+        executorId,
         vertexIdAndCollectorMap,
         irVertex, internalMainOutputs, internalAdditionalOutputMap,
         externalMainOutputs, externalAdditionalOutputMap, omc,
@@ -97,6 +101,7 @@ public final class OffloadingOutputCollectorGeneratorImpl implements OutputColle
         taskId);
 
       outputCollector = new OperatorVertexOutputCollector(
+        executorId,
         vertexIdAndCollectorMap,
         irVertex, internalMainOutputs, internalAdditionalOutputMap,
         externalMainOutputs, externalAdditionalOutputMap, omc,

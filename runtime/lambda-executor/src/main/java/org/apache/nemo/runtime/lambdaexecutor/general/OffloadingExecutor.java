@@ -136,7 +136,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       pipeManagerWorker, serializerManager);
 
     this.outputCollectorGenerator =
-      new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory);
+      new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
 
     final OffloadingTransportChannelInitializer initializer =
       new OffloadingTransportChannelInitializer(pipeManagerWorker,

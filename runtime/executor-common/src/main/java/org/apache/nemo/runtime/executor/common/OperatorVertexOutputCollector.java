@@ -56,6 +56,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   private final OperatorMetricCollector operatorMetricCollector;
   private final String taskId;
   private final double samplingRate;
+  private final String executorId;
 
   /**
    * Constructor of the output collector.
@@ -66,6 +67,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
    * @param externalAdditionalOutputs external additional outputs
    */
   public OperatorVertexOutputCollector(
+    final String executorId,
     final Map<String, Pair<OperatorMetricCollector, OutputCollector>> outputCollectorMap,
     final IRVertex irVertex,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
@@ -75,6 +77,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final OperatorMetricCollector operatorMetricCollector,
     final String taskId,
     final Map<String, Double> samplingMap) {
+    this.executorId = executorId;
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.taskId = taskId;
@@ -144,8 +147,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     if (random.nextDouble() < samplingRate) {
       final long currTime = System.currentTimeMillis();
       final int latency = (int) ((currTime - inputTimestamp));
-      LOG.info("Event Latency {} from {} in {} ", latency,
+      LOG.info("Event Latency {} from {} in {}/{} ", latency,
         irVertex.getId(),
+        executorId,
         taskId,
         output);
     }
@@ -164,8 +168,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       if (random.nextDouble() < samplingRate) {
         final long currTime = System.currentTimeMillis();
         final int latency = (int) ((currTime - inputTimestamp));
-        LOG.info("Event Latency {} from {} in {} / {}", latency,
+        LOG.info("Event Latency {} from {} in {}/{}", latency,
           irVertex.getId(),
+          executorId,
           taskId,
           output);
       }
