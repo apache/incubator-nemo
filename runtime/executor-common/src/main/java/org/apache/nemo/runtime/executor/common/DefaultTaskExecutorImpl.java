@@ -642,8 +642,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // store watermark  manager
           // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
           final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+          taskWatermarkManager.encode(os);
           try {
-            FSTSingleton.getInstance().encodeToStream(os, taskWatermarkManager);
             os.close();
           } catch (IOException e) {
             e.printStackTrace();
@@ -864,7 +864,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
       try {
         final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-        final TaskInputWatermarkManager tm = (TaskInputWatermarkManager) FSTSingleton.getInstance().decodeFromStream(is);
+        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(is);
         return Optional.of(tm);
       } catch (Exception e) {
         e.printStackTrace();
@@ -877,7 +877,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private void restore() {
     try {
       final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-      taskWatermarkManager = (TaskInputWatermarkManager) FSTSingleton.getInstance().decodeFromStream(is);
+      taskWatermarkManager = TaskInputWatermarkManager.decode(is);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -907,7 +907,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
     try {
-      FSTSingleton.getInstance().encodeToStream(os, taskWatermarkManager);
+      taskWatermarkManager.encode(os);
       os.close();
     } catch (IOException e) {
       e.printStackTrace();

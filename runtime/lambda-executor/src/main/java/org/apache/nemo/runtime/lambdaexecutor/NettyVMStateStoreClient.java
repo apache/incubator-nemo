@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -12,6 +13,7 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
@@ -96,7 +98,37 @@ public final class NettyVMStateStoreClient implements StateStore {
 
   @Override
   public OutputStream getOutputStream(String taskId) {
-    throw new RuntimeException("Not supported");
+    final ByteBufOutputStream bos = new ByteBufOutputStream(channel.alloc().ioBuffer());
+    return new OutputStream() {
+      @Override
+      public void write(int b) throws IOException {
+        bos.write(b);
+      }
+
+      @Override
+      public void close() {
+        try {
+          bos.close();
+          final String key = "put-" + taskId;
+          latchMap.put(key, new CountDownLatch(1));
+          channel.writeAndFlush(new PutState(taskId,
+            bos.buffer().array()));
+
+          try {
+            latchMap.get(key).await();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          latchMap.remove(key);
+          responseMap.remove(key);
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+    };
   }
 
   @Override
