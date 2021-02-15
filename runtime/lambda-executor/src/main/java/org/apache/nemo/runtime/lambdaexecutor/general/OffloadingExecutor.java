@@ -80,6 +80,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private long throttleRate;
   private ExecutorMetrics executorMetrics;
+  private MonitoringThread monitoringThread;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -111,15 +112,22 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
     final LambdaRuntimeContext context = (LambdaRuntimeContext)c;
 
-    this.executorMetrics = new ExecutorMetrics();
-    this.throttleRate = context.throttleRate;
-    this.prepareService = Executors.newCachedThreadPool();
+    this.monitoringThread = new MonitoringThread(1000, 1.0);
+
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
     this.scheduledService.scheduleAtFixedRate(() -> {
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
         parentExecutorChannel.flush();
       }
     }, 10, 10, TimeUnit.MILLISECONDS);
+
+    this.scheduledService.scheduleAtFixedRate(() -> {
+      LOG.info("CPU Load {}", monitoringThread.getTotalUsage());
+    }, 1, 1, TimeUnit.SECONDS);
+
+    this.executorMetrics = new ExecutorMetrics();
+    this.throttleRate = context.throttleRate;
+    this.prepareService = Executors.newCachedThreadPool();
 
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
     this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);

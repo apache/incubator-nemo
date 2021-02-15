@@ -50,6 +50,8 @@ public interface MessageEnvironment {
 
   String RELAY_SERVER_ID = "RELAY_ID";
 
+  String YARN_OFFLOADING_EXECUTOR_REQUEST_ID = "YARN_OFFLOADING_EXECUTOR_REQUEST_ID";
+
   /**
    * Set up a {@link MessageListener} with a listener id.
    *

@@ -48,9 +48,11 @@ import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -69,6 +71,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.ResponseOffloadingExecutor;
 import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 
@@ -113,6 +116,8 @@ public final class RuntimeMaster {
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final TaskDispatcher taskDispatcher;
 
+  private final String resourceSpecificationString;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final TaskScheduledMapMaster taskScheduledMap,
@@ -120,6 +125,7 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final PlanStateManager planStateManager,
+                        @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
                         final ExecutorRegistry executorRegistry) throws IOException {
@@ -127,6 +133,7 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
@@ -287,10 +294,17 @@ public final class RuntimeMaster {
    *
    * @param resourceSpecificationString the resource specification.
    */
-  public void requestContainer(final String resourceSpecificationString, final boolean onlyCompute) {
+  public void requestContainer(final String resourceSpecificationString,
+                               final boolean onlyCompute,
+                               final boolean offloading,
+                               final String name,
+                               final int num) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+
+        LOG.info("Request container {} / {} / {} / {}",
+          resourceSpecificationString, onlyCompute, offloading, name);
 
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
@@ -298,32 +312,47 @@ public final class RuntimeMaster {
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int slot = resourceNode.get("slot").traverse().getIntValue();
-          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          int executorNum = 0;
+          if (num > 0) {
+            executorNum = num;
+          } else {
+            executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          }
           final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
 
           LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
             type, memory, capacity, slot, executorNum);
 
-          if (onlyCompute) {
+          if (offloading) {
             if (type.equals(ResourcePriorityProperty.COMPUTE)) {
-              resourceRequestCount.getAndAdd(executorNum);
               containerManager.requestContainer(executorNum,
-                new ResourceSpecification(type, capacity, slot, memory, poisonSec));
+                new ResourceSpecification(ResourcePriorityProperty.OFFLOAD,
+                  capacity, slot, memory, poisonSec), name);
             }
           } else {
-            resourceRequestCount.getAndAdd(executorNum);
-            containerManager.requestContainer(executorNum,
-              new ResourceSpecification(type, capacity, slot, memory, poisonSec));
+            if (onlyCompute) {
+              if (type.equals(ResourcePriorityProperty.COMPUTE)) {
+                resourceRequestCount.getAndAdd(executorNum);
+                containerManager.requestContainer(executorNum,
+                  new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+              }
+            } else {
+              resourceRequestCount.getAndAdd(executorNum);
+              containerManager.requestContainer(executorNum,
+                new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+            }
           }
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
+        e.printStackTrace();
         throw new ContainerException(e);
       }
     });
     try {
       containerRequestEventResult.get();
     } catch (final Exception e) {
+      e.printStackTrace();
       LOG.error("Exception while requesting for a container: ", e);
       throw new ContainerException(e);
     }
@@ -340,9 +369,10 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-    runtimeMasterThread.execute(() ->
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+      runtimeMasterThread.execute(() ->
+        containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
+
 
   /**
    * Called when an executor is launched on a container for this runtime.
@@ -351,23 +381,29 @@ public final class RuntimeMaster {
    * @return true if all requested executors have been launched, false otherwise.
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
-    final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-      final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
-      if (executor.isPresent()) {
-        scheduler.onExecutorAdded(executor.get());
-        return (resourceRequestCount.decrementAndGet() == 0);
-      } else {
-        return false;
-      }
-    };
+    LOG.info("Executor Launched {} " + activeContext.getId());
 
-    final boolean eventResult;
-    try {
-      eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
-    } catch (final Exception e) {
-      throw new ContainerException(e);
+    if (!activeContext.getId().contains("offloading")) {
+      final Callable<Boolean> processExecutorLaunchedEvent = () -> {
+        final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
+        if (executor.isPresent()) {
+          scheduler.onExecutorAdded(executor.get());
+          return (resourceRequestCount.decrementAndGet() == 0);
+        } else {
+          return false;
+        }
+      };
+
+      final boolean eventResult;
+      try {
+        eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
+      } catch (final Exception e) {
+        throw new ContainerException(e);
+      }
+      return eventResult;
+    } else {
+      return true;
     }
-    return eventResult;
   }
 
   /**
@@ -391,7 +427,7 @@ public final class RuntimeMaster {
   }
 
 
-  public void createOffloadingExecutor() {
+  public void createOffloadingExecutor(final int num) {
     LOG.info("Create offloading executor");
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
@@ -401,6 +437,7 @@ public final class RuntimeMaster {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
+            .setSetNum(num)
             .build());
         }
       });
@@ -411,8 +448,7 @@ public final class RuntimeMaster {
     LOG.info("Offloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
-        if (!executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
-
+        if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
           LOG.info("Offloading task for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
@@ -427,14 +463,75 @@ public final class RuntimeMaster {
     });
   }
 
+  private final Map<String, Pair<Integer, ExecutorRepresenter>> responsePendingMap = new HashMap<>();
+
+  public boolean isOffloadingExecutorEvaluator() {
+    synchronized (responsePendingMap) {
+      return !responsePendingMap.isEmpty();
+    }
+  }
+
+  public Pair<String, Integer> getOffloadingExecutorPort(final String hostAddres) {
+    synchronized (responsePendingMap) {
+
+      final String name = responsePendingMap.keySet().iterator().next();
+
+      // send response
+      LOG.info("Send response for offloading executor " + name + ", " + hostAddres);
+      responsePendingMap.get(name).right().sendControlMessage(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
+          .setType(ResponseOffloadingExecutor)
+          .setRegisteredExecutor(name + "," + hostAddres)
+          .build());
+
+      return Pair.of(name, responsePendingMap.remove(name).left());
+    }
+  }
+
   /**
    * Handler for control messages received by Master.
    */
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      runtimeMasterThread.execute(() ->
-        handleControlMessage(message));
+      switch (message.getType()) {
+        case RequestOffloadingExecutor: {
+          final ControlMessage.RequestOffloadingExecutorMessage m = message.getRequestOffloadingExecutorMsg();
+
+          try {
+            LOG.info("Receive requestOffloadingExecutor " + m.getExecutorId()
+              + ", " + m.getName() + ", " + m.getPort());
+
+            LOG.info("hoho");
+
+            final ExecutorRepresenter re = executorRegistry.getExecutorRepresentor(m.getExecutorId());
+
+            LOG.info("Get executor representer " + m.getExecutorId()
+              + ", " + m.getName() + ", " + m.getPort() + ", " + re.getExecutorId());
+
+            synchronized (responsePendingMap) {
+              responsePendingMap.put(m.getName(), Pair.of((int) m.getPort(), re));
+            }
+
+            LOG.info("Put responsePendingMap " + m.getExecutorId()
+              + ", " + m.getName() + ", " + m.getPort() + ", " + re.getExecutorId());
+
+            requestContainer(resourceSpecificationString,
+              true,
+              true, m.getName(), 1);
+            //});
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          break;
+        }
+        default:
+          runtimeMasterThread.execute(() ->
+            handleControlMessage(message));
+      }
     }
 
     @Override

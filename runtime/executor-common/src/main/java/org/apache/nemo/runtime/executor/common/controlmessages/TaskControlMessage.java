@@ -40,6 +40,19 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     this.event = event;
   }
 
+  public boolean canShortcut() {
+    switch (type) {
+      case TASK_STOP_SIGNAL_BY_MASTER:
+      case PIPE_INIT:
+      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
+        return true;
+      }
+      default: {
+        return false;
+      }
+    }
+  }
+
   @Override
   public boolean isControlMessage() {
     return true;

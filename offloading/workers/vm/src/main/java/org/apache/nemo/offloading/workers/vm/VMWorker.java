@@ -10,6 +10,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.MonitoringThread;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.json.JSONObject;
@@ -43,6 +44,7 @@ public class VMWorker {
   private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
   private VMWorker(final int port, final long throttleRate) {
+
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
 

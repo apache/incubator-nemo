@@ -218,7 +218,7 @@ public final class JobScaler {
           .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
         // 60초 이후에 scaling
-        LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
+        // LOG.info("skpCnt: {}, inputRates {}, basethp {}", skipCnt, inputRates.size(), baseThp);
         final int recentInputRate = inputRates.stream().reduce(0, (x, y) -> x + y) / WINDOW_SIZE;
         final int stage0InputRate = stageStat.get("Stage0") == null ?
           0 : (int) stageStat.get("Stage0").getLeft().input;
@@ -229,8 +229,8 @@ public final class JobScaler {
           .map(pair -> pair.left() + pair.right())
           .reduce(0.0, (x, y) -> x + y) / executorCpuUseMap.size();
 
-        LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
-          recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
+        // LOG.info("Recent input rate: {}, throughput: {}, cpuAvg: {}, cpuSfAvg: {} executorCpuUseMap: {}",
+        //  recentInputRate, throughput, cpuAvg, cpuSfPlusAvg, executorCpuUseMap);
 
 
         if (cpuAvg > ScalingPolicyParameters.CPU_HIGH_THRESHOLD &&

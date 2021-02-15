@@ -46,5 +46,6 @@ public final class ResourcePriorityProperty extends VertexExecutionProperty<Stri
   public static final String TRANSIENT = "Transient";
   public static final String RESERVED = "Reserved";
   public static final String COMPUTE = "Compute";
+  public static final String OFFLOAD= "Offload";
   public static final String SOURCE = "Source";
 }

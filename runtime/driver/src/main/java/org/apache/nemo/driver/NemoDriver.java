@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
@@ -29,6 +30,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
+import org.apache.nemo.runtime.executor.VMWorkerExecutor;
 import org.apache.nemo.runtime.executor.offloading.*;
 import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.common.*;
@@ -157,6 +159,7 @@ public final class NemoDriver {
           jobScaler.broadcastInfo(message.getScalingMsg());
         } else if (decision.equals("add-yarn")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
           /*
           final int mem = new Integer(args[1]);
           final int capactiy = new Integer(args[2]);
@@ -165,9 +168,12 @@ public final class NemoDriver {
             .build();
           LOG.info("Requesting new yarn executor!! " + spec);
           */
-          runtimeMaster.requestContainer(resourceSpecificationString, true);
+          runtimeMaster.requestContainer(resourceSpecificationString,
+            true, false, "Evaluator", num);
         } else if (decision.equals("add-offloading-executor")) {
-          runtimeMaster.createOffloadingExecutor();
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.createOffloadingExecutor(num);
         } else if (decision.equals("offload-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
@@ -223,7 +229,8 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      runtimeMaster.requestContainer(resourceSpecificationString, false);
+      runtimeMaster.requestContainer(
+        resourceSpecificationString, false, false, "Evaluator", 0);
     }
   }
 
@@ -233,13 +240,40 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final String executorId = RuntimeIdManager.generateExecutorId();
-      //final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-      //  .addOption("-Dio.netty.leakDetection.level=advanced");
-      //allocatedEvaluator.setProcess(jvmProcess);
-      runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
+      LOG.info("runtime name: " + allocatedEvaluator.getEvaluatorDescriptor().getRuntimeName());
+
+      if (!runtimeMaster.isOffloadingExecutorEvaluator()) {
+        final String executorId = RuntimeIdManager.generateExecutorId();
+        runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId));
+        //final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+        //  .addOption("-Dio.netty.leakDetection.level=advanced");
+        //allocatedEvaluator.setProcess(jvmProcess);
+      } else {
+        final Pair<String, Integer> nameAndPort = runtimeMaster.getOffloadingExecutorPort(
+          allocatedEvaluator.getEvaluatorDescriptor()
+              .getNodeDescriptor().getInetSocketAddress().getHostName());
+
+        runtimeMaster.onContainerAllocated(nameAndPort.left(), allocatedEvaluator,
+          getOffloadingConfiguration(nameAndPort.left(), nameAndPort.right()));
+      }
     }
+  }
+
+  private Configuration getOffloadingConfiguration(final String executorId,
+                                                   final int port) {
+    final Configuration contextConfiguration = ContextConfiguration.CONF
+      .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
+      .set(ContextConfiguration.ON_CONTEXT_STARTED, OffloadingContext.ContextStartHandler.class)
+      .set(ContextConfiguration.ON_CONTEXT_STOP, OffloadingContext.ContextStopHandler.class)
+      .build();
+
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(VMWorkerExecutor.VMWorkerPort.class,
+        Integer.toString(port))
+      .build();
+
+    return Configurations.merge(contextConfiguration, conf);
   }
 
   /**
@@ -348,7 +382,7 @@ public final class NemoDriver {
   private Class<? extends OffloadingRequesterFactory> getRequesterFactory() {
 
     if (evalConf.offloadingType.equals("local")) {
-      return LocalExecutorOffloadingRequesterFactory.class;
+      return YarnExecutorOffloadingRequesterFactory.class;
     } else if (evalConf.offloadingType.equals("vm")) {
       return VMOffloadingRequesterFactory.class;
     } else if (evalConf.offloadingType.equals("lambda")) {

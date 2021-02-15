@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
+import org.apache.nemo.common.MonitoringThread;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;

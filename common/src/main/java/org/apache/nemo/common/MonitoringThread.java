@@ -1,6 +1,5 @@
-package org.apache.nemo.runtime.executor.monitoring;
+package org.apache.nemo.common;
 
-import org.apache.reef.util.EnvironmentUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

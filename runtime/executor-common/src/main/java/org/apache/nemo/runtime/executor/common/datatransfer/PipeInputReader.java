@@ -81,7 +81,11 @@ public final class PipeInputReader implements InputReader {
 
   @Override
   public void addControl(TaskControlMessage message) {
-    executorThreadQueue.addEvent(message);
+    if (message.canShortcut()) {
+      executorThreadQueue.addShortcutEvent(message);
+    } else {
+      executorThreadQueue.addEvent(message);
+    }
   }
 
   @Override

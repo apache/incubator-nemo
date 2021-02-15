@@ -522,7 +522,7 @@ public final class Executor {
       switch (message.getType()) {
         case CreateOffloadingExecutor: {
           LOG.info("Create offloadfing executor for {}", executorId);
-          offloadingManager.createWorker(1);
+          offloadingManager.createWorker((int) message.getSetNum());
           break;
         }
         case OffloadingTask: {

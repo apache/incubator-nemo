@@ -35,8 +35,6 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
   private final NettyServerTransport workerControlTransport;
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
-
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final AtomicInteger dataId = new AtomicInteger(0);

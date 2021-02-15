@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.FailedMessageSender;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -26,6 +27,7 @@ import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.*;
+import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -97,12 +99,19 @@ public final class ContainerManager {
     this.jvmProcessFactory = jvmProcessFactory;
   }
 
+  public void requestContainer(final int numToRequest,
+                               final ResourceSpecification resourceSpecification) {
+    requestContainer(numToRequest, resourceSpecification, "Evaluator");
+  }
+
   /**
    * Requests containers/evaluators with the given specifications.
    * @param numToRequest number of containers to request
    * @param resourceSpecification containing the specifications of
    */
-  public void requestContainer(final int numToRequest, final ResourceSpecification resourceSpecification) {
+  public void requestContainer(final int numToRequest,
+                               final ResourceSpecification resourceSpecification,
+                               final String runtimeName) {
     if (isTerminated) {
       LOG.info("ContainerManager is terminated, ignoring {}", resourceSpecification.toString());
       return;
@@ -121,15 +130,17 @@ public final class ContainerManager {
           .addAll(resourceSpecificationList);
 
       requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
-          new CountDownLatch(numToRequest));
+        new CountDownLatch(numToRequest));
 
       LOG.info("Memory: {}", resourceSpecification.getMemory());
       // Request the evaluators
-      evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(numToRequest)
-          .setMemory(resourceSpecification.getMemory())
-          .setNumberOfCores(resourceSpecification.getCapacity())
-          .build());
+
+      evaluatorRequestor.submit(evaluatorRequestor.newRequest()
+        .setNumber(numToRequest)
+        .setMemory(resourceSpecification.getMemory())
+        .setNumberOfCores(resourceSpecification.getCapacity())
+        .setRuntimeName(runtimeName)
+        .build());
     } else {
       LOG.info("Request {} containers", numToRequest);
     }
@@ -154,21 +165,27 @@ public final class ContainerManager {
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
-        + ") allocated, will be used for [" + executorId + "]");
+      + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
     final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-      .addOption("-XX:-OmitStackTraceInFastThrow");
-      // .addOption("-verbose:class");
+      .addOption("-XX:-OmitStackTraceInFastThrow")
+      .addOption("-Xms" +
+        (allocatedContainer.getEvaluatorDescriptor().getMemory() - 200) + "m")
+      .addOption("-Xmx" +
+        (allocatedContainer.getEvaluatorDescriptor().getMemory() - 200) + "m");
+
+    // .addOption("-verbose:class");
     // LOG.info("Add jvm process for verbose:class");
 
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
-        .build();
+      .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
+      .build();
 
     allocatedContainer.setProcess(jvmProcess);
     allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
+
   }
 
   /**

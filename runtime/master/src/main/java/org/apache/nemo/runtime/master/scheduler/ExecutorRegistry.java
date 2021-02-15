@@ -26,10 +26,13 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -41,6 +44,9 @@ import java.util.stream.Collectors;
 @DriverSide
 @ThreadSafe
 public final class ExecutorRegistry {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorRegistry.class.getName());
+
   /**
    * States of an executor.
    */
@@ -54,7 +60,7 @@ public final class ExecutorRegistry {
 
   @Inject
   private ExecutorRegistry() {
-    this.executors = new HashMap<>();
+    this.executors = new ConcurrentHashMap<>();
   }
 
   public synchronized void registerExecutor(final ExecutorRepresenter executor) {
@@ -171,7 +177,8 @@ public final class ExecutorRegistry {
         .collect(Collectors.toSet());
   }
 
-  public synchronized ExecutorRepresenter getExecutorRepresentor(final String executorId) {
+  public ExecutorRepresenter getExecutorRepresentor(final String executorId) {
+    LOG.info("Get executorRepresenter {}", executorId);
     return executors.get(executorId).left();
   }
 
