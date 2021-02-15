@@ -31,7 +31,7 @@ public final class OneTaskOneWorkerOffloadingManagerImpl extends AbstractOffload
                                                 final ByteTransport byteTransport,
                                                 final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
-      byteTransport.getPublicAddress(), nettyStateStore.getPort());
+      byteTransport.getPublicAddress(), nettyStateStore.getPort(), true);
   }
 
 

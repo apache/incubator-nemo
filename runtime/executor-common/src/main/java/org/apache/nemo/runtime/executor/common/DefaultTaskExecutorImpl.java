@@ -581,7 +581,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   private final List<TaskHandlingEvent> bufferedData = new LinkedList<>();
-  private final List<Object> bufferedSourceData = new LinkedList<>();
+  // private final List<Object> bufferedSourceData = new LinkedList<>();
 
   private void flushBuffer() {
     if (!bufferedData.isEmpty()) {
@@ -603,6 +603,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     }
 
+    /*
     if (!bufferedSourceData.isEmpty()) {
       // flush buffered data
       if (currentState.equals(CurrentState.OFFLOADED)) {
@@ -625,6 +626,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         throw new RuntimeException("Invalid fliush " + currentState);
       }
     }
+    */
   }
 
   @Override
@@ -765,6 +767,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       final Object event = dataFetcher.fetchDataElement();
       if (!event.equals(EmptyElement.getInstance()))  {
         switch (currentState) {
+          case RUNNING: {
+            handleInternalData(dataFetcher, event);
+            processed = true;
+            break;
+          }
+          default:
+            throw new RuntimeException("Invalid state " + currentState);
+        }
+          /*
           case OFFLOADED: {
             // We should redirect the data to remote if it is offloaded
             if (!bufferedSourceData.isEmpty()) {
@@ -797,6 +808,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           default:
             throw new RuntimeException("Invalid state " + currentState);
         }
+        */
         //executorMetrics.increaseInputCounter(stageId);
       }
     }

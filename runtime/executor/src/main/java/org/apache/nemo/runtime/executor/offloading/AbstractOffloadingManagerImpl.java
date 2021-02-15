@@ -54,13 +54,17 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   protected final AtomicLong currBufferedData = new AtomicLong(0);
 
+  private boolean noPartialOffloading;
+
   public AbstractOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
                                        final TaskExecutorMapWrapper taskExecutorMapWrapper,
                                        final EvalConf evalConf,
                                        final PipeIndexMapWorker pipeIndexMapWorker,
                                        final String executorId,
                                        final String address,
-                                       final int nettyStatePort) {
+                                       final int nettyStatePort,
+                                       final boolean noPartialOffloading) {
+    this.noPartialOffloading = noPartialOffloading;
     this.workerFactory = workerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.evalConf = evalConf;
@@ -69,28 +73,32 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.offloadingManagerThread = Executors.newFixedThreadPool(5);
 
-    offloadingManagerThread.execute(() -> {
-      while (!isFinished) {
-        final AtomicBoolean processed = new AtomicBoolean(false);
 
-        intermediateQueueMap.forEach((taskId, queue) -> {
-          while (!queue.isEmpty()) {
-            final TaskHandlingEvent pending = queue.peek();
-            final Optional<OffloadingWorker> optional =
-              selectWorkerForIntermediateOffloading(taskId, pending);
+    if (noPartialOffloading) {
+      // This should be triggered for partial offloading...
+      offloadingManagerThread.execute(() -> {
+        while (!isFinished) {
+          final AtomicBoolean processed = new AtomicBoolean(false);
 
-            if (optional.isPresent()) {
-              final OffloadingWorker worker = optional.get();
-              worker.writeData(pending.getInputPipeIndex(), pending);
-              currBufferedData.decrementAndGet();
-              processed.set(true);
-              queue.poll();
-            } else {
-              break;
+          intermediateQueueMap.forEach((taskId, queue) -> {
+            while (!queue.isEmpty()) {
+              final TaskHandlingEvent pending = queue.peek();
+              final Optional<OffloadingWorker> optional =
+                selectWorkerForIntermediateOffloading(taskId, pending);
+
+              if (optional.isPresent()) {
+                final OffloadingWorker worker = optional.get();
+                worker.writeData(pending.getInputPipeIndex(), pending);
+                currBufferedData.decrementAndGet();
+                processed.set(true);
+                queue.poll();
+              } else {
+                break;
+              }
             }
-          }
-        });
+          });
 
+        /*
         sourceQueueMap.forEach((taskId, sourceQueue) -> {
           while (!sourceQueue.isEmpty()) {
             final SourceData pending = sourceQueue.peek();
@@ -107,17 +115,19 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
             }
           }
         });
+        */
 
-        if (!processed.get()) {
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+          if (!processed.get()) {
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
           }
         }
-      }
-    });
+      });
+    }
 
 
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
@@ -263,7 +273,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       .filter(k -> k.getRight().equals(taskId)).collect(Collectors.toList()).get(0);
     final int pipeIndex = pipeIndexMapWorker.getPipeIndex(key.getLeft(), key.getMiddle(), key.getRight());
 
-    final Queue<SourceData> d1 = sourceQueueMap.remove(taskId);
+    // final Queue<SourceData> d1 = sourceQueueMap.remove(taskId);
     final Queue<TaskHandlingEvent> d2 = intermediateQueueMap.remove(taskId);
 
     // TODO: flush pending data
@@ -342,8 +352,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   @Override
   public void offloading(String taskId) {
-
-    sourceQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
+    // sourceQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
     intermediateQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
 
     final Optional<List<OffloadingWorker>> workersForOffloading = selectWorkersForOffloading(taskId);
@@ -372,9 +381,21 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
 
-    final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
-    queue.add(data);
-    currBufferedData.incrementAndGet();
+    if (noPartialOffloading) {
+      final Optional<OffloadingWorker> optional =
+        selectWorkerForIntermediateOffloading(taskId, data);
+
+      if (optional.isPresent()) {
+        final OffloadingWorker worker = optional.get();
+        worker.writeData(data.getInputPipeIndex(), data);
+      } else {
+        throw new RuntimeException("No worker for offloading ... " + taskId);
+      }
+    } else {
+      final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
+      queue.add(data);
+      currBufferedData.incrementAndGet();
+    }
 
     /*
     while (!queue.isEmpty()) {
@@ -397,18 +418,20 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   abstract Optional<OffloadingWorker> selectWorkerForSourceOffloading(String taskId, final Object data);
 
 
-  private final Map<String, Queue<SourceData>> sourceQueueMap = new ConcurrentHashMap<>();
+  // private final Map<String, Queue<SourceData>> sourceQueueMap = new ConcurrentHashMap<>();
 
   @Override
   public void offloadSourceData(final String taskId,
                                 final String edgeId,
                                 final Object data,
                                 final Serializer serializer) {
+    /*
     final int index = pipeIndexMapWorker.getPipeIndex("Origin", edgeId, taskId);
 
     final Queue<SourceData> sourceQueue = sourceQueueMap.get(taskId);
     sourceQueue.add(new SourceData(index, data, serializer));
     currBufferedData.incrementAndGet();
+    */
 
     /*
     while (!sourceQueue.isEmpty()) {
