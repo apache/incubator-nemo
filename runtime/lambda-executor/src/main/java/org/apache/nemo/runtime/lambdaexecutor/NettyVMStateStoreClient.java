@@ -98,7 +98,7 @@ public final class NettyVMStateStoreClient implements StateStore {
 
   @Override
   public OutputStream getOutputStream(String taskId) {
-    final ByteBufOutputStream bos = new ByteBufOutputStream(channel.alloc().ioBuffer());
+    final ByteBufOutputStream bos = new ByteBufOutputStream(channel.alloc().buffer());
     return new OutputStream() {
       @Override
       public void write(int b) throws IOException {
