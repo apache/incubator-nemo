@@ -162,7 +162,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   protected List<OffloadingWorker> createWorkerBlocking(final int num) {
     // workerFactory.createStreamingWorker()
-    offloadExecutorByteBuf.retain();
+    offloadExecutorByteBuf.retain(num);
     final List<OffloadingWorker> newWorkers = IntStream.range(0, num)
       .boxed().map(i -> {
         final OffloadingWorker worker = workerFactory.createStreamingWorker(
