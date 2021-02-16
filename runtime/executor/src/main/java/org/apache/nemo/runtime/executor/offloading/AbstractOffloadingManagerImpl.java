@@ -73,63 +73,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.offloadingManagerThread = Executors.newFixedThreadPool(5);
 
-
-    if (noPartialOffloading) {
-      // This should be triggered for partial offloading...
-      offloadingManagerThread.execute(() -> {
-        while (!isFinished) {
-          final AtomicBoolean processed = new AtomicBoolean(false);
-
-          intermediateQueueMap.forEach((taskId, queue) -> {
-            while (!queue.isEmpty()) {
-              final TaskHandlingEvent pending = queue.peek();
-              final Optional<OffloadingWorker> optional =
-                selectWorkerForIntermediateOffloading(taskId, pending);
-
-              if (optional.isPresent()) {
-                final OffloadingWorker worker = optional.get();
-                worker.writeData(pending.getInputPipeIndex(), pending);
-                currBufferedData.decrementAndGet();
-                processed.set(true);
-                queue.poll();
-              } else {
-                break;
-              }
-            }
-          });
-
-        /*
-        sourceQueueMap.forEach((taskId, sourceQueue) -> {
-          while (!sourceQueue.isEmpty()) {
-            final SourceData pending = sourceQueue.peek();
-            final Optional<OffloadingWorker> optional = selectWorkerForSourceOffloading(taskId, pending);
-
-            if (optional.isPresent()) {
-              final OffloadingWorker worker = optional.get();
-              worker.writeSourceData(pending.index, pending.serializer, pending.data);
-              currBufferedData.decrementAndGet();
-              processed.set(true);
-              sourceQueue.poll();
-            } else {
-              break;
-            }
-          }
-        });
-        */
-
-          if (!processed.get()) {
-            try {
-              Thread.sleep(10);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-          }
-        }
-      });
-    }
-
-
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
       evalConf.executorThreadNum,
       evalConf.samplingJson,
@@ -359,6 +302,40 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     // sourceQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
     intermediateQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
 
+    offloadingManagerThread.execute(() -> {
+      while (intermediateQueueMap.containsKey(taskId)) {
+        final AtomicBoolean processed = new AtomicBoolean(false);
+        final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
+
+        if (queue != null) {
+          while (!queue.isEmpty()) {
+            final TaskHandlingEvent pending = queue.peek();
+            final Optional<OffloadingWorker> optional =
+              selectWorkerForIntermediateOffloading(taskId, pending);
+
+            if (optional.isPresent()) {
+              final OffloadingWorker worker = optional.get();
+              worker.writeData(pending.getInputPipeIndex(), pending);
+              currBufferedData.decrementAndGet();
+              processed.set(true);
+              queue.poll();
+            } else {
+              break;
+            }
+          }
+        }
+
+        if (!processed.get()) {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }
+      }
+    });
+
     final Optional<List<OffloadingWorker>> workersForOffloading = selectWorkersForOffloading(taskId);
 
     if (workersForOffloading.isPresent()) {
@@ -385,6 +362,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
 
+    /*
     if (noPartialOffloading) {
       final Optional<OffloadingWorker> optional =
         selectWorkerForIntermediateOffloading(taskId, data);
@@ -396,10 +374,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
         throw new RuntimeException("No worker for offloading ... " + taskId);
       }
     } else {
-      final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
-      queue.add(data);
-      currBufferedData.incrementAndGet();
-    }
+    */
+    final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
+    queue.add(data);
+    currBufferedData.incrementAndGet();
+
+    // }
 
     /*
     while (!queue.isEmpty()) {
