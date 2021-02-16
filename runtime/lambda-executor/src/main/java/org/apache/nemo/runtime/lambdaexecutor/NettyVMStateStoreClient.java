@@ -13,10 +13,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -99,7 +96,7 @@ public final class NettyVMStateStoreClient implements StateStore {
 
   @Override
   public OutputStream getOutputStream(String taskId) {
-    final ByteBufOutputStream bos = new ByteBufOutputStream(ByteBufAllocator.DEFAULT.buffer());
+    final ByteArrayOutputStream bos = new ByteArrayOutputStream(200);
     return new OutputStream() {
       @Override
       public void write(int b) throws IOException {
@@ -113,7 +110,7 @@ public final class NettyVMStateStoreClient implements StateStore {
           final String key = "put-" + taskId;
           latchMap.put(key, new CountDownLatch(1));
           channel.writeAndFlush(new PutState(taskId,
-            bos.buffer().array()));
+            bos.toByteArray()));
 
           try {
             latchMap.get(key).await();
