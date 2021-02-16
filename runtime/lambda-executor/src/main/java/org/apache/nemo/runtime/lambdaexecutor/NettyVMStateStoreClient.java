@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -98,7 +99,7 @@ public final class NettyVMStateStoreClient implements StateStore {
 
   @Override
   public OutputStream getOutputStream(String taskId) {
-    final ByteBufOutputStream bos = new ByteBufOutputStream(channel.alloc().buffer());
+    final ByteBufOutputStream bos = new ByteBufOutputStream(ByteBufAllocator.DEFAULT.buffer());
     return new OutputStream() {
       @Override
       public void write(int b) throws IOException {
