@@ -211,10 +211,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                       if (workerTaskMap.get(myWorker).isEmpty()) {
                         // Destroy worker !!
+
+                        // TODO: enable this code... disabled now for testing and warming up JV<M
+                        /*
                         LOG.info("Worker destroy...");
                         myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
                         workerTaskMap.remove(myWorker);
                         workers.remove(myWorker);
+                        */
                       }
 
                       if (taskWorkerMap.get(taskId).size() == 0) {

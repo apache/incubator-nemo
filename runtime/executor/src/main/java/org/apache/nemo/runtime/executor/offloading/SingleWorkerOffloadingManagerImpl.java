@@ -42,13 +42,17 @@ public final class SingleWorkerOffloadingManagerImpl extends AbstractOffloadingM
     }
   }
 
+  private int cnt = 0;
+
   @Override
   Optional<List<OffloadingWorker>> selectWorkersForOffloading(String taskId) {
+    cnt += 1;
     synchronized (workers) {
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
-        taskWorkerMap.put(taskId, workers);
+        int index = cnt % workers.size();
+        taskWorkerMap.put(taskId, Collections.singletonList(workers.get(index)));
         return Optional.of(taskWorkerMap.get(taskId));
       }
     }

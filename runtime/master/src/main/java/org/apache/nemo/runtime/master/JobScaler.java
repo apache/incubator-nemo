@@ -1142,6 +1142,27 @@ public final class JobScaler {
 
   private final Set<String> prevMovedTask = new HashSet<>();
 
+  public synchronized void sendPrevMovedTaskStopSignal(final int num) {
+
+    final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+
+    int cnt = 0;
+    final Iterator<String> iterator = prevMovedTask.iterator();
+
+    while (iterator.hasNext()) {
+      final String taskId = iterator.next();
+      final String executorId = taskExecutorIdMap.get(taskId);
+
+      taskScheduledMap.stopTask(taskId);
+      cnt += 1;
+      iterator.remove();
+
+      if (cnt >= num) {
+        break;
+      }
+    }
+  }
+
   public synchronized void sendTaskStopSignal(final int num) {
 
     LOG.info("Send task stop signal");

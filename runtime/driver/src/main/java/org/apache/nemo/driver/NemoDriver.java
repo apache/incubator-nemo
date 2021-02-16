@@ -179,11 +179,27 @@ public final class NemoDriver {
           final int num = new Integer(args[1]);
           runtimeMaster.offloadTask(num);
 
+        } else if (decision.equals("deoffload-task")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.deoffloadTask(num);
+
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
           jobScaler.sendTaskStopSignal(num);
-        } else {
+
+        } else if (decision.equals("reclaim-task")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          jobScaler.sendPrevMovedTaskStopSignal(num);
+
+        } else if (decision.equals("throttle-source")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.throttleSource(num);
+        }
+        else {
           throw new RuntimeException("Invalid scaling decision " + decision);
         }
       }

@@ -771,7 +771,7 @@ public final class ExecutorTest {
     when(evaluatorDescriptor.getNodeDescriptor()).thenReturn(nodeDescriptor);
     when(nodeDescriptor.getName()).thenReturn("node " + nodeNumber.get());
 
-    final ResourceSpecification spec1 = new ResourceSpecification("reserved", capacity, 1024);
+    final ResourceSpecification spec1 = new ResourceSpecification("reserved", capacity, 10, 1024);
     masterSetupHelper.pendingContextIdToResourceSpec.put(executor.getExecutorId(), spec1);
     masterSetupHelper.requestLatchByResourceSpecId.put(spec1.getResourceSpecId(), new CountDownLatch(1));
     runtimeMaster.onExecutorLaunched(activeContext);

@@ -444,6 +444,40 @@ public final class RuntimeMaster {
     });
   }
 
+  public void throttleSource(final int num) {
+    LOG.info("Throttle source rate {}", num);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+          LOG.info("Throttle source for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.ThrottleSource)
+            .setSetNum(num)
+            .build());
+        }
+      });
+    });
+  }
+
+  public void deoffloadTask(final int num) {
+    LOG.info("Deoffloading tasks {}", num);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
+          LOG.info("Deoffloading task for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.DeoffloadingTask)
+            .setSetNum(num)
+            .build());
+        }
+      });
+    });
+  }
+
   public void offloadTask(final int num) {
     LOG.info("Offloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {

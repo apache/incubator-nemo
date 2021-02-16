@@ -130,6 +130,8 @@ enum MessageType {
     CreateOffloadingExecutor = 49;
     OffloadingTask = 50;
     ResponseOffloadingExecutor = 52;
+    ThrottleSource = 53;
+    DeoffloadingTask = 54;
 
     // Worker -> master
     CurrentExecutor = 44;

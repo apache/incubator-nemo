@@ -111,7 +111,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private TaskInputWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
-  private enum CurrentState {
+  public enum CurrentState {
     RUNNING,
     WAIT_WORKER,
     OFFLOAD_PENDING,
@@ -282,8 +282,36 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return false;
   }
 
+
+  // per second
+  private final AtomicLong throttleSourceRate =  new AtomicLong(1000000);
+  private long processedSourceData = 0;
+  private long prevSourceTrackTime = System.currentTimeMillis();
+
+  @Override
+  public void setThrottleSourceRate(final long num) {
+    throttleSourceRate.set(num);
+  }
+
+  @Override
+  public CurrentState getStatus() {
+    return currentState;
+  }
+
   @Override
   public boolean hasData() {
+
+    final long curr = System.currentTimeMillis();
+    if (curr - prevSourceTrackTime >= 100) {
+      if (processedSourceData * (1000 / (double)curr) > throttleSourceRate.get()) {
+        // Throttle !!
+        return false;
+      } else {
+        prevSourceTrackTime = curr;
+        processedSourceData = 0;
+      }
+    }
+
     for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
       if (sourceVertexDataFetcher.hasData()) {
         return true;
@@ -765,6 +793,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     boolean processed = false;
     for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
       final Object event = dataFetcher.fetchDataElement();
+      processedSourceData += 1;
       if (!event.equals(EmptyElement.getInstance()))  {
         switch (currentState) {
           case RUNNING: {

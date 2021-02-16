@@ -520,9 +520,29 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case ThrottleSource: {
+          LOG.info("Throttle source message for {}, rate {}", executorId, message.getSetNum());
+          for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
+            if (te.isSource()) {
+              te.setThrottleSourceRate(message.getSetNum());
+            }
+          }
+          break;
+        }
         case CreateOffloadingExecutor: {
           LOG.info("Create offloadfing executor for {}", executorId);
           offloadingManager.createWorker((int) message.getSetNum());
+          break;
+        }
+        case DeoffloadingTask: {
+          for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.OFFLOADED)) {
+              LOG.info("Deoffloadfing task {} executor for {}", te.getId(), executorId);
+              taskExecutorMapWrapper.getTaskExecutorThread(te.getId())
+                .addShortcutEvent(new TaskOffloadingEvent(te.getId(),
+                  TaskOffloadingEvent.ControlType.DEOFFLOADING, null));
+            }
+          }
           break;
         }
         case OffloadingTask: {

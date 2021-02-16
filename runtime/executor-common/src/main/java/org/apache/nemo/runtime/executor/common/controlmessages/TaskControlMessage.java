@@ -17,6 +17,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
     OFFLOAD_CONTROL,
+    BACKPRESSURE,
+    BACKPRESSURE_RESTART,
 
     // For offloaded task
     OFFLOAD_TASK_STOP

@@ -443,8 +443,11 @@ public final class JobLauncher {
                 .build());
 
             } else if (decision.equals("move-task") ||
-              decision.equals("offload-task")) {
-              LOG.info("Send move task " + lastLine);
+              decision.equals("offload-task") ||
+              decision.equals("throttle-source") ||
+              decision.equals("deoffload-task") ||
+              decision.equals("reclaim-task")) {
+              LOG.info("Send " + lastLine);
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)
                 .setScalingMsg(ControlMessage.ScalingMessage.newBuilder()
