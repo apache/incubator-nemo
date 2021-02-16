@@ -52,7 +52,7 @@ public final class SingleWorkerOffloadingManagerImpl extends AbstractOffloadingM
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
         int index = cnt % workers.size();
-        taskWorkerMap.put(taskId, Collections.singletonList(workers.get(index)));
+        taskWorkerMap.put(taskId, new LinkedList<>(Arrays.asList(workers.get(index))));
         return Optional.of(taskWorkerMap.get(taskId));
       }
     }
