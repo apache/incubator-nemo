@@ -303,7 +303,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     final long curr = System.currentTimeMillis();
     if (curr - prevSourceTrackTime >= 100) {
-      if (processedSourceData * (1000 / (double)curr) > throttleSourceRate.get()) {
+      final long elapsed = curr - prevSourceTrackTime;
+      if (processedSourceData * (1000 / (double)elapsed) > throttleSourceRate.get()) {
         // Throttle !!
         return false;
       } else {
