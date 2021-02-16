@@ -33,14 +33,14 @@ public final class VMWorkerExecutor {
     LOG.info("Creating VM worker with port " + port);
     final String path = nemo_home + "/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
 
-    LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+    LOG.info("java -cp " + path + " -Xms4096m org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
     waitingExecutor.execute(() -> {
       try {
 
         //LOG.info("cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
-        LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+        LOG.info("java -cp " + path + " -Xms4096m org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
         Process p = Runtime.getRuntime().exec(
-          "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+          "java -cp " + path + " -Xms4096m org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
         //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
 
         String line;
