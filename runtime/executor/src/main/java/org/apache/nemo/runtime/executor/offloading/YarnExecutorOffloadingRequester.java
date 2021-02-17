@@ -136,28 +136,28 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
           .build())
         .build());
 
-    // wait address
-    LOG.info("Waiting for address of {}", key);
-    try {
-      pendingMap.get(key).await();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    if (!responseMap.containsKey(key)) {
-      throw new RuntimeException("No response for " + key);
-    }
-
-    final String hostAddress = responseMap.remove(key);
-    LOG.info("Host address for " + key +  ": " + hostAddress);
-    waitInstance(hostAddress, myPort);
+    waitInstance(key, myPort);
   }
 
-
-  private void waitInstance(final String hostAddress, final int myPort) {
+  private void waitInstance(final String key, final int myPort) {
     final long waitingTime = 1000;
 
     waitingExecutor.execute(() -> {
+      // wait address
+      LOG.info("Waiting for address of {}", key);
+      try {
+        pendingMap.get(key).await();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      if (!responseMap.containsKey(key)) {
+        throw new RuntimeException("No response for " + key);
+      }
+
+      final String hostAddress = responseMap.remove(key);
+      LOG.info("Host address for " + key +  ": " + hostAddress);
+
       ChannelFuture channelFuture;
       while (true) {
         final long st = System.currentTimeMillis();
