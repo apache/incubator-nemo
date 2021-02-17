@@ -379,7 +379,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, HDFStateStore.class)
-      .bindImplementation(OffloadingManager.class, SingleWorkerOffloadingManagerImpl.class)
+      .bindImplementation(OffloadingManager.class, SingleTaskMultipleWorkersOffloadingManagerImpl.class)
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
