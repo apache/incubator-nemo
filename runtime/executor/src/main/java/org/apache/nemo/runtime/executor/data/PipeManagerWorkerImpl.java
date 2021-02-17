@@ -162,8 +162,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         // the task is not sheduled yet
         LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {} in executor {}",
           dstTaskId, edgeId, srcTaskId, srcTaskId, executorId);
-        pendingOutputPipeMap.putIfAbsent(outputPipeIndex, new LinkedList<>());
-        pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
+        synchronized (pendingOutputPipeMap) {
+          pendingOutputPipeMap.putIfAbsent(outputPipeIndex, new LinkedList<>());
+          pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
+        }
         pipeOuptutIndicesForDstTask.putIfAbsent(srcTaskId, new HashSet<>());
         pipeOuptutIndicesForDstTask.get(srcTaskId).add(outputPipeIndex);
       }
@@ -316,9 +318,15 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
       if (pendingPipes != null) {
         pendingPipes.forEach(pendingIndex -> {
-          pendingOutputPipeMap.get(pendingIndex).add(
-            DataFrameEncoder.DataFrame.newInstance(
-              Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+          synchronized (pendingOutputPipeMap) {
+            if (pendingOutputPipeMap.containsKey(pendingIndex)) {
+              pendingOutputPipeMap.get(pendingIndex).add(
+                DataFrameEncoder.DataFrame.newInstance(
+                  Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+            } else {
+              pipeIndices.add(pendingIndex);
+            }
+          }
         });
       }
 
@@ -406,9 +414,15 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
       if (pendingPipes != null) {
         pendingPipes.forEach(pendingIndex -> {
-          pendingOutputPipeMap.get(pendingIndex).add(
-            DataFrameEncoder.DataFrame.newInstance(
-              Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+          synchronized (pendingOutputPipeMap) {
+            if (pendingOutputPipeMap.containsKey(pendingIndex)) {
+              pendingOutputPipeMap.get(pendingIndex).add(
+                DataFrameEncoder.DataFrame.newInstance(
+                  Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+            } else {
+              pipeIndices.add(pendingIndex);
+            }
+          }
         });
       }
 
@@ -443,10 +457,16 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
     if (pendingOutputPipeMap.containsKey(pipeIndex) || !optional.isPresent()) {
       // this is pending output pipe
-      pendingOutputPipeMap.putIfAbsent(pipeIndex, new LinkedList<>());
-      pendingOutputPipeMap.get(pipeIndex).add(finalData);
-      pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
-      pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
+      synchronized (pendingOutputPipeMap) {
+        if (pendingOutputPipeMap.containsKey(pipeIndex)) {
+          pendingOutputPipeMap.putIfAbsent(pipeIndex, new LinkedList<>());
+          pendingOutputPipeMap.get(pipeIndex).add(finalData);
+          pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
+          pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
+        } else {
+          optional.get().writeAndFlush(finalData).addListener(listener);
+        }
+      }
     } else {
       optional.get().writeAndFlush(finalData).addListener(listener);
     }
@@ -463,7 +483,14 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
     ByteBuf byteBuf;
     if (pendingOutputPipeMap.containsKey(index) || !optional.isPresent()) {
-      byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
+      synchronized (pendingOutputPipeMap) {
+        if (pendingOutputPipeMap.containsKey(index)) {
+          byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
+        } else {
+          final Channel channel = optional.get();
+          byteBuf = channel.alloc().ioBuffer();
+        }
+      }
     } else {
       final Channel channel = optional.get();
       byteBuf = channel.alloc().ioBuffer();
@@ -527,11 +554,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     if (taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED)) {
       LOG.info("Task is already removed {} in executor {}", taskId, executorId);
       // flush data
-      if (pendingOutputPipeMap.containsKey(index)) {
-        pendingOutputPipeMap.get(index);
-        final List<Object> pendingData = pendingOutputPipeMap.remove(index);
-        pendingData.forEach(data -> channel.write(data));
-        channel.flush();
+      synchronized (pendingOutputPipeMap) {
+        if (pendingOutputPipeMap.containsKey(index)) {
+          pendingOutputPipeMap.get(index);
+          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+          pendingData.forEach(data -> channel.write(data));
+          channel.flush();
+        }
       }
     } else {
       pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
@@ -569,32 +598,34 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   public synchronized void startOutputPipe(int index, String taskId) {
     // restart pending output
     try {
-      if (pendingOutputPipeMap.containsKey(index)) {
-        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-        Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
-        final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), false);
-        LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
+      synchronized (pendingOutputPipeMap) {
+        if (pendingOutputPipeMap.containsKey(index)) {
+          final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+          Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
+          final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), false);
+          LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
 
-        if (!optional.isPresent()) {
-          LOG.warn("{} is not schedule yet... we buffer the event and it will be emitted when task is scheduled in executor {}", key, executorId);
-          return;
+          if (!optional.isPresent()) {
+            LOG.warn("{} is not schedule yet... we buffer the event and it will be emitted when task is scheduled in executor {}", key, executorId);
+            return;
+          }
+
+          final Channel channel = optional.get();
+
+          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+          pendingData.forEach(data -> channel.write(data));
+
+          channel.flush();
+
+        } else {
+          LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);
         }
 
-        final Channel channel = optional.get();
-
-        final List<Object> pendingData = pendingOutputPipeMap.remove(index);
-        pendingData.forEach(data -> channel.write(data));
-
-        channel.flush();
-
-      } else {
-        LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);
-      }
-
-      if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
-        taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
-        if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
-          taskStoppedOutputPipeIndicesMap.remove(taskId);
+        if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
+          taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
+          if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
+            taskStoppedOutputPipeIndicesMap.remove(taskId);
+          }
         }
       }
     } catch (final Exception e) {
