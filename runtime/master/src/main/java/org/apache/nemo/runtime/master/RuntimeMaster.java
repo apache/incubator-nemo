@@ -324,9 +324,9 @@ public final class RuntimeMaster {
             type, memory, capacity, slot, executorNum);
 
           if (offloading) {
-            if (type.equals(ResourcePriorityProperty.COMPUTE)) {
+            if (type.equals(ResourcePriorityProperty.OFFLOAD)) {
               containerManager.requestContainer(executorNum,
-                new ResourceSpecification(ResourcePriorityProperty.OFFLOAD,
+                new ResourceSpecification(type,
                   capacity, slot, memory, poisonSec), name);
             }
           } else {
@@ -337,9 +337,11 @@ public final class RuntimeMaster {
                   new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
               }
             } else {
-              resourceRequestCount.getAndAdd(executorNum);
-              containerManager.requestContainer(executorNum,
-                new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+              if (!type.equals(ResourcePriorityProperty.OFFLOAD)) {
+                resourceRequestCount.getAndAdd(executorNum);
+                containerManager.requestContainer(executorNum,
+                  new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+              }
             }
           }
         }
