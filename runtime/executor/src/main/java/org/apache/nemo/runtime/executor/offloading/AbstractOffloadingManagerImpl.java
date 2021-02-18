@@ -328,6 +328,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
 
 
+    /*
     offloadingManagerThread.execute(() -> {
       while (intermediateQueueMap.containsKey(taskId)) {
         final AtomicBoolean processed = new AtomicBoolean(false);
@@ -361,12 +362,23 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
         }
       }
     });
+    */
   }
 
   private final Map<String, Queue<TaskHandlingEvent>> intermediateQueueMap = new ConcurrentHashMap<>();
 
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
+
+    final Optional<OffloadingWorker> optional =
+      selectWorkerForIntermediateOffloading(taskId, data);
+
+    if (optional.isPresent()) {
+      final OffloadingWorker worker = optional.get();
+      worker.writeData(data.getInputPipeIndex(), data);
+    } else {
+      throw new RuntimeException("No worker for offloading ... " + taskId);
+    }
 
     /*
     if (noPartialOffloading) {
