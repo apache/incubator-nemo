@@ -26,6 +26,7 @@ import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -128,12 +129,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                     myWorker.addReadyTask(taskId);
 
-                    executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
-                      TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
-                      null));
-
                     if (taskReadyBlockingMap.containsKey(taskId)) {
-                      taskReadyBlockingMap.get(taskId).countDown();
+                      final int cnt = taskReadyBlockingMap.get(taskId).decrementAndGet();
+                      if (cnt == 0) {
+                        taskReadyBlockingMap.remove(taskId);
+                        executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
+                          TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
+                          null));
+                      }
                     }
                   } catch (IOException e) {
                     e.printStackTrace();
@@ -255,7 +258,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   }
   */
 
-  private final Map<String, CountDownLatch> taskReadyBlockingMap = new ConcurrentHashMap<>();
+  private final Map<String, AtomicInteger> taskReadyBlockingMap = new ConcurrentHashMap<>();
 
   protected void offloadTaskToWorker(final String taskId, final List<OffloadingWorker> newWorkers,
                                      final boolean blocking) {
@@ -276,12 +279,11 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       throw new RuntimeException(e);
     }
 
-    if (blocking) {
-      taskReadyBlockingMap.put(taskId, new CountDownLatch(newWorkers.size()));
-    }
+    taskReadyBlockingMap.put(taskId, new AtomicInteger(newWorkers.size()));
+
+    byteBuf.retain(newWorkers.size());
 
     newWorkers.forEach(worker -> {
-      byteBuf.retain();
       worker.writeControl(new OffloadingEvent(OffloadingEvent.Type.TASK_SEND, byteBuf));
     });
 
@@ -289,7 +291,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     if (blocking) {
       try {
-        taskReadyBlockingMap.get(taskId).await();
+        final AtomicInteger ai = taskReadyBlockingMap.get(taskId);
+        while (ai.get() > 0) {
+          Thread.sleep(15);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -301,6 +306,27 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   public void offloading(String taskId) {
     // sourceQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
     intermediateQueueMap.putIfAbsent(taskId, new ConcurrentLinkedQueue<>());
+
+    final Optional<List<OffloadingWorker>> workersForOffloading = selectWorkersForOffloading(taskId);
+
+    if (workersForOffloading.isPresent()) {
+      offloadTaskToWorker(taskId, workersForOffloading.get(), false);
+    } else {
+      // create a new worker for offloading
+      // blocking call
+      executorService.submit(() -> {
+        createWorkers(taskId);
+        // et.addShortcutEvent(new TaskOffloadingEvent(taskId, WORKER_READY, null));
+        final Optional<List<OffloadingWorker>> newWorkers = selectWorkersForOffloading(taskId);
+
+        if (!newWorkers.isPresent()) {
+          throw new RuntimeException("Worker does not present... " + taskId);
+        }
+
+        offloadTaskToWorker(taskId, newWorkers.get(), false);
+      });
+    }
+
 
     offloadingManagerThread.execute(() -> {
       while (intermediateQueueMap.containsKey(taskId)) {
@@ -335,26 +361,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
         }
       }
     });
-
-    final Optional<List<OffloadingWorker>> workersForOffloading = selectWorkersForOffloading(taskId);
-
-    if (workersForOffloading.isPresent()) {
-      offloadTaskToWorker(taskId, workersForOffloading.get(), false);
-    } else {
-      // create a new worker for offloading
-      // blocking call
-      executorService.submit(() -> {
-        createWorkers(taskId);
-        // et.addShortcutEvent(new TaskOffloadingEvent(taskId, WORKER_READY, null));
-        final Optional<List<OffloadingWorker>> newWorkers = selectWorkersForOffloading(taskId);
-
-        if (!newWorkers.isPresent()) {
-          throw new RuntimeException("Worker does not present... " + taskId);
-        }
-
-        offloadTaskToWorker(taskId, newWorkers.get(), false);
-      });
-    }
   }
 
   private final Map<String, Queue<TaskHandlingEvent>> intermediateQueueMap = new ConcurrentHashMap<>();
