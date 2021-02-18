@@ -357,6 +357,14 @@ public final class NemoDriver {
     }
   }
 
+  private Class<? extends OffloadingManager> getOffloadingManager() {
+    if (evalConf.numOffloadingWorker == 0) {
+      return SingleWorkerOffloadingManagerImpl.class;
+    } else {
+      return SingleTaskMultipleWorkersOffloadingManagerImpl.class;
+    }
+  }
+
   private Configuration getExecutorConfiguration(final String executorId) {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
         .set(JobConf.EXECUTOR_ID, executorId)
@@ -379,7 +387,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, HDFStateStore.class)
-      .bindImplementation(OffloadingManager.class, SingleTaskMultipleWorkersOffloadingManagerImpl.class)
+      .bindImplementation(OffloadingManager.class, getOffloadingManager())
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
