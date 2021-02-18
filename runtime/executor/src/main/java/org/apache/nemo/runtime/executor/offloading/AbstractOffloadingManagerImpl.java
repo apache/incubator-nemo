@@ -393,9 +393,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       }
     } else {
     */
+
+    /*
     final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
     queue.add(data);
     currBufferedData.incrementAndGet();
+    */
 
     // }
 
