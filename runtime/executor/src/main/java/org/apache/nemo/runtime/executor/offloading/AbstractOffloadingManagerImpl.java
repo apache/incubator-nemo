@@ -72,7 +72,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.workers = new LinkedList<>();
     this.executorId = executorId;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
-    this.offloadingManagerThread = Executors.newFixedThreadPool(5);
+    this.offloadingManagerThread = Executors.newCachedThreadPool();
 
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
       evalConf.executorThreadNum,
