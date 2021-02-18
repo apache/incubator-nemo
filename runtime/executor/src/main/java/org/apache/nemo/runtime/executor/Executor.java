@@ -531,7 +531,9 @@ public final class Executor {
         }
         case CreateOffloadingExecutor: {
           LOG.info("Create offloadfing executor for {}", executorId);
-          offloadingManager.createWorker((int) message.getSetNum());
+          executorService.execute(() -> {
+            offloadingManager.createWorker((int) message.getSetNum());
+          });
           break;
         }
         case DeoffloadingTask: {
