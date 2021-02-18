@@ -169,7 +169,8 @@ public final class ContainerManager {
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
     final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-      .addOption("-XX:-OmitStackTraceInFastThrow");
+      .addOption("-XX:-OmitStackTraceInFastThrow")
+      .addOption("-verbosegc");
 
     /*
       .addOption("-Xms" +

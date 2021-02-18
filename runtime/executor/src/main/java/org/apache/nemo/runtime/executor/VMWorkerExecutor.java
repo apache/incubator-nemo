@@ -38,9 +38,9 @@ public final class VMWorkerExecutor {
       try {
 
         //LOG.info("cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
-        LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+        LOG.info("java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
         Process p = Runtime.getRuntime().exec(
-          "java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+          "java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
         //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
 
         String line;
