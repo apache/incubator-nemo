@@ -22,11 +22,12 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
   private final AWSLambdaAsync awsLambda;
 
   public LambdaOffloadingRequester(final String address,
-                                   final int port) {
+                                   final int port,
+                                   final String region) {
     this.address = address;
     this.port = port;
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
-      .withRegion("ap-northeast-1").withClientConfiguration(
+      .withRegion(region).withClientConfiguration(
         new ClientConfiguration().withMaxConnections(500)).build();
   }
 

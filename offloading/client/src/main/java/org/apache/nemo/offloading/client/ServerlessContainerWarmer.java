@@ -40,7 +40,7 @@ public final class ServerlessContainerWarmer {
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
         new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)));
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withRegion("ap-northeast-1")
+    this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withRegion("ap-northeast-2")
       .withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
   }

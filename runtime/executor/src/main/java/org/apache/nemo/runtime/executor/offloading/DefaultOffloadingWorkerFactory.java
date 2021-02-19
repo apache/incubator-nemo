@@ -78,7 +78,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     initialized.set(true);
 
     this.requestor = requesterFactory.getInstance(
-      nemoEventHandler, workerControlTransport.getLocalAddress(),
+      nemoEventHandler, workerControlTransport.getPublicAddress(),
       workerControlTransport.getPort());
   }
 
