@@ -30,6 +30,9 @@ public final class NettyChannelInitializer
    */
   @Override
   protected void initChannel(final SocketChannel ch) throws Exception {
+
+    LOG.info("Init channel {}", ch);
+
     ch.pipeline()
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
         Integer.MAX_VALUE, 0, 4, 0, 4))
@@ -47,10 +50,12 @@ public final class NettyChannelInitializer
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
     LOG.info("Channel inactive {}", ctx.channel());
+    inboundHandlerAdapter.channelInactive(ctx);
   }
 
   @Override
-  public void channelActive(final ChannelHandlerContext ctx) {
+  public void channelActive(final ChannelHandlerContext ctx) throws Exception {
     LOG.info("Channel activated {}", ctx.channel());
+    inboundHandlerAdapter.channelActive(ctx);
   }
 }
