@@ -56,7 +56,7 @@ public final class VMWorkerManagerInMaster {
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), false);
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), true);
 
     this.executorCpuUseMap = cpuMap.getExecutorCpuUseMap();
 

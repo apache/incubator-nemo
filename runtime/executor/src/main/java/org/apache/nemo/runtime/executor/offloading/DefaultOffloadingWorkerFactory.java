@@ -69,9 +69,9 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.workerControlTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), true);
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), false);
     this.workerDataTransport = new NettyServerTransport(
-      tcpPortProvider, new WorkerDataTransportChannelInitializer(), true);
+      tcpPortProvider, new WorkerDataTransportChannelInitializer(), false);
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 
     LOG.info("Netty server lambda transport created end");
