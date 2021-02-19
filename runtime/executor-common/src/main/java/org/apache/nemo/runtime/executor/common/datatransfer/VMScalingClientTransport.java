@@ -61,18 +61,26 @@ public final class VMScalingClientTransport {
     }
 
     if (channelCounterMap.putIfAbsent(key, new AtomicInteger(1)) == null) {
-      final ChannelFuture channelFuture;
-      channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
-      channelFuture.awaitUninterruptibly();
-      assert channelFuture.isDone();
-      if (!channelFuture.isSuccess()) {
-        final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
-        sb.append(channelFuture.cause());
-        throw new RuntimeException(sb.toString());
+      while (true) {
+        final ChannelFuture channelFuture;
+        channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
+        channelFuture.awaitUninterruptibly();
+        assert channelFuture.isDone();
+        if (!channelFuture.isSuccess()) {
+          final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
+          sb.append(channelFuture.cause());
+          throw new RuntimeException(sb.toString());
+        }
+
+        channelFuture.channel().flush();
+        if (channelFuture.channel().isOpen()) {
+          channelMap.put(key, channelFuture);
+          LOG.info("Get new channel {} / {}", address, key);
+          return channelFuture;
+        }
+
+        LOG.warn("Reconnect to {}/{}", address, port);
       }
-      channelMap.put(key, channelFuture);
-      LOG.info("Get new channel {} / {}", address, key);
-      return channelFuture;
     } else {
       LOG.info("Trying to get cached channel {} / {}", address, key);
       channelCounterMap.get(key).getAndIncrement();

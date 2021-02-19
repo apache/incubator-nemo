@@ -205,9 +205,9 @@ public final class OffloadingHandler {
       }
     }
 
+    final String address = (String) input.get("address");
+    final Integer port = (Integer) input.get("port");
     if (opendChannel == null) {
-      final String address = (String) input.get("address");
-      final Integer port = (Integer) input.get("port");
       opendChannel = channelOpen(address, port);
     }
 
@@ -254,6 +254,10 @@ public final class OffloadingHandler {
       }
 
       if (!channelFuture.isSuccess()) {
+        if (!opendChannel.isOpen()) {
+          opendChannel = channelOpen(address, port);
+          map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+        }
         LOG.info("Re-sending handshake..");
         channelFuture =
           opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));

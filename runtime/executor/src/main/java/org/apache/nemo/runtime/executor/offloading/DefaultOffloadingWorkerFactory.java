@@ -139,8 +139,9 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
         workerDonePair.right().getByteBuf().readBytes(b);
         final String dataAddr = new String(b);
 
-        if (!dataTransportChannelMap.containsKey(dataAddr)) {
-          throw new RuntimeException("No data channel address for offlaod worker " + dataAddr);
+        while (!dataTransportChannelMap.containsKey(dataAddr)) {
+          LOG.warn("No data channel address for offlaod worker " + dataAddr);
+          Thread.sleep(200);
         }
 
         // TODO: We configure data channel!!
