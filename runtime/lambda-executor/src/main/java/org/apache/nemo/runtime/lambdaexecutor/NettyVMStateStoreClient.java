@@ -10,6 +10,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import org.apache.log4j.Logger;
+import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 
@@ -20,9 +22,10 @@ import java.util.concurrent.CountDownLatch;
 
 public final class NettyVMStateStoreClient implements StateStore {
 
+  private static final Logger LOG = Logger.getLogger(NettyVMStateStoreClient.class.getName());
 
   private final EventLoopGroup eventLoopGroup;
-  private final Channel channel;
+  private Channel channel;
   private final Map<String, CountDownLatch> latchMap;
   private final Map<String, Object> responseMap;
 
@@ -42,14 +45,20 @@ public final class NettyVMStateStoreClient implements StateStore {
 
     try {
       // Connect to listening server
-      ChannelFuture channelFuture = clientBootstrap.connect(address, port).sync();
-      channel = channelFuture.channel();
-      // Check if channel is connected
-      if(!channelFuture.isSuccess()) {
-        throw new RuntimeException("server not connected");
+      while (true) {
+        ChannelFuture channelFuture = clientBootstrap.connect(address, port).sync();
+        channel = channelFuture.channel();
+        // containsState("handshake");
+        // Check if channel is connected
+        if (!channelFuture.channel().isOpen()) {
+          LOG.warn("server not connected");
+          Thread.sleep(100);
+        } else {
+          LOG.info("VM State store client connected "  + channel);
+          break;
+        }
       }
 
-      System.out.println("VM State store client connected");
       // Block till channel is connected
       // channelFuture.channel().closeFuture().sync();
     } catch (InterruptedException e) {

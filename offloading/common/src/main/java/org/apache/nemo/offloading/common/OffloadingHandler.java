@@ -67,7 +67,7 @@ public final class OffloadingHandler {
   private final OperatingSystemMXBean operatingSystemMXBean;
 
   private transient CountDownLatch workerInitLatch;
-  private transient String executorDataAddr;
+  private transient int executorDataAddrPort;
 
   private final boolean isSf;
 
@@ -238,7 +238,7 @@ public final class OffloadingHandler {
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
 
-    byte[] bytes = ByteBuffer.allocate(8).putInt(requestId).putInt(dataProcessingCnt).array();
+    byte[] bytes = ByteBuffer.allocate(4).putInt(requestId).array();
 
     ChannelFuture channelFuture =
     opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
@@ -279,8 +279,8 @@ public final class OffloadingHandler {
     }
 
     if (workerInitLatch.getCount() == 0) {
-      final byte[] addrBytes = executorDataAddr.getBytes();
-      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrBytes, addrBytes.length));
+      final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
+      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
       LOG.info("Sending worker init done");
     }
 
@@ -456,8 +456,8 @@ public final class OffloadingHandler {
           LOG.info("End of offloading prepare");
 
           workerFinishTime = System.currentTimeMillis();
-          executorDataAddr = offloadingTransform.getDataChannelAddr();
-          System.out.println("End of worker init: " + (System.currentTimeMillis() - st) + ", data channel: " + executorDataAddr);
+          executorDataAddrPort = offloadingTransform.getDataChannelPort();
+          System.out.println("End of worker init: " + (System.currentTimeMillis() - st) + ", data channel: " + executorDataAddrPort);
           workerInitLatch.countDown();
 
           break;

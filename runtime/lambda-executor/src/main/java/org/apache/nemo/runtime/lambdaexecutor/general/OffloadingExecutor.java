@@ -234,6 +234,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   @Override
+  public int getDataChannelPort() {
+    return Integer.valueOf(parentExecutorChannel.localAddress().toString().split(":")[1]);
+  }
+
+  @Override
   public void onData(Object event, OffloadingOutputCollector a) {
     if (event instanceof SendToOffloadingWorker) {
       // prepareOffloading task

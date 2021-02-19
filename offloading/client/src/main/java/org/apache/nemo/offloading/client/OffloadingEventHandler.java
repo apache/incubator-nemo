@@ -62,6 +62,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
     switch (event.getType()) {
       case CLIENT_HANDSHAKE:
         final int requestId = nemoEvent.right().getByteBuf().readInt();
+        nemoEvent.right().getByteBuf().release();
         synchronized (receivedRequests) {
           if (receivedRequests.contains(requestId)) {
             // duplicate id..

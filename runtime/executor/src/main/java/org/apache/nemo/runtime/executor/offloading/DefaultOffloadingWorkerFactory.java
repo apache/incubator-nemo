@@ -133,20 +133,24 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
         LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
         pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
 
+        // Data channel!!
         final Pair<Channel, OffloadingEvent> workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
-        final int len = workerDonePair.right().getByteBuf().readableBytes();
-        final byte[] b = new byte[len];
-        workerDonePair.right().getByteBuf().readBytes(b);
-        final String dataAddr = new String(b);
+        final int port = workerDonePair.right().getByteBuf().readInt();
+        workerDonePair.right().getByteBuf().release();
+        final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
 
-        while (!dataTransportChannelMap.containsKey(dataAddr)) {
-          LOG.warn("No data channel address for offlaod worker " + dataAddr);
+        LOG.info("Get data channel for lambda {}:{}", addr, port);
+
+        final String fullAddr = addr + ":" + port;
+
+        while (!dataTransportChannelMap.containsKey(fullAddr)) {
+          LOG.warn("No data channel address for offlaod worker " + fullAddr);
           Thread.sleep(200);
         }
 
         // TODO: We configure data channel!!
         LOG.info("Waiting worker init done");
-        return Pair.of(workerDonePair.left(), Pair.of(dataTransportChannelMap.get(dataAddr), workerDonePair.right()));
+        return Pair.of(workerDonePair.left(), Pair.of(dataTransportChannelMap.get(fullAddr), workerDonePair.right()));
       }
 
       @Override
