@@ -9,6 +9,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
@@ -83,6 +84,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private MonitoringThread monitoringThread;
 
 
+
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
                             final boolean isLocalSource,
@@ -90,6 +92,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final String parentExecutorAddress,
                             final int parentExecutorDataPort,
                             final int stateStorePort) {
+    org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress, parentExecutorDataPort);
     this.stateStorePort = stateStorePort;
@@ -128,6 +131,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.executorMetrics = new ExecutorMetrics();
     this.throttleRate = context.throttleRate;
     this.prepareService = Executors.newCachedThreadPool();
+
+    LOG.info("Netty state store client before created for connectiong {} / {} ...",
+      parentExecutorAddress, stateStorePort);
 
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
     this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);

@@ -112,11 +112,14 @@ public final class ByteTransport implements AutoCloseable {
 
     final String host;
     try {
+      this.publicAddress = NetworkUtils.getPublicIP();
+      /*
       if (ec2) {
         this.publicAddress = NetworkUtils.getPublicIP();
       } else {
         this.publicAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
       }
+      */
       host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {
       e.printStackTrace();

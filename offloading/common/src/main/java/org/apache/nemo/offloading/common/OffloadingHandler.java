@@ -118,20 +118,28 @@ public final class OffloadingHandler {
   private Channel channelOpen(final String address, final int port) {
     // 1) connect to the VM worker
 
-    final ChannelFuture channelFuture;
-    channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
-    channelFuture.awaitUninterruptibly();
-    assert channelFuture.isDone();
+    while (true) {
+      final ChannelFuture channelFuture;
+      channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
+      channelFuture.awaitUninterruptibly();
+      assert channelFuture.isDone();
 
-    if (channelFuture.isCancelled()) {
-      LOG.info("Channel future is cacelled...");
-    } else if (!channelFuture.isSuccess()) {
-      final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
-      channelFuture.cause().printStackTrace();
-      throw new RuntimeException(sb.toString());
+      if (channelFuture.isCancelled()) {
+        LOG.info("Channel future is cacelled...");
+      } else if (!channelFuture.isSuccess()) {
+        final StringBuilder sb = new StringBuilder("A connection failed at Source - .. retry connection");
+        channelFuture.cause().printStackTrace();
+
+        try {
+          Thread.sleep(500);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      } else {
+        final Channel opendChannel = channelFuture.channel();
+        return opendChannel;
+      }
     }
-    final Channel opendChannel = channelFuture.channel();
-    return opendChannel;
   }
 
   private void writeResult(final Channel opendChannel,
@@ -431,6 +439,8 @@ public final class OffloadingHandler {
           }
 
           outputCollector = new LambdaOutputHandler(result);
+
+          LOG.info("Before offloading prepare");
 
           // TODO: OffloadingTransform that receives data from parent tasks should register its id
           // to lambdaEventHandlerMap
