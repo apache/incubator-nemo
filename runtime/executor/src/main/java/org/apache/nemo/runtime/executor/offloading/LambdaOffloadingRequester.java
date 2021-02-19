@@ -5,11 +5,14 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.client.AWSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class LambdaOffloadingRequester implements OffloadingRequester {
@@ -45,7 +48,14 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
         address, port, requestId.getAndIncrement()));
 
     LOG.info("Invoke async request {}", request);
-    awsLambda.invokeAsync(request);
+    final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+    try {
+      final InvokeResult result = future.get();
+      LOG.info("Invoke result: {}", result);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
