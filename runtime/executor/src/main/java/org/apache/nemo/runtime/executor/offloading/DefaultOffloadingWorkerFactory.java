@@ -128,8 +128,6 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
           throw new RuntimeException(e);
         }
 
-        pair.right().getByteBuf().release();
-
         LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
         pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
 
