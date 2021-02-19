@@ -26,9 +26,12 @@ public final class NettyServerTransport {
   private int port;
   private String localAddress;
   private final String publicAddress;
+  private final boolean bindingLocalAddress;
 
   public NettyServerTransport(final TcpPortProvider tcpPortProvider,
-                              final ChannelInitializer channelInitializer) {
+                              final ChannelInitializer channelInitializer,
+                              final boolean bindingLocalAddress) {
+    this.bindingLocalAddress = bindingLocalAddress;
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
     this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
@@ -75,17 +78,18 @@ public final class NettyServerTransport {
   private int setUpRandomPortNettyServer(final ServerBootstrap serverBootstrap,
                                          final TcpPortProvider tcpPortProvider) {
     try {
+      final String address = bindingLocalAddress ? localAddress : publicAddress;
       final Iterator<Integer> portIterator = tcpPortProvider.iterator();
       while (true) {
         try {
           final int p = portIterator.next();
           this.acceptor = serverBootstrap.bind(
-            new InetSocketAddress(localAddress, p)).sync().channel();
-          LOG.info("Server address: {}, Assigned server port = {}", localAddress, p);
+            new InetSocketAddress(address, p)).sync().channel();
+          LOG.info("Server address: {}, Assigned server port = {}", address, p);
           return p;
         } catch (final Exception e) {
           e.printStackTrace();
-          LOG.info("Server address: {}", localAddress);
+          LOG.info("Server address: {}", address);
           LOG.warn("Duplicate port is assigned to server... try again...");
         }
       }

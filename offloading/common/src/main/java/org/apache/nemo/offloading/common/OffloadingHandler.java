@@ -122,9 +122,12 @@ public final class OffloadingHandler {
     channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
     channelFuture.awaitUninterruptibly();
     assert channelFuture.isDone();
-    if (!channelFuture.isSuccess()) {
+
+    if (channelFuture.isCancelled()) {
+      LOG.info("Channel future is cacelled...");
+    } else if (!channelFuture.isSuccess()) {
       final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
-      sb.append(channelFuture.cause());
+      channelFuture.cause().printStackTrace();
       throw new RuntimeException(sb.toString());
     }
     final Channel opendChannel = channelFuture.channel();

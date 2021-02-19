@@ -29,7 +29,7 @@ public final class NettyVMStateStore implements NettyStateStore {
                             final StateStore stateStore,
                             @Parameter(EvalConf.Ec2.class) final boolean ec2) {
     this.nettyServerTransport = new NettyServerTransport(tcpPortProvider,
-      new VMStatestoreChannelInitializer());
+      new VMStatestoreChannelInitializer(), true);
     this.publicAddress = nettyServerTransport.getPublicAddress();
     this.bindingPort = nettyServerTransport.getPort();
     this.stateStore = stateStore;
