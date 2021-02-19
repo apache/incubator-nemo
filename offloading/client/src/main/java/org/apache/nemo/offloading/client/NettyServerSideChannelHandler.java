@@ -35,6 +35,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
     if (Constants.enableLambdaLogging) {
       LOG.info("Channel activate: {}", ctx.channel());
     }
+    LOG.info("Channel activate: {}", ctx.channel());
     channelGroup.add(ctx.channel());
   }
 
@@ -43,6 +44,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
     if (Constants.enableLambdaLogging) {
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
     }
+    LOG.info("Channel read from {}, {}", ctx.channel(), msg);
     eventHandler.onNext(Pair.of(ctx.channel(), (OffloadingEvent)msg));
   }
 

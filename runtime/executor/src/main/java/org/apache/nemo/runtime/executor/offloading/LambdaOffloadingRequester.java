@@ -49,6 +49,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
     LOG.info("Invoke async request {}", request);
     final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+    /*
     try {
       final InvokeResult result = future.get();
       LOG.info("Invoke result: {}", result);
@@ -56,6 +57,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+    */
   }
 
   @Override
