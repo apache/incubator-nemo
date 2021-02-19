@@ -111,7 +111,7 @@ public final class EvalConf {
   @NamedParameter(short_name = "executor_threads", default_value = "1")
   public static final class ExecutorThreadNum implements Name<Integer> {}
 
-  @NamedParameter(short_name = "off_executor_threads", default_value = "2")
+  @NamedParameter(short_name = "off_executor_threads", default_value = "1")
   public static final class OffExecutorThreadNum implements Name<Integer> {}
 
   @NamedParameter(short_name = "task_slot", default_value = "2")

@@ -75,7 +75,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.offloadingManagerThread = Executors.newCachedThreadPool();
 
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
-      evalConf.executorThreadNum,
+      evalConf.offExecutorThreadNum,
       evalConf.samplingJson,
       evalConf.isLocalSource,
       executorId,

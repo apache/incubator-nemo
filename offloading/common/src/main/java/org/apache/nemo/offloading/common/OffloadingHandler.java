@@ -439,6 +439,7 @@ public final class OffloadingHandler {
               nameServerAddr, nameServerPort, newExecutorId, opendChannel, throttleRate,
               testing), outputCollector);
 
+          LOG.info("End of offloading prepare");
 
           workerFinishTime = System.currentTimeMillis();
           executorDataAddr = offloadingTransform.getDataChannelAddr();

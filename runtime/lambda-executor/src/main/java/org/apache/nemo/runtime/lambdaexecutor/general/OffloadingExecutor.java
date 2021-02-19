@@ -119,7 +119,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
         parentExecutorChannel.flush();
       }
-    }, 10, 10, TimeUnit.MILLISECONDS);
+    }, 20, 20, TimeUnit.MILLISECONDS);
 
     this.scheduledService.scheduleAtFixedRate(() -> {
       LOG.info("CPU Load {}", monitoringThread.getTotalUsage());
@@ -132,29 +132,34 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
     this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
 
-
-    final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
-    final ControlFrameEncoder controlFrameEncoder = new ControlFrameEncoder();
-    final DataFrameEncoder dataFrameEncoder = new DataFrameEncoder();
+    LOG.info("Netty state store client created...");
 
     pipeManagerWorker =
       new OffloadingPipeManagerWorkerImpl(executorId, indexMap);
 
+    LOG.info("Pipe manager worker created...");
+
     this.intermediateDataIOFactory = new OffloadingIntermediateDataIOFactory(
       pipeManagerWorker, serializerManager);
+
+    LOG.info("Intermediate data Io created...");
 
     this.outputCollectorGenerator =
       new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
 
+
     final OffloadingTransportChannelInitializer initializer =
       new OffloadingTransportChannelInitializer(pipeManagerWorker,
         new ControlMessageHandler());
+
+    LOG.info("OffloadingTransportChannelInitializer...");
 
     this.clientTransport = new VMScalingClientTransport(initializer);
 
     this.parentExecutorChannel = clientTransport
       .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
 
+    LOG.info("Parente executor channel: {}", parentExecutorAddress);
 
     final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
       new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
@@ -171,6 +176,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           context.testing));
       executorThreads.get(i).start();
     }
+
+    LOG.info("Executor thread created: {}", parentExecutorAddress);
 
     final Channel controlChannel = context.getControlChannel();
 
@@ -209,8 +216,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-
-
 
       controlChannel.writeAndFlush(new OffloadingEvent(
         OffloadingEvent.Type.EXECUTOR_METRICS, byteBuf));
