@@ -1,16 +1,21 @@
 package org.apache.nemo.offloading.common;
 
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class initializes socket channel for text messages.
  */
 public final class NettyChannelInitializer
     extends ChannelInitializer<SocketChannel> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(NettyChannelInitializer.class.getName());
 
   private final ChannelInboundHandlerAdapter inboundHandlerAdapter;
 
@@ -32,5 +37,20 @@ public final class NettyChannelInitializer
       .addLast("decoder", new OffloadingEventCoder.OffloadingEventDecoder())
       .addLast("encoder", new OffloadingEventCoder.OffloadingEventEncoder())
       .addLast("handler", inboundHandlerAdapter);
+  }
+
+  /**
+   * Remove the inactive channel from channelGroup.
+   * @param ctx the context object
+   * @throws Exception
+   */
+  @Override
+  public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
+    LOG.info("Channel inactive {}", ctx.channel());
+  }
+
+  @Override
+  public void channelActive(final ChannelHandlerContext ctx) {
+    LOG.info("Channel activated {}", ctx.channel());
   }
 }
