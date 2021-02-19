@@ -46,7 +46,6 @@ public final class NettyChannelInitializer
    * Remove the inactive channel from channelGroup.
    * @param ctx the context object
    * @throws Exception
-   */
   @Override
   public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
     LOG.info("Channel inactive {}", ctx.channel());
@@ -58,4 +57,5 @@ public final class NettyChannelInitializer
     LOG.info("Channel activated {}", ctx.channel());
     inboundHandlerAdapter.channelActive(ctx);
   }
+   */
 }
