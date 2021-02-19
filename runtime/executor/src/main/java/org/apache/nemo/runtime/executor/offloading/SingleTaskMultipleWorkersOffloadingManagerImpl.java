@@ -7,6 +7,7 @@ import org.apache.nemo.runtime.executor.NettyStateStore;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
+import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
                                                          final ByteTransport byteTransport,
                                                          final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
-      byteTransport.getPublicAddress(), nettyStateStore.getPort(), true);
+      NetworkUtils.getPublicIP(), nettyStateStore.getPort(), true);
   }
 
 
