@@ -57,7 +57,9 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
-        final List<OffloadingWorker> selectedWorkers = workers.subList(cnt, cnt + evalConf.numOffloadingWorker);
+        final List<OffloadingWorker> selectedWorkers =
+          new LinkedList<>(workers.subList(cnt, cnt + evalConf.numOffloadingWorker));
+
         taskWorkerMap.put(taskId, selectedWorkers);
         selectedWorkers.forEach(worker -> {
           workerTaskMap.put(worker, new LinkedList<>(Arrays.asList(taskId)));
@@ -75,10 +77,8 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
     final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-    synchronized (l) {
-      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-      return Optional.of(l.get(index));
-    }
+    final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
+    return Optional.of(l.get(index));
   }
 
   @Override

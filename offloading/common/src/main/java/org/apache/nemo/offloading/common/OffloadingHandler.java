@@ -213,6 +213,7 @@ public final class OffloadingHandler {
     final int requestId = (Integer) input.get("requestId");
 
     map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+    LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
 
     System.out.println("Open channel: " + opendChannel);
 
@@ -256,6 +257,7 @@ public final class OffloadingHandler {
         if (!opendChannel.isOpen()) {
           opendChannel = channelOpen(address, port);
           map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+          handler = (LambdaEventHandler) map.get(opendChannel);
         }
         LOG.info("Re-sending handshake..");
         channelFuture =
@@ -267,7 +269,10 @@ public final class OffloadingHandler {
 
     // Waiting worker init done..
     LOG.info("Waiting worker init or end");
-    final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
+
+    if (handler == null) {
+      throw new RuntimeException("Handler is null.. why?");
+    }
 
     while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
       try {
