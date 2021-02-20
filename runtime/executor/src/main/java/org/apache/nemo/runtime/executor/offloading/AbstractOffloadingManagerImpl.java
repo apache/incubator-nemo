@@ -156,7 +156,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                     myWorker.removeDoneTask(taskId);
 
                     synchronized (workers) {
-                      taskWorkerMap.get(taskId).remove(myWorker);
+                      final List<OffloadingWorker> ows = taskWorkerMap.get(taskId);
+                      synchronized (ows) {
+                        taskWorkerMap.get(taskId).remove(myWorker);
+                        if (taskWorkerMap.get(taskId).size() == 0) {
+                          taskWorkerMap.remove(taskId);
+                        }
+                      }
+
                       workerTaskMap.get(myWorker).remove(taskId);
 
                       if (workerTaskMap.get(myWorker).isEmpty()) {
@@ -169,9 +176,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                         }
                       }
 
-                      if (taskWorkerMap.get(taskId).size() == 0) {
-                        taskWorkerMap.remove(taskId);
-                      }
                     }
                     LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
                   } catch (IOException e) {
@@ -230,14 +234,16 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     // TODO: flush pending data
     // TODO: fix
-    taskWorkerMap.get(taskId).forEach(worker -> {
-      worker.writeData
-        (pipeIndex,
-          new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
-            pipeIndex,
-            pipeIndex,
-            taskId, null));
-    });
+    synchronized (taskWorkerMap.get(taskId)) {
+      taskWorkerMap.get(taskId).forEach(worker -> {
+        worker.writeData
+          (pipeIndex,
+            new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
+              pipeIndex,
+              pipeIndex,
+              taskId, null));
+      });
+    }
   }
 
   public abstract void createWorkers(final String taskId);
