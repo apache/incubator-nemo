@@ -171,6 +171,45 @@ public final class OffloadingHandler {
       new OffloadingEvent(OffloadingEvent.Type.RESULT, byteBuf));
   }
 
+  private Channel handshake(final byte[] bytes,
+                         final String address,
+                         final int port,
+                         Channel opendChannel,
+                         final LinkedBlockingQueue<Pair<Object, Integer>> result) {
+
+	  LambdaEventHandler handler = null;
+	  Channel channel = opendChannel;
+
+	  ChannelFuture channelFuture =
+    channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+
+    while (!channelFuture.isSuccess()) {
+      while (!channelFuture.isDone()) {
+        LOG.info("Waiting client handshake done..");
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      if (!channelFuture.isSuccess()) {
+        if (!channel.isOpen()) {
+          channel = channelOpen(address, port);
+          map.put(channel, new LambdaEventHandler(channel, result));
+          handler = (LambdaEventHandler) map.get(channel);
+        }
+        LOG.info("Re-sending handshake..");
+        channelFuture =
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+      } else {
+        break;
+      }
+    }
+
+    return channel;
+  }
+
 	public Object handleRequest(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
     this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -240,32 +279,8 @@ public final class OffloadingHandler {
 
     byte[] bytes = ByteBuffer.allocate(4).putInt(requestId).array();
 
-    ChannelFuture channelFuture =
-    opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
-
-    while (!channelFuture.isSuccess()) {
-      while (!channelFuture.isDone()) {
-        LOG.info("Waiting client handshake done..");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      if (!channelFuture.isSuccess()) {
-        if (!opendChannel.isOpen()) {
-          opendChannel = channelOpen(address, port);
-          map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
-          handler = (LambdaEventHandler) map.get(opendChannel);
-        }
-        LOG.info("Re-sending handshake..");
-        channelFuture =
-          opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
-      } else {
-        break;
-      }
-    }
+    opendChannel = handshake(bytes, address, port, opendChannel, result);
+    handler = (LambdaEventHandler) map.get(opendChannel);
 
     // Waiting worker init done..
     LOG.info("Waiting worker init or end");
@@ -275,6 +290,10 @@ public final class OffloadingHandler {
     }
 
     while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
+      if (!opendChannel.isActive()) {
+        opendChannel = handshake(bytes, address, port, opendChannel, result);
+        handler = (LambdaEventHandler) map.get(opendChannel);
+      }
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

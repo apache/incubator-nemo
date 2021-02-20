@@ -63,6 +63,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
       case CLIENT_HANDSHAKE:
         final int requestId = nemoEvent.right().getByteBuf().readInt();
         nemoEvent.right().getByteBuf().release();
+        LOG.info("Client handshake from {}", nemoEvent.left().remoteAddress());
         synchronized (receivedRequests) {
           if (receivedRequests.contains(requestId)) {
             // duplicate id..
