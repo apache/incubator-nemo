@@ -11,9 +11,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.resolver.NameResolver;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import javafx.concurrent.Task;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -26,7 +24,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class OffloadingHandler {
 
