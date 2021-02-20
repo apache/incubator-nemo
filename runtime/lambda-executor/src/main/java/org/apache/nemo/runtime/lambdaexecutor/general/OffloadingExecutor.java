@@ -85,7 +85,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private MonitoringThread monitoringThread;
 
 
-
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
                             final boolean isLocalSource,
@@ -111,10 +110,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   }
 
   private final AtomicLong prevProcessingSum = new AtomicLong(0);
+  LambdaRuntimeContext context;
 
   @Override
   public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
-    final LambdaRuntimeContext context = (LambdaRuntimeContext)c;
+    context = (LambdaRuntimeContext)c;
 
     this.monitoringThread = new MonitoringThread(1000, 1.0);
 
@@ -247,12 +247,26 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       LOG.info("IndexMap: {}", e.indexMap);
       final ByteArrayInputStream bis = new ByteArrayInputStream(e.taskByte);
       final DataInputStream dis = new DataInputStream(bis);
+      final long st = System.currentTimeMillis();
       try {
-        final Task task = Task.decode(dis);
+        final Task task;
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(e.taskId);
+        if (context.stageTaskMap.containsKey(stageId)) {
+          task = Task.decode(dis, context.stageTaskMap.get(stageId));
+          LOG.info("Decode task from task caching");
+        } else {
+          task = Task.decode(dis);
+          context.stageTaskMap.put(stageId,
+            new TaskCaching(task.getTaskIncomingEdges(),
+              task.getTaskOutgoingEdges(),
+              task.getExecutionProperties(),
+              task.getIrVertexIdToReadable()));
+        }
         indexMap.putAll(e.indexMap);
+        final long et = System.currentTimeMillis();
 
-        LOG.info("Offload Executor [{}] received Task [{}] to execute.",
-          new Object[]{executorId, task.getTaskId()});
+        LOG.info("Offload Executor [{}] received Task [{}] to execute. time {}",
+          new Object[]{executorId, task.getTaskId(), et - st});
 
         // final DataInputStream diss = new DataInputStream(new ByteArrayInputStream(task.getSerializedIRDag()));
         // final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =

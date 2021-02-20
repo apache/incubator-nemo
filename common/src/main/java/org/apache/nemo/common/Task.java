@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.offloading.common.TaskCaching;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -83,32 +84,12 @@ public final class Task implements Serializable {
     this.upstreamTasks = calculateUpstreamTasks();
   }
 
-  public static Task decode(DataInputStream dis) {
+  public static Task decode(DataInputStream dis,
+                            TaskCaching taskCaching) {
     try {
       final String planId = dis.readUTF();
       final String taskId = dis.readUTF();
       int s = dis.readInt();
-      final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
-      for (int i = 0; i < s; i++) {
-        taskIncomingEdges.add(SerializationUtils.deserialize(dis));
-      }
-      s = dis.readInt();
-      final List<StageEdge> taskOutgoingEdges = new ArrayList<>(s);
-      for (int i = 0; i < s; i++) {
-        taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
-      }
-      final ExecutionPropertyMap<VertexExecutionProperty> executionProperties = ExecutionPropertyMap.decode(dis);
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
-      // final byte[] serializedIRDag = new byte[dis.readInt()];
-      // dis.read(serializedIRDag);
-      s = dis.readInt();
-      final Map<String, Readable> irVertexIdToReadable = new HashMap<>(s);
-      for (int i = 0; i < s; i++) {
-        final String key = dis.readUTF();
-        final Readable val = SerializationUtils.deserialize(dis);
-        irVertexIdToReadable.put(key, val);
-      }
-      s = dis.readInt();
       final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
       for (int i = 0; i < s; i++) {
         final RuntimeEdge key = SerializationUtils.deserialize(dis);
@@ -132,6 +113,67 @@ public final class Task implements Serializable {
       }
 
       return new Task(planId, taskId,
+        (ExecutionPropertyMap<VertexExecutionProperty>) taskCaching.executionProperties,
+        (DAG<IRVertex, RuntimeEdge<IRVertex>>) taskCaching.irDag,
+        taskCaching.taskIncomingEdges,
+        taskCaching.taskOutgoingEdges,
+        new HashMap<>());
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static Task decode(DataInputStream dis) {
+    try {
+      final String planId = dis.readUTF();
+      final String taskId = dis.readUTF();
+      int s = dis.readInt();
+      final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
+      for (int i = 0; i < s; i++) {
+        final RuntimeEdge key = SerializationUtils.deserialize(dis);
+        final int len = dis.readInt();
+        final List<String> val = new ArrayList<>(len);
+        for (int j = 0; j < len; j++) {
+          val.add(dis.readUTF());
+        }
+        downstreamTasks.put(key, val);
+      }
+      s = dis.readInt();
+      final Map<RuntimeEdge, List<String>> upstreamTasks = new HashMap<>(s);
+      for (int i = 0; i < s; i++) {
+        final RuntimeEdge key = SerializationUtils.deserialize(dis);
+        final int len = dis.readInt();
+        final List<String> val = new ArrayList<>(len);
+        for (int j = 0; j < len; j++) {
+          val.add(dis.readUTF());
+        }
+        upstreamTasks.put(key, val);
+      }
+
+      s = dis.readInt();
+      final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
+      for (int i = 0; i < s; i++) {
+        taskIncomingEdges.add(SerializationUtils.deserialize(dis));
+      }
+      s = dis.readInt();
+      final List<StageEdge> taskOutgoingEdges = new ArrayList<>(s);
+      for (int i = 0; i < s; i++) {
+        taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
+      }
+      final ExecutionPropertyMap<VertexExecutionProperty> executionProperties = ExecutionPropertyMap.decode(dis);
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
+      // final byte[] serializedIRDag = new byte[dis.readInt()];
+      // dis.read(serializedIRDag);
+      s = dis.readInt();
+      final Map<String, Readable> irVertexIdToReadable = new HashMap<>(s);
+      for (int i = 0; i < s; i++) {
+        final String key = dis.readUTF();
+        final Readable val = SerializationUtils.deserialize(dis);
+        irVertexIdToReadable.put(key, val);
+      }
+
+      return new Task(planId, taskId,
         executionProperties,
         irDag,
         taskIncomingEdges,
@@ -147,6 +189,24 @@ public final class Task implements Serializable {
     try {
       dos.writeUTF(planId);
       dos.writeUTF(taskId);
+
+      dos.writeInt(downstreamTasks.size());
+      for (final Map.Entry<RuntimeEdge, List<String>> entry : downstreamTasks.entrySet()) {
+        SerializationUtils.serialize(entry.getKey(), dos);
+        dos.writeInt(entry.getValue().size());
+        for (String val : entry.getValue()) {
+          dos.writeUTF(val);
+        }
+      }
+      dos.writeInt(upstreamTasks.size());
+      for (final Map.Entry<RuntimeEdge, List<String>> entry : upstreamTasks.entrySet()) {
+        SerializationUtils.serialize(entry.getKey(), dos);
+        dos.writeInt(entry.getValue().size());
+        for (String val : entry.getValue()) {
+          dos.writeUTF(val);
+        }
+      }
+
       dos.writeInt(taskIncomingEdges.size());
       taskIncomingEdges.forEach(edge -> {
         SerializationUtils.serialize(edge, dos);
@@ -163,22 +223,6 @@ public final class Task implements Serializable {
       for (final Map.Entry<String, Readable> entry : irVertexIdToReadable.entrySet()) {
         dos.writeUTF(entry.getKey());
         SerializationUtils.serialize(entry.getValue(), dos);
-      }
-      dos.writeInt(downstreamTasks.size());
-      for (final Map.Entry<RuntimeEdge, List<String>> entry : downstreamTasks.entrySet()) {
-        SerializationUtils.serialize(entry.getKey(), dos);
-        dos.writeInt(entry.getValue().size());
-        for (String val : entry.getValue()) {
-          dos.writeUTF(val);
-        }
-      }
-      dos.writeInt(upstreamTasks.size());
-      for (final Map.Entry<RuntimeEdge, List<String>> entry : upstreamTasks.entrySet()) {
-        SerializationUtils.serialize(entry.getKey(), dos);
-        dos.writeInt(entry.getValue().size());
-        for (String val : entry.getValue()) {
-          dos.writeUTF(val);
-        }
       }
 
     } catch (final Exception e) {

@@ -265,7 +265,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     LOG.info("Offloading task {}, workers: {}", taskId, newWorkers);
     final byte[] bytes = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
     final SendToOffloadingWorker taskSend =
-      new SendToOffloadingWorker(bytes, pipeIndexMapWorker.getIndexMap(), true);
+      new SendToOffloadingWorker(taskId, bytes, pipeIndexMapWorker.getIndexMap(), true);
     final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 

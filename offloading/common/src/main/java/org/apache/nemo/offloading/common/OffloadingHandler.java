@@ -13,6 +13,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.resolver.NameResolver;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import javafx.concurrent.Task;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -20,6 +21,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +48,6 @@ public final class OffloadingHandler {
   private Bootstrap clientBootstrap;
 
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
-
-  private List<String> serializedVertices;
 
   // current states of lambda
   private LambdaStatus status;
@@ -77,6 +77,8 @@ public final class OffloadingHandler {
 
   private final long throttleRate;
   private final boolean testing;
+
+  private final Map<String, TaskCaching> stageTaskMap = new HashMap<>();
 
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
                            final boolean isSf,
@@ -444,14 +446,14 @@ public final class OffloadingHandler {
 
           outputCollector = new LambdaOutputHandler(result);
 
-          LOG.info("Before offloading prepare");
+          LOG.info("Before offloading prepare, stageTaskMap size: " + stageTaskMap.size());
 
           // TODO: OffloadingTransform that receives data from parent tasks should register its id
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
               nameServerAddr, nameServerPort, newExecutorId, opendChannel, throttleRate,
-              testing), outputCollector);
+              testing, stageTaskMap), outputCollector);
 
           LOG.info("End of offloading prepare");
 

@@ -10,13 +10,16 @@ import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventTyp
 
 public final class SendToOffloadingWorker {
 
+  public final String taskId;
   public final byte[] taskByte;
   public final Map<Triple<String, String, String>, Integer> indexMap;
   public final boolean offloaded;
 
-  public SendToOffloadingWorker(final byte[] taskByte,
+  public SendToOffloadingWorker(final String taskId,
+                                final byte[] taskByte,
                                 final Map<Triple<String, String, String>, Integer> indexMap,
                                 final boolean offloaded) {
+    this.taskId = taskId;
     this.taskByte = taskByte;
     this.indexMap = indexMap;
     this.offloaded = offloaded;
@@ -25,6 +28,7 @@ public final class SendToOffloadingWorker {
   public void encode(OutputStream os) {
     final DataOutputStream dos = new DataOutputStream(os);
     try {
+      dos.writeUTF(taskId);
       dos.writeInt(taskByte.length);
       dos.write(taskByte);
       dos.writeInt(indexMap.size());
@@ -50,6 +54,7 @@ public final class SendToOffloadingWorker {
   public static SendToOffloadingWorker decode(InputStream is) {
     final DataInputStream dis = new DataInputStream(is);
     try {
+      final String taskId = dis.readUTF();
       final int len = dis.readInt();
       final byte[] taskByte = new byte[len];
       dis.read(taskByte);
@@ -64,7 +69,7 @@ public final class SendToOffloadingWorker {
       }
       final boolean offloaded = dis.readBoolean();
 
-      return new SendToOffloadingWorker(taskByte, indexMap, offloaded);
+      return new SendToOffloadingWorker(taskId, taskByte, indexMap, offloaded);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
