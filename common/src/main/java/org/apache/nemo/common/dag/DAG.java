@@ -21,15 +21,14 @@ package org.apache.nemo.common.dag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -49,6 +48,112 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
   private final Map<String, List<E>> outgoingEdges;
   private final Map<String, LoopVertex> assignedLoopVertexMap;
   private final Map<String, Integer> loopStackDepthMap;
+
+  public static <V extends Vertex, E extends Edge<V>> DAG<V, E> decode(final DataInputStream dis) {
+    try {
+      int s = dis.readInt();
+      final List<V> vertices = new ArrayList<>(s);
+      final List<V> rootVertices = new ArrayList<>(s);
+      for (int i = 0; i < s; i++) {
+        final boolean isRoot = dis.readBoolean();
+        final V vertex = SerializationUtils.deserialize(dis);
+        vertices.add(vertex);
+        if (isRoot) {
+          rootVertices.add(vertex);
+        }
+      }
+
+      s = dis.readInt();
+      final Map<String, List<E>> incomingEdges = new HashMap<>(s);
+      for (int i = 0; i < s; i++) {
+        final String key = dis.readUTF();
+        final int len = dis.readInt();
+        final List<E> edges = new ArrayList<>(len);
+        for (int j = 0; j < len; j++) {
+          edges.add(SerializationUtils.deserialize(dis));
+        }
+        incomingEdges.put(key, edges);
+      }
+
+      s = dis.readInt();
+      final Map<String, List<E>> outgoingEdges = new HashMap<>(s);
+      for (int i = 0; i < s; i++) {
+        final String key = dis.readUTF();
+        final int len = dis.readInt();
+        final List<E> edges = new ArrayList<>(len);
+        for (int j = 0; j < len; j++) {
+          edges.add(SerializationUtils.deserialize(dis));
+        }
+        outgoingEdges.put(key, edges);
+      }
+
+      return new DAG<V, E>(vertices, rootVertices, incomingEdges, outgoingEdges);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void encode(final DataOutputStream dos) {
+    try {
+      dos.writeInt(vertices.size());
+      vertices.forEach(vertex -> {
+        try {
+          if (rootVertices.contains(vertex)) {
+            dos.writeBoolean(true);
+          } else {
+            dos.writeBoolean(false);
+          }
+          SerializationUtils.serialize(vertex, dos);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+      dos.writeInt(incomingEdges.size());
+      incomingEdges.forEach((key, val) -> {
+        try {
+          dos.writeUTF(key);
+          dos.writeInt(val.size());
+          val.forEach(edge -> {
+            SerializationUtils.serialize(edge, dos);
+          });
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+      dos.writeInt(outgoingEdges.size());
+      outgoingEdges.forEach((key, val) -> {
+        try {
+          dos.writeUTF(key);
+          dos.writeInt(val.size());
+          val.forEach(edge -> {
+            SerializationUtils.serialize(edge, dos);
+          });
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public DAG(final List<V> vertices,
+             final List<V> rootVertices,
+             final Map<String, List<E>> incomingEdges,
+             final Map<String, List<E>> outgoingEdges) {
+    this.vertices = vertices;
+    this.rootVertices = rootVertices;
+    this.incomingEdges = incomingEdges;
+    this.outgoingEdges = outgoingEdges;
+    this.assignedLoopVertexMap = new HashMap<>();
+    this.loopStackDepthMap = new HashMap<>();
+  }
 
   /**
    * Constructor of DAG, called by the DAGBuilder.

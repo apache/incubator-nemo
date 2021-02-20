@@ -34,6 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -120,7 +123,16 @@ public final class ExecutorRepresenter {
     failedTasks.remove(task);
 
     serializationExecutorService.execute(() -> {
-      final byte[] serialized = FSTSingleton.getInstance().asByteArray(task);
+      final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+      final DataOutputStream dos = new DataOutputStream(bos);
+      task.encode(dos);
+      try {
+        dos.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
       sendControlMessage(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
@@ -128,7 +140,7 @@ public final class ExecutorRepresenter {
           .setType(ControlMessage.MessageType.ScheduleTask)
           .setScheduleTaskMsg(
             ControlMessage.ScheduleTaskMsg.newBuilder()
-              .setTask(ByteString.copyFrom(serialized))
+              .setTask(ByteString.copyFrom(bos.toByteArray()))
               .build())
           .build());
     });

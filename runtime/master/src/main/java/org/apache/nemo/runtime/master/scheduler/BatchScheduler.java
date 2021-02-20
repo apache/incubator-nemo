@@ -439,7 +439,7 @@ public final class BatchScheduler implements Scheduler {
         planStateManager.getPhysicalPlan().getPlanId(),
         taskId,
         stageToSchedule.getExecutionProperties(),
-        stageToSchedule.getSerializedIRDAG(),
+        stageToSchedule.getIRDAG(),
         stageIncomingEdges,
         stageOutgoingEdges,
         vertexIdToReadables.get(taskIdx)));

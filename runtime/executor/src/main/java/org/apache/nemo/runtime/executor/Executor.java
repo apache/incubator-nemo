@@ -56,10 +56,7 @@ import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -340,8 +337,12 @@ public final class Executor {
 
     final long st = System.currentTimeMillis();
 
+    /*
+    final ByteArrayInputStream bis = new ByteArrayInputStream(task.getSerializedIRDag());
+    final DataInputStream dis = new DataInputStream(bis);
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-      (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
+      DAG.decode(dis);
+      */
 
     final long et = System.currentTimeMillis();
 
@@ -366,7 +367,7 @@ public final class Executor {
     executorService.execute(() -> {
     try {
       final long s = System.currentTimeMillis();
-      launchTask(task, irDag);
+      launchTask(task, task.getIrDag());
       LOG.info("Task launch time {} : time {}", task.getTaskId(), System.currentTimeMillis() - s);
     } catch (Exception e) {
       e.printStackTrace();
@@ -672,10 +673,12 @@ public final class Executor {
           final long st = System.currentTimeMillis();
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
           final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
-          final Task task =
-            (Task) FSTSingleton.getInstance().asObject(bytes);
+          final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+          final DataInputStream dis = new DataInputStream(bis);
+          final Task task = Task.decode(dis);
 
           if (!taskExecutorMapWrapper.containsTaskSerializedTask(task.getTaskId())) {
+            /*
             final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
             try {
               FSTSingleton.getInstance().encodeToStream(bos, task);
@@ -684,7 +687,8 @@ public final class Executor {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
-            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bos.toByteArray());
+            */
+            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bytes);
           }
 
           LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);

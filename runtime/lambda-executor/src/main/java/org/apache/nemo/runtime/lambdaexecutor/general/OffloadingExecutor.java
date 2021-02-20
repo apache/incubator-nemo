@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
@@ -245,17 +246,19 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final SendToOffloadingWorker e = (SendToOffloadingWorker) event;
       LOG.info("IndexMap: {}", e.indexMap);
       final ByteArrayInputStream bis = new ByteArrayInputStream(e.taskByte);
+      final DataInputStream dis = new DataInputStream(bis);
       try {
-        final Task task = (Task) FSTSingleton.getInstance().decodeFromStream(bis);
+        final Task task = Task.decode(dis);
         indexMap.putAll(e.indexMap);
 
         LOG.info("Offload Executor [{}] received Task [{}] to execute.",
           new Object[]{executorId, task.getTaskId()});
 
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-          (DAG) FSTSingleton.getInstance().asObject(task.getSerializedIRDag());
+        // final DataInputStream diss = new DataInputStream(new ByteArrayInputStream(task.getSerializedIRDag()));
+        // final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
+        //  DAG.decode(diss);
 
-        launchTask(task, irDag, e.offloaded);
+        launchTask(task, task.getIrDag(), e.offloaded);
       } catch (Exception e1) {
         e1.printStackTrace();
         throw new RuntimeException(e1);

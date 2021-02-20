@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir.executionproperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
@@ -32,6 +33,8 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
@@ -45,8 +48,63 @@ import java.util.stream.Stream;
 @NotThreadSafe
 public final class ExecutionPropertyMap<T extends ExecutionProperty> implements Serializable {
   private final String id;
-  private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
-  private final Set<Class<? extends ExecutionProperty>> finalizedProperties = new HashSet<>();
+  private final Map<Class<? extends ExecutionProperty>, T> properties;
+  private final Set<Class<? extends ExecutionProperty>> finalizedProperties;
+
+  private ExecutionPropertyMap(final String id,
+                               final Map<Class<? extends ExecutionProperty>, T> properties,
+                               final Set<Class<? extends ExecutionProperty>> finalizedProperties) {
+    this.id = id;
+    this.properties = properties;
+    this.finalizedProperties = finalizedProperties;
+  }
+
+  public void encode(final DataOutputStream os) {
+    try {
+      os.writeUTF(id);
+      os.writeInt(properties.size());
+      properties.forEach((key, val) -> {
+        SerializationUtils.serialize(key, os);
+        SerializationUtils.serialize(val, os);
+      });
+
+      os.writeInt(finalizedProperties.size());
+      finalizedProperties.forEach(val -> {
+        SerializationUtils.serialize(val, os);
+      });
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static <T> ExecutionPropertyMap decode(final DataInputStream dis) {
+     try {
+
+       final String id = dis.readUTF();
+       final int psize = dis.readInt();
+       final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>(psize);
+       for (int i = 0; i < psize; i++) {
+         final Class<? extends ExecutionProperty> key = SerializationUtils.deserialize(dis);
+         final T val = SerializationUtils.deserialize(dis);
+         properties.put(key, val);
+       }
+
+       final Set<Class<? extends ExecutionProperty>> finalizedProperties = new HashSet<>();
+       final int fsize = dis.readInt();
+       for (int i = 0; i < fsize; i++) {
+         final Class<? extends ExecutionProperty> val = SerializationUtils.deserialize(dis);
+         finalizedProperties.add(val);
+       }
+
+       return new ExecutionPropertyMap(id, properties, finalizedProperties);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
 
   /**
    * Constructor for ExecutionPropertyMap class.
@@ -55,6 +113,8 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   @VisibleForTesting
   public ExecutionPropertyMap(final String id) {
     this.id = id;
+    this.properties = new HashMap<>();
+    this.finalizedProperties = new HashSet<>();
   }
 
   /**

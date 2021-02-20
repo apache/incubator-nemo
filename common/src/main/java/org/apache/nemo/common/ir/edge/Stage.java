@@ -32,6 +32,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +67,16 @@ public final class Stage extends Vertex {
     super(stageId);
     this.taskIndices = taskIndices;
     this.irDag = irDag;
-    this.serializedIRDag = FSTSingleton.getInstance().asByteArray(irDag);
+    final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+    final DataOutputStream dos = new DataOutputStream(bos);
+    irDag.encode(dos);
+    try {
+      dos.close();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+    this.serializedIRDag = bos.toByteArray();
     this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
   }
