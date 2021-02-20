@@ -260,7 +260,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
             new TaskCaching(task.getTaskIncomingEdges(),
               task.getTaskOutgoingEdges(),
               task.getExecutionProperties(),
-              task.getIrVertexIdToReadable()));
+              task.getIrDag()));
         }
         indexMap.putAll(e.indexMap);
         final long et = System.currentTimeMillis();
