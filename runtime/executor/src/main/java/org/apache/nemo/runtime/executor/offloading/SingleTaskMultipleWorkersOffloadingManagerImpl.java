@@ -31,7 +31,8 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
                                                          final ByteTransport byteTransport,
                                                          final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
-      NetworkUtils.getPublicIP(), nettyStateStore.getPort(), true);
+      NetworkUtils.getPublicIP(), nettyStateStore.getPort(), true,
+      evalConf.destroyOffloadingWorker);
   }
 
 

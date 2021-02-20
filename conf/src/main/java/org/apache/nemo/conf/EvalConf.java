@@ -146,6 +146,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "num_offloading_worker", default_value = "1")
   public static final class NumOffloadingWorker implements Name<Integer> {}
 
+  @NamedParameter(short_name = "destroy_offloading_worker", default_value = "false")
+  public static final class DestroyOffloadingWorker implements Name<Boolean> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -182,6 +185,7 @@ public final class EvalConf {
   public final double cpuLimit; // cpu limit for executor  (for testing)
   public final double offloadingCpuLimit; // cpu limit for offloading container (for testing)
   public final int numOffloadingWorker;
+  public final boolean destroyOffloadingWorker;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -216,7 +220,8 @@ public final class EvalConf {
                    @Parameter(AllocatedCores.class) final double allocatedCores,
                    @Parameter(CpuLimit.class) final double cpuLimit,
                    @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit,
-                   @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker) throws IOException {
+                   @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker,
+                   @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -250,6 +255,7 @@ public final class EvalConf {
     this.cpuLimit = cpuLimit;
     this.offloadingCpuLimit = offloadingCpuLimit;
     this.numOffloadingWorker = numOffloadingWorker;
+    this.destroyOffloadingWorker = destroyOffloadingWorker;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -294,6 +300,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(CpuLimit.class, Double.toString(cpuLimit));
     jcb.bindNamedParameter(OffloadingCpuLimit.class, Double.toString(offloadingCpuLimit));
     jcb.bindNamedParameter(NumOffloadingWorker.class, Integer.toString(numOffloadingWorker));
+    jcb.bindNamedParameter(DestroyOffloadingWorker.class, Boolean.toString(destroyOffloadingWorker));
     return jcb.build();
   }
 
@@ -332,6 +339,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(CpuLimit.class);
     cl.registerShortNameOfClass(OffloadingCpuLimit.class);
     cl.registerShortNameOfClass(NumOffloadingWorker.class);
+    cl.registerShortNameOfClass(DestroyOffloadingWorker.class);
   }
 
   @Override
@@ -370,6 +378,7 @@ public final class EvalConf {
     sb.append("cpuLimit: "); sb.append(cpuLimit); sb.append("\n");
     sb.append("offloadingCpuLimit: "); sb.append(offloadingCpuLimit); sb.append("\n");
     sb.append("numOffloadingWorker: "); sb.append(numOffloadingWorker); sb.append("\n");
+    sb.append("destroyOffloadingWorker: "); sb.append(destroyOffloadingWorker); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

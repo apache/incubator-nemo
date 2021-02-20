@@ -57,6 +57,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   private boolean noPartialOffloading;
 
+  private final boolean destroyOffloadingWorker;
+
   public AbstractOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
                                        final TaskExecutorMapWrapper taskExecutorMapWrapper,
                                        final EvalConf evalConf,
@@ -64,7 +66,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                                        final String executorId,
                                        final String address,
                                        final int nettyStatePort,
-                                       final boolean noPartialOffloading) {
+                                       final boolean noPartialOffloading,
+                                       final boolean destroyOffloadingWorker) {
     this.noPartialOffloading = noPartialOffloading;
     this.workerFactory = workerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
@@ -72,6 +75,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.workers = new LinkedList<>();
     this.executorId = executorId;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.destroyOffloadingWorker = destroyOffloadingWorker;
     this.offloadingManagerThread = Executors.newCachedThreadPool();
 
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
@@ -157,14 +161,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                       if (workerTaskMap.get(myWorker).isEmpty()) {
                         // Destroy worker !!
-
-                        // TODO: enable this code... disabled now for testing and warming up JV<M
-                        /*
-                        LOG.info("Worker destroy...");
-                        myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
-                        workerTaskMap.remove(myWorker);
-                        workers.remove(myWorker);
-                        */
+                        if (destroyOffloadingWorker) {
+                          LOG.info("Worker destroy {} ...", myWorker.getId());
+                          myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
+                          workerTaskMap.remove(myWorker);
+                          workers.remove(myWorker);
+                        }
                       }
 
                       if (taskWorkerMap.get(taskId).size() == 0) {

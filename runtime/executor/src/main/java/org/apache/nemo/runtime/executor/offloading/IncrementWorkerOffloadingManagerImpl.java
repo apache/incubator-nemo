@@ -33,7 +33,8 @@ public final class IncrementWorkerOffloadingManagerImpl extends AbstractOffloadi
                                                final ByteTransport byteTransport,
                                                final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
-      NetworkUtils.getPublicIP(), nettyStateStore.getPort(), false);
+      NetworkUtils.getPublicIP(), nettyStateStore.getPort(), false,
+      evalConf.destroyOffloadingWorker);
   }
 
 
