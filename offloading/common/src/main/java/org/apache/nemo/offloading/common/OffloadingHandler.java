@@ -286,7 +286,9 @@ public final class OffloadingHandler {
     LOG.info("Waiting worker init or end");
 
     if (handler == null) {
-      throw new RuntimeException("Handler is null.. why?");
+      LOG.info("handler is null for channel " + opendChannel);
+      opendChannel = handshake(bytes, address, port, opendChannel, result);
+      handler = (LambdaEventHandler) map.get(opendChannel);
     }
 
     while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
