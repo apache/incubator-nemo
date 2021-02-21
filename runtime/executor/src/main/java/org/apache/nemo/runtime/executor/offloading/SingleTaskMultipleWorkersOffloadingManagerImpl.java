@@ -53,6 +53,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
     rrSchedulingMap.putIfAbsent(taskId, new AtomicInteger(0));
 
     synchronized (workers) {
+      LOG.info("Size of workers: {}, cnt: {}, task: {}", workers.size(), cnt, taskId);
 
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
