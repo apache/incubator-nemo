@@ -316,7 +316,7 @@ public final class OffloadingHandler {
       System.out.println("CPU Load: " + cpuLoad);
       final ByteBuf bb = ochannel.alloc().buffer();
       bb.writeDouble(cpuLoad);
-      ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+      // ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
     }, 2, 2, TimeUnit.SECONDS);
 
 
