@@ -107,9 +107,11 @@ public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBu
         LOG.info("Receive deoffloading done {}", taskId);
         msg.release();
 
+        /* TODO: enable
         executorThread.addEvent(new TaskOffloadingEvent(taskId,
           TaskOffloadingEvent.ControlType.DEOFFLOADING_DONE,
           null));
+          */
         break;
       }
       default: {

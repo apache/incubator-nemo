@@ -160,7 +160,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                       synchronized (ows) {
                         taskWorkerMap.get(taskId).remove(myWorker);
                         if (taskWorkerMap.get(taskId).size() == 0) {
+                          // deoffloading done
+                          LOG.info("Deoffloading done ....!!!");
                           taskWorkerMap.remove(taskId);
+                          taskExecutorMapWrapper.getTaskExecutorThread(taskId).addEvent(new TaskOffloadingEvent(taskId,
+                            TaskOffloadingEvent.ControlType.DEOFFLOADING_DONE,
+                            null));
                         }
                       }
 
