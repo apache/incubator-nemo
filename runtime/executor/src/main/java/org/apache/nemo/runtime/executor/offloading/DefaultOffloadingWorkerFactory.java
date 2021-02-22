@@ -77,7 +77,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
     this.workerDataTransport = new NettyServerTransport(
       tcpPortProvider, new WorkerDataTransportChannelInitializer(),
-      new DefaultEventLoopGroup(5, ImmediateEventExecutor.INSTANCE),
+      new NioEventLoopGroup(5),
       false);
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 

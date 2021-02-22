@@ -278,6 +278,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   protected void offloadTaskToWorker(final String taskId, final List<OffloadingWorker> newWorkers,
                                      final boolean blocking) {
     LOG.info("Offloading task {}, workers: {}", taskId, newWorkers);
+    /*
     final byte[] bytes = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
     final SendToOffloadingWorker taskSend =
       new SendToOffloadingWorker(taskId, bytes, pipeIndexMapWorker.getIndexMap(), true);
@@ -293,16 +294,18 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+    */
 
     taskReadyBlockingMap.put(taskId, new AtomicInteger(newWorkers.size()));
 
+    final ByteBuf byteBuf = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
     byteBuf.retain(newWorkers.size());
 
     newWorkers.forEach(worker -> {
       worker.writeControl(new OffloadingEvent(OffloadingEvent.Type.TASK_SEND, byteBuf));
     });
 
-    byteBuf.release();
+    // byteBuf.release();
 
     if (blocking) {
       try {

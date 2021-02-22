@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -17,7 +18,7 @@ public final class TaskExecutorMapWrapper {
   private final ConcurrentMap<String, List<TaskExecutor>> stageTaskMap;
   private final ConcurrentMap<String, TaskExecutor> taskIdExecutorMap;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskExecutorThreadMap;
-  private final Map<String, byte[]> taskIdSerializedTaskMap;
+  private final Map<String, ByteBuf> taskIdSerializedTaskMap;
 
   @Inject
   private TaskExecutorMapWrapper() {
@@ -29,7 +30,7 @@ public final class TaskExecutorMapWrapper {
   }
 
   public void putTaskSerializedByte(final String taskId,
-                                    final byte[] bytes) {
+                                    final ByteBuf bytes) {
     taskIdSerializedTaskMap.put(taskId, bytes);
   }
 
@@ -79,7 +80,7 @@ public final class TaskExecutorMapWrapper {
     });
   }
 
-  public byte[] getTaskSerializedByte(final String taskId) {
+  public ByteBuf getTaskSerializedByte(final String taskId) {
     return taskIdSerializedTaskMap.get(taskId);
   }
 

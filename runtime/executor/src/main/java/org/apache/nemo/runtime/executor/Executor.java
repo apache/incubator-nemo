@@ -19,6 +19,9 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
@@ -46,6 +49,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
@@ -65,6 +69,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
 
@@ -114,7 +119,7 @@ public final class Executor {
 
   private final ExecutorService prepareService = Executors.newCachedThreadPool();
 
-  final PipeIndexMapWorker taskTransferIndexMap;
+  final PipeIndexMapWorker  pipeIndexMapWorker;
 
   private final ExecutorThreads executorThreads;
 
@@ -147,7 +152,7 @@ public final class Executor {
                    // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                   final PipeIndexMapWorker taskTransferIndexMap,
+                   final PipeIndexMapWorker pipeIndexMapWorker,
                    // final RelayServer relayServer,
                    final StageExecutorThreadMap stageExecutorThreadMap,
                    // final JobScalingHandlerWorker jobScalingHandlerWorker,
@@ -179,7 +184,7 @@ public final class Executor {
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
-    this.taskTransferIndexMap = taskTransferIndexMap;
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.executorService = Executors.newCachedThreadPool();
     //this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
@@ -688,7 +693,24 @@ public final class Executor {
               throw new RuntimeException(e);
             }
             */
-            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), bytes);
+
+            final SendToOffloadingWorker taskSend =
+              new SendToOffloadingWorker(task.getTaskId(),
+                bytes, pipeIndexMapWorker.getIndexMap(), true);
+            final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+            final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
+            try {
+              bos.writeUTF(task.getTaskId());
+              bos.writeInt(TASK_START.ordinal());
+              taskSend.encode(bos);
+              bos.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
+            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), byteBuf);
           }
 
           LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
