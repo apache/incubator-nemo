@@ -139,7 +139,6 @@ public final class ContainerManager {
         .setNumber(numToRequest)
         .setMemory(resourceSpecification.getMemory())
         .setNumberOfCores(resourceSpecification.getCapacity())
-        .setRuntimeName(runtimeName)
         .build());
     } else {
       LOG.info("Request {} containers", numToRequest);
