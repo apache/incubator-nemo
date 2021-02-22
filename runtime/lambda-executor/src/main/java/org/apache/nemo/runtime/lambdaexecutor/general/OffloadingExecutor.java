@@ -340,6 +340,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         new SimpleOffloadingManager(),
         pipeManagerWorker,
         outputCollectorGenerator,
+        new byte[0],
+        new NoOffloadingPreparer(),
         offloaded);
 
       LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);

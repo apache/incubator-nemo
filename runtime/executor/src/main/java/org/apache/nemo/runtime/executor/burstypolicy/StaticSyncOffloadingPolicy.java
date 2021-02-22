@@ -6,6 +6,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
 import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
 import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;

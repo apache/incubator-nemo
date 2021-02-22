@@ -16,6 +16,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.monitoring.CpuEventModel;
 import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;

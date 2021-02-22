@@ -18,15 +18,8 @@
  */
 package org.apache.nemo.runtime.executor;
 
-import com.google.protobuf.ByteString;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
-import org.apache.nemo.common.coder.FSTSingleton;
-import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -49,7 +42,6 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.offloading.common.StateStore;
-import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
@@ -69,7 +61,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
 
@@ -137,6 +128,8 @@ public final class Executor {
 
   private final CpuBottleneckDetector bottleneckDetector;
 
+  private final DefaultOffloadingPreparer preparer;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -166,6 +159,7 @@ public final class Executor {
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler,
                    final OffloadingManager offloadingManager,
+                   final DefaultOffloadingPreparer preparer,
                    final OutputCollectorGenerator outputCollectorGenerator) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
@@ -196,6 +190,7 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    this.preparer = preparer;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       // final double load = profiler.getCpuLoad();
@@ -336,7 +331,8 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskReceived(final Task task) {
+  private synchronized void onTaskReceived(final Task task,
+                                           final byte[] bytes) {
     LOG.info("Executor [{}] received Task [{}] to execute.",
         new Object[]{executorId, task.getTaskId()});
 
@@ -372,7 +368,7 @@ public final class Executor {
     executorService.execute(() -> {
     try {
       final long s = System.currentTimeMillis();
-      launchTask(task, task.getIrDag());
+      launchTask(task, bytes, task.getIrDag());
       LOG.info("Task launch time {} : time {}", task.getTaskId(), System.currentTimeMillis() - s);
     } catch (Exception e) {
       e.printStackTrace();
@@ -405,6 +401,7 @@ public final class Executor {
    * @param task to launch.
    */
   private void launchTask(final Task task,
+                          final byte[] bytes,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
 
     final long st = System.currentTimeMillis();
@@ -461,6 +458,8 @@ public final class Executor {
         offloadingManager,
         pipeManagerWorker,
         outputCollectorGenerator,
+        bytes,
+        preparer,
         false);
 
       LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
@@ -682,39 +681,8 @@ public final class Executor {
           final DataInputStream dis = new DataInputStream(bis);
           final Task task = Task.decode(dis);
 
-          if (!taskExecutorMapWrapper.containsTaskSerializedTask(task.getTaskId())) {
-            /*
-            final ByteArrayOutputStream bos = new ByteArrayOutputStream(bytes.length);
-            try {
-              FSTSingleton.getInstance().encodeToStream(bos, task);
-              bos.close();
-            } catch (IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-            */
-
-            final SendToOffloadingWorker taskSend =
-              new SendToOffloadingWorker(task.getTaskId(),
-                bytes, pipeIndexMapWorker.getIndexMap(), true);
-            final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
-            final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-
-            try {
-              bos.writeUTF(task.getTaskId());
-              bos.writeInt(TASK_START.ordinal());
-              taskSend.encode(bos);
-              bos.close();
-            } catch (IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-
-            taskExecutorMapWrapper.putTaskSerializedByte(task.getTaskId(), byteBuf);
-          }
-
           LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
-          onTaskReceived(task);
+          onTaskReceived(task, bytes);
           break;
         case RequestMetricFlush:
           metricMessageSender.flush();

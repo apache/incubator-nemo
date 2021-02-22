@@ -18,6 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
@@ -42,6 +45,7 @@ import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
 import org.slf4j.Logger;
@@ -154,6 +158,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final OffloadingManager offloadingManager,
                                  final PipeManagerWorker pipeManagerWorker,
                                  final OutputCollectorGenerator outputCollectorGenerator,
+                                 final byte[] bytes,
+                                 final OffloadingPreparer offloadingPreparer,
                                  final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
@@ -232,6 +238,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // Prepare data structures
     final long st1 = System.currentTimeMillis();
     prepare(task, irVertexDag, intermediateDataIOFactory);
+
+    offloadingPreparer.prepare(taskId, bytes);
 
     LOG.info("Task {} prepar time: {}", taskId, System.currentTimeMillis() - st1);
     prepared.set(true);

@@ -28,7 +28,6 @@ import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskOffloadedDataOutputEvent;
-import org.apache.nemo.runtime.executor.common.TaskOffloadingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
