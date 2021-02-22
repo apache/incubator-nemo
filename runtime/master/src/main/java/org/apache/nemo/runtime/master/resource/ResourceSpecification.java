@@ -52,6 +52,11 @@ public final class ResourceSpecification {
     this.poisonSec = poisonSec;
   }
 
+  @Override
+  public String toString() {
+    return "[" + containerType + ", capa: " + capacity + ", slot: " + slot + ", mem: " + memory + "]";
+  }
+
   /**
    * @return The type of the container.
    */
