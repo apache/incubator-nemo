@@ -135,7 +135,7 @@ public final class ContainerManager {
       LOG.info("Request container: {}", resourceSpecification);
       // Request the evaluators
 
-      evaluatorRequestor.submit(evaluatorRequestor.newRequest()
+      evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
         .setNumber(numToRequest)
         .setMemory(resourceSpecification.getMemory())
         .setNumberOfCores(resourceSpecification.getCapacity())
