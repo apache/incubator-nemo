@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambdaexecutor.general;
+package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.runtime.executor.common.OffloadingPreparer;
 

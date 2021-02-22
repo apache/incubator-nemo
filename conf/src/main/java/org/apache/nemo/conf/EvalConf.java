@@ -61,6 +61,11 @@ public final class EvalConf {
   public final class OffloadingType implements Name<String> {
   }
 
+  // local, lambda, vm
+  @NamedParameter(short_name = "scaling_type", default_value = "migration")
+  public final class ScalingType implements Name<String> {
+  }
+
   @NamedParameter(short_name = "scaling_alpha", default_value = "0.6")
   public static final class ScalingAlpha implements Name<Double> {
   }
@@ -186,6 +191,7 @@ public final class EvalConf {
   public final double offloadingCpuLimit; // cpu limit for offloading container (for testing)
   public final int numOffloadingWorker;
   public final boolean destroyOffloadingWorker;
+  public final String scalingType;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -219,6 +225,7 @@ public final class EvalConf {
                    @Parameter(AWSRegion.class) final String awsRegion,
                    @Parameter(AllocatedCores.class) final double allocatedCores,
                    @Parameter(CpuLimit.class) final double cpuLimit,
+                   @Parameter(ScalingType.class) final String scalingType,
                    @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit,
                    @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker,
                    @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker) throws IOException {
@@ -226,6 +233,7 @@ public final class EvalConf {
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
+    this.scalingType = scalingType;
     this.offExecutorThreadNum = offExecutorThreadNum;
     this.deoffloadingThreshold = deoffloadingThreshold;
     this.ec2 = ec2;
@@ -301,6 +309,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(OffloadingCpuLimit.class, Double.toString(offloadingCpuLimit));
     jcb.bindNamedParameter(NumOffloadingWorker.class, Integer.toString(numOffloadingWorker));
     jcb.bindNamedParameter(DestroyOffloadingWorker.class, Boolean.toString(destroyOffloadingWorker));
+    jcb.bindNamedParameter(ScalingType.class, scalingType);
     return jcb.build();
   }
 
@@ -340,6 +349,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(OffloadingCpuLimit.class);
     cl.registerShortNameOfClass(NumOffloadingWorker.class);
     cl.registerShortNameOfClass(DestroyOffloadingWorker.class);
+    cl.registerShortNameOfClass(ScalingType.class);
   }
 
   @Override
@@ -379,6 +389,7 @@ public final class EvalConf {
     sb.append("offloadingCpuLimit: "); sb.append(offloadingCpuLimit); sb.append("\n");
     sb.append("numOffloadingWorker: "); sb.append(numOffloadingWorker); sb.append("\n");
     sb.append("destroyOffloadingWorker: "); sb.append(destroyOffloadingWorker); sb.append("\n");
+    sb.append("scalingType: "); sb.append(scalingType); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

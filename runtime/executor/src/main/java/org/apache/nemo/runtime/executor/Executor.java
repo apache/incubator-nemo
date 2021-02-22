@@ -440,27 +440,53 @@ public final class Executor {
       final int index = numTask % evalConf.executorThreadNum;
       final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
 
-      final TaskExecutor taskExecutor =
-      new DefaultTaskExecutorImpl(
-        Thread.currentThread().getId(),
-        executorId,
-        task,
-        irDag,
-        intermediateDataIOFactory,
-        serializerManager,
-        null,
-        evalConf.samplingJson,
-        evalConf.isLocalSource,
-        prepareService,
-        executorThread,
-        pipeManagerWorker,
-        stateStore,
-        offloadingManager,
-        pipeManagerWorker,
-        outputCollectorGenerator,
-        bytes,
-        preparer,
-        false);
+      TaskExecutor taskExecutor;
+
+      if (evalConf.scalingType.equals("migration")) {
+        taskExecutor =
+          new DefaultTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            new NoOffloadingPreparer(),
+            false);
+      } else {
+        taskExecutor =
+          new DefaultTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            preparer,
+            false);
+      }
 
       LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);
