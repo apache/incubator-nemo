@@ -218,7 +218,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     newWorkers.forEach(worker -> {
       while (!worker.isReady()) {
         try {
-          Thread.sleep(10);
+          Thread.sleep(100);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

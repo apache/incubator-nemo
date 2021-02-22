@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,12 +24,15 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
   private final String address;
   private final int port;
   private final AWSLambdaAsync awsLambda;
+  private final ExecutorService executorService;
 
   public LambdaOffloadingRequester(final String address,
                                    final int port,
-                                   final String region) {
+                                   final String region,
+                                   final ExecutorService executorService) {
     this.address = address;
     this.port = port;
+    this.executorService = executorService;
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
       .withRegion(region).withClientConfiguration(
         new ClientConfiguration().withMaxConnections(500)).build();
@@ -48,16 +52,17 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
         address, port, requestId.getAndIncrement()));
 
     LOG.info("Invoke async request {}", request);
-    final Future<InvokeResult> future = awsLambda.invokeAsync(request);
-    /*
-    try {
-      final InvokeResult result = future.get();
-      LOG.info("Invoke result: {}", result);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+    executorService.execute(() -> {
+
+      final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+      try {
+        final InvokeResult result = future.get();
+        LOG.info("Invoke result: {}", result);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
     }
-    */
+    });
   }
 
   @Override
