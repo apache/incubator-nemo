@@ -7,6 +7,8 @@ import com.amazonaws.services.lambda.model.InvokeRequest;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.OffloadingEvent;
@@ -39,7 +41,10 @@ public final class ServerlessContainerWarmer {
     this.nemoEventHandler = new OffloadingEventHandler();
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), false);
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
+      new NioEventLoopGroup(3,
+        new DefaultThreadFactory("Warmer")),
+      false);
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withRegion("ap-northeast-2")
       .withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();

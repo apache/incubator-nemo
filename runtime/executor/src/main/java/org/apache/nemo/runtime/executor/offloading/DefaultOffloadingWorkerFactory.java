@@ -1,15 +1,15 @@
 package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import io.netty.util.concurrent.ImmediateEventExecutor;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.*;
@@ -31,6 +31,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   private static final Logger LOG = LoggerFactory.getLogger(DefaultOffloadingWorkerFactory.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
   private OffloadingEventHandler nemoEventHandler;
   private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
@@ -69,9 +70,15 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.workerControlTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), false);
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
+      new NioEventLoopGroup(5,
+      new DefaultThreadFactory("WorkerControlTransport")),
+      false);
+
     this.workerDataTransport = new NettyServerTransport(
-      tcpPortProvider, new WorkerDataTransportChannelInitializer(), false);
+      tcpPortProvider, new WorkerDataTransportChannelInitializer(),
+      new DefaultEventLoopGroup(5, ImmediateEventExecutor.INSTANCE),
+      false);
     this.outputWriterFlusher = new OutputWriterFlusher(evalConf.flushPeriod);
 
     LOG.info("Netty server lambda transport created end");

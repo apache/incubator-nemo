@@ -3,6 +3,8 @@ package org.apache.nemo.runtime.master;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TransferKey;
@@ -56,7 +58,10 @@ public final class VMWorkerManagerInMaster {
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)), true);
+      new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
+      new NioEventLoopGroup(2,
+        new DefaultThreadFactory("VMWorkerManager")),
+      true);
 
     this.executorCpuUseMap = cpuMap.getExecutorCpuUseMap();
 

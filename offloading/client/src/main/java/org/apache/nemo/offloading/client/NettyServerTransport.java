@@ -15,8 +15,7 @@ import java.util.Iterator;
 
 public final class NettyServerTransport {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerTransport.class.getName());
-  private static final int SERVER_BOSS_NUM_THREADS = 3;
-  private static final int SERVER_WORKER_NUM_THREADS = 10;
+  private static final int SERVER_BOSS_NUM_THREADS = 2;
   private static final String CLASS_NAME = NettyServerTransport.class.getName();
 
   private EventLoopGroup serverBossGroup;
@@ -30,15 +29,17 @@ public final class NettyServerTransport {
 
   public NettyServerTransport(final TcpPortProvider tcpPortProvider,
                               final ChannelInitializer channelInitializer,
+                              final EventLoopGroup serverWorkerGroup,
                               final boolean bindingLocalAddress) {
     this.bindingLocalAddress = bindingLocalAddress;
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-    this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
+    this.serverWorkerGroup = serverWorkerGroup;
+    // this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
+    //  new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
-    serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
+    serverBootstrap.group(this.serverBossGroup, serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
       .childHandler(channelInitializer)
       .option(ChannelOption.SO_BACKLOG, 128)

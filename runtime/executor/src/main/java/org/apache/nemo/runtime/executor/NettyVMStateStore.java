@@ -3,10 +3,12 @@ package org.apache.nemo.runtime.executor;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.NettyServerTransport;
 import org.apache.nemo.offloading.common.StateStore;
@@ -29,7 +31,10 @@ public final class NettyVMStateStore implements NettyStateStore {
                             final StateStore stateStore,
                             @Parameter(EvalConf.Ec2.class) final boolean ec2) {
     this.nettyServerTransport = new NettyServerTransport(tcpPortProvider,
-      new VMStatestoreChannelInitializer(), false);
+      new VMStatestoreChannelInitializer(),
+      new NioEventLoopGroup(3,
+      new DefaultThreadFactory("VMStateStore")),
+      false);
     this.publicAddress = nettyServerTransport.getPublicAddress();
     this.bindingPort = nettyServerTransport.getPort();
     this.stateStore = stateStore;
