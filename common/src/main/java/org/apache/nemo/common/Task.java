@@ -44,12 +44,11 @@ import java.util.stream.Stream;
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
-  private final String planId;
   private final String taskId;
   private final int taskIndex;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
-  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+  private transient final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, Readable> irVertexIdToReadable;
   private final Map<RuntimeEdge, List<String>> downstreamTasks;
@@ -65,14 +64,12 @@ public final class Task implements Serializable {
    * @param taskOutgoingEdges    the outgoing edges of the task.
    * @param irVertexIdToReadable the map between IRVertex id to readable.
    */
-  public Task(final String planId,
-              final String taskId,
+  public Task(final String taskId,
               final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
               final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable) {
-    this.planId = planId;
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
@@ -87,7 +84,6 @@ public final class Task implements Serializable {
   public static Task decode(DataInputStream dis,
                             TaskCaching taskCaching) {
     try {
-      final String planId = dis.readUTF();
       final String taskId = dis.readUTF();
       int s = dis.readInt();
       final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
@@ -112,8 +108,8 @@ public final class Task implements Serializable {
         upstreamTasks.put(key, val);
       }
 
-      return new Task(planId, taskId,
-        (ExecutionPropertyMap<VertexExecutionProperty>) taskCaching.executionProperties,
+      return new Task(taskId,
+        null,
         (DAG<IRVertex, RuntimeEdge<IRVertex>>) taskCaching.irDag,
         taskCaching.taskIncomingEdges,
         taskCaching.taskOutgoingEdges,
@@ -126,7 +122,6 @@ public final class Task implements Serializable {
 
   public static Task decode(DataInputStream dis) {
     try {
-      final String planId = dis.readUTF();
       final String taskId = dis.readUTF();
       int s = dis.readInt();
       final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
@@ -161,7 +156,6 @@ public final class Task implements Serializable {
       for (int i = 0; i < s; i++) {
         taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
       }
-      final ExecutionPropertyMap<VertexExecutionProperty> executionProperties = ExecutionPropertyMap.decode(dis);
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
       // final byte[] serializedIRDag = new byte[dis.readInt()];
       // dis.read(serializedIRDag);
@@ -173,8 +167,8 @@ public final class Task implements Serializable {
         irVertexIdToReadable.put(key, val);
       }
 
-      return new Task(planId, taskId,
-        executionProperties,
+      return new Task(taskId,
+        null,
         irDag,
         taskIncomingEdges,
         taskOutgoingEdges,
@@ -187,7 +181,6 @@ public final class Task implements Serializable {
 
   public void encode(final DataOutputStream dos) {
     try {
-      dos.writeUTF(planId);
       dos.writeUTF(taskId);
 
       dos.writeInt(downstreamTasks.size());
@@ -215,7 +208,6 @@ public final class Task implements Serializable {
       taskOutgoingEdges.forEach(edge -> {
         SerializationUtils.serialize(edge, dos);
       });
-      executionProperties.encode(dos);
       irDag.encode(dos);
       // dos.writeInt(serializedIRDag.length);
       // dos.write(serializedIRDag);
@@ -233,13 +225,6 @@ public final class Task implements Serializable {
 
   public boolean isSourceTask() {
     return !irVertexIdToReadable.isEmpty();
-  }
-
-  /**
-   * @return the id of the plan.
-   */
-  public String getPlanId() {
-    return planId;
   }
 
   /**
@@ -352,8 +337,6 @@ public final class Task implements Serializable {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("planId: ");
-    sb.append(planId);
     sb.append(" / taskId: ");
     sb.append(taskId);
     sb.append(" / attempt: ");
