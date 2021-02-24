@@ -58,8 +58,22 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
-        final List<OffloadingWorker> selectedWorkers =
-          new LinkedList<>(workers.subList(cnt, cnt + evalConf.numOffloadingWorker));
+        final int startIndex = cnt % workers.size();
+        final int endIndex = (cnt + evalConf.numOffloadingWorker) % workers.size();
+
+        final List<OffloadingWorker> selectedWorkers;
+        if (endIndex < startIndex) {
+          selectedWorkers = new ArrayList<>(evalConf.numOffloadingWorker);
+          for (int i = startIndex; i < workers.size(); i++) {
+            selectedWorkers.add(workers.get(i));
+          }
+          for (int i = 0; i < endIndex; i++) {
+            selectedWorkers.add(workers.get(i));
+          }
+        } else {
+          selectedWorkers =
+            new LinkedList<>(workers.subList(cnt, cnt + evalConf.numOffloadingWorker));
+        }
 
         taskWorkerMap.put(taskId, selectedWorkers);
         selectedWorkers.forEach(worker -> {
