@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.monitoring;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.TaskEventRateCalculator;
@@ -56,9 +57,13 @@ public final class CpuBottleneckDetector {
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
       final double curCpuLoad = profiler.getCpuLoad();
-      final int processedEvent = taskEventRateCalculator.calculateProcessedEvent();
-      LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {} in {}",
-        curCpuLoad, processedEvent, currConsecutive, k, threshold, executorId);
+      final Pair<Integer, Integer> processOffloadEvent = taskEventRateCalculator.calculateProcessedEvent();
+      LOG.info("Current cpu load: {}, # processed events: {}, # offloaded events {}, total events {}, consecutive: {}/{}, threshold: {} in {}",
+        curCpuLoad, processOffloadEvent.left(), processOffloadEvent.right(),
+        processOffloadEvent.left() + processOffloadEvent.right(),
+        currConsecutive, k, threshold, executorId);
+
+      final int processedEvent = processOffloadEvent.left();
 
       if (currConsecutive <= k || curCpuLoad < threshold) {
         // prevent bias

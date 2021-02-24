@@ -39,6 +39,7 @@ public interface TaskExecutor extends ExecutorThreadTask {
   long getThreadId();
   boolean isStateless();
   AtomicInteger getProcessedCnt();
+  AtomicInteger getOffloadedCnt();
   void setThrottleSourceRate(long rate);
 
   DefaultTaskExecutorImpl.CurrentState getStatus();
