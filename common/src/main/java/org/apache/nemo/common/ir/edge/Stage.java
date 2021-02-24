@@ -88,6 +88,10 @@ public final class Stage extends Vertex {
     return irDag;
   }
 
+  public DAG<IRVertex, RuntimeEdge<IRVertex>> getSlimIRDAG() {
+    return irDag;
+  }
+
   /**
    * @return the serialized DAG of the task.
    */

@@ -63,14 +63,22 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
         }
       }
 
+      // edges
+      s = dis.readInt();
+      final List<E> edges = new ArrayList<>(s);
+      for (int i = 0; i < s; i++) {
+        edges.add(SerializationUtils.deserialize(dis));
+      }
+
       s = dis.readInt();
       final Map<String, List<E>> incomingEdges = new HashMap<>(s);
       for (int i = 0; i < s; i++) {
         final String key = dis.readUTF();
         final int len = dis.readInt();
-        final List<E> edges = new ArrayList<>(len);
+        final List<E> l = new ArrayList<>(len);
         for (int j = 0; j < len; j++) {
-          edges.add(SerializationUtils.deserialize(dis));
+          final int index = dis.readInt();
+          l.add(edges.get(index));
         }
         incomingEdges.put(key, edges);
       }
@@ -80,9 +88,10 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       for (int i = 0; i < s; i++) {
         final String key = dis.readUTF();
         final int len = dis.readInt();
-        final List<E> edges = new ArrayList<>(len);
+        final List<E> l = new ArrayList<>(len);
         for (int j = 0; j < len; j++) {
-          edges.add(SerializationUtils.deserialize(dis));
+          final int index = dis.readInt();
+          l.add(edges.get(index));
         }
         outgoingEdges.put(key, edges);
       }
@@ -111,27 +120,42 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
           throw new RuntimeException(e);
         }
       });
-      dos.writeInt(incomingEdges.size());
+
+      final Set<E> edges = new HashSet<>();
+      incomingEdges.forEach((key, val) -> {
+        edges.addAll(val);
+      });
+      outgoingEdges.forEach((key, val) -> {
+        edges.addAll(val);
+      });
+
+      final List<E> listEdges = new ArrayList<>(edges);
+      dos.writeInt(listEdges.size());
+      for (final E edge : listEdges) {
+        SerializationUtils.serialize(edge, dos);
+      }
+
       incomingEdges.forEach((key, val) -> {
         try {
           dos.writeUTF(key);
           dos.writeInt(val.size());
-          val.forEach(edge -> {
-            SerializationUtils.serialize(edge, dos);
-          });
+          for (final E edge : val) {
+            dos.writeInt(listEdges.indexOf(edge));
+          };
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
       });
+
       dos.writeInt(outgoingEdges.size());
       outgoingEdges.forEach((key, val) -> {
         try {
           dos.writeUTF(key);
           dos.writeInt(val.size());
-          val.forEach(edge -> {
-            SerializationUtils.serialize(edge, dos);
-          });
+          for (final E edge : val) {
+            dos.writeInt(listEdges.indexOf(edge));
+          }
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);

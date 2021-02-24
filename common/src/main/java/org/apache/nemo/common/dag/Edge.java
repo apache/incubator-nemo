@@ -19,6 +19,7 @@
 package org.apache.nemo.common.dag;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -77,6 +78,22 @@ public class Edge<V extends Vertex> implements Serializable {
    */
   public final V getDst() {
     return dst;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Edge<?> edge = (Edge<?>) o;
+    return Objects.equals(id, edge.id) &&
+      Objects.equals(src.getId(), edge.src.getId()) &&
+      Objects.equals(dst.getId(), edge.dst.getId());
+  }
+
+  @Override
+  public int hashCode() {
+
+    return Objects.hash(id, src.getId(), dst.getId());
   }
 
   /**
