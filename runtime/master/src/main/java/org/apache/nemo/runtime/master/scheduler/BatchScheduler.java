@@ -436,7 +436,6 @@ public final class BatchScheduler implements Scheduler {
       blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
-        planStateManager.getPhysicalPlan().getPlanId(),
         taskId,
         stageToSchedule.getExecutionProperties(),
         stageToSchedule.getIRDAG(),

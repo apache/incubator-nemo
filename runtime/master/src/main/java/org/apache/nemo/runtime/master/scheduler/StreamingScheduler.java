@@ -143,7 +143,6 @@ public final class StreamingScheduler implements Scheduler {
       // Create tasks of this stage
       allTasks.addAll(
         taskIdsToSchedule.stream().map(taskId -> new Task(
-          submittedPhysicalPlan.getPlanId(),
           taskId,
           stageToSchedule.getExecutionProperties(),
           stageToSchedule.getIRDAG(),
