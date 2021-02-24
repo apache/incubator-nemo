@@ -21,6 +21,7 @@ package org.apache.nemo.common.ir.vertex;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;

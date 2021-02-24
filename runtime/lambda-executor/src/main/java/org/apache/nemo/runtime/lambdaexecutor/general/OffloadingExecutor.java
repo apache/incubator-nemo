@@ -302,6 +302,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
       e.getPropertyValue(CompressionProperty.class).orElse(null),
       e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+
+    /*
     irDag.getVertices().forEach(v -> {
       irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
         getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
@@ -309,6 +311,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         e.getPropertyValue(CompressionProperty.class).orElse(null),
         e.getPropertyValue(DecompressionProperty.class).orElse(null)));
     });
+    */
 
     LOG.info("{} Launch task: {}", executorId, task.getTaskId());
 

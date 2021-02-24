@@ -25,6 +25,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,6 +142,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
         if (edge instanceof RuntimeEdge) {
           dos.writeBoolean(true);
           final RuntimeEdge runtimeEdge = (RuntimeEdge) edge;
+          runtimeEdge.removeEncoderDecoder();
           runtimeEdge.encode(dos);
         } else {
           dos.writeBoolean(false);

@@ -22,6 +22,10 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
+import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 
@@ -53,6 +57,13 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
                      final V dst) {
     super(runtimeEdgeId, src, dst);
     this.executionProperties = executionProperties;
+  }
+
+  public void removeEncoderDecoder() {
+    executionProperties.remove(EncoderProperty.class);
+    executionProperties.remove(DecoderProperty.class);
+    executionProperties.remove(CompressionProperty.class);
+    executionProperties.remove(DecompressionProperty.class);
   }
 
   private static <V extends Vertex> V getVertex(final String vertexId, final List<V> vertices) {

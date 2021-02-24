@@ -96,8 +96,10 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
       if (!dstVertices.isEmpty()) {
         omc = new OperatorMetricCollector(irVertex,
           dstVertices,
-          serializerManager.getSerializer(edges.get(0).getId()),
-          edges.get(0),
+          null,
+          null,
+          // serializerManager.getSerializer(edges.get(0).getId()),
+          // edges.get(0),
           samplingMap,
           taskId);
 
