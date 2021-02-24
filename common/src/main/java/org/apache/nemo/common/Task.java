@@ -48,7 +48,7 @@ public final class Task implements Serializable {
   private final int taskIndex;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
-  private transient final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, Readable> irVertexIdToReadable;
   private final Map<RuntimeEdge, List<String>> downstreamTasks;
