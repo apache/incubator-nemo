@@ -121,7 +121,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     }
   }
 
-  private ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
   private DataFrameEncoder.DataType dataType;
   private int broadcastSize;
   private byte flags;
@@ -168,6 +167,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * @param in  the {@link ByteBuf} from which to read data
    * @return {@code true} if a header was decoded, {@code false} otherwise
    */
+
+  private final byte dataMask = 1 << 3;
   private boolean onFrameStarted(final ChannelHandlerContext ctx, final ByteBuf in) {
     assert (controlBodyBytesToRead == 0);
     assert (dataBodyBytesToRead == 0);
@@ -178,8 +179,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     }
 
     flags = in.readByte();
-
-    if ((flags & ((byte) (1 << 3))) == 0) {
+    if ((flags & dataMask) == 0) {
       // setup context for reading control frame body
       // rm zero byte
       in.readByte();
@@ -195,11 +195,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       dataType = DataFrameEncoder.DataType.values()[(int) in.readByte()];
       final int sizeOrIndex = in.readInt();
 
-      dataDirection =
-        (flags & ((byte) (1 << 2))) == 0
-          ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
-          ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
-
       switch (dataType) {
         case NORMAL:
           broadcastSize = 0;
@@ -212,10 +207,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
           // setup context for reading data frame body
           dataBodyBytesToRead = length;
-
-          final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
-          isLastFrame = (flags & ((byte) (1 << 0))) != 0;
-          isStop = (flags & ((byte) (1 << 4))) != 0;
 
           if (dataBodyBytesToRead == 0) {
             onDataFrameEnd();

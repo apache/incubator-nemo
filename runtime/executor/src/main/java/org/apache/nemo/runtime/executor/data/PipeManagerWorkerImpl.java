@@ -320,7 +320,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             if (pendingOutputPipeMap.containsKey(pendingIndex)) {
               pendingOutputPipeMap.get(pendingIndex).add(
                 DataFrameEncoder.DataFrame.newInstance(
-                  Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+                  pendingIndex, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
             } else {
               pipeIndices.add(pendingIndex);
             }
@@ -416,7 +416,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             if (pendingOutputPipeMap.containsKey(pendingIndex)) {
               pendingOutputPipeMap.get(pendingIndex).add(
                 DataFrameEncoder.DataFrame.newInstance(
-                  Collections.singletonList(pendingIndex), byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
+                  pendingIndex, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
             } else {
               pipeIndices.add(pendingIndex);
             }
@@ -449,7 +449,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                          final ByteBuf byteBuf) {
     final Triple<String, String, String> key = pipeIndexMapWorker.getKey(pipeIndex);
     final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-      Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
+      pipeIndex, byteBuf, byteBuf.readableBytes(), true);
     final String dstTaskId = key.getRight();
 
     final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);

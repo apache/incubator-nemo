@@ -205,7 +205,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     } else {
       final ByteBuf byteBuf = event.getDataByteBuf();
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-        Collections.singletonList(pipeIndex), byteBuf, byteBuf.readableBytes(), true);
+        pipeIndex, byteBuf, byteBuf.readableBytes(), true);
       dataChannel.write(finalData);
     }
   }
@@ -222,7 +222,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       bos.close();
 
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
-        Collections.singletonList(index), byteBuf, byteBuf.readableBytes(), true);
+        index, byteBuf, byteBuf.readableBytes(), true);
       dataChannel.write(finalData);
     } catch (IOException e) {
       e.printStackTrace();

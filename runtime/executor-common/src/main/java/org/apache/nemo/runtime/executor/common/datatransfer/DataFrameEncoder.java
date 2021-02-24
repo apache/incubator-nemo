@@ -48,6 +48,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
   public enum DataType {
     NORMAL,
+    NORMAL_BATCH,
     BROADCAST,
     OFFLOAD_NORMAL_OUTPUT,
     OFFLOAD_BROADCAST_OUTPUT,
@@ -87,7 +88,16 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         header.writeByte(flags);
         header.writeByte(in.type.ordinal());
         header.writeInt(in.pipeIndices.get(0));
+        header.writeInt((int) in.length);
         break;
+      case NORMAL_BATCH: {
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndex);
+        header.writeInt(Integer.BYTES + (int) in.length);
+        break;
+      }
       case BROADCAST: {
         header = ctx.alloc().ioBuffer(HEADER_LENGTH
           + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
@@ -99,6 +109,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         for (int pipeIndex : in.pipeIndices) {
           header.writeInt(pipeIndex);
         }
+        header.writeInt((int) in.length);
         break;
       }
       default:
@@ -107,7 +118,6 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
-    header.writeInt((int) in.length);
 
     // encode body
     final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
@@ -123,20 +133,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   public void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
     // encode header
     byte flags = (byte) 0;
-
-    if (in.stopContext) {
-      flags |= (byte) (1 << 4);
-    }
-
     flags |= (byte) (1 << 3);
-    // in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA
-    flags |= (byte) (1 << 2);
-    if (in.opensSubStream) {
-      flags |= (byte) (1 << 1);
-    }
-    if (in.closesContext) {
-      flags |= (byte) (1 << 0);
-    }
 
     ByteBuf header;
 
@@ -145,8 +142,35 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
         header.writeByte(flags);
         header.writeByte(in.type.ordinal());
-        header.writeInt(in.pipeIndices.get(0));
+        header.writeInt(in.pipeIndex);
+        header.writeInt((int) in.length);
+        // encode body
+        if (in.body != null) {
+          out.add(header);
+          out.add((ByteBuf) in.body);
+          // final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+          // cbb.addComponents(true, header, (ByteBuf) in.body);
+          // out.add(cbb);
+          //out.add(in.body);
+        } else {
+          out.add(header);
+        }
+
         break;
+      case NORMAL_BATCH: {
+        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
+        header.writeByte(flags);
+        header.writeByte(in.type.ordinal());
+        header.writeInt(in.pipeIndex);
+        header.writeInt(Integer.BYTES + (int) in.length);
+
+
+        final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+        cbb.addComponents(true, header, (ByteBuf) in.body);
+        out.add(cbb);
+
+        break;
+      }
       case BROADCAST: {
         header = ctx.alloc().ioBuffer(HEADER_LENGTH
           + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
@@ -157,6 +181,20 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         header.writeInt(in.pipeIndices.size());
         for (int pipeIndex : in.pipeIndices) {
           header.writeInt(pipeIndex);
+        }
+
+        header.writeInt((int) in.length);
+
+        // encode body
+        if (in.body != null) {
+          out.add(header);
+          out.add((ByteBuf) in.body);
+          // final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
+          // cbb.addComponents(true, header, (ByteBuf) in.body);
+          // out.add(cbb);
+          //out.add(in.body);
+        } else {
+          out.add(header);
         }
         break;
       }
@@ -170,17 +208,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
-    header.writeInt((int) in.length);
 
-    // encode body
-    if (in.body != null) {
-      final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
-      cbb.addComponents(true, header, (ByteBuf) in.body);
-      out.add(cbb);
-      //out.add(in.body);
-    } else {
-      out.add(header);
-    }
 
     // recycle DataFrame object
     in.recycle();
@@ -209,6 +237,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     public final Recycler.Handle handle;
     public List<Integer> pipeIndices;
+    public Integer pipeIndex;
     public DataType type;
     @Nullable
     public Object body;
@@ -233,11 +262,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         throw new RuntimeException("Invalid task index");
       }
 
-      if (pipeIndicies.size() == 1) {
-        dataFrame.type = DataType.NORMAL;
-      } else {
-        dataFrame.type = DataType.BROADCAST;
-      }
+      dataFrame.type = DataType.BROADCAST;
 
       dataFrame.pipeIndices = pipeIndicies;
       dataFrame.body = body;
@@ -248,6 +273,39 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       return dataFrame;
     }
 
+    public static DataFrame newInstance(final Integer pipeIndex,
+                                        @Nullable final Object body,
+                                        final long length,
+                                        final boolean opensSubStream) {
+      final DataFrame dataFrame = RECYCLER.get();
+        dataFrame.type = DataType.NORMAL;
+
+      dataFrame.pipeIndices = null;
+      dataFrame.pipeIndex = pipeIndex;
+      dataFrame.body = body;
+      dataFrame.length = length;
+      dataFrame.opensSubStream = opensSubStream;
+      dataFrame.closesContext = false;
+      dataFrame.stopContext = false;
+      return dataFrame;
+    }
+
+    public static DataFrame newInstance(final Integer pipeIndex,
+                                        @Nullable final List<ByteBuf> body,
+                                        final long length, /* first object length */
+                                        final boolean opensSubStream) {
+      final DataFrame dataFrame = RECYCLER.get();
+        dataFrame.type = DataType.NORMAL_BATCH;
+
+      dataFrame.pipeIndices = null;
+      dataFrame.pipeIndex = pipeIndex;
+      dataFrame.body = body;
+      dataFrame.length = length;
+      dataFrame.opensSubStream = opensSubStream;
+      dataFrame.closesContext = false;
+      dataFrame.stopContext = false;
+      return dataFrame;
+    }
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
      *
