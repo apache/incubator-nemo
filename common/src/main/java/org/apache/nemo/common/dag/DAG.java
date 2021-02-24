@@ -80,7 +80,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
           final int index = dis.readInt();
           l.add(edges.get(index));
         }
-        incomingEdges.put(key, edges);
+        incomingEdges.put(key, l);
       }
 
       s = dis.readInt();
@@ -93,7 +93,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
           final int index = dis.readInt();
           l.add(edges.get(index));
         }
-        outgoingEdges.put(key, edges);
+        outgoingEdges.put(key, l);
       }
 
       return new DAG<V, E>(vertices, rootVertices, incomingEdges, outgoingEdges);
@@ -135,6 +135,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
         SerializationUtils.serialize(edge, dos);
       }
 
+      dos.writeInt(incomingEdges.size());
       incomingEdges.forEach((key, val) -> {
         try {
           dos.writeUTF(key);
