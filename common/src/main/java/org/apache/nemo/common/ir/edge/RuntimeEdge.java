@@ -25,7 +25,11 @@ import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -49,6 +53,44 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
                      final V dst) {
     super(runtimeEdgeId, src, dst);
     this.executionProperties = executionProperties;
+  }
+
+  private static <V extends Vertex> V getVertex(final String vertexId, final List<V> vertices) {
+    for (final V v : vertices) {
+      if (v.getId().equals(vertexId)) {
+        return v;
+      }
+    }
+    return null;
+  }
+
+  public static <V extends Vertex> RuntimeEdge decode(DataInputStream dis, List<V> vertices) {
+
+    try {
+      final String id = dis.readUTF();
+      final ExecutionPropertyMap<EdgeExecutionProperty> p = ExecutionPropertyMap.decode(dis);
+      final String srcId = dis.readUTF();
+      final String dstId = dis.readUTF();
+      final V src = getVertex(srcId, vertices);
+      final V dst = getVertex(dstId, vertices);
+      return new RuntimeEdge(id, p, src, dst);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+  }
+
+  public void encode(DataOutputStream dos) {
+    try {
+      dos.writeUTF(getId());
+      executionProperties.encode(dos);
+      dos.writeUTF(getSrc().getId());
+      dos.writeUTF(getDst().getId());
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   /**

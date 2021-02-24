@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,12 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       s = dis.readInt();
       final List<E> edges = new ArrayList<>(s);
       for (int i = 0; i < s; i++) {
-        edges.add(SerializationUtils.deserialize(dis));
+        if (dis.readBoolean()) {
+          final RuntimeEdge e = RuntimeEdge.decode(dis, vertices);
+          edges.add((E)e);
+        } else {
+          edges.add(SerializationUtils.deserialize(dis));
+        }
       }
 
       s = dis.readInt();
@@ -132,7 +138,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       final List<E> listEdges = new ArrayList<>(edges);
       dos.writeInt(listEdges.size());
       for (final E edge : listEdges) {
-        SerializationUtils.serialize(edge, dos);
+        if (edge instanceof RuntimeEdge) {
+          dos.writeBoolean(true);
+          final RuntimeEdge runtimeEdge = (RuntimeEdge) edge;
+          runtimeEdge.encode(dos);
+        } else {
+          dos.writeBoolean(false);
+          SerializationUtils.serialize(edge, dos);
+        }
       }
 
       dos.writeInt(incomingEdges.size());
