@@ -623,10 +623,29 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     outputCollector.emitWatermark(watermark);
   }
 
-  private final List<TaskHandlingEvent> bufferedData = new LinkedList<>();
+  private final List<TaskHandlingEvent> bufferedData = new ArrayList<>(40000);
   // private final List<Object> bufferedSourceData = new LinkedList<>();
 
+
+  private long flushBufferTime;
+  private long prevFlushBufferTrackTime;
+  private long processedBufferData = 0;
+
+
+  private long desirableRate(final long curr) {
+    if (curr - flushBufferTime < 1000) {
+      return 2000;
+    } else if (curr - flushBufferTime < 2000) {
+      return 6000;
+    } else if (curr - flushBufferTime < 3000) {
+      return 13000;
+    } else {
+      return 100000;
+    }
+  }
+
   private void flushBuffer() {
+
     if (!bufferedData.isEmpty()) {
       // flush buffered data
       if (currentState.equals(CurrentState.OFFLOADED)) {
@@ -635,7 +654,25 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         bufferedData.forEach(e -> {
           offloadedCnt.getAndIncrement();
           offloadingManager.offloadIntermediateData(taskId, e);
+          processedBufferData += 1;
+
+          final long curr = System.currentTimeMillis();
+          if (curr - prevFlushBufferTrackTime >= 2) {
+            final long elapsed = curr - prevFlushBufferTrackTime;
+            if (processedBufferData * (1000 / (double)elapsed) > desirableRate(curr)) {
+              // Throttle !!
+              try {
+                Thread.sleep(2);
+              } catch (InterruptedException e1) {
+                e1.printStackTrace();
+              }
+            } else {
+              prevFlushBufferTrackTime = curr;
+              processedBufferData = 0;
+            }
+          }
         });
+
         bufferedData.clear();
 
       } else if (currentState.equals(CurrentState.RUNNING)) {
@@ -704,6 +741,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         case OFFLOAD_DONE: {
           LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
+          flushBufferTime = System.currentTimeMillis();
+          prevFlushBufferTrackTime = System.currentTimeMillis();
           flushBuffer();
           LOG.info("End of flush buffer {}", taskId);
           break;
