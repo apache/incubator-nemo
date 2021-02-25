@@ -69,7 +69,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
         final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
 
-        if (startIndex <= evalConf.numOffloadingWorkerAfterMerging && endIndex > evalConf.numOffloadingWorkerAfterMerging) {
+        if (startIndex < evalConf.numOffloadingWorkerAfterMerging && endIndex > evalConf.numOffloadingWorkerAfterMerging) {
           for (int i = evalConf.numOffloadingWorkerAfterMerging; i < endIndex; i++) {
             selectedWorkers.add(workers.get(i));
           }
@@ -111,9 +111,11 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
             .filter(k -> k.getRight().equals(taskId)).collect(Collectors.toList()).get(0);
           final int pipeIndex = pipeIndexMapWorker.getPipeIndex(key.getLeft(), key.getMiddle(), key.getRight());
 
-          LOG.info("Sending deoffloading for task ${} to decrease number of workers down to {}", taskId, evalConf.numOffloadingWorkerAfterMerging);
+          LOG.info("Sending deoffloading for task ${} to decrease number of workers down to {}, " +
+            "total workers {}", taskId, evalConf.numOffloadingWorkerAfterMerging, taskWorkerMap.get(taskId).size());
           synchronized (taskWorkerMap.get(taskId)) {
             for (int i = evalConf.numOffloadingWorkerAfterMerging; i < taskWorkerMap.get(taskId).size(); i++) {
+              LOG.info("Send deoffloading message for task {} to worker index {}", taskId, i);
               final OffloadingWorker worker = taskWorkerMap.get(taskId).get(i);
               worker.writeData
                 (pipeIndex,
