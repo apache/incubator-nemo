@@ -50,13 +50,15 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
     }
   }
 
-  private int cnt = 0;
+  private final AtomicInteger cnt = new AtomicInteger(0);
+  private final Map<String, Integer> taskOrderMap = new ConcurrentHashMap<>();
 
   @Override
   Optional<List<OffloadingWorker>> selectWorkersForOffloading(String taskId) {
     offloadingStart = System.currentTimeMillis();
     rrSchedulingMap.putIfAbsent(taskId, new AtomicInteger(0));
     deoffloadedMap.put(taskId, new AtomicBoolean(false));
+    taskOrderMap.put(taskId, cnt.getAndIncrement());
 
     synchronized (workers) {
       LOG.info("Size of workers: {}, cnt: {}, task: {}", workers.size(), cnt, taskId);
@@ -74,8 +76,6 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
             workerTaskMap.put(worker, new LinkedList<>(Arrays.asList(taskId)));
           }
         });
-
-        cnt += evalConf.numOffloadingWorker;
 
         return Optional.of(taskWorkerMap.get(taskId));
       }
@@ -121,7 +121,9 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
       return Optional.of(workers.get(index));
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
+      final int index = taskOrderMap.get(taskId) * evalConf.numOffloadingWorker +
+        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
+
       return Optional.of(l.get(index));
     }
   }
