@@ -51,6 +51,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
   }
 
   private int cnt = 0;
+  private final Map<String, Integer> taskPaddingIndex = new HashMap<>();
 
   @Override
   Optional<List<OffloadingWorker>> selectWorkersForOffloading(String taskId) {
@@ -67,14 +68,20 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
         final int startIndex = cnt % workers.size();
         final int endIndex = cnt + evalConf.numOffloadingWorker;
 
+
         final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
 
         if (startIndex < evalConf.numOffloadingWorkerAfterMerging) {
+
+          taskPaddingIndex.put(taskId, startIndex);
+
           for (int i = evalConf.numOffloadingWorkerAfterMerging; i < endIndex; i++) {
             selectedWorkers.add(workers.get(i));
           }
         } else {
           // TODO: multiple re-offloading
+          taskPaddingIndex.put(taskId, evalConf.numOffloadingWorkerAfterMerging);
+
           selectedWorkers.addAll(workers.subList(startIndex, endIndex));
         }
 
@@ -136,8 +143,8 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
       return Optional.of(l.get(index));
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      final int index = (evalConf.numOffloadingWorkerAfterMerging +
-        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker) % l.size();
+      final int index = taskPaddingIndex.get(taskId) +
+        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
 
       return Optional.of(l.get(index));
     }
