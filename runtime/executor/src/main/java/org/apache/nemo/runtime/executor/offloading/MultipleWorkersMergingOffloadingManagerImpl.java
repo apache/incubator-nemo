@@ -69,7 +69,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
         final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
 
-        if (startIndex < evalConf.numOffloadingWorkerAfterMerging && endIndex > evalConf.numOffloadingWorkerAfterMerging) {
+        if (startIndex < evalConf.numOffloadingWorkerAfterMerging) {
           for (int i = evalConf.numOffloadingWorkerAfterMerging; i < endIndex; i++) {
             selectedWorkers.add(workers.get(i));
           }
