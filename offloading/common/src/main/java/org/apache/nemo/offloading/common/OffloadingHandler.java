@@ -508,6 +508,7 @@ public final class OffloadingHandler {
             final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
             bos.writeUTF(taskId);
             bos.close();
+            LOG.info("Send task ready for " + taskId);
             opendChannel.writeAndFlush(new OffloadingEvent(
               OffloadingEvent.Type.TASK_READY, bos.buffer()));
 

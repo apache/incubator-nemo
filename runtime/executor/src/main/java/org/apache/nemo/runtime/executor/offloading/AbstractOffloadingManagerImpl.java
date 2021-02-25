@@ -149,6 +149,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                     myWorker.removeDoneTask(taskId);
 
                     synchronized (workers) {
+                      LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
                       final List<OffloadingWorker> ows = taskWorkerMap.get(taskId);
                       synchronized (ows) {
                         taskWorkerMap.get(taskId).remove(myWorker);
@@ -175,7 +176,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                       }
 
                     }
-                    LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
                   } catch (IOException e) {
                     e.printStackTrace();
                     throw new RuntimeException(e);
