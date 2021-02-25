@@ -202,6 +202,8 @@ public final class Task implements Serializable {
         }
       }
 
+      irDag.encode(dos);
+
       dos.writeInt(taskIncomingEdges.size());
       taskIncomingEdges.forEach(edge -> {
         SerializationUtils.serialize(edge, dos);
@@ -210,7 +212,6 @@ public final class Task implements Serializable {
       taskOutgoingEdges.forEach(edge -> {
         SerializationUtils.serialize(edge, dos);
       });
-      irDag.encode(dos);
       // dos.writeInt(serializedIRDag.length);
       // dos.write(serializedIRDag);
       dos.writeInt(irVertexIdToReadable.size());
