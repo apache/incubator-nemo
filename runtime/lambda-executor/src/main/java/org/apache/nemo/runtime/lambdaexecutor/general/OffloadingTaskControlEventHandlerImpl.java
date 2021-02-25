@@ -52,6 +52,9 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
     switch (control.type) {
       case OFFLOAD_TASK_STOP: {
         final TaskExecutor taskExecutor = taskExecutorMap.get(control.getTaskId());
+        if (taskExecutor == null) {
+          throw new RuntimeException("No task for finishing " + control.getTaskId());
+        }
         stopAndCheckpointTask(taskExecutor.getId());
 
         final ByteBuf buf = executorDataChannel.alloc().ioBuffer();
