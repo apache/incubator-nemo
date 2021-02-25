@@ -808,7 +808,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             if (!bufferedData.isEmpty()) {
               throw new RuntimeException("buffer should be empty");
             }
-            // rateControl();
+            rateControl();
             offloadedCnt.getAndIncrement();
             offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
