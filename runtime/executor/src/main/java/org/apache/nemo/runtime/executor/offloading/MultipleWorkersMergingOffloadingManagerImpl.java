@@ -65,7 +65,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
         final int startIndex = cnt % workers.size();
-        final int endIndex = (cnt + evalConf.numOffloadingWorker) % workers.size();
+        final int endIndex = cnt + evalConf.numOffloadingWorker;
 
         final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
 
