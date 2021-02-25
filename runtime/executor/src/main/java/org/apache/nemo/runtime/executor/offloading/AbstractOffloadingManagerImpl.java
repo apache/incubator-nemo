@@ -40,7 +40,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   protected final EvalConf evalConf;
 
   private final String executorId;
-  private final PipeIndexMapWorker pipeIndexMapWorker;
+  protected final PipeIndexMapWorker pipeIndexMapWorker;
   private final ByteBuf offloadExecutorByteBuf;
 
   private final ExecutorService offloadingManagerThread;

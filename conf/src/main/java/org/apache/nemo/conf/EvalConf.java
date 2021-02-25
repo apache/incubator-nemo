@@ -151,6 +151,10 @@ public final class EvalConf {
   @NamedParameter(short_name = "num_offloading_worker", default_value = "1")
   public static final class NumOffloadingWorker implements Name<Integer> {}
 
+  // # offload workers
+  @NamedParameter(short_name = "num_offloading_worker_after_merging", default_value = "1")
+  public static final class NumOffloadingWorkerAfterMerging implements Name<Integer> {}
+
   @NamedParameter(short_name = "destroy_offloading_worker", default_value = "false")
   public static final class DestroyOffloadingWorker implements Name<Boolean> {}
 
@@ -195,6 +199,7 @@ public final class EvalConf {
   public final double cpuLimit; // cpu limit for executor  (for testing)
   public final double offloadingCpuLimit; // cpu limit for offloading container (for testing)
   public final int numOffloadingWorker;
+  public final int numOffloadingWorkerAfterMerging;
   public final boolean destroyOffloadingWorker;
   public final String scalingType;
   public final String offloadingManagerType;
@@ -234,6 +239,7 @@ public final class EvalConf {
                    @Parameter(ScalingType.class) final String scalingType,
                    @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit,
                    @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker,
+                   @Parameter(NumOffloadingWorkerAfterMerging.class) final int numOffloadingWorkerAfterMerging,
                    @Parameter(OffloadingManagerType.class) final String offloadingManagerType,
                    @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker) throws IOException {
     this.enableOffloading = enableOffloading;
@@ -272,6 +278,7 @@ public final class EvalConf {
     this.numOffloadingWorker = numOffloadingWorker;
     this.destroyOffloadingWorker = destroyOffloadingWorker;
     this.offloadingManagerType = offloadingManagerType;
+    this.numOffloadingWorkerAfterMerging = numOffloadingWorkerAfterMerging;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -316,6 +323,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(CpuLimit.class, Double.toString(cpuLimit));
     jcb.bindNamedParameter(OffloadingCpuLimit.class, Double.toString(offloadingCpuLimit));
     jcb.bindNamedParameter(NumOffloadingWorker.class, Integer.toString(numOffloadingWorker));
+    jcb.bindNamedParameter(NumOffloadingWorkerAfterMerging.class, Integer.toString(numOffloadingWorkerAfterMerging));
     jcb.bindNamedParameter(DestroyOffloadingWorker.class, Boolean.toString(destroyOffloadingWorker));
     jcb.bindNamedParameter(ScalingType.class, scalingType);
     jcb.bindNamedParameter(OffloadingManagerType.class, offloadingManagerType);
@@ -357,6 +365,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(CpuLimit.class);
     cl.registerShortNameOfClass(OffloadingCpuLimit.class);
     cl.registerShortNameOfClass(NumOffloadingWorker.class);
+    cl.registerShortNameOfClass(NumOffloadingWorkerAfterMerging.class);
     cl.registerShortNameOfClass(DestroyOffloadingWorker.class);
     cl.registerShortNameOfClass(ScalingType.class);
     cl.registerShortNameOfClass(OffloadingManagerType.class);
@@ -398,6 +407,7 @@ public final class EvalConf {
     sb.append("cpuLimit: "); sb.append(cpuLimit); sb.append("\n");
     sb.append("offloadingCpuLimit: "); sb.append(offloadingCpuLimit); sb.append("\n");
     sb.append("numOffloadingWorker: "); sb.append(numOffloadingWorker); sb.append("\n");
+    sb.append("numOffloadingWorkerAfterMerging: "); sb.append(numOffloadingWorkerAfterMerging); sb.append("\n");
     sb.append("destroyOffloadingWorker: "); sb.append(destroyOffloadingWorker); sb.append("\n");
     sb.append("scalingType: "); sb.append(scalingType); sb.append("\n");
     sb.append("offloadingManagerType: "); sb.append(offloadingManagerType); sb.append("\n");

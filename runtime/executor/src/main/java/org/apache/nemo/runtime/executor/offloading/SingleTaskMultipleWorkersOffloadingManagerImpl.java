@@ -72,7 +72,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
           }
         } else {
           selectedWorkers =
-            new LinkedList<>(workers.subList(cnt, cnt + evalConf.numOffloadingWorker));
+            new LinkedList<>(workers.subList(startIndex, endIndex));
         }
 
         taskWorkerMap.put(taskId, selectedWorkers);

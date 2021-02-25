@@ -362,6 +362,8 @@ public final class NemoDriver {
       return SingleWorkerOffloadingManagerImpl.class;
     } else  if (evalConf.offloadingManagerType.equals("multiple")) {
       return SingleTaskMultipleWorkersOffloadingManagerImpl.class;
+    }  else  if (evalConf.offloadingManagerType.equals("multiple-merge")) {
+      return MultipleWorkersMergingOffloadingManagerImpl.class;
     } else {
       throw new RuntimeException("invalid offloading manager type " + evalConf.offloadingManagerType);
     }
