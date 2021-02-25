@@ -66,7 +66,19 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
       if (taskWorkerMap.containsKey(taskId) && taskWorkerMap.get(taskId).size() > 0) {
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
-        final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers);
+        final int startIndex = taskOrderMap.get(taskId) % workers.size();
+        final int endIndex = (taskOrderMap.get(taskId) + evalConf.numOffloadingWorker) % workers.size();
+
+        final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
+
+        if (startIndex <= evalConf.numOffloadingWorkerAfterMerging && endIndex > evalConf.numOffloadingWorkerAfterMerging) {
+          for (int i = evalConf.numOffloadingWorkerAfterMerging; i < endIndex; i++) {
+            selectedWorkers.add(workers.get(i));
+          }
+        } else {
+          // TODO: multiple re-offloading
+          selectedWorkers.addAll(workers.subList(startIndex, endIndex));
+        }
 
         taskWorkerMap.put(taskId, selectedWorkers);
         selectedWorkers.forEach(worker -> {
@@ -118,11 +130,12 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
     if (System.currentTimeMillis() - offloadingStart >= 20000) {
       // global workers
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
-      return Optional.of(workers.get(index));
+      final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
+      return Optional.of(l.get(index));
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      final int index = taskOrderMap.get(taskId) * evalConf.numOffloadingWorker +
-        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
+      final int index = (evalConf.numOffloadingWorkerAfterMerging +
+        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker) % l.size();
 
       return Optional.of(l.get(index));
     }
