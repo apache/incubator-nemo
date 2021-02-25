@@ -637,7 +637,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       return 20000;
     } else if (curr - flushBufferTime < 2000) {
       return 20000;
-    } else if (curr - flushBufferTime < 5000) {
+    } else if (curr - flushBufferTime < 6000) {
       return 20000;
     } else {
       return 100000;

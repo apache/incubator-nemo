@@ -11,6 +11,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class OffloadingOutputCollectorGeneratorImpl implements OutputCollectorGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(OffloadingOutputCollectorGeneratorImpl.class.getName());
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
   private final String executorId;
@@ -99,6 +102,9 @@ public final class OffloadingOutputCollectorGeneratorImpl implements OutputColle
         externalMainOutputs, externalAdditionalOutputMap, omc,
         taskId, samplingMap);
 
+      LOG.info("Created operator vertex output collector for {}, irVertex {}, task {}, collector {}",
+        executorId, irVertex.getId(), taskId, outputCollector);
+
     } else {
       omc = new OperatorMetricCollector(irVertex,
         dstVertices,
@@ -113,6 +119,9 @@ public final class OffloadingOutputCollectorGeneratorImpl implements OutputColle
         irVertex, internalMainOutputs, internalAdditionalOutputMap,
         externalMainOutputs, externalAdditionalOutputMap, omc,
         taskId, samplingMap);
+
+      LOG.info("Created operator vertex output collector for {}, irVertex {}, task {}, collector {}",
+        executorId, irVertex.getId(), taskId, outputCollector);
     }
 
     vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));

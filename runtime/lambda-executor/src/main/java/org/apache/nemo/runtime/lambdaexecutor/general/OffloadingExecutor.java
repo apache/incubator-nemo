@@ -249,6 +249,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       try {
         final Task task;
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(e.taskId);
+
         if (context.stageTaskMap.containsKey(stageId)) {
           task = Task.decode(dis, context.stageTaskMap.get(stageId));
           LOG.info("Decode task from task caching");
@@ -257,9 +258,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           context.stageTaskMap.put(stageId,
             new TaskCaching(task.getTaskIncomingEdges(),
               task.getTaskOutgoingEdges(),
-              task.getExecutionProperties(),
-              task.getIrDag()));
+              task.getExecutionProperties()));
         }
+
         indexMap.putAll(e.indexMap);
         final long et = System.currentTimeMillis();
 
@@ -348,7 +349,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       taskExecutorThreadMap.put(taskExecutor.getId(), executorThread);
       taskExecutorMap.put(taskExecutor.getId(), taskExecutor);
-
 
       //taskExecutor.execute();
     } catch (final Exception e) {

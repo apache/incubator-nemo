@@ -108,9 +108,11 @@ public final class Task implements Serializable {
         upstreamTasks.put(key, val);
       }
 
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
+
       return new Task(taskId,
         null,
-        (DAG<IRVertex, RuntimeEdge<IRVertex>>) taskCaching.irDag,
+        irDag,
         taskCaching.taskIncomingEdges,
         taskCaching.taskOutgoingEdges,
         new HashMap<>());
@@ -145,6 +147,7 @@ public final class Task implements Serializable {
         }
         upstreamTasks.put(key, val);
       }
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
 
       s = dis.readInt();
       final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
@@ -156,7 +159,6 @@ public final class Task implements Serializable {
       for (int i = 0; i < s; i++) {
         taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
       }
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
       // final byte[] serializedIRDag = new byte[dis.readInt()];
       // dis.read(serializedIRDag);
       s = dis.readInt();
