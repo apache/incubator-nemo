@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Pair;
 
+import javax.inject.Inject;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +13,11 @@ public final class ExecutorMetrics implements Serializable {
   public final Map<String, Pair<AtomicLong, AtomicLong>> taskInputProcessRateMap = new ConcurrentHashMap<>();
   public double load;
   public long processingRate;
+
+  @Inject
+  public ExecutorMetrics() {
+
+  }
 
   @Override
   public String toString() {

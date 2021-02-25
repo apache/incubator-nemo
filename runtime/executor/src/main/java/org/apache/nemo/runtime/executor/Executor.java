@@ -40,6 +40,7 @@ import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
@@ -56,6 +57,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -130,6 +132,8 @@ public final class Executor {
 
   private final DefaultOffloadingPreparer preparer;
 
+  private final ExecutorMetrics executorMetrics;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -138,6 +142,7 @@ public final class Executor {
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
+                   final ExecutorMetrics executorMetrics,
                    final ByteTransport byteTransport,
                    final CpuBottleneckDetector bottleneckDetector,
                    // final DeprecatedOffloadingWorkerFactory offloadingWorkerFactory,
@@ -166,6 +171,7 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
+    this.executorMetrics = executorMetrics;
     this.bottleneckDetector = bottleneckDetector;
     bottleneckDetector.start();
     this.nettyStateStore = nettyStateStore;
@@ -709,6 +715,9 @@ public final class Executor {
           final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           final DataInputStream dis = new DataInputStream(bis);
           final Task task = Task.decode(dis);
+
+          executorMetrics.taskInputProcessRateMap
+            .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
           LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
           onTaskReceived(task, bytes);

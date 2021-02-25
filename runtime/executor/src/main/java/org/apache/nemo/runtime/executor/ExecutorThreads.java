@@ -20,9 +20,10 @@ public final class ExecutorThreads {
   @Inject
   private ExecutorThreads(final EvalConf evalConf,
                           @Parameter(JobConf.ExecutorId.class) final String executorId,
-                          final ControlEventHandler taskControlEventHandler) {
+                          final ControlEventHandler taskControlEventHandler,
+                          final ExecutorMetrics executorMetrics) {
 
-    this.executorMetrics = new ExecutorMetrics();
+    this.executorMetrics = executorMetrics;
     this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
     for (int i = 0; i < evalConf.executorThreadNum; i++) {
       executorThreads.add(new ExecutorThread(
