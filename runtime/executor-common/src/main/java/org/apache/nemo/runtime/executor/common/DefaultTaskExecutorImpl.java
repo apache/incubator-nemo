@@ -634,13 +634,34 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private long desirableRate(final long curr) {
     if (curr - flushBufferTime < 1000) {
-      return 20000;
+      return 5000;
     } else if (curr - flushBufferTime < 2000) {
-      return 20000;
-    } else if (curr - flushBufferTime < 6000) {
+      return 10000;
+    } else if (curr - flushBufferTime < 3000) {
+      return 15000;
+    } else if (curr - flushBufferTime < 4000) {
       return 20000;
     } else {
       return 100000;
+    }
+  }
+
+  private void rateControl() {
+    processedBufferData += 1;
+    final long curr = System.currentTimeMillis();
+    if (curr - prevFlushBufferTrackTime >= 2) {
+      final long elapsed = curr - prevFlushBufferTrackTime;
+      if (processedBufferData * (1000 / (double)elapsed) > desirableRate(curr)) {
+        // Throttle !!
+        try {
+          Thread.sleep(2);
+        } catch (InterruptedException e1) {
+          e1.printStackTrace();
+        }
+      } else {
+        prevFlushBufferTrackTime = curr;
+        processedBufferData = 0;
+      }
     }
   }
 
@@ -736,13 +757,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // stateStore.put(taskId + "-taskWatermarkManager", bytes);
           offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
+          prevFlushBufferTrackTime = System.currentTimeMillis();
           break;
         }
         case OFFLOAD_DONE: {
           LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
           flushBufferTime = System.currentTimeMillis();
-          prevFlushBufferTrackTime = System.currentTimeMillis();
           flushBuffer();
           LOG.info("End of flush buffer {}", taskId);
           break;
@@ -789,6 +810,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             if (!bufferedData.isEmpty()) {
               throw new RuntimeException("buffer should be empty");
             }
+            rateControl();
             offloadedCnt.getAndIncrement();
             offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
