@@ -386,9 +386,35 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     if (optional.isPresent()) {
       final OffloadingWorker worker = optional.get();
-      worker.writeData(data.getInputPipeIndex(), data);
+      final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
+
+      if (!worker.isReady()) {
+        queue.add(data);
+        return;
+      }
+
+      if (!queue.isEmpty()) {
+        queue.add(data);
+        final Iterator<TaskHandlingEvent> iterator = queue.iterator();
+        final long prevFlushTime = System.currentTimeMillis();
+        long processedData = 0;
+
+        while (iterator.hasNext()
+          && System.currentTimeMillis() - prevFlushTime <= 300) {
+
+          final TaskHandlingEvent bufferedData = iterator.next();
+          iterator.remove();
+          processedData += 1;
+          worker.writeData(bufferedData.getInputPipeIndex(), bufferedData);
+        }
+      } else {
+        worker.writeData(data.getInputPipeIndex(), data);
+      }
+
     } else {
-      throw new RuntimeException("No worker for offloading ... " + taskId);
+      final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
+      queue.add(data);
+      // throw new RuntimeException("No worker for offloading ... " + taskId);
     }
 
     /*

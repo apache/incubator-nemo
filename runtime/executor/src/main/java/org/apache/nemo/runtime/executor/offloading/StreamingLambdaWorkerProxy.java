@@ -149,7 +149,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public boolean isReady() {
-    return controlChannel != null;
+    return controlChannel != null && dataChannel != null;
   }
 
   @Override

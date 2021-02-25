@@ -783,6 +783,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       } else if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
         // input
         switch (currentState) {
+          case OFFLOAD_PENDING:
           case OFFLOADED: {
             // We should redirect the data to remote if it is offloaded
             if (!bufferedData.isEmpty()) {
@@ -793,7 +794,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             break;
           }
           case DEOFFLOAD_PENDING:
-          case OFFLOAD_PENDING:
             bufferedData.add(taskHandlingEvent);
             break;
           case WAIT_WORKER:
