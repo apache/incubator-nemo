@@ -80,9 +80,11 @@ public final class OffloadingOutputCollectorGeneratorImpl implements OutputColle
 
       OperatorMetricCollector omc;
 
+      /*
       if (samplingMap.containsKey("vertex13")) {
         samplingMap.put("vertex13", samplingMap.get("vertex13") * 15);
       }
+      */
 
     if (!dstVertices.isEmpty()) {
       omc = new OperatorMetricCollector(irVertex,
