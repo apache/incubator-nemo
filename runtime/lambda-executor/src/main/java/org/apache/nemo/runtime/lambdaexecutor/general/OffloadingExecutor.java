@@ -10,6 +10,7 @@ import io.netty.channel.socket.SocketChannel;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -270,6 +271,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         // final DataInputStream diss = new DataInputStream(new ByteArrayInputStream(task.getSerializedIRDag()));
         // final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
         //  DAG.decode(diss);
+
+        executorMetrics.taskInputProcessRateMap
+          .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
         launchTask(task, task.getIrDag(), e.offloaded);
       } catch (Exception e1) {

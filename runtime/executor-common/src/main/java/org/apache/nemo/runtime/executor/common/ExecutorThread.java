@@ -108,8 +108,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   public void addNewTask(final ExecutorThreadTask task) {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
-    executorMetrics.taskInputProcessRateMap
-      .put(task.getId(), Pair.of(new AtomicLong(), new AtomicLong()));
+
 
     if (task.isSource() && !task.isOffloadedTask()) {
       synchronized (pendingSourceTasks) {
