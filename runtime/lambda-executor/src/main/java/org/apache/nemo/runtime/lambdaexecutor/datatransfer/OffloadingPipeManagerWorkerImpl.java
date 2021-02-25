@@ -35,12 +35,10 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 
 
@@ -138,14 +136,58 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
     throw new RuntimeException("not supported");
   }
 
+  private final Map<Integer, Queue<ByteBuf>> pendingByteBufQueueMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Queue<TaskControlMessage>> pendingControlQueueMap = new ConcurrentHashMap<>();
+
   @Override
   public void addInputData(int index, ByteBuf event) {
-    inputPipeIndexInputReaderMap.get(index).addData(index, event);
+    if (inputPipeIndexInputReaderMap.containsKey(index)) {
+
+      if (pendingByteBufQueueMap.containsKey(index)) {
+        final Queue<ByteBuf> queue = pendingByteBufQueueMap.remove(index);
+        if (queue != null) {
+          queue.forEach(data -> {
+            inputPipeIndexInputReaderMap.get(index).addData(index, data);
+          });
+        }
+        inputPipeIndexInputReaderMap.get(index).addData(index, event);
+      }
+
+      if (pendingControlQueueMap.containsKey(index)) {
+        final Queue<TaskControlMessage> queue = pendingControlQueueMap.remove(index);
+        if (queue != null) {
+          queue.forEach(data -> {
+            inputPipeIndexInputReaderMap.get(index).addControl(data);
+          });
+        }
+      }
+
+    } else {
+      pendingByteBufQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
+      final Queue<ByteBuf> queue = pendingByteBufQueueMap.get(index);
+      queue.add(event);
+    }
   }
 
   @Override
   public void addControlData(int index, TaskControlMessage controlMessage) {
-    inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
+    if (inputPipeIndexInputReaderMap.containsKey(index)) {
+
+      if (pendingControlQueueMap.containsKey(index)) {
+        final Queue<TaskControlMessage> queue = pendingControlQueueMap.remove(index);
+        if (queue != null) {
+          queue.forEach(data -> {
+            inputPipeIndexInputReaderMap.get(index).addControl(data);
+          });
+        }
+        inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
+      }
+
+    } else {
+      pendingControlQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
+      final Queue<TaskControlMessage> queue = pendingControlQueueMap.get(index);
+      queue.add(controlMessage);
+    }
   }
 
   @Override
