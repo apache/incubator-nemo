@@ -85,29 +85,6 @@ public final class Task implements Serializable {
                             TaskCaching taskCaching) {
     try {
       final String taskId = dis.readUTF();
-      int s = dis.readInt();
-      final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
-      for (int i = 0; i < s; i++) {
-        final RuntimeEdge key = SerializationUtils.deserialize(dis);
-        final int len = dis.readInt();
-        final List<String> val = new ArrayList<>(len);
-        for (int j = 0; j < len; j++) {
-          val.add(dis.readUTF());
-        }
-        downstreamTasks.put(key, val);
-      }
-      s = dis.readInt();
-      final Map<RuntimeEdge, List<String>> upstreamTasks = new HashMap<>(s);
-      for (int i = 0; i < s; i++) {
-        final RuntimeEdge key = SerializationUtils.deserialize(dis);
-        final int len = dis.readInt();
-        final List<String> val = new ArrayList<>(len);
-        for (int j = 0; j < len; j++) {
-          val.add(dis.readUTF());
-        }
-        upstreamTasks.put(key, val);
-      }
-
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
 
       return new Task(taskId,
@@ -125,31 +102,9 @@ public final class Task implements Serializable {
   public static Task decode(DataInputStream dis) {
     try {
       final String taskId = dis.readUTF();
-      int s = dis.readInt();
-      final Map<RuntimeEdge, List<String>> downstreamTasks = new HashMap<>(s);
-      for (int i = 0; i < s; i++) {
-        final RuntimeEdge key = SerializationUtils.deserialize(dis);
-        final int len = dis.readInt();
-        final List<String> val = new ArrayList<>(len);
-        for (int j = 0; j < len; j++) {
-          val.add(dis.readUTF());
-        }
-        downstreamTasks.put(key, val);
-      }
-      s = dis.readInt();
-      final Map<RuntimeEdge, List<String>> upstreamTasks = new HashMap<>(s);
-      for (int i = 0; i < s; i++) {
-        final RuntimeEdge key = SerializationUtils.deserialize(dis);
-        final int len = dis.readInt();
-        final List<String> val = new ArrayList<>(len);
-        for (int j = 0; j < len; j++) {
-          val.add(dis.readUTF());
-        }
-        upstreamTasks.put(key, val);
-      }
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
 
-      s = dis.readInt();
+      int s = dis.readInt();
       final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
       for (int i = 0; i < s; i++) {
         taskIncomingEdges.add(SerializationUtils.deserialize(dis));
@@ -184,23 +139,6 @@ public final class Task implements Serializable {
   public void encode(final DataOutputStream dos) {
     try {
       dos.writeUTF(taskId);
-
-      dos.writeInt(downstreamTasks.size());
-      for (final Map.Entry<RuntimeEdge, List<String>> entry : downstreamTasks.entrySet()) {
-        SerializationUtils.serialize(entry.getKey(), dos);
-        dos.writeInt(entry.getValue().size());
-        for (String val : entry.getValue()) {
-          dos.writeUTF(val);
-        }
-      }
-      dos.writeInt(upstreamTasks.size());
-      for (final Map.Entry<RuntimeEdge, List<String>> entry : upstreamTasks.entrySet()) {
-        SerializationUtils.serialize(entry.getKey(), dos);
-        dos.writeInt(entry.getValue().size());
-        for (String val : entry.getValue()) {
-          dos.writeUTF(val);
-        }
-      }
 
       irDag.encode(dos);
 
