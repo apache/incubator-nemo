@@ -150,7 +150,6 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
             inputPipeIndexInputReaderMap.get(index).addData(index, data);
           });
         }
-        inputPipeIndexInputReaderMap.get(index).addData(index, event);
       }
 
       if (pendingControlQueueMap.containsKey(index)) {
@@ -161,6 +160,8 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
           });
         }
       }
+
+      inputPipeIndexInputReaderMap.get(index).addData(index, event);
 
     } else {
       pendingByteBufQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
@@ -180,8 +181,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
             inputPipeIndexInputReaderMap.get(index).addControl(data);
           });
         }
-        inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
       }
+
+      inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
 
     } else {
       pendingControlQueueMap.putIfAbsent(index, new ConcurrentLinkedQueue<>());
