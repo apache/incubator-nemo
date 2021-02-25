@@ -51,6 +51,7 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
     switch (control.type) {
       case OFFLOAD_TASK_STOP: {
+        LOG.info("Task executor map " + taskExecutorMap.keySet());
         final TaskExecutor taskExecutor = taskExecutorMap.get(control.getTaskId());
         if (taskExecutor == null) {
           throw new RuntimeException("No task for finishing " + control.getTaskId());
