@@ -92,7 +92,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
     final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-    final int index = (rrSchedulingMap.get(taskId).getAndIncrement() / 1000) % l.size();
+    final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
     return Optional.of(l.get(index));
   }
 
