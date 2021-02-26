@@ -551,7 +551,6 @@ public final class Executor {
   }
 
 
-  private final Set<String> offloadedTasks = new HashSet<>();
   /**
    * MessageListener for Executor.
    */
@@ -596,12 +595,10 @@ public final class Executor {
               break;
             }
 
-            if (!offloadedTasks.contains(te.getId())) {
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.RUNNING)) {
               final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
 
               LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
-
-              offloadedTasks.add(te.getId());
 
               executorThread.addShortcutEvent(
                 new TaskOffloadingEvent(te.getId(),
