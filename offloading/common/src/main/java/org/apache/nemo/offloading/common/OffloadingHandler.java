@@ -505,7 +505,8 @@ public final class OffloadingHandler {
             dataProcessingCnt += 1;
 
             nemoEvent.getByteBuf().release();
-            final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
+            final ByteBufOutputStream bos = new ByteBufOutputStream(
+              offloadingTransform.getDataChannel().alloc().buffer());
             bos.writeUTF(taskId);
             bos.close();
             LOG.info("Send task ready for " + taskId);
