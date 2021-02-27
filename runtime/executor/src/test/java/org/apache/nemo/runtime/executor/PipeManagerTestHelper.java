@@ -7,8 +7,8 @@ import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.offloading.LocalExecutorOffloadingRequesterFactory;
-import org.apache.nemo.runtime.executor.offloading.OffloadingRequesterFactory;
+import org.apache.nemo.runtime.master.offloading.LocalExecutorOffloadingRequesterFactory;
+import org.apache.nemo.runtime.master.offloading.OffloadingRequesterFactory;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.common.*;
@@ -22,7 +22,6 @@ import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFac
 import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
-import org.apache.nemo.runtime.executor.offloading.OneTaskOneWorkerOffloadingManagerImpl;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;

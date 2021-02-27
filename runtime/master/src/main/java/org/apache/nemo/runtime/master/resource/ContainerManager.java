@@ -24,6 +24,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.message.FailedMessageSender;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
+import org.apache.nemo.runtime.master.SerializedTaskMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.*;
@@ -83,12 +84,16 @@ public final class ContainerManager {
 
   private final JVMProcessFactory jvmProcessFactory;
 
+  private final SerializedTaskMap serializedTaskMap;
+
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment,
-                           final JVMProcessFactory jvmProcessFactory) {
+                           final JVMProcessFactory jvmProcessFactory,
+                           final SerializedTaskMap serializedTaskMap) {
     this.isTerminated = false;
+    this.serializedTaskMap = serializedTaskMap;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
     this.pendingContextIdToResourceSpec = new HashMap<>();
@@ -222,7 +227,8 @@ public final class ContainerManager {
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
         new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
-            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(),
+          serializedTaskMap);
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 

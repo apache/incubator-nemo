@@ -2,7 +2,7 @@ package org.apache.nemo.offloading.client;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.offloading.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,22 +11,22 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
+import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.END;
 
-public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingEvent>> {
+public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingMasterEvent>> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingEventHandler.class.getName());
-  private final BlockingQueue<Pair<Channel,OffloadingEvent>> handshakeQueue;
-  private final BlockingQueue<Pair<Channel,OffloadingEvent>> workerReadyQueue;
-  private final BlockingQueue<Pair<Channel, OffloadingEvent>> endQueue;
+  private final BlockingQueue<Pair<Integer, Pair<Channel,OffloadingMasterEvent>>> handshakeQueue;
+  private final BlockingQueue<Pair<Channel,OffloadingMasterEvent>> workerReadyQueue;
+  private final BlockingQueue<Pair<Channel, OffloadingMasterEvent>> endQueue;
   private final AtomicInteger pendingRequest = new AtomicInteger();
-  private final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
-  //private final Map<Channel, List<OffloadingEvent>> channelBufferMap;
+  private final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
+  //private final Map<Channel, List<OffloadingMasterEvent>> channelBufferMap;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
   private final Set<Integer> receivedRequests;
 
-  public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap) {
+  public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap) {
     this.handshakeQueue = new LinkedBlockingQueue<>();
     this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
@@ -48,17 +48,17 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
     return pendingRequest;
   }
 
-  public BlockingQueue<Pair<Channel, OffloadingEvent>> getWorkerReadyQueue() {
+  public BlockingQueue<Pair<Channel, OffloadingMasterEvent>> getWorkerReadyQueue() {
     return workerReadyQueue;
   }
 
-  public BlockingQueue<Pair<Channel, OffloadingEvent>> getHandshakeQueue() {
+  public BlockingQueue<Pair<Integer, Pair<Channel, OffloadingMasterEvent>>> getHandshakeQueue() {
     return handshakeQueue;
   }
 
   @Override
-  public void onNext(Pair<Channel,OffloadingEvent> nemoEvent) {
-    final OffloadingEvent event = (OffloadingEvent) nemoEvent.right();
+  public void onNext(Pair<Channel, OffloadingMasterEvent> nemoEvent) {
+    final OffloadingMasterEvent event = (OffloadingMasterEvent) nemoEvent.right();
     switch (event.getType()) {
       case CLIENT_HANDSHAKE:
         final int requestId = nemoEvent.right().getByteBuf().readInt();
@@ -68,10 +68,10 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
           if (receivedRequests.contains(requestId)) {
             // duplicate id..
             LOG.info("Duplicate request id {}..., just finish this worker", requestId);
-            nemoEvent.left().writeAndFlush(new OffloadingEvent(END, new byte[0], 0));
+            nemoEvent.left().writeAndFlush(new OffloadingMasterEvent(END, new byte[0], 0));
           } else {
             receivedRequests.add(requestId);
-            handshakeQueue.add(nemoEvent);
+            handshakeQueue.add(Pair.of(requestId, nemoEvent));
           }
         }
         //nemoEvent.right().getByteBuf().release();
@@ -88,7 +88,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
             /*
             if (channelBufferMap.containsKey(nemoEvent.left())) {
               LOG.info("Flushing buffered data for channel {}", nemoEvent.left());
-              for (final OffloadingEvent bufferedEvent : channelBufferMap.get(nemoEvent.left())) {
+              for (final OffloadingMasterEvent bufferedEvent : channelBufferMap.get(nemoEvent.left())) {
                 channelEventHandlerMap.get(nemoEvent.left()).onNext(bufferedEvent);
               }
               channelBufferMap.remove(nemoEvent.left());

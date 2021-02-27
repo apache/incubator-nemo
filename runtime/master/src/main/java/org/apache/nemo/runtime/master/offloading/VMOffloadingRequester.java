@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.offloading;
+package org.apache.nemo.runtime.master.offloading;
 
 
 import com.amazonaws.services.ec2.AmazonEC2;
@@ -50,7 +50,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   private EventLoopGroup clientWorkerGroup;
 
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
@@ -68,7 +68,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   private final BlockingQueue<Integer> offloadingRequests = new LinkedBlockingQueue<>();
 
-  //final OffloadingEvent requestEvent;
+  //final OffloadingMasterEvent requestEvent;
 
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 8;
@@ -155,7 +155,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   }
 
   @Override
-  public synchronized void createChannelRequest() {
+  public synchronized void createChannelRequest(String addr, int port, int requestId) {
     LOG.info("Create request at VMOffloadingREquestor");
 
     final int index = numVMs.getAndIncrement();
@@ -285,7 +285,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
       // send handshake
       final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
         serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
-      openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+      openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
 
     /*
     synchronized (readyVMs) {

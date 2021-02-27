@@ -27,6 +27,7 @@ public final class DefaultOffloadingPreparer implements OffloadingPreparer {
 
   @Override
   public void prepare(String taskId, byte[] bytes) {
+    /*
     final SendToOffloadingWorker taskSend =
       new SendToOffloadingWorker(taskId,
         bytes, pipeIndexMapWorker.getIndexMapForTask(taskId), true);
@@ -42,7 +43,6 @@ public final class DefaultOffloadingPreparer implements OffloadingPreparer {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    taskExecutorMapWrapper.putTaskSerializedByte(taskId, byteBuf);
+    */
   }
 }

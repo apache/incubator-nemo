@@ -424,6 +424,6 @@ public final class LocalByteOutputContext implements ByteOutputContext {
 //    final CompositeByteBuf compositeByteBuf =
 //      vmChannel.alloc().compositeBuffer(2).addComponents(
 //        true, buf, (ByteBuf) byteBuf);
-//    vmChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
+//    vmChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.DATA, compositeByteBuf));
 //  }
 }

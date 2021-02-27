@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.common.Task;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.master.SerializedTaskMap;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,7 @@ public final class ExecutorRepresenter {
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
   private final String nodeName;
+  private final SerializedTaskMap serializedTaskMap;
 
   /**
    * Creates a reference to the specified executor.
@@ -83,7 +85,8 @@ public final class ExecutorRepresenter {
                              final MessageSender<ControlMessage.Message> messageSender,
                              final ActiveContext activeContext,
                              final ExecutorService serializationExecutorService,
-                             final String nodeName) {
+                             final String nodeName,
+                             final SerializedTaskMap serializedTaskMap) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
@@ -95,6 +98,7 @@ public final class ExecutorRepresenter {
     this.activeContext = activeContext;
     this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
+    this.serializedTaskMap = serializedTaskMap;
   }
 
   /**
@@ -132,6 +136,8 @@ public final class ExecutorRepresenter {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+
+      serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
 
       sendControlMessage(
         ControlMessage.Message.newBuilder()

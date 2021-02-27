@@ -27,6 +27,9 @@ public interface OffloadingTransform<I, O> extends Serializable {
   String getDataChannelAddr();
 
   int getDataChannelPort();
+  default Channel getDataChannel() {
+    return null;
+  }
 
   /**
    * Context of the transform.

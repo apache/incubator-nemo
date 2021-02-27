@@ -4,29 +4,24 @@ import io.netty.buffer.ByteBuf;
 
 import java.io.Serializable;
 
-public final class OffloadingEvent implements Serializable {
+public final class OffloadingMasterEvent implements Serializable {
 
   public enum Type {
-    VM_RUN,
     SEND_ADDRESS,
     CLIENT_HANDSHAKE,
     CONNECT,
     CONNECT_DONE,
     WORKER_INIT,
     WORKER_INIT_DONE,
-    STREAM_WORKER_INIT,
     DATA,
     TASK_SEND, // **
     TASK_FINISH, // **
-    TASK_READY,
-    TASK_FINISH_DONE, // **
     GBK_START,
     GBK,
     RESULT,
     WARMUP_END,
     END,
     CPU_LOAD,
-    EXECUTOR_METRICS,
 
     /// for vm scaling info
     VM_SCALING_INFO,
@@ -47,17 +42,17 @@ public final class OffloadingEvent implements Serializable {
   private final int len;
   private ByteBuf byteBuf;
 
-  public OffloadingEvent(final Type type,
-                         final byte[] bytes,
-                         final int len) {
+  public OffloadingMasterEvent(final Type type,
+                               final byte[] bytes,
+                               final int len) {
     this.type = type;
     this.bytes = bytes;
     this.byteBuf = null;
     this.len = len;
   }
 
-  public OffloadingEvent(final Type type,
-                         final ByteBuf byteBuf) {
+  public OffloadingMasterEvent(final Type type,
+                               final ByteBuf byteBuf) {
     this.type = type;
     this.bytes = null;
     this.byteBuf = byteBuf;
@@ -82,6 +77,6 @@ public final class OffloadingEvent implements Serializable {
 
   @Override
   public String toString() {
-    return "OffloadingEvent:" + type.name();
+    return "OffloadingMasterEvent:" + type.name();
   }
 }

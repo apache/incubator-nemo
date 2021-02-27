@@ -13,7 +13,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -31,7 +31,7 @@ public final class VMWorkerManagerInMaster {
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private OffloadingEventHandler nemoEventHandler;
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
 
   private final NettyServerTransport nettyServerTransport;
 

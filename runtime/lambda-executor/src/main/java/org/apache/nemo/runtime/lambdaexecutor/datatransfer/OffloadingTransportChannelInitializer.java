@@ -23,6 +23,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldPrepender;
 import org.apache.nemo.common.TaskLocationMap;
+import org.apache.nemo.offloading.common.OffloadingExecutorControlEventCoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.OffloadingPipeManagerWorkerImpl;
 import org.apache.reef.tang.annotations.Parameter;
@@ -88,6 +89,7 @@ public final class OffloadingTransportChannelInitializer extends ChannelInitiali
       // inbound
       .addLast(new FrameDecoder(pipeManagerWorker))
       // outbound
+      .addLast(new OffloadingExecutorControlEventCoder.OffloadingEventEncoder())
       .addLast(new OffloadingDataFrameEncoder())
       .addLast()
       // inbound

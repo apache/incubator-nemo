@@ -73,7 +73,7 @@ public final class VMScalingFromSfToVmHandler {
 
       executorService.execute(() -> {
         workerChannel.writeAndFlush(
-          new OffloadingEvent(OffloadingEvent.Type.OFFLOADING_TASK, offloadingTask.encode()));
+          new OffloadingMasterEvent(OffloadingMasterEvent.Type.OFFLOADING_TASK, offloadingTask.encode()));
 
         // 2. ready task
         if (m instanceof StateOutput) {
@@ -84,7 +84,7 @@ public final class VMScalingFromSfToVmHandler {
             offloader.taskId, newExecutorId, stateOutput.byteBuf.readableBytes());
 
           workerChannel.writeAndFlush(
-            new OffloadingEvent(OffloadingEvent.Type.MIDDLE_TASK, stateOutput.byteBuf));
+            new OffloadingMasterEvent(OffloadingMasterEvent.Type.MIDDLE_TASK, stateOutput.byteBuf));
 
         } else if (m instanceof KafkaOffloadingOutput) {
           final KafkaOffloadingOutput output = (KafkaOffloadingOutput) m;
@@ -107,7 +107,7 @@ public final class VMScalingFromSfToVmHandler {
                 .addComponents(true, byteBuf, output.byteBuf);
 
             workerChannel.writeAndFlush(
-              new OffloadingEvent(OffloadingEvent.Type.SOURCE_TASK, compositeByteBuf));
+              new OffloadingMasterEvent(OffloadingMasterEvent.Type.SOURCE_TASK, compositeByteBuf));
           } catch (final Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);

@@ -7,7 +7,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.offloading.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +17,10 @@ import org.slf4j.LoggerFactory;
 public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
   private final ChannelGroup channelGroup;
-  private final EventHandler<Pair<Channel,OffloadingEvent>> eventHandler;
+  private final EventHandler<Pair<Channel,OffloadingMasterEvent>> eventHandler;
 
   public NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                       final EventHandler<Pair<Channel,OffloadingEvent>> eventHandler) {
+                                       final EventHandler<Pair<Channel,OffloadingMasterEvent>> eventHandler) {
     this.channelGroup = channelGroup;
     this.eventHandler = eventHandler;
   }
@@ -45,7 +45,7 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
     }
     LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-    eventHandler.onNext(Pair.of(ctx.channel(), (OffloadingEvent)msg));
+    eventHandler.onNext(Pair.of(ctx.channel(), (OffloadingMasterEvent)msg));
   }
 
   /**

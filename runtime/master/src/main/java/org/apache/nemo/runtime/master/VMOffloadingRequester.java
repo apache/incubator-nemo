@@ -17,14 +17,13 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.VMWorkerConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
 
@@ -62,7 +60,7 @@ public final class VMOffloadingRequester {
 
   private EventLoopGroup clientWorkerGroup;
 
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
@@ -80,7 +78,7 @@ public final class VMOffloadingRequester {
 
   private final BlockingQueue<Integer> offloadingRequests = new LinkedBlockingQueue<>();
 
-  //final OffloadingEvent requestEvent;
+  //final OffloadingMasterEvent requestEvent;
 
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
 

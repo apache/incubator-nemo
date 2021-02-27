@@ -24,6 +24,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.offloading.common.OffloadingExecutorControlEvent;
+import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
@@ -41,18 +43,39 @@ public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBu
 
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
   private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final OffloadingDataTransportEventHandler nemoEventHandler;
 
   @Inject
   private OffloadingFrameDecoder(final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                                 final PipeIndexMapWorker pipeIndexMapWorker) {
+                                 final PipeIndexMapWorker pipeIndexMapWorker,
+                                 final OffloadingDataTransportEventHandler nemoEventHandler) {
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.nemoEventHandler = nemoEventHandler;
   }
 
   @Override
   protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
-    final DataFrameEncoder.DataType dataType = DataFrameEncoder.DataType.values()[msg.readByte()];
+    final int controlOrData = msg.readByte();
 
+    if (controlOrData == 1) {
+      // data
+      decodeData(ctx, msg, out);
+    } else {
+      // control
+      decodeControl(ctx, msg, out);
+    }
+  }
+
+  private void decodeControl(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) {
+    final OffloadingExecutorControlEvent.Type type =
+      OffloadingExecutorControlEvent.Type.values()[msg.readByte()];
+
+    nemoEventHandler.onNext(Pair.of(ctx.channel(), new OffloadingExecutorControlEvent(type, msg)));
+  }
+
+  private void decodeData(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
+    final DataFrameEncoder.DataType dataType = DataFrameEncoder.DataType.values()[msg.readByte()];
     msg.retain();
 
     switch (dataType) {
@@ -118,4 +141,5 @@ public final class OffloadingFrameDecoder extends MessageToMessageDecoder<ByteBu
       }
     }
   }
+
 }

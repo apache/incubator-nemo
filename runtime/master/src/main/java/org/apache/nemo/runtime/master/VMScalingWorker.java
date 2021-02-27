@@ -7,14 +7,14 @@ import io.netty.channel.Channel;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 
-public class VMScalingWorker implements EventHandler<OffloadingEvent> {
+public class VMScalingWorker implements EventHandler<OffloadingMasterEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(VMScalingWorker.class.getName());
 
   private final String vmAddress;
@@ -45,7 +45,7 @@ public class VMScalingWorker implements EventHandler<OffloadingEvent> {
       final ByteBufOutputStream bos = new ByteBufOutputStream(bb);
       bos.writeUTF(executorId);
       bos.close();
-      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CONNECT, bb));
+      channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CONNECT, bb));
 
     } catch (final Exception e) {
       e.printStackTrace();
@@ -66,13 +66,13 @@ public class VMScalingWorker implements EventHandler<OffloadingEvent> {
   }
 
 
-  public void send(final OffloadingEvent event) {
+  public void send(final OffloadingMasterEvent event) {
     LOG.info("Sending {} to {}", event.getType(), executorId);
     channel.writeAndFlush(event);
   }
 
   @Override
-  public void onNext(OffloadingEvent msg) {
+  public void onNext(OffloadingMasterEvent msg) {
     switch (msg.getType()) {
       case CONNECT_DONE: {
         LOG.info("Worker {}/{} is ready", executorId, channel.remoteAddress());

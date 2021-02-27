@@ -11,7 +11,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -69,8 +69,8 @@ public final class ServerlessContainerWarmer {
     for (int i = 0; i < poolSize; i++) {
       try {
         //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
-        final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
-        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WARMUP_END, new byte[0], 0));
+        final Channel channel = nemoEventHandler.getHandshakeQueue().take().right().left();
+        channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WARMUP_END, new byte[0], 0));
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

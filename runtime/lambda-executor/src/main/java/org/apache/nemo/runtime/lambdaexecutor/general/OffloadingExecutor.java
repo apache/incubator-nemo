@@ -222,11 +222,16 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       }
 
       /*
-      controlChannel.writeAndFlush(new OffloadingEvent(
-        OffloadingEvent.Type.EXECUTOR_METRICS, byteBuf));
+      controlChannel.writeAndFlush(new OffloadingMasterEvent(
+        OffloadingMasterEvent.Type.EXECUTOR_METRICS, byteBuf));
         */
     }, 1, 1, TimeUnit.SECONDS);
 
+  }
+
+  @Override
+  public Channel getDataChannel() {
+    return parentExecutorChannel;
   }
 
   public String getDataChannelAddr() {

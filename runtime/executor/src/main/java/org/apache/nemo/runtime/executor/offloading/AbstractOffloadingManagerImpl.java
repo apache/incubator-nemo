@@ -5,13 +5,17 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.slf4j.Logger;
@@ -25,6 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 
 
 public abstract class AbstractOffloadingManagerImpl implements OffloadingManager {
@@ -107,11 +113,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     final List<OffloadingWorker> newWorkers = IntStream.range(0, num)
       .boxed().map(i -> {
         final OffloadingWorker worker = workerFactory.createStreamingWorker(
-          offloadExecutorByteBuf, new OffloadingExecutorSerializer(), new EventHandler() {
+          offloadExecutorByteBuf, new OffloadingExecutorSerializer(), new EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>>() {
             @Override
-            public void onNext(Object msg) {
-              final Pair<OffloadingWorker, OffloadingEvent> pair = (Pair<OffloadingWorker, OffloadingEvent>) msg;
-              final OffloadingEvent oe = pair.right();
+            public void onNext(Pair<OffloadingWorker, OffloadingExecutorControlEvent> msg) {
+              final Pair<OffloadingWorker, OffloadingExecutorControlEvent> pair = msg;
+
+              final OffloadingExecutorControlEvent oe = pair.right();
               final OffloadingWorker myWorker = pair.left();
 
               switch (oe.getType()) {
@@ -169,7 +176,18 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                         // Destroy worker !!
                         if (destroyOffloadingWorker) {
                           LOG.info("Worker destroy {} ...", myWorker.getId());
-                          myWorker.writeControl(new OffloadingEvent(OffloadingEvent.Type.END, null));
+
+                          final ControlMessage.Message message = ControlMessage.Message.newBuilder()
+                            .setId(RuntimeIdManager.generateMessageId())
+                            .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+                            .setType(ControlMessage.MessageType.LambdaEnd)
+                            .setLambdaEndMsg(ControlMessage.LambdaEndMessage.newBuilder()
+                              .setRequestId(myWorker.getRequestId())
+                              .build())
+                            .build();
+
+                          myWorker.writeControl(message);
+
                           workerTaskMap.remove(myWorker);
                           workers.remove(myWorker);
                         }
@@ -291,11 +309,21 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     taskReadyBlockingMap.put(taskId, new AtomicInteger(newWorkers.size()));
 
-    final ByteBuf byteBuf = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
-    byteBuf.retain(newWorkers.size());
+    // final ByteBuf byteBuf = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
+    // byteBuf.retain(newWorkers.size());
 
     newWorkers.forEach(worker -> {
-      worker.writeControl(new OffloadingEvent(OffloadingEvent.Type.TASK_SEND, byteBuf));
+      final ControlMessage.Message message = ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+        .setType(ControlMessage.MessageType.TaskSendToLambda)
+        .setTaskSendToLambdaMsg(ControlMessage.TaskSendToLambdaMessage.newBuilder()
+          .setRequestId(worker.getRequestId())
+          .setTaskId(taskId)
+          .build())
+        .build();
+
+      worker.writeControl(message);
     });
 
     // byteBuf.release();

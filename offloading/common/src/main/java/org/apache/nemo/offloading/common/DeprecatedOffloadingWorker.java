@@ -2,7 +2,6 @@ package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.Pair;
 
 import java.util.Optional;
 import java.util.concurrent.Future;
@@ -13,7 +12,7 @@ public interface DeprecatedOffloadingWorker<I, O> {
 
   String getId();
 
-  void writeControl(OffloadingEvent offloadingEvent);
+  void writeControl(OffloadingMasterEvent offloadingEvent);
   void writeData(int pipeIndex, TaskHandlingEvent byteBuf);
 
   @Deprecated

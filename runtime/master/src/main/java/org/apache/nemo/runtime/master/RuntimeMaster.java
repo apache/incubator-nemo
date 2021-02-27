@@ -21,14 +21,11 @@ package org.apache.nemo.runtime.master;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.HDFSUtils;
@@ -38,9 +35,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
-import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.scheduler.*;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
@@ -48,11 +43,9 @@ import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -64,7 +57,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
@@ -118,12 +110,15 @@ public final class RuntimeMaster {
 
   private final String resourceSpecificationString;
 
+  private final OffloadingWorkerManager offloadingWorkerManager;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final TaskScheduledMapMaster taskScheduledMap,
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
+                        final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
@@ -133,6 +128,7 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
     this.taskDispatcher = taskDispatcher;

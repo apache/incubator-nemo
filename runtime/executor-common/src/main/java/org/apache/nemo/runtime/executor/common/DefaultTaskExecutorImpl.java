@@ -634,11 +634,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private long desirableRate(final long curr) {
     if (curr - flushBufferTime < 3000) {
-      return 5000;
+      return 8000;
     } else if (curr - flushBufferTime < 5000) {
-      return 10000;
+      return 12000;
     } else if (curr - flushBufferTime < 6000) {
-      return 15000;
+      return 17000;
     } else {
       return 100000;
     }

@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.runtime.executor.offloading.LocalExecutorOffloadingRequester;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;

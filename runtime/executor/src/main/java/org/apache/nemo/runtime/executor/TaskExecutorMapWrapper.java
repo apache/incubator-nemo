@@ -18,7 +18,6 @@ public final class TaskExecutorMapWrapper {
   private final ConcurrentMap<String, List<TaskExecutor>> stageTaskMap;
   private final ConcurrentMap<String, TaskExecutor> taskIdExecutorMap;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskExecutorThreadMap;
-  private final Map<String, ByteBuf> taskIdSerializedTaskMap;
 
   @Inject
   private TaskExecutorMapWrapper() {
@@ -26,16 +25,6 @@ public final class TaskExecutorMapWrapper {
     this.stageTaskMap = new ConcurrentHashMap<>();
     this.taskIdExecutorMap = new ConcurrentHashMap<>();
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
-    this.taskIdSerializedTaskMap = new ConcurrentHashMap<>();
-  }
-
-  public void putTaskSerializedByte(final String taskId,
-                                    final ByteBuf bytes) {
-    taskIdSerializedTaskMap.put(taskId, bytes);
-  }
-
-  public boolean containsTaskSerializedTask(final String taskId) {
-    return taskIdSerializedTaskMap.containsKey(taskId);
   }
 
   public void putTaskExecutor(final TaskExecutor taskExecutor,
@@ -78,10 +67,6 @@ public final class TaskExecutorMapWrapper {
         l.remove(e);
       }
     });
-  }
-
-  public ByteBuf getTaskSerializedByte(final String taskId) {
-    return taskIdSerializedTaskMap.get(taskId);
   }
 
   public ExecutorThread getTaskExecutorThread(final String taskId) {

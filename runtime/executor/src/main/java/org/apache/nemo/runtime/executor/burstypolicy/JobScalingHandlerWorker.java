@@ -8,7 +8,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -545,7 +545,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
           final Channel workerChannel = taskIdChannelMapForVmScaling.get(taskId);
           final TaskEndEvent taskEndEvent = new TaskEndEvent(taskId);
           workerChannel.writeAndFlush(
-            new OffloadingEvent(OffloadingEvent.Type.TASK_FINISH_EVENT, taskEndEvent.encode()));
+            new OffloadingMasterEvent(OffloadingMasterEvent.Type.TASK_FINISH_EVENT, taskEndEvent.encode()));
           countDownLatch.countDown();
 
           iterator.remove();

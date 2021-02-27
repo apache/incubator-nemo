@@ -141,6 +141,33 @@ enum MessageType {
 
     RequestOffloadingExecutor = 51;
 
+    LambdaCreate = 55;
+    LambdaControlChannel = 56;
+
+    TaskSendToLambda = 57;
+    LambdaEnd = 58;
+}
+
+message LambdaEndMessage {
+  required int64 requestId = 1;
+}
+
+message TaskSendToLambdaMessage {
+  required int64 requestId = 1;
+  required string taskId = 2;
+}
+
+message GetLambdaControlChannel {
+  required string fullAddr = 1;
+  required int64 requestId = 2;
+}
+
+message LambdaCreateMessage {
+  required string executorId = 1;
+  required string dataChannelAddr = 2;
+  required int64 dataChannelPort = 3;
+  required int64 nettyStatePort = 4;
+  required int64 numberOfLambda = 5;
 }
 
 message Message {
@@ -206,6 +233,12 @@ message Message {
     optional RequestOffloadingExecutorMessage requestOffloadingExecutorMsg = 50;
 
     optional int64 setNum = 51;
+
+    optional LambdaCreateMessage lambdaCreateMsg = 52;
+    optional GetLambdaControlChannel getLambaControlChannelMsg = 53;
+
+    optional TaskSendToLambdaMessage taskSendToLambdaMsg = 54;
+    optional LambdaEndMessage lambdaEndMsg = 55;
 }
 
 message RequestOffloadingExecutorMessage {

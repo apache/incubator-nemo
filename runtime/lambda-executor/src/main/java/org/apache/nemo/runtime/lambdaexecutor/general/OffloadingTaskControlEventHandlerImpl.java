@@ -3,7 +3,8 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingExecutorControlEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -18,8 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.TASK_FINISH_DONE;
-
+import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.TASK_FINISH_DONE;
 
 public final class OffloadingTaskControlEventHandlerImpl implements ControlEventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingTaskControlEventHandlerImpl.class.getName());
@@ -70,7 +70,7 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
             OffloadingDataFrameEncoder.DataFrame.newInstance(
               DataFrameEncoder.DataType.DEOFFLOAD_DONE, control.getTaskId()));
 
-          executorControlChannel.writeAndFlush(new OffloadingEvent(TASK_FINISH_DONE, buf));
+          executorDataChannel.writeAndFlush(new OffloadingExecutorControlEvent(TASK_FINISH_DONE, buf));
 
         } catch (IOException e) {
           e.printStackTrace();

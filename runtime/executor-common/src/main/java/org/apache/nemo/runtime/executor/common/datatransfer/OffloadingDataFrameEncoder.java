@@ -50,6 +50,9 @@ public final class OffloadingDataFrameEncoder extends MessageToMessageEncoder<Of
   public void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
 
     final ByteBuf header = ctx.alloc().ioBuffer();
+    // for data frame
+    header.writeByte(1);
+
     header.writeByte(in.type.ordinal());
 
     switch (in.type) {

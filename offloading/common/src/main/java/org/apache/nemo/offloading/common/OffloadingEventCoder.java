@@ -10,12 +10,12 @@ import java.util.List;
 
 public final class OffloadingEventCoder {
 
-  public static final class OffloadingEventEncoder extends MessageToMessageEncoder<OffloadingEvent> {
+  public static final class OffloadingEventEncoder extends MessageToMessageEncoder<OffloadingMasterEvent> {
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
+    protected void encode(ChannelHandlerContext ctx, OffloadingMasterEvent msg, List<Object> out) throws Exception {
       if (msg.getByteBuf() != null) {
-        final ByteBuf buf = ctx.alloc().buffer(4);
+        final ByteBuf buf = ctx.alloc().buffer(Integer.BYTES);
         buf.writeInt(msg.getType().ordinal());
         //System.out.println("Encode " + msg.getType().name() + ", size: " +
         //  (buf.readableBytes() + msg.getByteBuf().readableBytes()));
@@ -40,9 +40,9 @@ public final class OffloadingEventCoder {
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
 
       try {
-        final OffloadingEvent.Type type = OffloadingEvent.Type.values()[msg.readInt()];
+        final OffloadingMasterEvent.Type type = OffloadingMasterEvent.Type.values()[msg.readInt()];
         //System.out.println("Decode message; " + type.name() + ", size: " + msg.readableBytes());
-        out.add(new OffloadingEvent(type, msg.retain(1)));
+        out.add(new OffloadingMasterEvent(type, msg.retain(1)));
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
         throw e;
@@ -58,7 +58,7 @@ public final class OffloadingEventCoder {
 
 
       try {
-        out.add(new OffloadingEvent(OffloadingEvent.Type.values()[typeOrdinal], msg.retain(1)));
+        out.add(new OffloadingMasterEvent(OffloadingMasterEvent.Type.values()[typeOrdinal], msg.retain(1)));
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
         System.out.println("Type ordinal: " + typeOrdinal);

@@ -18,7 +18,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +54,7 @@ public final class VMPoolRequester {
 
   private EventLoopGroup clientWorkerGroup;
 
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
@@ -74,7 +74,7 @@ public final class VMPoolRequester {
 
   private final BlockingQueue<Integer> offloadingRequests = new LinkedBlockingQueue<>();
 
-  //final OffloadingEvent requestEvent;
+  //final OffloadingMasterEvent requestEvent;
 
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 8;
@@ -119,7 +119,7 @@ public final class VMPoolRequester {
                 handledRequestNum += 1;
                 pendingRequests.getAndDecrement();
                 final Channel openChannel = readyVMs.get(vmIndex);
-                openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+                openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
               } else {
                 offloadingRequests.add(1);
                 Thread.sleep(1000);
@@ -277,7 +277,7 @@ public final class VMPoolRequester {
     // send handshake
     final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
       serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
-    openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+    openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
 
     /*
     synchronized (readyVMs) {

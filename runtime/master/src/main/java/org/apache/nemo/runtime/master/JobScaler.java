@@ -9,13 +9,11 @@ import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
@@ -644,7 +642,7 @@ public final class JobScaler {
 
     for (final VMScalingWorker worker : workers) {
       final ByteBuf b = byteBuf.retainedDuplicate();
-      worker.send(new OffloadingEvent(OffloadingEvent.Type.EXECUTOR_INIT_INFO, b));
+      worker.send(new OffloadingMasterEvent(OffloadingMasterEvent.Type.EXECUTOR_INIT_INFO, b));
     }
 
     try {
@@ -1121,7 +1119,7 @@ public final class JobScaler {
 
     for (final VMScalingWorker worker : workers) {
       final ByteBuf b = byteBuf.retainedDuplicate();
-      worker.send(new OffloadingEvent(OffloadingEvent.Type.EXECUTOR_FINISH_INFO, b));
+      worker.send(new OffloadingMasterEvent(OffloadingMasterEvent.Type.EXECUTOR_FINISH_INFO, b));
     }
 
     final List<ControlMessage.TaskLocation> locations = encodeTaskLocationMap();

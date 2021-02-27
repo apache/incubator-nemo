@@ -1,8 +1,9 @@
 package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
@@ -15,13 +16,15 @@ public interface OffloadingWorker<I, O> {
 
   String getId();
 
+  int getRequestId();
+
   void addReadyTask(String taskId);
   void removeDoneTask(String taskId);
   boolean hasReadyTask(String taskId);
 
   double getProcessingRate();
 
-  void writeControl(OffloadingEvent offloadingEvent);
+  void writeControl(ControlMessage.Message controlMessage);
   void writeData(int pipeIndex, TaskHandlingEvent event);
   void writeSourceData(int pipeIndex,
                        Serializer serializer,

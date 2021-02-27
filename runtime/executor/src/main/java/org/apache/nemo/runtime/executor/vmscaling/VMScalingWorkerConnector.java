@@ -26,9 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.CPU_LOAD;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.END;
-import static org.apache.nemo.offloading.common.OffloadingEvent.Type.RESULT;
 
 public final class VMScalingWorkerConnector {
 
@@ -39,7 +36,7 @@ public final class VMScalingWorkerConnector {
    */
   private final Bootstrap clientBootstrap;
   private final EventLoopGroup clientWorkerGroup;
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
   private final Map<String, Channel> executorChannelMap;
   private final Map<String, Object> lockMap;
   private final OffloadingDecoder outputDecoder;

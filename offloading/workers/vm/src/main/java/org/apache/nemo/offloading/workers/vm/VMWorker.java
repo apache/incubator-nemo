@@ -10,7 +10,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.common.MonitoringThread;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.json.JSONObject;
@@ -55,11 +54,11 @@ public class VMWorker {
 
     final BlockingQueue<OffloadingHandler> handlers = new LinkedBlockingQueue<>();
 
-    final BlockingQueue<OffloadingEvent> requestQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<OffloadingMasterEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
       while (true) {
         try {
-          final OffloadingEvent event = requestQueue.take();
+          final OffloadingMasterEvent event = requestQueue.take();
           executorService.execute(() -> {
             switch (event.getType()) {
               case SEND_ADDRESS: {
@@ -158,10 +157,10 @@ public class VMWorker {
   final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
     private final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
     private final ChannelGroup channelGroup;
-    private final BlockingQueue<OffloadingEvent> requestQueue;
+    private final BlockingQueue<OffloadingMasterEvent> requestQueue;
 
     NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                  final BlockingQueue<OffloadingEvent> requestQueue) {
+                                  final BlockingQueue<OffloadingMasterEvent> requestQueue) {
       this.channelGroup = channelGroup;
       this.requestQueue = requestQueue;
     }
@@ -180,7 +179,7 @@ public class VMWorker {
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-      requestQueue.add((OffloadingEvent)msg);
+      requestQueue.add((OffloadingMasterEvent)msg);
     }
 
     /**

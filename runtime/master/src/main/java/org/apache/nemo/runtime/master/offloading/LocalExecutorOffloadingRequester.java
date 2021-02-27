@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.offloading;
+package org.apache.nemo.runtime.master.offloading;
 
 
 import io.netty.bootstrap.Bootstrap;
@@ -9,13 +9,15 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -31,14 +33,11 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
   private static final Logger LOG = LoggerFactory.getLogger(LocalExecutorOffloadingRequester.class.getName());
 
-  private final String serverAddress;
-  private final int serverPort;
-
   //private final List<Channel> readyVMs = new LinkedList<>();
 
   private EventLoopGroup clientWorkerGroup;
 
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
@@ -55,15 +54,12 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
   private final int cpulimit;
 
-  public LocalExecutorOffloadingRequester(final String serverAddress,
-                                          final int port,
-                                          final double cpulimit) {
-    this.serverAddress = serverAddress;
-    this.serverPort = port;
+  @Inject
+  private LocalExecutorOffloadingRequester(final EvalConf evalConf) {
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
-    this.cpulimit = (int) (cpulimit * 100);
+    this.cpulimit = (int) (evalConf.cpuLimit * 100);
     this.map = new ConcurrentHashMap<>();
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
@@ -92,7 +88,8 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
   private final AtomicInteger atomicInteger = new AtomicInteger(0);
 
   @Override
-  public synchronized void createChannelRequest() {
+  public synchronized void createChannelRequest(String serverAddr, int serverPort,
+                                                int requestId) {
     final int myPort = port + atomicInteger.getAndIncrement();
     // final String nemo_home = System.getenv("NEMO_HOME");
     final String nemo_home = "/home/taegeonum/incubator-nemo";
@@ -139,12 +136,14 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
           throw new RuntimeException(e);
         }
       });
-      waitInstance(myPort);
+      waitInstance(myPort, serverAddr, serverPort);
     LOG.info("Create request at VMOffloadingREquestor");
   }
 
 
-  private void waitInstance(final int myPort) {
+  private void waitInstance(final int myPort,
+                            final String serverAddr,
+                            final int serverPort) {
     final long waitingTime = 1000;
 
     waitingExecutor.execute(() -> {
@@ -172,8 +171,8 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
       // send handshake
       final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
-        serverAddress, serverPort, requestId.getAndIncrement()).getBytes();
-      openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+        serverAddr, serverPort, requestId.getAndIncrement()).getBytes();
+      openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
 
       LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
 

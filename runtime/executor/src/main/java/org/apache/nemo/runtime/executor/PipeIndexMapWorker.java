@@ -30,18 +30,6 @@ public final class PipeIndexMapWorker {
     this.keyMap = new ConcurrentHashMap<>();
   }
 
-  public Map<Triple<String, String, String>, Integer> getIndexMapForTask(final String taskId) {
-    final Map<Triple<String, String, String>, Integer> m = new HashMap<>();
-    map.forEach((key, val) -> {
-      if (key.getLeft().equals(taskId)) {
-        m.put(key, val);
-      } else if (key.getRight().equals(taskId)) {
-        m.put(key, val);
-      }
-    });
-    return m;
-  }
-
   public Map<Triple<String, String, String>, Integer> getIndexMap() {
     return map;
   }

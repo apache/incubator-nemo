@@ -12,10 +12,10 @@ import java.util.concurrent.Executors;
 
 @ChannelHandler.Sharable
 public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapter {
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelMap;
   private final ExecutorService executorService;
 
-  public NettyLambdaInboundHandler(final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelMap) {
+  public NettyLambdaInboundHandler(final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelMap) {
     this.channelMap = channelMap;
     this.executorService = Executors.newCachedThreadPool();
   }
@@ -30,10 +30,10 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
   public void channelRead(
     final ChannelHandlerContext ctx, final Object msg) throws Exception {
     while (true) {
-      final EventHandler<OffloadingEvent> eventHandler = channelMap.get(ctx.channel());
+      final EventHandler<OffloadingMasterEvent> eventHandler = channelMap.get(ctx.channel());
       if (eventHandler != null) {
         executorService.execute(() -> {
-          eventHandler.onNext((OffloadingEvent) msg);
+          eventHandler.onNext((OffloadingMasterEvent) msg);
         });
         return;
       }

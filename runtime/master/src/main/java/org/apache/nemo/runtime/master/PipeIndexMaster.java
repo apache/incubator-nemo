@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,6 +57,19 @@ public final class PipeIndexMaster {
   private PipeIndexMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
       new TaskIndexMessageReceiver());
+  }
+
+
+  public Map<Triple<String, String, String>, Integer> getIndexMapForTask(final String taskId) {
+    final Map<Triple<String, String, String>, Integer> m = new HashMap<>();
+    pipeKeyIndexMap.forEach((key, val) -> {
+      if (key.getLeft().equals(taskId)) {
+        m.put(key, val);
+      } else if (key.getRight().equals(taskId)) {
+        m.put(key, val);
+      }
+    });
+    return m;
   }
 
   public void onTaskScheduled(final String srcTaskId,

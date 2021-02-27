@@ -44,7 +44,7 @@ public final class OffloadingHandler {
    */
   private Bootstrap clientBootstrap;
 
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> map;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> map;
 
   // current states of lambda
   private LambdaStatus status;
@@ -168,7 +168,7 @@ public final class OffloadingHandler {
     //System.out.println("Write result " + data.left().toString());
 
     opendChannel.writeAndFlush(
-      new OffloadingEvent(OffloadingEvent.Type.RESULT, byteBuf));
+      new OffloadingMasterEvent(OffloadingMasterEvent.Type.RESULT, byteBuf));
   }
 
   private Channel handshake(final byte[] bytes,
@@ -181,7 +181,7 @@ public final class OffloadingHandler {
 	  Channel channel = opendChannel;
 
 	  ChannelFuture channelFuture =
-    channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+    channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
 
     while (!channelFuture.isSuccess()) {
       while (!channelFuture.isDone()) {
@@ -201,7 +201,7 @@ public final class OffloadingHandler {
         }
         LOG.info("Re-sending handshake..");
         channelFuture =
-          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+          channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
       } else {
         break;
       }
@@ -223,7 +223,7 @@ public final class OffloadingHandler {
     Channel opendChannel = null;
     this.workerInitLatch = new CountDownLatch(1);
 
-    for (final Map.Entry<Channel, EventHandler<OffloadingEvent>> entry : map.entrySet()) {
+    for (final Map.Entry<Channel, EventHandler<OffloadingMasterEvent>> entry : map.entrySet()) {
       final Channel channel = entry.getKey();
       final String address = (String) input.get("address");
       final Integer port = (Integer) input.get("port");
@@ -305,7 +305,7 @@ public final class OffloadingHandler {
 
     if (workerInitLatch.getCount() == 0) {
       final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
-      opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
+      opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
       LOG.info("Sending worker init done");
     }
 
@@ -316,12 +316,12 @@ public final class OffloadingHandler {
       System.out.println("CPU Load: " + cpuLoad);
       final ByteBuf bb = ochannel.alloc().buffer();
       bb.writeDouble(cpuLoad);
-      // ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+      // ochannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CPU_LOAD, bb));
     }, 2, 2, TimeUnit.SECONDS);
 
 
     // ready state
-    //opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.READY, new byte[0], 0));
+    //opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.READY, new byte[0], 0));
 
 
 		final List<ChannelFuture> futures = new LinkedList<>();
@@ -365,7 +365,7 @@ public final class OffloadingHandler {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
           if (opendChannel.isOpen()) {
-            opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+            opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
           } else {
             throw new RuntimeException("Channel is already closed..");
           }
@@ -398,7 +398,7 @@ public final class OffloadingHandler {
     return null;
 	}
 
-  public final class LambdaEventHandler implements EventHandler<OffloadingEvent> {
+  public final class LambdaEventHandler implements EventHandler<OffloadingMasterEvent> {
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
@@ -414,7 +414,7 @@ public final class OffloadingHandler {
     }
 
     @Override
-    public synchronized void onNext(final OffloadingEvent nemoEvent) {
+    public synchronized void onNext(final OffloadingMasterEvent nemoEvent) {
       switch (nemoEvent.getType()) {
         case VM_SCALING_INFO: {
           // It receives global information such as name server address ...
@@ -509,32 +509,13 @@ public final class OffloadingHandler {
             bos.writeUTF(taskId);
             bos.close();
             LOG.info("Send task ready for " + taskId);
-            opendChannel.writeAndFlush(new OffloadingEvent(
-              OffloadingEvent.Type.TASK_READY, bos.buffer()));
 
-          } catch (IOException e) {
-            if (e.getMessage().contains("EOF")) {
-              System.out.println("eof!");
-            } else {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-          }
-          break;
-        }
-        case TASK_FINISH: {
-          Thread.currentThread().setContextClassLoader(classLoader);
-          final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
-          try {
-            final String taskId = bis.readUTF();
-            final Object data = decoder.decode(bis);
-            offloadingTransform.onData(data, null);
-            nemoEvent.getByteBuf().release();
-            final ByteBufOutputStream bos = new ByteBufOutputStream(opendChannel.alloc().buffer());
-            bos.writeUTF(taskId);
-            bos.close();
-            opendChannel.writeAndFlush(new OffloadingEvent(
-              OffloadingEvent.Type.TASK_READY, bos.buffer()));
+            offloadingTransform.getDataChannel()
+              .writeAndFlush(new OffloadingExecutorControlEvent(
+                OffloadingExecutorControlEvent.Type.TASK_READY, bos.buffer()));
+
+            // opendChannel.writeAndFlush(new OffloadingMasterEvent(
+            //  OffloadingMasterEvent.Type.TASK_READY, bos.buffer()));
 
           } catch (IOException e) {
             if (e.getMessage().contains("EOF")) {
@@ -562,6 +543,8 @@ public final class OffloadingHandler {
           nemoEvent.getByteBuf().release();
           endBlockingQueue.add(1);
           break;
+        default:
+          throw new RuntimeException("Invalid type " + nemoEvent.getType());
       }
     }
   }

@@ -19,7 +19,6 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -47,6 +46,9 @@ import org.apache.nemo.runtime.master.JobScaler;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
+import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
+import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -407,14 +409,12 @@ public final class NemoDriver {
       evalConfiguration);
   }
 
-  private Class<? extends OffloadingRequesterFactory> getRequesterFactory() {
+  private Class<? extends OffloadingRequester> getRequester() {
 
     if (evalConf.offloadingType.equals("local")) {
-      return YarnExecutorOffloadingRequesterFactory.class;
-    } else if (evalConf.offloadingType.equals("vm")) {
-      return VMOffloadingRequesterFactory.class;
+      return YarnExecutorOffloadingRequester.class;
     } else if (evalConf.offloadingType.equals("lambda")) {
-      return LambdaOffloadingRequesterFactory.class;
+      return LambdaOffloadingRequester.class;
     } else {
       throw new RuntimeException("Invalid prepareOffloading requester " + evalConf.offloadingType);
     }
@@ -425,7 +425,7 @@ public final class NemoDriver {
       .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
       .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-      .bindImplementation(OffloadingRequesterFactory.class, getRequesterFactory())
+      .bindImplementation(OffloadingRequester.class, getRequester())
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }

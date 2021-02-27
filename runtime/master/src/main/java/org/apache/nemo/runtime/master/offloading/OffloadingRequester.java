@@ -1,11 +1,11 @@
-package org.apache.nemo.runtime.executor.offloading;
+package org.apache.nemo.runtime.master.offloading;
 
 import io.netty.channel.Channel;
 
 public interface OffloadingRequester {
   void start();
 
-  void createChannelRequest();
+  void createChannelRequest(String address, int port, int requestId);
 
   void destroy();
 

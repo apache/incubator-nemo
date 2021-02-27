@@ -7,21 +7,27 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import io.netty.util.concurrent.ImmediateEventExecutor;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.NettyStateStore;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,10 +38,10 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-  private OffloadingEventHandler nemoEventHandler;
-  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
+  private OffloadingDataTransportEventHandler nemoEventHandler;
 
-  private final NettyServerTransport workerControlTransport;
+  // private final NettyServerTransport workerControlTransport;
+
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final AtomicInteger dataId = new AtomicInteger(0);
@@ -46,34 +52,42 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   private final AtomicInteger pendingRequest = new AtomicInteger(0);
   private final AtomicInteger extraRequest = new AtomicInteger(0);
   */
-
-  private final OffloadingRequester requestor;
-
-  private final ControlFrameEncoder controlFrameEncoder;
+  public final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final Map<String, Channel> dataTransportChannelMap;
+  private final BlockingQueue<Pair<Integer, Channel>> dataTransportChannelQueue;
   private final OutputWriterFlusher outputWriterFlusher;
   private final OffloadingFrameDecoder frameDecoder;
+  private final PersistentConnectionToMasterMap toMasterMap;
+  private final MessageEnvironment messageEnvironment;
+  private final String executorId;
+  private final NettyStateStore nettyStateStore;
 
   @Inject
   private DefaultOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider,
-                                         final OffloadingRequesterFactory requesterFactory,
                                          final ControlFrameEncoder controlFrameEncoder,
                                          final EvalConf evalConf,
+                                         final MessageEnvironment messageEnvironment,
+                                         final PersistentConnectionToMasterMap toMasterMap,
                                          final OffloadingFrameDecoder frameDecoder,
-                                         final DataFrameEncoder dataFrameEncoder) {
+                                         final DataFrameEncoder dataFrameEncoder,
+                                         @Parameter(JobConf.ExecutorId.class) final String executorId,
+                                         final NettyStateStore nettyStateStore,
+                                         final OffloadingDataTransportEventHandler nemoEventHandler) {
+    this.toMasterMap = toMasterMap;
+    this.messageEnvironment = messageEnvironment;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.frameDecoder = frameDecoder;
     this.dataTransportChannelMap = new ConcurrentHashMap<>();
-    this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
-    this.workerControlTransport = new NettyServerTransport(
-      tcpPortProvider, new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
-      new NioEventLoopGroup(5,
-      new DefaultThreadFactory("WorkerControlTransport")),
-      false);
+    this.dataTransportChannelQueue = new LinkedBlockingQueue<>();
+    this.nemoEventHandler = nemoEventHandler;
+    this.executorId = executorId;
+    this.nettyStateStore = nettyStateStore;
+
+    messageEnvironment
+      .setupListener(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID,
+        new MessageReceiver());
 
     this.workerDataTransport = new NettyServerTransport(
       tcpPortProvider, new WorkerDataTransportChannelInitializer(),
@@ -83,32 +97,33 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
-
-    this.requestor = requesterFactory.getInstance(
-      nemoEventHandler, workerControlTransport.getPublicAddress(),
-      workerControlTransport.getPort());
   }
 
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
-    requestor.createChannelRequest();
-  }
-
-  public void setVMAddressAndIds(final List<String> addr,
-                                 final List<String> ids) {
-    LOG.info("Set vm address and id in worker factory");
-    if (requestor instanceof VMOffloadingRequester) {
-      ((VMOffloadingRequester) requestor).setVmAddessesAndIds(addr, ids);
-    }
+    // Send message
+    toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+      .send(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+        .setType(ControlMessage.MessageType.LambdaCreate)
+        .setLambdaCreateMsg(ControlMessage.LambdaCreateMessage.newBuilder()
+          .setDataChannelAddr(workerDataTransport.getPublicAddress())
+          .setDataChannelPort(workerDataTransport.getPort())
+          .setExecutorId(executorId)
+          .setNettyStatePort(nettyStateStore.getPort())
+          .setNumberOfLambda(1)
+          .build())
+        .build());
   }
 
   @Override
   public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
                                                 final OffloadingSerializer offloadingSerializer,
-                                                final EventHandler eventHandler) {
+                                                final EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>> eventHandler) {
     LOG.info("Create streaming worker request!");
     createChannelRequest();
-    final Future<Pair<Channel, Pair<Channel, OffloadingEvent>>> channelFuture = new Future<Pair<Channel, Pair<Channel, OffloadingEvent>>>() {
+    final Future<Pair<Integer, Channel>> channelFuture = new Future<Pair<Integer, Channel>>() {
 
       @Override
       public boolean cancel(boolean mayInterruptIfRunning) {
@@ -126,46 +141,25 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
       }
 
       @Override
-      public Pair<Channel, Pair<Channel, OffloadingEvent>> get() throws InterruptedException, ExecutionException {
-        final Pair<Channel, OffloadingEvent> pair;
-        try {
-          pair = nemoEventHandler.getHandshakeQueue().take();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+      public Pair<Integer, Channel> get() throws InterruptedException, ExecutionException {
+        final Pair<Integer, Channel> event = dataTransportChannelQueue.take();
+        LOG.info("Waiting worker init done... for workerRequestId {}, data channel: {}",
+          event.left(), event.right());
 
-        LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
-        pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
-
-        // Data channel!!
-        final Pair<Channel, OffloadingEvent> workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
-        final int port = workerDonePair.right().getByteBuf().readInt();
-        workerDonePair.right().getByteBuf().release();
-        final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
-
-        LOG.info("Get data channel for lambda {}:{}", addr, port);
-
-        final String fullAddr = addr + ":" + port;
-
-        while (!dataTransportChannelMap.containsKey(fullAddr)) {
-          LOG.warn("No data channel address for offlaod worker " + fullAddr);
-          Thread.sleep(200);
-        }
-
-        // TODO: We configure data channel!!
-        LOG.info("Waiting worker init done");
-        return Pair.of(workerDonePair.left(), Pair.of(dataTransportChannelMap.get(fullAddr), workerDonePair.right()));
+        return event;
       }
 
       @Override
-      public Pair<Channel, Pair<Channel, OffloadingEvent>> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      public Pair<Integer, Channel> get(long timeout, TimeUnit unit) {
         return null;
       }
     };
 
-    return new StreamingLambdaWorkerProxy(workerId.getAndIncrement(), channelFuture, this, channelEventHandlerMap,
-      offloadingSerializer.getInputEncoder(), offloadingSerializer.getOutputDecoder(), eventHandler);
+    return new StreamingLambdaWorkerProxy(
+      toMasterMap,
+      channelFuture,
+      nemoEventHandler.getChannelEventHandlerMap(),
+      eventHandler);
   }
 
   @Override
@@ -177,9 +171,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   public void deleteOffloadingWorker(OffloadingWorker worker) {
 
     LOG.info("Delete prepareOffloading worker: {}", worker.getChannel().remoteAddress());
-
     final Channel channel = worker.getChannel();
-    requestor.destroyChannel(channel);
 
   }
 
@@ -211,6 +203,39 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     public void channelInactive(final ChannelHandlerContext ctx) throws Exception {
       outputWriterFlusher.removeChannel(ctx.channel());
       LOG.info("Channel inactive {}", ctx.channel());
+    }
+  }
+
+  public final class MessageReceiver implements MessageListener<ControlMessage.Message> {
+
+    @Override
+    public void onMessage(ControlMessage.Message message) {
+      switch (message.getType()) {
+        case LambdaControlChannel: {
+          final ControlMessage.GetLambdaControlChannel m = message.getGetLambaControlChannelMsg();
+          final String fullAddr = m.getFullAddr();
+          final int requestId = (int) m.getRequestId();
+
+          while (!dataTransportChannelMap.containsKey(fullAddr)) {
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          dataTransportChannelQueue.add(Pair.of(requestId, dataTransportChannelMap.get(fullAddr)));
+
+          break;
+        }
+        default:
+          throw new RuntimeException("invalid message type " + message.getType());
+      }
+    }
+
+    @Override
+    public void onMessageWithContext(ControlMessage.Message message, MessageContext messageContext) {
+
     }
   }
 }
