@@ -216,6 +216,8 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
           final String fullAddr = m.getFullAddr();
           final int requestId = (int) m.getRequestId();
 
+          LOG.info("Receive GetLambdaControlChannel for {} / {}", fullAddr, requestId);
+
           while (!dataTransportChannelMap.containsKey(fullAddr)) {
             try {
               Thread.sleep(200);
@@ -223,6 +225,8 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
               e.printStackTrace();
             }
           }
+
+          LOG.info("Receive end of GetLambdaControlChannel for {} / {}", fullAddr, requestId);
 
           dataTransportChannelQueue.add(Pair.of(requestId, dataTransportChannelMap.get(fullAddr)));
 
