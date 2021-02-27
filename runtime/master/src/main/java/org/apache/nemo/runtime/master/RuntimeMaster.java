@@ -33,6 +33,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
@@ -112,11 +113,14 @@ public final class RuntimeMaster {
 
   private final OffloadingWorkerManager offloadingWorkerManager;
 
+  private final PersistentConnectionToMasterMap toMaster;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final TaskScheduledMapMaster taskScheduledMap,
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
+                        final PersistentConnectionToMasterMap toMaster,
                         final ClientRPC clientRPC,
                         final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
@@ -128,6 +132,7 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.toMaster = toMaster;
     this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
@@ -510,8 +515,8 @@ public final class RuntimeMaster {
 
       // send response
       LOG.info("Send response for offloading executor " + name + ", " + hostAddres);
-      responsePendingMap.get(name).right().sendControlMessage(
-        ControlMessage.Message.newBuilder()
+      toMaster.getMessageSender(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
+        .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
           .setType(ResponseOffloadingExecutor)
