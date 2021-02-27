@@ -155,7 +155,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   }
 
   @Override
-  public synchronized void createChannelRequest(String addr, int port, int requestId) {
+  public synchronized void createChannelRequest(String addr, int port, int requestId, String executorId) {
     LOG.info("Create request at VMOffloadingREquestor");
 
     final int index = numVMs.getAndIncrement();

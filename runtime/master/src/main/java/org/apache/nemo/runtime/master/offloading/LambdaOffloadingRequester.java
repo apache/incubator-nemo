@@ -37,7 +37,8 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void createChannelRequest(String address, int port,
-                                   final int requestId) {
+                                   final int requestId,
+                                   String executorId) {
     final InvokeRequest request = new InvokeRequest()
       .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",

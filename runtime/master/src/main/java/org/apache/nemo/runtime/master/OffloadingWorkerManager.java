@@ -272,7 +272,7 @@ public final class OffloadingWorkerManager {
 
             executorService.execute(() -> {
               offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
-                workerControlTransport.getPort(), rid);
+                workerControlTransport.getPort(), rid, m.getExecutorId());
 
               requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
             });

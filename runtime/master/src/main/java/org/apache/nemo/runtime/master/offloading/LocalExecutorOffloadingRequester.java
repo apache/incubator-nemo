@@ -89,7 +89,8 @@ public final class LocalExecutorOffloadingRequester implements OffloadingRequest
 
   @Override
   public synchronized void createChannelRequest(String serverAddr, int serverPort,
-                                                int requestId) {
+                                                int requestId,
+                                                String executorId) {
     final int myPort = port + atomicInteger.getAndIncrement();
     // final String nemo_home = System.getenv("NEMO_HOME");
     final String nemo_home = "/home/taegeonum/incubator-nemo";

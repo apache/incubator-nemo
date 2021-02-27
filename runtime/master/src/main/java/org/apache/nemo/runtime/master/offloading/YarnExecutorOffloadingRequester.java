@@ -56,19 +56,16 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
   private final PersistentConnectionToMasterMap toMaster;
   private final MessageEnvironment messageEnvironment;
-  private final String executorId;
 
   @Inject
   public YarnExecutorOffloadingRequester(final MessageEnvironment messageEnvironment,
-                                         final PersistentConnectionToMasterMap toMaster,
-                                         @Parameter(JobConf.ExecutorId.class) final String executorId) {
+                                         final PersistentConnectionToMasterMap toMaster) {
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
     this.map = new ConcurrentHashMap<>();
     this.toMaster = toMaster;
     this.messageEnvironment = messageEnvironment;
-    this.executorId = executorId;
 
     messageEnvironment
       .setupListener(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID,
@@ -106,7 +103,8 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
   @Override
   public synchronized void createChannelRequest(String controlAddr,
                                                 int controlPort,
-                                                int requestId) {
+                                                int requestId,
+                                                final String executorId) {
     final int myPort = port + atomicInteger.getAndIncrement();
 
     LOG.info("Creating VM worker with port for yarn " + myPort);
