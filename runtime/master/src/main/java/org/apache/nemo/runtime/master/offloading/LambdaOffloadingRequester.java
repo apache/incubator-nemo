@@ -45,15 +45,6 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
         address, port, requestId));
 
     LOG.info("Invoke async request {}", request);
-
-    final Future<InvokeResult> future = awsLambda.invokeAsync(request);
-    try {
-      final InvokeResult result = future.get();
-      LOG.info("Invoke result: {}", result);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
   }
 
   @Override

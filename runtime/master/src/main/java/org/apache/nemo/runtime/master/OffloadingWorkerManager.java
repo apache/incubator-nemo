@@ -269,12 +269,12 @@ public final class OffloadingWorkerManager {
           for (int i = 0; i < numLambda; i++) {
             final int rid = requestId.getAndIncrement();
             requestIdExecutorMap.put(rid, m.getExecutorId());
+            requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
 
             executorService.execute(() -> {
               offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
                 workerControlTransport.getPort(), rid, m.getExecutorId());
 
-              requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
             });
           }
 

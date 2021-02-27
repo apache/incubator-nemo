@@ -159,6 +159,7 @@ public final class NemoDriver {
           jobScaler.proactive(message.getScalingMsg());
         } else if (decision.equals("info")) {
           jobScaler.broadcastInfo(message.getScalingMsg());
+
         } else if (decision.equals("add-yarn")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
