@@ -19,15 +19,10 @@ public final class OffloadingExecutorControlEventCoder {
       buf.writeInt(msg.getType().ordinal());
 
       if (msg.getByteBuf() != null) {
-        final CompositeByteBuf compositeByteBuf =
-          ctx.alloc().compositeBuffer(2)
-            .addComponents(true, buf, msg.getByteBuf());
-
-        out.add(compositeByteBuf);
-
-      } else {
-        out.add(buf);
+        buf.writeBytes(msg.getByteBuf());
       }
+
+      out.add(buf);
     }
   }
 
