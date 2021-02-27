@@ -224,7 +224,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
               }
 
-              oe.getByteBuf().release();
+              // oe.getByteBuf().release();
             }
           });
 
