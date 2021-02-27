@@ -239,7 +239,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
             } else {
               // Handling data
               final String taskId = event.getTaskId();
-              final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+              ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+
+              while (taskExecutor == null) {
+                taskExecutor = taskIdExecutorMap.get(taskId);
+                Thread.sleep(1);
+              }
 
               throttling();
 
