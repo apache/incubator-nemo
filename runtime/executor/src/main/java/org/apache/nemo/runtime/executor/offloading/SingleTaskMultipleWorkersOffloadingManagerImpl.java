@@ -59,7 +59,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
         final int startIndex = cnt % workers.size();
-        final int endIndex = (cnt + evalConf.numOffloadingWorker) % workers.size();
+        final int endIndex = (cnt + evalConf.numOffloadingWorker) % (workers.size() + 1);
 
         final List<OffloadingWorker> selectedWorkers;
         if (endIndex < startIndex) {
