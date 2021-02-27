@@ -19,13 +19,13 @@ public final class OffloadingExecutorControlEventCoder {
     protected void encode(ChannelHandlerContext ctx, OffloadingExecutorControlEvent msg, List<Object> out) throws Exception {
       final ByteBuf buf = ctx.alloc().buffer();
       buf.writeByte(0);
-      buf.writeInt(msg.getType().ordinal());
+      buf.writeByte(msg.getType().ordinal());
 
       if (msg.getByteBuf() != null) {
         buf.writeBytes(msg.getByteBuf());
       }
 
-      LOG.info("Encoding control event for type " + msg.getType().ordinal() + ", readable " + buf.readableBytes());
+      // LOG.info("Encoding control event for type " + msg.getType().ordinal() + ", readable " + buf.readableBytes());
 
       out.add(buf);
     }
