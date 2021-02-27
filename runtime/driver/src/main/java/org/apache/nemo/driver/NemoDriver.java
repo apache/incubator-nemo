@@ -409,23 +409,12 @@ public final class NemoDriver {
       evalConfiguration);
   }
 
-  private Class<? extends OffloadingRequester> getRequester() {
-
-    if (evalConf.offloadingType.equals("local")) {
-      return YarnExecutorOffloadingRequester.class;
-    } else if (evalConf.offloadingType.equals("lambda")) {
-      return LambdaOffloadingRequester.class;
-    } else {
-      throw new RuntimeException("Invalid prepareOffloading requester " + evalConf.offloadingType);
-    }
-  }
 
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
       .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-      .bindImplementation(OffloadingRequester.class, getRequester())
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }

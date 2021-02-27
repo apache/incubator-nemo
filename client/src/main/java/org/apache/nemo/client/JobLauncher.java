@@ -32,6 +32,9 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
+import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
+import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -655,6 +658,7 @@ public final class JobLauncher {
       excludeJarList = Collections.emptyList();
     }
 
+
     return DriverConfiguration.CONF
         .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars()
         .stream().filter(path -> {
@@ -678,6 +682,18 @@ public final class JobLauncher {
         .build();
   }
 
+  private static Class<? extends OffloadingRequester> getRequesterConf(final String offloadingType) {
+
+    if (offloadingType.equals("local")) {
+      return YarnExecutorOffloadingRequester.class;
+    } else if (offloadingType.equals("lambda")) {
+      return LambdaOffloadingRequester.class;
+    } else {
+      throw new RuntimeException("Invalid prepareOffloading requester " + offloadingType);
+    }
+
+
+  }
   /**
    * Get job configuration.
    *
@@ -719,7 +735,14 @@ public final class JobLauncher {
     EvalConf.registerCommandLineArgument(cl);
 
     cl.processCommandLine(args);
-    return confBuilder.build();
+
+    final Configuration conf = confBuilder.build();
+    final String offloadingType = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.OffloadingType.class);
+    final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
+      .build();
+
+    return Configurations.merge(conf, c);
   }
 
   /**
