@@ -125,6 +125,9 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                 case TASK_READY: {
                   final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
                   try {
+
+                    LOG.info("Task ready readable byte {}", oe.getByteBuf().readableBytes());
+
                     final String taskId = bis.readUTF();
 
                     LOG.info("Receive task ready message from worker {} in executor {}: {}",
