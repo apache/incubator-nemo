@@ -126,10 +126,12 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                   final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
                   try {
                     final String taskId = bis.readUTF();
-                    final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
+
                     LOG.info("Receive task ready message from worker {} in executor {}: {}",
                       myWorker.getId(),
                       executorId, taskId);
+
+                    final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskId);
 
                     myWorker.addReadyTask(taskId);
 
