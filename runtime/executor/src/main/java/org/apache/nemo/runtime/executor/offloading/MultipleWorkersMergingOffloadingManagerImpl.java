@@ -103,6 +103,8 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
   private final Map<String, OffloadingWorker> mergingWorkerMap = new ConcurrentHashMap<>();
   private final AtomicInteger mergingCount = new AtomicInteger(0);
 
+
+  private final Set<OffloadingWorker> mergingWorkers = new HashSet<>();
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
 
@@ -144,10 +146,20 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
       if (ab.compareAndSet(false, true)) {
         // send task
-        final int mergingindex = (mergingCount.getAndIncrement() * evalConf.numOffloadingWorker)
-          % (evalConf.numOffloadingWorkerAfterMerging * evalConf.numOffloadingWorker);
 
-        final OffloadingWorker mergingWorker = workers.get(mergingindex);
+        int mergingIndex = -1;
+
+        synchronized (mergingWorkers) {
+          if (mergingWorkers.size() >= evalConf.numOffloadingWorkerAfterMerging) {
+            mergingIndex = mergingCount.getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
+          } else {
+
+            mergingIndex = workers.indexOf(taskWorkerMap.get(taskId).get(0));
+            mergingWorkers.add(workers.get(mergingIndex));
+          }
+        }
+
+        final OffloadingWorker mergingWorker = workers.get(mergingIndex);
         mergingWorkerMap.put(taskId, mergingWorker);
 
         if (!taskWorkerMap.get(taskId).contains(mergingWorker)) {
