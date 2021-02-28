@@ -144,7 +144,9 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
       if (ab.compareAndSet(false, true)) {
         // send task
-        final int mergingindex = mergingCount.getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
+        final int mergingindex = (mergingCount.getAndIncrement() * evalConf.numOffloadingWorker)
+          % (evalConf.numOffloadingWorkerAfterMerging * evalConf.numOffloadingWorker);
+
         final OffloadingWorker mergingWorker = workers.get(mergingindex);
         mergingWorkerMap.put(taskId, mergingWorker);
 
