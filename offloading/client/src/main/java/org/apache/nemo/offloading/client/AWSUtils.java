@@ -26,14 +26,11 @@ import org.slf4j.LoggerFactory;
 public final class AWSUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AWSUtils.class.getName());
 
-  //public static final AmazonS3 AWS_S3;
-  public static final AWSLambda AWS_LAMBDA;
   public static final String S3_BUCKET_NAME = "nemo-serverless";
   public static final String SIDEINPUT_LAMBDA_NAME = "nemo-dev-hello";
   public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-tg-erverless-worker";
 
   static {
     //AWS_S3 = AmazonS3ClientBuilder.standard().build();
-    AWS_LAMBDA = AWSLambdaClientBuilder.standard().build();
   }
 }

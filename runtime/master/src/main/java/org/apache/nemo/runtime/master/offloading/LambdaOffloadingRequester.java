@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.master.offloading;
 
 
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
@@ -25,8 +26,12 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
   @Inject
   private LambdaOffloadingRequester(final EvalConf evalConf) {
+    final ProfileCredentialsProvider provider = new ProfileCredentialsProvider(evalConf.awsProfileName);
+
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
-      .withRegion(evalConf.awsRegion).withClientConfiguration(
+      .withRegion(evalConf.awsRegion)
+      .withCredentials(provider)
+      .withClientConfiguration(
         new ClientConfiguration().withMaxConnections(500)).build();
   }
 

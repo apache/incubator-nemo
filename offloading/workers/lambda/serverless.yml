@@ -20,6 +20,8 @@ service: nemo # NOTE: update this with your service name
 provider:
   name: aws
   runtime: java8
+  profile: taegeonum
+
 
 # you can overwrite defaults here
 #  stage: dev

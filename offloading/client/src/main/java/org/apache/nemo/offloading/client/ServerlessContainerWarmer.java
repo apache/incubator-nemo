@@ -45,9 +45,12 @@ public final class ServerlessContainerWarmer {
       new NioEventLoopGroup(3,
         new DefaultThreadFactory("Warmer")),
       false);
+    this.awsLambda = null;
+    /*
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withRegion("ap-northeast-2")
       .withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
+      */
   }
 
   public void start(final int poolSize) {
