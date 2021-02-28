@@ -100,6 +100,8 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
   private final Map<String, AtomicBoolean> deoffloadedMap = new ConcurrentHashMap<>();
 
   private final Map<String, AtomicBoolean> sendTask = new ConcurrentHashMap<>();
+  private final Map<String, OffloadingWorker> mergingWorkerMap = new ConcurrentHashMap<>();
+  private final AtomicInteger mergingCount = new AtomicInteger(0);
 
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
@@ -117,11 +119,11 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
             "total workers {}", taskId, evalConf.numOffloadingWorkerAfterMerging, taskWorkerMap.get(taskId).size());
           synchronized (taskWorkerMap.get(taskId)) {
 
-            final List<OffloadingWorker> common = workers.subList(0, evalConf.numOffloadingWorkerAfterMerging);
-
             for (final OffloadingWorker worker : taskWorkerMap.get(taskId)) {
-              if (!common.contains(worker)) {
-                LOG.info("Send deoffloading message for task {} to worker index {}, common {}", taskId, worker.getId(), common);
+              if (!mergingWorkerMap.get(taskId).equals(worker)) {
+                LOG.info("Send deoffloading message for task {} to worker index {}, mergingWorker {}", taskId, worker.getId(),
+                  mergingWorkerMap.get(taskId));
+
                 worker.writeData
                   (pipeIndex,
                     new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
@@ -142,27 +144,29 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
       if (ab.compareAndSet(false, true)) {
         // send task
-        LOG.info("Send task to common worker {}", taskId);
-        final List<OffloadingWorker> common = findCommonWorkersToOffloadTask(taskWorkerMap.get(taskId));
-        if (!common.isEmpty()) {
+        final int mergingindex = mergingCount.getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
+        final OffloadingWorker mergingWorker = workers.get(mergingindex);
+        mergingWorkerMap.put(taskId, mergingWorker);
 
-          taskWorkerMap.get(taskId).addAll(common);
-          common.forEach(worker -> {
-            workerTaskMap.get(worker).add(taskId);
-          });
+        if (!taskWorkerMap.get(taskId).contains(mergingWorker)) {
+          taskWorkerMap.get(taskId).add(mergingWorker);
+          workerTaskMap.get(mergingWorker).add(taskId);
 
-          offloadTaskToWorker(taskId, common, false);
+          LOG.info("Send task to merging worker {} / {}", taskId, mergingWorker);
+          offloadTaskToWorker(taskId, Arrays.asList(mergingWorker), false);
         }
       }
 
-      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
-      final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      try {
-        return Optional.of(l.get(index));
-      } catch (final Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException("index: " + index + ", task " + taskId + ", " + l);
+      while (!mergingWorkerMap.containsKey(taskId)) {
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
+
+      return Optional.of(mergingWorkerMap.get(taskId));
+
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
