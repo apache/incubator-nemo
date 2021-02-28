@@ -161,7 +161,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                     myWorker.removeDoneTask(taskId);
 
                     synchronized (workers) {
-                      LOG.info("Receive task done message from prepareOffloading worker in executor {}: {}", executorId, taskId);
+                      LOG.info("Receive task done message in worker {} in executor {}: {}",
+                        myWorker.getId(), executorId, taskId);
                       final List<OffloadingWorker> ows = taskWorkerMap.get(taskId);
                       synchronized (ows) {
                         taskWorkerMap.get(taskId).remove(myWorker);
@@ -180,7 +181,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                       if (workerTaskMap.get(myWorker).isEmpty()) {
                         // Destroy worker !!
                         if (destroyOffloadingWorker) {
-                          LOG.info("Worker destroy {} ...", myWorker.getId());
+                          LOG.info("Worker destroy {} after deoffloading {} ...", myWorker.getId(), taskId);
 
                           final ControlMessage.Message message = ControlMessage.Message.newBuilder()
                             .setId(RuntimeIdManager.generateMessageId())
@@ -196,6 +197,9 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                           workerTaskMap.remove(myWorker);
                           workers.remove(myWorker);
                         }
+                      } else {
+                        LOG.info("Worker destroy is not empty {} after deoffloadig {} / {} ...", myWorker.getId(),
+                          taskId, workerTaskMap.get(myWorker));
                       }
 
                     }
