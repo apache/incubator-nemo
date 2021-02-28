@@ -117,11 +117,11 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
             "total workers {}", taskId, evalConf.numOffloadingWorkerAfterMerging, taskWorkerMap.get(taskId).size());
           synchronized (taskWorkerMap.get(taskId)) {
 
-            final List<OffloadingWorker> common = findCommonWorkersToOffloadTask(taskWorkerMap.get(taskId));
+            final List<OffloadingWorker> common = workers.subList(0, evalConf.numOffloadingWorkerAfterMerging);
 
             for (final OffloadingWorker worker : taskWorkerMap.get(taskId)) {
               if (!common.contains(worker)) {
-                LOG.info("Send deoffloading message for task {} to worker index {}", taskId, worker.getId());
+                LOG.info("Send deoffloading message for task {} to worker index {}, common {}", taskId, worker.getId(), common);
                 worker.writeData
                   (pipeIndex,
                     new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
@@ -157,7 +157,12 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      return Optional.of(l.get(index));
+      try {
+        return Optional.of(l.get(index));
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("index: " + index + ", task " + taskId + ", " + l);
+      }
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
