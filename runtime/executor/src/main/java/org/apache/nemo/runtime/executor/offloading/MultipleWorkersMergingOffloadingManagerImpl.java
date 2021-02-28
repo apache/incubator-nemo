@@ -51,13 +51,13 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
   }
 
   private int cnt = 0;
-  private final Map<String, Integer> taskPaddingIndex = new HashMap<>();
 
   @Override
   Optional<List<OffloadingWorker>> selectWorkersForOffloading(String taskId) {
     offloadingStart = System.currentTimeMillis();
     rrSchedulingMap.putIfAbsent(taskId, new AtomicInteger(0));
     deoffloadedMap.put(taskId, new AtomicBoolean(false));
+    sendTask.put(taskId, new AtomicBoolean(false));
 
     synchronized (workers) {
       LOG.info("Size of workers: {}, cnt: {}, task: {}", workers.size(), cnt, taskId);
@@ -66,32 +66,25 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
         return Optional.of(taskWorkerMap.get(taskId));
       } else {
         final int startIndex = cnt % workers.size();
-        final int endIndex = cnt + evalConf.numOffloadingWorker;
+        final int endIndex = (cnt + evalConf.numOffloadingWorker) % (workers.size() + 1);
 
-
-        final List<OffloadingWorker> selectedWorkers = new LinkedList<>(workers.subList(0, evalConf.numOffloadingWorkerAfterMerging));
-
-        if (startIndex < evalConf.numOffloadingWorkerAfterMerging) {
-
-          taskPaddingIndex.put(taskId, startIndex);
-
-          for (int i = evalConf.numOffloadingWorkerAfterMerging; i < endIndex; i++) {
+        final List<OffloadingWorker> selectedWorkers;
+        if (endIndex < startIndex) {
+          selectedWorkers = new ArrayList<>(evalConf.numOffloadingWorker);
+          for (int i = startIndex; i < workers.size(); i++) {
+            selectedWorkers.add(workers.get(i));
+          }
+          for (int i = 0; i < endIndex; i++) {
             selectedWorkers.add(workers.get(i));
           }
         } else {
-          // TODO: multiple re-offloading
-          taskPaddingIndex.put(taskId, evalConf.numOffloadingWorkerAfterMerging);
-
-          selectedWorkers.addAll(workers.subList(startIndex, endIndex));
+          selectedWorkers =
+            new LinkedList<>(workers.subList(startIndex, endIndex));
         }
 
         taskWorkerMap.put(taskId, selectedWorkers);
         selectedWorkers.forEach(worker -> {
-          if (workerTaskMap.containsKey(worker)) {
-            workerTaskMap.get(worker).add(taskId);
-          } else {
-            workerTaskMap.put(worker, new LinkedList<>(Arrays.asList(taskId)));
-          }
+          workerTaskMap.put(worker, new LinkedList<>(Arrays.asList(taskId)));
         });
 
         cnt += evalConf.numOffloadingWorker;
@@ -105,6 +98,8 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
   private long offloadingStart;
   private final Map<String, AtomicBoolean> deoffloadedMap = new ConcurrentHashMap<>();
+
+  private final Map<String, AtomicBoolean> sendTask = new ConcurrentHashMap<>();
 
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
@@ -121,15 +116,19 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
           LOG.info("Sending deoffloading for task ${} to decrease number of workers down to {}, " +
             "total workers {}", taskId, evalConf.numOffloadingWorkerAfterMerging, taskWorkerMap.get(taskId).size());
           synchronized (taskWorkerMap.get(taskId)) {
-            for (int i = evalConf.numOffloadingWorkerAfterMerging; i < taskWorkerMap.get(taskId).size(); i++) {
-              LOG.info("Send deoffloading message for task {} to worker index {}", taskId, i);
-              final OffloadingWorker worker = taskWorkerMap.get(taskId).get(i);
-              worker.writeData
-                (pipeIndex,
-                  new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
-                    pipeIndex,
-                    pipeIndex,
-                    taskId, null));
+
+            final List<OffloadingWorker> common = findCommonWorkersToOffloadTask(taskWorkerMap.get(taskId));
+
+            for (final OffloadingWorker worker : taskWorkerMap.get(taskId)) {
+              if (!common.contains(worker)) {
+                LOG.info("Send deoffloading message for task {} to worker index {}", taskId, worker.getId());
+                worker.writeData
+                  (pipeIndex,
+                    new TaskControlMessage(TaskControlMessage.TaskControlMessageType.OFFLOAD_TASK_STOP,
+                      pipeIndex,
+                      pipeIndex,
+                      taskId, null));
+              }
             }
           }
         }
@@ -138,16 +137,40 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
     if (System.currentTimeMillis() - offloadingStart >= 20000) {
       // global workers
+
+      final AtomicBoolean ab = sendTask.get(taskId);
+
+      if (ab.compareAndSet(false, true)) {
+        // send task
+        LOG.info("Send task to common worker {}", taskId);
+        final List<OffloadingWorker> common = findCommonWorkersToOffloadTask(taskWorkerMap.get(taskId));
+        if (!common.isEmpty()) {
+          offloadTaskToWorker(taskId, common, false);
+        }
+      }
+
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorkerAfterMerging;
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
       return Optional.of(l.get(index));
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      final int index = taskPaddingIndex.get(taskId) +
-        rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
+      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
 
       return Optional.of(l.get(index));
     }
+  }
+
+  private List<OffloadingWorker> findCommonWorkersToOffloadTask(final List<OffloadingWorker> myWorkers) {
+    final List<OffloadingWorker> common = workers.subList(0, evalConf.numOffloadingWorkerAfterMerging);
+    final List<OffloadingWorker> result = new ArrayList<>(common.size());
+
+    for (final OffloadingWorker w : common) {
+      if (!myWorkers.contains(w)) {
+        result.add(w);
+      }
+    }
+
+    return result;
   }
 
   @Override
