@@ -2,25 +2,31 @@
 import boto3
 from datetime import datetime
 
-client = boto3.client('logs')
-
-log_group = "/aws/lambda/nemo-dev-tg-erverless-worker"
-
 
 import sys
 
 
-if len(sys.argv) - 1 < 3:
+if len(sys.argv) - 1 < 4:
     print("Enter parameter: ...", sys.argv)
-    print("1: start time")
-    print("2: end time")
-    print("3: delete after retrieving log (true/false)")
+    print("1: profile (default/taegeonum)")
+    print("2: start time")
+    print("3: end time")
+    print("4: delete after retrieving log (true/false)")
     sys.exit(0)
 
 
-start_time = int(sys.argv[1]) * 1000
-end_time = int(sys.argv[2]) * 1000
-delete = True if sys.argv[3] == "true" else False
+profile = sys.argv[1]
+
+session = boto3.Session(profile_name = profile, region_name = "ap-northeast-2")
+client = session.client('logs')
+
+log_group = "/aws/lambda/nemo-dev-tg-erverless-worker"
+
+
+
+start_time = int(sys.argv[2]) * 1000
+end_time = int(sys.argv[3]) * 1000
+delete = True if sys.argv[4] == "true" else False
 
 def get_log_streams(log_streams):
     def get_log_stream(log_stream):
