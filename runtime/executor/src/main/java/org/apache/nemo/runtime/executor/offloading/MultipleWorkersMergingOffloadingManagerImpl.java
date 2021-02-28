@@ -145,6 +145,12 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
         LOG.info("Send task to common worker {}", taskId);
         final List<OffloadingWorker> common = findCommonWorkersToOffloadTask(taskWorkerMap.get(taskId));
         if (!common.isEmpty()) {
+
+          taskWorkerMap.get(taskId).addAll(common);
+          common.forEach(worker -> {
+            workerTaskMap.get(worker).add(taskId);
+          });
+
           offloadTaskToWorker(taskId, common, false);
         }
       }
