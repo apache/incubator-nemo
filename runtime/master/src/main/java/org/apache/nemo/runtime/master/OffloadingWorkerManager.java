@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -128,7 +127,10 @@ public final class OffloadingWorkerManager {
 
             LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
             pair.left().writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT, workerInitBuffer));
+          });
 
+
+          initService.execute(() -> {
             final Pair<Channel, OffloadingMasterEvent> workerDonePair;
             try {
               workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
@@ -138,17 +140,19 @@ public final class OffloadingWorkerManager {
             }
 
             final int port = workerDonePair.right().getByteBuf().readInt();
+            final int rid = workerDonePair.right().getByteBuf().readInt();
+
             workerDonePair.right().getByteBuf().release();
             final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
 
             LOG.info("Send data channel address to executor {}: {}/{}:{}",
-              requestIdExecutorMap.get(requestId),
-              requestId, addr, port);
+              requestIdExecutorMap.get(rid),
+              rid, addr, port);
 
             final String fullAddr = addr + ":" + port;
 
             final ExecutorRepresenter er =
-              executorRegistry.getExecutorRepresentor(requestIdExecutorMap.get(requestId));
+              executorRegistry.getExecutorRepresentor(requestIdExecutorMap.get(rid));
 
             er.sendControlMessage(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
@@ -157,7 +161,7 @@ public final class OffloadingWorkerManager {
               .setGetLambaControlChannelMsg(ControlMessage.GetLambdaControlChannel.
                 newBuilder()
                 .setFullAddr(fullAddr)
-                .setRequestId(requestId)
+                .setRequestId(rid)
                 .build())
               .build());
           });
@@ -186,7 +190,7 @@ public final class OffloadingWorkerManager {
   }
 
   private final Map<Integer, ByteBuf> requestWorkerInitMap = new ConcurrentHashMap<>();
-  private final AtomicInteger requestId = new AtomicInteger();
+  private final AtomicInteger requestIdCnt = new AtomicInteger();
   private final Map<Integer, Channel> requestIdControlChannelMap = new ConcurrentHashMap<>();
   private final Map<Integer, String> requestIdExecutorMap = new ConcurrentHashMap<>();
 
@@ -279,7 +283,7 @@ public final class OffloadingWorkerManager {
           offloadExecutorByteBuf.retain(numLambda);
 
           for (int i = 0; i < numLambda; i++) {
-            final int rid = requestId.getAndIncrement();
+            final int rid = requestIdCnt.getAndIncrement();
             requestIdExecutorMap.put(rid, m.getExecutorId());
             requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
 

@@ -280,7 +280,7 @@ public final class OffloadingHandler {
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
 
-    byte[] bytes = ByteBuffer.allocate(4).putInt(requestId).array();
+    byte[] bytes = ByteBuffer.allocate(Integer.BYTES).putInt(requestId).array();
 
     opendChannel = handshake(bytes, address, port, opendChannel, result);
     handler = (LambdaEventHandler) map.get(opendChannel);
@@ -307,7 +307,9 @@ public final class OffloadingHandler {
     }
 
     if (workerInitLatch.getCount() == 0) {
-      final byte[] addrPortBytes = ByteBuffer.allocate(4).putInt(executorDataAddrPort).array();
+      final byte[] addrPortBytes = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES)
+        .putInt(executorDataAddrPort)
+        .putInt(requestId).array();
       opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
       LOG.info("Sending worker init done");
     }
