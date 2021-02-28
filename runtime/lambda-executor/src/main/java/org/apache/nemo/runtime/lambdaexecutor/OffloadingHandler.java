@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.common;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
@@ -12,8 +12,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
@@ -446,23 +449,25 @@ public final class OffloadingHandler {
           //System.out.println("Serialized transforms size: " + bytes.length);
           //ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           try {
-            Thread.currentThread().setContextClassLoader(classLoader);
-            ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
             System.out.println("Before OffloadingTransform: ");
-            offloadingTransform = (OffloadingTransform) ois.readObject();
+            final DataInputStream dis = new DataInputStream(bis);
+            offloadingTransform = OffloadingExecutor.decode(dis);
+            decoder = (OffloadingDecoder) SerializationUtils.deserialize(dis);
+            outputEncoder = (OffloadingEncoder) SerializationUtils.deserialize(dis);
+
+            Thread.currentThread().setContextClassLoader(classLoader);
+            // ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
+            // offloadingTransform = (OffloadingTransform) ois.readObject();
             System.out.println("After OffloadingTransform: ");
-            decoder = (OffloadingDecoder) ois.readObject();
-            outputEncoder = (OffloadingEncoder) ois.readObject();
+            // decoder = (OffloadingDecoder) ois.readObject();
+            // outputEncoder = (OffloadingEncoder) ois.readObject();
 
             System.out.println("OffloadingTransform: " + offloadingTransform);
 
-            ois.close();
+            // ois.close();
             bis.close();
             byteBuf.release();
           } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          } catch (ClassNotFoundException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
           }

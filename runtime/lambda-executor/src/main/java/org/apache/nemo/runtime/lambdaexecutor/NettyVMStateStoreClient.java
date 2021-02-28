@@ -1,8 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -11,7 +9,6 @@ import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.log4j.Logger;
-import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
 

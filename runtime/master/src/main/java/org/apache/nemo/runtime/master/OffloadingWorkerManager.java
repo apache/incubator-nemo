@@ -9,6 +9,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
@@ -30,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Map;
@@ -255,12 +257,12 @@ public final class OffloadingWorkerManager {
 
             final ByteBuf offloadExecutorByteBuf = ByteBufAllocator.DEFAULT.buffer();
             final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
+            final DataOutputStream dos = new DataOutputStream(bos);
+            offloadingExecutor.encode(dos);
+            SerializationUtils.serialize(ser.getInputDecoder(), dos);
+            SerializationUtils.serialize(ser.getOutputEncoder(), dos);
             try {
-              final ObjectOutputStream oos = new ObjectOutputStream(bos);
-              oos.writeObject(offloadingExecutor);
-              oos.writeObject(ser.getInputDecoder());
-              oos.writeObject(ser.getOutputEncoder());
-              oos.close();
+              dos.close();
             } catch (IOException e) {
               e.printStackTrace();
               throw new RuntimeException(e);

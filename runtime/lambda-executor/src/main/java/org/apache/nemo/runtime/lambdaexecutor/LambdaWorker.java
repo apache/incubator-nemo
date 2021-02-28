@@ -1,14 +1,14 @@
-package org.apache.nemo.offloading.workers.lambda;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 //import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
 //import com.amazonaws.services.s3.AmazonS3;
 //import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 //import com.amazonaws.services.s3.model.S3Object;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.nemo.offloading.common.OffloadingHandler;
+
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;

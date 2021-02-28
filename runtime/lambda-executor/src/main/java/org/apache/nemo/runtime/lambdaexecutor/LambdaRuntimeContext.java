@@ -1,7 +1,9 @@
-package org.apache.nemo.offloading.common;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 
 import io.netty.channel.Channel;
+import org.apache.nemo.offloading.common.OffloadingTransform;
+import org.apache.nemo.offloading.common.TaskCaching;
 
 import java.util.Map;
 

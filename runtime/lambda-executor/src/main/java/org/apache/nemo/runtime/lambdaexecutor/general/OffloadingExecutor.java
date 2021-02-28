@@ -32,9 +32,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -104,6 +106,48 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.parentExecutorDataPort = parentExecutorDataPort;
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
+  }
+
+  public void encode(final DataOutputStream dos) {
+    try {
+      dos.writeInt(executorThreadNum);
+      dos.writeInt(samplingMap.size());
+      for (String key : samplingMap.keySet()) {
+        dos.writeUTF(key);
+        dos.writeDouble(samplingMap.get(key));
+      }
+      dos.writeBoolean(isLocalSource);
+      dos.writeUTF(executorId);
+      dos.writeUTF(parentExecutorAddress);
+      dos.writeInt(parentExecutorDataPort);
+      dos.writeInt(stateStorePort);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static OffloadingExecutor decode(final DataInputStream dis) {
+    try {
+      final int executorThreadNum = dis.readInt();
+      final int size = dis.readInt();
+      final Map<String, Double> samplingMap = new HashMap<>();
+      for (int i = 0; i < size; i++) {
+        final String key = dis.readUTF();
+        final Double val = dis.readDouble();
+        samplingMap.put(key, val);
+      }
+      final boolean isLocalSource = dis.readBoolean();
+      final String executorId = dis.readUTF();
+      final String executorAddr = dis.readUTF();
+      final int parentDataPort = dis.readInt();
+      final int stateStorePort = dis.readInt();
+      return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
+        executorId, executorAddr, parentDataPort, stateStorePort);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   private final AtomicLong prevProcessingSum = new AtomicLong(0);
