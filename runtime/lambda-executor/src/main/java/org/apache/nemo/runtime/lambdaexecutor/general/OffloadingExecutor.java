@@ -207,7 +207,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.parentExecutorChannel = clientTransport
       .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
 
-    LOG.info("Parente executor channel: {}", parentExecutorAddress);
+    LOG.info("Data channel: {}", parentExecutorAddress);
 
     final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
       new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,

@@ -169,7 +169,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
     } else {
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % evalConf.numOffloadingWorker;
+      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
 
       return Optional.of(l.get(index));
     }

@@ -230,7 +230,7 @@ public final class OffloadingWorkerManager {
               throw new RuntimeException(e);
             }
 
-            LOG.info("Task send {} to lambda {}", m.getTaskId(), channel.remoteAddress());
+            LOG.info("Task send {} to lambda {} / {}", m.getTaskId(), requestId, channel.remoteAddress());
 
             channel.writeAndFlush(new OffloadingMasterEvent(
               OffloadingMasterEvent.Type.TASK_SEND, bos.buffer()));

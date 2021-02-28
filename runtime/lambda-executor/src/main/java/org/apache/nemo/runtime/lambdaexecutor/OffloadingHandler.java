@@ -516,7 +516,8 @@ public final class OffloadingHandler {
 
             bos.writeUTF(taskId);
             bos.close();
-            LOG.info("Send task ready for " + taskId + ", readable byte " + bos.buffer().readableBytes());
+
+            LOG.info("Send task ready for " + taskId + " to " + offloadingTransform.getDataChannel());
 
             offloadingTransform.getDataChannel()
               .writeAndFlush(new OffloadingExecutorControlEvent(
