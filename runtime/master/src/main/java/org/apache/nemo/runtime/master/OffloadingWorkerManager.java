@@ -54,6 +54,7 @@ public final class OffloadingWorkerManager {
   private final SerializedTaskMap serializedTaskMap;
   private final PipeIndexMaster pipeIndexMaster;
   private final OffloadingRequester offloadingRequester;
+  private final ExecutorService initService = Executors.newCachedThreadPool();
 
   @Inject
   private OffloadingWorkerManager(final TcpPortProvider tcpPortProvider,
@@ -88,18 +89,19 @@ public final class OffloadingWorkerManager {
           final Pair<Integer, Pair<Channel, OffloadingMasterEvent>> event =
             nemoEventHandler.getHandshakeQueue().take();
 
-          final int requestId = event.left();
-          final Pair<Channel, OffloadingMasterEvent> pair = event.right();
-          final ByteBuf workerInitBuffer = requestWorkerInitMap.remove(requestId);
+          initService.execute(() -> {
+            final int requestId = event.left();
+            final Pair<Channel, OffloadingMasterEvent> pair = event.right();
+            final ByteBuf workerInitBuffer = requestWorkerInitMap.remove(requestId);
 
-          if (workerInitBuffer == null) {
-            throw new RuntimeException("No worker init buffer for request id " + requestId);
-          }
+            if (workerInitBuffer == null) {
+              throw new RuntimeException("No worker init buffer for request id " + requestId);
+            }
 
-          LOG.info("Channel for requestId {}: {}", requestId, pair.left());
-          requestIdControlChannelMap.put(requestId, pair.left());
+            LOG.info("Channel for requestId {}: {}", requestId, pair.left());
+            requestIdControlChannelMap.put(requestId, pair.left());
 
-          channelEventHandlerMap.put(pair.left(), new EventHandler<OffloadingMasterEvent>() {
+            channelEventHandlerMap.put(pair.left(), new EventHandler<OffloadingMasterEvent>() {
               @Override
               public void onNext(OffloadingMasterEvent msg) {
                 switch (msg.getType()) {
@@ -122,33 +124,41 @@ public final class OffloadingWorkerManager {
               }
             });
 
-          LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
-          pair.left().writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT, workerInitBuffer));
+            LOG.info("Waiting worker init.. send buffer {}", workerInitBuffer.readableBytes());
+            pair.left().writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT, workerInitBuffer));
 
-          final Pair<Channel, OffloadingMasterEvent> workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
-          final int port = workerDonePair.right().getByteBuf().readInt();
-          workerDonePair.right().getByteBuf().release();
-          final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
+            final Pair<Channel, OffloadingMasterEvent> workerDonePair;
+            try {
+              workerDonePair = nemoEventHandler.getWorkerReadyQueue().take();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
 
-          LOG.info("Send data channel address to executor {}: {}/{}:{}",
-            requestIdExecutorMap.get(requestId),
-            requestId, addr, port);
+            final int port = workerDonePair.right().getByteBuf().readInt();
+            workerDonePair.right().getByteBuf().release();
+            final String addr = workerDonePair.left().remoteAddress().toString().split(":")[0];
 
-          final String fullAddr = addr + ":" + port;
+            LOG.info("Send data channel address to executor {}: {}/{}:{}",
+              requestIdExecutorMap.get(requestId),
+              requestId, addr, port);
 
-          final ExecutorRepresenter er =
-            executorRegistry.getExecutorRepresentor(requestIdExecutorMap.get(requestId));
+            final String fullAddr = addr + ":" + port;
 
-          er.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
-            .setType(ControlMessage.MessageType.LambdaControlChannel)
-            .setGetLambaControlChannelMsg(ControlMessage.GetLambdaControlChannel.
-              newBuilder()
-              .setFullAddr(fullAddr)
-              .setRequestId(requestId)
-              .build())
-            .build());
+            final ExecutorRepresenter er =
+              executorRegistry.getExecutorRepresentor(requestIdExecutorMap.get(requestId));
+
+            er.sendControlMessage(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+              .setType(ControlMessage.MessageType.LambdaControlChannel)
+              .setGetLambaControlChannelMsg(ControlMessage.GetLambdaControlChannel.
+                newBuilder()
+                .setFullAddr(fullAddr)
+                .setRequestId(requestId)
+                .build())
+              .build());
+          });
 
         } catch (InterruptedException e) {
           e.printStackTrace();
