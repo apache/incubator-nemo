@@ -89,8 +89,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private long desirableRate() {
     final long cnt = offloadData.get();
-    if (cnt < 4000) {
-      return 2000;
+    if (cnt < 3000) {
+      return 3000;
     } else if (cnt < 6000) {
       return 6000;
     } else if (cnt < 10000) {
@@ -190,9 +190,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     if (event.isControlMessage()) {
       dataChannel.writeAndFlush(event);
     } else {
-      // offloadData.getAndIncrement();
-      // rateControlData.getAndIncrement();
-
+      offloadData.getAndIncrement();
+      rateControlData.getAndIncrement();
       final ByteBuf byteBuf = event.getDataByteBuf();
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
         pipeIndex, byteBuf, byteBuf.readableBytes(), true);

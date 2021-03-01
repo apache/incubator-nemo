@@ -429,7 +429,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     while (!optional.isPresent()) {
       try {
-        Thread.sleep(4);
+        Thread.sleep(5);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -438,7 +438,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
 
     final OffloadingWorker worker = optional.get();
-
     // LOG.info("Offloading data index {}, cnt {}", data.getInputPipeIndex(), c.getAndIncrement());
     worker.writeData(data.getInputPipeIndex(), data);
 
