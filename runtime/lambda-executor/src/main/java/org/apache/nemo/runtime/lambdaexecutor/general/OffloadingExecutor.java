@@ -74,6 +74,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   // updated whenever task is submitted
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
+  private final Map<Integer, String> indexTaskMap;
   private final Map<String, ExecutorThread> taskExecutorThreadMap;
   private final Map<String, TaskExecutor> taskExecutorMap;
 
@@ -102,6 +103,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.isLocalSource = isLocalSource;
     this.serializerManager = new DefaultSerializerManagerImpl();
     this.indexMap = new ConcurrentHashMap<>();
+    this.indexTaskMap = new ConcurrentHashMap<>();
     this.parentExecutorAddress = parentExecutorAddress;
     this.parentExecutorDataPort = parentExecutorDataPort;
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
@@ -183,7 +185,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     LOG.info("Netty state store client created...");
 
     pipeManagerWorker =
-      new OffloadingPipeManagerWorkerImpl(executorId, indexMap);
+      new OffloadingPipeManagerWorkerImpl(executorId, indexMap, indexTaskMap);
 
     LOG.info("Pipe manager worker created...");
 
@@ -314,6 +316,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         }
 
         indexMap.putAll(e.indexMap);
+        e.indexMap.forEach((key, index) -> {
+          indexTaskMap.put(index, key.getRight());
+        });
+
         final long et = System.currentTimeMillis();
 
         LOG.info("Offload Executor [{}] received Task [{}] to execute. time {}",

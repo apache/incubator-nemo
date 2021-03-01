@@ -420,6 +420,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   }
 
 
+  // private final AtomicInteger c = new AtomicInteger(0);
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
 
@@ -437,6 +438,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
 
     final OffloadingWorker worker = optional.get();
+    // LOG.info("Offloading data index {}, cnt {}", data.getInputPipeIndex(), c.getAndIncrement());
     worker.writeData(data.getInputPipeIndex(), data);
 
     /*
