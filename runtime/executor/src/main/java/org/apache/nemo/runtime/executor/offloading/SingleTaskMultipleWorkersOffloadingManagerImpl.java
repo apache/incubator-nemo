@@ -16,6 +16,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 
 public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends AbstractOffloadingManagerImpl {
@@ -91,9 +92,24 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
 
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
+
     final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
-    final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-    return Optional.of(l.get(index));
+
+    int cnt = 0;
+    while (cnt < l.size()) {
+      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
+      if (l.get(index).isInputAccepted(taskId)) {
+        return Optional.of(l.get(index));
+      }
+
+      cnt += 1;
+    }
+
+    return Optional.empty();
+
+
+    // final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
+    // return Optional.of(l.get(index));
   }
 
   @Override

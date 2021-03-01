@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
@@ -82,6 +83,47 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     });
   }
 
+  private long prevFlushBufferTrackTime;
+  private AtomicLong offloadData = new AtomicLong(0);
+  private AtomicLong rateControlData = new AtomicLong(0);
+
+  private long desirableRate() {
+    final long cnt = offloadData.get();
+    if (cnt < 3000) {
+      return 3000;
+    } else if (cnt < 6000) {
+      return 6000;
+    } else if (cnt < 10000) {
+      return 10000;
+    } else {
+      return 1000000;
+    }
+  }
+
+  private boolean rateControl() {
+    final long curr = System.currentTimeMillis();
+    if (curr - prevFlushBufferTrackTime >= 5) {
+      final long elapsed = curr - prevFlushBufferTrackTime;
+      final long cnt = rateControlData.get();
+      if (cnt * (1000 / (double)elapsed) > desirableRate()) {
+        // Throttle !!
+        return false;
+      } else {
+        prevFlushBufferTrackTime = curr;
+        rateControlData.addAndGet(-cnt);
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean isInputAccepted(String taskId) {
+    if (!isReady()) {
+      return false;
+    }
+    return rateControl();
+  }
+
   @Override
   public boolean isReady() {
     return dataChannel != null;
@@ -135,6 +177,10 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   @Override
   public void writeControl(ControlMessage.Message message) {
+    if (message.getType().equals(ControlMessage.MessageType.TaskSendToLambda)) {
+      prevFlushBufferTrackTime = System.currentTimeMillis();
+    }
+
     toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
       .send(message);
   }
@@ -144,6 +190,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     if (event.isControlMessage()) {
       dataChannel.writeAndFlush(event);
     } else {
+      offloadData.getAndIncrement();
+      rateControlData.getAndIncrement();
       final ByteBuf byteBuf = event.getDataByteBuf();
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
         pipeIndex, byteBuf, byteBuf.readableBytes(), true);

@@ -258,17 +258,19 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       final ByteBuf byteBuf = controlChannel.alloc().ioBuffer();
       final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+      final DataOutputStream dos = new DataOutputStream(bos);
+      executorMetrics.encode(dos);
+
       try {
-        FSTSingleton.getInstance().encodeToStream(bos, executorMetrics);
-      } catch (IOException e) {
+        dos.close();
+      } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
 
-      /*
-      controlChannel.writeAndFlush(new OffloadingMasterEvent(
-        OffloadingMasterEvent.Type.EXECUTOR_METRICS, byteBuf));
-        */
+      controlChannel.writeAndFlush(new OffloadingExecutorControlEvent(
+        OffloadingExecutorControlEvent.Type.EXECUTOR_METRICS, byteBuf));
+
     }, 1, 1, TimeUnit.SECONDS);
 
   }

@@ -243,10 +243,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
               while (taskExecutor == null) {
                 taskExecutor = taskIdExecutorMap.get(taskId);
-                Thread.sleep(1);
+                Thread.sleep(5);
               }
 
-              throttling();
+              // throttling();
 
               if (testing) {
                 long st = System.nanoTime();

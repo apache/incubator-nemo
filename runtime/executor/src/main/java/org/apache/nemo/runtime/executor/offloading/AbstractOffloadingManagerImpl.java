@@ -21,6 +21,7 @@ import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializ
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.*;
@@ -211,13 +212,9 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                 }
                 case EXECUTOR_METRICS: {
                   final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
-                  final ExecutorMetrics executorMetrics;
-                  try {
-                    executorMetrics = (ExecutorMetrics) FSTSingleton.getInstance().decodeFromStream(bis);
-                  } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                  }
+                  final DataInputStream dis = new DataInputStream(bis);
+                  final ExecutorMetrics executorMetrics = ExecutorMetrics.decode(dis);
+
                   LOG.info("Executor metrics recieved for worker {}: {}", myWorker.getId(), executorMetrics);
                   myWorker.setMetric(executorMetrics);
                   break;
@@ -415,12 +412,34 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   private final Map<String, Queue<TaskHandlingEvent>> intermediateQueueMap = new ConcurrentHashMap<>();
 
+  private long totalProcessedDataInWorker(final ExecutorMetrics em) {
+    return em.taskInputProcessRateMap.values().stream()
+      .map(pair -> pair.right().get())
+      .reduce((x, y) -> x + y)
+      .get();
+  }
+
+
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
 
-    final Optional<OffloadingWorker> optional =
+    Optional<OffloadingWorker> optional =
       selectWorkerForIntermediateOffloading(taskId, data);
 
+    while (!optional.isPresent()) {
+      try {
+        Thread.sleep(5);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      optional = selectWorkerForIntermediateOffloading(taskId, data);
+    }
+
+    final OffloadingWorker worker = optional.get();
+    worker.writeData(data.getInputPipeIndex(), data);
+
+    /*
     if (optional.isPresent()) {
       final OffloadingWorker worker = optional.get();
       final Queue<TaskHandlingEvent> queue = intermediateQueueMap.get(taskId);
@@ -453,6 +472,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       queue.add(data);
       // throw new RuntimeException("No worker for offloading ... " + taskId);
     }
+    */
+
 
     /*
     if (noPartialOffloading) {

@@ -21,6 +21,7 @@ public interface OffloadingWorker<I, O> {
   void addReadyTask(String taskId);
   void removeDoneTask(String taskId);
   boolean hasReadyTask(String taskId);
+  boolean isInputAccepted(String taskId);
 
   double getProcessingRate();
 
