@@ -99,7 +99,7 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
     int cnt = 0;
     while (cnt < l.size()) {
       final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-      if (l.get(index).isInputAccepted(taskId)) {
+      if (l.get(index).hasReadyTask(taskId)) {
         return Optional.of(l.get(index));
       }
 
@@ -111,7 +111,15 @@ public final class SingleTaskMultipleWorkersOffloadingManagerImpl extends Abstra
 
 
     final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-    return Optional.of(l.get(index));
+    if (l.get(index).hasReadyTask(taskId)) {
+      return Optional.of(l.get(index));
+    } else {
+      return Optional.empty();
+    }
+
+
+    // final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
+    // return Optional.of(l.get(index));
   }
 
   @Override
