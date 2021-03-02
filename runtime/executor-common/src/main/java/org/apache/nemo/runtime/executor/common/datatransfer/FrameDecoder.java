@@ -27,6 +27,7 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -186,6 +187,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       in.readInt();
       final long length = in.readUnsignedInt();
       // LOG.info("Control message...?? length {}", length);
+
       controlBodyBytesToRead = length;
       if (length < 0) {
         throw new IllegalStateException(String.format("Frame length is negative: %d", length));
@@ -248,7 +250,17 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     final ByteBufInputStream bis = new ByteBufInputStream(in);
     final TaskControlMessage taskControlMessage = TaskControlMessage.decode(bis);
 
-    if (taskControlMessage.type.equals(TaskControlMessage.TaskControlMessageType.OFFLOAD_CONTROL)) {
+    try {
+      bis.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    if (taskControlMessage
+      .type.equals(TaskControlMessage.TaskControlMessageType.OFFLOAD_CONTROL) ||
+      taskControlMessage
+      .type.equals(TaskControlMessage.TaskControlMessageType.DEACTIVATE_LAMBDA)) {
       // For offloaded task
       out.add(taskControlMessage);
     } else {

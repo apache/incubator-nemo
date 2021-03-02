@@ -38,7 +38,7 @@ public final class TaskExecutorUtil {
     if (irVertex instanceof OperatorVertex) {
       transform = ((OperatorVertex) irVertex).getTransform();
       transform.prepare(context, outputCollector);
-      LOG.info("Preparing dofnTransform for {}/{}/{}", irVertex, taskId, transform);
+      // LOG.info("Preparing dofnTransform for {}/{}/{}", irVertex, taskId, transform);
     }
   }
 

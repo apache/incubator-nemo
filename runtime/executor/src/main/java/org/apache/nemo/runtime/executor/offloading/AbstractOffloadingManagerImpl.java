@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -441,6 +442,114 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   }
 
 
+  private int PARTIAL_CNT_THRESHOLD = 2000;
+  private int PARTIAL_TIME_THRESHOLD = 1000; // ms
+  private final AtomicBoolean deactivatePartials = new AtomicBoolean(false);
+
+  @Override
+  public boolean offloadPartialDataOrNot(String taskId, TaskHandlingEvent data) {
+
+    // DEACTIVATION CHECK
+    if (System.currentTimeMillis() - partialInvokeTime > PARTIAL_TIME_THRESHOLD) {
+      if (deactivatePartials.compareAndSet(false, true)) {
+        // Deactivation all workers
+        LOG.info("Deactivating all workers.. because timed out");
+        workers.forEach(worker -> {
+          if (worker.isActivated()) {
+            worker.deactivate();
+          }
+          LOG.info("Worker {} offloaded cnt ", worker.getId(), workerParitalOffloadingCntMap.get(worker));
+        });
+        disablePartialOffloading();
+        return false;
+      } else {
+        disablePartialOffloading();
+        return false;
+      }
+    }
+
+    taskPartialOffloadingCntMap.putIfAbsent(taskId, 0);
+
+    final List<OffloadingWorker> partials = taskPartialOffloadingWorkersMap.get(taskId)
+      .stream().filter(worker ->
+        workerParitalOffloadingCntMap.get(worker).get() < PARTIAL_CNT_THRESHOLD && worker.isActivated())
+      .collect(Collectors.toList());
+
+    if (partials.isEmpty()) {
+      return false;
+    } else {
+
+      taskPartialOffloadingCntMap.put(taskId, taskPartialOffloadingCntMap.get(taskId) + 1);
+      final int index = taskPartialOffloadingCntMap.get(taskId) % partials.size();
+
+      final OffloadingWorker offloadingWorker = partials.get(index);
+      final int cnt = workerParitalOffloadingCntMap.get(offloadingWorker).incrementAndGet();
+
+      if (cnt == PARTIAL_CNT_THRESHOLD) {
+        offloadingWorker.writeData(data.getInputPipeIndex(), data);
+        // deactivation worker!!
+        LOG.info("Worker partial offloading cnt is larger than threshold.. deoffloading", offloadingWorker.getId());
+        offloadingWorker.deactivate();
+        return true;
+      } else if (cnt < PARTIAL_CNT_THRESHOLD) {
+        // LOG.info("Offloading partial data for task {} to worker {}, cnt {}", taskId, offloadingWorker.getId(), cnt);
+        offloadingWorker.writeData(data.getInputPipeIndex(), data);
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  private volatile boolean partialOffloadingInvoked = false;
+
+  long partialInvokeTime;
+
+  @Override
+  public void invokeParitalOffloading() {
+    partialInvokeTime = System.currentTimeMillis();
+    deactivatePartials.set(false);
+    taskPartialOffloadingCntMap.clear();
+    workerParitalOffloadingCntMap.clear();
+    workers.forEach(worker -> {
+      workerParitalOffloadingCntMap.put(worker, new AtomicInteger(0));
+    });
+
+    partialOffloadingInvoked = true;
+  }
+
+  private void disablePartialOffloading() {
+    invokedBooleanMap.clear();
+    partialOffloadingInvoked = false;
+  }
+
+  private final Map<String, Boolean> invokedBooleanMap = new ConcurrentHashMap<>();
+  private final Map<String, List<OffloadingWorker>> taskPartialOffloadingWorkersMap = new ConcurrentHashMap<>();
+  private final Map<OffloadingWorker, AtomicInteger> workerParitalOffloadingCntMap = new ConcurrentHashMap<>();
+  private final Map<String, Integer> taskPartialOffloadingCntMap = new ConcurrentHashMap<>();
+
+  @Override
+  public boolean canOffloadPartial(String taskId) {
+    if (!partialOffloadingInvoked) {
+      return false;
+    } else {
+      if (!invokedBooleanMap.getOrDefault(taskId, false)) {
+        if (workers.stream()
+          .filter(worker -> worker.hasReadyTask(taskId))
+          .allMatch(worker -> worker.isActivated())) {
+          invokedBooleanMap.putIfAbsent(taskId, true);
+          taskPartialOffloadingWorkersMap.putIfAbsent(taskId,
+            workers.stream().filter(worker -> worker.hasReadyTask(taskId)).collect(Collectors.toList()));
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return true;
+      }
+    }
+  }
+
   // private final AtomicInteger c = new AtomicInteger(0);
   @Override
   public void offloadIntermediateData(String taskId, TaskHandlingEvent data) {
@@ -540,8 +649,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   abstract Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, final TaskHandlingEvent data);
   abstract Optional<OffloadingWorker> selectWorkerForSourceOffloading(String taskId, final Object data);
 
-
   // private final Map<String, Queue<SourceData>> sourceQueueMap = new ConcurrentHashMap<>();
+
 
   @Override
   public void offloadSourceData(final String taskId,
@@ -574,6 +683,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     // LOG.info("Write source data for offloaded task {}", taskId);
     // workers.get(0).writeSourceData(index, serializer, data);
   }
+
 
   @Override
   public void close() {

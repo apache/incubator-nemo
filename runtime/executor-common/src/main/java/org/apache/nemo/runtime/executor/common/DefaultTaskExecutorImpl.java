@@ -836,12 +836,19 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               throw new RuntimeException("buffer should be empty");
             }
 
-            final Object data = taskHandlingEvent.getData();
+            if (offloadingManager.canOffloadPartial(taskId)) {
+              // send partial data
+              if (!offloadingManager.offloadPartialDataOrNot(taskId, taskHandlingEvent)) {
+                final Object data = taskHandlingEvent.getData();
+                handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+              }
+            } else {
+              final Object data = taskHandlingEvent.getData();
+              // LOG.info("Handling data for task {}, index {}, watermark {}",
+              //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
 
-            // LOG.info("Handling data for task {}, index {}, watermark {}",
-            //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
-
-            handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+              handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+            }
             break;
           }
           default:

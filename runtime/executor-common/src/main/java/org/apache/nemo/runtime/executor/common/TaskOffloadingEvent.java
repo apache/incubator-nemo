@@ -9,6 +9,7 @@ public final class TaskOffloadingEvent implements TaskHandlingEvent {
     SEND_TO_OFFLOADING_WORKER,
     SEND_BURSTY_COMPUTATION, // offloading bursty computation when warm-up enabled
     FINISH_BURSTY_COMPUTATION, // offloading bursty computation when warm-up enabled
+    INVOKE_PARTIAL_OFFLOADING, // for warmup
     OFFLOAD_DONE,
     DEOFFLOADING,
     DEOFFLOADING_DONE,

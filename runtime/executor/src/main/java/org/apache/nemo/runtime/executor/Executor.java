@@ -570,6 +570,11 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case InvokePartialOffloading: {
+          LOG.info("Invoke partial offloading for {}", executorId);
+          offloadingManager.invokeParitalOffloading();
+          break;
+        }
         case ThrottleSource: {
           LOG.info("Throttle source message for {}, rate {}", executorId, message.getSetNum());
           for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {

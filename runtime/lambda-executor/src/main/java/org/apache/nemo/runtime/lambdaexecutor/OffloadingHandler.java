@@ -5,10 +5,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -16,6 +13,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 
 import java.io.*;
@@ -83,6 +81,8 @@ public final class OffloadingHandler {
   private Channel dataChannel;
   private LambdaEventHandler handler;
   private int requestId;
+
+  private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
 
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
                            final boolean isSf,
@@ -281,7 +281,7 @@ public final class OffloadingHandler {
       handler = (LambdaEventHandler) map.get(controlChannel);
     }
 
-    while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
+    while (workerInitLatch.getCount() > 0 && endBlockingQueue.isEmpty()) {
       if (!controlChannel.isActive()) {
         controlChannel = handshake(bytes, address, port, controlChannel, result);
         handler = (LambdaEventHandler) map.get(controlChannel);
@@ -305,15 +305,6 @@ public final class OffloadingHandler {
       dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
         OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
 
-      // cpu heartbeat
-      final Channel ochannel = controlChannel;
-      workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-        final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
-        System.out.println("CPU Load: " + cpuLoad);
-        final ByteBuf bb = ochannel.alloc().buffer();
-        bb.writeDouble(cpuLoad);
-        // ochannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CPU_LOAD, bb));
-      }, 2, 2, TimeUnit.SECONDS);
     }
 
     // ready state
@@ -330,6 +321,23 @@ public final class OffloadingHandler {
 //
 //    map.clear();
 
+  }
+
+  private void schedule() {
+    // cpu heartbeat
+    final Channel ochannel = controlChannel;
+    workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+      System.out.println("CPU Load: " + cpuLoad);
+      final ByteBuf bb = ochannel.alloc().buffer();
+      bb.writeDouble(cpuLoad);
+      // ochannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CPU_LOAD, bb));
+    }, 2, 2, TimeUnit.SECONDS);
+  }
+
+  private void shutdownSchedule() {
+	  workerHeartbeatExecutor.shutdown();
   }
 
 	public Object handleRequest(Map<String, Object> input) {
@@ -367,12 +375,19 @@ public final class OffloadingHandler {
 	    initialization(input);
     }
 
+    schedule();
+	  offloadingTransform.schedule();
+
     final long sst = System.currentTimeMillis();
 
     try {
       // wait until end
       System.out.println("Wait deactivation");
-      final Integer endFlag = handler.endBlockingQueue.take();
+      final Integer endFlag = endBlockingQueue.take();
+
+      shutdownSchedule();
+      offloadingTransform.shutdownSchedule();
+
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
@@ -408,7 +423,7 @@ public final class OffloadingHandler {
 
   public final class LambdaEventHandler implements EventHandler<OffloadingMasterEvent> {
 
-    private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
+
     private final BlockingQueue<Pair<Object, Integer>> result;
     private OffloadingDecoder decoder;
 
@@ -483,7 +498,7 @@ public final class OffloadingHandler {
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
               nameServerAddr, nameServerPort, newExecutorId, controlChannel, throttleRate,
-              testing, stageTaskMap), outputCollector);
+              testing, stageTaskMap, requestId, new ControlMessageFromExecutorHandler()), outputCollector);
 
           LOG.info("End of offloading prepare");
 
@@ -560,6 +575,41 @@ public final class OffloadingHandler {
         default:
           throw new RuntimeException("Invalid type " + nemoEvent.getType());
       }
+    }
+  }
+
+  public final class ControlMessageFromExecutorHandler extends SimpleChannelInboundHandler<TaskControlMessage> {
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, TaskControlMessage msg) throws Exception {
+      switch (msg.type) {
+        case DEACTIVATE_LAMBDA: {
+          System.out.println("Offloading end from executor for deactivate");
+          Thread.sleep(200);
+          while (offloadingTransform.hasRemainingEvent()) {
+            LOG.info("Waiting for handling remaining events to deactivate");
+            Thread.sleep(20);
+          }
+          endBlockingQueue.add(0);
+          break;
+        }
+        default: {
+          throw new RuntimeException("Noit supported");
+        }
+      }
+    }
+
+    @Override
+    public void channelActive(final ChannelHandlerContext ctx) {
+      // channelGroup.add(ctx.channel());
+      // outputWriterFlusher.registerChannel(ctx.channel());
+    }
+
+    @Override
+    public void channelInactive(final ChannelHandlerContext ctx) {
+      // channelGroup.remove(ctx.channel());
+      // outputWriterFlusher.removeChannel(ctx.channel());
+      LOG.info("Channel closed !! " + ctx.channel());
     }
   }
 

@@ -493,13 +493,21 @@ public final class RuntimeMaster {
     offloadingWorkerManager.deactivateAllWorkers();
   }
 
-  public void offloadComputationWarmup() {
+  public void invokePartialOffloading() {
+    activateLambda();
 
-  }
-
-
-  public void finishWarmup() {
-
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
+          LOG.info("Invoke partila offloading for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.InvokePartialOffloading)
+            .build());
+        }
+      });
+    });
   }
 
   public void sendBursty(final int num) {

@@ -2,8 +2,10 @@ package org.apache.nemo.runtime.lambdaexecutor;
 
 
 import io.netty.channel.Channel;
+import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.TaskCaching;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import java.util.Map;
 
@@ -19,6 +21,8 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
   public final long throttleRate;
   public final boolean testing;
   public final Map<String, TaskCaching> stageTaskMap;
+  public final int requestId;
+  public final SimpleChannelInboundHandler<TaskControlMessage> handler;
 
   public LambdaRuntimeContext(
     final Map<String, OffloadingHandler.LambdaEventHandler> taskAndEventHandlerMap,
@@ -30,7 +34,9 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     final Channel controlChannel,
     final long throttleRate,
     final boolean testing,
-    final Map<String, TaskCaching> stageTaskMap) {
+    final Map<String, TaskCaching> stageTaskMap,
+    final int requestId,
+    final SimpleChannelInboundHandler<TaskControlMessage> handler) {
     this.taskAndEventHandlerMap = taskAndEventHandlerMap;
     this.lambdaEventHandler = lambdaEventHandler;
     this.isSf = isSf;
@@ -41,6 +47,8 @@ public final class LambdaRuntimeContext implements OffloadingTransform.Offloadin
     this.throttleRate = throttleRate;
     this.testing = testing;
     this.stageTaskMap = stageTaskMap;
+    this.requestId = requestId;
+    this.handler = handler;
   }
 
   public String getNewExecutorId() {

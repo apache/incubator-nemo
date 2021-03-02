@@ -36,4 +36,19 @@ public final class SimpleOffloadingManager implements OffloadingManager {
   public void close() {
 
   }
+
+  @Override
+  public boolean offloadPartialDataOrNot(String taskId, TaskHandlingEvent data) {
+    return false;
+  }
+
+  @Override
+  public boolean canOffloadPartial(String taskId) {
+    return false;
+  }
+
+  @Override
+  public void invokeParitalOffloading() {
+    throw new RuntimeException("not supported");
+  }
 }

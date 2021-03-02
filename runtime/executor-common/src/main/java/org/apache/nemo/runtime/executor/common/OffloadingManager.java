@@ -13,4 +13,9 @@ public interface OffloadingManager {
                          final Object data,
                          final Serializer serializer);
   void close();
+
+  // For warm-up!!
+  boolean offloadPartialDataOrNot(String taskId, TaskHandlingEvent data);
+  boolean canOffloadPartial(String taskId);
+  void invokeParitalOffloading();
 }

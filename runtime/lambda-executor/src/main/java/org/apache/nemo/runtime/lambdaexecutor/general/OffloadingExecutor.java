@@ -156,84 +156,39 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   LambdaRuntimeContext context;
 
   @Override
-  public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
-    context = (LambdaRuntimeContext)c;
+  public boolean hasRemainingEvent() {
+    for (ExecutorThread e : executorThreads) {
+      if (!e.isEmpty()) {
+        return true;
+      }
+    }
 
-    this.monitoringThread = new MonitoringThread(1000, 1.0);
+    return false;
+  }
 
+  @Override
+  public void shutdownSchedule() {
+    scheduledService.shutdown();
+  }
+
+  @Override
+  public void schedule() {
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
     this.scheduledService.scheduleAtFixedRate(() -> {
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
         parentExecutorChannel.flush();
       }
-    }, 20, 20, TimeUnit.MILLISECONDS);
+    }, 50, 50, TimeUnit.MILLISECONDS);
 
     this.scheduledService.scheduleAtFixedRate(() -> {
       LOG.info("CPU Load {}", monitoringThread.getTotalUsage());
-    }, 1, 1, TimeUnit.SECONDS);
-
-    this.executorMetrics = new ExecutorMetrics();
-    this.throttleRate = context.throttleRate;
-    this.prepareService = Executors.newCachedThreadPool();
-
-    LOG.info("Netty state store client before created for connectiong {} / {} ...",
-      parentExecutorAddress, stateStorePort);
-
-    // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
-    this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
-
-    LOG.info("Netty state store client created...");
-
-    pipeManagerWorker =
-      new OffloadingPipeManagerWorkerImpl(executorId, indexMap, indexTaskMap);
-
-    LOG.info("Pipe manager worker created...");
-
-    this.intermediateDataIOFactory = new OffloadingIntermediateDataIOFactory(
-      pipeManagerWorker, serializerManager);
-
-    LOG.info("Intermediate data Io created...");
-
-    this.outputCollectorGenerator =
-      new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
-
-
-    final OffloadingTransportChannelInitializer initializer =
-      new OffloadingTransportChannelInitializer(pipeManagerWorker,
-        new ControlMessageHandler());
-
-    LOG.info("OffloadingTransportChannelInitializer...");
-
-    this.clientTransport = new VMScalingClientTransport(initializer);
-
-    this.parentExecutorChannel = clientTransport
-      .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
-
-    LOG.info("Data channel: {}", parentExecutorAddress);
-
-    final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
-      new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
-        taskExecutorMap, parentExecutorChannel, context.getControlChannel());
-
-    executorThreads = new ArrayList<>();
-    for (int i = 0; i < executorThreadNum; i++) {
-      executorThreads.add(
-        new ExecutorThread(1,
-          "lambda-" + i,
-          taskControlEventHandler,
-          throttleRate,
-          executorMetrics,
-          context.testing));
-      executorThreads.get(i).start();
-    }
-
-    LOG.info("Executor thread created: {}", parentExecutorAddress);
+    }, 10, 1000, TimeUnit.MILLISECONDS);
 
     final Channel controlChannel = context.getControlChannel();
 
-
     final OperatingSystemMXBean operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
 
     scheduledService.scheduleAtFixedRate(() -> {
       long inputSum = 0L;
@@ -273,18 +228,78 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       controlChannel.writeAndFlush(new OffloadingExecutorControlEvent(
         OffloadingExecutorControlEvent.Type.EXECUTOR_METRICS, byteBuf));
 
-      LOG.info("Executor {} processed offloaded event {}, received byte {}",
-        executorId, processSum, ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).byteReceived);
-
-      LOG.info(" {} processed offloaded event {}", executorId, processSum);
+      LOG.info("worker {} processed offloaded event {}, received byte {}",
+        ((LambdaRuntimeContext) context).requestId, processSum, ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).byteReceived);
 
       calculateProcessedEvent();
 
-    }, 1, 1, TimeUnit.SECONDS);
+    }, 10, 1000, TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
+    context = (LambdaRuntimeContext)c;
+
+    this.monitoringThread = new MonitoringThread(1000, 1.0);
 
 
 
+    this.executorMetrics = new ExecutorMetrics();
+    this.throttleRate = context.throttleRate;
+    this.prepareService = Executors.newCachedThreadPool();
 
+    LOG.info("Netty state store client before created for connectiong {} / {} ...",
+      parentExecutorAddress, stateStorePort);
+
+    // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
+    this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
+
+    LOG.info("Netty state store client created...");
+
+    pipeManagerWorker =
+      new OffloadingPipeManagerWorkerImpl(executorId, indexMap, indexTaskMap);
+
+    LOG.info("Pipe manager worker created...");
+
+    this.intermediateDataIOFactory = new OffloadingIntermediateDataIOFactory(
+      pipeManagerWorker, serializerManager);
+
+    LOG.info("Intermediate data Io created...");
+
+    this.outputCollectorGenerator =
+      new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
+
+
+    final OffloadingTransportChannelInitializer initializer =
+      new OffloadingTransportChannelInitializer(pipeManagerWorker,
+        ((LambdaRuntimeContext) c).handler);
+
+    LOG.info("OffloadingTransportChannelInitializer...");
+
+    this.clientTransport = new VMScalingClientTransport(initializer);
+
+    this.parentExecutorChannel = clientTransport
+      .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
+
+    LOG.info("Data channel: {}", parentExecutorAddress);
+
+    final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
+      new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
+        taskExecutorMap, parentExecutorChannel, context.getControlChannel());
+
+    executorThreads = new ArrayList<>();
+    for (int i = 0; i < executorThreadNum; i++) {
+      executorThreads.add(
+        new ExecutorThread(1,
+          "lambda-" + i,
+          taskControlEventHandler,
+          throttleRate,
+          executorMetrics,
+          context.testing));
+      executorThreads.get(i).start();
+    }
+
+    LOG.info("Executor thread created: {}", parentExecutorAddress);
   }
 
   private void calculateProcessedEvent() {
@@ -450,27 +465,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
-    }
-  }
-
-  public final class ControlMessageHandler extends SimpleChannelInboundHandler<TaskControlMessage> {
-
-    @Override
-    protected void channelRead0(ChannelHandlerContext ctx, TaskControlMessage msg) throws Exception {
-      throw new RuntimeException();
-    }
-
-      @Override
-      public void channelActive(final ChannelHandlerContext ctx) {
-        // channelGroup.add(ctx.channel());
-        // outputWriterFlusher.registerChannel(ctx.channel());
-      }
-
-    @Override
-    public void channelInactive(final ChannelHandlerContext ctx) {
-      // channelGroup.remove(ctx.channel());
-      // outputWriterFlusher.removeChannel(ctx.channel());
-      LOG.info("Channel closed !! {}", ctx.channel());
     }
   }
 }

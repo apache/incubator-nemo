@@ -288,7 +288,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       outputCoders,
       windowingStrategy);
 
-    LOG.info("DoFnRunner for transform {} / {}", this, doFnRunner);
+    // LOG.info("DoFnRunner for transform {} / {}", this, doFnRunner);
 
     pushBackRunner = sideInputs.isEmpty()
       ? null

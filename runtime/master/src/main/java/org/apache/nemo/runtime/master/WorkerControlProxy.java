@@ -175,7 +175,7 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
         synchronized (state) {
           if (!state.get().equals(DEACTIVATING)) {
-            throw new RuntimeException("Invalid state " + state);
+            LOG.warn("This worker {} is deactivated by executor ", requestId);
           }
 
           state.set(State.DEACTIVATE);

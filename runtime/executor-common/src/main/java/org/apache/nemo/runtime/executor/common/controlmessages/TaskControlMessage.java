@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 import java.io.DataInputStream;
@@ -17,6 +18,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
     OFFLOAD_CONTROL,
+    DEACTIVATE_LAMBDA,
     BACKPRESSURE,
     BACKPRESSURE_RESTART,
 
@@ -95,13 +97,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     return this;
   }
 
-  public void encode(final OutputStream bos) {
-    final DataOutputStream dos = new DataOutputStream(bos);
+  public void encode(final ByteBufOutputStream bos) {
     try {
-      dos.writeInt(type.ordinal());
-      dos.writeInt(inputPipeIndex);
-      dos.writeInt(targetPipeIndex);
-      dos.writeUTF(targetTaskId);
+      bos.writeInt(type.ordinal());
+      bos.writeInt(inputPipeIndex);
+      bos.writeInt(targetPipeIndex);
+      bos.writeUTF(targetTaskId);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -112,8 +113,9 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         ((TaskStopSignalByDownstreamTask) event).encode(bos);
         break;
       }
-      case OFFLOAD_TASK_STOP:
-      case PIPE_INIT:
+        case OFFLOAD_TASK_STOP:
+        case PIPE_INIT:
+        case DEACTIVATE_LAMBDA:
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         break;
       }
@@ -139,6 +141,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         }
         case OFFLOAD_TASK_STOP:
         case PIPE_INIT:
+        case DEACTIVATE_LAMBDA:
         case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
           break;

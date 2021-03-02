@@ -27,6 +27,8 @@ public interface OffloadingWorker<I, O> {
 
   long getByteSent();
 
+  void deactivate();
+
   void writeControl(ControlMessage.Message controlMessage);
   void writeData(int pipeIndex, TaskHandlingEvent event);
   void writeSourceData(int pipeIndex,
@@ -36,6 +38,7 @@ public interface OffloadingWorker<I, O> {
   void setMetric(ExecutorMetrics executorMetrics);
 
   Optional<ExecutorMetrics> getExecutorMetrics();
+  long getNumOffloadedData();
 
   boolean isReady();
 

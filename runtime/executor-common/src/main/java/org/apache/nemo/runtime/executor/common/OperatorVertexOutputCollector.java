@@ -88,7 +88,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.operatorMetricCollector = operatorMetricCollector;
     this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
 
-    LOG.info("Vertex Id Sampling Rate {} / {} / {}", irVertex.getId(), samplingRate, samplingMap);
+    // LOG.info("Vertex Id Sampling Rate {} / {} / {}", irVertex.getId(), samplingRate, samplingMap);
   }
 
   public IRVertex getIRVertex() {
@@ -148,15 +148,27 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     }
 
     proceseedCnt += 1;
-    if (random.nextDouble() <= samplingRate) {
-      final long currTime = System.currentTimeMillis();
-      final int latency = (int) ((currTime - inputTimestamp));
+
+    final long currTime = System.currentTimeMillis();
+    final int latency = (int) ((currTime - inputTimestamp));
+
+    if (samplingRate > 0 && currTime - prevLogTime >= 500) {
+      prevLogTime = currTime;
       LOG.info("Event Latency {} from {} in {}/{} ", latency,
         irVertex.getId(),
         executorId,
         taskId,
         output);
     }
+
+    /*
+    if (random.nextDouble() <= samplingRate) {
+      LOG.info("Event Latency {} from {} in {}/{} ", latency,
+        irVertex.getId(),
+        executorId,
+        taskId,
+        output);
+        */
     // }
   }
 

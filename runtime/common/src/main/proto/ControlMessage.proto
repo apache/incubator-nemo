@@ -150,6 +150,7 @@ enum MessageType {
     ExecutorPreparedForLambda = 59;
     SendBursty = 60;
     FinishBursty = 61;
+    InvokePartialOffloading = 62;
 }
 
 message LambdaEndMessage {

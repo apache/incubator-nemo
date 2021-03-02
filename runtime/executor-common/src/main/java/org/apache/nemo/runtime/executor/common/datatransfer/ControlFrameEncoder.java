@@ -26,6 +26,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.util.List;
  */
 @ChannelHandler.Sharable
 public final class ControlFrameEncoder extends MessageToMessageEncoder<TaskControlMessage> {
+  private static final Logger LOG = LoggerFactory.getLogger(ControlFrameEncoder.class.getName());
 
   // 1 byte: flag, 1 byte: broadcast, integer byte: transferindex or broadcast size, integer byte: body length
   public static final int ZEROS_LENGTH = 2 + Integer.BYTES;
@@ -56,9 +59,9 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<TaskContr
                      final TaskControlMessage message,
                      final List out) {
 
+    // final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(3);
 
-    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(3);
-    final ByteBuf data = ctx.alloc().buffer();
+    final ByteBuf data = ctx.alloc().ioBuffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(data);
     message.encode(bos);
     try {
@@ -68,12 +71,23 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<TaskContr
       throw new RuntimeException(e);
     }
 
+    final ByteBuf header = ctx.alloc().ioBuffer();
+    header.writeZero(ZEROS_LENGTH);
+    header.writeInt(data.readableBytes());
+
+    // LOG.info("Encoding control message for type " + message.type + ", length " + data.readableBytes());
+
+    out.add(header);
+    out.add(data);
+
+    /*
     cbb.addComponents(true, ZEROS.retain(),
       ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
       .writeInt(data.readableBytes()),
       data);
 
     out.add(cbb);
+    */
 
     /*
     out.add(ZEROS.retain());

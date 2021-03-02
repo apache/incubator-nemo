@@ -194,7 +194,9 @@ public final class NemoDriver {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
           runtimeMaster.finishBursty(num);
-
+        } else if (decision.equals("invoke-partial-offloading")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          runtimeMaster.invokePartialOffloading();
         } else if (decision.equals("offload-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);

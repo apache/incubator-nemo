@@ -229,22 +229,6 @@ public final class OffloadingWorkerManager {
       .allMatch(worker -> worker.isActive());
   }
 
-  public void offloadComputationWarmup() {
-    activateAllWorkers();
-  }
-
-  public void offloadComputationBursty() {
-    activateAllWorkers();
-  }
-
-  public void finishWarmup() {
-
-  }
-
-  public void fiishBursty() {
-
-  }
-
   public void sendTaskToLambda() {
 
     activateAllWorkers();

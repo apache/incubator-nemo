@@ -13,6 +13,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.ACTIVATE;
@@ -79,6 +81,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
               } else if (msg.getType().equals(DEACTIVATE)) {
                 LOG.info("Deactivated worker {} in executor", workerRequestId);
                 activated = false;
+                deactivateInvoked.set(false);
               } else {
                 eventHandler.onNext(Pair.of(StreamingLambdaWorkerProxy.this, msg));
               }
@@ -94,6 +97,18 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private final AtomicBoolean deactivateInvoked = new AtomicBoolean(false);
+
+  @Override
+  public void deactivate() {
+    if (deactivateInvoked.compareAndSet(false, true) && activated) {
+      LOG.info("Deactivating worker {} in executor", workerRequestId);
+      final TaskControlMessage msg = new TaskControlMessage(TaskControlMessage.TaskControlMessageType.DEACTIVATE_LAMBDA,
+        0, 0, "1", null);
+      dataChannel.writeAndFlush(msg);
+    }
   }
 
   private long prevFlushBufferTrackTime;
@@ -266,6 +281,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     } else {
       return Optional.of(executorMetrics);
     }
+  }
+
+  @Override
+  public long getNumOffloadedData() {
+    return offloadData.get();
   }
 
 
