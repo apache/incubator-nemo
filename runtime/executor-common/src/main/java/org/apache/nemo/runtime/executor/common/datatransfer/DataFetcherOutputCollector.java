@@ -54,6 +54,10 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
     this.taskId = taskId;
   }
 
+  public OperatorVertex getNextOperatorVertex() {
+    return nextOperatorVertex;
+  }
+
   @Override
   public void emit(final O output) {
     nextOutputCollector.setInputTimestamp(inputTimestamp);

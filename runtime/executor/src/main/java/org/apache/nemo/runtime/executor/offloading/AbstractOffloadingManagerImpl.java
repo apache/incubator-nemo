@@ -59,6 +59,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   private final boolean destroyOffloadingWorker;
 
+  private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
   public AbstractOffloadingManagerImpl(final OffloadingWorkerFactory workerFactory,
                                        final TaskExecutorMapWrapper taskExecutorMapWrapper,
                                        final EvalConf evalConf,
@@ -88,6 +90,23 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       nettyStatePort);
 
     final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      final StringBuilder sb = new StringBuilder("---------- Lambda byte sent start -------\n");
+      synchronized (workers) {
+        workers.forEach(worker -> {
+          sb.append("Worker ");
+          sb.append(worker.getId());
+          sb.append(": ");
+          sb.append(worker.getByteSent());
+          sb.append("\n");
+        });
+      }
+
+      sb.append("--------- Lambda byte sent end --------");
+
+      LOG.info(sb.toString());
+    }, 1, 1, TimeUnit.SECONDS);
 
     this.offloadExecutorByteBuf = ByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
@@ -141,12 +160,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                     if (taskReadyBlockingMap.containsKey(taskId)) {
                       final int cnt = taskReadyBlockingMap.get(taskId).decrementAndGet();
+                      /*
                       if (cnt == 0) {
                         taskReadyBlockingMap.remove(taskId);
                         executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
                           TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
                           null));
                       }
+                      */
                     }
                   } catch (IOException e) {
                     e.printStackTrace();
@@ -429,7 +450,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     while (!optional.isPresent()) {
       try {
-        Thread.sleep(5);
+        Thread.sleep(50);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

@@ -10,6 +10,8 @@ public final class OffloadingExecutorControlEvent implements Serializable {
     TASK_READY,
     TASK_FINISH_DONE,
     EXECUTOR_METRICS,
+    ACTIVATE,
+    DEACTIVATE,
   }
 
   private final Type type;

@@ -445,11 +445,7 @@ public final class JobLauncher {
                   .build())
                 .build());
 
-            } else if (decision.equals("move-task") ||
-              decision.equals("offload-task") ||
-              decision.equals("throttle-source") ||
-              decision.equals("deoffload-task") ||
-              decision.equals("reclaim-task")) {
+            } else {
               LOG.info("Send " + lastLine);
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
                 .setType(ControlMessage.ClientToDriverMessageType.Scaling)
@@ -458,8 +454,6 @@ public final class JobLauncher {
                   .setInfo(lastLine)
                   .build())
                 .build());
-            } else {
-              throw new RuntimeException("Invalid line: " + lastLine);
             }
           }
 

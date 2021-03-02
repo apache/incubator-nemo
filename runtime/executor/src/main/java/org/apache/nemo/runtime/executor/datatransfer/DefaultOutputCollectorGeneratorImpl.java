@@ -16,6 +16,8 @@ import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class DefaultOutputCollectorGeneratorImpl implements OutputCollectorGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultOutputCollectorGeneratorImpl.class.getName());
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final IntermediateDataIOFactory intermediateDataIOFactory;
@@ -60,8 +63,10 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           irVertex, outgoingEdges, intermediateDataIOFactory, taskId,
           taskMetrics);
 
+
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {
+          LOG.info("Operator {} -> {}", irVertex.getId(), interOp.getNextOperator().getId());
           operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
         }
       }

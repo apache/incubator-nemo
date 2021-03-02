@@ -13,6 +13,8 @@ public final class OffloadingMasterEvent implements Serializable {
     CONNECT_DONE,
     WORKER_INIT,
     WORKER_INIT_DONE,
+    ACTIVATE,
+    TASK_READY,
     DATA,
     TASK_SEND, // **
     TASK_FINISH, // **

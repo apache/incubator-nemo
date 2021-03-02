@@ -22,6 +22,9 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.ACTIVATE;
+import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.DEACTIVATE;
+
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
   private volatile Channel dataChannel;
@@ -48,6 +51,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   private int workerRequestId;
   private final PersistentConnectionToMasterMap toMasterMap;
 
+  private volatile boolean activated = false;
+
   public StreamingLambdaWorkerProxy(final PersistentConnectionToMasterMap toMasterMap,
                                     final Future<Pair<Integer, Channel>> channelFuture,
                                     final Map<Channel, EventHandler<OffloadingExecutorControlEvent>> channelEventHandlerMap,
@@ -68,7 +73,15 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         channelEventHandlerMap.put(dataChannel, new EventHandler<OffloadingExecutorControlEvent>() {
             @Override
             public void onNext(OffloadingExecutorControlEvent msg) {
-              eventHandler.onNext(Pair.of(StreamingLambdaWorkerProxy.this, msg));
+              if (msg.getType().equals(ACTIVATE)) {
+                LOG.info("Activated worker {} in executor", workerRequestId);
+                activated = true;
+              } else if (msg.getType().equals(DEACTIVATE)) {
+                LOG.info("Deactivated worker {} in executor", workerRequestId);
+                activated = false;
+              } else {
+                eventHandler.onNext(Pair.of(StreamingLambdaWorkerProxy.this, msg));
+              }
             }
           });
         LOG.info("Get worker request id {}, data channel {}", workerRequestId, dataChannel);
@@ -122,6 +135,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       return false;
     }
     return rateControl();
+  }
+
+  @Override
+  public boolean isActivated() {
+    return activated;
   }
 
   @Override
@@ -185,6 +203,13 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       .send(message);
   }
 
+  private final AtomicLong byteSent = new AtomicLong(0);
+
+  @Override
+  public long getByteSent() {
+    return byteSent.get();
+  }
+
   @Override
   public void writeData(final int pipeIndex, final TaskHandlingEvent event) {
     if (event.isControlMessage()) {
@@ -195,7 +220,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       final ByteBuf byteBuf = event.getDataByteBuf();
       final Object finalData = DataFrameEncoder.DataFrame.newInstance(
         pipeIndex, byteBuf, byteBuf.readableBytes(), true);
+
+      byteSent.addAndGet(byteBuf.readableBytes() + 2 + Integer.BYTES * 2);
+
       dataChannel.write(finalData);
+
     }
   }
 

@@ -146,6 +146,10 @@ enum MessageType {
 
     TaskSendToLambda = 57;
     LambdaEnd = 58;
+
+    ExecutorPreparedForLambda = 59;
+    SendBursty = 60;
+    FinishBursty = 61;
 }
 
 message LambdaEndMessage {

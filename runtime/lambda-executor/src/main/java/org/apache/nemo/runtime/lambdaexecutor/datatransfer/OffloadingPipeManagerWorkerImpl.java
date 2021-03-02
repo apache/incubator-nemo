@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
@@ -146,10 +147,16 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   private final Map<String, Queue<Pair<Integer, TaskControlMessage>>> pendingControlQueueMap = new ConcurrentHashMap<>();
 
   // private final AtomicInteger pendingDataNum = new AtomicInteger(0);
-  // private final AtomicInteger addDataNum = new AtomicInteger(0);
+  private final AtomicInteger addDataNum = new AtomicInteger(0);
+
+
+  public final AtomicLong byteReceived = new AtomicLong(0);
 
   @Override
   public void addInputData(int index, ByteBuf event) {
+
+    byteReceived.addAndGet(event.readableBytes() + 2 + Integer.BYTES * 2);
+
 
     if (inputPipeIndexInputReaderMap.containsKey(index)) {
 
@@ -175,6 +182,9 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
           }
         }
       }
+
+      // LOG.info("Add data for index {} task {} cnt {}", index,
+      //  indexTaskMap.get(index), addDataNum.getAndIncrement());
 
       // addDataNum.getAndIncrement();
       inputPipeIndexInputReaderMap.get(index).addData(index, event);

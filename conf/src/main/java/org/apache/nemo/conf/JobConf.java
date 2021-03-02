@@ -179,6 +179,10 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorPosionSec implements Name<Integer> {
   }
 
+  @NamedParameter( default_value = "Compute")
+  public final class ExecutorResourceType implements Name<String> {
+  }
+
   /**
    * Path to the JSON file that specifies bandwidth between locations.
    */

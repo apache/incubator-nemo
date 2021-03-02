@@ -62,6 +62,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   private final MessageEnvironment messageEnvironment;
   private final String executorId;
   private final NettyStateStore nettyStateStore;
+  private final String resourceType;
 
   @Inject
   private DefaultOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider,
@@ -72,6 +73,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
                                          final OffloadingFrameDecoder frameDecoder,
                                          final DataFrameEncoder dataFrameEncoder,
                                          @Parameter(JobConf.ExecutorId.class) final String executorId,
+                                         @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
                                          final NettyStateStore nettyStateStore,
                                          final OffloadingDataTransportEventHandler nemoEventHandler) {
     this.toMasterMap = toMasterMap;
@@ -84,6 +86,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     this.nemoEventHandler = nemoEventHandler;
     this.executorId = executorId;
     this.nettyStateStore = nettyStateStore;
+    this.resourceType = resourceType;
 
     messageEnvironment
       .setupListener(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID,
@@ -97,6 +100,26 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
 
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
+
+  }
+
+  public void start() {
+    if (resourceType.equals("Compute")) {
+      LOG.info("Send offloading request id");
+      toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+          .setType(ControlMessage.MessageType.ExecutorPreparedForLambda)
+          .setLambdaCreateMsg(ControlMessage.LambdaCreateMessage.newBuilder()
+            .setDataChannelAddr(workerDataTransport.getPublicAddress())
+            .setDataChannelPort(workerDataTransport.getPort())
+            .setExecutorId(executorId)
+            .setNettyStatePort(nettyStateStore.getPort())
+            .setNumberOfLambda(1)
+            .build())
+          .build());
+    }
   }
 
   private void createChannelRequest() {

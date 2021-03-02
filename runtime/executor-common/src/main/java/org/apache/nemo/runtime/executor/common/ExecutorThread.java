@@ -232,8 +232,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
             // check control message
             handlingControlEvent();
 
-            final TaskHandlingEvent event = iterator.next();
             //LOG.info("Polling queue");
+            final TaskHandlingEvent event = iterator.next();
+
+
             if (event.isControlMessage()) {
               controlEventHandler.handleControlEvent(event);
             } else {

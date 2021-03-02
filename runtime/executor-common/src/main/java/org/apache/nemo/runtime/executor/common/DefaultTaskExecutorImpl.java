@@ -18,14 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -45,7 +40,6 @@ import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
 import org.slf4j.Logger;
@@ -419,7 +413,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
-    final List<IRVertex> reverseTopologicallySorted = irVertexDag.getTopologicalSort();
+    final List<IRVertex> reverseTopologicallySorted = new ArrayList<>(irVertexDag.getTopologicalSort());
     Collections.reverse(reverseTopologicallySorted);
 
     // Build a map for edge as a key and edge index as a value
@@ -453,69 +447,74 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     // serializedDag = SerializationUtils.serialize(irVertexDag);
 
+    final Map<String, OutputCollector> outputCollectorMap = new HashMap<>();
+
     // Create a harness for each vertex
     reverseTopologicallySorted.forEach(irVertex -> {
-      final Optional<Readable> sourceReader = TaskExecutorUtil
-        .getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
+        final Optional<Readable> sourceReader = TaskExecutorUtil
+          .getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
 
-      if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
-        throw new IllegalStateException(irVertex.toString());
-      }
+        if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
+          throw new IllegalStateException(irVertex.toString());
+        }
 
-      final OutputCollector outputCollector = outputCollectorGenerator
-        .generate(irVertex,
-          taskId,
-          irVertexDag,
-          this,
-          serializerManager,
-          samplingMap,
-          vertexIdAndCollectorMap,
-          taskMetrics,
-          task.getTaskOutgoingEdges(),
-          operatorInfoMap);
+        final OutputCollector outputCollector = outputCollectorGenerator
+          .generate(irVertex,
+            taskId,
+            irVertexDag,
+            this,
+            serializerManager,
+            samplingMap,
+            vertexIdAndCollectorMap,
+            taskMetrics,
+            task.getTaskOutgoingEdges(),
+            operatorInfoMap);
 
-      // Create VERTEX HARNESS
-      final Transform.Context context =  new TransformContextImpl(
+        outputCollectorMap.put(irVertex.getId(), outputCollector);
+
+        // Create VERTEX HARNESS
+        final Transform.Context context = new TransformContextImpl(
           irVertex, serverlessExecutorProvider, taskId, stateStore);
 
-      TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector);
+        TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
 
-      // Prepare data READ
-      // Source read
-      // TODO[SLS]: should consider multiple outgoing edges
-      // All edges will have the same encoder/decoder!
-      if (irVertex instanceof SourceVertex) {
-        // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
-        final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
-        // srcSerializer = serializerManager.getSerializer(edge.getId());
-        // LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
-        // srcSerializer);
+        // Prepare data READ
+        // Source read
+        // TODO[SLS]: should consider multiple outgoing edges
+        // All edges will have the same encoder/decoder!
+        if (irVertex instanceof SourceVertex) {
+          // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
+          final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
+          // srcSerializer = serializerManager.getSerializer(edge.getId());
+          // LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
+          // srcSerializer);
 
-        // Source vertex read
-        final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
-          (SourceVertex) irVertex,
-          edge,
-          sourceReader.get(),
-          outputCollector,
-          prepareService,
-          taskId,
-          prepared,
-          new Readable.ReadableContext() {
-            @Override
-            public StateStore getStateStore() {
-              return stateStore;
-            }
-            @Override
-            public String getTaskId() {
-              return taskId;
-            }
-          },
-          offloaded);
+          // Source vertex read
+          final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
+            (SourceVertex) irVertex,
+            edge,
+            sourceReader.get(),
+            outputCollector,
+            prepareService,
+            taskId,
+            prepared,
+            new Readable.ReadableContext() {
+              @Override
+              public StateStore getStateStore() {
+                return stateStore;
+              }
 
-        edgeToDataFetcherMap.put(edge.getId(), fe);
+              @Override
+              public String getTaskId() {
+                return taskId;
+              }
+            },
+            offloaded);
 
-        sourceVertexDataFetchers.add(fe);
-        allFetchers.add(fe);
+          edgeToDataFetcherMap.put(edge.getId(), fe);
+
+          sourceVertexDataFetchers.add(fe);
+          allFetchers.add(fe);
 
         /*
         // Register input pipe for offloaded source !!
@@ -533,16 +532,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
         */
 
-        if (sourceVertexDataFetchers.size() > 1) {
-          throw new RuntimeException("Source vertex data fetcher is larger than one");
+          if (sourceVertexDataFetchers.size() > 1) {
+            throw new RuntimeException("Source vertex data fetcher is larger than one");
+          }
         }
-      }
+      });
 
       // Parent-task read
       // TODO #285: Cache broadcasted data
       task.getTaskIncomingEdges()
         .stream()
-        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
+        // .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge -> {
 
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
@@ -553,13 +553,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
         })
         .forEach(pair -> {
+          final String irVertexId = pair.left().getDstIRVertex().getId();
+          final IRVertex irVertex = irVertexDag.getVertexById(irVertexId);
+
           if (irVertex instanceof OperatorVertex) {
 
             final StageEdge edge = pair.left();
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, taskId);
+                outputCollectorMap.get(irVertex.getId()), taskId);
 
               final int parallelism = edge
                 .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
@@ -599,7 +602,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               allFetchers.add(df);
           }
         });
-    });
     // return sortedHarnessList;
   }
 
@@ -758,6 +760,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           prevFlushBufferTrackTime = System.currentTimeMillis();
           break;
         }
+        case SEND_BURSTY_COMPUTATION: {
+          LOG.info("Send bursty computation for task {}", taskId);
+          currentState = CurrentState.OFFLOADED;
+          prevFlushBufferTrackTime = System.currentTimeMillis();
+          break;
+        }
+        case FINISH_BURSTY_COMPUTATION: {
+          LOG.info("Finish bursty computation for task {}", taskId);
+          currentState = CurrentState.RUNNING;
+          break;
+        }
         case OFFLOAD_DONE: {
           LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
@@ -824,6 +837,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             }
 
             final Object data = taskHandlingEvent.getData();
+
+            // LOG.info("Handling data for task {}, index {}, watermark {}",
+            //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+
             handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
             break;
           }
@@ -858,6 +875,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // This MUST BE generated from remote source
       taskMetrics.incrementInputElement();
       // Process data element
+//      if (!isSource()) {
+//        final OperatorVertex ov = ((DataFetcherOutputCollector) dataFetcher.getOutputCollector()).getNextOperatorVertex();
+//        LOG.info("Processing element for task {}, of operator {}, transform {}", taskId, ov.getId(), ov.getTransform());
+//      }
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalid type of event: " + event);

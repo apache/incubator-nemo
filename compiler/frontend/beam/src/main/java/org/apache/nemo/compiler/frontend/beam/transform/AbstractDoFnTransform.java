@@ -288,6 +288,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       outputCoders,
       windowingStrategy);
 
+    LOG.info("DoFnRunner for transform {} / {}", this, doFnRunner);
+
     pushBackRunner = sideInputs.isEmpty()
       ? null
       : SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
@@ -310,7 +312,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   @Override
   public final String toString() {
-    return this.getClass().getSimpleName() + " / " + displayData.toString().replace(":", " / ");
+    return this.hashCode() + " / " + this.getClass().getSimpleName() + " / " + displayData.toString().replace(":", " / ");
+
   }
 
   /**

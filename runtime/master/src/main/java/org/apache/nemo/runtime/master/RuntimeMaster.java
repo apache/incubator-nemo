@@ -481,6 +481,74 @@ public final class RuntimeMaster {
     });
   }
 
+  public void sendTaskToLambda() {
+    offloadingWorkerManager.sendTaskToLambda();
+  }
+
+  public void activateLambda() {
+    offloadingWorkerManager.activateAllWorkers();
+  }
+
+  public void deactivateLambda() {
+    offloadingWorkerManager.deactivateAllWorkers();
+  }
+
+  public void offloadComputationWarmup() {
+
+  }
+
+
+  public void finishWarmup() {
+
+  }
+
+  public void sendBursty(final int num) {
+    activateLambda();
+
+    LOG.info("Offloading bursty tasks {}", num);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
+          LOG.info("Offloading task for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.SendBursty)
+            .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
+              .setNumOffloadingTask(num)
+              .build())
+            .build());
+        }
+      });
+    });
+  }
+
+  public void finishBursty(final int num) {
+    LOG.info("Finish bursty tasks {}", num);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
+          LOG.info("Deoffloading task for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.FinishBursty)
+            .setSetNum(num)
+            .build());
+        }
+      });
+    });
+
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    deactivateLambda();
+  }
+
+
   public void offloadTask(final int num) {
     LOG.info("Offloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {

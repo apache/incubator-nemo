@@ -273,8 +273,41 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       controlChannel.writeAndFlush(new OffloadingExecutorControlEvent(
         OffloadingExecutorControlEvent.Type.EXECUTOR_METRICS, byteBuf));
 
+      LOG.info("Executor {} processed offloaded event {}, received byte {}",
+        executorId, processSum, ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).byteReceived);
+
+      LOG.info(" {} processed offloaded event {}", executorId, processSum);
+
+      calculateProcessedEvent();
+
     }, 1, 1, TimeUnit.SECONDS);
 
+
+
+
+  }
+
+  private void calculateProcessedEvent() {
+    int sum = 0;
+    int sum2 = 0;
+
+    final StringBuilder sb = new StringBuilder("---- Start of task processed event ----\n");
+
+    for (final TaskExecutor taskExecutor : taskExecutorMap.values()) {
+      final AtomicInteger count = taskExecutor.getProcessedCnt();
+      final int cnt = count.get();
+      sum += cnt;
+      count.getAndAdd(-cnt);
+      sb.append(taskExecutor.getId());
+      sb.append("\t");
+      sb.append("local: ");
+      sb.append(cnt);
+      sb.append("\n");
+    }
+
+    sb.append("----- End of taks processed event ----\n");
+
+    LOG.info(sb.toString());
   }
 
   @Override

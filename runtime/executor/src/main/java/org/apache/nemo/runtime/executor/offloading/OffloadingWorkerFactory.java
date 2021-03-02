@@ -16,4 +16,6 @@ public interface OffloadingWorkerFactory {
                                          EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>> eventHandler);
 
   void deleteOffloadingWorker(OffloadingWorker worker);
+
+  void start();
 }

@@ -108,6 +108,10 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
 
+    if (!taskWorkerMap.containsKey(taskId)) {
+      selectWorkersForOffloading(taskId);
+    }
+
     if (!deoffloadedMap.get(taskId).get() && System.currentTimeMillis() - offloadingStart >= 21000) {
       synchronized (deoffloadedMap.get(taskId)) {
         if (!deoffloadedMap.get(taskId).get()) {
@@ -188,12 +192,10 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
 
       final List<OffloadingWorker> l = taskWorkerMap.get(taskId);
 
-      /*
-
       int cnt = 0;
       while (cnt < l.size()) {
         final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-        if (l.get(index).isInputAccepted(taskId)) {
+        if (l.get(index).isActivated()) {
           return Optional.of(l.get(index));
         }
 
@@ -201,10 +203,9 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
       }
 
       return Optional.empty();
-      */
 
-      final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-      return Optional.of(l.get(index));
+      // final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
+      // return Optional.of(l.get(index));
     }
   }
 

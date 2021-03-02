@@ -164,6 +164,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "aws_profile", default_value = "default")
   public static final class AWSProfileName implements Name<String> {}
 
+  // per executor
+  @NamedParameter(short_name = "num_lambda_pool", default_value = "1")
+  public static final class NumLambdaPool implements Name<Integer> {}
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -206,6 +209,7 @@ public final class EvalConf {
   public final String scalingType;
   public final String offloadingManagerType;
   public final String awsProfileName;
+  public final int numLambdaPool;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -245,7 +249,8 @@ public final class EvalConf {
                    @Parameter(NumOffloadingWorkerAfterMerging.class) final int numOffloadingWorkerAfterMerging,
                    @Parameter(OffloadingManagerType.class) final String offloadingManagerType,
                    @Parameter(AWSProfileName.class) final String awsProfileName,
-                   @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker) throws IOException {
+                   @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker,
+                   @Parameter(NumLambdaPool.class) final int numLambdaPool) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -284,6 +289,7 @@ public final class EvalConf {
     this.offloadingManagerType = offloadingManagerType;
     this.numOffloadingWorkerAfterMerging = numOffloadingWorkerAfterMerging;
     this.awsProfileName = awsProfileName;
+    this.numLambdaPool = numLambdaPool;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -333,6 +339,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(ScalingType.class, scalingType);
     jcb.bindNamedParameter(OffloadingManagerType.class, offloadingManagerType);
     jcb.bindNamedParameter(AWSProfileName.class, awsProfileName);
+    jcb.bindNamedParameter(NumLambdaPool.class, Integer.toString(numLambdaPool));
     return jcb.build();
   }
 
@@ -376,6 +383,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(ScalingType.class);
     cl.registerShortNameOfClass(OffloadingManagerType.class);
     cl.registerShortNameOfClass(AWSProfileName.class);
+    cl.registerShortNameOfClass(NumLambdaPool.class);
   }
 
   @Override
@@ -419,6 +427,7 @@ public final class EvalConf {
     sb.append("scalingType: "); sb.append(scalingType); sb.append("\n");
     sb.append("offloadingManagerType: "); sb.append(offloadingManagerType); sb.append("\n");
     sb.append("awsProfileName: "); sb.append(awsProfileName); sb.append("\n");
+    sb.append("numLambdaPool: "); sb.append(numLambdaPool); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

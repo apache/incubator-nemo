@@ -177,6 +177,24 @@ public final class NemoDriver {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
           runtimeMaster.createOffloadingExecutor(num);
+        } else if (decision.equals("send-task-lambda")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          runtimeMaster.sendTaskToLambda();
+        } else if (decision.equals("activate-lambda")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          runtimeMaster.activateLambda();
+        } else if (decision.equals("deactivate-lambda")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          runtimeMaster.deactivateLambda();
+        }  else if (decision.equals("send-bursty")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.sendBursty(num);
+        } else if (decision.equals("finish-bursty")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.finishBursty(num);
+
         } else if (decision.equals("offload-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);

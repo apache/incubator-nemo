@@ -188,6 +188,7 @@ public final class ContainerManager {
 
     // Poison handling
     final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+      .bindNamedParameter(JobConf.ExecutorResourceType.class, resourceSpecification.getContainerType())
       .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
       .build();
 

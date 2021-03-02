@@ -68,12 +68,24 @@ public final class SingleWorkerOffloadingManagerImpl extends AbstractOffloadingM
 
   @Override
   Optional<OffloadingWorker> selectWorkerForIntermediateOffloading(String taskId, TaskHandlingEvent data) {
-    return Optional.of(taskWorkerMap.get(taskId).get(0));
+    if (!taskWorkerMap.containsKey(taskId)) {
+      selectWorkersForOffloading(taskId);
+    }
+
+    if (taskWorkerMap.get(taskId).get(0).isActivated()) {
+      return Optional.of(taskWorkerMap.get(taskId).get(0));
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Override
   Optional<OffloadingWorker> selectWorkerForSourceOffloading(String taskId, Object data) {
-    return Optional.of(taskWorkerMap.get(taskId).get(0));
+    if (taskWorkerMap.get(taskId).get(0).isActivated()) {
+      return Optional.of(taskWorkerMap.get(taskId).get(0));
+    } else {
+      return Optional.empty();
+    }
   }
 
 }

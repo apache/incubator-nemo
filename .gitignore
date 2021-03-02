@@ -69,3 +69,10 @@ tang.conf
 *.releaseBackup
 *.tag
 release.properties
+
+
+offloading/workers/lambda/.gradle
+offloading/workers/lambda/.serverless
+.serverless
+
+.gradle

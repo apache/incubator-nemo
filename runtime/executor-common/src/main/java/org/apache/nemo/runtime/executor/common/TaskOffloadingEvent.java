@@ -7,6 +7,8 @@ public final class TaskOffloadingEvent implements TaskHandlingEvent {
 
   public enum ControlType {
     SEND_TO_OFFLOADING_WORKER,
+    SEND_BURSTY_COMPUTATION, // offloading bursty computation when warm-up enabled
+    FINISH_BURSTY_COMPUTATION, // offloading bursty computation when warm-up enabled
     OFFLOAD_DONE,
     DEOFFLOADING,
     DEOFFLOADING_DONE,

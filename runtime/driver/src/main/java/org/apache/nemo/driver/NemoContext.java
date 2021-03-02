@@ -64,6 +64,8 @@ public final class NemoContext {
     public void onNext(final ContextStart contextStart) {
       LOG.info("Context Started: Executor is now ready and listening for messages");
 
+      executor.start();
+
       // For poison handling
       if (crashTimeSec >= 0) {
         final int crashTimeMs = addNoise(crashTimeSec * 1000);

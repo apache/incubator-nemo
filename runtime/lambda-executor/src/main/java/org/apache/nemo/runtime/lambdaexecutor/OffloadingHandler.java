@@ -79,6 +79,10 @@ public final class OffloadingHandler {
   private final boolean testing;
 
   private final Map<String, TaskCaching> stageTaskMap = new HashMap<>();
+  private Channel controlChannel;
+  private Channel dataChannel;
+  private LambdaEventHandler handler;
+  private int requestId;
 
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap,
                            final boolean isSf,
@@ -199,7 +203,7 @@ public final class OffloadingHandler {
       if (!channelFuture.isSuccess()) {
         if (!channel.isOpen()) {
           channel = channelOpen(address, port);
-          map.put(channel, new LambdaEventHandler(channel, result));
+          map.put(channel, new LambdaEventHandler(result));
           handler = (LambdaEventHandler) map.get(channel);
         }
         LOG.info("Re-sending handshake..");
@@ -213,56 +217,39 @@ public final class OffloadingHandler {
     return channel;
   }
 
-	public Object handleRequest(Map<String, Object> input) {
+  private void initialization(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
-    this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
 
-		System.out.println("Input: " + input);
-    final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
-
-    offloadingTransform = null;
-
-    // open channel
-    Channel opendChannel = null;
     this.workerInitLatch = new CountDownLatch(1);
 
-    for (final Map.Entry<Channel, EventHandler<OffloadingMasterEvent>> entry : map.entrySet()) {
-      final Channel channel = entry.getKey();
-      final String address = (String) input.get("address");
-      final Integer port = (Integer) input.get("port");
+    this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+    System.out.println("Input: " + input);
+    final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
 
-      final String requestedAddr = "/" + address + ":" + port;
-
-      System.out.println("Requested addr: " + requestedAddr +
-        ", channelAddr: " +channel.remoteAddress().toString());
-
-      if (channel.remoteAddress().toString().equals(requestedAddr)
-        && channel.isOpen()) {
-        opendChannel = channel;
-        break;
-      } else if (!channel.isOpen()) {
-        channel.close();
-        map.remove(channel);
-      }
-    }
-
+    // open channel
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
-    if (opendChannel == null) {
-      opendChannel = channelOpen(address, port);
+
+    controlChannel = channelOpen(address, port);
+
+    if (offloadingTransform != null) {
+      offloadingTransform.close();
+      offloadingTransform = null;
     }
 
-    final int requestId = (Integer) input.get("requestId");
+    map.clear();
 
-    map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
-    LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
+    requestId = (Integer) input.get("requestId");
 
-    System.out.println("Open channel: " + opendChannel);
+    map.put(controlChannel, new LambdaEventHandler(result));
+    handler = (LambdaEventHandler) map.get(controlChannel);
+
+    System.out.println("Open channel: " + controlChannel);
 
     // load class loader
 
     if (classLoader == null) {
-      System.out.println("Loading jar: " + opendChannel);
+      System.out.println("Loading jar: " + controlChannel);
       try {
         //classLoader = classLoaderCallable.call();
         classLoader = Thread.currentThread().getContextClassLoader();
@@ -282,22 +269,22 @@ public final class OffloadingHandler {
 
     byte[] bytes = ByteBuffer.allocate(Integer.BYTES).putInt(requestId).array();
 
-    opendChannel = handshake(bytes, address, port, opendChannel, result);
-    handler = (LambdaEventHandler) map.get(opendChannel);
+    controlChannel = handshake(bytes, address, port, controlChannel, result);
+    handler = (LambdaEventHandler) map.get(controlChannel);
 
     // Waiting worker init done..
     LOG.info("Waiting worker init or end");
 
     if (handler == null) {
-      LOG.info("handler is null for channel " + opendChannel);
-      opendChannel = handshake(bytes, address, port, opendChannel, result);
-      handler = (LambdaEventHandler) map.get(opendChannel);
+      LOG.info("handler is null for channel " + controlChannel);
+      controlChannel = handshake(bytes, address, port, controlChannel, result);
+      handler = (LambdaEventHandler) map.get(controlChannel);
     }
 
     while (workerInitLatch.getCount() > 0 && handler.endBlockingQueue.isEmpty()) {
-      if (!opendChannel.isActive()) {
-        opendChannel = handshake(bytes, address, port, opendChannel, result);
-        handler = (LambdaEventHandler) map.get(opendChannel);
+      if (!controlChannel.isActive()) {
+        controlChannel = handshake(bytes, address, port, controlChannel, result);
+        handler = (LambdaEventHandler) map.get(controlChannel);
       }
       try {
         Thread.sleep(1000);
@@ -306,71 +293,97 @@ public final class OffloadingHandler {
       }
     }
 
+
     if (workerInitLatch.getCount() == 0) {
       final byte[] addrPortBytes = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES)
         .putInt(executorDataAddrPort)
         .putInt(requestId).array();
-      opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
+      controlChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
       LOG.info("Sending worker init done");
+
+      final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+      dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
+        OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
+
+      // cpu heartbeat
+      final Channel ochannel = controlChannel;
+      workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+        final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+        System.out.println("CPU Load: " + cpuLoad);
+        final ByteBuf bb = ochannel.alloc().buffer();
+        bb.writeDouble(cpuLoad);
+        // ochannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CPU_LOAD, bb));
+      }, 2, 2, TimeUnit.SECONDS);
     }
-
-    // cpu heartbeat
-    final Channel ochannel = opendChannel;
-    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
-      System.out.println("CPU Load: " + cpuLoad);
-      final ByteBuf bb = ochannel.alloc().buffer();
-      bb.writeDouble(cpuLoad);
-      // ochannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.CPU_LOAD, bb));
-    }, 2, 2, TimeUnit.SECONDS);
-
 
     // ready state
     //opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.READY, new byte[0], 0));
 
 
-		final List<ChannelFuture> futures = new LinkedList<>();
+//
+//    workerHeartbeatExecutor.shutdown();
+//
+//    LOG.info("Finishing channels");
+//    map.entrySet().forEach(entry -> {
+//      entry.getKey().close().awaitUninterruptibly();
+//    });
+//
+//    map.clear();
 
-		// send result
-    while (result.peek() != null || handler.endBlockingQueue.isEmpty()) {
-      if (result.peek() != null) {
-        final Pair<Object, Integer> data = result.poll();
-        writeResult(opendChannel, futures, data);
-      }
+  }
 
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+	public Object handleRequest(Map<String, Object> input) {
+    final String address = (String) input.get("address");
+    final Integer port = (Integer) input.get("port");
+	  final String addr =  "/" + address + ":"+ port;
+
+	  if (controlChannel != null) {
+	    LOG.info("Remote address control channel" + controlChannel.remoteAddress().toString()
+        +  ", addr " + addr + ", equal " + controlChannel.remoteAddress().toString().equals(addr));
+    }
+
+	  if (controlChannel != null
+      && controlChannel.isOpen()
+      && controlChannel.isActive()
+      && dataChannel != null
+      && dataChannel.isOpen()
+      && dataChannel.isActive()
+      && controlChannel.remoteAddress().toString().equals(addr)) {
+	    // warmed container!!
+      LOG.info("Warmed container for request id " + requestId +
+        " control channel" + controlChannel + ", data channel " + dataChannel);
+
+      // TODO: warm up
+      final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+      controlChannel.writeAndFlush(
+        new OffloadingMasterEvent(OffloadingMasterEvent.Type.ACTIVATE, buf));
+
+      final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+      dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
+        OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
+
+    } else {
+	    LOG.info("Init input " + input + "... control channel " + controlChannel + ", data channel " + dataChannel);
+	    initialization(input);
     }
 
     final long sst = System.currentTimeMillis();
 
-    /*
-    futures.forEach(future -> {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    });
-    */
-
     try {
       // wait until end
-      System.out.println("Wait end flag");
+      System.out.println("Wait deactivation");
       final Integer endFlag = handler.endBlockingQueue.take();
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
-          if (opendChannel.isOpen()) {
-            opendChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
+          if (controlChannel.isOpen()) {
+            controlChannel.writeAndFlush(
+              new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
+
+            if (workerInitLatch.getCount() == 0) {
+              dataChannel.writeAndFlush(
+                new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
+            }
           } else {
             throw new RuntimeException("Channel is already closed..");
           }
@@ -390,31 +403,18 @@ public final class OffloadingHandler {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    workerHeartbeatExecutor.shutdown();
-
-    LOG.info("Finishing channels");
-    map.entrySet().forEach(entry -> {
-      entry.getKey().close().awaitUninterruptibly();
-    });
-
-    map.clear();
-
     return null;
 	}
 
   public final class LambdaEventHandler implements EventHandler<OffloadingMasterEvent> {
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
-    private final Channel opendChannel;
     private final BlockingQueue<Pair<Object, Integer>> result;
     private OffloadingDecoder decoder;
 
     private long workerFinishTime;
 
-    public LambdaEventHandler(final Channel opendChannel,
-                              final BlockingQueue<Pair<Object, Integer>> result) {
-      this.opendChannel = opendChannel;
+    public LambdaEventHandler(final BlockingQueue<Pair<Object, Integer>> result) {
       this.result = result;
     }
 
@@ -482,13 +482,14 @@ public final class OffloadingHandler {
           // to lambdaEventHandlerMap
           offloadingTransform.prepare(
             new LambdaRuntimeContext(lambdaEventHandlerMap, this, isSf,
-              nameServerAddr, nameServerPort, newExecutorId, opendChannel, throttleRate,
+              nameServerAddr, nameServerPort, newExecutorId, controlChannel, throttleRate,
               testing, stageTaskMap), outputCollector);
 
           LOG.info("End of offloading prepare");
 
           workerFinishTime = System.currentTimeMillis();
           executorDataAddrPort = offloadingTransform.getDataChannelPort();
+          dataChannel = offloadingTransform.getDataChannel();
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st) + ", data channel: " + executorDataAddrPort);
           workerInitLatch.countDown();
 
@@ -525,8 +526,15 @@ public final class OffloadingHandler {
               .writeAndFlush(new OffloadingExecutorControlEvent(
                 OffloadingExecutorControlEvent.Type.TASK_READY, bos.buffer()));
 
-            // opendChannel.writeAndFlush(new OffloadingMasterEvent(
-            //  OffloadingMasterEvent.Type.TASK_READY, bos.buffer()));
+
+            final ByteBufOutputStream bo2 = new ByteBufOutputStream(
+              controlChannel.alloc().ioBuffer());
+
+            bo2.writeUTF(taskId);
+            bo2.close();
+
+            controlChannel.writeAndFlush(new OffloadingMasterEvent(
+             OffloadingMasterEvent.Type.TASK_READY, bo2.buffer()));
 
           } catch (IOException e) {
             if (e.getMessage().contains("EOF")) {
@@ -541,18 +549,13 @@ public final class OffloadingHandler {
         case END:
           // send result
           System.out.println("Offloading end");
-          if (offloadingTransform != null) {
-            offloadingTransform.close();
-          }
+          // if (offloadingTransform != null) {
+          //  offloadingTransform.close();
+          // }
           nemoEvent.getByteBuf().release();
           endBlockingQueue.add(0);
           // end of event
           // update handler
-          break;
-        case WARMUP_END:
-          System.out.println("Warmup end");
-          nemoEvent.getByteBuf().release();
-          endBlockingQueue.add(1);
           break;
         default:
           throw new RuntimeException("Invalid type " + nemoEvent.getType());

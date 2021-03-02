@@ -32,11 +32,13 @@ public final class TaskExecutorUtil {
 
   public static void prepareTransform(final IRVertex irVertex,
                                       final Transform.Context context,
-                                      final OutputCollector outputCollector) {
+                                      final OutputCollector outputCollector,
+                                      final String taskId) {
     final Transform transform;
     if (irVertex instanceof OperatorVertex) {
       transform = ((OperatorVertex) irVertex).getTransform();
       transform.prepare(context, outputCollector);
+      LOG.info("Preparing dofnTransform for {}/{}/{}", irVertex, taskId, transform);
     }
   }
 

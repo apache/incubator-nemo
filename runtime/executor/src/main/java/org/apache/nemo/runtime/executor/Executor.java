@@ -50,6 +50,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFa
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.monitoring.CpuBottleneckDetector;
 import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -134,6 +135,8 @@ public final class Executor {
 
   private final ExecutorMetrics executorMetrics;
 
+  private final OffloadingWorkerFactory workerFactory;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -163,6 +166,7 @@ public final class Executor {
                    final ExecutorChannelManagerMap executorChannelManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler,
+                   final OffloadingWorkerFactory workerFactory,
                    final OffloadingManager offloadingManager,
                    final DefaultOffloadingPreparer preparer,
                    final OutputCollectorGenerator outputCollectorGenerator) {
@@ -197,6 +201,7 @@ public final class Executor {
     this.metricMessageSender = metricMessageSender;
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.preparer = preparer;
+    this.workerFactory = workerFactory;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       // final double load = profiler.getCpuLoad();
@@ -331,6 +336,12 @@ public final class Executor {
     executorChannelManagerMap.init();
 
     this.stageExecutorThreadMap = stageExecutorThreadMap;
+  }
+
+  public void start() {
+    scheduledExecutorService.schedule(() -> {
+      workerFactory.start();
+    }, 5, TimeUnit.SECONDS);
   }
 
   public String getExecutorId() {
@@ -582,6 +593,40 @@ public final class Executor {
               taskExecutorMapWrapper.getTaskExecutorThread(te.getId())
                 .addShortcutEvent(new TaskOffloadingEvent(te.getId(),
                   TaskOffloadingEvent.ControlType.DEOFFLOADING, null));
+            }
+          }
+          break;
+        }
+        case FinishBursty: {
+          for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.OFFLOADED)) {
+              LOG.info("Deoffloadfing task {} executor for {}", te.getId(), executorId);
+              taskExecutorMapWrapper.getTaskExecutorThread(te.getId())
+                .addShortcutEvent(new TaskOffloadingEvent(te.getId(),
+                  TaskOffloadingEvent.ControlType.FINISH_BURSTY_COMPUTATION, null));
+            }
+          }
+          break;
+        }
+        case SendBursty: {
+          LOG.info("Offloading bursty in {}", executorId);
+          final ControlMessage.OffloadingTaskMessage m = message.getOffloadingTaskMsg();
+          int cnt = 0;
+          for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
+            if (cnt == m.getNumOffloadingTask()) {
+              break;
+            }
+
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.RUNNING)) {
+              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
+
+              LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
+
+              executorThread.addShortcutEvent(
+                new TaskOffloadingEvent(te.getId(),
+                  TaskOffloadingEvent.ControlType.SEND_BURSTY_COMPUTATION, null));
+
+              cnt += 1;
             }
           }
           break;
