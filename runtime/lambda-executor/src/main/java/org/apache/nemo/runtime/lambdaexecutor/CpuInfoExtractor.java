@@ -38,6 +38,7 @@ public class CpuInfoExtractor {
 
   public static void printCommand(String cmd) {
     try {
+      System.out.println("Printing command " + cmd);
 
       Process p = Runtime.getRuntime().exec(
         cmd);

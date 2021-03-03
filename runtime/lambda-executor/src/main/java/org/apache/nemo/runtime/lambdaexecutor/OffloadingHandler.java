@@ -439,6 +439,12 @@ public final class OffloadingHandler {
       CpuInfoExtractor.printCpuSpec(0);
       CpuInfoExtractor.printMemSpec(0);
       CpuInfoExtractor.printNetworkStat(0);
+
+
+      CpuInfoExtractor.printCommand("cat /sys/class/net");
+      CpuInfoExtractor.printCommand("cat /proc");
+      CpuInfoExtractor.printCommand("cat /proc/net");
+      CpuInfoExtractor.printCommand("cat /proc/net/dev");
       return null;
     }
 
