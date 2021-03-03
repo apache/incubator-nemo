@@ -376,7 +376,9 @@ public final class OffloadingHandler {
     }
 
     schedule();
-	  offloadingTransform.schedule();
+	  if (offloadingTransform != null) {
+      offloadingTransform.schedule();
+    }
 
     final long sst = System.currentTimeMillis();
 
@@ -386,7 +388,9 @@ public final class OffloadingHandler {
       final Integer endFlag = endBlockingQueue.take();
 
       shutdownSchedule();
-      offloadingTransform.shutdownSchedule();
+      if (offloadingTransform != null) {
+        offloadingTransform.shutdownSchedule();
+      }
 
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
