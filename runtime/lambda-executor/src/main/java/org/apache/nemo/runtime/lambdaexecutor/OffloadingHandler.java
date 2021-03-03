@@ -436,8 +436,9 @@ public final class OffloadingHandler {
     if (!input.containsKey("address")) {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
       LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
-      CpuInfoExtractor.printCpuSpec();
-      CpuInfoExtractor.printNetworkStat();
+      CpuInfoExtractor.printCpuSpec(0);
+      CpuInfoExtractor.printMemSpec(0);
+      CpuInfoExtractor.printNetworkStat(0);
       return null;
     }
 
