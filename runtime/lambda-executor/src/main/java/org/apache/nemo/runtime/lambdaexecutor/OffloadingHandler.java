@@ -22,6 +22,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.security.spec.ECPublicKeySpec;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -435,6 +436,7 @@ public final class OffloadingHandler {
     if (!input.containsKey("address")) {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
       LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
+      CpuInfoExtractor.printCpuSpec();
       return null;
     }
 
