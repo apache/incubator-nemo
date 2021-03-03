@@ -419,7 +419,7 @@ public final class OffloadingHandler {
     final Channel ochannel = controlChannel;
     workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
     workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
-      CpuInfoExtractor.printNetworkStat(0);
+      CpuInfoExtractor.printNetworkStat(requestId);
       final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
       System.out.println("CPU Load: " + cpuLoad);
       final ByteBuf bb = ochannel.alloc().buffer();
