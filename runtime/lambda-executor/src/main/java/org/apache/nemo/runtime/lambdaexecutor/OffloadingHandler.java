@@ -433,6 +433,9 @@ public final class OffloadingHandler {
 
 	public Object handleRequest(Map<String, Object> input, Context context) {
 
+	  LOG.info("Function memory limit " + context.getMemoryLimitInMB());
+    LOG.info("Function context " + context);
+
     if (!input.containsKey("address")) {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
       LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
