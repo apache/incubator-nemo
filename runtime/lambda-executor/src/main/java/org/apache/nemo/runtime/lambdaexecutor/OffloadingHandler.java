@@ -526,12 +526,7 @@ public final class OffloadingHandler {
           try {
             final String taskId = bis.readUTF();
             final Object data = decoder.decode(bis);
-            offloadingTransform.onData(data, null);
-            outputCollector.hasDataReceived = false;
-            //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
-            dataProcessingCnt += 1;
 
-            nemoEvent.getByteBuf().release();
 
             final ByteBufOutputStream bos = new ByteBufOutputStream(
               offloadingTransform.getDataChannel().alloc().ioBuffer());
@@ -544,6 +539,15 @@ public final class OffloadingHandler {
             offloadingTransform.getDataChannel()
               .writeAndFlush(new OffloadingExecutorControlEvent(
                 OffloadingExecutorControlEvent.Type.TASK_READY, bos.buffer()));
+
+
+            offloadingTransform.onData(data, null);
+            outputCollector.hasDataReceived = false;
+            //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
+            dataProcessingCnt += 1;
+
+            nemoEvent.getByteBuf().release();
+
 
 
             final ByteBufOutputStream bo2 = new ByteBufOutputStream(

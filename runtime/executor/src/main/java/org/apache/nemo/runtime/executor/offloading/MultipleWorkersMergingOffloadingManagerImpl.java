@@ -195,7 +195,7 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
       int cnt = 0;
       while (cnt < l.size()) {
         final int index = rrSchedulingMap.get(taskId).getAndIncrement() % l.size();
-        if (l.get(index).isActivated()) {
+        if (l.get(index).isActivated() && l.get(index).hasReadyTask(taskId)) {
           return Optional.of(l.get(index));
         }
 

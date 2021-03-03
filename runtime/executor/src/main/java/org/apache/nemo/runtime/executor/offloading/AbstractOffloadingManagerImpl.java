@@ -98,8 +98,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
         workers.forEach(worker -> {
           sb.append("Worker ");
           sb.append(worker.getId());
-          sb.append(": ");
+          sb.append(" byteSent ");
           sb.append(worker.getByteSent());
+          sb.append(" offloadCnt ");
+          sb.append(worker.getNumOffloadedData());
           sb.append("\n");
         });
       }
@@ -535,9 +537,9 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     Optional<OffloadingWorker> optional =
       selectWorkerForIntermediateOffloading(taskId, data);
 
-    while (!optional.isPresent() || !optional.get().hasReadyTask(taskId)) {
+    while (!optional.isPresent()) {
       try {
-        Thread.sleep(30);
+        Thread.sleep(40);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
