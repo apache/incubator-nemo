@@ -10,6 +10,7 @@ import org.omg.PortableInterceptor.ACTIVE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -129,10 +130,16 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     switch (msg.getType()) {
       case ACTIVATE: {
         LOG.info("Activated worker {}", requestId);
+
         synchronized (pendingActivationWorkers) {
 
           if (!pendingActivationWorkers.contains(this)) {
-            throw new RuntimeException("Pending activation worker does not contain " + requestId);
+            LOG.info("This request is already processed.. should terminate the worker {}",
+              requestId);
+            controlChannel.writeAndFlush(new OffloadingMasterEvent(
+              OffloadingMasterEvent.Type.DUPLICATE_REQUEST_TERMIATION, null));
+            //throw new RuntimeException("Pending activation worker does not contain " + requestId);
+            return;
           }
 
           pendingActivationWorkers.remove(this);

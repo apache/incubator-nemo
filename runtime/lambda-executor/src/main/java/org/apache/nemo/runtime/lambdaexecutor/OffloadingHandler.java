@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
+import com.amazonaws.services.lambda.runtime.Context;
 import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -340,7 +341,7 @@ public final class OffloadingHandler {
 	  workerHeartbeatExecutor.shutdown();
   }
 
-	public Object handleRequest(Map<String, Object> input) {
+	public Object handleRequest(Map<String, Object> input, Context context) {
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
 	  final String addr =  "/" + address + ":"+ port;
@@ -358,6 +359,8 @@ public final class OffloadingHandler {
       && dataChannel.isActive()
       && controlChannel.remoteAddress().toString().equals(addr)) {
 	    // warmed container!!
+
+      // TODO: check requestId
       LOG.info("Warmed container for request id " + requestId +
         " control channel" + controlChannel + ", data channel " + dataChannel);
 
@@ -413,8 +416,16 @@ public final class OffloadingHandler {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
-      } else {
-        // warm up end... just finish
+      } else if (endFlag == 1) {
+        // Duplicate request termination
+        LOG.info("Duplicate request termination ... sending data channel deactive");
+        try {
+          dataChannel.writeAndFlush(
+            new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
 
       System.out.println("END of invocation: " + (System.currentTimeMillis() - sst));
@@ -567,6 +578,11 @@ public final class OffloadingHandler {
               throw new RuntimeException(e);
             }
           }
+          break;
+        }
+        case DUPLICATE_REQUEST_TERMIATION: {
+          System.out.println("Duplicate request termination");
+          endBlockingQueue.add(1);
           break;
         }
         case END:

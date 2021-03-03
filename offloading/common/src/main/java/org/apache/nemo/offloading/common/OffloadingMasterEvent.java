@@ -23,6 +23,7 @@ public final class OffloadingMasterEvent implements Serializable {
     RESULT,
     WARMUP_END,
     END,
+    DUPLICATE_REQUEST_TERMIATION,
     CPU_LOAD,
 
     /// for vm scaling info

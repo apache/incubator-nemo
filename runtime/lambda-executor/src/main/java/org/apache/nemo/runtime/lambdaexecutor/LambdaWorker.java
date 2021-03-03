@@ -70,6 +70,6 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
     }
 
     prevHandledRequestId = context.getAwsRequestId();
-	  return offloadingHandler.handleRequest(input);
+	  return offloadingHandler.handleRequest(input, context);
 	}
 }
