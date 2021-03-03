@@ -298,6 +298,7 @@ public final class OffloadingHandler {
 
     if (workerInitLatch.getCount() == 0) {
 
+      LOG.info("try to print worker spec");
       printSpec(requestId);
 
       final byte[] addrPortBytes = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES)
@@ -329,46 +330,46 @@ public final class OffloadingHandler {
   }
 
   private void printSpec(final int requestId) {
-    LOG.info("Worker info" + requestId + " machine identifier " + ComputerIdentifierGenerator.get());
-    /* Total number of processors or cores available to the JVM */
-    LOG.info("Worker info " + requestId + " available processors (cores): " +
-      Runtime.getRuntime().availableProcessors());
-
-    /* Total amount of free memory available to the JVM */
-    LOG.info("Worker info " + requestId + " free memory (bytes): " +
-      Runtime.getRuntime().freeMemory());
-
-    /* This will return Long.MAX_VALUE if there is no preset limit */
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    /* Maximum amount of memory the JVM will attempt to use */
-    LOG.info("Worker info " + requestId + " maximum memory (bytes): " +
-      (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
-
-    /* Total memory currently available to the JVM */
-    LOG.info("Worker info " + requestId + " total memory available to JVM (bytes): " +
-      Runtime.getRuntime().totalMemory());
-
-    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
-
-    Map<String, String> systemProperties = runtimeBean.getSystemProperties();
-    Set<String> keys = systemProperties.keySet();
-    for (String key : keys) {
-      String value = systemProperties.get(key);
-      LOG.info("Worker info " + requestId + "[" + key + "] = " + value);
-    }
-
-
-    InetAddress ip;
-    String hostname;
     try {
+      LOG.info("Worker info" + requestId + " machine identifier " + ComputerIdentifierGenerator.get());
+      /* Total number of processors or cores available to the JVM */
+      LOG.info("Worker info " + requestId + " available processors (cores): " +
+        Runtime.getRuntime().availableProcessors());
+
+      /* Total amount of free memory available to the JVM */
+      LOG.info("Worker info " + requestId + " free memory (bytes): " +
+        Runtime.getRuntime().freeMemory());
+
+      /* This will return Long.MAX_VALUE if there is no preset limit */
+      long maxMemory = Runtime.getRuntime().maxMemory();
+      /* Maximum amount of memory the JVM will attempt to use */
+      LOG.info("Worker info " + requestId + " maximum memory (bytes): " +
+        (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
+
+      /* Total memory currently available to the JVM */
+      LOG.info("Worker info " + requestId + " total memory available to JVM (bytes): " +
+        Runtime.getRuntime().totalMemory());
+
+      RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+
+      Map<String, String> systemProperties = runtimeBean.getSystemProperties();
+      Set<String> keys = systemProperties.keySet();
+      for (String key : keys) {
+        String value = systemProperties.get(key);
+        LOG.info("Worker info " + requestId + "[" + key + "] = " + value);
+      }
+
+
+      InetAddress ip;
+      String hostname;
       ip = InetAddress.getLocalHost();
       hostname = ip.getHostName();
       LOG.info("Worker info " + requestId + " current IP address: " + ip);
       LOG.info("Worker info " + requestId + " current Hostname: " + hostname);
 
-    } catch (UnknownHostException e) {
-
+    } catch (Exception e) {
       e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
