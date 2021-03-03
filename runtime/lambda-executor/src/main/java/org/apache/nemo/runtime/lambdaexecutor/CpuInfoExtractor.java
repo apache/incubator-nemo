@@ -51,6 +51,14 @@ public class CpuInfoExtractor {
       BufferedReader stdError = new BufferedReader(new
         InputStreamReader(p.getErrorStream()));
 
+      while (!in.ready()) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
       while (in.ready() && (line = in.readLine()) != null) {
         System.out.println(line);
       }

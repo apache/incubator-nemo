@@ -443,7 +443,6 @@ public final class OffloadingHandler {
       CpuInfoExtractor.printMemSpec(0);
       CpuInfoExtractor.printNetworkStat(0);
 
-
       CpuInfoExtractor.printCommand("cat /sys/class/net");
       CpuInfoExtractor.printCommand("cat /proc");
       CpuInfoExtractor.printCommand("cat /proc/net");
