@@ -46,11 +46,47 @@ public class CpuInfoExtractor {
     }
   }
 
+  public static void printMemSpec() {
+    try {
+
+      Process p = Runtime.getRuntime().exec(
+        "cat /proc/meminfo");
+      //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
+
+      String line;
+      BufferedReader in = new BufferedReader(
+        new InputStreamReader(p.getInputStream()) );
+
+      BufferedReader stdError = new BufferedReader(new
+        InputStreamReader(p.getErrorStream()));
+
+      while (in.ready() && (line = in.readLine()) != null) {
+        LOG.info(line);
+      }
+      // in.close();
+      // LOG.info("End of read line !!!!!!!!!!!!!!!!!!!!");
+
+      while (stdError.ready() && (line = stdError.readLine()) != null) {
+        LOG.info(line);
+      }
+      // stdError.close();
+
+      p.destroy();
+
+      in.close();
+      stdError.close();
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
   public static void printNetworkStat() {
       try {
 
       Process p = Runtime.getRuntime().exec(
-        "netstat -i");
+        "ifconfig");
       //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
 
       String line;
