@@ -163,7 +163,7 @@ public final class OffloadingWorkerManager {
             // activate !!
             requestIdControlChannelMap.get(rid).setDataChannel(er, fullAddr);
 
-            if (isAllWorkerActive()) {
+            if (evalConf.partialWarmup && isAllWorkerActive()) {
               // DEACTIVATE !!
               deactivateAllWorkers();
             }
@@ -313,68 +313,72 @@ public final class OffloadingWorkerManager {
     @Override
     public void onMessage(ControlMessage.Message message) {
       switch (message.getType()) {
+        // for warmup offloading
         case ExecutorPreparedForLambda: {
 
-          final ControlMessage.LambdaCreateMessage m = message.getLambdaCreateMsg();
-          final int numLambda = evalConf.numLambdaPool;
+          if (evalConf.partialWarmup) {
+            final ControlMessage.LambdaCreateMessage m = message.getLambdaCreateMsg();
+            final int numLambda = evalConf.numLambdaPool;
 
-          if (!offloadExecutorByteBufMap.containsKey(m.getExecutorId())) {
-            final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
-              evalConf.offExecutorThreadNum,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              m.getExecutorId(),
-              m.getDataChannelAddr(),
-              (int) m.getDataChannelPort(),
-              (int) m.getNettyStatePort());
+            if (!offloadExecutorByteBufMap.containsKey(m.getExecutorId())) {
+              final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
+                evalConf.offExecutorThreadNum,
+                evalConf.samplingJson,
+                evalConf.isLocalSource,
+                m.getExecutorId(),
+                m.getDataChannelAddr(),
+                (int) m.getDataChannelPort(),
+                (int) m.getNettyStatePort());
 
-            final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
+              final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
 
-            final ByteBuf offloadExecutorByteBuf = ByteBufAllocator.DEFAULT.buffer();
-            final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
-            final DataOutputStream dos = new DataOutputStream(bos);
-            offloadingExecutor.encode(dos);
-            SerializationUtils.serialize(ser.getInputDecoder(), dos);
-            SerializationUtils.serialize(ser.getOutputEncoder(), dos);
-            try {
-              dos.close();
-            } catch (IOException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
+              final ByteBuf offloadExecutorByteBuf = ByteBufAllocator.DEFAULT.buffer();
+              final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
+              final DataOutputStream dos = new DataOutputStream(bos);
+              offloadingExecutor.encode(dos);
+              SerializationUtils.serialize(ser.getInputDecoder(), dos);
+              SerializationUtils.serialize(ser.getOutputEncoder(), dos);
+              try {
+                dos.close();
+              } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+              }
+
+              offloadExecutorByteBufMap.putIfAbsent(m.getExecutorId(), offloadExecutorByteBuf);
+
             }
 
-            offloadExecutorByteBufMap.putIfAbsent(m.getExecutorId(), offloadExecutorByteBuf);
+            LOG.info("Receive lambda create request {}, {}, {}, {}, {}",
+              m.getExecutorId(), m.getDataChannelAddr(), m.getDataChannelPort(), m.getNettyStatePort(), numLambda);
 
+            final ByteBuf offloadExecutorByteBuf = offloadExecutorByteBufMap.get(m.getExecutorId());
+            offloadExecutorByteBuf.retain(numLambda);
+
+            numRequestedLambda.getAndAdd(numLambda);
+
+            for (int i = 0; i < numLambda; i++) {
+              final int rid = requestIdCnt.getAndIncrement();
+              requestIdExecutorMap.put(rid, m.getExecutorId());
+              requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
+
+              executorService.execute(() -> {
+                offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
+                  workerControlTransport.getPort(), rid, m.getExecutorId());
+              });
+            }
+
+            executorRegistry.getExecutorRepresentor(m.getExecutorId())
+              .sendControlMessage(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
+                .setSetNum(numLambda)
+                .build());
           }
-
-          LOG.info("Receive lambda create request {}, {}, {}, {}, {}",
-            m.getExecutorId(), m.getDataChannelAddr(), m.getDataChannelPort(), m.getNettyStatePort(), numLambda);
-
-          final ByteBuf offloadExecutorByteBuf = offloadExecutorByteBufMap.get(m.getExecutorId());
-          offloadExecutorByteBuf.retain(numLambda);
-
-          numRequestedLambda.getAndAdd(numLambda);
-
-          for (int i = 0; i < numLambda; i++) {
-            final int rid = requestIdCnt.getAndIncrement();
-            requestIdExecutorMap.put(rid, m.getExecutorId());
-            requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
-
-            executorService.execute(() -> {
-              offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
-                workerControlTransport.getPort(), rid, m.getExecutorId());
-            });
-          }
-
-          executorRegistry.getExecutorRepresentor(m.getExecutorId())
-            .sendControlMessage(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
-              .setSetNum(numLambda)
-              .build());
           break;
         }
+        // for normal offloading
         case LambdaEnd: {
           final int requestId = (int) message.getLambdaEndMsg().getRequestId();
           final Channel channel = requestIdControlChannelMap.get(requestId).getControlChannel();
@@ -382,8 +386,14 @@ public final class OffloadingWorkerManager {
           channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, null));
           break;
         }
+        // for normal offloading
         case TaskSendToLambda: {
-          /*
+
+          if (evalConf.partialWarmup) {
+            LOG.info("Partial warm-up enabled... prevent TaskSendToLambda");
+            return;
+          }
+
           final ControlMessage.TaskSendToLambdaMessage m = message.getTaskSendToLambdaMsg();
 
           executorService.execute(() -> {
@@ -419,17 +429,21 @@ public final class OffloadingWorkerManager {
 
               LOG.info("Task send {} to lambda {}", m.getTaskId(), requestId);
 
-              proxy.getControlChannel().writeAndFlush(new OffloadingMasterEvent(
+              proxy.sendTask(m.getTaskId(), new OffloadingMasterEvent(
                 OffloadingMasterEvent.Type.TASK_SEND, bos.buffer()));
 
             }
           });
-          */
 
           break;
         }
+        // for normal offloading
         case LambdaCreate: {
-          /*
+
+          if (evalConf.partialWarmup) {
+            LOG.info("Partial warm-up enabled... prevent LambdaCreate");
+            return;
+          }
 
           final ControlMessage.LambdaCreateMessage m = message.getLambdaCreateMsg();
           final int numLambda = (int) m.getNumberOfLambda();
@@ -480,7 +494,6 @@ public final class OffloadingWorkerManager {
 
             });
           }
-          */
 
           break;
         }

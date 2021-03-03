@@ -161,14 +161,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                     if (taskReadyBlockingMap.containsKey(taskId)) {
                       final int cnt = taskReadyBlockingMap.get(taskId).decrementAndGet();
-                      /*
+
                       if (cnt == 0) {
                         taskReadyBlockingMap.remove(taskId);
                         executorThread.addShortcutEvent(new TaskOffloadingEvent(taskId,
                           TaskOffloadingEvent.ControlType.OFFLOAD_DONE,
                           null));
                       }
-                      */
+
                     }
                   } catch (IOException e) {
                     e.printStackTrace();
@@ -317,28 +317,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   protected void offloadTaskToWorker(final String taskId, final List<OffloadingWorker> newWorkers,
                                      final boolean blocking) {
     LOG.info("Offloading task {}, workers: {}", taskId, newWorkers);
-    /*
-    final byte[] bytes = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
-    final SendToOffloadingWorker taskSend =
-      new SendToOffloadingWorker(taskId, bytes, pipeIndexMapWorker.getIndexMap(), true);
-    final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
-    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-
-    try {
-      bos.writeUTF(taskId);
-      bos.writeInt(TASK_START.ordinal());
-      taskSend.encode(bos);
-      bos.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-    */
 
     taskReadyBlockingMap.put(taskId, new AtomicInteger(newWorkers.size()));
-
-    // final ByteBuf byteBuf = taskExecutorMapWrapper.getTaskSerializedByte(taskId);
-    // byteBuf.retain(newWorkers.size());
 
     newWorkers.forEach(worker -> {
       final ControlMessage.Message message = ControlMessage.Message.newBuilder()
@@ -353,8 +333,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
       worker.writeControl(message);
     });
-
-    // byteBuf.release();
 
     if (blocking) {
       try {

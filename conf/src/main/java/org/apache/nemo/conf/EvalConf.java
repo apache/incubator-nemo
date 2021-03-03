@@ -168,6 +168,11 @@ public final class EvalConf {
   @NamedParameter(short_name = "num_lambda_pool", default_value = "1")
   public static final class NumLambdaPool implements Name<Integer> {}
 
+   // per executor
+  @NamedParameter(short_name = "partial_warmup", default_value = "false")
+  public static final class PartialWarmup implements Name<Boolean> {}
+
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -210,6 +215,7 @@ public final class EvalConf {
   public final String offloadingManagerType;
   public final String awsProfileName;
   public final int numLambdaPool;
+  public final boolean partialWarmup;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -250,6 +256,7 @@ public final class EvalConf {
                    @Parameter(OffloadingManagerType.class) final String offloadingManagerType,
                    @Parameter(AWSProfileName.class) final String awsProfileName,
                    @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker,
+                   @Parameter(PartialWarmup.class) final boolean partialWarmup,
                    @Parameter(NumLambdaPool.class) final int numLambdaPool) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -290,6 +297,7 @@ public final class EvalConf {
     this.numOffloadingWorkerAfterMerging = numOffloadingWorkerAfterMerging;
     this.awsProfileName = awsProfileName;
     this.numLambdaPool = numLambdaPool;
+    this.partialWarmup = partialWarmup;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -340,6 +348,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(OffloadingManagerType.class, offloadingManagerType);
     jcb.bindNamedParameter(AWSProfileName.class, awsProfileName);
     jcb.bindNamedParameter(NumLambdaPool.class, Integer.toString(numLambdaPool));
+    jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     return jcb.build();
   }
 
@@ -384,6 +393,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(OffloadingManagerType.class);
     cl.registerShortNameOfClass(AWSProfileName.class);
     cl.registerShortNameOfClass(NumLambdaPool.class);
+    cl.registerShortNameOfClass(PartialWarmup.class);
   }
 
   @Override
@@ -428,6 +438,7 @@ public final class EvalConf {
     sb.append("offloadingManagerType: "); sb.append(offloadingManagerType); sb.append("\n");
     sb.append("awsProfileName: "); sb.append(awsProfileName); sb.append("\n");
     sb.append("numLambdaPool: "); sb.append(numLambdaPool); sb.append("\n");
+    sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
