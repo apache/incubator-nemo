@@ -20,7 +20,9 @@ import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
@@ -353,6 +355,20 @@ public final class OffloadingHandler {
     for (String key : keys) {
       String value = systemProperties.get(key);
       LOG.info("Worker info " + requestId + "[" + key + "] = " + value);
+    }
+
+
+    InetAddress ip;
+    String hostname;
+    try {
+      ip = InetAddress.getLocalHost();
+      hostname = ip.getHostName();
+      LOG.info("Worker info " + requestId + " current IP address: " + ip);
+      LOG.info("Worker info " + requestId + " current Hostname: " + hostname);
+
+    } catch (UnknownHostException e) {
+
+      e.printStackTrace();
     }
   }
 
