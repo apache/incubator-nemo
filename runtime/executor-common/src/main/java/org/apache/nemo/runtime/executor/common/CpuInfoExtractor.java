@@ -8,7 +8,7 @@ import java.io.InputStreamReader;
 
 public class CpuInfoExtractor {
 
-  private static final Logger LOG = Logger.getLogger(CpuInfoExtractor.class.getName());
+  private static final Logger LOG = Logger.getLogger("LOG");
 
   public static void printSpecs(int requestId) {
     System.out.println(printCommand("cat /proc/cpuinfo", requestId));
@@ -16,7 +16,7 @@ public class CpuInfoExtractor {
   }
 
   public static void printNetworkStat(int requestId) {
-    System.out.println(printCommand("cat /proc/net/dev", requestId));
+    LOG.info(printCommand("cat /proc/net/dev", requestId));
   }
 
   public static String printCommand(String cmd, int requestId) {
