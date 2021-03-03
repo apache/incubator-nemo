@@ -437,6 +437,7 @@ public final class OffloadingHandler {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
       LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
       CpuInfoExtractor.printCpuSpec();
+      CpuInfoExtractor.printNetworkStat();
       return null;
     }
 
