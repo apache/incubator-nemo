@@ -72,7 +72,7 @@ public class VMWorker {
                 System.out.println("Receive request " + str);
                 final JSONObject jsonObj = new JSONObject(str);
                 final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
-                handler.handleRequest(map);
+                handler.handleRequest(map, null);
                 // Finish handler and worker here
                 countDownLatch.countDown();
                 break;
