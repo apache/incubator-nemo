@@ -346,8 +346,8 @@ public final class OffloadingHandler {
 	  final String addr =  "/" + address + ":"+ port;
 
 	  if (controlChannel != null) {
-	    LOG.info("Remote address control channel" + controlChannel.remoteAddress().toString()
-        +  ", addr " + addr + ", equal " + controlChannel.remoteAddress().toString().equals(addr));
+	    LOG.info("Remote address control channel" + controlChannel.remoteAddress()
+        +  ", addr " + addr);
     }
 
 	  if (controlChannel != null
