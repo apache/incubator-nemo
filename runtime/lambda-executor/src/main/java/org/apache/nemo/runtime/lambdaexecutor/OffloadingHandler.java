@@ -20,9 +20,7 @@ import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
@@ -339,6 +337,9 @@ public final class OffloadingHandler {
       /* Total amount of free memory available to the JVM */
       LOG.info("Worker info " + requestId + " free memory (bytes): " +
         Runtime.getRuntime().freeMemory());
+
+      /* Total amount of free memory available to the JVM */
+      LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
 
       /* This will return Long.MAX_VALUE if there is no preset limit */
       long maxMemory = Runtime.getRuntime().maxMemory();
