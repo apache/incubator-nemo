@@ -225,6 +225,7 @@ public final class OffloadingHandler {
     System.out.println("Input: " + input);
     final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
 
+
     // open channel
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
@@ -339,7 +340,14 @@ public final class OffloadingHandler {
         Runtime.getRuntime().freeMemory());
 
       /* Total amount of free memory available to the JVM */
-      LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
+      // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
+
+      final byte[] mac = NetworkInterface.getNetworkInterfaces().nextElement().getHardwareAddress();
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < mac.length; i++) {
+        sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
+      }
+      LOG.info("Worker info " + requestId + " mac address" + sb);
 
       /* This will return Long.MAX_VALUE if there is no preset limit */
       long maxMemory = Runtime.getRuntime().maxMemory();
@@ -392,6 +400,25 @@ public final class OffloadingHandler {
   }
 
 	public Object handleRequest(Map<String, Object> input, Context context) {
+
+    if (!input.containsKey("address")) {
+      LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
+      final byte[] mac;
+      try {
+        mac = NetworkInterface.getNetworkInterfaces().nextElement().getHardwareAddress();
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < mac.length; i++) {
+          sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
+        }
+        LOG.info("Worker info " + requestId + " mac address" + sb);
+      } catch (SocketException e) {
+        e.printStackTrace();
+      }
+      return null;
+    }
+
+
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
 	  final String addr =  "/" + address + ":"+ port;
