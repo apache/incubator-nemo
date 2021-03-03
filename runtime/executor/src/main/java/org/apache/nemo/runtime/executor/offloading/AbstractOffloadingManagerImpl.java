@@ -95,8 +95,11 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final StringBuilder sb = new StringBuilder("---------- Lambda byte sent start -------\n");
       synchronized (workers) {
-        workers.forEach(worker -> {
-          sb.append("Worker ");
+        final List<OffloadingWorker> sorted = new ArrayList<>(workers);
+        sorted.sort((worker1, worker2) -> Integer.compare(worker1.getRequestId(), worker2.getRequestId()));
+
+        sorted.forEach(worker -> {
+          sb.append("Worker");
           sb.append(worker.getId());
           sb.append(" byteSent ");
           sb.append(worker.getByteSent());
