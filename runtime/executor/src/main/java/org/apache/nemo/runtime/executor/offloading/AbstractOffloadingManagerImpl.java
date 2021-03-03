@@ -535,9 +535,9 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     Optional<OffloadingWorker> optional =
       selectWorkerForIntermediateOffloading(taskId, data);
 
-    while (!optional.isPresent()) {
+    while (!optional.isPresent() || !optional.get().hasReadyTask(taskId)) {
       try {
-        Thread.sleep(50);
+        Thread.sleep(30);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -546,6 +546,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     }
 
     final OffloadingWorker worker = optional.get();
+
     // LOG.info("Offloading data index {}, cnt {}", data.getInputPipeIndex(), c.getAndIncrement());
     worker.writeData(data.getInputPipeIndex(), data);
 
