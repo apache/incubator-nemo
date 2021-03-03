@@ -329,6 +329,22 @@ public final class OffloadingHandler {
   }
 
   private String getMacAddress() {
+
+    final byte[] mac;
+    try {
+      mac = NetworkInterface.getNetworkInterfaces().nextElement().getHardwareAddress();
+
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < mac.length; i++) {
+        sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
+      }
+      return sb.toString();
+    } catch (SocketException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    /*
 	  try {
       InetAddress localHost = InetAddress.getLocalHost();
       NetworkInterface ni = NetworkInterface.getByInetAddress(localHost);
@@ -345,6 +361,7 @@ public final class OffloadingHandler {
 	    e.printStackTrace();
 	    throw new RuntimeException(e);
     }
+    */
   }
 
   private void printSpec(final int requestId) {
@@ -417,18 +434,7 @@ public final class OffloadingHandler {
 
     if (!input.containsKey("address")) {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
-      final byte[] mac;
-      try {
-        mac = NetworkInterface.getNetworkInterfaces().nextElement().getHardwareAddress();
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < mac.length; i++) {
-          sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
-        }
-        LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
-      } catch (SocketException e) {
-        e.printStackTrace();
-      }
+      LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
       return null;
     }
 
