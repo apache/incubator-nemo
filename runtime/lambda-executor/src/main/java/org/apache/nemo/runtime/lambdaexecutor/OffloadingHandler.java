@@ -328,6 +328,25 @@ public final class OffloadingHandler {
 
   }
 
+  private String getMacAddress() {
+	  try {
+      InetAddress localHost = InetAddress.getLocalHost();
+      NetworkInterface ni = NetworkInterface.getByInetAddress(localHost);
+      byte[] hardwareAddress = ni.getHardwareAddress();
+
+      String[] hexadecimal = new String[hardwareAddress.length];
+      for (int i = 0; i < hardwareAddress.length; i++) {
+        hexadecimal[i] = String.format("%02X", hardwareAddress[i]);
+      }
+      String macAddress = String.join("-", hexadecimal);
+
+      return macAddress;
+    } catch (final Exception e) {
+	    e.printStackTrace();
+	    throw new RuntimeException(e);
+    }
+  }
+
   private void printSpec(final int requestId) {
     try {
       LOG.info("Worker info" + requestId + " machine identifier " + ComputerIdentifierGenerator.get());
@@ -342,12 +361,7 @@ public final class OffloadingHandler {
       /* Total amount of free memory available to the JVM */
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
 
-      final byte[] mac = NetworkInterface.getNetworkInterfaces().nextElement().getHardwareAddress();
-      StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < mac.length; i++) {
-        sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
-      }
-      LOG.info("Worker info " + requestId + " mac address " + sb);
+      LOG.info("Worker info " + requestId + " mac address " + getMacAddress());
 
       /* This will return Long.MAX_VALUE if there is no preset limit */
       long maxMemory = Runtime.getRuntime().maxMemory();
@@ -411,7 +425,7 @@ public final class OffloadingHandler {
         for (int i = 0; i < mac.length; i++) {
           sb.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? "-" : ""));
         }
-        LOG.info("Worker info " + requestId + " mac address" + sb);
+        LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
       } catch (SocketException e) {
         e.printStackTrace();
       }
