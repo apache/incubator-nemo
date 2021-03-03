@@ -51,7 +51,8 @@ public class CpuInfoExtractor {
       BufferedReader stdError = new BufferedReader(new
         InputStreamReader(p.getErrorStream()));
 
-      while (!in.ready()) {
+      long st = System.currentTimeMillis();
+      while (!in.ready() && !stdError.ready() && System.currentTimeMillis() - st < 3000) {
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {
