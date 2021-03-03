@@ -14,6 +14,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.runtime.executor.common.CpuInfoExtractor;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 
@@ -22,7 +23,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.security.spec.ECPublicKeySpec;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -419,6 +419,7 @@ public final class OffloadingHandler {
     final Channel ochannel = controlChannel;
     workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
     workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      CpuInfoExtractor.printNetworkStat(0);
       final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
       System.out.println("CPU Load: " + cpuLoad);
       final ByteBuf bb = ochannel.alloc().buffer();
@@ -433,20 +434,13 @@ public final class OffloadingHandler {
 
 	public Object handleRequest(Map<String, Object> input, Context context) {
 
-	  LOG.info("Function memory limit " + context.getMemoryLimitInMB());
-    LOG.info("Function context " + context);
+	  LOG.info("Function memory limit " + context.getMemoryLimitInMB() + " MB");
 
     if (!input.containsKey("address")) {
       // LOG.info("Worker info " + requestId + " mac address" + GetNetworkAddress.GetAddress("mac"));
       LOG.info("Worker info " + requestId + " mac address" + getMacAddress());
-      CpuInfoExtractor.printCpuSpec(0);
-      CpuInfoExtractor.printMemSpec(0);
+      CpuInfoExtractor.printSpecs(0);
       CpuInfoExtractor.printNetworkStat(0);
-
-      CpuInfoExtractor.printCommand("cat /sys/class/net");
-      CpuInfoExtractor.printCommand("cat /proc");
-      CpuInfoExtractor.printCommand("cat /proc/net");
-      CpuInfoExtractor.printCommand("cat /proc/net/dev");
       return null;
     }
 

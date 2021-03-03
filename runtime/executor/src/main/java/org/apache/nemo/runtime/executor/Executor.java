@@ -139,6 +139,7 @@ public final class Executor {
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                   @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                    final MessageEnvironment messageEnvironment,
                    final SerializerManager serializerManager,
@@ -204,6 +205,10 @@ public final class Executor {
     this.workerFactory = workerFactory;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
+      if (resourceType.equals("Compute")) {
+        CpuInfoExtractor.printNetworkStat(-1);
+      }
+
       // final double load = profiler.getCpuLoad();
       // LOG.info("Cpu load: {}", load);
 

@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambdaexecutor;
+package org.apache.nemo.runtime.executor.common;
 
 import org.apache.log4j.Logger;
 
@@ -10,39 +10,24 @@ public class CpuInfoExtractor {
 
   private static final Logger LOG = Logger.getLogger(CpuInfoExtractor.class.getName());
 
-  public static void printCpuSpec(int requestId) {
-    System.out.println("----------- Start cpu info worker " + requestId + "----------");
-    printCommand("cat /proc/cpuinfo");
-    System.out.println("----------- End cpu info worker " + requestId + "----------");
-  }
-
-  public static void printMemSpec(int requestId) {
-    System.out.println("----------- Start mem info worker " + requestId + "----------");
-    printCommand("cat /proc/meminfo");
-    System.out.println("----------- End mem info worker " + requestId + "----------");
+  public static void printSpecs(int requestId) {
+    System.out.println(printCommand("cat /proc/cpuinfo", requestId));
+    System.out.println(printCommand("cat /proc/meminfo", requestId));
   }
 
   public static void printNetworkStat(int requestId) {
-     System.out.println("----------- Start nstat " + requestId + "----------");
-    printCommand("nstat");
-    System.out.println("----------- End nstat " + requestId + "----------");
-
-    System.out.println("----------- Start /sbin/ifconfig " + requestId + "----------");
-    printCommand("/sbin/ifconfig");
-    System.out.println("----------- End /sbin/ifconfig " + requestId + "----------");
-
-    System.out.println("----------- Start ip -s link " + requestId + "----------");
-    printCommand("ip -s link");
-    System.out.println("----------- End ip -s link " + requestId + "----------");
+    System.out.println(printCommand("cat /proc/net/dev", requestId));
   }
 
-  public static void printCommand(String cmd) {
+  public static String printCommand(String cmd, int requestId) {
     try {
-      System.out.println("Printing command " + cmd);
 
       Process p = Runtime.getRuntime().exec(
         cmd);
       //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
+
+      StringBuilder sb = new StringBuilder("--------- Start printing command " + cmd +
+        " worker id " + requestId + " ---------\n");
 
       String line;
       BufferedReader in = new BufferedReader(
@@ -61,13 +46,15 @@ public class CpuInfoExtractor {
       }
 
       while (in.ready() && (line = in.readLine()) != null) {
-        System.out.println(line);
+        sb.append(line);
+        sb.append("\n");
       }
       // in.close();
       // LOG.info("End of read line !!!!!!!!!!!!!!!!!!!!");
 
       while (stdError.ready() && (line = stdError.readLine()) != null) {
-        System.out.println(line);
+        sb.append(line);
+        sb.append("\n");
       }
       // stdError.close();
 
@@ -76,8 +63,12 @@ public class CpuInfoExtractor {
       in.close();
       stdError.close();
 
+      sb.append("--------- End printing command " + cmd + " worker id "
+        + requestId + " ---------\n");
+      return sb.toString();
     } catch (IOException e) {
       e.printStackTrace();
+      return "";
     }
   }
 }
