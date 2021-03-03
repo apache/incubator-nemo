@@ -19,12 +19,10 @@ import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 public final class OffloadingHandler {
@@ -242,6 +240,7 @@ public final class OffloadingHandler {
 
     requestId = (Integer) input.get("requestId");
 
+
     map.put(controlChannel, new LambdaEventHandler(result));
     handler = (LambdaEventHandler) map.get(controlChannel);
 
@@ -296,6 +295,9 @@ public final class OffloadingHandler {
 
 
     if (workerInitLatch.getCount() == 0) {
+
+      printSpec(requestId);
+
       final byte[] addrPortBytes = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES)
         .putInt(executorDataAddrPort)
         .putInt(requestId).array();
@@ -322,6 +324,36 @@ public final class OffloadingHandler {
 //
 //    map.clear();
 
+  }
+
+  private void printSpec(final int requestId) {
+    LOG.info("Worker info" + requestId + " machine identifier " + ComputerIdentifierGenerator.get());
+    /* Total number of processors or cores available to the JVM */
+    LOG.info("Worker info " + requestId + " available processors (cores): " +
+      Runtime.getRuntime().availableProcessors());
+
+    /* Total amount of free memory available to the JVM */
+    LOG.info("Worker info " + requestId + " free memory (bytes): " +
+      Runtime.getRuntime().freeMemory());
+
+    /* This will return Long.MAX_VALUE if there is no preset limit */
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    /* Maximum amount of memory the JVM will attempt to use */
+    LOG.info("Worker info " + requestId + " maximum memory (bytes): " +
+      (maxMemory == Long.MAX_VALUE ? "no limit" : maxMemory));
+
+    /* Total memory currently available to the JVM */
+    LOG.info("Worker info " + requestId + " total memory available to JVM (bytes): " +
+      Runtime.getRuntime().totalMemory());
+
+    RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+
+    Map<String, String> systemProperties = runtimeBean.getSystemProperties();
+    Set<String> keys = systemProperties.keySet();
+    for (String key : keys) {
+      String value = systemProperties.get(key);
+      LOG.info("Worker info " + requestId + "[" + key + "] = " + value);
+    }
   }
 
   private void schedule() {
