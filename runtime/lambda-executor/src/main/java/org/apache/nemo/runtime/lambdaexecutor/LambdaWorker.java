@@ -60,9 +60,16 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       new HashMap<>(), true, Long.MAX_VALUE, false);
 	}
 
+	private String prevHandledRequestId = "null";
 
 	@Override
 	public Object handleRequest(Map<String, Object> input, Context context) {
+	  if (prevHandledRequestId.equals(context.getAwsRequestId())) {
+	    LOG.info("Duplicate aws request id ... terminate " + context.getAwsRequestId());
+	    return null;
+    }
+
+    prevHandledRequestId = context.getAwsRequestId();
 	  return offloadingHandler.handleRequest(input);
 	}
 }
