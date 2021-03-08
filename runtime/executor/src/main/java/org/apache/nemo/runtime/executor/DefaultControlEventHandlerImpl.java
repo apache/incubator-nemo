@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -24,17 +25,20 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
   private final PipeManagerWorker pipeManagerWorker;
   private final PersistentConnectionToMasterMap toMaster;
+  private final EvalConf evalConf;
 
   @Inject
   private DefaultControlEventHandlerImpl(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
     final TaskExecutorMapWrapper taskExecutorMapWrapper,
     final PipeManagerWorker pipeManagerWorker,
+    final EvalConf evalConf,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.pipeManagerWorker = pipeManagerWorker;
     this.toMaster = toMaster;
+    this.evalConf = evalConf;
   }
 
   @Override
@@ -63,7 +67,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
         // do not send data any more
         final int pipeIndex = control.targetPipeIndex;
-        LOG.info("Receive PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK of index {} for task {} in executor {}", pipeIndex, control.getTaskId(), executorId);
+        if (evalConf.controlLogging) {
+          LOG.info("Receive PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK of index {} for task {} in executor {}", pipeIndex, control.getTaskId(), executorId);
+        }
         pipeManagerWorker.stopOutputPipe(pipeIndex, control.getTaskId());
         break;
       }
@@ -77,13 +83,17 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       }
       case PIPE_INIT: {
 
-        LOG.info("Pipe init message, targetIndex: {}, targetTask {}, in executor {}", control.targetPipeIndex, control.getTaskId(), executorId);
+        if (evalConf.controlLogging) {
+          LOG.info("Pipe init message, targetIndex: {}, targetTask {}, in executor {}", control.targetPipeIndex, control.getTaskId(), executorId);
+        }
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
 
         if (canTaskMoved(control.getTaskId())) {
-          LOG.info("Task can be moved {}, inputStateStopped {}, isOutputStoped: {}",
-            control.getTaskId(), pipeManagerWorker.isInputPipeStopped(control.getTaskId()), pipeManagerWorker.isOutputPipeStopped(control.getTaskId())
+          if (evalConf.controlLogging) {
+            LOG.info("Task can be moved {}, inputStateStopped {}, isOutputStoped: {}",
+              control.getTaskId(), pipeManagerWorker.isInputPipeStopped(control.getTaskId()), pipeManagerWorker.isOutputPipeStopped(control.getTaskId())
             );
+          }
           stopAndCheckpointTask(control.getTaskId());
         }
         break;

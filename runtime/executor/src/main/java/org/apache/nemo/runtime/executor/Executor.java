@@ -519,11 +519,17 @@ public final class Executor {
       executorThread.addNewTask(taskExecutor);
       taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThread);
 
+      LOG.info("Put Task time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
+        System.currentTimeMillis() - st);
+
       final TaskStateManager taskStateManager =
         new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
+      LOG.info("Task message send time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
+        System.currentTimeMillis() - st);
 
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
@@ -535,6 +541,9 @@ public final class Executor {
           .setTaskId(task.getTaskId())
           .build())
           .build());
+
+      LOG.info("Task message send time 222 {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
+        System.currentTimeMillis() - st);
 
     } catch (final Exception e) {
       e.printStackTrace();

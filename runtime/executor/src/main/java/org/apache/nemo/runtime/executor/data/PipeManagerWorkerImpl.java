@@ -256,7 +256,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public synchronized boolean isInputPipeStopped(String taskId) {
-    LOG.info("TaskInputPipeState {} in executor {}, requesting {}", taskInputPipeState, executorId, taskId);
+    if (evalConf.controlLogging) {
+      LOG.info("TaskInputPipeState {} in executor {}, requesting {}", taskInputPipeState, executorId, taskId);
+    }
     return taskInputPipeState.get(taskId).equals(InputPipeState.STOPPED);
   }
 
@@ -652,7 +654,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public synchronized boolean isOutputPipeStopped(String taskId) {
-    LOG.info("Output pipe stopped indices of {}: {} in executor {}", taskId, taskStoppedOutputPipeIndicesMap, executorId);
+    if (evalConf.controlLogging) {
+      LOG.info("Output pipe stopped indices of {}: {} in executor {}", taskId, taskStoppedOutputPipeIndicesMap, executorId);
+    }
     return taskStoppedOutputPipeIndicesMap.containsKey(taskId);
   }
 
