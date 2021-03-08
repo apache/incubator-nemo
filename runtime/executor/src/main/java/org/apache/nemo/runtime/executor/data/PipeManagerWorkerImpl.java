@@ -26,6 +26,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.ExecutorChannelManagerMap;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
@@ -85,6 +86,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   private final Map<String, Set<Integer>> pipeOuptutIndicesForDstTask = new ConcurrentHashMap<>();
 
+  private final EvalConf evalConf;
+
   //          edge1                                               edge2
   //  T1  --(index)-->  [InputReader (T4, edge1)]  --> <T4> --> [OutputWriter]  --(index)-->   T5
   //  T2  --(index)-->                                                        --(index)-->   T6
@@ -92,11 +95,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   @Inject
   private PipeManagerWorkerImpl(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                 final ByteTransfer byteTransfer,
+                                final EvalConf evalConf,
                                 final ExecutorChannelManagerMap executorChannelManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
                                 final PipeIndexMapWorker pipeIndexMapWorker,
                                 final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.executorId = executorId;
+    this.evalConf = evalConf;
     this.byteTransfer = byteTransfer;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.executorChannelManagerMap = executorChannelManagerMap;
@@ -128,8 +133,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     try {
       taskInputPipeState.put(dstTaskId, InputPipeState.RUNNING);
 
-      LOG.info("Registering input pipe index {}/{}/{} . index: {}, state {}",
-        srcTaskId, edgeId, dstTaskId, inputPipeIndex, taskInputPipeState.get(dstTaskId));
+      if (evalConf.controlLogging) {
+        LOG.info("Registering input pipe index {}/{}/{} . index: {}, state {}",
+          srcTaskId, edgeId, dstTaskId, inputPipeIndex, taskInputPipeState.get(dstTaskId));
+      }
 
       if (inputPipeIndexInputReaderMap.containsKey(inputPipeIndex)) {
         LOG.warn("Pipe was already registered.. because the task was running in this executor {}/{}/{}  index {} in executor {} ",
@@ -158,8 +165,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       } else {
         // this is pending output pipe
         // the task is not sheduled yet
-        LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {} in executor {}",
-          dstTaskId, edgeId, srcTaskId, srcTaskId, executorId);
+        if (evalConf.controlLogging) {
+          LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {} in executor {}",
+            dstTaskId, edgeId, srcTaskId, srcTaskId, executorId);
+        }
         synchronized (pendingOutputPipeMap) {
           pendingOutputPipeMap.putIfAbsent(outputPipeIndex, new LinkedList<>());
           pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
@@ -195,7 +204,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         final int myOutputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
         final int myInputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
 
-        LOG.info("Send stop signal for input pipes {} index {} in executor {}", dstTaskId, myInputPipeIndex, executorId);
+        if (evalConf.controlLogging) {
+          LOG.info("Send stop signal for input pipes {} index {} in executor {}", dstTaskId, myInputPipeIndex, executorId);
+        }
 
         taskInputPipeState.put(dstTaskId, InputPipeState.WAITING_ACK);
         final TaskControlMessage controlMessage = new TaskControlMessage(
@@ -223,7 +234,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       throw new RuntimeException("Invalid pipe stop ack " + taskId + ", " + pipeIndex);
     }
 
-    LOG.info("Receive act input stop signal for {} index {} in executor {}", taskId, pipeIndex, executorId);
+    if (evalConf.controlLogging) {
+      LOG.info("Receive act input stop signal for {} index {} in executor {}", taskId, pipeIndex, executorId);
+    }
 
     final List<Integer> stopPipes = inputStopSignalPipes.get(taskId);
     synchronized (stopPipes) {
@@ -582,7 +595,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   @Override
   public synchronized void taskScheduled(final String taskId) {
-    LOG.info("Task scheduled !! {} in executor {}, pipeOutputIndicesForDstTask: {}", taskId,  executorId, pipeOuptutIndicesForDstTask);
+    // LOG.info("Task scheduled !! {} in executor {}, pipeOutputIndicesForDstTask: {}", taskId,  executorId, pipeOuptutIndicesForDstTask);
     if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
       final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
       indices.forEach(index -> {
@@ -601,7 +614,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
           Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
           final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), false);
-          LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
+
+          if (evalConf.controlLogging) {
+            LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
+          }
 
           if (!optional.isPresent()) {
             LOG.warn("{} is not schedule yet... we buffer the event and it will be emitted when task is scheduled in executor {}", key, executorId);
@@ -616,7 +632,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           channel.flush();
 
         } else {
-          LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);
+          if (evalConf.controlLogging) {
+            LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);
+          }
         }
 
         if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {

@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.master;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -53,10 +54,14 @@ public final class PipeIndexMaster {
   private final Map<Integer, Triple<String, String, String>> pipeIndexKeyMap = new ConcurrentHashMap<>();
   private final AtomicInteger atomicInteger = new AtomicInteger();
 
+  private final EvalConf evalConf;
+
   @Inject
-  private PipeIndexMaster(final MessageEnvironment masterMessageEnvironment) {
+  private PipeIndexMaster(final MessageEnvironment masterMessageEnvironment,
+                          final EvalConf evalConf) {
     masterMessageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
       new TaskIndexMessageReceiver());
+    this.evalConf = evalConf;
   }
 
 
@@ -77,14 +82,20 @@ public final class PipeIndexMaster {
                               final String dstTaskId) {
     if (!pipeKeyIndexMap.containsKey(Triple.of(srcTaskId, edgeId, dstTaskId))) {
       final int index = atomicInteger.getAndIncrement();
-      LOG.info("Registering pipe {}/{}/{} to {}", srcTaskId, edgeId, dstTaskId, index);
+
+      if (evalConf.controlLogging) {
+        LOG.info("Registering pipe {}/{}/{} to {}", srcTaskId, edgeId, dstTaskId, index);
+      }
       pipeKeyIndexMap.putIfAbsent(Triple.of(srcTaskId, edgeId, dstTaskId), index);
       pipeIndexKeyMap.putIfAbsent(index, Triple.of(srcTaskId, edgeId, dstTaskId));
     }
 
     if (!pipeKeyIndexMap.containsKey(Triple.of(dstTaskId, edgeId, srcTaskId))) {
       final int index = atomicInteger.getAndIncrement();
-      LOG.info("Registering pipe {}/{}/{} to {}", dstTaskId, edgeId, srcTaskId, index);
+
+      if (evalConf.controlLogging) {
+        LOG.info("Registering pipe {}/{}/{} to {}", dstTaskId, edgeId, srcTaskId, index);
+      }
       pipeKeyIndexMap.putIfAbsent(Triple.of(dstTaskId, edgeId, srcTaskId), index);
       pipeIndexKeyMap.putIfAbsent(index, Triple.of(dstTaskId, edgeId, srcTaskId));
     }
@@ -110,7 +121,9 @@ public final class PipeIndexMaster {
           final String dstTaskId = requestTaskIndexMessage.getDstTaskId();
           final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
 
-          LOG.info("Task index of stage: {}: {}", key, pipeKeyIndexMap.get(key));
+          if (evalConf.controlLogging) {
+            LOG.info("Task index of stage: {}: {}", key, pipeKeyIndexMap.get(key));
+          }
 
           if (!pipeKeyIndexMap.containsKey(key)) {
             throw new RuntimeException("No task index for task " + key);
@@ -134,7 +147,9 @@ public final class PipeIndexMaster {
             message.getRequestPipeKeyMsg();
           final int index = (int)requestPipeKeyMessage.getPipeIndex();
 
-          LOG.info("Task key of stage: {}", index, pipeIndexKeyMap.get(index));
+          if (evalConf.controlLogging) {
+            LOG.info("Task key of stage: {}", index, pipeIndexKeyMap.get(index));
+          }
 
           if (!pipeIndexKeyMap.containsKey(index)) {
             throw new RuntimeException("No task index for task " + index);

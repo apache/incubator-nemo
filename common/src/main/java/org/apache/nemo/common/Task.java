@@ -277,6 +277,8 @@ public final class Task implements Serializable {
 
   @Override
   public String toString() {
+    return taskId;
+    /*
     final StringBuilder sb = new StringBuilder();
     sb.append(" / taskId: ");
     sb.append(taskId);
@@ -289,5 +291,6 @@ public final class Task implements Serializable {
     sb.append("/ exec props: ");
     sb.append(getExecutionProperties());
     return sb.toString();
+    */
   }
 }
