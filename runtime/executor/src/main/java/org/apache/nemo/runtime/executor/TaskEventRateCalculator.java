@@ -1,7 +1,9 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,17 +15,23 @@ public final class TaskEventRateCalculator {
   private static final Logger LOG = LoggerFactory.getLogger(TaskEventRateCalculator.class.getName());
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
+  private final String executorId;
 
   @Inject
-  private TaskEventRateCalculator(final TaskExecutorMapWrapper taskExecutorMapWrapper) {
+  private TaskEventRateCalculator(final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                                  @Parameter(JobConf.ExecutorId.class) final String executorId) {
     this.taskExecutorMap = taskExecutorMapWrapper.getTaskExecutorMap();
+    this.executorId = executorId;
   }
 
   public Pair<Integer, Integer> calculateProcessedEvent() {
     int sum = 0;
     int sum2 = 0;
 
-    final StringBuilder sb = new StringBuilder("---- Start of task processed event ----\n");
+    final int numTasks = taskExecutorMap.keySet().size();
+
+    final StringBuilder sb = new StringBuilder("---- Start of task processed event (# tasks: "
+      + numTasks + " in executor " + executorId + ")----\n");
 
     for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
       final AtomicInteger count = taskExecutor.getProcessedCnt();

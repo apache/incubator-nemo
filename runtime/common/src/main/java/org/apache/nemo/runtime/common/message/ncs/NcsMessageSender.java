@@ -45,13 +45,13 @@ public final class NcsMessageSender implements MessageSender<ControlMessage.Mess
 
   @Override
   public void send(final ControlMessage.Message message) {
-    LOG.info("Write ncs message {}", message);
+    // LOG.info("Write ncs message {}", message);
     connection.write(message);
   }
 
   @Override
   public CompletableFuture<ControlMessage.Message> request(final ControlMessage.Message message) {
-    LOG.info("Request ncs message {}", message);
+    // LOG.info("Request ncs message {}", message);
     final CompletableFuture<ControlMessage.Message> future = replyFutureMap.beforeRequest(message.getId());
     connection.write(message);
     return future;
