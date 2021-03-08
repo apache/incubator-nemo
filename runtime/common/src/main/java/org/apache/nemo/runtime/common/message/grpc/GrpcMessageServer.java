@@ -97,7 +97,7 @@ final class GrpcMessageServer {
 
   /**
    * Remove a listener by its id.
-   * @param listenerId id of the listener to remove.
+   * throw new RuntimeException(e);* @param listenerId id of the listener to remove.
    */
   void removeListener(final String listenerId) {
     listenerMap.remove(listenerId);
@@ -115,7 +115,7 @@ final class GrpcMessageServer {
 
     // 1. Bind to random port
     this.server = ServerBuilder.forPort(0)
-      .executor(Executors.newFixedThreadPool(20))
+      // .executor(Executors.newFixedThreadPool(20))
         .addService(new MessageService())
         .build();
 
