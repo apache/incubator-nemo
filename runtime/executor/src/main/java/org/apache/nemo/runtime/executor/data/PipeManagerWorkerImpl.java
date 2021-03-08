@@ -472,12 +472,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       // this is pending output pipe
       synchronized (pendingOutputPipeMap) {
         if (pendingOutputPipeMap.containsKey(pipeIndex)) {
-          pendingOutputPipeMap.putIfAbsent(pipeIndex, new LinkedList<>());
           pendingOutputPipeMap.get(pipeIndex).add(finalData);
           pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
           pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
         } else {
-          optional.get().writeAndFlush(finalData).addListener(listener);
+          getChannelForDstTask(dstTaskId, false)
+            .get().writeAndFlush(finalData).addListener(listener);
         }
       }
     } else {
@@ -601,7 +601,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
       final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
       indices.forEach(index -> {
-        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+        final Triple<String, String, String> key = pipeIndexMapWorker.getK
+        ey(index);
         startOutputPipe(index, key.getLeft());
       });
     }
