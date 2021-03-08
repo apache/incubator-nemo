@@ -45,7 +45,7 @@ import java.util.concurrent.Executors;
  * @see org.apache.nemo.runtime.common.message.MessageSender#send(Object)
  * @see org.apache.nemo.runtime.common.message.MessageSender#request(Object)
  */
-final class GrpcMessageClient {
+public final class GrpcMessageClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(GrpcMessageClient.class);
 
@@ -104,7 +104,7 @@ final class GrpcMessageClient {
    *
    * @param message a message to send
    */
-  void send(final ControlMessage.Message message) {
+  public void send(final ControlMessage.Message message) {
     // LOG.info("Grpc from {}", ClientCalls.class.getProtectionDomain().getCodeSource().getLocation());
     // LOG.info("Netty {}", Http2ConnectionHandler.class.getProtectionDomain().getCodeSource().getLocation());
 

@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
  * An implementation of {@link MessageSender} which uses grpc framework internally by wrapping
  * an instance of {@link GrpcMessageClient}.
  */
-final class GrpcMessageSender implements MessageSender<ControlMessage.Message> {
+public final class GrpcMessageSender implements MessageSender<ControlMessage.Message> {
 
   private final String receiverId;
   private final String listenerId;
@@ -39,7 +39,7 @@ final class GrpcMessageSender implements MessageSender<ControlMessage.Message> {
    * @param listenerId id of the listener.
    * @param grpcClient grpc message client.
    */
-  GrpcMessageSender(final String receiverId,
+  public GrpcMessageSender(final String receiverId,
                     final String listenerId,
                     final GrpcMessageClient grpcClient) {
     this.receiverId = receiverId;

@@ -199,6 +199,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   }
 
   private MessageType getMsgType(final ControlMessage.Message controlMessage) {
+    return MessageType.Send;
+    /*
     switch (controlMessage.getType()) {
       case TaskStateChanged:
       case ScheduleTask:
@@ -233,6 +235,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
+        */
   }
 
   private String getExecutorId(final ControlMessage.Message controlMessage) {

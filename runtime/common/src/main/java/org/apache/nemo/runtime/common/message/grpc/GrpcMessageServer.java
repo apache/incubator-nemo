@@ -51,7 +51,7 @@ import java.util.concurrent.Executors;
  * @see org.apache.nemo.runtime.common.message.MessageSender#send(Object)
  * @see org.apache.nemo.runtime.common.message.MessageSender#request(Object)
  */
-final class GrpcMessageServer {
+public final class GrpcMessageServer {
 
   private static final Logger LOG = LoggerFactory.getLogger(GrpcMessageServer.class);
 
@@ -73,7 +73,7 @@ final class GrpcMessageServer {
    * @param idFactory identifier factory.
    * @param localSenderId id of the local sender.
    */
-  GrpcMessageServer(final LocalAddressProvider localAddressProvider,
+  public GrpcMessageServer(final LocalAddressProvider localAddressProvider,
                     final NameResolver nameResolver,
                     final IdentifierFactory idFactory,
                     final String localSenderId) {
@@ -109,7 +109,7 @@ final class GrpcMessageServer {
    *
    * @throws Exception when any network exception occur during starting procedure
    */
-  void start() throws Exception {
+  public void start() throws Exception {
 
     LOG.info("Grpc methodDescriptor from {}", MethodDescriptor.class.getProtectionDomain().getCodeSource().getLocation());
 

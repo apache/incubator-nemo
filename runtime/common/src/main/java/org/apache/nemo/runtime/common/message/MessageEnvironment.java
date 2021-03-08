@@ -28,7 +28,7 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(GrpcMessageEnvironment.class)
+@DefaultImplementation(GrpcNcsMessageEnvironment.class)
 public interface MessageEnvironment {
 
   // The ID of the master used for distinguish the sender or receiver.

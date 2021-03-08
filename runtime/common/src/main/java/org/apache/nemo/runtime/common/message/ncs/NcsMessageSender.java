@@ -30,13 +30,13 @@ import org.slf4j.LoggerFactory;
 /**
  * MessageSender for NCS.
  */
-final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
+public final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
   private static final Logger LOG = LoggerFactory.getLogger(NcsMessageSender.class.getName());
 
   private final Connection<ControlMessage.Message> connection;
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
 
-  NcsMessageSender(
+  public NcsMessageSender(
       final Connection<ControlMessage.Message> connection,
       final ReplyFutureMap replyFutureMap) {
     this.connection = connection;
