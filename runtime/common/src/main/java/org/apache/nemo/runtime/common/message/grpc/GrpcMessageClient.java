@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.common.message.grpc;
 import io.grpc.stub.ClientCalls;
 import io.netty.handler.codec.http2.Http2ConnectionHandler;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.comm.GrpcMessageService;
 import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 /**
  * Represent a single RPC client to a specific server. It firstly looks up the name server to resolve
@@ -90,6 +92,7 @@ final class GrpcMessageClient {
    */
   private void setupChannel(final InetSocketAddress ipAddress) throws Exception {
       this.managedChannel = ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
+        .executor(Executors.newFixedThreadPool(20))
           .usePlaintext(true)
           .build();
       this.blockingStub = MessageServiceGrpc.newBlockingStub(managedChannel);
@@ -109,9 +112,11 @@ final class GrpcMessageClient {
         message.getId(), message.getListenerId(), message.getType());
     try {
       blockingStub.send(message);
+
     } catch (final StatusRuntimeException e) {
       LOG.warn("RPC send call failed with msg.id={}, msg.listenerId={}, msg.type={}, e.cause={}, e.message={}",
           message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
+      throw new RuntimeException(e);
     }
   }
 

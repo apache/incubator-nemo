@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
 
 /**
  * Represent the RPC server that is responsible for responding all messages from other clients. The server tries to
@@ -114,6 +115,7 @@ final class GrpcMessageServer {
 
     // 1. Bind to random port
     this.server = ServerBuilder.forPort(0)
+      .executor(Executors.newFixedThreadPool(20))
         .addService(new MessageService())
         .build();
 

@@ -31,10 +31,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.common.message.*;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
@@ -137,6 +134,8 @@ public final class Executor {
 
   private final OffloadingWorkerFactory workerFactory;
 
+  private final MessageSender<ControlMessage.Message> taskScheduledMapSender;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -175,6 +174,9 @@ public final class Executor {
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
+
+    this.taskScheduledMapSender =
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID);
 
     this.executorMetrics = executorMetrics;
     this.bottleneckDetector = bottleneckDetector;
@@ -531,16 +533,15 @@ public final class Executor {
       LOG.info("Task message send time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);
 
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
-        .send(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
-          .setType(ControlMessage.MessageType.TaskExecuting)
+      taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .setType(ControlMessage.MessageType.TaskExecuting)
         .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
           .setExecutorId(executorId)
           .setTaskId(task.getTaskId())
           .build())
-          .build());
+        .build());
 
       LOG.info("Task message send time 222 {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);
