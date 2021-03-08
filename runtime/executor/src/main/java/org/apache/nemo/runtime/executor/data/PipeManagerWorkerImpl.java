@@ -601,8 +601,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
       final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
       indices.forEach(index -> {
-        final Triple<String, String, String> key = pipeIndexMapWorker.getK
-        ey(index);
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
         startOutputPipe(index, key.getLeft());
       });
     }
