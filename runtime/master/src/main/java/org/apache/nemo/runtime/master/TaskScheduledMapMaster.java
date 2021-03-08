@@ -42,6 +42,8 @@ public final class TaskScheduledMapMaster {
 
   private final Map<String, Task> taskIdTaskMap = new ConcurrentHashMap<>();
 
+  private final Map<String, String> taskOriginalExecutorIdMap = new ConcurrentHashMap<>();
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final MessageEnvironment messageEnvironment,
@@ -96,6 +98,10 @@ public final class TaskScheduledMapMaster {
     prevTaskExecutorIdMap.putAll(taskExecutorIdMap);
   }
 
+  public String getTaskOriginalExecutorId(final String taskId) {
+    return taskOriginalExecutorIdMap.get(taskId);
+  }
+
   public Map<String, String> getPrevTaskExecutorIdMap() {
     return prevTaskExecutorIdMap;
   }
@@ -107,12 +113,15 @@ public final class TaskScheduledMapMaster {
   private synchronized void executingTask(final String executorId, final String taskId) {
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
 
+
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
     LOG.info("Put task {} to executor {}", taskId, representer.getExecutorId());
 
     if (representer.getExecutorId() == null) {
       throw new RuntimeException("Executor Id null for putting task scheduled " + executorId + ", " + taskId);
     }
+
+    taskOriginalExecutorIdMap.putIfAbsent(taskId, representer.getExecutorId());
     taskExecutorIdMap.put(taskId, representer.getExecutorId());
 
     // Add task location to VM

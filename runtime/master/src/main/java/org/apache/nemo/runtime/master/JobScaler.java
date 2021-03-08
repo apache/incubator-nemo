@@ -1142,6 +1142,8 @@ public final class JobScaler {
 
   public synchronized void sendPrevMovedTaskStopSignal(final int num) {
 
+    taskDispatcher.setReclaiming(true);
+
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
 
     int cnt = 0;
@@ -1163,6 +1165,8 @@ public final class JobScaler {
 
   public synchronized void sendTaskStopSignal(final int num) {
 
+    taskDispatcher.setReclaiming(false);
+
     LOG.info("Send task stop signal");
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
 
@@ -1175,6 +1179,7 @@ public final class JobScaler {
       if (!prevMovedTask.contains(taskId)) {
         if (!executorRegistry.getExecutorRepresentor(executorId)
           .getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+          LOG.info("Stop task {}", taskId);
           taskScheduledMap.stopTask(taskId);
           stopped += 1;
           prevMovedTask.add(taskId);

@@ -68,6 +68,8 @@ public final class TaskDispatcher {
   private final TaskScheduledMapMaster taskScheduledMap;
   private final RendevousServer rendevousServer;
 
+  private boolean reclaiming;
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
@@ -87,6 +89,12 @@ public final class TaskDispatcher {
     this.schedulingConstraintRegistry = schedulingConstraintRegistry;
     this.taskScheduledMap = taskScheduledMap;
     this.rendevousServer = rendevousServer;
+    this.reclaiming = false;
+  }
+
+
+  public void setReclaiming(boolean rec) {
+    this.reclaiming = rec;
   }
 
   /**
@@ -291,31 +299,48 @@ public final class TaskDispatcher {
               }
             });
 
-            final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
-              .stream().filter(executor -> {
-                return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
-                  &&  taskScheduledMap.getPrevTaskExecutorIdMap()
-                  .get(task.getTaskId()).equals(executor.getExecutorId()));
-              }).collect(Collectors.toSet());
-
-            LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
-
-            if (!finalCandidates.isEmpty()) {
-              // Select executor
-              final ExecutorRepresenter selectedExecutor
-                = schedulingPolicy.selectExecutor(finalCandidates, task);
+            if (reclaiming) {
+              final ExecutorRepresenter selectedExecutor =
+                executorRegistry.getExecutorRepresentor(
+                  taskScheduledMap.getTaskOriginalExecutorId(task.getTaskId()));
 
               taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
 
               // update metadata first
               planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
-              LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+              LOG.info("{} scheduled to {} for origin", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
               taskScheduledMap.addTask(task.getTaskId(), task);
               selectedExecutor.onTaskScheduled(task);
+
             } else {
-              couldNotSchedule.add(task);
+              final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
+                .stream().filter(executor -> {
+                  return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
+                    && taskScheduledMap.getPrevTaskExecutorIdMap()
+                    .get(task.getTaskId()).equals(executor.getExecutorId()));
+                }).collect(Collectors.toSet());
+
+              LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
+
+              if (!finalCandidates.isEmpty()) {
+                // Select executor
+                final ExecutorRepresenter selectedExecutor
+                  = schedulingPolicy.selectExecutor(finalCandidates, task);
+
+                taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
+
+                // update metadata first
+                planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+                LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+                // send the task
+                taskScheduledMap.addTask(task.getTaskId(), task);
+                selectedExecutor.onTaskScheduled(task);
+              } else {
+                couldNotSchedule.add(task);
+              }
             }
           });
         }
