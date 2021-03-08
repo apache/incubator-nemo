@@ -143,21 +143,21 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     private void processSendMessage(final ControlMessage.Message controlMessage) {
       final String listenerId = controlMessage.getListenerId();
-      LOG.info("Process end message {} / {}", listenerId, controlMessage);
+      // LOG.info("Process end message {} / {}", listenerId, controlMessage);
       listenerConcurrentMap.get(listenerId).onMessage(controlMessage);
     }
 
     private void processRequestMessage(final ControlMessage.Message controlMessage) {
       final String listenerId = controlMessage.getListenerId();
       final String executorId = getExecutorId(controlMessage);
-      LOG.info("Process request message {}, {} / {}", listenerId, executorId, controlMessage);
+      // LOG.info("Process request message {}, {} / {}", listenerId, executorId, controlMessage);
       final MessageContext messageContext = new NcsMessageContext(executorId, connectionFactory, idFactory);
       listenerConcurrentMap.get(listenerId).onMessageWithContext(controlMessage, messageContext);
     }
 
     private void processReplyMessage(final ControlMessage.Message controlMessage) {
       final long requestId = getRequestId(controlMessage);
-      LOG.info("Process reply message {}, {} / {}", requestId, controlMessage);
+      // LOG.info("Process reply message {}, {} / {}", requestId, controlMessage);
       replyFutureMap.onSuccessMessage(requestId, controlMessage);
     }
   }
