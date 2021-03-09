@@ -468,7 +468,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final String dstTaskId = key.getRight();
 
     final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
-    if (pendingOutputPipeMap.containsKey(pipeIndex) || !optional.isPresent()) {
+    if (pendingOutputPipeMap.containsKey(pipeIndex)) {
       // this is pending output pipe
       synchronized (pendingOutputPipeMap) {
         if (pendingOutputPipeMap.containsKey(pipeIndex)) {
@@ -476,8 +476,14 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
           pipeOuptutIndicesForDstTask.get(dstTaskId).add(pipeIndex);
         } else {
-          getChannelForDstTask(dstTaskId, false)
-            .get().writeAndFlush(finalData).addListener(listener);
+          try {
+            getChannelForDstTask(dstTaskId, false)
+              .get().writeAndFlush(finalData).addListener(listener);
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(String.format(
+              "No channel for index %d", pipeIndex));
+          }
         }
       }
     } else {
@@ -495,13 +501,18 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
 
     ByteBuf byteBuf;
-    if (pendingOutputPipeMap.containsKey(index) || !optional.isPresent()) {
+    if (pendingOutputPipeMap.containsKey(index)) {
       synchronized (pendingOutputPipeMap) {
         if (pendingOutputPipeMap.containsKey(index)) {
           byteBuf = ByteBufAllocator.DEFAULT.ioBuffer();
         } else {
-          final Channel channel = optional.get();
-          byteBuf = channel.alloc().ioBuffer();
+          try {
+            byteBuf = getChannelForDstTask(dstTaskId, false).get().alloc().ioBuffer();
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(String.format(
+              "No channel for %s->%s / index %d", srcTaskId, dstTaskId, index));
+          }
         }
       }
     } else {
