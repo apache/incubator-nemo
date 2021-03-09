@@ -257,15 +257,13 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    //LOG.info("Final input receive at {}: {}, timestamp: {}, inputWatermark: {}",
+    // LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {}",
     //  getContext().getTaskId(),
-    //  element,
     //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
     try {
       if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-        //LOG.info("Final input process: {}", getContext().getTaskId());
 
         //LOG.info("Final input!!: {}", element);
         // We can call Beam's DoFnRunner#processElement here,
@@ -279,10 +277,16 @@ public final class GBKFinalTransform<K, InputT>
           KeyedWorkItems.elementsWorkItem(kv.getKey(),
             Collections.singletonList(element.withValue(kv.getValue())));
         numProcessedData += 1;
+
+        // LOG.info("Final input process: {} key {}, time {}", getContext().getTaskId(),
+        //  kv.getKey(), new Instant(element.getTimestamp()));
+
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         checkAndFinishBundle();
+      } else {
+        // LOG.info("Late input: {}, time {}", getContext().getTaskId(), new Instant(element.getTimestamp()));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -299,14 +303,20 @@ public final class GBKFinalTransform<K, InputT>
                                                final Instant synchronizedTime,
                                                final Watermark triggerWatermark) {
 
-
     // Trigger timers
-
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime, triggerWatermark);
     final long triggerTime = System.currentTimeMillis();
 
-//    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
-//      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
+    if (triggeredKeys > 0) {
+      if (inMemoryTimerInternalsFactory.watermarkTimers.isEmpty()) {
+        LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
+          triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size(), "empty");
+      } else {
+        LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
+          triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size(),  inMemoryTimerInternalsFactory.watermarkTimers.first());
+      }
+    }
+
   }
 
   /**
@@ -461,6 +471,16 @@ public final class GBKFinalTransform<K, InputT>
     */
     // TODO: end
 
+
+//    if (inMemoryTimerInternalsFactory.watermarkTimers.isEmpty()) {
+//      LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
+//        timers.size(), inMemoryTimerInternalsFactory.watermarkTimers.size(), "empty");
+//    } else {
+//      LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
+//        timers.size(), inMemoryTimerInternalsFactory.watermarkTimers.size(),  inMemoryTimerInternalsFactory.watermarkTimers.first());
+//    }
+
+
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
         (NemoTimerInternals) inMemoryTimerInternalsFactory.timerInternalsForKey(timer.left());
@@ -610,12 +630,10 @@ public final class GBKFinalTransform<K, InputT>
     @Override
     public void emitWatermark(final Watermark watermark) {
 
-      /*
-      if (RuntimeIdManager.getStageIdFromTaskId(getContext().getTaskId()).equals("Stage2")) {
-        LOG.info("Emit watermark in final: {}, {} / {}", new Instant(watermark.getTimestamp()),
-          watermark.getTimestamp(), getContext().getTaskId());
-      }
-      */
+      //if (RuntimeIdManager.getStageIdFromTaskId(getContext().getTaskId()).equals("Stage2")) {
+       // LOG.info("Emit watermark in final: {}, {} / {}", new Instant(watermark.getTimestamp()),
+       //   watermark.getTimestamp(), getContext().getTaskId());
+      //}
 
       outputCollector.emitWatermark(watermark);
     }
