@@ -121,6 +121,11 @@ public final class GBKFinalTransform<K, InputT>
 
       bos.close();
 
+      LOG.info("Checkpoint timer state size {}, {} for {}",
+        inMemoryTimerInternalsFactory.getNumKey(),
+        inMemoryStateInternalsFactory.stateInternalMap.size(),
+        getContext().getTaskId());
+
       stateStore.put(getContext().getTaskId(), bos.toByteArray());
     } catch (IOException e) {
       e.printStackTrace();
@@ -153,6 +158,11 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
         inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
       }
+
+      LOG.info("Restored size {} for {}",
+        inMemoryTimerInternalsFactory.getNumKey(),
+        inMemoryStateInternalsFactory.stateInternalMap.size(),
+        getContext().getTaskId());
 
       inputWatermark = state.inputWatermark;
       prevOutputWatermark = state.prevOutputWatermark;
