@@ -1140,7 +1140,8 @@ public final class JobScaler {
 
   private final Set<String> prevMovedTask = new HashSet<>();
 
-  public synchronized void sendPrevMovedTaskStopSignal(final int num) {
+  public synchronized void sendPrevMovedTaskStopSignal(final int num,
+                                                       final int stageId) {
 
     taskDispatcher.setReclaiming(true);
 
@@ -1153,17 +1154,20 @@ public final class JobScaler {
       final String taskId = iterator.next();
       final String executorId = taskExecutorIdMap.get(taskId);
 
-      taskScheduledMap.stopTask(taskId);
-      cnt += 1;
-      iterator.remove();
+      if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals("Stage" + stageId)) {
+        taskScheduledMap.stopTask(taskId);
+        cnt += 1;
+        iterator.remove();
 
-      if (cnt >= num) {
-        break;
+        if (cnt >= num) {
+          break;
+        }
       }
     }
   }
 
-  public synchronized void sendTaskStopSignal(final int num) {
+  public synchronized void sendTaskStopSignal(final int num,
+                                              final int stageId) {
 
     taskDispatcher.setReclaiming(false);
 
@@ -1178,7 +1182,8 @@ public final class JobScaler {
 
       if (!prevMovedTask.contains(taskId)) {
         if (!executorRegistry.getExecutorRepresentor(executorId)
-          .getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
+          .getContainerType().equals(ResourcePriorityProperty.SOURCE)
+          && RuntimeIdManager.getStageIdFromTaskId(taskId).equals("Stage" + stageId)) {
           LOG.info("Stop task {}", taskId);
           taskScheduledMap.stopTask(taskId);
           stopped += 1;

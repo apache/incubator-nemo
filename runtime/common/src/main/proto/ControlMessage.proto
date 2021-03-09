@@ -254,6 +254,7 @@ message RequestOffloadingExecutorMessage {
 
 message OffloadingTaskMessage {
   required int64 numOffloadingTask = 1;
+  required int64 offloadingStage = 2;
 }
 
 message TaskExecutingMessage {

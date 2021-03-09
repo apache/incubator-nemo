@@ -464,7 +464,8 @@ public final class RuntimeMaster {
     });
   }
 
-  public void deoffloadTask(final int num) {
+  public void deoffloadTask(final int num,
+                            final int stageId) {
     LOG.info("Deoffloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
@@ -474,7 +475,10 @@ public final class RuntimeMaster {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.DeoffloadingTask)
-            .setSetNum(num)
+            .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
+              .setNumOffloadingTask(num)
+              .setOffloadingStage(stageId)
+              .build())
             .build());
         }
       });
@@ -557,7 +561,8 @@ public final class RuntimeMaster {
   }
 
 
-  public void offloadTask(final int num) {
+  public void offloadTask(final int num,
+                          final int stageId) {
     LOG.info("Offloading tasks {}", num);
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
@@ -569,6 +574,7 @@ public final class RuntimeMaster {
             .setType(ControlMessage.MessageType.OffloadingTask)
             .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
               .setNumOffloadingTask(num)
+              .setOffloadingStage(stageId)
               .build())
             .build());
         }

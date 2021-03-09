@@ -200,22 +200,26 @@ public final class NemoDriver {
         } else if (decision.equals("offload-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          runtimeMaster.offloadTask(num);
+          final int stageId = new Integer(args[2]);
+          runtimeMaster.offloadTask(num, stageId);
 
         } else if (decision.equals("deoffload-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          runtimeMaster.deoffloadTask(num);
+          final int stageId = new Integer(args[2]);
+          runtimeMaster.deoffloadTask(num, stageId);
 
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          jobScaler.sendTaskStopSignal(num);
+          final int stageId = new Integer(args[2]);
+          jobScaler.sendTaskStopSignal(num, stageId);
 
         } else if (decision.equals("reclaim-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          jobScaler.sendPrevMovedTaskStopSignal(num);
+          final int stageId = new Integer(args[2]);
+          jobScaler.sendPrevMovedTaskStopSignal(num, stageId);
 
         } else if (decision.equals("throttle-source")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");

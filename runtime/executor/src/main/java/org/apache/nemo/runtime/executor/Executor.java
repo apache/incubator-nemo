@@ -607,12 +607,23 @@ public final class Executor {
           break;
         }
         case DeoffloadingTask: {
+          final ControlMessage.OffloadingTaskMessage m = message.getOffloadingTaskMsg();
+          int cnt = 0;
+          final int stageId = (int) m.getOffloadingStage();
+
           for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
-            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.OFFLOADED)) {
+            if (cnt == m.getNumOffloadingTask()) {
+              break;
+            }
+
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.OFFLOADED)
+              && RuntimeIdManager.getStageIdFromTaskId(te.getId()).equals("Stage" + stageId)) {
               LOG.info("Deoffloadfing task {} executor for {}", te.getId(), executorId);
               taskExecutorMapWrapper.getTaskExecutorThread(te.getId())
                 .addShortcutEvent(new TaskOffloadingEvent(te.getId(),
                   TaskOffloadingEvent.ControlType.DEOFFLOADING, null));
+
+              cnt += 1;
             }
           }
           break;
@@ -655,12 +666,14 @@ public final class Executor {
           LOG.info("Offloading task in {}", executorId);
           final ControlMessage.OffloadingTaskMessage m = message.getOffloadingTaskMsg();
           int cnt = 0;
+          final int stageId = (int) m.getOffloadingStage();
           for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
             if (cnt == m.getNumOffloadingTask()) {
               break;
             }
 
-            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.RUNNING)) {
+            if (te.getStatus().equals(DefaultTaskExecutorImpl.CurrentState.RUNNING)
+              && RuntimeIdManager.getStageIdFromTaskId(te.getId()).equals("Stage" + stageId)) {
               final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(te.getId());
 
               LOG.info("Add offloading task shortcut for task {} in {}", te.getId(), executorId);
