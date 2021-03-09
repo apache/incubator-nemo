@@ -72,6 +72,12 @@ public final class HDFStateStore implements StateStore {
       final Path path = new Path(HDFSUtils.STATE_PATH + "/" + taskId);
       try {
         final FileSystem fileSystem = path.getFileSystem(conf);
+
+        if (fileSystem.exists(path)) {
+          LOG.info("Task state " + taskId + " already exist.. remove and rewrite");
+          fileSystem.delete(path, true);
+        }
+
         return fileSystem.create(path);
       } catch (IOException e) {
         e.printStackTrace();

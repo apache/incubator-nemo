@@ -109,7 +109,7 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void checkpoint() {
     final StateStore stateStore = getContext().getStateStore();
-    final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);
+    final OutputStream os = stateStore.getOutputStream(getContext().getTaskId());
     final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
 
     try {
@@ -117,16 +117,15 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryStateInternalsFactory,
         prevOutputWatermark,
         keyAndWatermarkHoldMap,
-        inputWatermark), bos);
+        inputWatermark), os);
 
-      bos.close();
+      os.close();
 
       LOG.info("Checkpoint timer state size {}, {} for {}",
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId());
 
-      stateStore.put(getContext().getTaskId(), bos.toByteArray());
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
