@@ -220,6 +220,11 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
       }
 
+      LOG.info("Restored size {} for {}",
+        inMemoryTimerInternalsFactory.getNumKey(),
+        inMemoryStateInternalsFactory.stateInternalMap.size(),
+        getContext().getTaskId());
+
       inputWatermark = state.inputWatermark;
       prevOutputWatermark = state.prevOutputWatermark;
 
@@ -632,7 +637,8 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      //LOG.info("Emitting output at {}: {}", getContext().getTaskId(),  output);
+      // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
+
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);
     }
