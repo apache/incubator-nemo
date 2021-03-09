@@ -73,6 +73,7 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
         nextStageIndex.increment();
         isRoot = true;
       }
+
       // Get stage id of irVertex
       final int stageId = vertexToStageIdMap.get(irVertex);
       // Step case: inductively assign stage ids based on mergeability with irVertex
@@ -83,10 +84,13 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
           continue;
         }
         // Assign stageId
+        /*
         if (isRoot) {
           vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());
           nextStageIndex.increment();
-        } else if (testMergeability(edge, irDAG)) {
+        } else
+        */
+        if (testMergeability(edge, irDAG)) {
           vertexToStageIdMap.put(connectedIRVertex, stageId);
         } else {
           vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());

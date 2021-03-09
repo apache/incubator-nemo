@@ -24,6 +24,8 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ViewFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -42,6 +44,7 @@ import org.apache.nemo.compiler.frontend.beam.coder.SideInputCoder;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * A collection of translators for the Beam PTransforms.
@@ -268,9 +271,21 @@ final class PipelineTranslationContext {
     final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
     final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
+    if (srcTransform instanceof DoFnTransform) {
+      final List<DisplayData.Item> items = ((DoFnTransform) srcTransform).getDisplayData().items().stream()
+        .filter(item -> item.getKey().equals("name"))
+        .collect(Collectors.toList());
+
+      if (!items.isEmpty() && ((String) (items.get(0).getValue())).contains("kvToEvent")) {
+        return CommunicationPatternProperty.Value.RoundRobin;
+      }
+    }
+
+    /*
     if (src instanceof SourceVertex) {
       return CommunicationPatternProperty.Value.RoundRobin;
     }
+    */
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
       return CommunicationPatternProperty.Value.Shuffle;

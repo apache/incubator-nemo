@@ -115,6 +115,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.displayData = displayData;
   }
 
+  public DisplayData getDisplayData() {
+    return displayData;
+  }
+
   /**
    * Getter function for side inputs.
    * @return the side inputs

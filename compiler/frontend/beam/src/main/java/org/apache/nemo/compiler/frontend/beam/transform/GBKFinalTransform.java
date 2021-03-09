@@ -220,7 +220,7 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
       }
 
-      LOG.info("Restored size {} for {}",
+      LOG.info("Restored size {}, {} for {}",
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId());

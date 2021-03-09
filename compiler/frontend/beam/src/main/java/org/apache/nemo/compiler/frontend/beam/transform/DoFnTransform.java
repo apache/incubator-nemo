@@ -68,6 +68,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       additionalOutputTags, windowingStrategy, Collections.emptyMap(), options, displayData);
   }
 
+
   @Override
   protected DoFn wrapDoFn(final DoFn initDoFn) {
     return initDoFn;
