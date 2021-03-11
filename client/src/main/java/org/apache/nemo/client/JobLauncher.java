@@ -20,6 +20,7 @@ package org.apache.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.PublicAddressProvider;
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
@@ -52,6 +53,7 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -737,6 +739,7 @@ public final class JobLauncher {
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
       .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
+      .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
       .build();
 
     return Configurations.merge(conf, c);

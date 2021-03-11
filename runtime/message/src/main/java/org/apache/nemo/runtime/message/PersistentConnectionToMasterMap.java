@@ -40,19 +40,6 @@ public final class PersistentConnectionToMasterMap {
   private PersistentConnectionToMasterMap(final MessageEnvironment messageEnvironment) {
     this.messageEnvironment = messageEnvironment;
     messageSenders = new HashMap<>();
-    try {
-      // Connect the globally known message listener IDs.
-      messageSenders.put(RUNTIME_MASTER_MESSAGE_LISTENER_ID,
-          messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_ID,
-              RUNTIME_MASTER_MESSAGE_LISTENER_ID).get());
-      messageSenders.put(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
-          messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_ID,
-              BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
-
-    } catch (InterruptedException | ExecutionException e) {
-      Thread.currentThread().interrupt();
-      throw new NodeConnectionException(e);
-    }
   }
 
   /**

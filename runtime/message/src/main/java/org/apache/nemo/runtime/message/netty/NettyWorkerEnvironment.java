@@ -30,7 +30,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.message.*;
-import org.apache.reef.io.network.naming.NameResolver;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
@@ -58,7 +58,7 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
   private final Map<String, Channel> channelMap;
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
 
-  private final NameResolver nameResolver;
+  private final InjectionFuture<NemoNameResolver> nameResolver;
   private final IdentifierFactory identifierFactory;
 
   private final Map<String, Object> lockMap;
@@ -67,7 +67,7 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
 
   @Inject
   private NettyWorkerEnvironment(
-    final NameResolver nameResolver,
+    final InjectionFuture<NemoNameResolver> nameResolver,
     final IdentifierFactory idFactory,
     @Parameter(MessageParameters.SenderId.class) final String senderId) {
     this.nameResolver = nameResolver;
@@ -139,7 +139,7 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
         // Guarantee single connection for the same receiver
         final InetSocketAddress ipAddress;
         try {
-          ipAddress = nameResolver.lookup(identifierFactory.getNewInstance(receiverId));
+          ipAddress = nameResolver.get().lookup(receiverId);
         } catch (Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -215,6 +215,98 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
         }
       };
     }
+  }
+
+  @Override
+  public <T> Future<MessageSender<T>> asyncConnect(String receiverId, ListenerType listenerId, InetSocketAddress addr) {
+
+    if (channelMap.containsKey(receiverId)) {
+      final CompletableFuture<MessageSender<T>> future = new CompletableFuture<>();
+      future.complete(
+        (MessageSender<T>)
+          new NettyMessageSender(senderId, channelMap.get(receiverId), replyFutureMap)
+      );
+      return future;
+    } else {
+
+      final Object obj = lockMap.putIfAbsent(receiverId, new Object());
+      final ChannelFuture channelFuture;
+      if (obj == null) {
+        // Guarantee single connection for the same receiver
+        channelFuture = clientBootstrap.connect(addr);
+      } else {
+        channelFuture = null;
+      }
+
+      return new Future<MessageSender<T>>() {
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+          return false;
+        }
+
+        @Override
+        public boolean isCancelled() {
+          return false;
+        }
+
+        @Override
+        public boolean isDone() {
+          if (channelFuture != null) {
+            return channelFuture.isDone();
+          } else {
+            return channelMap.containsKey(receiverId);
+          }
+        }
+
+        @Override
+        public MessageSender<T> get() throws InterruptedException, ExecutionException {
+
+          if (channelFuture != null) {
+            channelFuture.awaitUninterruptibly();
+
+            assert channelFuture.isDone();
+            if (!channelFuture.isSuccess()) {
+              final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
+              sb.append(channelFuture.cause());
+              throw new RuntimeException(sb.toString());
+            }
+
+            final Channel channel = channelFuture.channel();
+
+            LOG.info("Send init message from {}", senderId);
+
+            // send InitRegistration message
+            channel.writeAndFlush(new ControlMessageWrapper(ControlMessageWrapper.MsgType.Send,
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(0) // not used
+                .setSenderId(senderId)
+                .setType(ControlMessage.MessageType.InitRegistration)
+                .build()));
+
+            channelMap.put(receiverId, channel);
+
+          } else {
+            while (!channelMap.containsKey(receiverId)) {
+              Thread.sleep(100);
+            }
+          }
+
+          final Channel channel = channelMap.get(receiverId);
+          return (MessageSender<T>) new NettyMessageSender(senderId, channel, replyFutureMap);
+        }
+
+        @Override
+        public MessageSender<T> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+          throw new RuntimeException("Not supported");
+        }
+      };
+    }
+  }
+
+  @Override
+  public int getPort() {
+    return 0;
   }
 
   @Override

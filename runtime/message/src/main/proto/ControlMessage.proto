@@ -59,6 +59,19 @@ enum DriverToClientMessageType {
     DriverShutdowned = 4;
 }
 
+message NameLookupMessage {
+  required string identifier = 1;
+}
+
+message NameRegisterMessage {
+  required string identifier = 1;
+  required bytes inet = 2;
+}
+
+message NameLookupResponse {
+  required bytes inet  = 1;
+}
+
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
@@ -154,6 +167,8 @@ enum MessageType {
 
     // for registeration
     InitRegistration = 63;
+
+    NameLookup = 64;
 }
 
 message LambdaEndMessage {
@@ -249,6 +264,10 @@ message Message {
     optional LambdaEndMessage lambdaEndMsg = 55;
 
     optional string senderId = 56;
+
+    optional NameLookupMessage nameLookupMsg = 57;
+    optional NameLookupResponse nameLookupResponse = 58;
+    optional NameRegisterMessage nameRegisterMsg = 59;
 }
 
 message RequestOffloadingExecutorMessage {

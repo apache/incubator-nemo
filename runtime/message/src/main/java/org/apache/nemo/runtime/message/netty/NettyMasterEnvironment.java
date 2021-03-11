@@ -29,7 +29,6 @@ import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.message.*;
-import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -44,8 +43,6 @@ import java.util.concurrent.*;
 public final class NettyMasterEnvironment implements MessageEnvironment {
   private static final Logger LOG = LoggerFactory.getLogger(NettyMasterEnvironment.class.getName());
 
-  private static final String NCS_CONN_FACTORY_ID = "NCS_CONN_FACTORY_ID";
-
   private final String senderId;
 
   private final ConcurrentMap<ListenerType, MessageListener> listenerConcurrentMap;
@@ -55,7 +52,6 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
 
   private final Map<String, Channel> channelMap;
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
-  private final NameResolver nameResolver;
 
   private final ExecutorService executorService;
 
@@ -63,20 +59,14 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
   private NettyMasterEnvironment(
     final TcpPortProvider tcpPortProvider,
     final IdentifierFactory idFactory,
-    final NameResolver nameResolver,
     @Parameter(MessageParameters.SenderId.class) final String senderId) throws Exception {
 
-    this.nameResolver = nameResolver;
     this.transport = new NettyServerTransport(
       tcpPortProvider,
       new NettyChannelInitializer(),
       new NioEventLoopGroup(5,
         new DefaultThreadFactory("NettyMessageEnvironment")),
       false);
-
-    // Registration
-    nameResolver.register(idFactory.getNewInstance(senderId),
-      new InetSocketAddress(transport.getPublicAddress(), transport.getPort()));
 
     this.senderId = senderId;
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
@@ -161,6 +151,16 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
         throw new RuntimeException("Not supported");
       }
     };
+  }
+
+  @Override
+  public <T> Future<MessageSender<T>> asyncConnect(String receiverId, ListenerType listenerId, InetSocketAddress addr) {
+    return null;
+  }
+
+  @Override
+  public int getPort() {
+    return transport.getPort();
   }
 
   @Override

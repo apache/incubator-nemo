@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.message;
 import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.Future;
 
 /**
@@ -48,6 +49,7 @@ public interface MessageEnvironment {
     RELAY_SERVER_ID,
     YARN_OFFLOADING_EXECUTOR_REQUEST_ID,
     LAMBDA_OFFLOADING_REQUEST_ID,
+    NAMING_REQUEST_ID,
   }
 
 
@@ -77,6 +79,10 @@ public interface MessageEnvironment {
    * @return a message sender
    */
   <T> Future<MessageSender<T>> asyncConnect(String receiverId, ListenerType listenerId);
+  <T> Future<MessageSender<T>> asyncConnect(String receiverId, ListenerType listenerId,
+                                            InetSocketAddress addr);
+
+  int getPort();
 
   /**
    * Close this message environment.

@@ -23,7 +23,6 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
 import org.apache.nemo.runtime.executor.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -34,9 +33,8 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.NemoNameResolver;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
-import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -60,7 +58,6 @@ public final class ByteTransport implements AutoCloseable {
   private static final String CLIENT = "byte:client";
 
   private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private final NameResolver nameResolver;
 
   private final EventLoopGroup serverListeningGroup;
   private final EventLoopGroup serverWorkingGroup;
@@ -70,10 +67,11 @@ public final class ByteTransport implements AutoCloseable {
   private final String publicAddress;
   private int bindingPort;
   private final String localExecutorId;
+  private final NemoNameResolver nameResolver;
+
 
   /**
    * Constructs a byte transport and starts listening.
-   * @param nameResolver          provides naming registry
    * @param localExecutorId       the id of this executor
    * @param channelImplSelector   provides implementation for netty channel
    * @param channelInitializer    initializes channel pipeline
@@ -87,22 +85,22 @@ public final class ByteTransport implements AutoCloseable {
    */
   @Inject
   private ByteTransport(
-      final NameResolver nameResolver,
-      @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-      final NettyChannelImplementationSelector channelImplSelector,
-      final ByteTransportChannelInitializer channelInitializer,
-      final TcpPortProvider tcpPortProvider,
-      final LocalAddressProvider localAddressProvider,
-      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-      @Parameter(EvalConf.Ec2.class) final boolean ec2,
-      @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
-      @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
-      @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
-      @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
-      @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
+    final NemoNameResolver nameResolver,
+    @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+    final NettyChannelImplementationSelector channelImplSelector,
+    final ByteTransportChannelInitializer channelInitializer,
+    final TcpPortProvider tcpPortProvider,
+    final LocalAddressProvider localAddressProvider,
+    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+    @Parameter(EvalConf.Ec2.class) final boolean ec2,
+    @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
+    @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
+    @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
+    @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
+    @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
 
-    this.localExecutorId = localExecutorId;
     this.nameResolver = nameResolver;
+    this.localExecutorId = localExecutorId;
 
     if (port < 0) {
       throw new IllegalArgumentException(String.format("Invalid ByteTransportPort: %d", port));
@@ -205,10 +203,8 @@ public final class ByteTransport implements AutoCloseable {
           .build())
       .build());
 
-
     try {
-      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
-      nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
+      nameResolver.register(localExecutorId ,new InetSocketAddress(publicAddress, bindingPort));
       //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
 
     } catch (final Exception e) {
@@ -250,8 +246,7 @@ public final class ByteTransport implements AutoCloseable {
   public InetSocketAddress getAndPutInetAddress(final String remoteExecutorId) {
     final InetSocketAddress address;
     try {
-      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
-      address = nameResolver.lookup(identifier);
+      address = nameResolver.lookup(remoteExecutorId);
       LOG.info("Address of {}: {}", remoteExecutorId, address);
       //executorAddressMap.put(remoteExecutorId, address);
       return address;

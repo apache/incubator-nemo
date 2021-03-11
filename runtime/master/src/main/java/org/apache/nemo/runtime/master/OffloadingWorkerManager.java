@@ -26,6 +26,8 @@ import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.reef.io.network.naming.NameServer;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +70,9 @@ public final class OffloadingWorkerManager {
   private final AtomicInteger numRequestedLambda = new AtomicInteger(0);
   private final Set<WorkerControlProxy> pendingActivationWorkers = new HashSet<>();
 
+  private final NameServer nameServer;
+  private final LocalAddressProvider localAddressProvider;
+
   @Inject
   private OffloadingWorkerManager(final TcpPortProvider tcpPortProvider,
                                   final EvalConf evalConf,
@@ -76,7 +81,11 @@ public final class OffloadingWorkerManager {
                                   final SerializedTaskMap serializedTaskMap,
                                   final TaskScheduledMapMaster taskScheduledMapMaster,
                                   final OffloadingRequester offloadingRequester,
-                                  final MessageEnvironment messageEnvironment) {
+                                  final MessageEnvironment messageEnvironment,
+                                  final LocalAddressProvider localAddressProvider,
+                                  final NameServer nameServer) {
+    this.nameServer = nameServer;
+    this.localAddressProvider = localAddressProvider;
     this.evalConf = evalConf;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
     this.serializedTaskMap = serializedTaskMap;
@@ -328,7 +337,10 @@ public final class OffloadingWorkerManager {
                 m.getExecutorId(),
                 m.getDataChannelAddr(),
                 (int) m.getDataChannelPort(),
-                (int) m.getNettyStatePort());
+                (int) m.getNettyStatePort(),
+                localAddressProvider.getLocalAddress(),
+                nameServer.getPort());
+
 
               final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
 
@@ -456,7 +468,9 @@ public final class OffloadingWorkerManager {
               m.getExecutorId(),
               m.getDataChannelAddr(),
               (int) m.getDataChannelPort(),
-              (int) m.getNettyStatePort());
+              (int) m.getNettyStatePort(),
+              localAddressProvider.getLocalAddress(),
+              nameServer.getPort());
 
             final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
 

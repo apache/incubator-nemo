@@ -11,8 +11,7 @@ public interface OffloadingWorkerFactory {
 
   int getDataTransportPort();
 
-  OffloadingWorker createStreamingWorker(ByteBuf workerInitBuf,
-                                         OffloadingSerializer offloadingSerializer,
+  OffloadingWorker createStreamingWorker(OffloadingSerializer offloadingSerializer,
                                          EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>> eventHandler);
 
   void deleteOffloadingWorker(OffloadingWorker worker);

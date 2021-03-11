@@ -46,7 +46,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   private final String executorId;
   protected final PipeIndexMapWorker pipeIndexMapWorker;
-  private final ByteBuf offloadExecutorByteBuf;
 
   private final ExecutorService offloadingManagerThread;
   private volatile boolean isFinished = false;
@@ -78,6 +77,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     this.destroyOffloadingWorker = destroyOffloadingWorker;
     this.offloadingManagerThread = Executors.newCachedThreadPool();
 
+    /*
     final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
       evalConf.offExecutorThreadNum,
       evalConf.samplingJson,
@@ -88,6 +88,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       nettyStatePort);
 
     final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
+    */
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       final StringBuilder sb = new StringBuilder("---------- Lambda byte sent start -------\n");
@@ -111,6 +112,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       LOG.info(sb.toString());
     }, 1, 1, TimeUnit.SECONDS);
 
+    /*
     this.offloadExecutorByteBuf = ByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
     try {
@@ -123,6 +125,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+    */
   }
 
   @Override
@@ -132,11 +135,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
   protected List<OffloadingWorker> createWorkerBlocking(final int num) {
     // workerFactory.createStreamingWorker()
-    offloadExecutorByteBuf.retain(num);
     final List<OffloadingWorker> newWorkers = IntStream.range(0, num)
       .boxed().map(i -> {
         final OffloadingWorker worker = workerFactory.createStreamingWorker(
-          offloadExecutorByteBuf, new OffloadingExecutorSerializer(), new EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>>() {
+          new OffloadingExecutorSerializer(), new EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>>() {
             @Override
             public void onNext(Pair<OffloadingWorker, OffloadingExecutorControlEvent> msg) {
               final Pair<OffloadingWorker, OffloadingExecutorControlEvent> pair = msg;

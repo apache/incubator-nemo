@@ -29,6 +29,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;
+import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
@@ -67,6 +68,16 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
       final String targetId, final ListenerType messageTypeId) {
     return CompletableFuture.completedFuture(new LocalMessageSender<T>(
         currentNodeId, targetId, messageTypeId.name(), dispatcher));
+  }
+
+  @Override
+  public <T> Future<MessageSender<T>> asyncConnect(String receiverId, ListenerType listenerId, InetSocketAddress addr) {
+    return null;
+  }
+
+  @Override
+  public int getPort() {
+    return 0;
   }
 
   @Override

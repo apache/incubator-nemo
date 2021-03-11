@@ -143,8 +143,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   }
 
   @Override
-  public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
-                                                final OffloadingSerializer offloadingSerializer,
+  public OffloadingWorker createStreamingWorker(final OffloadingSerializer offloadingSerializer,
                                                 final EventHandler<Pair<OffloadingWorker, OffloadingExecutorControlEvent>> eventHandler) {
     LOG.info("Create streaming worker request!");
     createChannelRequest();

@@ -46,6 +46,7 @@ import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.message.MessageParameters;
+import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -86,7 +87,7 @@ import java.util.logging.LogManager;
 public final class NemoDriver {
   private static final Logger LOG = LoggerFactory.getLogger(NemoDriver.class.getName());
 
-  private final NameServer nameServer;
+  private final NemoNameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
 
   private final String resourceSpecificationString;
@@ -112,7 +113,7 @@ public final class NemoDriver {
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
-                     final NameServer nameServer,
+                     final NemoNameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,

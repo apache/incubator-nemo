@@ -63,8 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.*;
 
 
 /**
@@ -90,7 +89,6 @@ public final class Executor {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final MetricMessageSender metricMessageSender;
-
 
   private volatile boolean started = false;
 
@@ -138,6 +136,8 @@ public final class Executor {
 
   private final MessageSender<ControlMessage.Message> taskScheduledMapSender;
 
+  private final MessageEnvironment messageEnvironment;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -176,6 +176,8 @@ public final class Executor {
                    //final CpuEventModel cpuEventModel) {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
+
+    this.messageEnvironment = messageEnvironment;
 
     this.taskScheduledMapSender =
       persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
@@ -348,6 +350,18 @@ public final class Executor {
   }
 
   public void start() {
+    // Connect the globally known message listener IDs.
+    try {
+      messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_ID,
+        RUNTIME_MASTER_MESSAGE_LISTENER_ID).get();
+
+      messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_ID,
+        BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     scheduledExecutorService.schedule(() -> {
       workerFactory.start();
     }, 5, TimeUnit.SECONDS);

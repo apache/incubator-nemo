@@ -27,6 +27,10 @@ import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendTo
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +88,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private ExecutorMetrics executorMetrics;
   private MonitoringThread monitoringThread;
 
+  private final String nameServerAddr;
+  private final int nameServerPort;
+
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
@@ -91,7 +98,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final String parentExecutorId,
                             final String parentExecutorAddress,
                             final int parentExecutorDataPort,
-                            final int stateStorePort) {
+                            final int stateStorePort,
+                            final String nameServerAddr,
+                            final int nameServerPort) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress, parentExecutorDataPort);
@@ -108,6 +117,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.parentExecutorDataPort = parentExecutorDataPort;
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
+
+    this.nameServerAddr = nameServerAddr;
+    this.nameServerPort = nameServerPort;
   }
 
   public void encode(final DataOutputStream dos) {
@@ -123,6 +135,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       dos.writeUTF(parentExecutorAddress);
       dos.writeInt(parentExecutorDataPort);
       dos.writeInt(stateStorePort);
+
+      dos.writeUTF(nameServerAddr);
+      dos.writeInt(nameServerPort);
+
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -144,8 +160,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final String executorAddr = dis.readUTF();
       final int parentDataPort = dis.readInt();
       final int stateStorePort = dis.readInt();
+
+      final String nameServerAddr = dis.readUTF();
+      final int nameServerPort = dis.readInt();
+
+
       return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
-        executorId, executorAddr, parentDataPort, stateStorePort);
+        executorId, executorAddr, parentDataPort, stateStorePort, nameServerAddr, nameServerPort);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -242,6 +263,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     this.monitoringThread = new MonitoringThread(1000, 1.0);
 
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    jcb.bindImplementation(MessageEnvironment.class, NettyWorkerEnvironment.class);
 
 
     this.executorMetrics = new ExecutorMetrics();
