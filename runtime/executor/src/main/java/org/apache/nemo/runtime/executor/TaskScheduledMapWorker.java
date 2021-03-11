@@ -1,9 +1,10 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,11 +23,13 @@ public final class TaskScheduledMapWorker {
   // key: task id, value: executpr od
   private final Map<String, String> map = new ConcurrentHashMap<>();
   private final PersistentConnectionToMasterMap toMaster;
+  private final String executorId;
 
   @Inject
   private TaskScheduledMapWorker(
-    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-    final MessageEnvironment messageEnvironment) {
+    @Parameter(JobConf.ExecutorId.class) final String executorId,
+    final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+    this.executorId = executorId;
     this.toMaster = persistentConnectionToMasterMap;
   }
 

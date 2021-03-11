@@ -31,4 +31,5 @@ public interface MessageContext {
    */
   <U> void reply(U replyMessage);
 
+  long getRequestId();
 }

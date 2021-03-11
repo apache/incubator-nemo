@@ -682,7 +682,7 @@ public final class RuntimeMaster {
               executors.stream().map(e -> e.getExecutorId()).collect(Collectors.toSet());
             messageContext.reply(
               ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
+                .setId(messageContext.getRequestId())
                 .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.CurrentExecutor)
                 .addAllCurrExecutors(executorIds)
@@ -699,7 +699,7 @@ public final class RuntimeMaster {
           }
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
               .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()

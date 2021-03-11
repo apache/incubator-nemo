@@ -108,7 +108,7 @@ public final class TransferIndexMaster {
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.TransferIndexInfo)
               .setTransferIndexInfoMsg(ControlMessage.TransferIndexInfoMessage.newBuilder()
@@ -131,7 +131,7 @@ public final class TransferIndexMaster {
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.ReturnTransferIndex)
               .setReturnTransferIndexMsg(ControlMessage.ReturnTransferIndexMessage

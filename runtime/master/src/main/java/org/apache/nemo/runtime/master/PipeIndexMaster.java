@@ -116,6 +116,7 @@ public final class PipeIndexMaster {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
         case RequestTaskIndex: {
+
           final ControlMessage.RequestTaskIndexMessage requestTaskIndexMessage =
             message.getRequestTaskIndexMsg();
           final String srcTaskId = requestTaskIndexMessage.getSrcTaskId();
@@ -133,7 +134,7 @@ public final class PipeIndexMaster {
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
@@ -161,7 +162,7 @@ public final class PipeIndexMaster {
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.RequestPipeKey)
               .setResponsePipeKeyMsg(ControlMessage.ResponsePipeKeyMessage.newBuilder()

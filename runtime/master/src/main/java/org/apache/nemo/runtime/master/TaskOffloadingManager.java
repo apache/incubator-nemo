@@ -195,7 +195,7 @@ public final class TaskOffloadingManager {
             LOG.info("Has pending dependency: {}", stageId);
             messageContext.reply(
               ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
+                .setId(messageContext.getRequestId())
                 .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.StageOffloadingInfo)
                 .setStageOffloadingInfoMsg(ControlMessage.StageOffloadingInfoMessage.newBuilder()
@@ -211,7 +211,7 @@ public final class TaskOffloadingManager {
 
             messageContext.reply(
               ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
+                .setId(messageContext.getRequestId())
                 .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.StageOffloadingInfo)
                 .setStageOffloadingInfoMsg(ControlMessage.StageOffloadingInfoMessage.newBuilder()

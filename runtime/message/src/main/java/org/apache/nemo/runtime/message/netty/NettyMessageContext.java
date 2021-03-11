@@ -21,7 +21,10 @@ package org.apache.nemo.runtime.message.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.AbstractMessageContext;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -35,32 +38,37 @@ import java.io.IOException;
 /**
  * Message context for NCS.
  */
-final class NettyMessageContext implements MessageContext {
+final class NettyMessageContext extends AbstractMessageContext {
   private static final Logger LOG = LoggerFactory.getLogger(NettyMessageContext.class.getName());
 
-  private final int messageId;
+  private final String myId;
   private final Channel channel;
 
-  NettyMessageContext(final int messageId,
+  NettyMessageContext(final String myId,
+                      final long requestId,
                       final Channel channel) {
-    this.messageId = messageId;
+    super(requestId);
+    this.myId = myId;
     this.channel = channel;
   }
 
   @Override
   @SuppressWarnings("squid:S2095")
   public <U> void reply(final U replyMessage) {
-
     final ControlMessage.Message message = (ControlMessage.Message) replyMessage;
+    // LOG.info("Reply message from {} {}/{}/{} to {}", myId, message.getId(), message.getType(),
+    //  message.getListenerId(), channel.remoteAddress());
+    channel.writeAndFlush(new ControlMessageWrapper(ControlMessageWrapper.MsgType.Reply, message));
 
-    final ByteBuf byteBuf = channel.alloc().ioBuffer();
-    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-    try {
-      message.writeTo(bos);
-      bos.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    channel.writeAndFlush(byteBuf);
+    /*
+    .addListener(new GenericFutureListener<Future<? super Void>>() {
+      @Override
+      public void operationComplete(Future<? super Void> future) throws Exception {
+        LOG.info("Completed reply message {}/{}/{} to {}", message.getId(), message.getType(),
+          message.getListenerId(),
+          channel.remoteAddress());
+      }
+    });
+    */
   }
 }

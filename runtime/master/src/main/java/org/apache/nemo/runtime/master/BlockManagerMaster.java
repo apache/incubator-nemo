@@ -439,7 +439,7 @@ public final class BlockManagerMaster {
         }
         messageContext.reply(
           ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
+            .setId(messageContext.getRequestId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.BlockLocationInfo)
             .setBlockLocationInfoMsg(infoMsgBuilder.build())

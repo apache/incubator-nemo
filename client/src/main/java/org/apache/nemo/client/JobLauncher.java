@@ -36,6 +36,7 @@ import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageParameters;
+import org.apache.nemo.runtime.message.netty.NettyMasterEnvironment;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.parameters.JobMessageHandler;
@@ -735,6 +736,7 @@ public final class JobLauncher {
     final String offloadingType = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.OffloadingType.class);
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
+      .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
       .build();
 
     return Configurations.merge(conf, c);

@@ -150,7 +150,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       final ListenerType listenerId = ListenerType.values()[controlMessage.getListenerId()];
       final String executorId = getExecutorId(controlMessage);
       // LOG.info("Process request message {}, {} / {}", listenerId, executorId, controlMessage);
-      final MessageContext messageContext = new NcsMessageContext(executorId, connectionFactory, idFactory);
+      final MessageContext messageContext =
+        new NcsMessageContext(executorId, controlMessage.getId(), connectionFactory, idFactory);
       listenerConcurrentMap.get(listenerId).onMessageWithContext(controlMessage, messageContext);
     }
 

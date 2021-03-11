@@ -72,7 +72,7 @@ public class MasterSetupHelper {
         case CurrentExecutor: {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
+                .setId(messageContext.getRequestId())
                 .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.CurrentExecutor)
                 .addAllCurrExecutors(executorIds)

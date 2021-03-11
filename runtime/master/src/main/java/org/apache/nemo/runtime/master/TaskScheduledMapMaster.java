@@ -229,7 +229,7 @@ public final class TaskScheduledMapMaster {
           final String executorId = taskExecutorIdMap.get(requestedTaskId);
 
           messageContext.reply(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
+          .setId(messageContext.getRequestId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.TaskScheduled)
           .setRegisteredExecutor(requestedTaskId + "," + executorId)
@@ -246,7 +246,7 @@ public final class TaskScheduledMapMaster {
 
           messageContext.reply(
             ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
+              .setId(messageContext.getRequestId())
               .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.CurrentScheduledTask)
               .addAllCurrScheduledTasks(c)

@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.message.grpc;
 
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.AbstractMessageContext;
 import org.apache.nemo.runtime.message.MessageContext;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -27,7 +28,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Reply a response message using grpc response observer {@link StreamObserver}.
  */
-final class GrpcMessageContext implements MessageContext {
+final class GrpcMessageContext extends AbstractMessageContext {
 
   private static final Logger LOG = LoggerFactory.getLogger(GrpcMessageContext.class);
 
@@ -37,7 +38,9 @@ final class GrpcMessageContext implements MessageContext {
    * Constructor.
    * @param responseObserver observer for the message.
    */
-  GrpcMessageContext(final StreamObserver<ControlMessage.Message> responseObserver) {
+  GrpcMessageContext(final long requestId,
+                     final StreamObserver<ControlMessage.Message> responseObserver) {
+    super(requestId);
     this.responseObserver = responseObserver;
   }
 

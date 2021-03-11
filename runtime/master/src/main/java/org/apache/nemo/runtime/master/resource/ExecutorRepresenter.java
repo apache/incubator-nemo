@@ -26,6 +26,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
+import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;

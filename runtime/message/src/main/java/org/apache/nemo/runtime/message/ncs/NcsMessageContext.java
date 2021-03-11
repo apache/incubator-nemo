@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.message.ncs;
 
+import org.apache.nemo.runtime.message.AbstractMessageContext;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -30,7 +31,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Message context for NCS.
  */
-final class NcsMessageContext implements MessageContext {
+final class NcsMessageContext extends AbstractMessageContext {
   private static final Logger LOG = LoggerFactory.getLogger(NcsMessageContext.class.getName());
 
   private final String senderId;
@@ -39,8 +40,10 @@ final class NcsMessageContext implements MessageContext {
   private final Connection connection;
 
   NcsMessageContext(final String senderId,
+                    final long requestId,
                     final ConnectionFactory connectionFactory,
                     final IdentifierFactory idFactory) {
+    super(requestId);
     this.senderId = senderId;
     this.connectionFactory = connectionFactory;
     this.idFactory = idFactory;

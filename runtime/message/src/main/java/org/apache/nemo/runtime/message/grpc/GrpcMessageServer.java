@@ -218,7 +218,8 @@ public final class GrpcMessageServer {
         return;
       }
 
-      final GrpcMessageContext messageContext = new GrpcMessageContext(responseObserver);
+      final GrpcMessageContext messageContext =
+        new GrpcMessageContext(message.getId(), responseObserver);
       // responseObserver.onComplete() is called in GrpcMessageContext, when the caller replies with a response message.
       listener.onMessageWithContext(message, messageContext);
     }

@@ -151,6 +151,9 @@ enum MessageType {
     SendBursty = 60;
     FinishBursty = 61;
     InvokePartialOffloading = 62;
+
+    // for registeration
+    InitRegistration = 63;
 }
 
 message LambdaEndMessage {
@@ -244,6 +247,8 @@ message Message {
 
     optional TaskSendToLambdaMessage taskSendToLambdaMsg = 54;
     optional LambdaEndMessage lambdaEndMsg = 55;
+
+    optional string senderId = 56;
 }
 
 message RequestOffloadingExecutorMessage {

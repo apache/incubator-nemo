@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.message;
 
+import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
@@ -26,7 +27,7 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(GrpcNcsMessageEnvironment.class)
+@DefaultImplementation(NettyWorkerEnvironment.class)
 public interface MessageEnvironment {
 
   public final String MASTER_ID = "master";

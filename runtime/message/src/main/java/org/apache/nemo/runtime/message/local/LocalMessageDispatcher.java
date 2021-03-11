@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.message.local;
 
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.tang.Injector;
@@ -87,7 +88,8 @@ public final class LocalMessageDispatcher {
       throw new LocalDispatcherException("There was no set up listener for " + messageTypeId + " in " + targetId);
     }
 
-    final LocalMessageContext context = new LocalMessageContext(senderId);
+    final LocalMessageContext context = new LocalMessageContext(senderId,
+      ((ControlMessage.Message) message).getId());
     listener.onMessageWithContext(message, context);
 
     final Optional<Object> replyMessage = context.getReplyMessage();

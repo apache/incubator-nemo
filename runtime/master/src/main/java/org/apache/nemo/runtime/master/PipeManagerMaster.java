@@ -167,7 +167,7 @@ public final class PipeManagerMaster {
               // Reply the location
               messageContext.reply(
                 ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdManager.generateMessageId())
+                  .setId(messageContext.getRequestId())
                   .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal()) // not used
                   .setType(ControlMessage.MessageType.PipeLocInfo)
                   .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()

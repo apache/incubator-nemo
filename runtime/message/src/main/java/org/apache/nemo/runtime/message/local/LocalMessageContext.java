@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.message.local;
 
 
+import org.apache.nemo.runtime.message.AbstractMessageContext;
 import org.apache.nemo.runtime.message.MessageContext;
 
 import java.util.Optional;
@@ -26,7 +27,7 @@ import java.util.Optional;
 /**
  * A simple {@link MessageContext} implementation that works on a single node.
  */
-final class LocalMessageContext implements MessageContext {
+final class LocalMessageContext extends AbstractMessageContext {
 
   private final String senderId;
   private Object replyMessage;
@@ -35,7 +36,9 @@ final class LocalMessageContext implements MessageContext {
    *  TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
    * @param senderId  TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
    */
-  LocalMessageContext(final String senderId) {
+  LocalMessageContext(final String senderId,
+                      final long requestId) {
+    super(requestId);
     this.senderId = senderId;
   }
 
