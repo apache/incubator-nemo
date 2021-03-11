@@ -9,16 +9,12 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.message.MessageContext;
-import org.apache.nemo.runtime.message.MessageEnvironment;
-import org.apache.nemo.runtime.message.MessageListener;
-import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.master.RuntimeMaster;
+import org.apache.reef.tang.InjectionFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +27,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.YARN_OFFLOADING_EXECUTOR_REQUEST_ID;
 
 public final class YarnExecutorOffloadingRequester implements OffloadingRequester {
 
@@ -54,22 +48,16 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
 
   private final AtomicInteger numVMs = new AtomicInteger(0);
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
-  private final PersistentConnectionToMasterMap toMaster;
-  private final MessageEnvironment messageEnvironment;
+
+  private final InjectionFuture<RuntimeMaster> runtimeMasterInjectionFuture;
 
   @Inject
-  public YarnExecutorOffloadingRequester(final MessageEnvironment messageEnvironment,
-                                         final PersistentConnectionToMasterMap toMaster) {
+  public YarnExecutorOffloadingRequester(final InjectionFuture<RuntimeMaster> runtimeMasterInjectionFuture) {
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
     this.clientBootstrap = new Bootstrap();
     this.map = new ConcurrentHashMap<>();
-    this.toMaster = toMaster;
-    this.messageEnvironment = messageEnvironment;
-
-    messageEnvironment
-      .setupListener(YARN_OFFLOADING_EXECUTOR_REQUEST_ID,
-        new MessageReceiver());
+    this.runtimeMasterInjectionFuture = runtimeMasterInjectionFuture;
 
     this.clientBootstrap.group(clientWorkerGroup)
       .channel(NioSocketChannel.class)
@@ -97,9 +85,6 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
 
   private final AtomicInteger atomicInteger = new AtomicInteger(0);
 
-  private final Map<String, CountDownLatch> pendingMap = new ConcurrentHashMap<>();
-  private final Map<String, String> responseMap = new ConcurrentHashMap<>();
-
   @Override
   public synchronized void createChannelRequest(String controlAddr,
                                                 int controlPort,
@@ -110,80 +95,44 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
     LOG.info("Creating VM worker with port for yarn " + myPort);
 
     final String key = executorId + "-offloading-" + myPort;
-    pendingMap.put(key, new CountDownLatch(1));
 
-    // Send message
-    toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-      .send(ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-        .setType(ControlMessage.MessageType.RequestOffloadingExecutor)
-        .setRequestOffloadingExecutorMsg(ControlMessage.RequestOffloadingExecutorMessage.newBuilder()
-          .setPort(myPort)
-          .setName(key)
-          .setExecutorId(executorId)
-          .build())
-        .build());
+    runtimeMasterInjectionFuture.get()
+      .requestOffloadingExecutor(myPort, key, executorId, (hostAddress) -> {
+        LOG.info("Host address for " + key +  ": " + hostAddress);
 
-    waitInstance(key, myPort, controlAddr, controlPort, requestId);
-  }
-
-  private void waitInstance(final String key,
-                            final int myPort,
-                            final String controlAddr,
-                            final int controlPort,
-                            final int requestId) {
-    final long waitingTime = 1000;
-
-    waitingExecutor.execute(() -> {
-      // wait address
-      LOG.info("Waiting for address of {}", key);
-      try {
-        pendingMap.get(key).await();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
-      if (!responseMap.containsKey(key)) {
-        throw new RuntimeException("No response for " + key);
-      }
-
-      final String hostAddress = responseMap.remove(key);
-      LOG.info("Host address for " + key +  ": " + hostAddress);
-
-      ChannelFuture channelFuture;
-      while (true) {
-        final long st = System.currentTimeMillis();
-        channelFuture = clientBootstrap.connect(new InetSocketAddress(hostAddress, myPort));
-        channelFuture.awaitUninterruptibly(waitingTime);
-        assert channelFuture.isDone();
-        if (!channelFuture.isSuccess()) {
-          LOG.warn("A connection failed for " + hostAddress + "  waiting...");
-          final long elapsedTime = System.currentTimeMillis() - st;
-          try {
-            Thread.sleep(waitingTime);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+        final long waitingTime = 1000;
+        waitingExecutor.execute(() -> {
+          ChannelFuture channelFuture;
+          while (true) {
+            final long st = System.currentTimeMillis();
+            channelFuture = clientBootstrap.connect(new InetSocketAddress(hostAddress, myPort));
+            channelFuture.awaitUninterruptibly(waitingTime);
+            assert channelFuture.isDone();
+            if (!channelFuture.isSuccess()) {
+              LOG.warn("A connection failed for " + hostAddress + "  waiting...");
+              final long elapsedTime = System.currentTimeMillis() - st;
+              try {
+                Thread.sleep(waitingTime);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            } else {
+              break;
+            }
           }
-        } else {
-          break;
-        }
-      }
 
-      final Channel openChannel = channelFuture.channel();
-      LOG.info("Open channel for VM: {}", openChannel);
+          final Channel openChannel = channelFuture.channel();
+          LOG.info("Open channel for VM: {}", openChannel);
 
-      // send handshake
-      final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
-        controlAddr, controlPort, requestId).getBytes();
-      openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+          // send handshake
+          final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+            controlAddr, controlPort, requestId).getBytes();
+          openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
 
-      LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
-
-      //return openChannel;
-    });
+          LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
+        });
+      });
   }
-
 
   @Override
   public void destroy() {
@@ -198,31 +147,5 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
   @Override
   public void close() {
 
-  }
-
-  public final class MessageReceiver implements MessageListener<ControlMessage.Message> {
-
-    @Override
-    public void onMessage(ControlMessage.Message message) {
-      switch (message.getType()) {
-        case ResponseOffloadingExecutor: {
-          final String[] s =  message.getRegisteredExecutor().split(",");
-          final String key = s[0];
-          final String hostName = s[1];
-
-          LOG.info("Receive responseOffloadingExecutor " + key + ", " + hostName);
-
-          responseMap.put(key, hostName);
-          pendingMap.get(key).countDown();
-
-          break;
-        }
-      }
-    }
-
-    @Override
-    public void onMessageWithContext(ControlMessage.Message message, MessageContext messageContext) {
-
-    }
   }
 }

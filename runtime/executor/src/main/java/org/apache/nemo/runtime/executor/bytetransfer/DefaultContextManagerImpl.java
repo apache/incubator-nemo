@@ -122,29 +122,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
     this.relayServer = relayServer;
   }
 
-  private int requestTransferIndex(final boolean isInputContext) {
-    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(TRANSFER_INDEX_LISTENER_ID).request(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.RequestTransferIndex)
-          .setRequestTransferIndexMsg(ControlMessage.RequestTransferIndexMessage.newBuilder()
-            .setExecutorId(localExecutorId)
-            .setIsInputContext(isInputContext ? 1 : 0)
-            .build())
-          .build());
-
-    try {
-      final ControlMessage.Message msg = msgFuture.get();
-      return (int) msg.getTransferIndexInfoMsg().getIndex();
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-  }
-
-
   /**
    * @return channel for this context manager.
    */

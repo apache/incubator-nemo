@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
@@ -64,6 +65,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.RequestOffloadingExecutor;
 import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.ResponseOffloadingExecutor;
 import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
@@ -116,26 +118,26 @@ public final class RuntimeMaster {
 
   private final OffloadingWorkerManager offloadingWorkerManager;
 
-  private final PersistentConnectionToMasterMap toMaster;
+  private final InMasterControlMessageQueue inMasterControlMessageQueue;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final TaskScheduledMapMaster taskScheduledMap,
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
-                        final PersistentConnectionToMasterMap toMaster,
                         final ClientRPC clientRPC,
                         final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
+                        final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
-    this.toMaster = toMaster;
+    this.inMasterControlMessageQueue = inMasterControlMessageQueue;
     this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
@@ -614,11 +616,34 @@ public final class RuntimeMaster {
     });
   }
 
-  private final Map<String, Pair<Integer, ExecutorRepresenter>> responsePendingMap = new HashMap<>();
+  private final Map<String, Pair<Integer, EventHandler<String>>> responsePendingMap = new HashMap<>();
 
   public boolean isOffloadingExecutorEvaluator() {
     synchronized (responsePendingMap) {
       return !responsePendingMap.isEmpty();
+    }
+  }
+
+  public void requestOffloadingExecutor(final int port,
+                                        final String name,
+                                        final String executorId,
+                                        final EventHandler<String> requestHandler) {
+
+    try {
+      LOG.info("Receive requestOffloadingExecutor " + executorId
+        + ", " + name + ", " + port);
+
+      synchronized (responsePendingMap) {
+        responsePendingMap.put(name, Pair.of((int) port, requestHandler));
+      }
+
+      requestContainer(resourceSpecificationString,
+        true,
+        true, name, 1);
+      //});
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
@@ -629,13 +654,7 @@ public final class RuntimeMaster {
 
       // send response
       LOG.info("Send response for offloading executor " + name + ", " + hostAddres);
-      toMaster.getMessageSender(YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
-        .send(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(YARN_OFFLOADING_EXECUTOR_REQUEST_ID.ordinal())
-          .setType(ResponseOffloadingExecutor)
-          .setRegisteredExecutor(name + "," + hostAddres)
-          .build());
+      responsePendingMap.get(name).right().onNext(hostAddres);
 
       return Pair.of(name, responsePendingMap.remove(name).left());
     }
@@ -648,37 +667,6 @@ public final class RuntimeMaster {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case RequestOffloadingExecutor: {
-          final ControlMessage.RequestOffloadingExecutorMessage m = message.getRequestOffloadingExecutorMsg();
-
-          try {
-            LOG.info("Receive requestOffloadingExecutor " + m.getExecutorId()
-              + ", " + m.getName() + ", " + m.getPort());
-
-            LOG.info("hoho");
-
-            final ExecutorRepresenter re = executorRegistry.getExecutorRepresentor(m.getExecutorId());
-
-            LOG.info("Get executor representer " + m.getExecutorId()
-              + ", " + m.getName() + ", " + m.getPort() + ", " + re.getExecutorId());
-
-            synchronized (responsePendingMap) {
-              responsePendingMap.put(m.getName(), Pair.of((int) m.getPort(), re));
-            }
-
-            LOG.info("Put responsePendingMap " + m.getExecutorId()
-              + ", " + m.getName() + ", " + m.getPort() + ", " + re.getExecutorId());
-
-            requestContainer(resourceSpecificationString,
-              true,
-              true, m.getName(), 1);
-            //});
-          } catch (final Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-          break;
-        }
         default:
           runtimeMasterThread.execute(() ->
             handleControlMessage(message));
