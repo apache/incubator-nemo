@@ -6,16 +6,13 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
-import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.slf4j.Logger;
@@ -32,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 
 
 public abstract class AbstractOffloadingManagerImpl implements OffloadingManager {
@@ -213,7 +210,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
                           final ControlMessage.Message message = ControlMessage.Message.newBuilder()
                             .setId(RuntimeIdManager.generateMessageId())
-                            .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+                            .setListenerId(LAMBDA_OFFLOADING_REQUEST_ID.ordinal())
                             .setType(ControlMessage.MessageType.LambdaEnd)
                             .setLambdaEndMsg(ControlMessage.LambdaEndMessage.newBuilder()
                               .setRequestId(myWorker.getRequestId())
@@ -328,7 +325,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
     newWorkers.forEach(worker -> {
       final ControlMessage.Message message = ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+        .setListenerId(LAMBDA_OFFLOADING_REQUEST_ID.ordinal())
         .setType(ControlMessage.MessageType.TaskSendToLambda)
         .setTaskSendToLambdaMsg(ControlMessage.TaskSendToLambdaMessage.newBuilder()
           .setRequestId(worker.getRequestId())

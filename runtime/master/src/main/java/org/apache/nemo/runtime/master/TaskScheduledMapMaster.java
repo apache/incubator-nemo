@@ -6,12 +6,12 @@ import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public final class TaskScheduledMapMaster {
   private static final Logger LOG = LoggerFactory.getLogger(TaskScheduledMapMaster.class.getName());
@@ -53,7 +56,7 @@ public final class TaskScheduledMapMaster {
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.taskLocationMap = taskLocationMap;
-    messageEnvironment.setupListener(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID,
+    messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
       new TaskScheduleMapReceiver());
   }
 
@@ -71,7 +74,7 @@ public final class TaskScheduledMapMaster {
 
     representer.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.StopTask)
           .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
             .setTaskId(taskId)
@@ -142,7 +145,7 @@ public final class TaskScheduledMapMaster {
       executors.forEach(executor -> {
         executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.TaskScheduled)
           .setRegisteredExecutor(taskId + "," + representer.getExecutorId())
           .build());
@@ -227,7 +230,7 @@ public final class TaskScheduledMapMaster {
 
           messageContext.reply(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.TaskScheduled)
           .setRegisteredExecutor(requestedTaskId + "," + executorId)
           .build());
@@ -244,7 +247,7 @@ public final class TaskScheduledMapMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+              .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.CurrentScheduledTask)
               .addAllCurrScheduledTasks(c)
               .build());

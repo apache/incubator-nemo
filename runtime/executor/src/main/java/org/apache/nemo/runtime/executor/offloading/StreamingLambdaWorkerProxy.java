@@ -4,17 +4,15 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.client.SharedCachedPool;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.ACTIVATE;
 import static org.apache.nemo.offloading.common.OffloadingExecutorControlEvent.Type.DEACTIVATE;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 
 public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingLambdaWorkerProxy.class.getName());
@@ -214,7 +213,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       prevFlushBufferTrackTime = System.currentTimeMillis();
     }
 
-    toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+    toMasterMap.getMessageSender(LAMBDA_OFFLOADING_REQUEST_ID)
       .send(message);
   }
 

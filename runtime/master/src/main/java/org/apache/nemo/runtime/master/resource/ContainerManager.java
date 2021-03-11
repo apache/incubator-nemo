@@ -19,16 +19,14 @@
 package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.message.FailedMessageSender;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
+import org.apache.nemo.runtime.message.FailedMessageSender;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.*;
-import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -43,7 +41,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * (WARNING) This class is not thread-safe.
@@ -219,7 +218,7 @@ public final class ContainerManager {
     MessageSender messageSender;
     try {
       messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+          messageEnvironment.asyncConnect(executorId, EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final InterruptedException | ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
       messageSender = new FailedMessageSender();

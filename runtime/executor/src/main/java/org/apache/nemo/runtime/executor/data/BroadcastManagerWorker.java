@@ -25,10 +25,9 @@ import com.google.protobuf.ByteString;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +37,8 @@ import java.io.Serializable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Used by tasks to get/fetch (probably remote) broadcast variables.
@@ -69,10 +70,10 @@ public final class BroadcastManagerWorker {
           public Object load(final Serializable id) throws Exception {
             // Get from master
             final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
-              .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).request(
+              .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).request(
                 ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
                   .setType(ControlMessage.MessageType.RequestBroadcastVariable)
                   .setRequestbroadcastVariableMsg(
                     ControlMessage.RequestBroadcastVariableMessage.newBuilder()

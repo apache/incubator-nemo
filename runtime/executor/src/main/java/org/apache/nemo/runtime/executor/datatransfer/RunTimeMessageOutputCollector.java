@@ -23,15 +23,17 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * OffloadingOutputCollector for dynamic optimization data.
@@ -70,10 +72,10 @@ public final class RunTimeMessageOutputCollector<O> extends AbstractOutputCollec
           .build())
     );
 
-    connectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+    connectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.RunTimePassMessage)
         .setRunTimePassMessageMsg(ControlMessage.RunTimePassMessageMsg.newBuilder()
           .setTaskId(taskId)

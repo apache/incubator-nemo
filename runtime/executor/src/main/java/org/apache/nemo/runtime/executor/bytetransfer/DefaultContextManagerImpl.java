@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -26,10 +25,7 @@ import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLocationMap;
-import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -38,13 +34,14 @@ import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextD
 import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
 import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.function.Function;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TRANSFER_INDEX_LISTENER_ID;
 
 
 /**
@@ -127,10 +124,10 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
 
   private int requestTransferIndex(final boolean isInputContext) {
     final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).request(
+      .getMessageSender(TRANSFER_INDEX_LISTENER_ID).request(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+          .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestTransferIndex)
           .setRequestTransferIndexMsg(ControlMessage.RequestTransferIndexMessage.newBuilder()
             .setExecutorId(localExecutorId)

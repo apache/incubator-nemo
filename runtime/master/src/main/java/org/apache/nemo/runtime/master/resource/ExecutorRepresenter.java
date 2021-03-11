@@ -21,15 +21,12 @@ package org.apache.nemo.runtime.master.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.common.Task;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
+import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +39,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
@@ -142,7 +141,7 @@ public final class ExecutorRepresenter {
       sendControlMessage(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.ScheduleTask)
           .setScheduleTaskMsg(
             ControlMessage.ScheduleTaskMsg.newBuilder()

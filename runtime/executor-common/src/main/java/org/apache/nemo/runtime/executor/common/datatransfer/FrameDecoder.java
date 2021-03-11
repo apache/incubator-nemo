@@ -263,6 +263,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       .type.equals(TaskControlMessage.TaskControlMessageType.DEACTIVATE_LAMBDA)) {
       // For offloaded task
       out.add(taskControlMessage);
+    } else if (taskControlMessage
+      .type.equals(TaskControlMessage.TaskControlMessageType.REGISTER_EXECUTOR))  {
+      // TODO-1: Register Lambda executor channel
+      throw new RuntimeException("not implemented yet");
     } else {
       pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
     }

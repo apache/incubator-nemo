@@ -28,14 +28,14 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.parameters.JobMessageHandler;
@@ -625,7 +625,8 @@ public final class JobLauncher {
    */
   private static Configuration getDriverMessageConf() throws InjectionException {
     return TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
+        .bindNamedParameter(MessageParameters.SenderId.class,
+          MessageEnvironment.MASTER_ID)
         .build();
   }
 

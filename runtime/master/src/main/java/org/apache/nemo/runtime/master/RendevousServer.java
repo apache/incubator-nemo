@@ -10,7 +10,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.common.NetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;

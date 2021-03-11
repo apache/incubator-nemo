@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.offloading;
 
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.NettyStateStore;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;

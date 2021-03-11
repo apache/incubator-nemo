@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -30,6 +29,7 @@ import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

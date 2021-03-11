@@ -8,9 +8,9 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +19,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.STAGE_OFFLOADING_LISTENER_ID;
 
 @ThreadSafe
 @DriverSide
@@ -40,7 +42,7 @@ public final class TaskOffloadingManager {
 
   @Inject
   private TaskOffloadingManager(final MessageEnvironment masterMessageEnvironment) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID,
+    masterMessageEnvironment.setupListener(STAGE_OFFLOADING_LISTENER_ID,
       new TaskOffloadingReceiver());
     this.stageStatusMap = new HashMap<>();
     this.stageIdMap = new HashMap<>();
@@ -194,7 +196,7 @@ public final class TaskOffloadingManager {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID)
+                .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.StageOffloadingInfo)
                 .setStageOffloadingInfoMsg(ControlMessage.StageOffloadingInfoMessage.newBuilder()
                   .setRequestId(message.getId())
@@ -210,7 +212,7 @@ public final class TaskOffloadingManager {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID)
+                .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.StageOffloadingInfo)
                 .setStageOffloadingInfoMsg(ControlMessage.StageOffloadingInfoMessage.newBuilder()
                   .setRequestId(message.getId())

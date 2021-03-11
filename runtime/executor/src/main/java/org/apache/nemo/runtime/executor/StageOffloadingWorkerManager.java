@@ -3,8 +3,7 @@ package org.apache.nemo.runtime.executor;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.STAGE_OFFLOADING_LISTENER_ID;
 
 public final class StageOffloadingWorkerManager {
 
@@ -72,9 +73,9 @@ public final class StageOffloadingWorkerManager {
     */
 
     final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
-      .getMessageSender(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID).request( ControlMessage.Message.newBuilder()
+      .getMessageSender(STAGE_OFFLOADING_LISTENER_ID).request( ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID)
+          .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestStageOffloading)
           .setRequestStageOffloadingMsg(ControlMessage.RequestStageOffloadingMessage.newBuilder()
             .setExecutorId(executorId)
@@ -116,10 +117,10 @@ public final class StageOffloadingWorkerManager {
   private void sendOffloadingDoneEvent(final String stageId) {
     LOG.info("Send prepareOffloading done for {}", stageId);
     toMaster
-      .getMessageSender(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID).send(
+      .getMessageSender(STAGE_OFFLOADING_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.STAGE_OFFLOADING_LISTENER_ID)
+          .setListenerId(STAGE_OFFLOADING_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestStageOffloadingDone)
           .setRequestStageOffloadingDoneMsg(ControlMessage.RequestStageOffloadingDoneMessage.newBuilder()
             .setExecutorId(executorId)

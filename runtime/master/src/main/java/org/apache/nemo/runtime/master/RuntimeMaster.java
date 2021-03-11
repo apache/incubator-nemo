@@ -30,10 +30,6 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
@@ -42,6 +38,10 @@ import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -67,6 +67,9 @@ import java.util.stream.Collectors;
 import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.ResponseOffloadingExecutor;
 import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.YARN_OFFLOADING_EXECUTOR_REQUEST_ID;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
@@ -170,7 +173,7 @@ public final class RuntimeMaster {
     this.containerManager = containerManager;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
-        .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
+        .setupListener(RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
@@ -429,6 +432,35 @@ public final class RuntimeMaster {
     });
   }
 
+  public void createScalingExecutor(final int num) {
+    // TODO-1: todo
+    /*
+    LOG.info("Executor Launched {} " + activeContext.getId());
+
+    if (!activeContext.getId().contains("offloading")) {
+      final Callable<Boolean> processExecutorLaunchedEvent = () -> {
+        final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
+        if (executor.isPresent()) {
+          scheduler.onExecutorAdded(executor.get());
+          return (resourceRequestCount.decrementAndGet() == 0);
+        } else {
+          return false;
+        }
+      };
+
+      final boolean eventResult;
+      try {
+        eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
+      } catch (final Exception e) {
+        throw new ContainerException(e);
+      }
+      return eventResult;
+    } else {
+      return true;
+    }
+    */
+  }
+
 
   public void createOffloadingExecutor(final int num) {
     LOG.info("Create offloading executor");
@@ -438,7 +470,7 @@ public final class RuntimeMaster {
           LOG.info("Create offloading executor for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
             .setSetNum(num)
             .build());
@@ -455,7 +487,7 @@ public final class RuntimeMaster {
           LOG.info("Throttle source for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.ThrottleSource)
             .setSetNum(num)
             .build());
@@ -473,7 +505,7 @@ public final class RuntimeMaster {
           LOG.info("Deoffloading task for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.DeoffloadingTask)
             .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
               .setNumOffloadingTask(num)
@@ -506,7 +538,7 @@ public final class RuntimeMaster {
           LOG.info("Invoke partila offloading for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.InvokePartialOffloading)
             .build());
         }
@@ -524,7 +556,7 @@ public final class RuntimeMaster {
           LOG.info("Offloading task for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.SendBursty)
             .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
               .setNumOffloadingTask(num)
@@ -543,7 +575,7 @@ public final class RuntimeMaster {
           LOG.info("Deoffloading task for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.FinishBursty)
             .setSetNum(num)
             .build());
@@ -570,7 +602,7 @@ public final class RuntimeMaster {
           LOG.info("Offloading task for executor {}", executor.getExecutorId());
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.OffloadingTask)
             .setOffloadingTaskMsg(ControlMessage.OffloadingTaskMessage.newBuilder()
               .setNumOffloadingTask(num)
@@ -597,10 +629,10 @@ public final class RuntimeMaster {
 
       // send response
       LOG.info("Send response for offloading executor " + name + ", " + hostAddres);
-      toMaster.getMessageSender(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
+      toMaster.getMessageSender(YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID)
+          .setListenerId(YARN_OFFLOADING_EXECUTOR_REQUEST_ID.ordinal())
           .setType(ResponseOffloadingExecutor)
           .setRegisteredExecutor(name + "," + hostAddres)
           .build());
@@ -663,7 +695,7 @@ public final class RuntimeMaster {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.CurrentExecutor)
                 .addAllCurrExecutors(executorIds)
                 .build());
@@ -680,7 +712,7 @@ public final class RuntimeMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
               .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
                 .setRequestId(message.getId())

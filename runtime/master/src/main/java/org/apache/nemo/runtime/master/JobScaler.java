@@ -11,13 +11,13 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.nustaq.serialization.FSTConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +33,7 @@ import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class JobScaler {
 
@@ -121,7 +122,7 @@ public final class JobScaler {
                     final TaskDispatcher taskDispatcher,
                     final PlanStateManager planStateManager,
                     final ExecutorCpuUseMap m) {
-    messageEnvironment.setupListener(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID,
+    messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
     this.prevScalingCountMap = new HashMap<>();
@@ -239,7 +240,7 @@ public final class JobScaler {
                 representer.sendControlMessage(
                   ControlMessage.Message.newBuilder()
                     .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+                    .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
                     .setType(ControlMessage.MessageType.Throttling)
                     .build());
               });
@@ -395,7 +396,7 @@ public final class JobScaler {
       for (final ExecutorRepresenter executorRepresenter : taskScheduledMap.getScheduledStageTasks().keySet()) {
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.BroadcastInfo)
           .setBroadcastInfoMsg(ControlMessage.BroadcastInfoMessage.newBuilder()
             .setInfo(msg.getInfo())
@@ -659,7 +660,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(
               buildRequestScalingMessage(
@@ -771,7 +772,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false, new HashMap<>()))
             .build());
@@ -892,7 +893,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false, new HashMap<>()))
             .build());
@@ -957,7 +958,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false, new HashMap<>()))
             .build());
@@ -1056,7 +1057,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(buildRequestScalingMessage(offloadTaskMap, taskLocations, true, false, new HashMap<>()))
             .build());
@@ -1130,7 +1131,7 @@ public final class JobScaler {
         representer.sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+            .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.RequestScaling)
             .setRequestScalingMsg(buildRequestScalingMessage(unloadTaskMap, locations, false, false, new HashMap<>()))
             .build());
@@ -1212,7 +1213,7 @@ public final class JobScaler {
       executorService.execute(() -> {
       representer.sendControlMessage(ControlMessage.Message.newBuilder()
         .setId(id)
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.GlobalScalingReadyDone)
         .setGlobalScalingDoneMsg(ControlMessage.GlobalScalingDoneMessage.newBuilder()
           .setRequestId(id)

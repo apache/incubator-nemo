@@ -23,9 +23,6 @@ import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.exception.AbsentBlockException;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -43,9 +40,15 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * Master-side block manager.
@@ -79,7 +82,7 @@ public final class BlockManagerMaster {
    */
   @Inject
   private BlockManagerMaster(final MessageEnvironment masterMessageEnvironment) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
+    masterMessageEnvironment.setupListener(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
       new BlockManagerMasterControlMessageReceiver());
     this.blockIdWildcardToMetadataSet = new HashMap<>();
     this.producerTaskIdToBlockIds = new HashMap<>();
@@ -437,7 +440,7 @@ public final class BlockManagerMaster {
         messageContext.reply(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.BlockLocationInfo)
             .setBlockLocationInfoMsg(infoMsgBuilder.build())
             .build());

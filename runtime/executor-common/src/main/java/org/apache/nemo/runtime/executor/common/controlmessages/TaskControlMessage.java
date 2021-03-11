@@ -18,6 +18,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
     OFFLOAD_CONTROL,
+    REGISTER_EXECUTOR,
     DEACTIVATE_LAMBDA,
     BACKPRESSURE,
     BACKPRESSURE_RESTART,

@@ -3,12 +3,12 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
 
 import org.apache.nemo.runtime.master.PipeManagerMaster;
 
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.io.network.naming.NameServer;
 
 import org.apache.reef.tang.Injector;
@@ -18,6 +18,10 @@ import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_INDEX_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public class MasterSetupHelper {
   private static final Tang TANG = Tang.Factory.getTang();
@@ -38,13 +42,13 @@ public class MasterSetupHelper {
     this.pipeManagerMaster = injector.getInstance(PipeManagerMaster.class);
     this.messageEnvironment = injector.getInstance(MessageEnvironment.class);
 
-    messageEnvironment.setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
+    messageEnvironment.setupListener(RUNTIME_MASTER_MESSAGE_LISTENER_ID,
       masterHandler);
 
-    messageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
+    messageEnvironment.setupListener(TASK_INDEX_MESSAGE_LISTENER_ID,
       masterHandler);
 
-    messageEnvironment.setupListener(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID,
+    messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
       masterHandler);
   }
 
@@ -69,7 +73,7 @@ public class MasterSetupHelper {
             messageContext.reply(
               ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.CurrentExecutor)
                 .addAllCurrExecutors(executorIds)
                 .build());
@@ -85,7 +89,7 @@ public class MasterSetupHelper {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+              .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.CurrentScheduledTask)
               .addAllCurrScheduledTasks(c)
               .build());
@@ -104,7 +108,7 @@ public class MasterSetupHelper {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+              .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
@@ -125,7 +129,7 @@ public class MasterSetupHelper {
               messageContext.reply(
                 ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+                  .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
                   .setType(ControlMessage.MessageType.RequestPipeKey)
                   .setResponsePipeKeyMsg(ControlMessage.ResponsePipeKeyMessage.newBuilder()
                     .setSrcTask(entry.getKey().getLeft())

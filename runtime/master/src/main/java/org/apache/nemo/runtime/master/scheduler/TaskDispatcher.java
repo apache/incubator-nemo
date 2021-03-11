@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
@@ -44,6 +43,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * Dispatches tasks to executors in discrete batches (dispatch iterations).
@@ -197,7 +198,7 @@ public final class TaskDispatcher {
           final long id = RuntimeIdManager.generateMessageId();
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(id)
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
             .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
               .addAllInfos(entries1)
@@ -238,7 +239,7 @@ public final class TaskDispatcher {
           final long id = RuntimeIdManager.generateMessageId();
           executor.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(id)
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
             .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
               .addAllInfos(entries)

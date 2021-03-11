@@ -8,20 +8,20 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.NettyStateStore;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 
 public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFactory {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultOffloadingWorkerFactory.class.getName());
@@ -89,7 +91,7 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
     this.resourceType = resourceType;
 
     messageEnvironment
-      .setupListener(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID,
+      .setupListener(LAMBDA_OFFLOADING_REQUEST_ID,
         new MessageReceiver());
 
     this.workerDataTransport = new NettyServerTransport(
@@ -106,10 +108,10 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   public void start() {
     if (resourceType.equals("Compute")) {
       LOG.info("Send offloading request id");
-      toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+      toMasterMap.getMessageSender(LAMBDA_OFFLOADING_REQUEST_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+          .setListenerId(LAMBDA_OFFLOADING_REQUEST_ID.ordinal())
           .setType(ControlMessage.MessageType.ExecutorPreparedForLambda)
           .setLambdaCreateMsg(ControlMessage.LambdaCreateMessage.newBuilder()
             .setDataChannelAddr(workerDataTransport.getPublicAddress())
@@ -125,10 +127,10 @@ public final class DefaultOffloadingWorkerFactory implements OffloadingWorkerFac
   private void createChannelRequest() {
     //pendingRequest.getAndIncrement();
     // Send message
-    toMasterMap.getMessageSender(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+    toMasterMap.getMessageSender(LAMBDA_OFFLOADING_REQUEST_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+        .setListenerId(LAMBDA_OFFLOADING_REQUEST_ID.ordinal())
         .setType(ControlMessage.MessageType.LambdaCreate)
         .setLambdaCreateMsg(ControlMessage.LambdaCreateMessage.newBuilder()
           .setDataChannelAddr(workerDataTransport.getPublicAddress())

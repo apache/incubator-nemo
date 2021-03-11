@@ -10,10 +10,6 @@ import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
@@ -23,6 +19,10 @@ import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
 import org.apache.nemo.runtime.executor.monitoring.SystemLoadProfiler;
 import org.apache.nemo.runtime.executor.vmscaling.VMScalingWorkerConnector;
 import org.apache.nemo.runtime.lambdaexecutor.TaskEndEvent;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.annotations.Parameter;
@@ -36,7 +36,7 @@ import java.util.concurrent.*;
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.common.TaskLoc.VM_SCALING;
-import static org.apache.nemo.runtime.common.message.MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(JobScalingHandlerWorker.class.getName());
@@ -337,7 +337,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.LocalScalingReadyDone)
         .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
           .setExecutorId(executorId)
@@ -454,7 +454,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
     toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+        .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.LocalScalingReadyDone)
         .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
           .setExecutorId(executorId)
@@ -580,7 +580,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.LocalScalingReadyDone)
           .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
             .setExecutorId(executorId)
@@ -688,7 +688,7 @@ public final class JobScalingHandlerWorker implements TaskOffloadingPolicy {
       toMaster.getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.SCALE_DECISION_MESSAGE_LISTENER_ID)
+          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.LocalScalingReadyDone)
           .setLocalScalingDoneMsg(ControlMessage.LocalScalingDoneMessage.newBuilder()
             .setExecutorId(executorId)

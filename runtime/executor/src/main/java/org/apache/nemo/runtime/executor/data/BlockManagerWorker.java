@@ -30,8 +30,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
@@ -43,6 +41,7 @@ import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.stores.*;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -54,6 +53,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Executor-side block manager.
@@ -161,10 +162,10 @@ public final class BlockManagerWorker {
           // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
           // to become available.
           final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
-              .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+              .getMessageSender(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
                   ControlMessage.Message.newBuilder()
                       .setId(RuntimeIdManager.generateMessageId())
-                      .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+                      .setListenerId(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID.ordinal())
                       .setType(ControlMessage.MessageType.RequestBlockLocation)
                       .setRequestBlockLocationMsg(
                           ControlMessage.RequestBlockLocationMsg.newBuilder()
@@ -271,10 +272,10 @@ public final class BlockManagerWorker {
       blockStateChangedMsgBuilder.setLocation(executorId);
     }
 
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+    persistentConnectionToMasterMap.getMessageSender(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+            .setListenerId(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.BlockStateChanged)
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
@@ -305,10 +306,10 @@ public final class BlockManagerWorker {
         blockStateChangedMsgBuilder.setLocation(executorId);
       }
 
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+      persistentConnectionToMasterMap.getMessageSender(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+              .setListenerId(BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.BlockStateChanged)
               .setBlockStateChangedMsg(blockStateChangedMsgBuilder)
               .build());

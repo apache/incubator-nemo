@@ -13,19 +13,19 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
-import org.apache.nemo.offloading.client.NettyServerTransport;
+import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,11 +35,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.SOURCE;
 import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 
 
 public final class OffloadingWorkerManager {
@@ -94,7 +94,7 @@ public final class OffloadingWorkerManager {
       false);
 
     messageEnvironment
-      .setupListener(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID,
+      .setupListener(LAMBDA_OFFLOADING_REQUEST_ID,
         new MessageReceiver());
 
     LOG.info("Started offloading worker manager...");
@@ -151,7 +151,7 @@ public final class OffloadingWorkerManager {
 
             er.sendControlMessage(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.LAMBDA_OFFLOADING_REQUEST_ID)
+              .setListenerId(LAMBDA_OFFLOADING_REQUEST_ID.ordinal())
               .setType(ControlMessage.MessageType.LambdaControlChannel)
               .setGetLambaControlChannelMsg(ControlMessage.GetLambdaControlChannel.
                 newBuilder()
@@ -371,7 +371,7 @@ public final class OffloadingWorkerManager {
             executorRegistry.getExecutorRepresentor(m.getExecutorId())
               .sendControlMessage(ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
                 .setSetNum(numLambda)
                 .build());

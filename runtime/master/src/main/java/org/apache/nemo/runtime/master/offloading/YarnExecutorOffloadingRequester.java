@@ -10,17 +10,15 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.reef.tang.annotations.Parameter;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +31,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.YARN_OFFLOADING_EXECUTOR_REQUEST_ID;
 
 public final class YarnExecutorOffloadingRequester implements OffloadingRequester {
 
@@ -68,7 +68,7 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
     this.messageEnvironment = messageEnvironment;
 
     messageEnvironment
-      .setupListener(MessageEnvironment.YARN_OFFLOADING_EXECUTOR_REQUEST_ID,
+      .setupListener(YARN_OFFLOADING_EXECUTOR_REQUEST_ID,
         new MessageReceiver());
 
     this.clientBootstrap.group(clientWorkerGroup)
@@ -113,10 +113,10 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
     pendingMap.put(key, new CountDownLatch(1));
 
     // Send message
-    toMaster.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+    toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.RequestOffloadingExecutor)
         .setRequestOffloadingExecutorMsg(ControlMessage.RequestOffloadingExecutorMessage.newBuilder()
           .setPort(myPort)

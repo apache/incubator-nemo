@@ -23,9 +23,9 @@ import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_INDEX_MESSAGE_LISTENER_ID;
 
 /**
  * Master-side pipe manager.
@@ -59,7 +61,7 @@ public final class PipeIndexMaster {
   @Inject
   private PipeIndexMaster(final MessageEnvironment masterMessageEnvironment,
                           final EvalConf evalConf) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID,
+    masterMessageEnvironment.setupListener(TASK_INDEX_MESSAGE_LISTENER_ID,
       new TaskIndexMessageReceiver());
     this.evalConf = evalConf;
   }
@@ -132,7 +134,7 @@ public final class PipeIndexMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+              .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.TaskIndexInfo)
               .setTaskIndexInfoMsg(ControlMessage.TaskIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
@@ -160,7 +162,7 @@ public final class PipeIndexMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+              .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.RequestPipeKey)
               .setResponsePipeKeyMsg(ControlMessage.ResponsePipeKeyMessage.newBuilder()
                 .setSrcTask(key.getLeft())

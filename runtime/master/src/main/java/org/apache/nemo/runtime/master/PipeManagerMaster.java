@@ -22,9 +22,9 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +38,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Master-side pipe manager.
@@ -57,7 +60,7 @@ public final class PipeManagerMaster {
    */
   @Inject
   private PipeManagerMaster(final MessageEnvironment masterMessageEnvironment) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID,
+    masterMessageEnvironment.setupListener(PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID,
       new PipeManagerMasterControlMessageReceiver());
     this.runtimeEdgeIndexToExecutor = new ConcurrentHashMap<>();
     this.runtimeEdgeIndexToLock = new ConcurrentHashMap<>();
@@ -165,7 +168,7 @@ public final class PipeManagerMaster {
               messageContext.reply(
                 ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID) // not used
+                  .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal()) // not used
                   .setType(ControlMessage.MessageType.PipeLocInfo)
                   .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
                     .setRequestId(message.getId())

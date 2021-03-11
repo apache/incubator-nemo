@@ -31,7 +31,6 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.*;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
@@ -48,6 +47,7 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.monitoring.CpuBottleneckDetector;
 import org.apache.nemo.runtime.executor.common.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
+import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -63,6 +63,8 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 
 /**
@@ -176,7 +178,7 @@ public final class Executor {
     org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
     this.taskScheduledMapSender =
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID);
+      persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
 
     this.executorMetrics = executorMetrics;
     this.bottleneckDetector = bottleneckDetector;
@@ -337,7 +339,7 @@ public final class Executor {
     LOG.info("\n{}", evalConf);
     // this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
-    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
+    messageEnvironment.setupListener(EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
     taskScheduledMapWorker.init();
     executorChannelManagerMap.init();
@@ -535,7 +537,7 @@ public final class Executor {
 
       taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.TaskExecuting)
         .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
           .setExecutorId(executorId)

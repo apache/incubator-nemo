@@ -6,6 +6,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.common.VMWorkerConf;

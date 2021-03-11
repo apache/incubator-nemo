@@ -22,7 +22,6 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -36,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * (WARNING) This class must be thread-safe.
@@ -84,7 +85,7 @@ public final class ExecutorRegistry {
         final ExecutorRepresenter remote = val.left();
         remote.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.ExecutorRegistered)
           .setRegisteredExecutor(executorString)
           .build());
@@ -100,7 +101,7 @@ public final class ExecutorRegistry {
         final String executorString = String.join(",", existingExecutors);
         executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.ExecutorRegistered)
           .setRegisteredExecutor(executorString)
           .build());
@@ -123,7 +124,7 @@ public final class ExecutorRegistry {
       final ExecutorRepresenter remote = val.left();
       remote.sendControlMessage(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+        .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.ExecutorRemoved)
         .setRegisteredExecutor(executor)
         .build());

@@ -2,10 +2,8 @@ package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 
 public final class TaskScheduledMapWorker {
@@ -34,10 +33,10 @@ public final class TaskScheduledMapWorker {
   public void init() {
     try {
       final CompletableFuture<ControlMessage.Message> future = toMaster
-        .getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID)
         .request(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.CurrentScheduledTask)
           .build());
 
@@ -67,10 +66,10 @@ public final class TaskScheduledMapWorker {
     // return map.get(dstTaskId);
     if (syncMaster) {
       final CompletableFuture<ControlMessage.Message> future = toMaster
-        .getMessageSender(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+        .getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID)
         .request(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_SCHEDULE_MAP_LISTENER_ID)
+          .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.TaskScheduled)
           .setRegisteredExecutor(dstTaskId)
           .build());

@@ -18,15 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.executor.common.ByteTransportIdentifier;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -37,6 +34,8 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -47,9 +46,8 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -195,10 +193,10 @@ public final class ByteTransport implements AutoCloseable {
     LOG.info("public address: {}, port: {}, executorId: {}", publicAddress, bindingPort, localExecutorId);
 
     persistentConnectionToMasterMap
-      .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
         .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
         .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
           .setExecutorId(localExecutorId)

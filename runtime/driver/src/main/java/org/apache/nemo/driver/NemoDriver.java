@@ -27,7 +27,6 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSi
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.VMWorkerExecutor;
 import org.apache.nemo.runtime.executor.offloading.*;
@@ -46,9 +45,7 @@ import org.apache.nemo.runtime.master.JobScaler;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
-import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
-import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
+import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -173,6 +170,11 @@ public final class NemoDriver {
           */
           runtimeMaster.requestContainer(resourceSpecificationString,
             true, false, "Evaluator", num);
+        } else if (decision.equals("add-scaling-executor")) {
+          // scaling executor for Lambda
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.createScalingExecutor(num);
         } else if (decision.equals("add-offloading-executor")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);

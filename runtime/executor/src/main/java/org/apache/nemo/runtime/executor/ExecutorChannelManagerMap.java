@@ -4,8 +4,8 @@ import io.netty.channel.Channel;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 
-import static org.apache.nemo.runtime.common.message.MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 public final class ExecutorChannelManagerMap {
 
@@ -45,7 +45,7 @@ public final class ExecutorChannelManagerMap {
         .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
         .request(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.CurrentExecutor)
           .build());
 

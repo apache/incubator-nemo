@@ -22,12 +22,13 @@ import javax.inject.Inject;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.common.metric.Metric;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * A default metric message handler.
@@ -50,7 +51,7 @@ public final class MetricManagerMaster implements MetricMessageHandler {
     executorRegistry.viewExecutors(executors -> executors.forEach(executor -> {
       final ControlMessage.Message message = ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestMetricFlush)
           .build();
       executor.sendControlMessage(message);

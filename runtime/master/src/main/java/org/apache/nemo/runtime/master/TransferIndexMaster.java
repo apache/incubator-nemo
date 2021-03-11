@@ -23,9 +23,9 @@ import org.apache.nemo.common.TransferKey;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageContext;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.RegisterTransferIndex;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TRANSFER_INDEX_LISTENER_ID;
 
 /**
  * Master-side pipe manager.
@@ -58,7 +58,7 @@ public final class TransferIndexMaster {
    */
   @Inject
   private TransferIndexMaster(final MessageEnvironment masterMessageEnvironment) {
-    masterMessageEnvironment.setupListener(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID,
+    masterMessageEnvironment.setupListener(TRANSFER_INDEX_LISTENER_ID,
       new TransferIndexReceiver());
 
     this.contextIndex = new AtomicInteger();
@@ -109,7 +109,7 @@ public final class TransferIndexMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+              .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.TransferIndexInfo)
               .setTransferIndexInfoMsg(ControlMessage.TransferIndexInfoMessage.newBuilder()
                 .setRequestId(message.getId())
@@ -132,7 +132,7 @@ public final class TransferIndexMaster {
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+              .setListenerId(TRANSFER_INDEX_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.ReturnTransferIndex)
               .setReturnTransferIndexMsg(ControlMessage.ReturnTransferIndexMessage
                 .newBuilder()

@@ -7,10 +7,6 @@ import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.master.offloading.LocalExecutorOffloadingRequesterFactory;
-import org.apache.nemo.runtime.master.offloading.OffloadingRequesterFactory;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
@@ -24,6 +20,8 @@ import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactor
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -83,7 +81,7 @@ public class PipeManagerTestHelper {
         .bindNamedParameter(JobConf.JobId.class, "test-job")
         .build(),
       createNameResolverConf(ns),
-      createGrpcMessageEnvironmentConf(MessageEnvironment.MASTER_COMMUNICATION_ID));
+      createGrpcMessageEnvironmentConf(MessageEnvironment.MASTER_ID));
 
     return conf;
   }

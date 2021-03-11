@@ -3,17 +3,18 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_INDEX_MESSAGE_LISTENER_ID;
 
 public final class PipeIndexMapWorker {
   // key: (runtimeEdgeId, dstTaskIndex), value: input contexts of this task
@@ -38,10 +39,10 @@ public final class PipeIndexMapWorker {
 
     if (!keyMap.containsKey(index)) {
       final CompletableFuture<ControlMessage.Message> future = toMaster
-        .getMessageSender(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+        .getMessageSender(TASK_INDEX_MESSAGE_LISTENER_ID)
         .request(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+          .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestPipeKey)
           .setRequestPipeKeyMsg(ControlMessage.RequestPipeKeyMessage
             .newBuilder()
@@ -71,10 +72,10 @@ public final class PipeIndexMapWorker {
 
     if (!map.containsKey(key)) {
       final CompletableFuture<ControlMessage.Message> future = toMaster
-        .getMessageSender(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+        .getMessageSender(TASK_INDEX_MESSAGE_LISTENER_ID)
         .request(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(MessageEnvironment.TASK_INDEX_MESSAGE_LISTENER_ID)
+          .setListenerId(TASK_INDEX_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.RequestTaskIndex)
           .setRequestTaskIndexMsg(ControlMessage.RequestTaskIndexMessage
             .newBuilder()

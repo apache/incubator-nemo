@@ -21,9 +21,9 @@ package org.apache.nemo.runtime.executor;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
@@ -31,6 +31,8 @@ import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Metric sender that periodically flushes the collected metrics to Driver.
@@ -58,10 +60,10 @@ public final class MetricManagerWorker implements MetricMessageSender {
   @Override
   public void flush() {
     flushMetricMessageQueueToMaster();
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+    persistentConnectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.MetricFlushed)
             .build());
   }
@@ -80,10 +82,10 @@ public final class MetricManagerWorker implements MetricMessageSender {
         metricMsgBuilder.addMetric(i, metric);
       }
 
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      persistentConnectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
               .setType(ControlMessage.MessageType.MetricMessageReceived)
               .setMetricMsg(metricMsgBuilder.build())
               .build());
