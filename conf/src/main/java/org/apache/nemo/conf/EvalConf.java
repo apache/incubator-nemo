@@ -48,6 +48,10 @@ public final class EvalConf {
   public final class FlushPeriod implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "executor on lambda (ms)", default_value = "false")
+  public final class ExecutorOnLambda implements Name<Boolean> {
+  }
+
   @NamedParameter(doc = "path for sampling json path", short_name = "sampling_path", default_value = "")
   public final class SamplingPath implements Name<String> {
   }
@@ -119,7 +123,7 @@ public final class EvalConf {
   @NamedParameter(short_name = "off_executor_threads", default_value = "1")
   public static final class OffExecutorThreadNum implements Name<Integer> {}
 
-  @NamedParameter(short_name = "task_slot", default_value = "2")
+  @NamedParameter(short_name = "task_slot", default_value = "10")
   public static final class TaskSlot implements Name<Integer> {}
 
   @NamedParameter(short_name = "control_logging", default_value = "false")

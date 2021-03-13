@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.StateTransitionEvent;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.IRDAG;

@@ -71,7 +71,7 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
     this.senderId = senderId;
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
 
-    this.executorService = Executors.newFixedThreadPool(20);
+    this.executorService = Executors.newCachedThreadPool();
 
     this.channelMap = new ConcurrentHashMap<>();
     this.replyFutureMap = new ReplyFutureMap<>();

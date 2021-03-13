@@ -41,7 +41,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.metric.StageMetric;
 import org.apache.nemo.runtime.common.metric.TaskMetric;

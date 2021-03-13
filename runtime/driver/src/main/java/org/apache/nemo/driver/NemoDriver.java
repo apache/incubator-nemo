@@ -26,25 +26,27 @@ import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.NettyVMStateStore;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.executor.DefaultControlEventHandlerImpl;
-import org.apache.nemo.runtime.executor.VMWorkerExecutor;
+import org.apache.nemo.runtime.executor.*;
+import org.apache.nemo.runtime.executor.bytetransfer.DefaultByteTransportImpl;
+import org.apache.nemo.runtime.executor.common.monitoring.CpuBottleneckDetectorImpl;
 import org.apache.nemo.runtime.executor.offloading.*;
-import org.apache.nemo.runtime.executor.HDFStateStore;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.offloading.common.StateStore;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
-import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
-import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.executor.common.PipeManagerWorkerImpl;
+import org.apache.nemo.runtime.executor.common.DefaltIntermediateDataIOFactoryImpl;
+import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.JobScaler;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.nemo.runtime.executor.common.ByteTransport;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -55,9 +57,6 @@ import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.evaluator.JVMProcessFactory;
-import org.apache.reef.io.network.naming.NameServer;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
@@ -171,11 +170,11 @@ public final class NemoDriver {
           */
           runtimeMaster.requestContainer(resourceSpecificationString,
             true, false, "Evaluator", num);
-        } else if (decision.equals("add-scaling-executor")) {
+        } else if (decision.equals("add-lambda-executor")) {
           // scaling executor for Lambda
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          runtimeMaster.createScalingExecutor(num);
+          runtimeMaster.requestLambdaContainer(num);
         } else if (decision.equals("add-offloading-executor")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
@@ -420,13 +419,17 @@ public final class NemoDriver {
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
-      .bindImplementation(StateStore.class, HDFStateStore.class)
-      .bindImplementation(OffloadingManager.class, getOffloadingManager())
+      .bindImplementation(StateStore.class, NettyVMStateStore.class)
+      // .bindImplementation(OffloadingManager.class, getOffloadingManager())
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
-      .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
+      // .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
+      .bindImplementation(MetricMessageSender.class, MetricManagerWorker.class)
+      .bindImplementation(ByteTransport.class, DefaultByteTransportImpl.class)
+      .bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(false))
+      .bindImplementation(CpuBottleneckDetector.class, CpuBottleneckDetectorImpl.class)
       .build();
 
     return Configurations.merge(c,
@@ -440,8 +443,8 @@ public final class NemoDriver {
 
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-      .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
-      .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+      .bindNamedParameter(MessageParameters.NameServerPort.class, Integer.toString(nameServer.getPort()))
+      .bindNamedParameter(MessageParameters.NameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();

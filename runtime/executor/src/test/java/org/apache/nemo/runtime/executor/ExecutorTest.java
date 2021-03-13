@@ -533,8 +533,8 @@ public final class ExecutorTest {
 
     /*
     // launch prepareOffloading executor
-    final String executor1Addr = pair1.right().getInstance(ByteTransport.class).getPublicAddress();
-    final int executor1Port = pair1.right().getInstance(ByteTransport.class).getBindingPort();
+    final String executor1Addr = pair1.right().getInstance(DefaultByteTransportImpl.class).getPublicAddress();
+    final int executor1Port = pair1.right().getInstance(DefaultByteTransportImpl.class).getBindingPort();
     final OffloadingExecutor offloadingExecutor =
       new OffloadingExecutor(3, new HashMap<>(), true,
         pair1.left().getExecutorId(), executor1Addr, executor1Port);

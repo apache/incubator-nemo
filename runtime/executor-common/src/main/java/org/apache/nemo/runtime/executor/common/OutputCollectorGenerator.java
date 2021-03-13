@@ -7,10 +7,13 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 import java.util.Map;
 
+@DefaultImplementation(DefaultOutputCollectorGeneratorImpl.class)
 public interface OutputCollectorGenerator {
 
   OutputCollector generate(final IRVertex irVertex,

@@ -25,12 +25,15 @@ import org.apache.nemo.runtime.executor.common.ExecutorThreadQueue;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
+import javax.inject.Inject;
+
 /**
  */
 public final class OffloadingIntermediateDataIOFactory implements IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
   private final SerializerManager serializerManager;
 
+  @Inject
   public OffloadingIntermediateDataIOFactory(
     final PipeManagerWorker pipeManagerWorker,
     final SerializerManager serializerManager) {

@@ -23,7 +23,7 @@ import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;

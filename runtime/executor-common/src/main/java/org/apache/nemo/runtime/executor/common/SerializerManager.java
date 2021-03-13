@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 import javax.annotation.Nullable;
 
 import java.io.Serializable;
@@ -27,6 +29,7 @@ import java.io.Serializable;
 /**
  * Mapping from RuntimeEdgeId to {@link Serializer}.
  */
+@DefaultImplementation(DefaultSerializerManagerImpl.class)
 public interface SerializerManager extends Serializable {
 
   /**

@@ -87,7 +87,7 @@ public final class OffloadingTransportChannelInitializer extends ChannelInitiali
     ch.pipeline()
       .addLast("frameEncoder", new LengthFieldPrepender(4))
       // inbound
-      .addLast(new FrameDecoder(pipeManagerWorker))
+      // TODO: fix .addLast(new FrameDecoder(pipeManagerWorker))
       // outbound
       .addLast(new OffloadingExecutorControlEventCoder.OffloadingEventEncoder())
       .addLast(new OffloadingDataFrameEncoder())

@@ -32,17 +32,17 @@ import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.common.TaskState;
+import org.apache.nemo.runtime.master.lambda.LambdaContainerManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.*;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
-import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -65,13 +65,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.RequestOffloadingExecutor;
-import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.ResponseOffloadingExecutor;
-import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
-import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
+import static org.apache.nemo.common.TaskState.State.COMPLETE;
+import static org.apache.nemo.common.TaskState.State.ON_HOLD;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.YARN_OFFLOADING_EXECUTOR_REQUEST_ID;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
@@ -95,6 +92,7 @@ public final class RuntimeMaster {
   private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
+  private final ExecutorService requestContainerThread;
   private final ScheduledExecutorService speculativeTaskCloningThread;
 
   private final Scheduler scheduler;
@@ -116,9 +114,9 @@ public final class RuntimeMaster {
 
   private final String resourceSpecificationString;
 
-  private final OffloadingWorkerManager offloadingWorkerManager;
+  // private final OffloadingWorkerManager offloadingWorkerManager;
 
-  private final InMasterControlMessageQueue inMasterControlMessageQueue;
+  private final LambdaContainerManager lambdaContainerManager;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -126,23 +124,25 @@ public final class RuntimeMaster {
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
-                        final OffloadingWorkerManager offloadingWorkerManager,
+   //                     final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
+                        final LambdaContainerManager lambdaContainerManager,
                         final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
-    this.inMasterControlMessageQueue = inMasterControlMessageQueue;
-    this.offloadingWorkerManager = offloadingWorkerManager;
+    this.lambdaContainerManager = lambdaContainerManager;
+    // this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
+    this.requestContainerThread = Executors.newCachedThreadPool();
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> {
           final Thread t = new Thread(runnable, "RuntimeMaster thread");
@@ -305,7 +305,9 @@ public final class RuntimeMaster {
                                final boolean offloading,
                                final String name,
                                final int num) {
-    final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
+    LOG.info("Requesting container 11 {}", name);
+    final Future<?> containerRequestEventResult = requestContainerThread.submit(() -> {
+      LOG.info("Requesting container 22 {}", name);
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
 
@@ -356,7 +358,8 @@ public final class RuntimeMaster {
         e.printStackTrace();
         throw new ContainerException(e);
       }
-    });
+     });
+
     try {
       containerRequestEventResult.get();
     } catch (final Exception e) {
@@ -364,6 +367,7 @@ public final class RuntimeMaster {
       LOG.error("Exception while requesting for a container: ", e);
       throw new ContainerException(e);
     }
+
   }
 
   /**
@@ -377,7 +381,7 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-      runtimeMasterThread.execute(() ->
+      requestContainerThread.execute(() ->
         containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
 
@@ -434,33 +438,26 @@ public final class RuntimeMaster {
     });
   }
 
-  public void createScalingExecutor(final int num) {
-    // TODO-1: todo
-    /*
-    LOG.info("Executor Launched {} " + activeContext.getId());
+  public void requestLambdaContainer(final int num) {
+    requestContainerThread.execute(() -> {
+      final List<Future<ExecutorRepresenter>> list =
+        lambdaContainerManager.createLambdaContainer(num);
 
-    if (!activeContext.getId().contains("offloading")) {
-      final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-        final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
-        if (executor.isPresent()) {
-          scheduler.onExecutorAdded(executor.get());
+      for (final Future<ExecutorRepresenter> future : list) {
+        final Callable<Boolean> processExecutorLaunchedEvent = () -> {
+          final ExecutorRepresenter executor = future.get();
+          scheduler.onExecutorAdded(executor);
           return (resourceRequestCount.decrementAndGet() == 0);
-        } else {
-          return false;
-        }
-      };
+        };
 
-      final boolean eventResult;
-      try {
-        eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
-      } catch (final Exception e) {
-        throw new ContainerException(e);
+        final boolean eventResult;
+        try {
+          eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
+        } catch (final Exception e) {
+          throw new ContainerException(e);
+        }
       }
-      return eventResult;
-    } else {
-      return true;
-    }
-    */
+    });
   }
 
 
@@ -520,15 +517,15 @@ public final class RuntimeMaster {
   }
 
   public void sendTaskToLambda() {
-    offloadingWorkerManager.sendTaskToLambda();
+    // offloadingWorkerManager.sendTaskToLambda();
   }
 
   public void activateLambda() {
-    offloadingWorkerManager.activateAllWorkers();
+   //  offloadingWorkerManager.activateAllWorkers();
   }
 
   public void deactivateLambda() {
-    offloadingWorkerManager.deactivateAllWorkers();
+   // offloadingWorkerManager.deactivateAllWorkers();
   }
 
   public void invokePartialOffloading() {
@@ -636,6 +633,8 @@ public final class RuntimeMaster {
       synchronized (responsePendingMap) {
         responsePendingMap.put(name, Pair.of((int) port, requestHandler));
       }
+
+      LOG.info("Try to request {}/{}", name, executorId);
 
       requestContainer(resourceSpecificationString,
         true,

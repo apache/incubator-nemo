@@ -31,6 +31,9 @@ import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.master.lambda.LambdaAWSResourceRequester;
+import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
+import org.apache.nemo.runtime.master.lambda.LambdaYarnResourceRequester;
 import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
@@ -689,9 +692,19 @@ public final class JobLauncher {
     } else {
       throw new RuntimeException("Invalid prepareOffloading requester " + offloadingType);
     }
-
-
   }
+
+  private static Class<? extends LambdaContainerRequester>
+  getLambdaRequesterConf(final String offloadingType) {
+    if (offloadingType.equals("local")) {
+      return LambdaYarnResourceRequester.class;
+    } else if (offloadingType.equals("lambda")) {
+      return LambdaAWSResourceRequester.class;
+    } else {
+      throw new RuntimeException("Invalid prepareOffloading requester " + offloadingType);
+    }
+  }
+
   /**
    * Get job configuration.
    *
@@ -738,6 +751,7 @@ public final class JobLauncher {
     final String offloadingType = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.OffloadingType.class);
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
+      .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
       .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
       .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
       .build();

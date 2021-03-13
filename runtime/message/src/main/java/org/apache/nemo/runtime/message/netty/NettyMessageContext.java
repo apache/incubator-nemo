@@ -18,18 +18,9 @@
  */
 package org.apache.nemo.runtime.message.netty;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.message.AbstractMessageContext;
-import org.apache.nemo.runtime.message.MessageContext;
-import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.Connection;
-import org.apache.reef.io.network.ConnectionFactory;
-import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +49,9 @@ final class NettyMessageContext extends AbstractMessageContext {
     final ControlMessage.Message message = (ControlMessage.Message) replyMessage;
     // LOG.info("Reply message from {} {}/{}/{} to {}", myId, message.getId(), message.getType(),
     //  message.getListenerId(), channel.remoteAddress());
-    channel.writeAndFlush(new ControlMessageWrapper(ControlMessageWrapper.MsgType.Reply, message));
+    synchronized (channel) {
+      channel.writeAndFlush(new ControlMessageWrapper(ControlMessageWrapper.MsgType.Reply, message));
+    }
 
     /*
     .addListener(new GenericFutureListener<Future<? super Void>>() {

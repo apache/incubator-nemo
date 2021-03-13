@@ -78,7 +78,7 @@ public final class OffloadingHandler {
 
   private final Map<String, TaskCaching> stageTaskMap = new HashMap<>();
   private Channel controlChannel;
-  private Channel dataChannel;
+  // private Channel dataChannel;
   private LambdaEventHandler handler;
   private int requestId;
 
@@ -295,7 +295,6 @@ public final class OffloadingHandler {
       }
     }
 
-
     if (workerInitLatch.getCount() == 0) {
 
       LOG.info("try to print worker spec");
@@ -307,9 +306,9 @@ public final class OffloadingHandler {
       controlChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT_DONE, addrPortBytes, addrPortBytes.length));
       LOG.info("Sending worker init done");
 
-      final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
-      dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
-        OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
+      // final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+      // dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
+      //  OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
 
     }
 
@@ -459,27 +458,23 @@ public final class OffloadingHandler {
 	  if (controlChannel != null
       && controlChannel.isOpen()
       && controlChannel.isActive()
-      && dataChannel != null
-      && dataChannel.isOpen()
-      && dataChannel.isActive()
       && controlChannel.remoteAddress().toString().equals(addr)) {
 	    // warmed container!!
-
       // TODO: check requestId
       LOG.info("Warmed container for request id " + requestId +
-        " control channel" + controlChannel + ", data channel " + dataChannel);
+        " control channel" + controlChannel);
 
       // TODO: warm up
       final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
       controlChannel.writeAndFlush(
         new OffloadingMasterEvent(OffloadingMasterEvent.Type.ACTIVATE, buf));
 
-      final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
-      dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
-        OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
+      // final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+      // dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
+      //  OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
 
     } else {
-	    LOG.info("Init input " + input + "... control channel " + controlChannel + ", data channel " + dataChannel);
+	    LOG.info("Init input " + input + "... control channel " + controlChannel);
 	    initialization(input);
     }
 
@@ -508,8 +503,8 @@ public final class OffloadingHandler {
               new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
 
             if (workerInitLatch.getCount() == 0) {
-              dataChannel.writeAndFlush(
-                new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
+              // dataChannel.writeAndFlush(
+              //  new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
             }
           } else {
             throw new RuntimeException("Channel is already closed..");
@@ -524,13 +519,13 @@ public final class OffloadingHandler {
       } else if (endFlag == 1) {
         // Duplicate request termination
         LOG.info("Duplicate request termination ... sending data channel deactive");
-        try {
-          dataChannel.writeAndFlush(
-            new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+//        try {
+//          dataChannel.writeAndFlush(
+//            new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
+//        } catch (ExecutionException e) {
+//          e.printStackTrace();
+//          throw new RuntimeException(e);
+//        }
       }
 
       System.out.println("END of invocation: " + (System.currentTimeMillis() - sst));
@@ -623,8 +618,8 @@ public final class OffloadingHandler {
           LOG.info("End of offloading prepare");
 
           workerFinishTime = System.currentTimeMillis();
-          executorDataAddrPort = offloadingTransform.getDataChannelPort();
-          dataChannel = offloadingTransform.getDataChannel();
+          // executorDataAddrPort = offloadingTransform.getDataChannelPort();
+          // dataChannel = offloadingTransform.getDataChannel();
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st) + ", data channel: " + executorDataAddrPort);
           workerInitLatch.countDown();
 
@@ -644,6 +639,7 @@ public final class OffloadingHandler {
             final Object data = decoder.decode(bis);
 
 
+            /*
             final ByteBufOutputStream bos = new ByteBufOutputStream(
               offloadingTransform.getDataChannel().alloc().ioBuffer());
 
@@ -655,6 +651,7 @@ public final class OffloadingHandler {
             offloadingTransform.getDataChannel()
               .writeAndFlush(new OffloadingExecutorControlEvent(
                 OffloadingExecutorControlEvent.Type.TASK_READY, bos.buffer()));
+                */
 
 
             offloadingTransform.onData(data, null);

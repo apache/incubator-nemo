@@ -18,21 +18,16 @@
  */
 package org.apache.nemo.driver;
 
-import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.Executor;
 import org.apache.nemo.runtime.executor.VMWorkerExecutor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Random;
 
 /**
  * REEF Context for the Executor.

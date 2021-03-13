@@ -10,14 +10,24 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.StateStore;
-import org.apache.nemo.runtime.executor.common.controlmessages.state.*;
+import org.apache.nemo.common.nettyvm.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Parameter;
 
+import javax.inject.Inject;
 import java.io.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 public final class NettyVMStateStoreClient implements StateStore {
+
+  @NamedParameter
+  public static class NettyVMStoreAddr implements Name<String> {}
+
+  @NamedParameter
+  public static class NettyVMStorePort implements Name<Integer> {}
 
   private static final Logger LOG = Logger.getLogger(NettyVMStateStoreClient.class.getName());
 
@@ -26,8 +36,9 @@ public final class NettyVMStateStoreClient implements StateStore {
   private final Map<String, CountDownLatch> latchMap;
   private final Map<String, Object> responseMap;
 
-  public NettyVMStateStoreClient(final String address,
-                                 final int port) {
+  @Inject
+  private NettyVMStateStoreClient(@Parameter(NettyVMStoreAddr.class) final String address,
+                                  @Parameter(NettyVMStorePort.class) final int port) {
 
     this.eventLoopGroup = new NioEventLoopGroup();
     this.latchMap = new ConcurrentHashMap<>();
@@ -173,6 +184,11 @@ public final class NettyVMStateStoreClient implements StateStore {
   public void close() {
     channel.close();
     eventLoopGroup.shutdownGracefully();
+  }
+
+  @Override
+  public int getPort() {
+    return 0;
   }
 
   final class VMStatestoreClientChannelInitializer extends ChannelInitializer<SocketChannel> {

@@ -21,12 +21,11 @@ import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendTo
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
-import org.apache.reef.io.network.naming.NameServer;
+import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
@@ -70,7 +69,7 @@ public final class OffloadingWorkerManager {
   private final AtomicInteger numRequestedLambda = new AtomicInteger(0);
   private final Set<WorkerControlProxy> pendingActivationWorkers = new HashSet<>();
 
-  private final NameServer nameServer;
+  private final NemoNameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
 
   @Inject
@@ -82,8 +81,8 @@ public final class OffloadingWorkerManager {
                                   final TaskScheduledMapMaster taskScheduledMapMaster,
                                   final OffloadingRequester offloadingRequester,
                                   final MessageEnvironment messageEnvironment,
-                                  final LocalAddressProvider localAddressProvider,
-                                  final NameServer nameServer) {
+                                  final NemoNameServer nameServer,
+                                  final LocalAddressProvider localAddressProvider) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.evalConf = evalConf;
@@ -330,7 +329,7 @@ public final class OffloadingWorkerManager {
             final int numLambda = evalConf.numLambdaPool;
 
             if (!offloadExecutorByteBufMap.containsKey(m.getExecutorId())) {
-              final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
+              final OffloadingExecutor offloadingExecutor = null; /*new OffloadingExecutor(
                 evalConf.offExecutorThreadNum,
                 evalConf.samplingJson,
                 evalConf.isLocalSource,
@@ -339,7 +338,7 @@ public final class OffloadingWorkerManager {
                 (int) m.getDataChannelPort(),
                 (int) m.getNettyStatePort(),
                 localAddressProvider.getLocalAddress(),
-                nameServer.getPort());
+                nameServer.getPort());*/
 
 
               final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
@@ -461,7 +460,7 @@ public final class OffloadingWorkerManager {
           final int numLambda = (int) m.getNumberOfLambda();
 
           if (!offloadExecutorByteBufMap.containsKey(m.getExecutorId())) {
-            final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
+            final OffloadingExecutor offloadingExecutor = null; /*new OffloadingExecutor(
               evalConf.offExecutorThreadNum,
               evalConf.samplingJson,
               evalConf.isLocalSource,
@@ -470,7 +469,7 @@ public final class OffloadingWorkerManager {
               (int) m.getDataChannelPort(),
               (int) m.getNettyStatePort(),
               localAddressProvider.getLocalAddress(),
-              nameServer.getPort());
+              nameServer.getPort());*/
 
             final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
 

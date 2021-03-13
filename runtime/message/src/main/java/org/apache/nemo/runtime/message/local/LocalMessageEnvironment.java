@@ -18,10 +18,7 @@
  */
 package org.apache.nemo.runtime.message.local;
 
-import org.apache.nemo.runtime.message.MessageEnvironment;
-import org.apache.nemo.runtime.message.MessageListener;
-import org.apache.nemo.runtime.message.MessageParameters;
-import org.apache.nemo.runtime.message.MessageSender;
+import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

@@ -30,7 +30,18 @@ public final class VMWorkerExecutor {
     @Parameter(VMWorkerPort.class) final int port) {
     final String nemo_home = "/home/taegeonum/incubator-nemo";
     LOG.info("Creating VM worker with port " + port);
-    final String path = nemo_home + "/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT-shaded.jar";
+    final StringBuilder sb = new StringBuilder();
+
+    sb.append(nemo_home + "/offloading/workers/lambda/vm_jars/*");
+    sb.append(":");
+    sb.append(nemo_home + "/offloading/workers/lambda/jars/*");
+    sb.append(":");
+    sb.append(nemo_home + "/offloading/workers/lambda/layer/java/lib/*");
+    sb.append(":");
+    sb.append(nemo_home + "/offloading/workers/vm/target/offloading-vm-0.2-SNAPSHOT.jar");
+
+
+    final String path = sb.toString();
 
     LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
     waitingExecutor.execute(() -> {

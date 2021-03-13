@@ -23,6 +23,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.runtime.common.HDFStateStore;
 import org.junit.Test;
 
 import java.io.*;

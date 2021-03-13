@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
@@ -63,6 +64,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   public final Map<Integer, String> indexTaskMap;
 
 
+  @Inject
   public OffloadingPipeManagerWorkerImpl(
     final String executorId,
     final Map<Triple<String, String, String>, Integer> map,

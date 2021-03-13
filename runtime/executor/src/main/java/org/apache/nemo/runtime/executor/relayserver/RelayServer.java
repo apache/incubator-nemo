@@ -13,7 +13,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
-import org.apache.nemo.runtime.executor.datatransfer.NioChannelImplementationSelector;
+import org.apache.nemo.runtime.executor.common.datatransfer.NioChannelImplementationSelector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;

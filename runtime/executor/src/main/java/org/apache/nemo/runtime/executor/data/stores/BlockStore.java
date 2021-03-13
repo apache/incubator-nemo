@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.Executor;
+import org.apache.nemo.runtime.executor.common.Executor;
 import org.apache.nemo.runtime.executor.data.block.Block;
 
 import java.util.Optional;

@@ -2,17 +2,12 @@ package org.apache.nemo.runtime.master;
 
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
-import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.omg.PortableInterceptor.ACTIVE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;

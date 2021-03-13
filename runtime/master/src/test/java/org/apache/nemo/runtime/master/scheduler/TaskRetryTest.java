@@ -23,17 +23,17 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.PlanState;
-import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.PlanStateManager;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
@@ -162,7 +162,7 @@ public final class TaskRetryTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
     final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter executor = new ExecutorRepresenter("EXECUTOR" + ID_OFFSET.getAndIncrement(),
+    final DefaultExecutorRepresenterImpl executor = new DefaultExecutorRepresenterImpl("EXECUTOR" + ID_OFFSET.getAndIncrement(),
         computeSpec, mockMsgSender, activeContext, serExecutorService, "NODE" + ID_OFFSET.getAndIncrement());
     scheduler.onExecutorAdded(executor);
   }
@@ -177,7 +177,7 @@ public final class TaskRetryTest {
         return;
       }
 
-      final List<ExecutorRepresenter> executorList = new ArrayList<>(executors);
+      final List<DefaultExecutorRepresenterImpl> executorList = new ArrayList<>(executors);
       final int randomIndex = random.nextInt(executorList.size());
 
       // Because synchronized blocks are reentrant and there's no additional operation after this point,
@@ -197,7 +197,7 @@ public final class TaskRetryTest {
       final String selectedTask = executingTasks.get(randomIndex);
 
 
-      final Optional<ExecutorRepresenter> executor = executorRegistry.findExecutorForTask(selectedTask);
+      final Optional<DefaultExecutorRepresenterImpl> executor = executorRegistry.findExecutorForTask(selectedTask);
       if (executor.isPresent()) {
         SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
           TaskState.State.COMPLETE, RuntimeIdManager.getAttemptFromTaskId(selectedTask));

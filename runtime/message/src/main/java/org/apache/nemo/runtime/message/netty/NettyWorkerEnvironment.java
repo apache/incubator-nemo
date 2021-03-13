@@ -59,7 +59,6 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
 
   private final InjectionFuture<NemoNameResolver> nameResolver;
-  private final IdentifierFactory identifierFactory;
 
   private final Map<String, Object> lockMap;
 
@@ -67,11 +66,9 @@ public final class NettyWorkerEnvironment implements MessageEnvironment {
 
   @Inject
   private NettyWorkerEnvironment(
-    final InjectionFuture<NemoNameResolver> nameResolver,
-    final IdentifierFactory idFactory,
-    @Parameter(MessageParameters.SenderId.class) final String senderId) {
+    @Parameter(MessageParameters.SenderId.class) final String senderId,
+    final InjectionFuture<NemoNameResolver> nameResolver) {
     this.nameResolver = nameResolver;
-    this.identifierFactory = idFactory;
     this.clientWorkerGroup = new NioEventLoopGroup(10,
       new DefaultThreadFactory("NettyWorkerEnvironment"));
     this.clientBootstrap = new Bootstrap();

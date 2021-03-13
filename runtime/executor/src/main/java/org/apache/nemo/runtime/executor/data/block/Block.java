@@ -23,7 +23,7 @@ import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.Executor;
+import org.apache.nemo.runtime.executor.common.Executor;
 
 import java.io.Serializable;
 import java.util.Map;

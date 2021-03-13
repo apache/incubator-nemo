@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor.offloading;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -14,7 +13,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.executor.NettyStateStore;
+import org.apache.nemo.runtime.common.NettyStateStore;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;

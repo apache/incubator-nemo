@@ -305,16 +305,6 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     doFnInvoker.invokeTeardown();
   }
 
-  @Override
-  public String getDataChannelAddr() {
-    return null;
-  }
-
-  @Override
-  public int getDataChannelPort() {
-    return 0;
-  }
-
   final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputManager {
     private final TupleTag<OutputT> mainOutputTag;
     private final OffloadingOutputCollector<WindowedValue<OutputT>> outputCollector;

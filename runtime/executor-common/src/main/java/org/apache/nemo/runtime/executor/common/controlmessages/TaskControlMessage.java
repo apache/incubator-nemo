@@ -104,24 +104,28 @@ public final class TaskControlMessage implements TaskHandlingEvent {
       bos.writeInt(inputPipeIndex);
       bos.writeInt(targetPipeIndex);
       bos.writeUTF(targetTaskId);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
 
       switch (type) {
-      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
-        ((TaskStopSignalByDownstreamTask) event).encode(bos);
-        break;
-      }
+        case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
+          ((TaskStopSignalByDownstreamTask) event).encode(bos);
+          break;
+        }
+        case REGISTER_EXECUTOR:{
+          bos.writeUTF((String) event);
+          break;
+        }
         case OFFLOAD_TASK_STOP:
         case PIPE_INIT:
         case DEACTIVATE_LAMBDA:
-      case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
-        break;
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
+          break;
+        }
+        default:
+          throw new RuntimeException("Invalid control message type encoding " + type);
       }
-      default:
-        throw new RuntimeException("Invalid control message type encoding " + type);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
@@ -138,6 +142,11 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             TaskStopSignalByDownstreamTask.decode(bis));
+          break;
+        }
+        case REGISTER_EXECUTOR: {
+          msg = new TaskControlMessage(type, inputPipeIndex,
+            targetPipeIndex, targetTaskId, bis.readUTF());
           break;
         }
         case OFFLOAD_TASK_STOP:

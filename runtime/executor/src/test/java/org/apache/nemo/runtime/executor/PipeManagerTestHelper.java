@@ -12,10 +12,10 @@ import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFa
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.CyclicDependencyHandler;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorkerImpl;
-import org.apache.nemo.runtime.executor.datatransfer.DefaltIntermediateDataIOFactoryImpl;
-import org.apache.nemo.runtime.executor.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.executor.common.CyclicDependencyHandler;
+import org.apache.nemo.runtime.executor.common.PipeManagerWorkerImpl;
+import org.apache.nemo.runtime.executor.common.DefaltIntermediateDataIOFactoryImpl;
+import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
 import org.apache.nemo.runtime.executor.offloading.DefaultOffloadingWorkerFactory;
 import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;

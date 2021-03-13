@@ -19,7 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.Executor;
+import org.apache.nemo.runtime.executor.common.Executor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;

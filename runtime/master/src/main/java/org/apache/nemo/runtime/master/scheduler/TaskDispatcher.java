@@ -21,12 +21,8 @@ package org.apache.nemo.runtime.master.scheduler;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.PlanStateManager;
-import org.apache.nemo.runtime.master.RendevousServer;
-import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
-import org.apache.nemo.runtime.master.VMScalingAddresses;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.common.TaskState;
+import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
 

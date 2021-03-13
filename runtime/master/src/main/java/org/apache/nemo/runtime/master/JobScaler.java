@@ -11,7 +11,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;

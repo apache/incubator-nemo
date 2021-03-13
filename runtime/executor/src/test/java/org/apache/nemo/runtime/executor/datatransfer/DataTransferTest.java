@@ -43,7 +43,7 @@ import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.runtime.executor.Executor;
+import org.apache.nemo.runtime.executor.common.Executor;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;

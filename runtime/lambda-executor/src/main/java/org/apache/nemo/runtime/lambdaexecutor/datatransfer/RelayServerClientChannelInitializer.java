@@ -99,7 +99,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       .addLast(new RelayDebuggingEncoder())
 
       // inbound
-      .addLast(new FrameDecoder(/* TODO contextManager*/ null))
+      // .addLast(new FrameDecoder(/* TODO contextManager*/ null))
       .addLast(contextManager);
   }
 }

@@ -23,25 +23,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.TaskLocationMap;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
 import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
-import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
 import java.util.concurrent.*;
-
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TRANSFER_INDEX_LISTENER_ID;
 
 
 /**
@@ -51,9 +41,6 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultContextManagerImpl.class.getName());
 
-  private final PipeManagerWorker pipeManagerWorker;
-  private final BlockManagerWorker blockManagerWorker;
-  private final Optional<ByteTransfer> byteTransfer;
   private final ChannelGroup channelGroup;
   private final String localExecutorId;
   private final Channel channel;
@@ -66,60 +53,32 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
 
   //private final AtomicInteger nextInputTransferIndex;
   //private final AtomicInteger nextOutputTransferIndex;
-
-  private final AckScheduledService ackScheduledService;
-
   // key: runtimeId, taskIndex, outputStream , value: transferIndex
 
-  private final ExecutorService channelExecutorService;
-  private final PersistentConnectionToMasterMap toMaster;
   private final OutputWriterFlusher outputWriterFlusher;
-  private final RelayServer relayServer;
-  private final TaskLocationMap taskLocationMap;
 
   /**
    * Creates context manager for this channel.
-   * @param pipeManagerWorker   provides handler for new contexts by remote executors
-   * @param blockManagerWorker  provides handler for new contexts by remote executors
-   * @param byteTransfer        provides channel caching
-   * @param channelGroup        to cleanup this channel when closing {@link ByteTransport}
+   * @param channelGroup        to cleanup this channel when closing {@link DefaultByteTransportImpl}
    * @param localExecutorId     local executor id
    * @param channel             the {@link Channel} to manage
    */
-  public DefaultContextManagerImpl(final ExecutorService channelExecutorService,
-                                   final PipeManagerWorker pipeManagerWorker,
-                                   final BlockManagerWorker blockManagerWorker,
-                                   final Optional<ByteTransfer> byteTransfer,
-                                   final ChannelGroup channelGroup,
+  public DefaultContextManagerImpl(final ChannelGroup channelGroup,
                                    final String localExecutorId,
                                    final Channel channel,
-                                   final AckScheduledService ackScheduledService,
                                    final ConcurrentMap<Integer, ByteInputContext> inputContexts,
                                    final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
-                                   //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
-                                   //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
-                                   final PersistentConnectionToMasterMap toMaster,
-                                   final OutputWriterFlusher outputWriterFlusher,
-                                   final RelayServer relayServer,
-                                   final TaskLocationMap taskLocationMap) {
-    this.channelExecutorService = channelExecutorService;
-    this.pipeManagerWorker = pipeManagerWorker;
-    this.blockManagerWorker = blockManagerWorker;
-    this.byteTransfer = byteTransfer;
+                                   final OutputWriterFlusher outputWriterFlusher) {
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
-    this.ackScheduledService = ackScheduledService;
     this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;
     this.inputContexts = inputContexts;
-    this.taskLocationMap = taskLocationMap;
     //this.inputContextsInitiatedByLocal = inputContextsInitiatedByLocal;
     this.outputContexts = outputContexts;
     //this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
     //this.nextInputTransferIndex = nextInputTransferIndex;
     //this.nextOutputTransferIndex = nextOutputTransferIndex;
-    this.toMaster = toMaster;
-    this.relayServer = relayServer;
   }
 
   /**
@@ -161,9 +120,11 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
   protected void channelRead0(final ChannelHandlerContext ctx, final ByteTransferContextSetupMessage message)
     throws Exception {
     setRemoteExecutorId(message.getInitiatorExecutorId());
+    /*
     if (byteTransfer.isPresent()) {
       byteTransfer.get().onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
     }
+    */
 
 
     final ByteTransferContextSetupMessage.ByteTransferDataDirection
@@ -303,6 +264,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
 
   @Override
   public void onContextStop(final ByteInputContext context) {
+    /*
     //LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContexts.remove(contextId.getTransferIndex(), context);
@@ -310,6 +272,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
       contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(),
       this, ackScheduledService.ackService, relayServer);
     inputContexts.put(contextId.getTransferIndex(), restartContext);
+    */
   }
 
   /**

@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
@@ -38,11 +38,11 @@ import static org.mockito.Mockito.*;
  * Tests {@link ContainerTypeAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class})
+@PrepareForTest({DefaultExecutorRepresenterImpl.class, Task.class})
 public final class ContainerTypeAwareSchedulingConstraintTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final String containerType) {
-    final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
+  private static DefaultExecutorRepresenterImpl mockExecutorRepresenter(final String containerType) {
+    final DefaultExecutorRepresenterImpl executorRepresenter = mock(DefaultExecutorRepresenterImpl.class);
     when(executorRepresenter.getContainerType()).thenReturn(containerType);
     return executorRepresenter;
   }
@@ -51,34 +51,34 @@ public final class ContainerTypeAwareSchedulingConstraintTest {
   public void testContainerTypeAware() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
         .getInstance(ContainerTypeAwareSchedulingConstraint.class);
-    final ExecutorRepresenter a0 = mockExecutorRepresenter(ResourcePriorityProperty.TRANSIENT);
-    final ExecutorRepresenter a1 = mockExecutorRepresenter(ResourcePriorityProperty.RESERVED);
-    final ExecutorRepresenter a2 = mockExecutorRepresenter(ResourcePriorityProperty.NONE);
+    final DefaultExecutorRepresenterImpl a0 = mockExecutorRepresenter(ResourcePriorityProperty.TRANSIENT);
+    final DefaultExecutorRepresenterImpl a1 = mockExecutorRepresenter(ResourcePriorityProperty.RESERVED);
+    final DefaultExecutorRepresenterImpl a2 = mockExecutorRepresenter(ResourcePriorityProperty.NONE);
 
     final Task task1 = mock(Task.class);
     when(task1.getPropertyValue(ResourcePriorityProperty.class))
         .thenReturn(Optional.of(ResourcePriorityProperty.RESERVED));
 
-    final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenterImpl> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors1 = executorRepresenterList1.stream()
+    final Set<DefaultExecutorRepresenterImpl> candidateExecutors1 = executorRepresenterList1.stream()
         .filter(e -> schedulingConstraint.testSchedulability(e, task1))
         .collect(Collectors.toSet());;
 
-    final Set<ExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
+    final Set<DefaultExecutorRepresenterImpl> expectedExecutors1 = Collections.singleton(a1);
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final Task task2 = mock(Task.class);
     when(task2.getPropertyValue(ResourcePriorityProperty.class))
         .thenReturn(Optional.of(ResourcePriorityProperty.NONE));
 
-    final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenterImpl> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors2 = executorRepresenterList2.stream()
+    final Set<DefaultExecutorRepresenterImpl> candidateExecutors2 = executorRepresenterList2.stream()
         .filter(e -> schedulingConstraint.testSchedulability(e, task2))
         .collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<DefaultExecutorRepresenterImpl> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);
   }
 }

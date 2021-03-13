@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
 import org.apache.nemo.runtime.message.FailedMessageSender;
 import org.apache.nemo.runtime.message.MessageEnvironment;
@@ -37,10 +38,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
@@ -95,10 +93,10 @@ public final class ContainerManager {
     this.serializedTaskMap = serializedTaskMap;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
-    this.pendingContextIdToResourceSpec = new HashMap<>();
-    this.pendingContainerRequestsByContainerType = new HashMap<>();
-    this.evaluatorIdToResourceSpec = new HashMap<>();
-    this.requestLatchByResourceSpecId = new HashMap<>();
+    this.pendingContextIdToResourceSpec = new ConcurrentHashMap<>();
+    this.pendingContainerRequestsByContainerType = new ConcurrentHashMap<>();
+    this.evaluatorIdToResourceSpec = new ConcurrentHashMap<>();
+    this.requestLatchByResourceSpecId = new ConcurrentHashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
     this.jvmProcessFactory = jvmProcessFactory;
   }
@@ -226,7 +224,9 @@ public final class ContainerManager {
 
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
+        new DefaultExecutorRepresenterImpl(executorId, resourceSpec, messageSender,
+          () -> { activeContext.close(); },
+          serializationExecutorService,
             activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(),
           serializedTaskMap);
 

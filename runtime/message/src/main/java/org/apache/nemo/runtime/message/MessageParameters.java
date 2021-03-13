@@ -32,4 +32,14 @@ public class MessageParameters {
   @NamedParameter
   public static final class SenderId implements Name<String> {
   }
+
+  @NamedParameter
+  public static final class NameServerAddr implements Name<String> {
+
+  }
+
+  @NamedParameter
+  public static final class NameServerPort implements Name<Integer> {
+
+  }
 }

@@ -19,77 +19,63 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 
+import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.common.ByteTransport;
+import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
+import org.apache.nemo.runtime.message.NemoNameResolver;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.Map;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
  */
-public final class LambdaByteTransport implements ScalingByteTransport {//implements AutoCloseable {
+public final class LambdaByteTransport implements ByteTransport {//implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaByteTransport.class);
   private static final String CLIENT = "byte:client";
 
+  private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
-  private final Map<String, InetSocketAddress> executorAddressMap;
-  private final ChannelGroup channelGroup;
-  private final Channel relayServerChannel;
-  private final Boolean isSf;
+  private final NemoNameResolver nameResolver;
+  private final String localExecutorId;
 
-  private EventLoopGroup serverListeningGroup;
-  private EventLoopGroup serverWorkingGroup;
-  private int bindingPort;
-  private Channel serverListeningChannel;
-  private String publicAddress;
-  //private final NameResolver nameResolver;
+  @Inject
+  private LambdaByteTransport(
+    final NemoNameResolver nameResolver,
+    @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+    final ByteTransportChannelInitializer channelInitializer) {
 
-  public LambdaByteTransport(
-      final String localExecutorId,
-      final NativeChannelImplementationSelector channelImplSelector,
-      final LambdaByteTransportChannelInitializer channelInitializer,
-      final Map<String, InetSocketAddress> executorAddressMap,
-      final ChannelGroup channelGroup,
-      final String relayServerAddres,
-      final int relayServerPort,
-      //final NameResolver nameResolver,
-      final boolean isSf) {
+    final NativeChannelImplementationSelector channelImplSelector =
+      new NativeChannelImplementationSelector();
 
-    this.executorAddressMap = executorAddressMap;
-    this.channelGroup = channelGroup;
-    this.isSf = isSf;
-    //this.nameResolver = nameResolver;
+    this.nameResolver = nameResolver;
+    this.localExecutorId = localExecutorId;
 
-    clientGroup = channelImplSelector.newEventLoopGroup(10, new DefaultThreadFactory(CLIENT));
+    this.clientGroup = channelImplSelector.newEventLoopGroup(10,
+      new DefaultThreadFactory(CLIENT));
 
-    clientBootstrap = new Bootstrap()
-      .group(clientGroup)
-      .channel(channelImplSelector.getChannelClass())
-      .handler(channelInitializer)
-      .option(ChannelOption.SO_REUSEADDR, true);
-
-    final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
-    this.relayServerChannel = channelFuture.channel();
-
-  }
-
-  @Override
-  public Channel getRelayServerChannel() {
-    return relayServerChannel;
+    this.clientBootstrap = new Bootstrap()
+        .group(clientGroup)
+        .channel(channelImplSelector.getChannelClass())
+        .handler(channelInitializer)
+        .option(ChannelOption.SO_REUSEADDR, true);
   }
 
 
@@ -103,40 +89,32 @@ public final class LambdaByteTransport implements ScalingByteTransport {//implem
   }
 
   @Override
-  public ChannelFuture connectToRelayServer(final String address, final int port) {
-
-    final InetSocketAddress socketAddress = new InetSocketAddress(address, port);
-    final ChannelFuture connectFuture = clientBootstrap.connect(socketAddress);
-    connectFuture.addListener(future -> {
-      if (future.isSuccess()) {
-        // Succeed to connect
-        LOG.info("Connected to relay server {}:{}", address, port);
-        return;
-      }
-      // Failed to connect (Not logging the cause here, which is not very useful)
-      LOG.error("Failed to connect to relay server {}:{}", address, port);
-    });
-    return connectFuture;
-  }
-
-  private InetSocketAddress getAddress(final String remoteExecutorId) {
-
-    final InetSocketAddress address = executorAddressMap.get(remoteExecutorId);
-    LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
-    return address;
+  public InetSocketAddress getAndPutInetAddress(final String remoteExecutorId) {
+    final InetSocketAddress address;
+    try {
+      address = nameResolver.lookup(remoteExecutorId);
+      LOG.info("Address of {}: {}", remoteExecutorId, address);
+      //executorAddressMap.put(remoteExecutorId, address);
+      return address;
+    } catch (final Exception e) {
+      LOG.error(String.format("Cannot lookup DefaultByteTransportImpl listening address of %s", remoteExecutorId), e);
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public ChannelFuture connectTo(final String remoteExecutorId) {
 
-    final InetSocketAddress address = getAddress(remoteExecutorId);
-    LOG.info("RemoteExecutorId {} Address {}", remoteExecutorId, address);
+    if (remoteExecutorId.contains("Lambda")) {
+      throw new RuntimeException("Should not connect to " + remoteExecutorId);
+    }
 
+    final InetSocketAddress address = getAndPutInetAddress(remoteExecutorId);
     final ChannelFuture connectFuture = clientBootstrap.connect(address);
     connectFuture.addListener(future -> {
       if (future.isSuccess()) {
         // Succeed to connect
-        LOG.info("Connected to remote {}", remoteExecutorId);
+        LOG.debug("Connected to {}", remoteExecutorId);
         return;
       }
       // Failed to connect (Not logging the cause here, which is not very useful)

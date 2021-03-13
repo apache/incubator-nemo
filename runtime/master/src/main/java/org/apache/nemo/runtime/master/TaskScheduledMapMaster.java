@@ -7,7 +7,6 @@ import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
@@ -228,12 +227,16 @@ public final class TaskScheduledMapMaster {
           final String requestedTaskId = message.getRegisteredExecutor();
           final String executorId = taskExecutorIdMap.get(requestedTaskId);
 
+         //  LOG.info("Send reply for location of {}, {} / {}",
+         //   messageContext.getRequestId(),
+         //   requestedTaskId, executorId);
+
           messageContext.reply(ControlMessage.Message.newBuilder()
-          .setId(messageContext.getRequestId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.TaskScheduled)
-          .setRegisteredExecutor(requestedTaskId + "," + executorId)
-          .build());
+            .setId(messageContext.getRequestId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.TaskScheduled)
+            .setRegisteredExecutor(requestedTaskId + "," + executorId)
+            .build());
           break;
         }
 

@@ -33,7 +33,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.executor.common.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;

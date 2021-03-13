@@ -120,7 +120,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private CurrentState currentState = CurrentState.RUNNING;
 
-  private final OffloadingManager offloadingManager;
+  // private final OffloadingManager offloadingManager;
 
   private final PipeManagerWorker pipeManagerWorker;
 
@@ -150,18 +150,18 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorThreadQueue executorThreadQueue,
                                  final InputPipeRegister inputPipeRegister,
                                  final StateStore stateStore,
-                                 final OffloadingManager offloadingManager,
+                                //  final OffloadingManager offloadingManager,
                                  final PipeManagerWorker pipeManagerWorker,
                                  final OutputCollectorGenerator outputCollectorGenerator,
                                  final byte[] bytes,
-                                 final OffloadingPreparer offloadingPreparer,
+                                 // final OffloadingPreparer offloadingPreparer,
                                  final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
-    this.offloadingManager = offloadingManager;
+    // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
@@ -185,8 +185,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     final long st = System.currentTimeMillis();
 
+    LOG.info("Start to registering input output pipe {}", taskId);
+
     task.getTaskOutgoingEdges().forEach(edge -> {
-      LOG.info("Task outgoing edge {}", edge);
+      LOG.info("Task outgoing edge for {} {}", taskId, edge);
       final IRVertex src = edge.getSrcIRVertex();
       final IRVertex dst = edge.getDstIRVertex();
       taskOutgoingEdges.putIfAbsent(src.getId(), new LinkedList<>());
@@ -217,6 +219,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
         }
       }
+
+      LOG.info("End of task outgoing edge for {} {}", taskId, edge);
     });
 
     LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
@@ -234,7 +238,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final long st1 = System.currentTimeMillis();
     prepare(task, irVertexDag, intermediateDataIOFactory);
 
-    offloadingPreparer.prepare(taskId, bytes);
+    // offloadingPreparer.prepare(taskId, bytes);
 
     LOG.info("Task {} prepar time: {}", taskId, System.currentTimeMillis() - st1);
     prepared.set(true);
@@ -538,6 +542,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
       });
 
+    LOG.info("End of source vertex prepare {}", taskId);
+
       // Parent-task read
       // TODO #285: Cache broadcasted data
       task.getTaskIncomingEdges()
@@ -558,48 +564,59 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
           if (irVertex instanceof OperatorVertex) {
 
+            // LOG.info("Adding data fetcher for {} / {}", taskId, irVertex.getId());
+
             final StageEdge edge = pair.left();
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
                 outputCollectorMap.get(irVertex.getId()), taskId);
 
-              final int parallelism = edge
-                .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+            final int parallelism = edge
+              .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
 
-              final CommunicationPatternProperty.Value comm =
-                edge.getPropertyValue(CommunicationPatternProperty.class).get();
+            final CommunicationPatternProperty.Value comm =
+              edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-              final DataFetcher df = new MultiThreadParentTaskDataFetcher(
-                taskId,
-                edge.getSrcIRVertex(),
-                edge,
-                dataFetcherOutputCollector);
+            final DataFetcher df = new MultiThreadParentTaskDataFetcher(
+              taskId,
+              edge.getSrcIRVertex(),
+              edge,
+              dataFetcherOutputCollector);
 
-              edgeToDataFetcherMap.put(edge.getId(), df);
+            edgeToDataFetcherMap.put(edge.getId(), df);
 
-              if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+            // LOG.info("Adding data fetcher 22 for {} / {}, parallelism {}",
+            //  taskId, irVertex.getId(), parallelism);
+
+            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+              inputPipeRegister.registerInputPipe(
+                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                edge.getId(),
+                task.getTaskId(),
+                parentTaskReader);
+
+              // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
+
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+
+            } else {
+              for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
-                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
                   edge.getId(),
                   task.getTaskId(),
                   parentTaskReader);
-
-                taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
-
-              } else {
-                for (int i = 0; i < parallelism; i++) {
-                  inputPipeRegister.registerInputPipe(
-                    RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
-                    edge.getId(),
-                    task.getTaskId(),
-                    parentTaskReader);
-                }
-
-                taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
               }
 
-              allFetchers.add(df);
+              // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
+
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
+            }
+
+            allFetchers.add(df);
+
+            // LOG.info("End of adding data fetcher for {} / {}", taskId, irVertex.getId());
           }
         });
     // return sortedHarnessList;
@@ -665,75 +682,82 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
   }
 
-  private void flushBuffer() {
-
-    if (!bufferedData.isEmpty()) {
-      // flush buffered data
-      if (currentState.equals(CurrentState.OFFLOADED)) {
-
-        // Write to offloaded task
-        bufferedData.forEach(e -> {
-          offloadedCnt.getAndIncrement();
-          offloadingManager.offloadIntermediateData(taskId, e);
-          processedBufferData += 1;
-
-          final long curr = System.currentTimeMillis();
-          if (curr - prevFlushBufferTrackTime >= 2) {
-            final long elapsed = curr - prevFlushBufferTrackTime;
-            if (processedBufferData * (1000 / (double)elapsed) > desirableRate(curr)) {
-              // Throttle !!
-              try {
-                Thread.sleep(2);
-              } catch (InterruptedException e1) {
-                e1.printStackTrace();
-              }
-            } else {
-              prevFlushBufferTrackTime = curr;
-              processedBufferData = 0;
-            }
-          }
-        });
-
-        bufferedData.clear();
-
-      } else if (currentState.equals(CurrentState.RUNNING)) {
-
-        bufferedData.forEach(e -> handleInternalData(
-          edgeToDataFetcherMap.get(e.getEdgeId()), e.getData()));
-        bufferedData.clear();
-      } else {
-        throw new RuntimeException("Invalid fliush " + currentState);
-      }
-    }
-
-    /*
-    if (!bufferedSourceData.isEmpty()) {
-      // flush buffered data
-      if (currentState.equals(CurrentState.OFFLOADED)) {
-
-        // Write to offloaded task
-        final String edgeId = sourceVertexDataFetchers.get(0).getEdgeId();
-        final Serializer serializer = serializerManager.getSerializer(edgeId);
-        bufferedSourceData.forEach(e ->
-          offloadingManager.offloadSourceData(taskId, edgeId, e, serializer));
-        bufferedSourceData.clear();
-
-      } else if (currentState.equals(CurrentState.RUNNING)) {
-
-        final String edgeId = sourceVertexDataFetchers.get(0).getEdgeId();
-
-        bufferedSourceData.forEach(e -> handleInternalData(
-          edgeToDataFetcherMap.get(edgeId), e));
-        bufferedSourceData.clear();
-      } else {
-        throw new RuntimeException("Invalid fliush " + currentState);
-      }
-    }
-    */
-  }
+//  private void flushBuffer() {
+//
+//    if (!bufferedData.isEmpty()) {
+//      // flush buffered data
+//      if (currentState.equals(CurrentState.OFFLOADED)) {
+//
+//        // Write to offloaded task
+//        bufferedData.forEach(e -> {
+//          offloadedCnt.getAndIncrement();
+//          offloadingManager.offloadIntermediateData(taskId, e);
+//          processedBufferData += 1;
+//
+//          final long curr = System.currentTimeMillis();
+//          if (curr - prevFlushBufferTrackTime >= 2) {
+//            final long elapsed = curr - prevFlushBufferTrackTime;
+//            if (processedBufferData * (1000 / (double)elapsed) > desirableRate(curr)) {
+//              // Throttle !!
+//              try {
+//                Thread.sleep(2);
+//              } catch (InterruptedException e1) {
+//                e1.printStackTrace();
+//              }
+//            } else {
+//              prevFlushBufferTrackTime = curr;
+//              processedBufferData = 0;
+//            }
+//          }
+//        });
+//
+//        bufferedData.clear();
+//
+//      } else if (currentState.equals(CurrentState.RUNNING)) {
+//
+//        bufferedData.forEach(e -> handleInternalData(
+//          edgeToDataFetcherMap.get(e.getEdgeId()), e.getData()));
+//        bufferedData.clear();
+//      } else {
+//        throw new RuntimeException("Invalid fliush " + currentState);
+//      }
+//    }
+//  }
 
   @Override
   public void handleData(final String edgeId,
+                         final TaskHandlingEvent taskHandlingEvent) {
+    if (taskHandlingEvent instanceof TaskOffloadedDataOutputEvent) {
+      // This is the output of the offloaded task
+      final TaskOffloadedDataOutputEvent output = (TaskOffloadedDataOutputEvent) taskHandlingEvent;
+      if (output.getDstIds().size() > 1) {
+        pipeManagerWorker.broadcast(output.getTaskId(),
+          output.getEdgeId(),
+          output.getDstIds(),
+          output.getDataByteBuf());
+      } else {
+        pipeManagerWorker.writeData(output.getTaskId(),
+          output.getEdgeId(),
+          output.getDstIds().get(0),
+          output.getDataByteBuf());
+      }
+    } else if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+      // input
+      switch (currentState) {
+        case RUNNING: {
+          final Object data = taskHandlingEvent.getData();
+          // LOG.info("Handling data for task {}, index {}, watermark {}",
+          //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+          handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+          break;
+        }
+        default:
+          throw new RuntimeException("Invalid state " + currentState);
+      }
+    }
+  }
+
+  private void prevHandleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     if (taskHandlingEvent.isOffloadingMessage()) {
       // control message for prepareOffloading
@@ -754,8 +778,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             e.printStackTrace();
             throw new RuntimeException(e);
           }
-          // stateStore.put(taskId + "-taskWatermarkManager", bytes);
-          offloadingManager.offloading(taskId);
+          // offloadingManager.offloading(taskId);
           currentState = CurrentState.OFFLOAD_PENDING;
           prevFlushBufferTrackTime = System.currentTimeMillis();
           break;
@@ -775,13 +798,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           LOG.info("Offlodaing done {}", taskId);
           currentState = CurrentState.OFFLOADED;
           flushBufferTime = System.currentTimeMillis();
-          flushBuffer();
+          // flushBuffer();
           LOG.info("End of flush buffer {}", taskId);
           break;
         }
         case DEOFFLOADING: {
           LOG.info("Deoffloading {}", taskId);
-          offloadingManager.deoffloading(taskId);
+          // offloadingManager.deoffloading(taskId);
           currentState = CurrentState.DEOFFLOAD_PENDING;
           break;
         }
@@ -791,7 +814,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           restore();
           currentState = CurrentState.RUNNING;
 
-          flushBuffer();
+          // flushBuffer();
           break;
         }
         default:
@@ -823,7 +846,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             }
             rateControl();
             offloadedCnt.getAndIncrement();
-            offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
+            // offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
           }
           case DEOFFLOAD_PENDING:
@@ -836,6 +859,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               throw new RuntimeException("buffer should be empty");
             }
 
+            /*
             if (offloadingManager.canOffloadPartial(taskId)) {
               // send partial data
               if (!offloadingManager.offloadPartialDataOrNot(taskId, taskHandlingEvent)) {
@@ -844,11 +868,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               }
             } else {
               final Object data = taskHandlingEvent.getData();
-              // LOG.info("Handling data for task {}, index {}, watermark {}",
-              //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
-
               handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
             }
+            */
             break;
           }
           default:

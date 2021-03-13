@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.management.OperatingSystemMXBean;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -11,26 +13,25 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.coder.FSTSingleton;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.Executor;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.ByteTransfer;
 import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,9 +58,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final int executorThreadNum;
   private final ConcurrentMap<SocketChannel, Boolean> channels;
-  private final String executorId;
-  private final String parentExecutorAddress;
-  private final int parentExecutorDataPort;
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final Map<String, Double> samplingMap;
   private final boolean isLocalSource;
@@ -90,36 +88,38 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final String nameServerAddr;
   private final int nameServerPort;
+  private final String executorId;
+  private final int flushPeriod;
+
+  private Executor executor;
 
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
                             final boolean isLocalSource,
-                            final String parentExecutorId,
-                            final String parentExecutorAddress,
-                            final int parentExecutorDataPort,
                             final int stateStorePort,
                             final String nameServerAddr,
-                            final int nameServerPort) {
+                            final int nameServerPort,
+                            final String executorId,
+                            final int flushPeriod) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
-      executorThreadNum, samplingMap, isLocalSource, parentExecutorId, parentExecutorAddress, parentExecutorDataPort);
+      executorThreadNum, samplingMap, isLocalSource);
     this.stateStorePort = stateStorePort;
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
-    this.executorId = parentExecutorId;
     this.samplingMap = samplingMap;
     this.isLocalSource = isLocalSource;
     this.serializerManager = new DefaultSerializerManagerImpl();
     this.indexMap = new ConcurrentHashMap<>();
     this.indexTaskMap = new ConcurrentHashMap<>();
-    this.parentExecutorAddress = parentExecutorAddress;
-    this.parentExecutorDataPort = parentExecutorDataPort;
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
 
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
+    this.executorId = executorId;
+    this.flushPeriod = flushPeriod;
   }
 
   public void encode(final DataOutputStream dos) {
@@ -131,13 +131,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         dos.writeDouble(samplingMap.get(key));
       }
       dos.writeBoolean(isLocalSource);
-      dos.writeUTF(executorId);
-      dos.writeUTF(parentExecutorAddress);
-      dos.writeInt(parentExecutorDataPort);
       dos.writeInt(stateStorePort);
 
       dos.writeUTF(nameServerAddr);
       dos.writeInt(nameServerPort);
+      dos.writeUTF(executorId);
+      dos.writeInt(flushPeriod);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -156,17 +155,17 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         samplingMap.put(key, val);
       }
       final boolean isLocalSource = dis.readBoolean();
-      final String executorId = dis.readUTF();
-      final String executorAddr = dis.readUTF();
-      final int parentDataPort = dis.readInt();
       final int stateStorePort = dis.readInt();
 
       final String nameServerAddr = dis.readUTF();
       final int nameServerPort = dis.readInt();
+      final String executorId = dis.readUTF();
+      final int flushPeriod = dis.readInt();
 
 
       return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
-        executorId, executorAddr, parentDataPort, stateStorePort, nameServerAddr, nameServerPort);
+        stateStorePort,
+        nameServerAddr, nameServerPort, executorId, flushPeriod);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -264,9 +263,45 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.monitoringThread = new MonitoringThread(1000, 1.0);
 
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(true));
+    jcb.bindNamedParameter(MessageParameters.SenderId.class, executorId);
+
+    final ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      jcb.bindNamedParameter(EvalConf.SamplingJsonString.class, objectMapper.writeValueAsString(samplingMap));
+    } catch (JsonProcessingException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    jcb.bindNamedParameter(MessageParameters.NameServerAddr.class, nameServerAddr);
+    jcb.bindNamedParameter(MessageParameters.NameServerPort.class, Integer.toString(nameServerPort));
+
     jcb.bindImplementation(MessageEnvironment.class, NettyWorkerEnvironment.class);
+    jcb.bindImplementation(ByteTransport.class, LambdaByteTransport.class);
+
+    jcb.bindNamedParameter(JobConf.ExecutorId.class, executorId);
+    jcb.bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class);
+    jcb.bindNamedParameter(EvalConf.FlushPeriod.class, Integer.toString(flushPeriod));
+    jcb.bindNamedParameter(EvalConf.ExecutorThreadNum.class, Integer.toString(executorThreadNum));
+
+    jcb.bindImplementation(StateStore.class, NettyVMStateStoreClient.class);
+    jcb.bindNamedParameter(NettyVMStateStoreClient.NettyVMStoreAddr.class, nameServerAddr);
+    jcb.bindNamedParameter(NettyVMStateStoreClient.NettyVMStorePort.class, Integer.toString(stateStorePort));
 
 
+    final Configuration conf = jcb.build();
+
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
+
+    try {
+      executor = injector.getInstance(Executor.class);
+      executor.start();
+    } catch (InjectionException e) {
+      e.printStackTrace();
+    }
+
+    /*
     this.executorMetrics = new ExecutorMetrics();
     this.throttleRate = context.throttleRate;
     this.prepareService = Executors.newCachedThreadPool();
@@ -321,8 +356,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
           context.testing));
       executorThreads.get(i).start();
     }
+    */
 
-    LOG.info("Executor thread created: {}", parentExecutorAddress);
+    LOG.info("Executor thread created: {}", executorId);
   }
 
   private void calculateProcessedEvent() {
@@ -348,6 +384,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     LOG.info(sb.toString());
   }
 
+  /*
   @Override
   public Channel getDataChannel() {
     return parentExecutorChannel;
@@ -361,6 +398,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public int getDataChannelPort() {
     return Integer.valueOf(parentExecutorChannel.localAddress().toString().split(":")[1]);
   }
+  */
 
   @Override
   public void onData(Object event, OffloadingOutputCollector a) {
@@ -403,7 +441,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         executorMetrics.taskInputProcessRateMap
           .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
-        launchTask(task, task.getIrDag(), e.offloaded);
+        throw new RuntimeException("TODO: launchTask");
+        // launchTask(task, task.getIrDag(), e.offloaded);
       } catch (Exception e1) {
         e1.printStackTrace();
         throw new RuntimeException(e1);
@@ -421,6 +460,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     clientTransport.close();
   }
 
+
+  /*
   private void launchTask(final Task task,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                           final boolean offloaded) {
@@ -435,16 +476,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
       e.getPropertyValue(CompressionProperty.class).orElse(null),
       e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-
-    /*
-    irDag.getVertices().forEach(v -> {
-      irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-        e.getPropertyValue(CompressionProperty.class).orElse(null),
-        e.getPropertyValue(DecompressionProperty.class).orElse(null)));
-    });
-    */
 
     LOG.info("{} Launch task: {}", executorId, task.getTaskId());
 
@@ -490,4 +521,5 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       throw new RuntimeException(e);
     }
   }
+  */
 }

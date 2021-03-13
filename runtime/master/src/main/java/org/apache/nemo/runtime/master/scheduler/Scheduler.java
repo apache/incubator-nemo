@@ -19,8 +19,8 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.common.TaskState;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.Nullable;

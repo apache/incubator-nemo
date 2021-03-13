@@ -116,6 +116,8 @@ public class VMWorker {
     try {
       acceptor = serverBootstrap.bind(
         new InetSocketAddress(ADDRESS, port)).sync().channel();
+
+      LOG.info("Server channel binded " + port);
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

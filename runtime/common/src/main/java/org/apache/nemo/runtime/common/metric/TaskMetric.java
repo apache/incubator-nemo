@@ -18,8 +18,9 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
+import org.apache.nemo.common.StateTransitionEvent;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.common.TaskState;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;

@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID;
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Persistent connection for sending messages to master.

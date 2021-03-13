@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.master.scheduler;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 
 import javax.inject.Inject;
 

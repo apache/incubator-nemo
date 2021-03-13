@@ -23,6 +23,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.nemo.runtime.executor.common.LambdaChannelMap;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
 
   private final PipeManagerWorker pipeManagerWorker;
+  private final LambdaChannelMap lambdaChannelMap;
 
   /**
    * The number of bytes consisting body of a control frame to be read next.
@@ -97,8 +99,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private int pipeIndex;
   private List<Integer> currPipeIndices;
 
-  public FrameDecoder(final PipeManagerWorker pipeManagerWorker) {
+  public FrameDecoder(final PipeManagerWorker pipeManagerWorker,
+                      final LambdaChannelMap lambdaChannelMap) {
     this.pipeManagerWorker = pipeManagerWorker;
+    this.lambdaChannelMap = lambdaChannelMap;
   }
 
   @Override
@@ -107,7 +111,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     while (true) {
       final boolean toContinue;
       if (controlBodyBytesToRead > 0) {
-        toContinue = onControlBodyAdded(in, out);
+        toContinue = onControlBodyAdded(ctx, in, out);
       } else if (dataBodyBytesToRead > 0) {
         toContinue = onDataBodyAdded(in);
         // toContinue = in.readableBytes() > 0;
@@ -235,7 +239,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * @return {@code true} if the control frame body was emitted, {@code false} otherwise
    * @throws InvalidProtocolBufferException when failed to parse
    */
-  private boolean onControlBodyAdded(final ByteBuf in, final List out)
+  private boolean onControlBodyAdded(final ChannelHandlerContext ctx, final ByteBuf in, final List out)
       throws InvalidProtocolBufferException {
     assert (controlBodyBytesToRead > 0);
     assert (dataBodyBytesToRead == 0);
@@ -265,8 +269,10 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       out.add(taskControlMessage);
     } else if (taskControlMessage
       .type.equals(TaskControlMessage.TaskControlMessageType.REGISTER_EXECUTOR))  {
-      // TODO-1: Register Lambda executor channel
-      throw new RuntimeException("not implemented yet");
+      final String executorId = (String) taskControlMessage.event;
+      LOG.info("Registration lambda channel {}/{}", executorId, ctx.channel().remoteAddress());
+      lambdaChannelMap.lambdaChannelMap.put(executorId, ctx.channel());
+
     } else {
       pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
     }

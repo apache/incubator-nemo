@@ -23,7 +23,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,6 @@ import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EX
 
 /**
  * (WARNING) This class must be thread-safe.
- * Maintains map between executor id and {@link ExecutorRepresenter}.
  */
 @DriverSide
 @ThreadSafe

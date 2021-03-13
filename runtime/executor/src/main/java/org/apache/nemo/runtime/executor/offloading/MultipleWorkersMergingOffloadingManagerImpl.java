@@ -4,10 +4,9 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.executor.NettyStateStore;
-import org.apache.nemo.runtime.executor.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.TaskExecutorMapWrapper;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
+import org.apache.nemo.runtime.common.NettyStateStore;
+import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.lambdaexecutor.NetworkUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -32,7 +31,6 @@ public final class MultipleWorkersMergingOffloadingManagerImpl extends AbstractO
                                                       final EvalConf evalConf,
                                                       final PipeIndexMapWorker pipeIndexMapWorker,
                                                       @Parameter(JobConf.ExecutorId.class) final String executorId,
-                                                      final ByteTransport byteTransport,
                                                       final NettyStateStore nettyStateStore) {
     super(workerFactory, taskExecutorMapWrapper, evalConf, pipeIndexMapWorker, executorId,
       NetworkUtils.getPublicIP(), nettyStateStore.getPort(), true,

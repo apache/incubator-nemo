@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
+import org.apache.nemo.common.Event;
+
 /**
  * Event for data transfer, such as data read or write.
  */

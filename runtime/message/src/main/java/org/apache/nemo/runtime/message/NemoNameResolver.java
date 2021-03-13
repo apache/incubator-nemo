@@ -3,9 +3,8 @@ package org.apache.nemo.runtime.message;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +24,11 @@ public final class NemoNameResolver {
 
   @Inject
   private NemoNameResolver(
-    @Parameter(NameResolverNameServerPort.class) final int nameServerPort,
-    @Parameter(NameResolverNameServerAddr.class) final String nameServerAddr,
+    @Parameter(MessageParameters.NameServerPort.class) final int nameServerPort,
+    @Parameter(MessageParameters.NameServerAddr.class) final String nameServerAddr,
+    @Parameter(JobConf.ExecutorId.class) final String senderId,
     final MessageEnvironment messageEnvironment) throws ExecutionException, InterruptedException {
+
     this.nameResolver = messageEnvironment.asyncConnect(
       MessageEnvironment.MASTER_ID, NAMING_REQUEST_ID,
       new InetSocketAddress(nameServerAddr, nameServerPort)).get();

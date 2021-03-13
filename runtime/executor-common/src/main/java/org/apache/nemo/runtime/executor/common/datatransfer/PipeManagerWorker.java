@@ -19,8 +19,10 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.nemo.runtime.executor.common.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.*;
@@ -33,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
  *                         or retrieves a saved pipe connection (write)
  */
 @ThreadSafe
+@DefaultImplementation(PipeManagerWorkerImpl.class)
 public interface PipeManagerWorker extends InputPipeRegister {
 
   void broadcast(final String srcTaskId,

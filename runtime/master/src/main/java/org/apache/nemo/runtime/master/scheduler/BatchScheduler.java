@@ -32,11 +32,10 @@ import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexPropert
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.runtime.common.state.StageState;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;

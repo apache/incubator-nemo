@@ -12,4 +12,5 @@ public interface StateStore {
   void put(final String taskId, byte[] bytes);
   boolean containsState(final String taskId);
   void close();
+  int getPort();
 }

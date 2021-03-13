@@ -29,7 +29,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
-import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;

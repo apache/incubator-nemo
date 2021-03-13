@@ -132,6 +132,9 @@ public final class PipeIndexMaster {
             throw new RuntimeException("No task index for task " + key);
           }
 
+          // LOG.info("Reply pipe index for {}/{}/{}/{}",
+          //  srcTaskId, edgeId, dstTaskId, pipeKeyIndexMap.get(key));
+
           messageContext.reply(
             ControlMessage.Message.newBuilder()
               .setId(messageContext.getRequestId())

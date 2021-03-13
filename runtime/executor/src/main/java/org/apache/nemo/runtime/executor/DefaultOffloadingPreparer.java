@@ -1,16 +1,10 @@
 package org.apache.nemo.runtime.executor;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.common.OffloadingPreparer;
-import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
+import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 
 import javax.inject.Inject;
-import java.io.IOException;
-
-import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 
 public final class DefaultOffloadingPreparer implements OffloadingPreparer {
 
