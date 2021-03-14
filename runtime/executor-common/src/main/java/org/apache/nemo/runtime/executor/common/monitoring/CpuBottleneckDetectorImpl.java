@@ -57,58 +57,65 @@ public final class CpuBottleneckDetectorImpl implements CpuBottleneckDetector {
   @Override
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
-      final double curCpuLoad = profiler.getCpuLoad();
-      final Pair<Integer, Integer> processOffloadEvent = taskEventRateCalculator.calculateProcessedEvent();
-      LOG.info("Current cpu load: {}, # processed events: {}, # offloaded events {}, total events {}, consecutive: {}/{}, threshold: {} in {}",
-        curCpuLoad, processOffloadEvent.left(), processOffloadEvent.right(),
-        processOffloadEvent.left() + processOffloadEvent.right(),
-        currConsecutive, k, threshold, executorId);
+      try {
+        final double curCpuLoad = profiler.getCpuLoad();
+        final Pair<Integer, Integer> processOffloadEvent = taskEventRateCalculator.calculateProcessedEvent();
+        LOG.info("Current cpu load: {}, # processed events: {}, # offloaded events {}, total events {}, consecutive: {}/{}, threshold: {} in {}",
+          curCpuLoad, processOffloadEvent.left(), processOffloadEvent.right(),
+          processOffloadEvent.left() + processOffloadEvent.right(),
+          currConsecutive, k, threshold, executorId);
 
-      final int processedEvent = processOffloadEvent.left();
+        /*
+        final int processedEvent = processOffloadEvent.left();
 
-      if (currConsecutive <= k || curCpuLoad < threshold) {
-        // prevent bias
-        LOG.info("Add model to {} / {}", curCpuLoad, processedEvent);
-        cpuEventModel.add(curCpuLoad, processedEvent);
-      }
-
-      if (curCpuLoad > threshold) {
-        currConsecutive += 1;
-
-        if (currConsecutive == k) {
-          // bottleneck!
-
-          currBottleneckId++;
-          final BottleneckEvent event =
-            new BottleneckEvent(currBottleneckId,
-              System.currentTimeMillis() - (k * r),
-              curCpuLoad, BottleneckEvent.Type.START, processedEvent);
-          eventHandlers.keySet().forEach((eventHandler) -> {
-            eventHandler.onNext(event);
-          });
+        if (currConsecutive <= k || curCpuLoad < threshold) {
+          // prevent bias
+          LOG.info("Add model to {} / {}", curCpuLoad, processedEvent);
+          cpuEventModel.add(curCpuLoad, processedEvent);
         }
-      } else {
-        if (currConsecutive >= k) {
-          // we already detect the bottleneck
-          if (endConsecutive == k) {
+
+        if (curCpuLoad > threshold) {
+          currConsecutive += 1;
+
+          if (currConsecutive == k) {
+            // bottleneck!
+
+            currBottleneckId++;
             final BottleneckEvent event =
               new BottleneckEvent(currBottleneckId,
-                System.currentTimeMillis(),
-                curCpuLoad, BottleneckEvent.Type.END, processedEvent);
+                System.currentTimeMillis() - (k * r),
+                curCpuLoad, BottleneckEvent.Type.START, processedEvent);
             eventHandlers.keySet().forEach((eventHandler) -> {
               eventHandler.onNext(event);
             });
-
-            currConsecutive = 0;
-            endConsecutive = 0;
-          } else {
-            endConsecutive += 1;
           }
         } else {
-          // didn't detect the bottleneck
-          // decrease curr consecutive
-          currConsecutive = Math.max(0, currConsecutive - 1);
+          if (currConsecutive >= k) {
+            // we already detect the bottleneck
+            if (endConsecutive == k) {
+              final BottleneckEvent event =
+                new BottleneckEvent(currBottleneckId,
+                  System.currentTimeMillis(),
+                  curCpuLoad, BottleneckEvent.Type.END, processedEvent);
+              eventHandlers.keySet().forEach((eventHandler) -> {
+                eventHandler.onNext(event);
+              });
+
+              currConsecutive = 0;
+              endConsecutive = 0;
+            } else {
+              endConsecutive += 1;
+            }
+          } else {
+            // didn't detect the bottleneck
+            // decrease curr consecutive
+            currConsecutive = Math.max(0, currConsecutive - 1);
+          }
         }
+        */
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }, r, r, TimeUnit.MILLISECONDS);
   }

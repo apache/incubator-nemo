@@ -727,6 +727,20 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
+    // input
+    switch (currentState) {
+      case RUNNING: {
+        final Object data = taskHandlingEvent.getData();
+        // LOG.info("Handling data for task {}, index {}, watermark {}",
+        //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+        handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+        break;
+      }
+      default:
+        throw new RuntimeException("Invalid state " + currentState);
+    }
+
+    /*
     if (taskHandlingEvent instanceof TaskOffloadedDataOutputEvent) {
       // This is the output of the offloaded task
       final TaskOffloadedDataOutputEvent output = (TaskOffloadedDataOutputEvent) taskHandlingEvent;
@@ -755,6 +769,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           throw new RuntimeException("Invalid state " + currentState);
       }
     }
+    */
   }
 
   private void prevHandleData(final String edgeId,
