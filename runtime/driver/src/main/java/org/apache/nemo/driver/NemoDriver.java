@@ -73,10 +73,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
+import java.util.stream.Collectors;
 
 /**
  * REEF Driver for Nemo.
@@ -214,14 +217,20 @@ public final class NemoDriver {
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          final int stageId = new Integer(args[2]);
-          jobScaler.sendTaskStopSignal(num, stageId);
+          final String[] stageIds = args[2].split(",");
+          final List<String> stages =
+            Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+            .collect(Collectors.toList());
+          jobScaler.sendTaskStopSignal(num, stages);
 
         } else if (decision.equals("reclaim-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          final int stageId = new Integer(args[2]);
-          jobScaler.sendPrevMovedTaskStopSignal(num, stageId);
+          final String[] stageIds = args[2].split(",");
+          final List<String> stages =
+            Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+            .collect(Collectors.toList());
+          jobScaler.sendPrevMovedTaskStopSignal(num, stages);
 
         } else if (decision.equals("throttle-source")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
