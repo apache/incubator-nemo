@@ -134,8 +134,6 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void close() {
-    // Send control message and receive ack !!
-    // TODO
   }
 
   @Override

@@ -685,23 +685,19 @@ public final class JobLauncher {
 
   private static Class<? extends OffloadingRequester> getRequesterConf(final String offloadingType) {
 
-    if (offloadingType.equals("local")) {
-      return YarnExecutorOffloadingRequester.class;
-    } else if (offloadingType.equals("lambda")) {
+    if (offloadingType.equals("lambda")) {
       return LambdaOffloadingRequester.class;
     } else {
-      throw new RuntimeException("Invalid prepareOffloading requester " + offloadingType);
+      return YarnExecutorOffloadingRequester.class;
     }
   }
 
   private static Class<? extends LambdaContainerRequester>
   getLambdaRequesterConf(final String offloadingType) {
-    if (offloadingType.equals("local")) {
-      return LambdaYarnResourceRequester.class;
-    } else if (offloadingType.equals("lambda")) {
+    if (offloadingType.equals("lambda")) {
       return LambdaAWSResourceRequester.class;
     } else {
-      throw new RuntimeException("Invalid prepareOffloading requester " + offloadingType);
+      return LambdaYarnResourceRequester.class;
     }
   }
 

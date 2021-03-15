@@ -1148,20 +1148,51 @@ public final class JobScaler {
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
-    int cnt = 0;
-    final int total = num * stageIds.size();
-    final Iterator<String> iterator = prevMovedTask.iterator();
+    String prevStageId = null;
+    final List<String> prevStoppedTasks = new LinkedList<>();
 
-    while (iterator.hasNext()) {
-      final String taskId = iterator.next();
-      final String executorId = taskExecutorIdMap.get(taskId);
+    for (final String stageId : stageIds) {
 
-      if (stageIds.contains(RuntimeIdManager.getStageIdFromTaskId(taskId))) {
-        taskScheduledMap.stopTask(taskId);
-        cnt += 1;
-        iterator.remove();
+      if (prevStageId != null &&
+        (Integer.valueOf(prevStageId.split("Stage")[1]) ==
+          Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
+        // waiting for the finish of scheduling
+        for (final String taskId : prevStoppedTasks) {
+          LOG.info("Waiting for prev stage task rescheduling {}, task {}", prevStageId, taskId);
+          if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(prevStageId)) {
+            while (!taskScheduledMap.isTaskScheduled(taskId)) {
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              // Waiting for task scheduling
+            }
+          }
+        }
+        LOG.info("End of waiting for stage rescheduling {}", prevStageId);
+      }
+
+      prevStageId = stageId;
+      prevStoppedTasks.clear();
+
+      LOG.info("Start stopping {}", stageId);
+      for (final String taskId : prevMovedTask) {
+        if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId)) {
+          stageStoppedCnt.putIfAbsent(stageId, 0);
+
+          if (stageStoppedCnt.get(stageId) < num) {
+            LOG.info("Stop task {}", taskId);
+            taskScheduledMap.stopTask(taskId);
+            prevStoppedTasks.add(taskId);
+
+            stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+          }
+        }
       }
     }
+
+    prevMovedTask.clear();
   }
 
   public synchronized void sendTaskStopSignal(final int num,
@@ -1174,25 +1205,56 @@ public final class JobScaler {
 
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
-    for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
-      final String taskId = entry.getKey();
-      final String executorId = entry.getValue();
+    String prevStageId = null;
+    final List<String> prevStoppedTasks = new LinkedList<>();
 
-      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+    for (final String stageId : stageIds) {
 
-      if (!prevMovedTask.contains(taskId)) {
-        if (!executorRegistry.getExecutorRepresentor(executorId)
-          .getContainerType().equals(ResourcePriorityProperty.SOURCE)
-          && stageIds.contains(stageId)) {
+      if (prevStageId != null &&
+        (Integer.valueOf(prevStageId.split("Stage")[1]) ==
+        Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
+        // waiting for the finish of scheduling
+        for (final String taskId : prevStoppedTasks) {
+          LOG.info("Waiting for prev stage task rescheduling {}, task {}", prevStageId, taskId);
+          if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(prevStageId)) {
+            while (!taskScheduledMap.isTaskScheduled(taskId)) {
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              // Waiting for task scheduling
+            }
+          }
+        }
+        LOG.info("End of waiting for stage rescheduling {}", prevStageId);
+      }
 
-          stageStoppedCnt.putIfAbsent(stageId, 0);
+      prevStageId = stageId;
+      prevStoppedTasks.clear();
 
-          if (stageStoppedCnt.get(stageId) < num) {
-            LOG.info("Stop task {}", taskId);
-            taskScheduledMap.stopTask(taskId);
-            prevMovedTask.add(taskId);
+      LOG.info("Start stopping {}", stageId);
+      for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
+        final String taskId = entry.getKey();
+        final String executorId = entry.getValue();
 
-            stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+        if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId)) {
+          if (!prevMovedTask.contains(taskId)) {
+            if (!executorRegistry.getExecutorRepresentor(executorId)
+              .getContainerType().equals(ResourcePriorityProperty.SOURCE)
+              && stageIds.contains(stageId)) {
+
+              stageStoppedCnt.putIfAbsent(stageId, 0);
+
+              if (stageStoppedCnt.get(stageId) < num) {
+                LOG.info("Stop task {}", taskId);
+                taskScheduledMap.stopTask(taskId);
+                prevMovedTask.add(taskId);
+                prevStoppedTasks.add(taskId);
+
+                stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+              }
+            }
           }
         }
       }

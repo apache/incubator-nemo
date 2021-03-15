@@ -1127,6 +1127,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     }
 
+
     if (!isStateless) {
       statefulTransform.checkpoint();
     }

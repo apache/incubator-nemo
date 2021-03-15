@@ -35,7 +35,7 @@ public final class NettyChannelInitializer
 
     ch.pipeline()
       .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
-        Integer.MAX_VALUE, 0, 4, 0, 4))
+        1024 * 1024 * 25, 0, 4, 0, 4))
       .addLast("frameEncoder", new LengthFieldPrepender(4))
       .addLast("decoder", new OffloadingEventCoder.OffloadingEventDecoder())
       .addLast("encoder", new OffloadingEventCoder.OffloadingEventEncoder())

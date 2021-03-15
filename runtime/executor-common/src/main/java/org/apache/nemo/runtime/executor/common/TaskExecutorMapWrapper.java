@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public final class TaskExecutorMapWrapper {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorMapWrapper.class.getName());
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private final ConcurrentMap<String, List<TaskExecutor>> stageTaskMap;
@@ -37,6 +40,8 @@ public final class TaskExecutorMapWrapper {
     stageTaskMap.putIfAbsent(stageId, new ArrayList<>());
 
     final List<TaskExecutor> tasks = stageTaskMap.get(stageId);
+
+    LOG.info("Put task {}", taskExecutor.getId());
 
     synchronized (tasks) {
       tasks.add(taskExecutor);

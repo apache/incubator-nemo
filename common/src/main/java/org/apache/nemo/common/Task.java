@@ -31,6 +31,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.offloading.common.TaskCaching;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -45,6 +47,8 @@ import java.util.stream.Stream;
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
+  private static final Logger LOG = LoggerFactory.getLogger(Task.class.getName());
+
   private final String taskId;
   private final int taskIndex;
   private final List<StageEdge> taskIncomingEdges;
@@ -83,6 +87,8 @@ public final class Task implements Serializable {
     this.downstreamTasks = calculateDownstreamTasks();
     this.upstreamTasks = calculateUpstreamTasks();
     this.isStreamVertex = irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex;
+    LOG.info("Task {} scheduled ... upstreamTasks {}",
+      taskId, upstreamTasks.values());
   }
 
   public static Task decode(DataInputStream dis,

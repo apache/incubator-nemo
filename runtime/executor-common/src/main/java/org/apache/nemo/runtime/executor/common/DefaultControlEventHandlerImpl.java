@@ -114,7 +114,17 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
     taskExecutor.checkpoint(true);
 
+    // flush pipes
+    pipeManagerWorker.flush();
+
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     taskExecutorMapWrapper.removeTask(taskId);
+
 
     toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()

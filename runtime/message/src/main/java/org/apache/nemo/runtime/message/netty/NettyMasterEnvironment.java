@@ -87,7 +87,7 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
     protected void initChannel(SocketChannel ch) throws Exception {
       ch.pipeline()
         .addLast("frameDecoder", new LengthFieldBasedFrameDecoder(
-          Integer.MAX_VALUE, 0, 4, 0, 4))
+          1024 * 1024 * 25, 0, 4, 0, 4))
         .addLast("frameEncoder", new LengthFieldPrepender(4))
         .addLast("decoder", new NettyControlMessageCodec.Decoder(false))
         .addLast("encoder", new NettyControlMessageCodec.Encoder(false))

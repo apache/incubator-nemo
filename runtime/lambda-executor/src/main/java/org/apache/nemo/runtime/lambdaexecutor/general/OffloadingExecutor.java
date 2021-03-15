@@ -87,6 +87,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final int flushPeriod;
 
   private Executor executor;
+  private final boolean controlLogging;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -96,7 +97,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final String nameServerAddr,
                             final int nameServerPort,
                             final String executorId,
-                            final int flushPeriod) {
+                            final int flushPeriod,
+                            final boolean controlLogging) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource);
@@ -110,6 +112,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.indexTaskMap = new ConcurrentHashMap<>();
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
+    this.controlLogging = controlLogging;
 
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
@@ -132,6 +135,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       dos.writeInt(nameServerPort);
       dos.writeUTF(executorId);
       dos.writeInt(flushPeriod);
+
+      dos.writeBoolean(controlLogging);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -156,11 +161,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final int nameServerPort = dis.readInt();
       final String executorId = dis.readUTF();
       final int flushPeriod = dis.readInt();
+      final boolean controlLogging = dis.readBoolean();
 
 
       return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
         stateStorePort,
-        nameServerAddr, nameServerPort, executorId, flushPeriod);
+        nameServerAddr, nameServerPort, executorId, flushPeriod, controlLogging);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -283,6 +289,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     jcb.bindImplementation(StateStore.class, NettyVMStateStoreClient.class);
     jcb.bindNamedParameter(NettyVMStateStoreClient.NettyVMStoreAddr.class, nameServerAddr);
     jcb.bindNamedParameter(NettyVMStateStoreClient.NettyVMStorePort.class, Integer.toString(stateStorePort));
+
+    jcb.bindNamedParameter(EvalConf.ControlLogging.class, Boolean.toString(controlLogging));
 
 
     final Configuration conf = jcb.build();

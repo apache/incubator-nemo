@@ -83,7 +83,7 @@ public final class NettyVMStateStore implements StateStore {
     protected void initChannel(SocketChannel ch) throws Exception {
       ch.pipeline()
       .addLast(new ObjectEncoder()) // (1)
-      .addLast(new ObjectDecoder(ClassResolvers
+      .addLast(new ObjectDecoder(1024 * 1024 * 200, ClassResolvers
         .cacheDisabled(getClass().getClassLoader())))// (2)
       .addLast(new NettyVmStateStoreHandler()); // (3)
     }

@@ -107,7 +107,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @return set of identifiers of tasks that were running in this executor.
    */
   @Override
-  public Set<String> onExecutorFailed() {
+  public synchronized Set<String> onExecutorFailed() {
     failedTasks.addAll(runningComplyingTasks.values());
     failedTasks.addAll(runningNonComplyingTasks.values());
     final Set<String> taskIds = Stream.concat(runningComplyingTasks.keySet().stream(),
@@ -122,7 +122,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param task the task to run
    */
   @Override
-  public void onTaskScheduled(final Task task) {
+  public synchronized void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
@@ -168,7 +168,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param taskId id of the completed task
    */
   @Override
-  public void onTaskExecutionComplete(final String taskId) {
+  public synchronized void onTaskExecutionComplete(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(completedTask);
     completeTasks.add(completedTask);
@@ -179,7 +179,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param taskId id of the completed task
    */
   @Override
-  public void onTaskExecutionStop(final String taskId) {
+  public synchronized void onTaskExecutionStop(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(completedTask);
   }
@@ -189,7 +189,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param taskId id of the Task
    */
   @Override
-  public void onTaskExecutionFailed(final String taskId) {
+  public synchronized void onTaskExecutionFailed(final String taskId) {
     final Task failedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(failedTask);
     failedTasks.add(failedTask);
@@ -207,7 +207,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @return the current snapshot of set of Tasks that are running in this executor.
    */
   @Override
-  public Set<Task> getRunningTasks() {
+  public synchronized Set<Task> getRunningTasks() {
     return Stream.concat(runningComplyingTasks.values().stream(),
         runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
   }
@@ -224,7 +224,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @return the number of running {@link Task}s that complies to the executor slot restriction.
    */
   @Override
-  public int getNumOfComplyingRunningTasks() {
+  public synchronized int getNumOfComplyingRunningTasks() {
     return runningComplyingTasks.size();
   }
 
@@ -232,7 +232,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @return the number of running {@link Task}s that does not comply to the executor slot restriction.
    */
   @Override
-  public int getNumOfNonComplyingRunningTasks() {
+  public synchronized int getNumOfNonComplyingRunningTasks() {
     return runningNonComplyingTasks.size();
   }
 

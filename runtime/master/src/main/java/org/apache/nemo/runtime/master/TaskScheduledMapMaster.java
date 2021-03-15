@@ -62,6 +62,7 @@ public final class TaskScheduledMapMaster {
   private boolean copied = false;
 
   public synchronized void stopTask(final String taskId) {
+
     final String executorId = taskExecutorIdMap.remove(taskId);
 
     LOG.info("Send task " + taskId + " stop to executor " + executorId);
@@ -85,6 +86,10 @@ public final class TaskScheduledMapMaster {
       final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
       stageTasks.removeIf(task -> task.equals(taskId));
     }
+  }
+
+  public synchronized boolean isTaskScheduled(final String taskId) {
+    return taskExecutorIdMap.containsKey(taskId);
   }
 
   public synchronized Task removeTask(final String taskId) {
