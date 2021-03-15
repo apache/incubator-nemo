@@ -2,7 +2,6 @@ package org.apache.nemo.common;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class TaskMetrics {
@@ -10,85 +9,69 @@ public final class TaskMetrics {
   private final int window = 20;
   private long updatedTime;
 
-  private final AtomicLong inputElement;
-  private final AtomicLong outputElement;
-  private final AtomicLong computation;
-  private final AtomicLong inbytes;
-  private final AtomicLong serializedTime;
-
-
-  private final List<Long> inputElements;
-  private final List<Long> outputElements;
-  private final List<Long> computations;
+  private long inputElement;
+  private long outputElement;
+  private long computation;
+  private long inbytes;
+  private long outbytes;
+  private long deserializedTime;
+  private long serializedTime;
 
   public TaskMetrics() {
-    this.inputElement = new AtomicLong();
-    this.outputElement = new AtomicLong();
-    this.computation = new AtomicLong();
-    this.inbytes = new AtomicLong();
-    this.serializedTime = new AtomicLong();
-    this.updatedTime = System.currentTimeMillis();
-
-    this.inputElements = new LinkedList<>();
-    this.outputElements = new LinkedList<>();
-    this.computations = new LinkedList<>();
+    this.inputElement = 0;
+    this.outputElement = 0;
+    this.computation = 0;
+    this.inbytes = 0;
+    this.outbytes = 0;
+    this.deserializedTime = 0;
+    this.serializedTime = 0;
+    this.updatedTime = 0;
   }
 
   public void incrementInputElement() {
-    inputElement.incrementAndGet();
+    inputElement += 1;
   }
 
   public void incrementOutputElement() {
-    outputElement.incrementAndGet();
+    outputElement += 1;
   }
 
   public void incrementComputation(final long update) {
-    computation.addAndGet(update / 1000);
+    computation += (update / 1000);
   }
 
   public void incrementInBytes(final long update) {
-    inbytes.addAndGet(update);
+    inbytes += update;
+  }
+
+  public void incrementOutBytes(final long update) {
+    outbytes +=  update;
+  }
+
+  public void incrementDeserializedTime(final long updated) {
+    deserializedTime += (updated / 1000);
   }
 
   public void incrementSerializedTime(final long updated) {
-    serializedTime.addAndGet(updated / 1000);
+    serializedTime += (updated / 1000);
   }
 
+  private RetrievedMetrics prevMetric = new RetrievedMetrics(0, 0, 0, 0, 0, 0, 0);
+
   public RetrievedMetrics retrieve() {
-    final long ie = inputElement.get();
-    final long oe = outputElement.get();
-    final long c = computation.get();
-    final long ib = inbytes.get();
-    final long st = serializedTime.get();
+    final long ie = inputElement;
+    final long oe = outputElement;
+    final long c = computation;
+    final long ib = inbytes;
+    final long dst = deserializedTime;
+    final long ob = outbytes;
+    final long st = serializedTime;
 
-    /*
-    inputElements.add(ie);
-    outputElements.add(oe);
-    computations.add(c);
+    final RetrievedMetrics newMetric = new RetrievedMetrics(ie, oe, c, ib, dst, ob, st);
 
-    if (inputElements.size() > window) {
-      inputElements.remove(0);
-    }
-
-    if (outputElements.size() > window) {
-      outputElements.remove(0);
-    }
-
-    if (computations.size() > window) {
-      computations.remove(0);
-    }
-    return new RetrievedMetrics(avgCnt(inputElements),
-      avgCnt(outputElements), avgCnt(computations), numKeys);
-
-    */
-
-    inputElement.getAndAdd(-ie);
-    outputElement.getAndAdd(-oe);
-    computation.getAndAdd(-c);
-    inbytes.getAndAdd(-ib);
-    serializedTime.getAndAdd(-st);
-
-    return new RetrievedMetrics(ie, oe, c, ib, st);
+    final RetrievedMetrics delta = delta(newMetric, prevMetric);
+    prevMetric = newMetric;
+    return delta;
 
     /*
     final long currTime = System.currentTimeMillis();
@@ -108,9 +91,16 @@ public final class TaskMetrics {
       computation.getAndAdd(-updateComp);
     }
     */
+  }
 
-
-
+  public static RetrievedMetrics delta(RetrievedMetrics newMetric, RetrievedMetrics oldMetric) {
+    return new RetrievedMetrics(newMetric.inputElement - oldMetric.inputElement,
+      newMetric.outputElement - oldMetric.outputElement,
+      newMetric.computation - oldMetric.computation,
+      newMetric.inbytes - oldMetric.inbytes,
+      newMetric.serializedTime - oldMetric.serializedTime,
+      newMetric.outbytes - oldMetric.outbytes,
+      newMetric.deserTime - oldMetric.deserTime);
   }
 
   private long avgCnt(final List<Long> l) {
@@ -123,17 +113,23 @@ public final class TaskMetrics {
     public final long computation;
     public final long inbytes;
     public final long serializedTime;
+    public final long outbytes;
+    public final long deserTime;
 
     public RetrievedMetrics(final long inputElement,
                             final long outputElement,
                             final long computation,
                             final long inbytes,
-                            final long serializedTime) {
+                            final long serializedTime,
+                            final long outbytes,
+                            final long deserTime) {
       this.inputElement = inputElement;
       this.outputElement = outputElement;
       this.computation = computation;
       this.inbytes = inbytes;
       this.serializedTime = serializedTime;
+      this.outbytes = outbytes;
+      this.deserTime = deserTime;
     }
   }
 }

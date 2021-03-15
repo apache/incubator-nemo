@@ -52,10 +52,14 @@ public final class TaskEventRateCalculator {
       sb.append(taskMetrics.outputElement);
       sb.append("\tptime:");
       sb.append(taskMetrics.computation);
-      sb.append("\tstime:");
-      sb.append(taskMetrics.serializedTime);
+      sb.append("\tdsertime:");
+      sb.append(taskMetrics.deserTime);
       sb.append("\tinbytes:");
       sb.append(taskMetrics.inbytes);
+      sb.append("\tsertime:");
+      sb.append(taskMetrics.serializedTime);
+      sb.append("\toutbytes:");
+      sb.append(taskMetrics.outbytes);
       sb.append("\n");
     }
 

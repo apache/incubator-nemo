@@ -26,7 +26,10 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
+import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,75 +61,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
 
+
+  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
+
   @Inject
-  public DataFrameEncoder() {
-  }
-
-  public ByteBuf encode(final ChannelHandlerContext ctx, final DataFrame in) {
-    // encode header
-    byte flags = (byte) 0;
-
-    if (in.stopContext) {
-      flags |= (byte) (1 << 4);
-    }
-
-    flags |= (byte) (1 << 3);
-    // in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA
-    flags |= (byte) (1 << 2);
-    if (in.opensSubStream) {
-      flags |= (byte) (1 << 1);
-    }
-    if (in.closesContext) {
-      flags |= (byte) (1 << 0);
-    }
-
-    ByteBuf header;
-
-    switch (in.type) {
-      case NORMAL:
-        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
-        header.writeByte(flags);
-        header.writeByte(in.type.ordinal());
-        header.writeInt(in.pipeIndices.get(0));
-        header.writeInt((int) in.length);
-        break;
-      case NORMAL_BATCH: {
-        header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
-        header.writeByte(flags);
-        header.writeByte(in.type.ordinal());
-        header.writeInt(in.pipeIndex);
-        header.writeInt(Integer.BYTES + (int) in.length);
-        break;
-      }
-      case BROADCAST: {
-        header = ctx.alloc().ioBuffer(HEADER_LENGTH
-          + in.pipeIndices.size() * Integer.BYTES, HEADER_LENGTH
-          + in.pipeIndices.size() * Integer.BYTES);
-
-        header.writeByte(flags);
-        header.writeByte(in.type.ordinal());
-        header.writeInt(in.pipeIndices.size());
-        for (int pipeIndex : in.pipeIndices) {
-          header.writeInt(pipeIndex);
-        }
-        header.writeInt((int) in.length);
-        break;
-      }
-      default:
-        throw new RuntimeException("invalid type " + in.type);
-    }
-
-    // in.length should not exceed the range of unsigned int
-    assert (in.length <= LENGTH_MAX);
-
-    // encode body
-    final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
-    cbb.addComponents(true, header, (ByteBuf) in.body);
-
-    // recycle DataFrame object
-    in.recycle();
-
-    return cbb;
+  public DataFrameEncoder(final PipeIndexMapWorker pipeIndexMapWorker,
+                          final TaskExecutorMapWrapper taskExecutorMapWrapper) {
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
   }
 
   @Override
@@ -139,6 +82,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     switch (in.type) {
       case NORMAL:
+        final long st = System.nanoTime();
         header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
         header.writeByte(flags);
         header.writeByte(in.type.ordinal());
@@ -148,6 +92,15 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
         if (in.body != null) {
           out.add(header);
           out.add((ByteBuf) in.body);
+
+          final String taskId = pipeIndexMapWorker.getKey(in.pipeIndex).getLeft();
+          final TaskMetrics tm = taskExecutorMapWrapper.getTaskExecutor(taskId).getTaskMetrics();
+            tm.incrementOutBytes(header.readableBytes() + ((ByteBuf)(in.body)).readableBytes());
+
+          final long et = System.nanoTime();
+
+          tm.incrementSerializedTime(et - st);
+
           // final CompositeByteBuf cbb = ctx.alloc().compositeBuffer(2);
           // cbb.addComponents(true, header, (ByteBuf) in.body);
           // out.add(cbb);

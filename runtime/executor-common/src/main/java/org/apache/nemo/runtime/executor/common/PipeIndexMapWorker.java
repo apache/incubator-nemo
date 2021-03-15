@@ -94,6 +94,7 @@ public final class PipeIndexMapWorker {
 
         final ControlMessage.TaskIndexInfoMessage m = msg.getTaskIndexInfoMsg();
         map.put(key, (int) m.getTaskIndex());
+        keyMap.put((int) m.getTaskIndex(), key);
         return map.get(key);
       } catch (Exception e) {
         e.printStackTrace();

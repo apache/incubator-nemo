@@ -52,7 +52,6 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -607,6 +606,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
+
     final long ns = System.nanoTime();
 
     outputCollector.setInputTimestamp(dataElement.timestamp);
@@ -715,7 +715,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         final Object data = taskHandlingEvent.getData();
         final long serializedEnd = System.nanoTime();
 
-        taskMetrics.incrementSerializedTime(serializedEnd - serializedStart);
+        taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
 
         // LOG.info("Handling data for task {}, index {}, watermark {}",
         //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);

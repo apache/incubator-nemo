@@ -57,11 +57,11 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
     //header.getBytes(header.readableBytes(), loggingBytes);
     //LOG.info("Loging bytes in dataFrameEncoder {}", loggingBytes);
 
-    final ByteBuf dataBuf = dataFrameEncoder.encode(ctx, in.dataFrame);
+    // final ByteBuf dataBuf = dataFrameEncoder.encode(ctx, in.dataFrame);
 
     //LOG.info("Relay data {} to {}", id, ctx.channel().remoteAddress());
 
-    cbb.addComponents(true, header, dataBuf);
+    // cbb.addComponents(true, header, dataBuf);
     out.add(cbb);
   }
 }
