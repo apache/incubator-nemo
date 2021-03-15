@@ -25,7 +25,8 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
   private final DataFrameEncoder dataFrameEncoder;
 
   public RelayDataFrameEncoder() {
-    this.dataFrameEncoder = new DataFrameEncoder();
+    //this.dataFrameEncoder = new DataFrameEncoder();
+    this.dataFrameEncoder = null;
   }
 
   @Override
