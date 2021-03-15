@@ -13,7 +13,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class TaskEventRateCalculator {
   private static final Logger LOG = LoggerFactory.getLogger(TaskEventRateCalculator.class.getName());

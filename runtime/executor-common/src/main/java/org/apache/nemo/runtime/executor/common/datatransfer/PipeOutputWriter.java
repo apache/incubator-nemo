@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
+import org.apache.nemo.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
@@ -111,9 +111,7 @@ public final class PipeOutputWriter implements OutputWriter {
     taskMetrics.incrementOutputElement();
     //executorMetrics.increaseOutputCounter(stageId);
 
-    final TimestampAndValue tis = (TimestampAndValue) element;
-
-    writeData(tis, getPipeToWrite(tis), false);
+    writeData(element, getPipeToWrite(element), false);
   }
 
   @Override
@@ -240,7 +238,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   final Random random = new Random();
 
-  private List<String> getPipeToWrite(final TimestampAndValue element) {
+  private List<String> getPipeToWrite(final Object value) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
     if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
@@ -252,9 +250,15 @@ public final class PipeOutputWriter implements OutputWriter {
       return Collections.singletonList(dstTaskIds.get(random.nextInt(dstTaskIds.size())));
     } else {
       // Shuffle
-      final int partitionKey = (int) partitioner.partition(element.value);
-      //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
-      return Collections.singletonList(dstTaskIds.get(partitionKey));
+      if (value instanceof TimestampAndValue) {
+        final int partitionKey = (int) partitioner.partition(((TimestampAndValue)value).value);
+        //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
+        return Collections.singletonList(dstTaskIds.get(partitionKey));
+      } else {
+        final int partitionKey = (int) partitioner.partition(value);
+        //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
+        return Collections.singletonList(dstTaskIds.get(partitionKey));
+      }
     }
   }
 }

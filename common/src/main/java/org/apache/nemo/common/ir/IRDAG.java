@@ -288,14 +288,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
           // Annotations for efficient data transfers - toSV
           toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
-          toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
-          toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
+          // toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
+          // toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
 
           // Annotations for efficient data transfers - fromSV
           fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
-          fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
-          fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
-          fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
+
+          // fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
+          // fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
+          // fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
 
           // Track the new edges.
           builder.connectVertices(toSV);

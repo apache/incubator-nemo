@@ -91,7 +91,8 @@ public final class PipeInputReader implements InputReader {
   @Override
   public void addData(final int pipeIndex, ByteBuf data) {
     executorThreadQueue.addEvent(
-      new TaskHandlingDataEvent(taskId, runtimeEdge.getId(), pipeIndex, data, serializer));
+      new TaskHandlingDataEvent(taskId, runtimeEdge.getId(), pipeIndex, data,
+        serializer.getDecoderFactory()));
   }
 
   @Override

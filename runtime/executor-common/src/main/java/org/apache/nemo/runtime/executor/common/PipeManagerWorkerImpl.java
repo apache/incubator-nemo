@@ -21,11 +21,15 @@ package org.apache.nemo.runtime.executor.common;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.coder.BytesEncoderFactory;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.Pair;
@@ -38,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
@@ -85,6 +90,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   private final boolean onLambda;
 
+  private final SerializerManager serializerManager;
+
+  private final StreamVertexSerializerManager streamVertexSerializerManager;
+
   //          edge1                                               edge2
   //  T1  --(index)-->  [InputReader (T4, edge1)]  --> <T4> --> [OutputWriter]  --(index)-->   T5
   //  T2  --(index)-->                                                        --(index)-->   T6
@@ -97,6 +106,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final ExecutorChannelManagerMap executorChannelManagerMap,
                                 final TaskScheduledMapWorker taskScheduledMapWorker,
                                 final PipeIndexMapWorker pipeIndexMapWorker,
+                                final StreamVertexSerializerManager streamVertexSerializerManager,
+                                final SerializerManager serializerManager,
                                 final TaskExecutorMapWrapper taskExecutorMapWrapper) {
     this.executorId = executorId;
     this.evalConf = evalConf;
@@ -106,6 +117,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     this.executorChannelManagerMap = executorChannelManagerMap;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.serializerManager = serializerManager;
+    this.streamVertexSerializerManager = streamVertexSerializerManager;
     LOG.info("PipeManagerWorkImpl instance {} in executor {}", hashCode(), executorId);
   }
 
@@ -322,12 +335,16 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final Map<String, List<Integer>> executorDstTaskIndicesMap = new HashMap<>();
 
     dstTasks.forEach(dstTask -> {
-      final String executorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask, false);
-      if (executorId == null || executorId.equals("null")) {
-        throw new RuntimeException("executor id is null for task " + dstTask);
+      String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(dstTask, false);
+      if (remoteExecutorId == null || remoteExecutorId.equals("null")) {
+        if (taskExecutorMapWrapper.containsTask(dstTask)) {
+          remoteExecutorId = executorId;
+        } else {
+          throw new RuntimeException("executor id is null for task " + dstTask);
+        }
       }
-      executorDstTaskIndicesMap.putIfAbsent(executorId, new LinkedList<>());
-      executorDstTaskIndicesMap.get(executorId).add(
+      executorDstTaskIndicesMap.putIfAbsent(remoteExecutorId, new LinkedList<>());
+      executorDstTaskIndicesMap.get(remoteExecutorId).add(
         pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTask));
     });
 
@@ -385,35 +402,124 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           // local
           for (final int index : pipeIndices) {
             final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-            taskExecutorMapWrapper.getTaskExecutorThread(key.getRight())
-              .addEvent(new TaskLocalDataEvent(key.getRight(), key.getMiddle(), index, event));
+            sendToLocal(serializer, key.getLeft(), key.getRight(), key.getMiddle(), index, event);
           }
         } else {
           // remote
           final Channel channel = executorChannelManagerMap
             .getExecutorChannel(remoteExecutorId);
-
-          final ByteBuf byteBuf = channel.alloc().ioBuffer();
-          final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
-
-          try {
-            final OutputStream wrapped = byteBufOutputStream;
-            //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
-            final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-            //LOG.info("Element encoder: {}", encoder);
-            encoder.encode(event);
-            wrapped.close();
-          } catch (final IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-
-          channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
-            pipeIndices, byteBuf, byteBuf.readableBytes(), true))
-            .addListener(listener);
+          sendToRemote(channel, srcTaskId, pipeIndices, serializer, event);
         }
 
       }
+    }
+  }
+
+  private void sendToRemote(final Channel channel,
+                            final String srcTaskId,
+                            final List<Integer> pipeIndices,
+                            final Serializer serializer,
+                            final Object event) {
+    final ByteBuf byteBuf = channel.alloc().ioBuffer();
+    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+
+    if (streamVertexSerializerManager.isStreamVertexTask(srcTaskId)) {
+      if (event instanceof TimestampAndValue && ((TimestampAndValue) event).value instanceof ByteBuf) {
+        // Remote-Remote
+        try {
+          byteBufOutputStream.write(0x00);
+          final DataOutputStream dis = new DataOutputStream(byteBufOutputStream);
+          dis.writeLong(((TimestampAndValue) event).timestamp);
+
+          final CompositeByteBuf cb = channel.alloc().compositeBuffer(2);
+          cb.addComponents(true, byteBuf, (ByteBuf) ((TimestampAndValue) event).value);
+
+          if (pipeIndices.size() > 1) {
+            channel.write(DataFrameEncoder.DataFrame.newInstance(
+              pipeIndices, cb, cb.readableBytes(), true))
+              .addListener(listener);
+          } else {
+             channel.write(DataFrameEncoder.DataFrame.newInstance(
+              pipeIndices.get(0), cb, cb.readableBytes(), true))
+              .addListener(listener);
+          }
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      } else {
+        // Local-Remote
+
+        // a -> local stream vertex -> remote vertex
+        // we should encode the data with the a-> edge serializer
+        try {
+          final OutputStream wrapped = byteBufOutputStream;
+          //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+          final EncoderFactory.Encoder encoder = streamVertexSerializerManager.getInputEncoderFactory(srcTaskId)
+            .create(wrapped);
+          //LOG.info("Element encoder: {}", encoder);
+          encoder.encode(event);
+          wrapped.close();
+        } catch (final IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+
+        if (pipeIndices.size() > 1) {
+          channel.write(DataFrameEncoder.DataFrame.newInstance(
+            pipeIndices, byteBuf, byteBuf.readableBytes(), true))
+            .addListener(listener);
+        } else {
+           channel.write(DataFrameEncoder.DataFrame.newInstance(
+            pipeIndices.get(0), byteBuf, byteBuf.readableBytes(), true))
+            .addListener(listener);
+        }
+      }
+    } else {
+      try {
+        final OutputStream wrapped = byteBufOutputStream;
+        //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+        //LOG.info("Element encoder: {}", encoder);
+        encoder.encode(event);
+        wrapped.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      if (pipeIndices.size() > 1) {
+        channel.write(DataFrameEncoder.DataFrame.newInstance(
+          pipeIndices, byteBuf, byteBuf.readableBytes(), true))
+          .addListener(listener);
+      } else {
+        channel.write(DataFrameEncoder.DataFrame.newInstance(
+          pipeIndices.get(0), byteBuf, byteBuf.readableBytes(), true))
+          .addListener(listener);
+      }
+    }
+  }
+
+  private void sendToLocal(final Serializer serializer,
+                           final String srcTaskId,
+                           final String dstTaskId,
+                           final String edgeId,
+                           final int index,
+                           final Object event) {
+    try {
+      if (streamVertexSerializerManager.isStreamVertexTask(srcTaskId)) {
+        taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
+          .addEvent(new TaskRelayDataEvent(dstTaskId, edgeId, index, event,
+            ((NemoEventDecoderFactory)streamVertexSerializerManager.getOutputDecoderFactory(srcTaskId))
+              .getValueDecoderFactory()));
+      } else {
+        taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
+          .addEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception sending to local " + dstTaskId + ", " + edgeId + ", " + event);
     }
   }
 
@@ -430,7 +536,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           .count() == 0) {
           iterator.remove();
           broadcastInternal(srcTaskId, pending.edgeId, pending.dstTasks, pending.serializer, pending.event);
-          LOG.info("Flush broadcast from {} to {}", srcTaskId, pending.dstTasks);
+          // LOG.info("Flush broadcast from {} to {}", srcTaskId, pending.dstTasks);
         }
       }
 
@@ -513,7 +619,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         final Channel channel = executorChannelManagerMap
           .getExecutorChannel(remoteExecutorId);
 
-        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(
+        channel.write(DataFrameEncoder.DataFrame.newInstance(
           pipeIndices, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true))
           .addListener(listener);
       }
@@ -586,13 +692,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
             pipeOuptutIndicesForDstTask.get(dstTaskId).add(index);
           } else {
-            taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-              .addEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
+            sendToLocal(serializer, srcTaskId, dstTaskId, edgeId, index, event);
           }
         }
       } else {
-        taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-          .addEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
+        sendToLocal(serializer, srcTaskId, dstTaskId, edgeId, index, event);
       }
     } else {
       // remote task
@@ -611,7 +715,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
       if (sendToRemote) {
         final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
-
+        sendToRemote(optional.get(), srcTaskId, Collections.singletonList(index), serializer, event);
+        /*
         final ByteBuf byteBuf;
         try {
           byteBuf =
@@ -637,6 +742,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           index, byteBuf, byteBuf.readableBytes(), true);
 
         optional.get().writeAndFlush(finalData).addListener(listener);
+        */
       }
     }
   }
@@ -685,7 +791,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             pendingOutputPipeMap.get(index);
             final List<Object> pendingData = pendingOutputPipeMap.remove(index);
             pendingData.forEach(data -> {
-              sendPendingDataToLocal(key.getRight(), key.getMiddle(), index, data);
+              sendPendingDataToLocal(key.getLeft(), key.getRight(), key.getMiddle(), index, data);
             });
           }
         }
@@ -754,16 +860,17 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   }
 
-  private void sendPendingDataToLocal(String dstTaskid, String edgeId,
+  private void sendPendingDataToLocal(
+    String srcTaskId,
+    String dstTaskid, String edgeId,
                                       int index, Object data) {
     if (data instanceof TaskControlMessage) {
       taskExecutorMapWrapper.getTaskExecutorThread(dstTaskid)
         .addEvent((TaskControlMessage) data);
     } else {
       final Pair<Serializer, Object> e = (Pair<Serializer, Object>) data;
-      taskExecutorMapWrapper.getTaskExecutorThread(dstTaskid)
-        .addEvent(
-          new TaskLocalDataEvent(dstTaskid, edgeId, index, e.right()));
+      sendToLocal(e.left(),
+        srcTaskId, dstTaskid, edgeId, index, e.right());
     }
   }
 
@@ -774,6 +881,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       final Pair<Serializer, Object> e = (Pair<Serializer, Object>) data;
       final Serializer serializer = e.left();
       final Object event = e.right();
+
+      sendToRemote(channel, pipeIndexMapWorker.getKey(index).getLeft(),
+        Collections.singletonList(index), serializer, event);
+      /*
 
       final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
@@ -793,6 +904,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         ee.printStackTrace();
         throw new RuntimeException(ee);
       }
+      */
     }
   }
 
@@ -826,7 +938,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
             final List<Object> pendingData = pendingOutputPipeMap.remove(index);
             pendingData.forEach(data ->
-              sendPendingDataToLocal(key.getRight(), key.getMiddle(), index, data));
+              sendPendingDataToLocal(key.getLeft(), key.getRight(), key.getMiddle(), index, data));
           } else {
             if (evalConf.controlLogging) {
               LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);

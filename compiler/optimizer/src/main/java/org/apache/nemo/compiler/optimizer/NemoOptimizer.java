@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDa
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
+import org.apache.nemo.compiler.optimizer.policy.StreamingOffloadingPolicy;
 import org.apache.nemo.compiler.optimizer.policy.StreamingPolicy;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -66,6 +67,9 @@ public final class NemoOptimizer implements Optimizer {
       optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
       if (optimizationPolicy instanceof StreamingPolicy) {
         final StreamingPolicy streamingPolicy = (StreamingPolicy) optimizationPolicy;
+        streamingPolicy.build(sourceParallelism);
+      } else if (optimizationPolicy instanceof StreamingOffloadingPolicy) {
+        final StreamingOffloadingPolicy streamingPolicy = (StreamingOffloadingPolicy) optimizationPolicy;
         streamingPolicy.build(sourceParallelism);
       }
       if (policyName == null) {

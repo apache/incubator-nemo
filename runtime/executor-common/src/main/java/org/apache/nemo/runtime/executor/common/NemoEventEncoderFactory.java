@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.common.WatermarkWithIndex;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Serializable;
 
 /**
  * A factory for OffloadingEventEncoder.

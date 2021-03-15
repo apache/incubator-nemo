@@ -124,6 +124,8 @@ public final class Executor {
 
   private final MessageEnvironment messageEnvironment;
 
+  private final StreamVertexSerializerManager streamVertexSerializerManager;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -142,6 +144,7 @@ public final class Executor {
                    final StageExecutorThreadMap stageExecutorThreadMap,
                    // final JobScalingHandlerWorker jobScalingHandlerWorker,
                    final ExecutorThreads executorThreads,
+                   final StreamVertexSerializerManager streamVertexSerializerManager,
                    // final ExecutorMetrics executorMetrics,
                    // final ScalingOutCounter scalingOutCounter,
                    // final SFTaskMetrics sfTaskMetrics,
@@ -157,6 +160,8 @@ public final class Executor {
                    //final CpuEventModel cpuEventModel) {
 
     this.messageEnvironment = messageEnvironment;
+
+    this.streamVertexSerializerManager = streamVertexSerializerManager;
 
     this.taskScheduledMapSender =
       persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
@@ -421,6 +426,7 @@ public final class Executor {
                           final byte[] bytes,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
 
+    streamVertexSerializerManager.register(task);
     final long st = System.currentTimeMillis();
 
     task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),

@@ -1169,7 +1169,7 @@ public final class JobScaler {
 
     taskDispatcher.setReclaiming(false);
 
-    LOG.info("Send task stop signal");
+    LOG.info("Send task stop signal for {} / {}", stageIds, num);
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
 
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();

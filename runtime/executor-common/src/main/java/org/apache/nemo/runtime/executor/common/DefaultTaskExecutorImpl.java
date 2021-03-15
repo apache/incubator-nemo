@@ -19,8 +19,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.TaskMetrics;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
@@ -37,8 +36,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.Task;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
@@ -581,6 +578,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 parentTaskReader);
 
               // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -590,9 +588,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader);
               }
               // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
 
-            taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
 
             allFetchers.add(df);
 
@@ -719,7 +717,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
         // LOG.info("Handling data for task {}, index {}, watermark {}",
         //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
-        handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+
+        try {
+          handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
+            edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
+            " event " + data.getClass() + ", " +
+            ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
+          + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
+        }
         break;
       }
       default:
@@ -911,7 +919,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 //      }
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
-      throw new RuntimeException("Invalid type of event: " + event);
+      throw new RuntimeException("Invalids event type " + event);
+      /*
+      // input for streaming vertex !!
+      final long ns = System.nanoTime();
+      dataFetcher.getOutputCollector().emit(event);
+      final long endNs = System.nanoTime();
+      taskMetrics.incrementComputation(endNs - ns);
+      */
     }
   }
 

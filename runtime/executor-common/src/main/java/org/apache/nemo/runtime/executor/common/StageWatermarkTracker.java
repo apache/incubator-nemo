@@ -50,34 +50,57 @@ public final class StageWatermarkTracker {
 
 
   public synchronized Optional<Long> trackAndEmitWatermarks(final int edgeIndex, final long watermark) {
-    if (edgeIndex == minWatermarkIndex) {
+    if (watermarks.size() == 1) {
+      // single o2o
       // update min watermark
-      watermarks.set(minWatermarkIndex, watermark);
+      watermarks.set(0, watermark);
 
       // find min watermark
-      final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
-      final Long nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
+      final Long nextMinWatermark = watermarks.get(0);
 
       if (nextMinWatermark <= currMinWatermark) {
         // it is possible
-        minWatermarkIndex = nextMinWatermarkIndex;
+        minWatermarkIndex = 0;
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
       } else {
         // Watermark timestamp progress!
         // Emit the min watermark
-        minWatermarkIndex = nextMinWatermarkIndex;
+        minWatermarkIndex = 0;
         currMinWatermark = nextMinWatermark;
         return Optional.of(currMinWatermark);
       }
     } else {
-      // The recent watermark timestamp cannot be less than the previous one
-      // because watermark is monotonically increasing.
-      if (watermarks.get(edgeIndex) > watermark) {
+      if (edgeIndex == minWatermarkIndex) {
+        // update min watermark
+        watermarks.set(minWatermarkIndex, watermark);
 
+        // find min watermark
+        final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
+        final Long nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
+
+        if (nextMinWatermark <= currMinWatermark) {
+          // it is possible
+          minWatermarkIndex = nextMinWatermarkIndex;
+          //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
+          //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
+        } else {
+          // Watermark timestamp progress!
+          // Emit the min watermark
+          minWatermarkIndex = nextMinWatermarkIndex;
+          currMinWatermark = nextMinWatermark;
+          return Optional.of(currMinWatermark);
+        }
       } else {
-        watermarks.set(edgeIndex, watermark);
+        // The recent watermark timestamp cannot be less than the previous one
+        // because watermark is monotonically increasing.
+        if (watermarks.get(edgeIndex) > watermark) {
+
+        } else {
+          watermarks.set(edgeIndex, watermark);
+        }
       }
+
     }
 
     return Optional.empty();

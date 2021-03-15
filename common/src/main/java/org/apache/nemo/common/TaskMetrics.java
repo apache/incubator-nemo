@@ -67,7 +67,7 @@ public final class TaskMetrics {
     final long ob = outbytes;
     final long st = serializedTime;
 
-    final RetrievedMetrics newMetric = new RetrievedMetrics(ie, oe, c, ib, dst, ob, st);
+    final RetrievedMetrics newMetric = new RetrievedMetrics(ie, oe, c, ib, st, ob, dst);
 
     final RetrievedMetrics delta = delta(newMetric, prevMetric);
     prevMetric = newMetric;

@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.offloading.common.TaskCaching;
 
 import java.io.ByteArrayOutputStream;
@@ -53,6 +54,8 @@ public final class Task implements Serializable {
   private final Map<String, Readable> irVertexIdToReadable;
   private final Map<RuntimeEdge, List<String>> downstreamTasks;
   private final Map<RuntimeEdge, List<String>> upstreamTasks;
+
+  public final boolean isStreamVertex;
 
   /**
    *
@@ -79,6 +82,7 @@ public final class Task implements Serializable {
     this.irVertexIdToReadable = irVertexIdToReadable;
     this.downstreamTasks = calculateDownstreamTasks();
     this.upstreamTasks = calculateUpstreamTasks();
+    this.isStreamVertex = irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex;
   }
 
   public static Task decode(DataInputStream dis,

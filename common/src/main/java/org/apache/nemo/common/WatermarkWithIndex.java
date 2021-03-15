@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Objects;
 

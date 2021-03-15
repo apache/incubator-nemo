@@ -42,6 +42,8 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
     dag.topologicalDo(vertex -> {
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()) ||
+         CommunicationPatternProperty.Value.RoundRobin
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           dag.insert(new StreamVertex(), edge);
         }

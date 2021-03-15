@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.coder;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ import java.io.*;
 /**
  * A {@link EncoderFactory} which is used for an array of bytes.
  */
-public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
+public final class BytesEncoderFactory implements EncoderFactory<ByteBuf> {
   private static final Logger LOG = LoggerFactory.getLogger(BytesEncoderFactory.class.getName());
 
   private static final BytesEncoderFactory BYTES_ENCODER_FACTORY = new BytesEncoderFactory();
@@ -47,7 +49,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
   }
 
   @Override
-  public Encoder<byte[]> create(final OutputStream outputStream) {
+  public Encoder<ByteBuf> create(final OutputStream outputStream) {
     return new BytesEncoder(outputStream);
   }
 
@@ -56,10 +58,11 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
     return "BytesEncoderFactory{}";
   }
 
+
   /**
    * BytesEncoder.
    */
-  private final class BytesEncoder implements Encoder<byte[]> {
+  private final class BytesEncoder implements Encoder<ByteBuf> {
 
     private final OutputStream outputStream;
 
@@ -73,11 +76,12 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
     }
 
     @Override
-    public void encode(final byte[] value) throws IOException {
+    public void encode(final ByteBuf value) throws IOException {
       // Write the byte[] as is.
       // Because this interface use the length of byte[] element,
       // the element must not have any padding bytes.
-      outputStream.write(value);
+      ((ByteBufOutputStream) outputStream).buffer().writeBytes(value);
+      value.release();
     }
   }
 }

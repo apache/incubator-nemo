@@ -18,10 +18,16 @@
  */
 package org.apache.nemo.common.coder;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,6 +63,36 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
   @Override
   public String toString() {
     return "BytesDecoderFactory{}";
+  }
+
+  public Object decode(final ByteBuf byteBuf) throws Exception {
+    final ByteBufInputStream inputStream = new ByteBufInputStream(byteBuf);
+
+    final byte isWatermark = (byte) inputStream.read();
+    if (isWatermark == -1) {
+      // end of the input stream
+      throw new EOFException();
+    }
+
+    final DataInputStream dis = new DataInputStream(inputStream);
+
+    if (isWatermark == 0x00) {
+      // this is not a watermark
+      final long timestamp = dis.readLong();
+      //LOG.info("Decode {}", value);
+      return new TimestampAndValue<>(timestamp, byteBuf);
+    } else if (isWatermark == 0x01) {
+      // this is a watermark
+      final WatermarkWithIndex r = WatermarkWithIndex.decode(dis);
+      byteBuf.release();
+      return r;
+    } else if (isWatermark == 0x02) {
+      final Watermark w = Watermark.decode(dis);
+      byteBuf.release();
+      return w;
+    } else {
+      throw new RuntimeException("Watermark decoding failure: " + isWatermark);
+    }
   }
 
   /**

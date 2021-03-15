@@ -18,9 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.common.WatermarkWithIndex;
 import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
