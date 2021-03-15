@@ -1146,8 +1146,10 @@ public final class JobScaler {
     taskDispatcher.setReclaiming(true);
 
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
+    final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
     int cnt = 0;
+    final int total = num * stageIds.size();
     final Iterator<String> iterator = prevMovedTask.iterator();
 
     while (iterator.hasNext()) {
@@ -1158,10 +1160,6 @@ public final class JobScaler {
         taskScheduledMap.stopTask(taskId);
         cnt += 1;
         iterator.remove();
-
-        if (cnt >= num) {
-          break;
-        }
       }
     }
   }
@@ -1174,23 +1172,27 @@ public final class JobScaler {
     LOG.info("Send task stop signal");
     final Map<String, String> taskExecutorIdMap = taskScheduledMap.getTaskExecutorIdMap();
 
-    int stopped = 0;
+    final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
     for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
       final String taskId = entry.getKey();
       final String executorId = entry.getValue();
 
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+
       if (!prevMovedTask.contains(taskId)) {
         if (!executorRegistry.getExecutorRepresentor(executorId)
           .getContainerType().equals(ResourcePriorityProperty.SOURCE)
-          && stageIds.contains(RuntimeIdManager.getStageIdFromTaskId(taskId))) {
-          LOG.info("Stop task {}", taskId);
-          taskScheduledMap.stopTask(taskId);
-          stopped += 1;
-          prevMovedTask.add(taskId);
+          && stageIds.contains(stageId)) {
 
-          if (stopped == num) {
-            break;
+
+          if (stageStoppedCnt.get(stageId) < num) {
+            LOG.info("Stop task {}", taskId);
+            taskScheduledMap.stopTask(taskId);
+            prevMovedTask.add(taskId);
+
+            stageStoppedCnt.putIfAbsent(stageId, 0);
+            stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
           }
         }
       }
