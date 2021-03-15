@@ -82,9 +82,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   final Map<String, Double> samplingMap;
 
-  private final AtomicInteger processedCnt = new AtomicInteger(0);
-  private final AtomicInteger offloadedCnt = new AtomicInteger(0);
-
   private boolean isStateless = true;
 
   private final String executorId;
@@ -92,8 +89,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final long threadId;
 
   private final List<DataFetcher> allFetchers = new ArrayList<>();
-
-  private final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private final ExecutorService prepareService;
 
@@ -360,10 +355,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return offloaded;
   }
 
-  @Override
-  public AtomicLong getTaskExecutionTime() {
-    return taskExecutionTime;
-  }
 
   @Override
   public long getThreadId() {
@@ -379,16 +370,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public boolean isStateless() {
     return isStateless;
   }
-  @Override
-  public AtomicInteger getProcessedCnt() {
-    return processedCnt;
-  }
-
-  @Override
-  public AtomicInteger getOffloadedCnt() {
-    return offloadedCnt;
-  }
-
 
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
@@ -628,7 +609,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
     final long ns = System.nanoTime();
 
-    processedCnt.getAndIncrement();
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
 
@@ -730,7 +710,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // input
     switch (currentState) {
       case RUNNING: {
+        taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
+        final long serializedStart = System.nanoTime();
         final Object data = taskHandlingEvent.getData();
+        final long serializedEnd = System.nanoTime();
+
+        taskMetrics.incrementSerializedTime(serializedEnd - serializedStart);
+
         // LOG.info("Handling data for task {}, index {}, watermark {}",
         //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
         handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
@@ -860,7 +846,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               throw new RuntimeException("buffer should be empty");
             }
             rateControl();
-            offloadedCnt.getAndIncrement();
+            // offloadedCnt.getAndIncrement();
             // offloadingManager.offloadIntermediateData(taskId, taskHandlingEvent);
             break;
           }

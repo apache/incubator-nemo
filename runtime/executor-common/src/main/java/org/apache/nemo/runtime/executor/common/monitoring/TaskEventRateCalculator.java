@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common.monitoring;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
@@ -38,20 +39,23 @@ public final class TaskEventRateCalculator {
       + tasks.size() + " in executor " + executorId + ")----\n");
 
     for (final TaskExecutor taskExecutor : tasks) {
-      final AtomicInteger count = taskExecutor.getProcessedCnt();
-      final AtomicInteger count2 = taskExecutor.getOffloadedCnt();
-      final int cnt = count.get();
-      final int cnt2 = count2.get();
-      sum += cnt;
-      sum2 += cnt2;
-      count.getAndAdd(-cnt);
-      count2.getAndAdd(-cnt2);
+      // final AtomicInteger count = taskExecutor.getProcessedCnt();
+      //final AtomicInteger count2 = taskExecutor.getOffloadedCnt();
+      final TaskMetrics.RetrievedMetrics taskMetrics = taskExecutor.getTaskMetrics().retrieve();
+      sum += taskMetrics.inputElement;
+      sb.append("METRICLOG\t");
       sb.append(taskExecutor.getId());
       sb.append("\t");
-      sb.append("local: ");
-      sb.append(cnt);
-      sb.append(", remote: ");
-      sb.append(cnt2);
+      sb.append("input:");
+      sb.append(taskMetrics.inputElement);
+      sb.append("\toutput:");
+      sb.append(taskMetrics.outputElement);
+      sb.append("\tptime:");
+      sb.append(taskMetrics.computation);
+      sb.append("\tstime:");
+      sb.append(taskMetrics.serializedTime);
+      sb.append("\tinbytes:");
+      sb.append(taskMetrics.inbytes);
       sb.append("\n");
     }
 

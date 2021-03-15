@@ -35,11 +35,8 @@ public interface TaskExecutor extends ExecutorThreadTask {
   public int getNumKeys();
   TaskMetrics getTaskMetrics();
   boolean checkpoint(boolean checkpointSource);
-  AtomicLong getTaskExecutionTime();
   long getThreadId();
   boolean isStateless();
-  AtomicInteger getProcessedCnt();
-  AtomicInteger getOffloadedCnt();
   void setThrottleSourceRate(long rate);
 
   DefaultTaskExecutorImpl.CurrentState getStatus();

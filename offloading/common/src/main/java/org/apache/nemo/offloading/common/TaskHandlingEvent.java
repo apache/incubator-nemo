@@ -8,6 +8,10 @@ public interface TaskHandlingEvent {
 
   boolean isOffloadingMessage();
 
+  default int readableBytes() {
+    return 0;
+  }
+
   ByteBuf getDataByteBuf();
 
   String getEdgeId();

@@ -67,7 +67,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
         dos.writeLong(taskMetric.right().inputElement);
         dos.writeLong(taskMetric.right().outputElement);
         dos.writeLong(taskMetric.right().computation);
-        dos.writeInt(taskMetric.right().numKeys);
+        // dos.writeInt(taskMetric.right().numKeys);
       }
 
       dos.writeDouble(element.cpuUse);

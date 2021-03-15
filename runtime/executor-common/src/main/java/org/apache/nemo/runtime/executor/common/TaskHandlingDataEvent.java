@@ -27,6 +27,11 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
   }
 
   @Override
+  public int readableBytes() {
+    return byteBuf.readableBytes();
+  }
+
+  @Override
   public boolean isControlMessage() {
     return false;
   }

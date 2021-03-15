@@ -11,10 +11,11 @@ public final class TaskMetrics {
   private long updatedTime;
 
   private final AtomicLong inputElement;
-
   private final AtomicLong outputElement;
-
   private final AtomicLong computation;
+  private final AtomicLong inbytes;
+  private final AtomicLong serializedTime;
+
 
   private final List<Long> inputElements;
   private final List<Long> outputElements;
@@ -24,6 +25,8 @@ public final class TaskMetrics {
     this.inputElement = new AtomicLong();
     this.outputElement = new AtomicLong();
     this.computation = new AtomicLong();
+    this.inbytes = new AtomicLong();
+    this.serializedTime = new AtomicLong();
     this.updatedTime = System.currentTimeMillis();
 
     this.inputElements = new LinkedList<>();
@@ -43,11 +46,22 @@ public final class TaskMetrics {
     computation.addAndGet(update / 1000);
   }
 
-  public RetrievedMetrics retrieve(final int numKeys) {
+  public void incrementInBytes(final long update) {
+    inbytes.addAndGet(update);
+  }
+
+  public void incrementSerializedTime(final long updated) {
+    serializedTime.addAndGet(updated / 1000);
+  }
+
+  public RetrievedMetrics retrieve() {
     final long ie = inputElement.get();
     final long oe = outputElement.get();
     final long c = computation.get();
+    final long ib = inbytes.get();
+    final long st = serializedTime.get();
 
+    /*
     inputElements.add(ie);
     outputElements.add(oe);
     computations.add(c);
@@ -63,10 +77,18 @@ public final class TaskMetrics {
     if (computations.size() > window) {
       computations.remove(0);
     }
+    return new RetrievedMetrics(avgCnt(inputElements),
+      avgCnt(outputElements), avgCnt(computations), numKeys);
+
+    */
 
     inputElement.getAndAdd(-ie);
     outputElement.getAndAdd(-oe);
     computation.getAndAdd(-c);
+    inbytes.getAndAdd(-ib);
+    serializedTime.getAndAdd(-st);
+
+    return new RetrievedMetrics(ie, oe, c, ib, st);
 
     /*
     final long currTime = System.currentTimeMillis();
@@ -88,8 +110,7 @@ public final class TaskMetrics {
     */
 
 
-    return new RetrievedMetrics(avgCnt(inputElements),
-      avgCnt(outputElements), avgCnt(computations), numKeys);
+
   }
 
   private long avgCnt(final List<Long> l) {
@@ -100,16 +121,19 @@ public final class TaskMetrics {
     public final long inputElement;
     public final long outputElement;
     public final long computation;
-    public final int numKeys;
+    public final long inbytes;
+    public final long serializedTime;
 
     public RetrievedMetrics(final long inputElement,
                             final long outputElement,
                             final long computation,
-                            final int numKeys) {
+                            final long inbytes,
+                            final long serializedTime) {
       this.inputElement = inputElement;
       this.outputElement = outputElement;
       this.computation = computation;
-      this.numKeys = numKeys;
+      this.inbytes = inbytes;
+      this.serializedTime = serializedTime;
     }
   }
 }

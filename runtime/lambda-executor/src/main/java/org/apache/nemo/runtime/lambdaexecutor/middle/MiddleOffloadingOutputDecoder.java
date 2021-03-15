@@ -73,8 +73,10 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           final long outputElement = dis.readLong();
           final long computation = dis.readLong();
           final int numKeys = dis.readInt();
+          /*
           taskMetrics.add(Pair.of(taskId, new TaskMetrics.RetrievedMetrics(
             inputElement, outputElement, computation, numKeys)));
+            */
         }
 
         if (taskId == null) {

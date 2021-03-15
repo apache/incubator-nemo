@@ -6,8 +6,6 @@ import com.sun.management.OperatingSystemMXBean;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.Level;
@@ -23,7 +21,6 @@ import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendTo
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.ByteTransfer;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.netty.NettyWorkerEnvironment;
@@ -48,8 +45,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDecoderFactory;
-import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getEncoderFactory;
 
 
 public final class OffloadingExecutor implements OffloadingTransform<Object, Object> {
@@ -194,6 +189,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void schedule() {
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
+    /*
     this.scheduledService.scheduleAtFixedRate(() -> {
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
         parentExecutorChannel.flush();
@@ -251,9 +247,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       LOG.info("worker {} processed offloaded event {}, received byte {}",
         ((LambdaRuntimeContext) context).requestId, processSum, ((OffloadingPipeManagerWorkerImpl) pipeManagerWorker).byteReceived);
 
-      calculateProcessedEvent();
-
     }, 10, 1000, TimeUnit.MILLISECONDS);
+     */
   }
 
   @Override
@@ -359,29 +354,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     */
 
     LOG.info("Executor thread created: {}", executorId);
-  }
-
-  private void calculateProcessedEvent() {
-    int sum = 0;
-    int sum2 = 0;
-
-    final StringBuilder sb = new StringBuilder("---- Start of task processed event ----\n");
-
-    for (final TaskExecutor taskExecutor : taskExecutorMap.values()) {
-      final AtomicInteger count = taskExecutor.getProcessedCnt();
-      final int cnt = count.get();
-      sum += cnt;
-      count.getAndAdd(-cnt);
-      sb.append(taskExecutor.getId());
-      sb.append("\t");
-      sb.append("local: ");
-      sb.append(cnt);
-      sb.append("\n");
-    }
-
-    sb.append("----- End of taks processed event ----\n");
-
-    LOG.info(sb.toString());
   }
 
   /*

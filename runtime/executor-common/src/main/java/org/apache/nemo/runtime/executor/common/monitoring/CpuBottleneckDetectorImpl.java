@@ -60,9 +60,8 @@ public final class CpuBottleneckDetectorImpl implements CpuBottleneckDetector {
       try {
         final double curCpuLoad = profiler.getCpuLoad();
         final Pair<Integer, Integer> processOffloadEvent = taskEventRateCalculator.calculateProcessedEvent();
-        LOG.info("Current cpu load: {}, # processed events: {}, # offloaded events {}, total events {}, consecutive: {}/{}, threshold: {} in {}",
-          curCpuLoad, processOffloadEvent.left(), processOffloadEvent.right(),
-          processOffloadEvent.left() + processOffloadEvent.right(),
+        LOG.info("Current cpu load: {}, # processed events: {}, consecutive: {}/{}, threshold: {} in {}",
+          curCpuLoad, processOffloadEvent.left(),
           currConsecutive, k, threshold, executorId);
 
         /*
