@@ -1185,13 +1185,13 @@ public final class JobScaler {
           .getContainerType().equals(ResourcePriorityProperty.SOURCE)
           && stageIds.contains(stageId)) {
 
+          stageStoppedCnt.putIfAbsent(stageId, 0);
 
           if (stageStoppedCnt.get(stageId) < num) {
             LOG.info("Stop task {}", taskId);
             taskScheduledMap.stopTask(taskId);
             prevMovedTask.add(taskId);
 
-            stageStoppedCnt.putIfAbsent(stageId, 0);
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
           }
         }
