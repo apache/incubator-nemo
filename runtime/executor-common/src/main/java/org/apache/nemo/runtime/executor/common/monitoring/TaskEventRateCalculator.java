@@ -43,7 +43,7 @@ public final class TaskEventRateCalculator {
       //final AtomicInteger count2 = taskExecutor.getOffloadedCnt();
       final TaskMetrics.RetrievedMetrics taskMetrics = taskExecutor.getTaskMetrics().retrieve();
       sum += taskMetrics.inputElement;
-      sb.append("METRICLOG\t");
+      sb.append("METRICLOG/" + executorId + "\t");
       sb.append(taskExecutor.getId());
       sb.append("\t");
       sb.append("input:");

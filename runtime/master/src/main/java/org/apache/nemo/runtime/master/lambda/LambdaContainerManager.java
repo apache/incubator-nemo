@@ -245,26 +245,24 @@ public final class LambdaContainerManager {
         }
 
         final WorkerControlProxy proxy = requestIdControlChannelMap.get(rid);
-        LOG.info("Waiting worker init.. send buffer {}", offloadExecutorByteBuf.readableBytes());
+        LOG.info("Waiting worker init for {}.. send buffer {}", rid, offloadExecutorByteBuf.readableBytes());
         proxy.getControlChannel()
           .writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.WORKER_INIT, offloadExecutorByteBuf));
 
         // Waiting worker init
         st = System.currentTimeMillis();
         while (true) {
-          synchronized (lambdaWorkerInitDoneSet) {
-            if (!lambdaWorkerInitDoneSet.contains(rid)) {
-              try {
-                Thread.sleep(50);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              if (System.currentTimeMillis() - st >= 30000) {
-                throw new RuntimeException("Cannot init lambda container " + lambdaExecutorId);
-              }
-            } else {
-              break;
+          if (!lambdaWorkerInitDoneSet.contains(rid)) {
+            try {
+              Thread.sleep(50);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
+            if (System.currentTimeMillis() - st >= 30000) {
+              throw new RuntimeException("Cannot init lambda container for " + rid + "/ " + lambdaExecutorId);
+            }
+          } else {
+            break;
           }
         }
 
