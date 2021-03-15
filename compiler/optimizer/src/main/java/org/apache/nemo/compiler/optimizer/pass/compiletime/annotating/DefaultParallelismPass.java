@@ -72,29 +72,39 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           final Optional<Integer> originalParallelism = vertex.getPropertyValue(ParallelismProperty.class);
           // We manipulate them if it is set as default value of 1.
-          if (!originalParallelism.isPresent()) {
-            vertex.setProperty(ParallelismProperty.of(
-                sourceVertex.getReadables(desiredSourceParallelism).size()));
-          }
+          // if (!originalParallelism.isPresent()) {
+
+          final int size = sourceVertex.getReadables(desiredSourceParallelism).size();
+          System.out.println("Source vertex parallelism set to " + size);
+          vertex.setPropertyPermanently(ParallelismProperty.of(size));
+
+          //}
         } else if (!inEdges.isEmpty()) {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism
+
+          // vertex.setProperty(ParallelismProperty.of(desiredSourceParallelism));
+          // recursivelySynchronizeO2OParallelism(dag, vertex, desiredSourceParallelism);
+
           final Integer o2oParallelism = inEdges.stream()
              .filter(edge -> CommunicationPatternProperty.Value.OneToOne
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .max().orElse(1);
+
           final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> CommunicationPatternProperty.Value.Shuffle
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())
               || CommunicationPatternProperty.Value.RoundRobin
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
-              .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
-              .map(i -> i / shuffleDecreaseFactor)
+              //.mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
+            // .map(i -> i / shuffleDecreaseFactor)
+            .mapToInt(edge -> desiredSourceParallelism)
               .max().orElse(1);
           // We set the greater value as the parallelism.
           final Integer parallelism = o2oParallelism > shuffleParallelism ? o2oParallelism : shuffleParallelism;
           vertex.setProperty(ParallelismProperty.of(parallelism));
+
           // synchronize one-to-one edges parallelism
           recursivelySynchronizeO2OParallelism(dag, vertex, parallelism);
         } else if (!vertex.getPropertyValue(ParallelismProperty.class).isPresent()) {
@@ -128,7 +138,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
     final Integer myParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
 
     // update the vertex with the max value.
-    if (maxParallelism > myParallelism) {
+    if (!(vertex instanceof SourceVertex) && maxParallelism > myParallelism) {
       vertex.setProperty(ParallelismProperty.of(maxParallelism));
       return maxParallelism;
     }

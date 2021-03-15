@@ -27,6 +27,8 @@ import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
@@ -44,6 +46,23 @@ public final class Util {
    * Private constructor for utility class.
    */
   private Util() {
+  }
+
+  public static <K, V>  String prettyPrintMap(Map<K, V> map) {
+    StringBuilder sb = new StringBuilder();
+    Iterator<Map.Entry<K, V>> iter = map.entrySet().iterator();
+    while (iter.hasNext()) {
+      Map.Entry<K, V> entry = iter.next();
+      sb.append(entry.getKey());
+      sb.append('=').append('"');
+      sb.append(entry.getValue());
+      sb.append('"');
+      if (iter.hasNext()) {
+        sb.append(',').append(' ');
+      }
+    }
+    return sb.toString();
+
   }
 
   /**

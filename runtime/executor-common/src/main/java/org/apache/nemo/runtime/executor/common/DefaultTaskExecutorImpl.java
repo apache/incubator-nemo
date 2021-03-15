@@ -197,10 +197,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
       // bidrectional !!
       final int parallelism = edge
-        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+        .getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
 
       final CommunicationPatternProperty.Value comm =
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      LOG.info("Registering pipe for output edges in {}, parallelism {}", taskId, parallelism);
 
       if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
         inputPipeRegister.registerInputPipe(
@@ -589,6 +591,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             // LOG.info("Adding data fetcher 22 for {} / {}, parallelism {}",
             //  taskId, irVertex.getId(), parallelism);
 
+            LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
+
             if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
               inputPipeRegister.registerInputPipe(
                 RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
@@ -597,9 +601,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 parentTaskReader);
 
               // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
-
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
-
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -608,11 +609,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   task.getTaskId(),
                   parentTaskReader);
               }
-
               // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
-
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
+
+            taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
 
             allFetchers.add(df);
 

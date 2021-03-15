@@ -47,6 +47,8 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.nemo.common.Util.prettyPrintMap;
+
 /**
  * Groups elements according to key and window.
  * @param <K> key type.
@@ -69,6 +71,8 @@ public final class GBKFinalTransform<K, InputT>
 
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
+
+  private transient Map<K, Integer> keyCountMap;
 
   /**
    * GroupByKey constructor.
@@ -194,6 +198,7 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
     final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
+    keyCountMap = new HashMap<>();
 
     taskId = getContext().getTaskId();
     stateStore = getContext().getStateStore();
@@ -264,6 +269,7 @@ public final class GBKFinalTransform<K, InputT>
     return new GBKWOutputCollector(oc);
   }
 
+
   /**
    * It collects data for each key.
    * The collected data are emitted at {@link GBKFinalTransform#onWatermark(Watermark)}
@@ -274,6 +280,12 @@ public final class GBKFinalTransform<K, InputT>
     // LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {}",
     //  getContext().getTaskId(),
     //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+
+    if (keyCountMap.containsKey(element.getValue().getKey())) {
+      keyCountMap.put(element.getValue().getKey(), keyCountMap.get(element.getValue().getKey()) + 1);
+    } else {
+      keyCountMap.put(element.getValue().getKey(), 1);
+    }
 
     // drop late data
     try {
@@ -322,15 +334,9 @@ public final class GBKFinalTransform<K, InputT>
     final long triggerTime = System.currentTimeMillis();
 
     if (triggeredKeys > 0) {
-      if (inMemoryTimerInternalsFactory.watermarkTimers.isEmpty()) {
-        LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
-          triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size(), "empty");
-      } else {
-        LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}, first: {}", getContext().getTaskId(),
-          triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size(),  inMemoryTimerInternalsFactory.watermarkTimers.first());
-      }
+      LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}", getContext().getTaskId(),
+        triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size());
     }
-
   }
 
   /**

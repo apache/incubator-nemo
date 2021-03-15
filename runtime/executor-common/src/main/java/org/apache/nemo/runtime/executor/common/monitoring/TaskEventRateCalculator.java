@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,12 +31,13 @@ public final class TaskEventRateCalculator {
     int sum = 0;
     int sum2 = 0;
 
-    final int numTasks = taskExecutorMap.keySet().size();
+    final List<TaskExecutor> tasks = new ArrayList<>(taskExecutorMap.keySet());
+    tasks.sort((t1, t2) -> t1.getId().compareTo(t2.getId()));
 
     final StringBuilder sb = new StringBuilder("---- Start of task processed event (# tasks: "
-      + numTasks + " in executor " + executorId + ")----\n");
+      + tasks.size() + " in executor " + executorId + ")----\n");
 
-    for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+    for (final TaskExecutor taskExecutor : tasks) {
       final AtomicInteger count = taskExecutor.getProcessedCnt();
       final AtomicInteger count2 = taskExecutor.getOffloadedCnt();
       final int cnt = count.get();

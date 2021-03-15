@@ -605,13 +605,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             pendingOutputPipeMap.get(index).add(Pair.of(serializer, event));
             pipeOuptutIndicesForDstTask.putIfAbsent(dstTaskId, new HashSet<>());
             pipeOuptutIndicesForDstTask.get(dstTaskId).add(index);
-          } else {
           }
         }
       }
 
       if (sendToRemote) {
         final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
+
         final ByteBuf byteBuf;
         try {
           byteBuf =
