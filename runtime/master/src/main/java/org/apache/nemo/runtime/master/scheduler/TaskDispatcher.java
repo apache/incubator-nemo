@@ -108,7 +108,7 @@ public final class TaskDispatcher {
 
       while (!isTerminated) {
         doScheduleTaskList();
-        schedulingIteration.await();
+       //  schedulingIteration.await();
       }
 
       if (planStateManager.isPlanDone()) {
@@ -249,7 +249,6 @@ public final class TaskDispatcher {
 
   private void doScheduleTaskList() {
 
-    while (true) {
 
       final List<Task> taskList = Collections.singletonList(pendingTaskCollectionPointer.getTask());
       /* final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
@@ -359,7 +358,6 @@ public final class TaskDispatcher {
       } else {
         return;
       }
-    }
   }
 
   /**
