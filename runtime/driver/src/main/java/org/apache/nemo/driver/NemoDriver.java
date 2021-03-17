@@ -148,7 +148,7 @@ public final class NemoDriver {
       final String decision = message.getScalingMsg().getDecision();
 
       if (evalConf.enableOffloading) {
-        LOG.info("Receive scaling decision {}", decision);
+        LOG.info("Receive scaling decision {}", message.getScalingMsg().getInfo());
 
         if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
           // Op: priority prepareOffloading
