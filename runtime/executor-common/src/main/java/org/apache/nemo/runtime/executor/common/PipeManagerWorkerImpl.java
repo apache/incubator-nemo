@@ -465,6 +465,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           final EncoderFactory.Encoder encoder = streamVertexSerializerManager.getInputEncoderFactory(srcTaskId)
             .create(wrapped);
           //LOG.info("Element encoder: {}", encoder);
+
           encoder.encode(event);
           wrapped.close();
         } catch (final IOException e) {
