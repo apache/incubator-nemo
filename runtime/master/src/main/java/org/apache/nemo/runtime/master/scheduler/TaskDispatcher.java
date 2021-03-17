@@ -251,7 +251,8 @@ public final class TaskDispatcher {
 
     while (true) {
 
-      final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
+      final List<Task> taskList = Collections.singletonList(pendingTaskCollectionPointer.getTask());
+      /* final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
       if (!taskListOptional.isPresent()) {
         // Task list is empty
         LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
@@ -259,6 +260,7 @@ public final class TaskDispatcher {
       }
 
       final Collection<Task> taskList = taskListOptional.get();
+      */
 
       LOG.info("Size of tasks: {}", taskList.size());
       // Reverse order by stage number
@@ -346,7 +348,9 @@ public final class TaskDispatcher {
       LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
       if (couldNotSchedule.size() > 0) {
         // Try these again, if no new task list has been set
-        pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
+        for (final Task t : couldNotSchedule) {
+          pendingTaskCollectionPointer.addTask(t);
+        }
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {

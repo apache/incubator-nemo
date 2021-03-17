@@ -29,6 +29,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Points to a collection of pending tasks eligible for scheduling.
@@ -39,9 +41,11 @@ import java.util.Optional;
 public final class PendingTaskCollectionPointer {
   private static final Logger LOG = LoggerFactory.getLogger(PendingTaskCollectionPointer.class.getName());
   private Collection<Task> curTaskCollection;
+  private final BlockingQueue<Task> queue;
 
   @Inject
   private PendingTaskCollectionPointer() {
+    this.queue = new LinkedBlockingQueue<>();
   }
 
   /**
@@ -52,14 +56,18 @@ public final class PendingTaskCollectionPointer {
     this.curTaskCollection = newCollection;
   }
 
-  public synchronized void addTask(final Task task) {
+  public void addTask(final Task task) {
     LOG.info("Add task " + task.getTaskId());
+    queue.add(task);
+
+    /*
     if (this.curTaskCollection == null) {
       this.curTaskCollection = new LinkedList<>();
       curTaskCollection.add(task);
     } else {
       this.curTaskCollection.add(task);
     }
+    */
   }
 
   /**
@@ -69,6 +77,15 @@ public final class PendingTaskCollectionPointer {
   synchronized void setIfNull(final Collection<Task> newCollection) {
     if (this.curTaskCollection == null) {
       this.curTaskCollection = newCollection;
+    }
+  }
+
+  public Task getTask() {
+    try {
+      return queue.take();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
