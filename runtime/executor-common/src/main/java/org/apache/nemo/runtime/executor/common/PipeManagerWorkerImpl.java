@@ -409,7 +409,15 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           // local
           for (final int index : pipeIndices) {
             final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-            sendToLocal(serializer, key.getLeft(), key.getRight(), key.getMiddle(), index, event);
+            if (taskExecutorMapWrapper.containsTask(key.getRight())) {
+              sendToLocal(serializer, key.getLeft(), key.getRight(), key.getMiddle(), index, event);
+            } else {
+              // remote
+              final String remote = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), true);
+              final Channel channel = executorChannelManagerMap
+                .getExecutorChannel(remote);
+              sendToRemote(channel, srcTaskId, Collections.singletonList(index), serializer, event);
+            }
           }
         } else {
           // remote
