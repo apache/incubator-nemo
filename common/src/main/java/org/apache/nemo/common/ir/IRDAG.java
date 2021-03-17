@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -235,6 +236,72 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     return builder;
   }
 
+
+  public void insert(final StreamVertex streamVertex, final List<IREdge> edges) {
+ final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    // Insert the vertex.
+    final IRVertex vertexToInsert = streamVertex;
+    builder.addVertex(vertexToInsert);
+
+    edges.forEach(edgeToStreamize -> {
+      edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+        .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
+    });
+
+    final AtomicBoolean fromSV1Added = new AtomicBoolean(false);
+
+    // Build the new DAG to reflect the new topology.
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v); // None of the existing vertices are deleted.
+
+      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+        if (edges.contains(edge)) {
+          // MATCH!
+
+          // Edge to the streamVertex
+          final IREdge toSV1 = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            edge.getSrc(),
+            vertexToInsert);
+          edge.copyExecutionPropertiesTo(toSV1);
+
+          // Edge from the streamVertex.
+          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
+          fromSV.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+          fromSV.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+
+          // Annotations for efficient data transfers - toSV
+          toSV1.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
+          // toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
+          // toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
+
+          // Annotations for efficient data transfers - fromSV
+          fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
+
+          // fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
+          // fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
+          // fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
+
+          // Track the new edges.
+          builder.connectVertices(toSV1);
+
+          if (!fromSV1Added.get()) {
+            builder.connectVertices(fromSV);
+            fromSV1Added.set(true);
+          }
+        } else {
+          // NO MATCH, so simply connect vertices as before.
+          builder.connectVertices(edge);
+        }
+      }
+    });
+
+
+    for (final IREdge edgeToStreamize : edges) {
+      streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
+    }
+    modifiedDAG = builder.build(); // update the DAG.
+  }
   /**
    * Inserts a new vertex that streams data.
    *

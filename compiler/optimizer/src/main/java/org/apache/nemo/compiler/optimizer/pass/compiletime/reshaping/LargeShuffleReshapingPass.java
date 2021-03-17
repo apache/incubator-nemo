@@ -19,9 +19,12 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
+
+import java.util.List;
 
 /**
  * Inserts the StreamVertex for each shuffle edge.
@@ -40,6 +43,18 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> {
+      final List<IREdge> edges = dag.getIncomingEdgesOf(vertex);
+      final int o2ocount = (int) edges.stream().filter(edge -> CommunicationPatternProperty.Value.OneToOne
+          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
+        .count();
+
+      if (o2ocount > 1 && edges.size() == o2ocount) {
+        // join !!
+        dag.insert(new StreamVertex(), edges);
+      }
+
+
+
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
@@ -47,6 +62,8 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
         }
       });
     });
+
+
     return dag;
   }
 }
