@@ -280,7 +280,7 @@ public final class LambdaContainerManager {
 
         // TODO: fix memory and slot
         final ResourceSpecification lambdaResourceSpec =
-          new ResourceSpecification(COMPUTE, 1, evalConf.taskSlot, 1024);
+          new ResourceSpecification(COMPUTE, 1, 100, 1024);
 
         return new DefaultExecutorRepresenterImpl(lambdaExecutorId,
           lambdaResourceSpec,

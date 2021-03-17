@@ -67,6 +67,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskState.State.COMPLETE;
 import static org.apache.nemo.common.TaskState.State.ON_HOLD;
+import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.OFFLOAD;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
@@ -295,6 +296,38 @@ public final class RuntimeMaster {
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
+  private ResourceSpecification getLambdaResourceSpec(
+    final String resourceSpecificationString,
+    final int num) {
+    try {
+      final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+      for (int i = 0; i < jsonRootNode.size(); i++) {
+        final TreeNode resourceNode = jsonRootNode.get(i);
+        final String type = resourceNode.get("type").traverse().nextTextValue();
+
+        if (type.equals(OFFLOAD)) {
+          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
+          final int slot = resourceNode.get("slot").traverse().getIntValue();
+          int executorNum = 0;
+          if (num > 0) {
+            executorNum = num;
+          } else {
+            executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          }
+          final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
+
+          return  new ResourceSpecification(type,
+            capacity, slot, memory, poisonSec);
+        }
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+    }
+
+    throw new RuntimeException("Cannot find offload type resource spec");
+  }
+
   /**
    * Requests a container with resource specification.
    *
@@ -332,7 +365,7 @@ public final class RuntimeMaster {
             type, memory, capacity, slot, executorNum);
 
           if (offloading) {
-            if (type.equals(ResourcePriorityProperty.OFFLOAD)) {
+            if (type.equals(OFFLOAD)) {
               containerManager.requestContainer(executorNum,
                 new ResourceSpecification(type,
                   capacity, slot, memory, poisonSec), name);
@@ -345,7 +378,7 @@ public final class RuntimeMaster {
                   new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
               }
             } else {
-              if (!type.equals(ResourcePriorityProperty.OFFLOAD)) {
+              if (!type.equals(OFFLOAD)) {
                 resourceRequestCount.getAndAdd(executorNum);
                 containerManager.requestContainer(executorNum,
                   new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
