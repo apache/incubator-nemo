@@ -38,6 +38,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -90,9 +91,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
-    this.runningComplyingTasks = new HashMap<>();
-    this.runningNonComplyingTasks = new HashMap<>();
-    this.runningTaskToAttempt = new HashMap<>();
+    this.runningComplyingTasks = new ConcurrentHashMap<>();
+    this.runningNonComplyingTasks = new ConcurrentHashMap<>();
+    this.runningTaskToAttempt = new ConcurrentHashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
     this.executorShutdownHandler = executorShutdownHandler;
@@ -179,7 +180,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param taskId id of the completed task
    */
   @Override
-  public synchronized void onTaskExecutionStop(final String taskId) {
+  public void onTaskExecutionStop(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(completedTask);
   }

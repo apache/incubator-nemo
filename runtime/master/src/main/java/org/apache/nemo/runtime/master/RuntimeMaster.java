@@ -752,16 +752,21 @@ public final class RuntimeMaster {
     switch (message.getType()) {
       case StopTaskDone: {
         requestContainerThread.execute(() -> {
-          final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
-          LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
-          final ExecutorRepresenter executorRepresenter =
-            executorRegistry.getExecutorRepresentor(stopTaskDone.getExecutorId());
-          executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
-          final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
-          LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
-          planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
-          pendingTaskCollectionPointer.addTask(task);
-          taskDispatcher.onNewPendingTaskCollectionAvailable();
+          try {
+            final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
+            LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
+            final ExecutorRepresenter executorRepresenter =
+              executorRegistry.getExecutorRepresentor(stopTaskDone.getExecutorId());
+            executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+            final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
+            LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
+            planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
+            pendingTaskCollectionPointer.addTask(task);
+            taskDispatcher.onNewPendingTaskCollectionAvailable();
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
         });
         break;
       }

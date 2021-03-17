@@ -92,7 +92,7 @@ public final class TaskScheduledMapMaster {
     return taskExecutorIdMap.containsKey(taskId);
   }
 
-  public synchronized Task removeTask(final String taskId) {
+  public Task removeTask(final String taskId) {
     return taskIdTaskMap.remove(taskId);
   }
 
