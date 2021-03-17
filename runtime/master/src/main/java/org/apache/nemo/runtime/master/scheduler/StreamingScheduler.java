@@ -159,7 +159,9 @@ public final class StreamingScheduler implements Scheduler {
         e.printStackTrace();
       }
 
-    pendingTaskCollectionPointer.setToOverwrite(allTasks);
+      for (final Task t : allTasks) {
+        pendingTaskCollectionPointer.addTask(t);
+      }
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
