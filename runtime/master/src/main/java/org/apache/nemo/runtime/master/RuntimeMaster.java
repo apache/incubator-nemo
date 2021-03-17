@@ -751,7 +751,7 @@ public final class RuntimeMaster {
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
       case StopTaskDone: {
-        getRuntimeMasterThread().execute(() -> {
+        requestContainerThread.execute(() -> {
           final ControlMessage.StopTaskDoneMessage stopTaskDone = message.getStopTaskDoneMsg();
           LOG.info("Receive stop task done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
           final ExecutorRepresenter executorRepresenter =
