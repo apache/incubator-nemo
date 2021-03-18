@@ -646,16 +646,26 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
   private Optional<Channel> getChannelForDstTask(final String dstTaskId,
                                                  final boolean syncToMaster) {
-    if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster) == null) {
-      return Optional.empty();
-    } else {
-      if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster).equals(executorId)) {
+    try {
+      if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster) == null) {
         return Optional.empty();
       } else {
-        return Optional.of(executorChannelManagerMap
-          .getExecutorChannel(
-            taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster)));
+        if (taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster).equals(executorId)) {
+          return Optional.empty();
+        } else {
+          final Channel channel = executorChannelManagerMap
+            .getExecutorChannel(
+              taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster));
+          if (channel == null) {
+            return Optional.empty();
+          } else {
+            return Optional.of(channel);
+          }
+        }
       }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception in getChannelForDstTask " + dstTaskId + " in " + executorId);
     }
   }
 
