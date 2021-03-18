@@ -174,36 +174,36 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         srcTaskId,
         null);
 
-      if (taskExecutorMapWrapper.containsTask(srcTaskId)) {
-        // local task
-        synchronized (pendingOutputPipeMap) {
+      synchronized (pendingOutputPipeMap) {
+        if (taskExecutorMapWrapper.containsTask(srcTaskId)) {
+          // local task
           if (pendingOutputPipeMap.containsKey(outputPipeIndex)) {
             pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
             pipeOuptutIndicesForDstTask.get(srcTaskId).add(outputPipeIndex);
           } else {
             taskExecutorMapWrapper.getTaskExecutorThread(srcTaskId).addShortcutEvent(controlMessage);
           }
-        }
-      } else {
-        // remote task
+        } else{
+          // remote task
 
-        final Optional<Channel> optional = getChannelForDstTask(srcTaskId, true);
+          final Optional<Channel> optional = getChannelForDstTask(srcTaskId, true);
 
-        if (optional.isPresent()) {
-          optional.get().writeAndFlush(controlMessage);
-        } else {
-          // this is pending output pipe
-          // the task is not sheduled yet
-          if (evalConf.controlLogging) {
-            LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {} in executor {}",
-              dstTaskId, edgeId, srcTaskId, srcTaskId, executorId);
-          }
-          synchronized (pendingOutputPipeMap) {
+          if (optional.isPresent()) {
+            optional.get().writeAndFlush(controlMessage);
+          } else {
+            // this is pending output pipe
+            // the task is not sheduled yet
+            if (evalConf.controlLogging) {
+              LOG.info("Output pipe {}/{}/{} is not registered yet.. waiting for schedule {} in executor {}",
+                dstTaskId, edgeId, srcTaskId, srcTaskId, executorId);
+            }
+
             pendingOutputPipeMap.putIfAbsent(outputPipeIndex, new LinkedList<>());
             pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
+
+            pipeOuptutIndicesForDstTask.putIfAbsent(srcTaskId, new HashSet<>());
+            pipeOuptutIndicesForDstTask.get(srcTaskId).add(outputPipeIndex);
           }
-          pipeOuptutIndicesForDstTask.putIfAbsent(srcTaskId, new HashSet<>());
-          pipeOuptutIndicesForDstTask.get(srcTaskId).add(outputPipeIndex);
         }
       }
     } catch (final Exception e) {
@@ -913,19 +913,21 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   @Override
-  public synchronized void taskScheduled(final String taskId) {
+  public void taskScheduled(final String taskId) {
     // LOG.info("Task scheduled !! {} in executor {}, pipeOutputIndicesForDstTask: {}", taskId,  executorId, pipeOuptutIndicesForDstTask);
-    if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
-      final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
-      indices.forEach(index -> {
-        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
-        startOutputPipe(index, key.getLeft());
-      });
+    synchronized (pendingOutputPipeMap) {
+      if (pipeOuptutIndicesForDstTask.containsKey(taskId)) {
+        final Set<Integer> indices = pipeOuptutIndicesForDstTask.remove(taskId);
+        indices.forEach(index -> {
+          final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+          startOutputPipe(index, key.getLeft());
+        });
+      }
     }
   }
 
   @Override
-  public synchronized void startOutputPipe(int index, String taskId) {
+  public void startOutputPipe(int index, String taskId) {
     // restart pending output
     try {
       synchronized (pendingOutputPipeMap) {
