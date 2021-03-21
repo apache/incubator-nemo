@@ -222,8 +222,8 @@ public final class LambdaContainerManager {
         final ByteBufOutputStream bos = new ByteBufOutputStream(offloadExecutorByteBuf);
         final DataOutputStream dos = new DataOutputStream(bos);
         offloadingExecutor.encode(dos);
-        SerializationUtils.serialize(ser.getInputDecoder(), dos);
-        SerializationUtils.serialize(ser.getOutputEncoder(), dos);
+        //  SerializationUtils.serialize(ser.getInputDecoder(), dos);
+        //  SerializationUtils.serialize(ser.getOutputEncoder(), dos);
         try {
           dos.close();
         } catch (IOException e) {

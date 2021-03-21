@@ -17,6 +17,8 @@ import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.CpuInfoExtractor;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorInputDecoder;
+import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputEncoder;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
@@ -584,8 +586,8 @@ public final class OffloadingHandler {
             System.out.println("Before OffloadingTransform: ");
             final DataInputStream dis = new DataInputStream(bis);
             offloadingTransform = OffloadingExecutor.decode(dis);
-            decoder = (OffloadingDecoder) SerializationUtils.deserialize(dis);
-            outputEncoder = (OffloadingEncoder) SerializationUtils.deserialize(dis);
+            decoder = new OffloadingExecutorInputDecoder();
+            outputEncoder = new MiddleOffloadingOutputEncoder();
 
             Thread.currentThread().setContextClassLoader(classLoader);
             // ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
