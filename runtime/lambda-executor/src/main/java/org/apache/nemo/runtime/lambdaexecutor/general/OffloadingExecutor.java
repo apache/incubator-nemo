@@ -88,6 +88,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private Executor executor;
   private final boolean controlLogging;
+  private final long latencyLimit;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -98,7 +99,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final int nameServerPort,
                             final String executorId,
                             final int flushPeriod,
-                            final boolean controlLogging) {
+                            final boolean controlLogging,
+                            final long latencyLimit) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource);
@@ -113,6 +115,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorMap = new ConcurrentHashMap<>();
     this.controlLogging = controlLogging;
+    this.latencyLimit = latencyLimit;
 
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
@@ -137,6 +140,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       dos.writeInt(flushPeriod);
 
       dos.writeBoolean(controlLogging);
+      dos.writeLong(latencyLimit);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -162,11 +166,13 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final String executorId = dis.readUTF();
       final int flushPeriod = dis.readInt();
       final boolean controlLogging = dis.readBoolean();
+      final long latencyLimit = dis.readLong();
 
 
       return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
         stateStorePort,
-        nameServerAddr, nameServerPort, executorId, flushPeriod, controlLogging);
+        nameServerAddr, nameServerPort, executorId, flushPeriod, controlLogging,
+        latencyLimit);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -291,6 +297,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     jcb.bindNamedParameter(NettyVMStateStoreClient.NettyVMStorePort.class, Integer.toString(stateStorePort));
 
     jcb.bindNamedParameter(EvalConf.ControlLogging.class, Boolean.toString(controlLogging));
+
+    jcb.bindNamedParameter(EvalConf.LatencyLimit.class, Long.toString(latencyLimit));
 
 
     final Configuration conf = jcb.build();

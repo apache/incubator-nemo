@@ -752,8 +752,22 @@ public final class RuntimeMaster {
     }
   }
 
+  private final long st = System.currentTimeMillis();
+
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case LatencyCollection: {
+        final long curr = System.currentTimeMillis();
+        final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
+        if (curr - st >= 90000 && msg.getLatency() >= 15000) {
+          LOG.info("Request to kill this test.. latency {}", msg.getLatency());
+          requestContainerThread.execute(() -> {
+            clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+              .setType(ControlMessage.DriverToClientMessageType.KillAll).build());
+          });
+        }
+        break;
+      }
       case StopTaskDone: {
         requestContainerThread.execute(() -> {
           try {

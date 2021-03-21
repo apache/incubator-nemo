@@ -219,7 +219,8 @@ public final class LambdaContainerManager {
           nameServer.getPort(),
           lambdaExecutorId,
           evalConf.flushPeriod,
-          evalConf.controlLogging);
+          evalConf.controlLogging,
+          evalConf.latencyLimit);
 
 
         final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();

@@ -38,6 +38,10 @@ public final class EvalConf {
   public final class FlushCount implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "latency limit (ms)", short_name = "latency_limit", default_value = "13000")
+  public final class LatencyLimit implements Name<Long> {
+  }
+
   @NamedParameter(short_name = "autoscaling", default_value = "true")
   public final class Autoscaling implements Name<Boolean> {}
 
@@ -221,6 +225,8 @@ public final class EvalConf {
   public final int numLambdaPool;
   public final boolean partialWarmup;
 
+  public final long latencyLimit;
+
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
                    @Parameter(LambdaWarmupPool.class) final int poolSize,
@@ -261,7 +267,8 @@ public final class EvalConf {
                    @Parameter(AWSProfileName.class) final String awsProfileName,
                    @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker,
                    @Parameter(PartialWarmup.class) final boolean partialWarmup,
-                   @Parameter(NumLambdaPool.class) final int numLambdaPool) throws IOException {
+                   @Parameter(NumLambdaPool.class) final int numLambdaPool,
+                   @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -302,6 +309,7 @@ public final class EvalConf {
     this.awsProfileName = awsProfileName;
     this.numLambdaPool = numLambdaPool;
     this.partialWarmup = partialWarmup;
+    this.latencyLimit = latencyLimit;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -353,6 +361,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(AWSProfileName.class, awsProfileName);
     jcb.bindNamedParameter(NumLambdaPool.class, Integer.toString(numLambdaPool));
     jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
+    jcb.bindNamedParameter(LatencyLimit.class, Long.toString(latencyLimit));
     return jcb.build();
   }
 
@@ -398,6 +407,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(AWSProfileName.class);
     cl.registerShortNameOfClass(NumLambdaPool.class);
     cl.registerShortNameOfClass(PartialWarmup.class);
+    cl.registerShortNameOfClass(LatencyLimit.class);
   }
 
   @Override
@@ -443,6 +453,7 @@ public final class EvalConf {
     sb.append("awsProfileName: "); sb.append(awsProfileName); sb.append("\n");
     sb.append("numLambdaPool: "); sb.append(numLambdaPool); sb.append("\n");
     sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
+    sb.append("latencyLimit: "); sb.append(latencyLimit); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

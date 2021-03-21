@@ -19,13 +19,17 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +61,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   private final String taskId;
   private final double samplingRate;
   private final String executorId;
+  private final long latencyLimit;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final long st = System.currentTimeMillis();
 
   /**
    * Constructor of the output collector.
@@ -76,7 +83,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
     final OperatorMetricCollector operatorMetricCollector,
     final String taskId,
-    final Map<String, Double> samplingMap) {
+    final Map<String, Double> samplingMap,
+    final Long latencyLimit,
+    final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.executorId = executorId;
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
@@ -87,6 +96,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
     this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
+    this.latencyLimit = latencyLimit;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // LOG.info("Vertex Id Sampling Rate {} / {} / {}", irVertex.getId(), samplingRate, samplingMap);
   }
@@ -159,6 +170,20 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         executorId,
         taskId,
         output);
+
+      if (latency > latencyLimit) {
+        persistentConnectionToMasterMap
+          .getMessageSender(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.LatencyCollection)
+            .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setLatency(latency)
+              .build())
+            .build());
+      }
     }
 
     /*

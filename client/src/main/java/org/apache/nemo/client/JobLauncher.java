@@ -166,6 +166,16 @@ public final class JobLauncher {
     driverRPCServer
       .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
       })
+      .registerHandler(ControlMessage.DriverToClientMessageType.KillAll, event -> {
+        try {
+          LOG.info("kill all....");
+          Process p = Runtime.getRuntime().exec("touch signal_kill.txt");
+          p.wait();
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      })
       .registerHandler(ControlMessage.DriverToClientMessageType.DriverReady, event -> driverReadyLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(

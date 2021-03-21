@@ -57,6 +57,7 @@ enum DriverToClientMessageType {
     DataCollected = 2;
     ExecutionDone = 3;
     DriverShutdowned = 4;
+    KillAll = 5;
 }
 
 message NameLookupMessage {
@@ -169,6 +170,8 @@ enum MessageType {
     InitRegistration = 63;
 
     NameLookup = 64;
+
+    LatencyCollection = 65;
 }
 
 message LambdaEndMessage {
@@ -268,6 +271,13 @@ message Message {
     optional NameLookupMessage nameLookupMsg = 57;
     optional NameLookupResponse nameLookupResponse = 58;
     optional NameRegisterMessage nameRegisterMsg = 59;
+
+    optional LatencyCollectionMessage latencyMsg = 60;
+}
+
+message LatencyCollectionMessage {
+    required string executorId = 1;
+    required int64 latency = 2;
 }
 
 message RequestOffloadingExecutorMessage {

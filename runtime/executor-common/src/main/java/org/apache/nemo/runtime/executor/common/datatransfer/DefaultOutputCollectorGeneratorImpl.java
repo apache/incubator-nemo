@@ -10,6 +10,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -29,15 +30,18 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final IntermediateDataIOFactory intermediateDataIOFactory;
   private final String executorId;
+  private final long latencyLimit;
 
   @Inject
   private DefaultOutputCollectorGeneratorImpl(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-    final IntermediateDataIOFactory intermediateDataIOFactory) {
+    final IntermediateDataIOFactory intermediateDataIOFactory,
+    @Parameter(EvalConf.LatencyLimit.class) final long latencyLimit) {
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
+    this.latencyLimit = latencyLimit;
   }
 
 
@@ -111,7 +115,7 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc,
-          taskId, samplingMap);
+          taskId, samplingMap, latencyLimit, persistentConnectionToMasterMap);
 
       } else {
         omc = new OperatorMetricCollector(irVertex,
@@ -126,7 +130,7 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           vertexIdAndCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap, omc,
-          taskId, samplingMap);
+          taskId, samplingMap, latencyLimit, persistentConnectionToMasterMap);
       }
 
       vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
