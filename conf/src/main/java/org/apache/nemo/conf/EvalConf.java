@@ -38,7 +38,7 @@ public final class EvalConf {
   public final class FlushCount implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "latency limit (ms)", short_name = "latency_limit", default_value = "13000")
+  @NamedParameter(doc = "latency limit (ms)", short_name = "latency_limit", default_value = "8000")
   public final class LatencyLimit implements Name<Long> {
   }
 
