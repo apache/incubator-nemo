@@ -23,6 +23,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.NetworkUtils;
+import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
 import org.apache.nemo.runtime.executor.common.LambdaChannelMap;
@@ -67,9 +68,12 @@ public final class DefaultByteTransportImpl implements ByteTransport {
   private final EventLoopGroup serverWorkingGroup;
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
-  private final Channel serverListeningChannel;
+  private final Channel serverLocalListeningChannel;
+  private final Channel serverPublicListeningChannel;
   private final String publicAddress;
-  private int bindingPort;
+  private final String localAddress;
+  private int localBindingPort;
+  private int publicBindingPort;
   private final String localExecutorId;
   private final NemoNameResolver nameResolver;
   private final LambdaChannelMap lambdaChannelMap;
@@ -117,11 +121,8 @@ public final class DefaultByteTransportImpl implements ByteTransport {
 
     final String host;
     try {
-      if (ec2) {
-        this.publicAddress = NetworkUtils.getPublicIP();
-      } else {
-        this.publicAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
-      }
+      this.publicAddress = NetworkUtils.getPublicIP();
+      this.localAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
       host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {
       e.printStackTrace();
@@ -142,94 +143,103 @@ public final class DefaultByteTransportImpl implements ByteTransport {
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
 
+    final Pair<Channel, Integer> localChannelPort = getServerChannelAndPort(
+      localAddress,
+      channelImplSelector,
+      channelInitializer,
+      tcpPortProvider,
+      persistentConnectionToMasterMap,
+      false);
+
+    this.serverLocalListeningChannel = localChannelPort.left();
+    this.localBindingPort = localChannelPort.right();
+
+    final Pair<Channel, Integer> publicChannelPort = getServerChannelAndPort(
+      publicAddress,
+      channelImplSelector,
+      channelInitializer,
+      tcpPortProvider,
+      persistentConnectionToMasterMap,
+      true);
+
+    this.serverPublicListeningChannel = publicChannelPort.left();
+    this.publicBindingPort = publicChannelPort.right();
+
+    LOG.info("DefaultByteTransportImpl server in {} is listening at {}/{}", localExecutorId,
+      serverLocalListeningChannel, serverPublicListeningChannel);
+  }
+
+  public Pair<Channel, Integer> getServerChannelAndPort(final String address,
+                                                        final NettyChannelImplementationSelector selector,
+                                                        final ChannelInitializer channelInitializer,
+                                                        final TcpPortProvider tcpPortProvider,
+                                                        final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                                                        final boolean publicAddress) {
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
-        .group(serverListeningGroup, serverWorkingGroup)
-        .channel(channelImplSelector.getServerChannelClass())
-        .childHandler(channelInitializer)
-        .option(ChannelOption.SO_BACKLOG, serverBacklog)
-        .option(ChannelOption.SO_REUSEADDR, true);
+      .group(serverListeningGroup, serverWorkingGroup)
+      .channel(selector.getServerChannelClass())
+      .childHandler(channelInitializer)
+      .option(ChannelOption.SO_BACKLOG, 128)
+      .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;
-    if (port == 0) {
-      for (final int candidatePort : tcpPortProvider) {
-        try {
-          final ChannelFuture future = serverBootstrap.bind(host, candidatePort).await();
-          if (future.cause() != null) {
-            LOG.debug(String.format("Cannot bind to %s:%d", host, candidatePort), future.cause());
-          } else if (!future.isSuccess()) {
-            LOG.debug("Cannot bind to {}:{}", host, candidatePort);
-          } else {
-            listeningChannel = future.channel();
-            bindingPort = candidatePort;
-            break;
-          }
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-          LOG.debug(String.format("Interrupted while binding to %s:%d", host, candidatePort), e);
-        }
-      }
-      if (listeningChannel == null) {
-        serverListeningGroup.shutdownGracefully();
-        serverWorkingGroup.shutdownGracefully();
-        clientGroup.shutdownGracefully();
-        LOG.error("Cannot bind to {} with tcpPortProvider", host);
-        throw new RuntimeException(String.format("Cannot bind to %s with tcpPortProvider", host));
-      }
-    } else {
+    int bindingPort = 0;
+    for (final int candidatePort : tcpPortProvider) {
       try {
-        bindingPort = port;
-        final ChannelFuture future = serverBootstrap.bind(host, port).await();
+        final ChannelFuture future = serverBootstrap.bind(address, candidatePort).await();
         if (future.cause() != null) {
-          throw future.cause();
+          LOG.debug(String.format("Cannot bind to %s:%d", address, candidatePort), future.cause());
         } else if (!future.isSuccess()) {
-          throw new RuntimeException("Cannot bind");
+          LOG.debug("Cannot bind to {}:{}", address, candidatePort);
         } else {
           listeningChannel = future.channel();
+          bindingPort = candidatePort;
+          break;
         }
-      } catch (final Throwable e) {
-        serverListeningGroup.shutdownGracefully();
-        serverWorkingGroup.shutdownGracefully();
-        clientGroup.shutdownGracefully();
-        LOG.error(String.format("Cannot bind to %s:%d", host, port), e);
-        throw new RuntimeException(String.format("Cannot bind to %s:%d", host, port), e);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOG.debug(String.format("Interrupted while binding to %s:%d", address, candidatePort), e);
       }
     }
 
-    serverListeningChannel = listeningChannel;
+    if (listeningChannel == null) {
+      serverListeningGroup.shutdownGracefully();
+      serverWorkingGroup.shutdownGracefully();
+      clientGroup.shutdownGracefully();
+      LOG.error("Cannot bind to {} with tcpPortProvider", address);
+      throw new RuntimeException(String.format("Cannot bind to %s with tcpPortProvider", address));
+    }
 
-    LOG.info("public address: {}, port: {}, executorId: {}", publicAddress, bindingPort, localExecutorId);
+    LOG.info("address: {}, port: {}, executorId: {}", address, bindingPort, localExecutorId);
 
-    persistentConnectionToMasterMap
-      .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-      ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-        .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
-        .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-          .setExecutorId(localExecutorId)
-          .setAddress(publicAddress)
-          .setPort(bindingPort)
-          .build())
-      .build());
+    if (!publicAddress) {
+      persistentConnectionToMasterMap
+        .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
+          .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
+            .setExecutorId(localExecutorId)
+            .setAddress(address)
+            .setPort(bindingPort)
+            .build())
+          .build());
+    }
 
     try {
-      nameResolver.register(localExecutorId ,new InetSocketAddress(publicAddress, bindingPort));
+      if (publicAddress) {
+        nameResolver.register(localExecutorId + "-Public", new InetSocketAddress(address, bindingPort));
+      } else {
+        nameResolver.register(localExecutorId, new InetSocketAddress(address, bindingPort));
+      }
       //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
-
     } catch (final Exception e) {
       LOG.error("Cannot register DefaultByteTransportImpl listening address to the naming registry", e);
       throw new RuntimeException(e);
     }
 
-    LOG.info("DefaultByteTransportImpl server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
-  }
-
-  public String getPublicAddress() {
-    return publicAddress;
-  }
-
-  public int getBindingPort() {
-    return bindingPort;
+    return Pair.of(listeningChannel, bindingPort);
   }
 
   /**
@@ -237,15 +247,17 @@ public final class DefaultByteTransportImpl implements ByteTransport {
    */
   @Override
   public void close() {
-    LOG.info("Stopping listening at {} and closing", serverListeningChannel.localAddress());
+    LOG.info("Stopping listening at {} and closing", serverLocalListeningChannel.localAddress());
 
-    final ChannelFuture closeListeningChannelFuture = serverListeningChannel.close();
+    final ChannelFuture closeListeningChannelFuture = serverLocalListeningChannel.close();
+    final ChannelFuture closePublic = serverPublicListeningChannel.close();
     final ChannelGroupFuture channelGroupCloseFuture = channelGroup.close();
     final Future serverListeningGroupCloseFuture = serverListeningGroup.shutdownGracefully();
     final Future serverWorkingGroupCloseFuture = serverWorkingGroup.shutdownGracefully();
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
 
     closeListeningChannelFuture.awaitUninterruptibly();
+    closePublic.awaitUninterruptibly();
     channelGroupCloseFuture.awaitUninterruptibly();
     serverListeningGroupCloseFuture.awaitUninterruptibly();
     serverWorkingGroupCloseFuture.awaitUninterruptibly();
