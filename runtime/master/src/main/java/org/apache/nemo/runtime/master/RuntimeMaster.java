@@ -26,6 +26,7 @@ import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
@@ -118,6 +119,7 @@ public final class RuntimeMaster {
   // private final OffloadingWorkerManager offloadingWorkerManager;
 
   private final LambdaContainerManager lambdaContainerManager;
+  private final EvalConf evalConf;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -130,6 +132,7 @@ public final class RuntimeMaster {
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
+                        final EvalConf evalConf,
                         final LambdaContainerManager lambdaContainerManager,
                         final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
@@ -142,6 +145,7 @@ public final class RuntimeMaster {
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
     this.taskDispatcher = taskDispatcher;
+    this.evalConf = evalConf;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.requestContainerThread = Executors.newCachedThreadPool();
     this.runtimeMasterThread =
@@ -759,9 +763,15 @@ public final class RuntimeMaster {
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
-        if (curr - st >= 90000 && msg.getLatency() >= 15000) {
+        if (curr - st >= 90000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
           requestContainerThread.execute(() -> {
+            stopLambdaContainer(10);
+            try {
+              Thread.sleep(300);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
             clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
               .setType(ControlMessage.DriverToClientMessageType.KillAll).build());
           });
