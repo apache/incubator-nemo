@@ -116,7 +116,10 @@ public final class ExecutorRegistry {
       throw new IllegalArgumentException("No executor: " + executor);
     }
 
-    executors.remove(executor);
+    LOG.info("Remove executor {}", executor);
+
+    final ExecutorRepresenter executorRepresenter = executors.remove(executor).left();
+    executorRepresenter.shutDown();
 
     // broadcast executors
     executors.values().forEach(val -> {

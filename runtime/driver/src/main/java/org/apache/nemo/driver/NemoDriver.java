@@ -178,10 +178,14 @@ public final class NemoDriver {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
           runtimeMaster.requestLambdaContainer(num);
+        } else if (decision.equals("stop-lambda-executor")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final int num = new Integer(args[1]);
+          runtimeMaster.requestLambdaContainer(num);
         } else if (decision.equals("add-offloading-executor")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
-          runtimeMaster.createOffloadingExecutor(num);
+          runtimeMaster.stopLambdaContainer(num);
         } else if (decision.equals("send-task-lambda")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           runtimeMaster.sendTaskToLambda();

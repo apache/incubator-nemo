@@ -187,6 +187,12 @@ public final class LambdaContainerManager {
     return this.workerControlTransport.getPort();
   }
 
+  public void stopLambdaContainer(final int num) {
+    requestIdControlChannelMap.values().forEach(workerProxy -> {
+      LOG.info("Deactivating lambda " + workerProxy.getId() + "/" + workerProxy.getExecutorId());
+      workerProxy.deactivate();
+    });
+  }
 
   public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num) {
 

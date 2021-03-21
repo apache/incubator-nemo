@@ -48,7 +48,7 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     this.executorId = executorId;
     this.controlChannel = controlChannel;
     this.pendingActivationWorkers = pendingActivationWorkers;
-    this.state = new AtomicReference<>(State.READY);
+    this.state = new AtomicReference<>(State.ACTIVATE);
   }
 
   public String getExecutorId() {

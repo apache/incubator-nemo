@@ -493,6 +493,10 @@ public final class RuntimeMaster {
     });
   }
 
+  public void stopLambdaContainer(final int num) {
+    lambdaContainerManager.stopLambdaContainer(num);
+  }
+
 
   public void createOffloadingExecutor(final int num) {
     LOG.info("Create offloading executor");
