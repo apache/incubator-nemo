@@ -288,13 +288,17 @@ public final class LambdaContainerManager {
         final ResourceSpecification lambdaResourceSpec =
           new ResourceSpecification(COMPUTE, 1, 100, 1024);
 
-        return new DefaultExecutorRepresenterImpl(lambdaExecutorId,
+        final ExecutorRepresenter er = new DefaultExecutorRepresenterImpl(lambdaExecutorId,
           lambdaResourceSpec,
           messageSender,
           () -> {proxy.deactivate();},
           serializationExecutorService,
           lambdaExecutorId,
           serializedTaskMap);
+
+        proxy.setRepresentor(er);
+
+        return er;
       }));
     }
 

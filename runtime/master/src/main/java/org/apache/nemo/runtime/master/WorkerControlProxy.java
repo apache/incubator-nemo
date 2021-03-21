@@ -55,6 +55,10 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     return er.getExecutorId();
   }
 
+  public void setRepresentor(ExecutorRepresenter er) {
+    this.er = er;
+  }
+
   public void setDataChannel(ExecutorRepresenter er,
                              final String fullAddr) {
 
