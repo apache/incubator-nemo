@@ -271,6 +271,7 @@ final class PipelineTranslationContext {
     final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
     final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
+    /*
     if (srcTransform instanceof DoFnTransform) {
       final List<DisplayData.Item> items = ((DoFnTransform) srcTransform).getDisplayData().items().stream()
         .filter(item -> item.getKey().equals("name"))
@@ -280,12 +281,11 @@ final class PipelineTranslationContext {
         return CommunicationPatternProperty.Value.RoundRobin;
       }
     }
+    */
 
-    /*
     if (src instanceof SourceVertex) {
       return CommunicationPatternProperty.Value.RoundRobin;
     }
-    */
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
       return CommunicationPatternProperty.Value.Shuffle;

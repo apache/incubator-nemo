@@ -23,6 +23,7 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
     });
 
 
+    /*
     dag.getVertices().forEach(vertex -> {
 
       if (vertex instanceof OperatorVertex) {
@@ -35,12 +36,11 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
         }
       }
     });
+    */
 
-    /*
     dag.getRootVertices().forEach(root -> {
       root.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.SOURCE));
     });
-    */
 
     return dag;
   }
