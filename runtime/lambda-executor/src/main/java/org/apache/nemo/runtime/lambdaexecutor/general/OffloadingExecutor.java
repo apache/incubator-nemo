@@ -281,6 +281,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       throw new RuntimeException(e);
     }
 
+    jcb.bindNamedParameter(EvalConf.Ec2.class, Boolean.toString(true));
+
     jcb.bindNamedParameter(MessageParameters.NameServerAddr.class, nameServerAddr);
     jcb.bindNamedParameter(MessageParameters.NameServerPort.class, Integer.toString(nameServerPort));
 
