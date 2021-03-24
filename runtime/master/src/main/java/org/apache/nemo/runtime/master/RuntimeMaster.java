@@ -221,9 +221,17 @@ public final class RuntimeMaster {
   public void flushMetrics() {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
+  }
 
+  /**
+   * Save metrics.
+   */
+  public void saveMetrics() {
+    // send metric to local file
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
+
+    // send metric to database
     if (this.dbEnabled) {
       metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
     }
@@ -273,6 +281,8 @@ public final class RuntimeMaster {
       // clean up state...
       Thread.currentThread().interrupt();
     }
+
+    saveMetrics();
 
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
