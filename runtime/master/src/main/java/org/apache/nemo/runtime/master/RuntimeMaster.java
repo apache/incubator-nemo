@@ -177,6 +177,7 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
+    this.metricCountDownLatch = new CountDownLatch(0);
   }
 
   /**
@@ -219,19 +220,32 @@ public final class RuntimeMaster {
    * Flush metrics.
    */
   public void flushMetrics() {
-    // send metric flush request to all executors
-    metricManagerMaster.sendMetricFlushRequest();
+    if (metricCountDownLatch.getCount() == 0) {
+      metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
+      // send metric flush request to all executors
+      metricManagerMaster.sendMetricFlushRequest();
+    }
   }
 
   /**
    * Save metrics.
    */
   public void saveMetrics() {
-    // send metric to local file
+    try {
+      if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
+        LOG.warn("Write Metric before all metric messages arrived.");
+      }
+    } catch (InterruptedException e) {
+      LOG.warn("Waiting Save Metric Process interrupted: ", e);
+      // clean up state...
+      Thread.currentThread().interrupt();
+    }
+
+    // save metric to file
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
 
-    // send metric to database
+    // save metric to database
     if (this.dbEnabled) {
       metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
     }
@@ -270,6 +284,8 @@ public final class RuntimeMaster {
   public void terminate() {
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
+
+    flushMetrics();
 
     try {
       // wait for metric flush
@@ -320,7 +336,6 @@ public final class RuntimeMaster {
           containerManager.requestContainer(resourceSpecification.left(), resourceSpecification.right());
         }
 
-        metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
         throw new ContainerException(e);
       }
@@ -490,6 +505,8 @@ public final class RuntimeMaster {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       public void run() {
+        flushMetrics();
+        saveMetrics();
         planStateManager.storeJSON("periodic");
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
