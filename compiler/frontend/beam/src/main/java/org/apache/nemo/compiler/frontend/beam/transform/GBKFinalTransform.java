@@ -340,8 +340,8 @@ public final class GBKFinalTransform<K, InputT>
     final long triggerTime = System.currentTimeMillis();
 
     if (triggeredKeys > 0) {
-      LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}", getContext().getTaskId(),
-        triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size());
+      // LOG.info("{} time to elem: triggeredKey: {}, numKeys: {}", getContext().getTaskId(),
+      //  triggeredKeys, inMemoryTimerInternalsFactory.watermarkTimers.size());
     }
   }
 
