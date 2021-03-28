@@ -59,6 +59,8 @@ public final class TaskEventRateCalculator {
       sb.append(taskMetrics.serializedTime);
       sb.append("\toutbytes:");
       sb.append(taskMetrics.outbytes);
+      sb.append("\tnumKey:");
+      sb.append(taskExecutor.getNumKeys());
       sb.append("\n");
     }
 
