@@ -763,7 +763,7 @@ public final class RuntimeMaster {
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
-        if (curr - st >= 90000 && msg.getLatency() >= evalConf.latencyLimit) {
+        if (curr - st >= 100000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
           requestContainerThread.execute(() -> {
             stopLambdaContainer(10);
