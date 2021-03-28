@@ -112,6 +112,7 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   public void checkpoint() {
+    final long st = System.currentTimeMillis();
     final StateStore stateStore = getContext().getStateStore();
     final OutputStream os = stateStore.getOutputStream(getContext().getTaskId());
     final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
@@ -125,7 +126,9 @@ public final class GBKFinalTransform<K, InputT>
 
       os.close();
 
-      LOG.info("Checkpoint timer state size {}, {} for {}",
+      final long et = System.currentTimeMillis();
+      LOG.info("State encoding time {} Checkpoint timer state size {}, {} for {}",
+        et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId());
@@ -142,6 +145,7 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void restore() {
     if (stateStore.containsState(getContext().getTaskId())) {
+      final long st = System.currentTimeMillis();
       final InputStream is = stateStore.getStateStream(getContext().getTaskId());
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;
@@ -162,7 +166,9 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
       }
 
-      LOG.info("Restored size {} for {}",
+      final long et = System.currentTimeMillis();
+      LOG.info("State decoding time {}, Restored size {} for {}",
+        et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId());
