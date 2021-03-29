@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import com.google.common.io.CountingInputStream;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -147,11 +148,12 @@ public final class GBKFinalTransform<K, InputT>
     if (stateStore.containsState(getContext().getTaskId())) {
       final long st = System.currentTimeMillis();
       final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final CountingInputStream countingInputStream = new CountingInputStream(is);
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;
       try {
-        state = coder.decode(is);
-        is.close();
+        state = coder.decode(countingInputStream);
+        countingInputStream.close();
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -167,7 +169,8 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       final long et = System.currentTimeMillis();
-      LOG.info("State decoding time {}, Restored size {} for {}",
+      LOG.info("State decoding byte {}, time {}, Restored size {} for {}",
+        countingInputStream.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
