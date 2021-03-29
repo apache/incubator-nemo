@@ -354,6 +354,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           final IREdge fromSVRR = new IREdge(CommunicationPatternProperty.Value.RoundRobin,
             vertexToInsert, partialCombine);
           edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
+          fromSVRR.setPropertyPermanently(
+            CommunicationPatternProperty.of(CommunicationPatternProperty.Value.RoundRobin));
 
           final IREdge fromSVShuffle = new IREdge(
             edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
@@ -374,6 +376,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             partialCombine,
             toFinalEdge.getDst());
           toFinalEdge.copyExecutionPropertiesTo(pToFinal);
+
+          pToFinal.setPropertyPermanently(
+            CommunicationPatternProperty.of(CommunicationPatternProperty.Value.Shuffle));
+
           builder.connectVertices(pToFinal);
           builder.connectVertices(edge);
         } else {
