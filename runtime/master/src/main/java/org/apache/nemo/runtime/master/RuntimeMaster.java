@@ -758,12 +758,14 @@ public final class RuntimeMaster {
 
   private final long st = System.currentTimeMillis();
 
+  private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
-        if (curr - st >= 100000 && msg.getLatency() >= evalConf.latencyLimit) {
+        if (curr - st >= 100000 && msg.getLatency() >= evalConf.latencyLimit
+          && consecutive.getAndIncrement() >= 5) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
           requestContainerThread.execute(() -> {
             stopLambdaContainer(10);
@@ -775,6 +777,8 @@ public final class RuntimeMaster {
             clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
               .setType(ControlMessage.DriverToClientMessageType.KillAll).build());
           });
+        } else {
+          consecutive.set(0);
         }
         break;
       }

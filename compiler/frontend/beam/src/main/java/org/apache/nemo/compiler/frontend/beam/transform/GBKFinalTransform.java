@@ -172,7 +172,7 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       final long et = System.currentTimeMillis();
-      LOG.info("State decoding byte {}, time {}, Restored size {} for {}",
+      LOG.info("State decoding byte {}, time {}, numkey {}, Restored size {} for {}",
         countingInputStream.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
@@ -239,7 +239,7 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       final long et = System.currentTimeMillis();
-      LOG.info("State decoding byte {}, time {}, Restored size {} for {}",
+      LOG.info("State decoding byte {}, time {}, numKey {}, Restored size {} for {}",
         countingInputStream.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
