@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.io.CountingInputStream;
+import com.google.common.io.CountingOutputStream;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -116,6 +117,7 @@ public final class GBKFinalTransform<K, InputT>
     final long st = System.currentTimeMillis();
     final StateStore stateStore = getContext().getStateStore();
     final OutputStream os = stateStore.getOutputStream(getContext().getTaskId());
+    final CountingOutputStream cos = new CountingOutputStream(os);
     final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
 
     try {
@@ -123,12 +125,13 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryStateInternalsFactory,
         prevOutputWatermark,
         keyAndWatermarkHoldMap,
-        inputWatermark), os);
+        inputWatermark), cos);
 
-      os.close();
+      cos.close();
 
       final long et = System.currentTimeMillis();
-      LOG.info("State encoding time {} Checkpoint timer state size {}, {} for {}",
+      LOG.info("State encoding byte {}, time {} Checkpoint timer state size {}, {} for {}",
+        cos.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
@@ -213,12 +216,14 @@ public final class GBKFinalTransform<K, InputT>
     stateStore = getContext().getStateStore();
 
     if (stateStore.containsState(getContext().getTaskId())) {
+      final long st = System.currentTimeMillis();
       final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final CountingInputStream countingInputStream = new CountingInputStream(is);
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;
       try {
-        state = coder.decode(is);
-        is.close();
+        state = coder.decode(countingInputStream);
+        countingInputStream.close();
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -233,10 +238,14 @@ public final class GBKFinalTransform<K, InputT>
         inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
       }
 
-      LOG.info("Restored size {}, {} for {}",
+      final long et = System.currentTimeMillis();
+      LOG.info("State decoding byte {}, time {}, Restored size {} for {}",
+        countingInputStream.getCount(),
+        et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId());
+
 
       inputWatermark = state.inputWatermark;
       prevOutputWatermark = state.prevOutputWatermark;
