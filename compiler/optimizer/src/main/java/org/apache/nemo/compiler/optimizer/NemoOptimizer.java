@@ -65,13 +65,7 @@ public final class NemoOptimizer implements Optimizer {
 
     try {
       optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
-      if (optimizationPolicy instanceof StreamingPolicy) {
-        final StreamingPolicy streamingPolicy = (StreamingPolicy) optimizationPolicy;
-        streamingPolicy.build(sourceParallelism);
-      } else if (optimizationPolicy instanceof StreamingOffloadingPolicy) {
-        final StreamingOffloadingPolicy streamingPolicy = (StreamingOffloadingPolicy) optimizationPolicy;
-        streamingPolicy.build(sourceParallelism);
-      }
+      optimizationPolicy.build(sourceParallelism);
       if (policyName == null) {
         throw new CompileTimeOptimizationException("A policy name should be specified.");
       }

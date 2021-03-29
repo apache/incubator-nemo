@@ -29,6 +29,8 @@ import java.io.Serializable;
  * Most policies follow the implementation in {@link PolicyImpl}.
  */
 public interface Policy extends Serializable {
+
+  default void build(int parallelism) {}
   /**
    * Optimize the DAG with the compile-time optimizations.
    *

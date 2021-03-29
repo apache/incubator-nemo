@@ -37,6 +37,7 @@ public final class StreamingPolicy implements Policy {
 
   }
 
+  @Override
   public void build(final int parallelism) {
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new DefaultCompositePass(parallelism));

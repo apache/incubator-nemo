@@ -38,6 +38,7 @@ public final class StreamingOffloadingPolicy implements Policy {
 
   }
 
+  @Override
   public void build(final int parallelism) {
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new StreamingOffloadingCompositePass(parallelism));
