@@ -301,7 +301,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build(); // update the DAG.
   }
 
-  public void insertConditionalRouter(final IREdge edgeToAdd) {
+  public void insertConditionalRouter(final IREdge edgeToAdd,
+                                      final List<IREdge> toFinalEdges) {
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -365,18 +366,16 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           builder.connectVertices(fromSVRR);
           builder.connectVertices(fromSVShuffle);
 
+        } else if (toFinalEdges.contains(edge)) {
           // partial' -> final
-          modifiedDAG.getOutgoingEdgesOf(edgeToAdd.getDst())
-            .forEach(toFinalEdge -> {
-
-              final IREdge pToFinal = new IREdge(
-                edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
-                partialCombine,
-                toFinalEdge.getDst());
-              toFinalEdge.copyExecutionPropertiesTo(pToFinal);
-              builder.connectVertices(pToFinal);
-            });
-
+          final IREdge toFinalEdge = edge;
+          final IREdge pToFinal = new IREdge(
+            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
+            partialCombine,
+            toFinalEdge.getDst());
+          toFinalEdge.copyExecutionPropertiesTo(pToFinal);
+          builder.connectVertices(pToFinal);
+          builder.connectVertices(edge);
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);

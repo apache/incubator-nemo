@@ -33,9 +33,11 @@ public final class StatefulReshapingPass extends ReshapingPass {
         && edges.get(0).getDst() instanceof OperatorVertex
         && ((OperatorVertex)edges.get(0).getDst()).getTransform().isGBKPartialTransform()) {
 
+        final IRVertex partial = edges.get(0).getDst();
+        final List<IREdge> toFinalEdges = dag.getOutgoingEdgesOf(partial);
         // add conditional routing vertex
         final IRVertex dst = edges.get(0).getDst();
-        dag.insertConditionalRouter(edges.get(0));
+        dag.insertConditionalRouter(edges.get(0), toFinalEdges);
       }
     });
 
