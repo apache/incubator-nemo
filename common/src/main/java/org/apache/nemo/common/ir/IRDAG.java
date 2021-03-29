@@ -34,12 +34,10 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -302,6 +300,81 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }
     modifiedDAG = builder.build(); // update the DAG.
   }
+
+  public void insertConditionalRouter(final IREdge edgeToAdd) {
+
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Integrity check
+    if (edgeToAdd.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
+      && !edgeToAdd.getPropertyValue(MessageIdEdgeProperty.class).get().isEmpty()) {
+      throw new CompileTimeOptimizationException(edgeToAdd.getId() + " has a MessageId, and cannot be removed");
+    }
+
+    if (!edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get()
+      .equals(CommunicationPatternProperty.Value.Shuffle)) {
+      throw new RuntimeException("Conditional router output is not shuffle..." + edgeToAdd);
+    }
+
+    // Before: A -edgeToAdd-> B (partial) -> C (final)
+    // After: A -> ConditionalRouter -edgeToAdd-> B (partial) -> C (final)
+    //                               -----(1)----> B' (pc)   (2) -/
+    // (1), (2) edge 새로 추가.
+    // CR, B' 추가
+
+    // Insert the vertex.
+    final IRVertex vertexToInsert = new ConditionalRouterVertex();
+    final IRVertex partialCombine = new OperatorVertex(
+      ((OperatorVertex)edgeToAdd.getDst()).getTransform());
+
+    builder.addVertex(vertexToInsert);
+    builder.addVertex(partialCombine);
+
+    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+      .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
+
+    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+      .ifPresent(p -> partialCombine.setProperty(ParallelismProperty.of(p)));
+
+    // Build the new DAG to reflect the new topology.
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v); // None of the existing vertices are deleted.
+
+      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+        if (edge.equals(edgeToAdd)) {
+          // MATCH!
+
+          // Edge to the streamVertex
+          final IREdge toSV = new IREdge(CommunicationPatternProperty.Value.OneToOne,
+            edgeToAdd.getSrc(), vertexToInsert);
+
+          // Edge from the streamVertex.
+          final IREdge fromSVRR = new IREdge(CommunicationPatternProperty.Value.RoundRobin,
+            vertexToInsert, edgeToAdd.getDst());
+          edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
+
+          final IREdge fromSVShuffle = new IREdge(
+            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
+            vertexToInsert,
+            edgeToAdd.getDst());
+          edgeToAdd.copyExecutionPropertiesTo(toSV);
+
+
+          // Track the new edges.
+          builder.connectVertices(toSV);
+          builder.connectVertices(fromSVRR);
+          builder.connectVertices(fromSVShuffle);
+        } else {
+          // NO MATCH, so simply connect vertices as before.
+          builder.connectVertices(edge);
+        }
+      }
+    });
+
+    modifiedDAG = builder.build(); // update the DAG.
+  }
+
   /**
    * Inserts a new vertex that streams data.
    *

@@ -75,6 +75,7 @@ public final class GBKFinalTransform<K, InputT>
   private final Coder windowCoder;
 
   private transient Map<K, Integer> keyCountMap;
+  private final boolean partial;
 
   /**
    * GroupByKey constructor.
@@ -86,7 +87,8 @@ public final class GBKFinalTransform<K, InputT>
                            final WindowingStrategy<?, ?> windowingStrategy,
                            final PipelineOptions options,
                            final SystemReduceFn reduceFn,
-                           final DisplayData displayData) {
+                           final DisplayData displayData,
+                           final boolean partial) {
     super(null, /* doFn */
       inputcoder, /* inputCoder */
       outputCoders,
@@ -104,6 +106,7 @@ public final class GBKFinalTransform<K, InputT>
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
+    this.partial = partial;
   }
 
   @Override
@@ -114,10 +117,15 @@ public final class GBKFinalTransform<K, InputT>
   }
 
   @Override
+  public boolean isGBKPartialTransform() {
+    return partial;
+  }
+
+  @Override
   public void checkpoint() {
     final long st = System.currentTimeMillis();
     final StateStore stateStore = getContext().getStateStore();
-    final OutputStream os = stateStore.getOutputStream(getContext().getTaskId());
+    final OutputStream os = stateStore.getOutputStream(getContext().getTaskId() + "-" + partial);
     final CountingOutputStream cos = new CountingOutputStream(os);
     final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
 
@@ -149,9 +157,9 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   public void restore() {
-    if (stateStore.containsState(getContext().getTaskId())) {
+    if (stateStore.containsState(getContext().getTaskId() + "-" + partial)) {
       final long st = System.currentTimeMillis();
-      final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-" + partial);
       final CountingInputStream countingInputStream = new CountingInputStream(is);
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;
@@ -216,9 +224,9 @@ public final class GBKFinalTransform<K, InputT>
     taskId = getContext().getTaskId();
     stateStore = getContext().getStateStore();
 
-    if (stateStore.containsState(getContext().getTaskId())) {
+    if (stateStore.containsState(getContext().getTaskId() + "-" + partial)) {
       final long st = System.currentTimeMillis();
-      final InputStream is = stateStore.getStateStream(getContext().getTaskId());
+      final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-" + partial);
       final CountingInputStream countingInputStream = new CountingInputStream(is);
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;

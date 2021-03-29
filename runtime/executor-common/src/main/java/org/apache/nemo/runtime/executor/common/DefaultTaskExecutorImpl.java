@@ -92,7 +92,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
 
-  private Transform statefulTransform;
+  private List<Transform> statefulTransforms;
 
   private final TaskMetrics taskMetrics;
 
@@ -160,6 +160,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
+
+    this.statefulTransforms = new ArrayList<>();
 
     final long restoresSt = System.currentTimeMillis();
     this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
@@ -337,7 +339,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       return 0;
     } else {
       //LOG.info("Key {}, {}", num, taskId);
-      return statefulTransform.getNumKeys();
+      return statefulTransforms.stream().map(t -> t.getNumKeys())
+        .reduce((x, y) -> x + y)
+        .get();
     }
   }
 
@@ -408,7 +412,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
-          statefulTransform = ov.getTransform();
+          statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
       }
@@ -1079,7 +1083,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
 
     if (!isStateless) {
-      statefulTransform.restore();
+      statefulTransforms.forEach(transform -> transform.restore());
     }
   }
 
@@ -1129,7 +1133,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
     if (!isStateless) {
-      statefulTransform.checkpoint();
+      statefulTransforms.forEach(transform -> transform.checkpoint());
     }
 
     return true;

@@ -64,6 +64,10 @@ public interface Transform<I, O> extends Serializable {
 
   }
 
+  default boolean isGBKPartialTransform() {
+    return false;
+  }
+
   default int getNumKeys() {
     return 0;
   }

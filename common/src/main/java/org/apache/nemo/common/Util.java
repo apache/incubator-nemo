@@ -42,6 +42,7 @@ public final class Util {
 
   public static final long WATERMARK_PROGRESS = 300; // ms
 
+  public static final String PARTIAL_RR_TAG = "PartialRR";
   /**
    * Private constructor for utility class.
    */
