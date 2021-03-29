@@ -77,6 +77,11 @@ public interface Transform<I, O> extends Serializable {
    */
   void close();
 
+  interface ConditionalRouting {
+    boolean toPartial();
+    double getPercent();
+  }
+
   /**
    * Context of the transform.
    */
@@ -87,6 +92,9 @@ public interface Transform<I, O> extends Serializable {
     String getTaskId();
 
     ServerlessExecutorProvider getServerlessExecutorProvider();
+
+    // for conditional router vertex
+    ConditionalRouting getCondRouting();
 
     /**
      * @param id of the variable to get.

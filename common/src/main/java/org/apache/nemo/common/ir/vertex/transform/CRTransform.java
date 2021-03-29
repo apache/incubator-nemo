@@ -35,8 +35,7 @@ public final class CRTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
   private static final Logger LOG = LoggerFactory.getLogger(CRTransform.class.getName());
 
-  private double percent = 0.0;
-  private boolean toParital = false;
+  private ConditionalRouting conditionalRouting;
 
   private final Random random = new Random();
   /**
@@ -48,13 +47,14 @@ public final class CRTransform<T> implements Transform<T, T> {
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
+    this.conditionalRouting = context.getCondRouting();
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final T element) {
-    if (toParital) {
-      if (random.nextDouble() < percent) {
+    if (conditionalRouting.toPartial()) {
+      if (random.nextDouble() < conditionalRouting.getPercent()) {
         outputCollector.emit(Util.PARTIAL_RR_TAG, element);
       } else {
         outputCollector.emit(element);
@@ -64,12 +64,6 @@ public final class CRTransform<T> implements Transform<T, T> {
       outputCollector.emit(element);
     }
   }
-
-  public void setCRRouting(final double percent, final boolean toPartial) {
-    this.percent = percent;
-    this.toParital = toPartial;
-  }
-
 
   @Override
   public void onWatermark(final Watermark watermark) {

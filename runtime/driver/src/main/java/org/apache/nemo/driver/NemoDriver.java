@@ -218,6 +218,12 @@ public final class NemoDriver {
           final int stageId = new Integer(args[2]);
           runtimeMaster.deoffloadTask(num, stageId);
 
+        } else if (decision.equals("conditional-routing")) {
+          final String[] args = message.getScalingMsg().getInfo().split(" ");
+          final boolean partial = new Boolean(args[1]);
+          final double percent = new Double(args[2]);
+          runtimeMaster.triggerConditionalRouting(partial, percent);
+
         } else if (decision.equals("move-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
@@ -226,7 +232,7 @@ public final class NemoDriver {
             Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
             .collect(Collectors.toList());
           jobScaler.sendTaskStopSignal(num, stages);
-
+          runtimeMaster.triggerConditionalRouting(true, evalConf.partialPercent * 0.01);
         } else if (decision.equals("reclaim-task")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);
@@ -235,7 +241,7 @@ public final class NemoDriver {
             Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
             .collect(Collectors.toList());
           jobScaler.sendPrevMovedTaskStopSignal(num, stages);
-
+          runtimeMaster.triggerConditionalRouting(false, 0);
         } else if (decision.equals("throttle-source")) {
           final String[] args = message.getScalingMsg().getInfo().split(" ");
           final int num = new Integer(args[1]);

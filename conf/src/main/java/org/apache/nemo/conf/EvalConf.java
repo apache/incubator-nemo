@@ -180,6 +180,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "partial_warmup", default_value = "false")
   public static final class PartialWarmup implements Name<Boolean> {}
 
+  // 0 ~ 100
+  @NamedParameter(short_name = "partial_percent", default_value = "0")
+  public static final class PartialPercent implements Name<Integer> {}
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -226,6 +229,7 @@ public final class EvalConf {
   public final boolean partialWarmup;
 
   public final long latencyLimit;
+  public final int partialPercent;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -268,6 +272,7 @@ public final class EvalConf {
                    @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker,
                    @Parameter(PartialWarmup.class) final boolean partialWarmup,
                    @Parameter(NumLambdaPool.class) final int numLambdaPool,
+                   @Parameter(PartialPercent.class) final int partialPercent,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -297,6 +302,7 @@ public final class EvalConf {
     this.autoscaling = autoscaling;
     this.randomSelection = randomSelection;
     this.scalingAlpha = scalingAlpha;
+    this.partialPercent = partialPercent;
     this.sfToVm = sfToVm;
     this.awsRegion = awsRegion;
     this.allocatedCores = allocatedCores;
@@ -362,6 +368,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(NumLambdaPool.class, Integer.toString(numLambdaPool));
     jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     jcb.bindNamedParameter(LatencyLimit.class, Long.toString(latencyLimit));
+    jcb.bindNamedParameter(PartialPercent.class, Integer.toString(partialPercent));
     return jcb.build();
   }
 
@@ -408,6 +415,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(NumLambdaPool.class);
     cl.registerShortNameOfClass(PartialWarmup.class);
     cl.registerShortNameOfClass(LatencyLimit.class);
+    cl.registerShortNameOfClass(PartialPercent.class);
   }
 
   @Override
@@ -454,6 +462,7 @@ public final class EvalConf {
     sb.append("numLambdaPool: "); sb.append(numLambdaPool); sb.append("\n");
     sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("latencyLimit: "); sb.append(latencyLimit); sb.append("\n");
+    sb.append("partialPercent: "); sb.append(partialPercent); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

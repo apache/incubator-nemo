@@ -78,6 +78,11 @@ message DriverToClientMessage {
     optional DataCollectMessage dataCollected = 2;
 }
 
+message ConditionalRoutingMessage {
+  required double percent = 1;
+  required bool toPartial = 2;
+}
+
 enum MessageType {
     TaskStateChanged = 0;
     ScheduleTask = 1;
@@ -172,6 +177,8 @@ enum MessageType {
     NameLookup = 64;
 
     LatencyCollection = 65;
+
+    ConditionalRouting = 66;
 }
 
 message LambdaEndMessage {
@@ -273,6 +280,8 @@ message Message {
     optional NameRegisterMessage nameRegisterMsg = 59;
 
     optional LatencyCollectionMessage latencyMsg = 60;
+
+    optional ConditionalRoutingMessage conditionalRoutingMsg = 61;
 }
 
 message LatencyCollectionMessage {

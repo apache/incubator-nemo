@@ -126,6 +126,8 @@ public final class Executor {
 
   private final StreamVertexSerializerManager streamVertexSerializerManager;
 
+  private final DefaultCondRouting condRouting;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -153,6 +155,7 @@ public final class Executor {
                    final ExecutorChannelManagerMap executorChannelManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler,
+                   final DefaultCondRouting condRouting,
                    // final OffloadingWorkerFactory workerFactory,
                    // final OffloadingManager offloadingManager,
                    final OutputCollectorGenerator outputCollectorGenerator) {
@@ -160,6 +163,7 @@ public final class Executor {
                    //final CpuEventModel cpuEventModel) {
 
     this.messageEnvironment = messageEnvironment;
+    this.condRouting = condRouting;
 
     this.streamVertexSerializerManager = streamVertexSerializerManager;
 
@@ -488,6 +492,7 @@ public final class Executor {
             pipeManagerWorker,
             outputCollectorGenerator,
             bytes,
+            condRouting,
             // new NoOffloadingPreparer(),
             false);
       } else {
@@ -510,6 +515,7 @@ public final class Executor {
             pipeManagerWorker,
             outputCollectorGenerator,
             bytes,
+            condRouting,
             // preparer,
             false);
       }
@@ -584,6 +590,14 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case ConditionalRouting: {
+          final ControlMessage.ConditionalRoutingMessage msg = message.getConditionalRoutingMsg();
+          final boolean toPartial = msg.getToPartial();
+          final double percent = msg.getPercent();
+          condRouting.setPercent(percent);
+          condRouting.setPartial(toPartial);
+          break;
+        }
         case InvokePartialOffloading: {
           throw new RuntimeException("Not supoprted");
           // LOG.info("Invoke partial offloading for {}", executorId);

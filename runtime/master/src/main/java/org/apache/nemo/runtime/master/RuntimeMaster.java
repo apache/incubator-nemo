@@ -332,6 +332,24 @@ public final class RuntimeMaster {
     throw new RuntimeException("Cannot find offload type resource spec");
   }
 
+  public void triggerConditionalRouting(final boolean partial,
+                                        final double percent) {
+    LOG.info("Trigger conditional routing {} / {}", partial, percent);
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.ConditionalRouting)
+          .setConditionalRoutingMsg(ControlMessage.ConditionalRoutingMessage.newBuilder()
+            .setPercent(percent)
+            .setToPartial(partial)
+            .build())
+          .build());
+      });
+    });
+  }
+
   /**
    * Requests a container with resource specification.
    *
@@ -421,7 +439,6 @@ public final class RuntimeMaster {
       requestContainerThread.execute(() ->
         containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
-
 
   /**
    * Called when an executor is launched on a container for this runtime.

@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -121,6 +122,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final boolean offloaded;
 
+  private final List<ConditionalRouterVertex> crVertices;
+
+  private final Transform.ConditionalRouting conditionalRouting;
+
   /**
    * Constructor.
    *
@@ -141,19 +146,22 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ExecutorThreadQueue executorThreadQueue,
                                  final InputPipeRegister inputPipeRegister,
                                  final StateStore stateStore,
-                                //  final OffloadingManager offloadingManager,
+                                 //  final OffloadingManager offloadingManager,
                                  final PipeManagerWorker pipeManagerWorker,
                                  final OutputCollectorGenerator outputCollectorGenerator,
                                  final byte[] bytes,
+                                 final Transform.ConditionalRouting conditionalRouting,
                                  // final OffloadingPreparer offloadingPreparer,
                                  final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
+    this.conditionalRouting = conditionalRouting;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
+    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -417,6 +425,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
       }
 
+      if (childVertex instanceof ConditionalRouterVertex) {
+        crVertices.add((ConditionalRouterVertex)childVertex);
+      }
+
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
 
@@ -461,7 +473,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
         // Create VERTEX HARNESS
         final Transform.Context context = new TransformContextImpl(
-          irVertex, serverlessExecutorProvider, taskId, stateStore);
+          irVertex, serverlessExecutorProvider, taskId, stateStore, conditionalRouting);
 
         TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
 

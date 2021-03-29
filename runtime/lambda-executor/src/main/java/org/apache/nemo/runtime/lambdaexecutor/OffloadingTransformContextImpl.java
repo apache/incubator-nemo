@@ -61,6 +61,11 @@ public final class OffloadingTransformContextImpl implements Transform.Context {
   }
 
   @Override
+  public Transform.ConditionalRouting getCondRouting() {
+    return null;
+  }
+
+  @Override
   public Object getBroadcastVariable(final Serializable tag) {
     throw new RuntimeException("exception");
   }
