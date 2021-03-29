@@ -318,8 +318,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }
 
     // Before: A -edgeToAdd-> B (partial) -> C (final)
-    // After: A -> ConditionalRouter -edgeToAdd-> B (partial) -> C (final)
-    //                               -----(1)----> B' (pc)   (2) -/
+    // After: A -(1)-> ConditionalRouter -(2)-> B (partial) -> C (final)
+    //                               -----(3)----> B' (pc)   (4) -/
     // (1), (2) edge 새로 추가.
     // CR, B' 추가
 
@@ -351,20 +351,29 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
           // Edge from the streamVertex.
           final IREdge fromSVRR = new IREdge(CommunicationPatternProperty.Value.RoundRobin,
-            vertexToInsert, edgeToAdd.getDst());
+            vertexToInsert, partialCombine);
           edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
 
           final IREdge fromSVShuffle = new IREdge(
             edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
             vertexToInsert,
             edgeToAdd.getDst());
-          edgeToAdd.copyExecutionPropertiesTo(toSV);
+          edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
+
+          // partial' -> final
+
+           final IREdge pToFinal = new IREdge(
+            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
+            partialCombine,
+            edgeToAdd.getDst());
+          edgeToAdd.copyExecutionPropertiesTo(pToFinal);
 
 
           // Track the new edges.
           builder.connectVertices(toSV);
           builder.connectVertices(fromSVRR);
           builder.connectVertices(fromSVShuffle);
+          builder.connectVertices(pToFinal);
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
