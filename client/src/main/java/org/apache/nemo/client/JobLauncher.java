@@ -252,6 +252,7 @@ public final class JobLauncher {
         driverShutdownedLatch = new CountDownLatch(1);
       }
       scalingService.shutdownNow();
+      scalingSchedService.shutdownNow();
       LOG.info("Scaling service shutdown now");
 
       if (driverRPCServer.hasLink()) {
@@ -311,7 +312,8 @@ public final class JobLauncher {
     launchDAG(dag, Collections.emptyMap(), jobId);
   }
 
-  private static final ScheduledExecutorService scalingService = Executors.newScheduledThreadPool(2);
+  private static final ExecutorService scalingService = Executors.newSingleThreadExecutor();
+  private static final ScheduledExecutorService scalingSchedService = Executors.newSingleThreadScheduledExecutor();
 
   /**
    * @param dag the application DAG.
@@ -361,9 +363,7 @@ public final class JobLauncher {
       throw new RuntimeException(e);
     }
 
-    final AtomicInteger prevFileReadCnt = new AtomicInteger(0);
-
-    scalingService.scheduleAtFixedRate(() -> {
+    scalingService.execute(() -> {
       LOG.info("Scaling service invoked...");
         try {
           final BufferedReader br =
@@ -372,17 +372,22 @@ public final class JobLauncher {
           String s;
           String lastLine = null;
           int cnt = 0;
+
+          // skip first
           while ((s = br.readLine()) != null) {
             lastLine = s;
             cnt += 1;
           }
 
-          if (cnt > prevFileReadCnt.get()) {
+          while (!shutdowned) {
+
+            while ((s = br.readLine()) == null) {
+              Thread.sleep(10);
+            }
+
+            lastLine = s;
 
             LOG.info("Read line {} ... send Scaling", lastLine);
-
-            prevFileReadCnt.set(cnt);
-
 
             String[] split = lastLine.split(" ");
             final String decision = split[0];
@@ -472,12 +477,11 @@ public final class JobLauncher {
                 .build());
             }
           }
-
         } catch (final Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
-    }, 1, 1, TimeUnit.SECONDS);
+    });
 
     // input rate 보내기
     try {
@@ -488,7 +492,7 @@ public final class JobLauncher {
 
       final AtomicBoolean prevNull = new AtomicBoolean(false);
 
-      scalingService.scheduleAtFixedRate(() -> {
+      scalingSchedService.scheduleAtFixedRate(() -> {
 
         try {
           String line;
