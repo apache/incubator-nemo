@@ -359,7 +359,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
             vertexToInsert,
             edgeToAdd.getDst());
-          edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
+          edgeToAdd.copyExecutionPropertiesTo(fromSVShuffle);
 
           // Track the new edges.
           builder.connectVertices(toSV);
@@ -370,7 +370,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           // partial' -> final
           final IREdge toFinalEdge = edge;
           final IREdge pToFinal = new IREdge(
-            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
             partialCombine,
             toFinalEdge.getDst());
           toFinalEdge.copyExecutionPropertiesTo(pToFinal);
