@@ -360,20 +360,23 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             edgeToAdd.getDst());
           edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
 
-          // partial' -> final
-
-           final IREdge pToFinal = new IREdge(
-            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
-            partialCombine,
-            edgeToAdd.getDst());
-          edgeToAdd.copyExecutionPropertiesTo(pToFinal);
-
-
           // Track the new edges.
           builder.connectVertices(toSV);
           builder.connectVertices(fromSVRR);
           builder.connectVertices(fromSVShuffle);
-          builder.connectVertices(pToFinal);
+
+          // partial' -> final
+          modifiedDAG.getOutgoingEdgesOf(edgeToAdd.getDst())
+            .forEach(toFinalEdge -> {
+
+              final IREdge pToFinal = new IREdge(
+                edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
+                partialCombine,
+                toFinalEdge.getDst());
+              toFinalEdge.copyExecutionPropertiesTo(pToFinal);
+              builder.connectVertices(pToFinal);
+            });
+
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
