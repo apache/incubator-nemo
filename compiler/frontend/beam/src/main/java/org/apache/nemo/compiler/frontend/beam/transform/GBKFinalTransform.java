@@ -100,6 +100,7 @@ public final class GBKFinalTransform<K, InputT>
     //this.keyToValues = new HashMap<>();
     this.keyCoder = keyCoder;
     this.reduceFn = reduceFn;
+    LOG.info("Reduce function {}", reduceFn.getClass());
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
