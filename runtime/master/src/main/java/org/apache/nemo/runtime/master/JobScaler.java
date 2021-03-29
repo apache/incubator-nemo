@@ -1150,6 +1150,7 @@ public final class JobScaler {
 
     String prevStageId = null;
     final List<String> prevStoppedTasks = new LinkedList<>();
+    final List<String> stoppedTasks = new LinkedList<>();
 
     for (final String stageId : stageIds) {
 
@@ -1184,6 +1185,7 @@ public final class JobScaler {
           if (stageStoppedCnt.get(stageId) < num) {
             LOG.info("Stop task {}", taskId);
             taskScheduledMap.stopTask(taskId);
+            stoppedTasks.add(taskId);
             prevStoppedTasks.add(taskId);
 
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
@@ -1193,6 +1195,20 @@ public final class JobScaler {
     }
 
     prevMovedTask.clear();
+
+    // waiting
+    for (final String taskId : stoppedTasks) {
+      LOG.info("Waiting for task reclaiming {}", taskId);
+      while (!taskScheduledMap.isTaskScheduled(taskId)) {
+        try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        // Waiting for task scheduling
+      }
+    }
+    LOG.info("End of waiting for task reclaiming");
   }
 
   public synchronized void sendTaskStopSignal(final int num,
@@ -1207,6 +1223,7 @@ public final class JobScaler {
 
     String prevStageId = null;
     final List<String> prevStoppedTasks = new LinkedList<>();
+    final List<String> stoppedTasks = new LinkedList<>();
 
     for (final String stageId : stageIds) {
 
@@ -1252,6 +1269,8 @@ public final class JobScaler {
                 prevMovedTask.add(taskId);
                 prevStoppedTasks.add(taskId);
 
+                stoppedTasks.add(taskId);
+
                 stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
               }
             }
@@ -1259,6 +1278,20 @@ public final class JobScaler {
         }
       }
     }
+
+    // waiting
+    for (final String taskId : stoppedTasks) {
+      LOG.info("Waiting for task rescheduling {}", taskId);
+      while (!taskScheduledMap.isTaskScheduled(taskId)) {
+        try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        // Waiting for task scheduling
+      }
+    }
+    LOG.info("End of waiting for task rescheduling");
   }
 
   private void sendScalingOutDoneToAllWorkers() {
