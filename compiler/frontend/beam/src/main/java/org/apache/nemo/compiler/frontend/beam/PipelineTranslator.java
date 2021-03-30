@@ -458,7 +458,9 @@ final class PipelineTranslator {
           false);
 
       final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
+      partialCombine.isStateful = true;
       final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
+      finalCombine.isStateful = true;
 
       // (Step 1) Partial Combine
       ctx.addVertex(partialCombine);

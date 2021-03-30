@@ -328,6 +328,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final IRVertex vertexToInsert = new ConditionalRouterVertex();
     final IRVertex partialCombine = new OperatorVertex(
       ((OperatorVertex)edgeToAdd.getDst()).getTransform());
+    partialCombine.isStateful = true;
 
     builder.addVertex(vertexToInsert);
     builder.addVertex(partialCombine);
