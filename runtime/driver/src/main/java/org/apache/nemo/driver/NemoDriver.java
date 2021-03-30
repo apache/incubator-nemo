@@ -74,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -232,7 +233,9 @@ public final class NemoDriver {
             final List<String> stages =
               Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                 .collect(Collectors.toList());
-            jobScaler.sendTaskStopSignal(num, stages);
+            for (int i = stages.size() - 1; i >= 0; i--) {
+              jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
+            }
             // runtimeMaster.triggerConditionalRouting(true, evalConf.partialPercent * 0.01);
           } else if (decision.equals("reclaim-task")) {
             final String[] args = message.getScalingMsg().getInfo().split(" ");
