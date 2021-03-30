@@ -235,11 +235,6 @@ public final class NemoDriver {
                 .collect(Collectors.toList());
             for (int i = stages.size() - 1; i >= 0; i--) {
               jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
             }
             // runtimeMaster.triggerConditionalRouting(true, evalConf.partialPercent * 0.01);
           } else if (decision.equals("reclaim-task")) {

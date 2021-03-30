@@ -1298,7 +1298,7 @@ public final class JobScaler {
       LOG.info("Waiting for task rescheduling {}", taskId);
       while (!taskScheduledMap.isTaskScheduled(taskId)) {
         try {
-          Thread.sleep(50);
+          Thread.sleep(10);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
