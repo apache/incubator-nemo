@@ -1189,26 +1189,23 @@ public final class JobScaler {
             prevStoppedTasks.add(taskId);
 
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
+
+            LOG.info("Waiting for task reclaiming {}", taskId);
+            while (!taskScheduledMap.isTaskScheduled(taskId)) {
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              // Waiting for task scheduling
+            }
+            LOG.info("End of waiting for task reclaiming {}", taskId);
           }
         }
       }
     }
 
     prevMovedTask.clear();
-
-    // waiting
-    for (final String taskId : stoppedTasks) {
-      LOG.info("Waiting for task reclaiming {}", taskId);
-      while (!taskScheduledMap.isTaskScheduled(taskId)) {
-        try {
-          Thread.sleep(50);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        // Waiting for task scheduling
-      }
-    }
-    LOG.info("End of waiting for task reclaiming");
   }
 
   public synchronized void sendTaskStopSignal(final int num,
@@ -1291,6 +1288,7 @@ public final class JobScaler {
         // Waiting for task scheduling
       }
     }
+
     LOG.info("End of waiting for task rescheduling");
   }
 
