@@ -1154,6 +1154,8 @@ public final class JobScaler {
 
     for (final String stageId : stageIds) {
 
+      final List<String> currStageStopped = new LinkedList<>();
+
       if (prevStageId != null &&
         (Integer.valueOf(prevStageId.split("Stage")[1]) ==
           Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
@@ -1184,25 +1186,31 @@ public final class JobScaler {
 
           if (stageStoppedCnt.get(stageId) < num) {
             LOG.info("Stop task {}", taskId);
+            currStageStopped.add(taskId);
             taskScheduledMap.stopTask(taskId);
             stoppedTasks.add(taskId);
             prevStoppedTasks.add(taskId);
 
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
 
-            LOG.info("Waiting for task reclaiming {}", taskId);
-            while (!taskScheduledMap.isTaskScheduled(taskId)) {
-              try {
-                Thread.sleep(50);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              // Waiting for task scheduling
-            }
-            LOG.info("End of waiting for task reclaiming {}", taskId);
+
           }
         }
       }
+
+      for (final String taskId : currStageStopped) {
+        LOG.info("Waiting for task reclaiming {}", taskId);
+        while (!taskScheduledMap.isTaskScheduled(taskId)) {
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          // Waiting for task scheduling
+        }
+        LOG.info("End of waiting for task reclaiming {}", taskId);
+      }
+
     }
 
     prevMovedTask.clear();
