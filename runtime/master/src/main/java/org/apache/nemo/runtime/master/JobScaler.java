@@ -1152,6 +1152,9 @@ public final class JobScaler {
     final List<String> prevStoppedTasks = new LinkedList<>();
     final List<String> stoppedTasks = new LinkedList<>();
 
+    stageIds.sort((a, b) -> -Integer.valueOf(a.split("Stage")[1])
+      .compareTo(Integer.valueOf(b.split("Stage")[1])));
+
     for (final String stageId : stageIds) {
 
       final List<String> currStageStopped = new LinkedList<>();
