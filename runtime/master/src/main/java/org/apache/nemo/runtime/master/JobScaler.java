@@ -1214,6 +1214,12 @@ public final class JobScaler {
         LOG.info("End of waiting for task reclaiming {}", taskId);
       }
 
+      try {
+        Thread.sleep(3000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
     }
 
     prevMovedTask.clear();
