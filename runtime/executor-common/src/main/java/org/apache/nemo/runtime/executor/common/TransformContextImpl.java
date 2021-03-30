@@ -36,6 +36,7 @@ public final class TransformContextImpl implements Transform.Context {
   private final String taskId;
   private final StateStore stateStore;
   private final Transform.ConditionalRouting conditionalRouting;
+  private final String executorId;
 
   /**
    * Constructor of Context Implementation.
@@ -44,18 +45,25 @@ public final class TransformContextImpl implements Transform.Context {
                               final ServerlessExecutorProvider serverlessExecutorProvider,
                               final String taskId,
                               final StateStore stateStore,
-                              final Transform.ConditionalRouting conditionalRouting) {
+                              final Transform.ConditionalRouting conditionalRouting,
+                              final String executorId) {
     this.data = null;
     this.irVertex = irVertex;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.taskId = taskId;
     this.stateStore = stateStore;
     this.conditionalRouting = conditionalRouting;
+    this.executorId = executorId;
   }
 
   @Override
   public StateStore getStateStore() {
     return stateStore;
+  }
+
+  @Override
+  public String getExecutorId() {
+    return executorId;
   }
 
   @Override

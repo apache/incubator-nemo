@@ -89,6 +89,8 @@ public interface Transform<I, O> extends Serializable {
 
     StateStore getStateStore();
 
+    String getExecutorId();
+
     String getTaskId();
 
     ServerlessExecutorProvider getServerlessExecutorProvider();

@@ -139,12 +139,13 @@ public final class GBKFinalTransform<K, InputT>
       cos.close();
 
       final long et = System.currentTimeMillis();
-      LOG.info("State encoding byte {}, time {} Checkpoint timer state size {}, {} for {}",
+      LOG.info("State encoding byte {}, time {} Checkpoint timer state size {}, {} for {} in {}",
         cos.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
-        getContext().getTaskId());
+        getContext().getTaskId(),
+        getContext().getExecutorId());
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -181,12 +182,13 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       final long et = System.currentTimeMillis();
-      LOG.info("State decoding byte {}, time {}, numkey {}, Restored size {} for {}",
+      LOG.info("State decoding byte {}, time {}, numkey {}, Restored size {} for {} in {}",
         countingInputStream.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
-        getContext().getTaskId());
+        getContext().getTaskId(),
+        getContext().getExecutorId());
 
       inputWatermark = state.inputWatermark;
       prevOutputWatermark = state.prevOutputWatermark;
@@ -248,12 +250,13 @@ public final class GBKFinalTransform<K, InputT>
       }
 
       final long et = System.currentTimeMillis();
-      LOG.info("State decoding byte {}, time {}, numKey {}, Restored size {} for {}",
+      LOG.info("State decoding byte {}, time {}, numKey {}, Restored size {} for {} in {}",
         countingInputStream.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
-        getContext().getTaskId());
+        getContext().getTaskId(),
+        getContext().getExecutorId());
 
 
       inputWatermark = state.inputWatermark;
