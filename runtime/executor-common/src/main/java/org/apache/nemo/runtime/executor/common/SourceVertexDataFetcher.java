@@ -234,7 +234,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   @Override
   public boolean hasData() {
-    return !isFinishd && readable.isAvailable();
+    return !isFinishd && readable.isAvailable() ||
+      ((System.currentTimeMillis() - prevWatermarkTimestamp) >= WATERMARK_PROGRESS);
   }
 
   private Object retrieveElement() {
