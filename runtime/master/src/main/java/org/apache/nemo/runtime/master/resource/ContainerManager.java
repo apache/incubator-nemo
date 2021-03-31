@@ -175,7 +175,9 @@ public final class ContainerManager {
       .addOption("-XX:+PrintGCTimeStamps")
       .addOption("-XX:+PrintGCDateStamps")
       .addOption("-XX:+UseG1GC")
-      .addOption("-XX:+MaxGCPauseMillis=500");
+      .addOption("-XX:InitialHeapSize=" + (resourceSpecification.getMemory() - 100) + "m")
+      .addOption("-XX:MaxHeapSize=" + (resourceSpecification.getMemory() - 100) + "m")
+      .addOption("-XX:MaxGCPauseMillis=500");
       //.addOption("-verbosegc");
 
     /*
