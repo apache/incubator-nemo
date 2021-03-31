@@ -171,7 +171,10 @@ public final class ContainerManager {
 
     final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
       .addOption("-XX:-OmitStackTraceInFastThrow")
-      .addOption("-verbosegc");
+      .addOption("-XX:+PrintGCDetails")
+      .addOption("-XX:+PrintGCTimeStamps")
+      .addOption("-XX:+PrintGCDateStamps");
+      //.addOption("-verbosegc");
 
     /*
       .addOption("-Xms" +
