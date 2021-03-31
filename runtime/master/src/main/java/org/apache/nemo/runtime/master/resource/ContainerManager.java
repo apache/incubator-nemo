@@ -173,7 +173,9 @@ public final class ContainerManager {
       .addOption("-XX:-OmitStackTraceInFastThrow")
       .addOption("-XX:+PrintGCDetails")
       .addOption("-XX:+PrintGCTimeStamps")
-      .addOption("-XX:+PrintGCDateStamps");
+      .addOption("-XX:+PrintGCDateStamps")
+      .addOption("-XX:+UseG1GC")
+      .addOption("-XX:+MaxGCPauseMillis=500");
       //.addOption("-verbosegc");
 
     /*
