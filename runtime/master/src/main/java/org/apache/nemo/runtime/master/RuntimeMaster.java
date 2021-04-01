@@ -300,8 +300,6 @@ public final class RuntimeMaster {
       Thread.currentThread().interrupt();
     }
 
-    saveMetrics();
-
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
       try {
