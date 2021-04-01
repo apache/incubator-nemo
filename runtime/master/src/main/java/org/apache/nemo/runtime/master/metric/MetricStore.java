@@ -247,7 +247,7 @@ public final class MetricStore {
       final String jsonDump = dumpAllMetricToJson();
       writer.write(jsonDump);
     } catch (final FileNotFoundException e) {
-      LOG.warn("fail to write metric to local file: {}", e);
+      LOG.warn("Failure while writing metrics to local file: {}", e);
     } catch (final IOException e) {
       throw new MetricException(e);
     }
