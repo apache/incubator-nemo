@@ -27,9 +27,7 @@ public final class StatefulReshapingPass extends ReshapingPass {
       final List<IREdge> edges = dag.getOutgoingEdgesOf(vertex);
 
       // for conditional routing vertex
-      if (edges.size() == 1 &&
-        CommunicationPatternProperty.Value.Shuffle.equals(
-          edges.get(0).getPropertyValue(CommunicationPatternProperty.class).get())
+      if (edges.size() == 1
         && edges.get(0).getDst() instanceof OperatorVertex
         && ((OperatorVertex)edges.get(0).getDst()).getTransform().isGBKPartialTransform()) {
 

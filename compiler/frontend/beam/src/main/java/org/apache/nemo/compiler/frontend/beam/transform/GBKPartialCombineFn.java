@@ -7,9 +7,7 @@ import org.apache.beam.sdk.transforms.Combine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public final class GBKPartialCombineFn<InputT> extends Combine.CombineFn<InputT,
   Collection<InputT>, Collection<InputT>> {
@@ -40,7 +38,24 @@ public final class GBKPartialCombineFn<InputT> extends Combine.CombineFn<InputT,
 
   @Override
   public Collection<InputT> mergeAccumulators(Iterable<Collection<InputT>> accumulators) {
-    throw new RuntimeException("Not supported");
+    final List<Collection<InputT>> l = new LinkedList<>();
+    final Iterator<Collection<InputT>> iterator = accumulators.iterator();
+
+    int size = 0;
+    while (iterator.hasNext()) {
+      final Collection<InputT> n = iterator.next();
+      l.add(n);
+      size += n.size();
+    }
+
+    if (l.size() == 1) {
+      return l.get(0);
+    } else {
+      // merge
+      final Collection<InputT> coll = new ArrayList<>(size);
+      l.forEach(c -> ((ArrayList<InputT>) coll).addAll(c));
+      return coll;
+    }
   }
 
   @Override
