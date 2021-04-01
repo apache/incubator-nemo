@@ -122,21 +122,4 @@ public final class IREdge extends Edge<IRVertex> {
     return executionProperties.equals(irEdge.getExecutionProperties()) && hasSameItineraryAs(irEdge);
   }
 
-  @Override
-  public int hashCode() {
-    return new HashCodeBuilder(17, 37)
-        .append(getSrc().hashCode())
-        .append(getDst().hashCode())
-        .append(executionProperties)
-        .toHashCode();
-  }
-
-  @Override
-  public ObjectNode getPropertiesAsJsonNode() {
-    final ObjectMapper mapper = new ObjectMapper();
-    final ObjectNode node = mapper.createObjectNode();
-    node.put("id", getId());
-    node.set("executionProperties", executionProperties.asJsonNode());
-    return node;
-  }
 }
