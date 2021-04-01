@@ -313,10 +313,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       throw new CompileTimeOptimizationException(edgeToAdd.getId() + " has a MessageId, and cannot be removed");
     }
 
+    /*
     if (!edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get()
       .equals(CommunicationPatternProperty.Value.Shuffle)) {
       throw new RuntimeException("Conditional router output is not shuffle..." + edgeToAdd);
     }
+    */
 
     // Before: A -edgeToAdd-> B (partial) -> C (final)
     // After: A -(1)-> ConditionalRouter -(2)-> B (partial) -> C (final)
