@@ -272,6 +272,77 @@ final class PipelineTranslator {
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
+
+    final PCollection inputs = (PCollection) Iterables.getOnlyElement(
+      TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+    final KvCoder inputCoder = (KvCoder) inputs.getCoder();
+    final Coder outputCoder = getOutputCoders(pTransform).values().iterator().next();
+
+    final TupleTag mainOutputTag = new TupleTag<>();
+
+    // Stream data processing, using GBKTransform
+    final CombineFnBase.GlobalCombineFn partialCombineFn = new GBKPartialCombineFn(outputCoder);
+    final CombineFnBase.GlobalCombineFn finalCombineFn = new GBKFinalCombineFn(outputCoder);
+
+    final SystemReduceFn partialSystemReduceFn =
+      SystemReduceFn.combining(
+        inputCoder.getKeyCoder(),
+        AppliedCombineFn.withInputCoder(partialCombineFn,
+          ctx.getPipeline().getCoderRegistry(), inputCoder,
+          null,
+          mainInput.getWindowingStrategy()));
+
+    final SystemReduceFn finalSystemReduceFn =
+      SystemReduceFn.combining(
+        inputCoder.getKeyCoder(),
+        AppliedCombineFn.withInputCoder(finalCombineFn,
+          ctx.getPipeline().getCoderRegistry(),
+          KvCoder.of(inputCoder.getKeyCoder(),
+            outputCoder),
+          null, mainInput.getWindowingStrategy()));
+
+    final TupleTag<?> partialMainOutputTag = new TupleTag<>();
+    final GBKFinalTransform partialCombineStreamTransform =
+      new GBKFinalTransform(mainInput.getCoder(),
+        inputCoder.getKeyCoder(),
+        Collections.singletonMap(partialMainOutputTag, KvCoder.of(inputCoder.getKeyCoder(), outputCoder)),
+        partialMainOutputTag,
+        mainInput.getWindowingStrategy(),
+        ctx.getPipelineOptions(),
+        partialSystemReduceFn,
+        DisplayData.from(beamNode.getTransform()),
+        true);
+
+    final GBKFinalTransform finalCombineStreamTransform =
+      new GBKFinalTransform(KvCoder.of(inputCoder.getKeyCoder(), outputCoder),
+        inputCoder.getKeyCoder(),
+        getOutputCoders(pTransform),
+        Iterables.getOnlyElement(beamNode.getOutputs().keySet()),
+        mainInput.getWindowingStrategy(),
+        ctx.getPipelineOptions(),
+        finalSystemReduceFn,
+        DisplayData.from(beamNode.getTransform()),
+        false);
+
+    final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
+    partialCombine.isStateful = true;
+    final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
+    finalCombine.isStateful = true;
+
+    // (Step 1) Partial Combine
+    ctx.addVertex(partialCombine);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+
+    // (Step 2) Final Combine
+    ctx.addVertex(finalCombine);
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+
+    // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
+    final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), outputCoder);
+    ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+
+    /*
     final IRVertex vertex = new OperatorVertex(
       createGBKTransform(pTransform, mainInput, ctx, beamNode,
         SystemReduceFn.buffering(mainInput.getCoder())));
@@ -280,6 +351,7 @@ final class PipelineTranslator {
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+    */
   }
 
   /**
