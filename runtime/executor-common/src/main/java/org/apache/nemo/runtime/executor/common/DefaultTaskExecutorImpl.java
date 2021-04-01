@@ -588,7 +588,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
             LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
 
-            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+              || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
               inputPipeRegister.registerInputPipe(
                 RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
                 edge.getId(),
