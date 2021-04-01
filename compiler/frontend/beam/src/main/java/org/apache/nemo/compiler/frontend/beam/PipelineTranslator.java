@@ -281,7 +281,9 @@ final class PipelineTranslator {
     final TupleTag mainOutputTag = new TupleTag<>();
 
     // Stream data processing, using GBKTransform
-    final CombineFnBase.GlobalCombineFn partialCombineFn = new GBKPartialCombineFn(outputCoder);
+    final CombineFnBase.GlobalCombineFn partialCombineFn = new GBKPartialCombineFn(
+      ((KvCoder)outputCoder).getValueCoder());
+
     final CombineFnBase.GlobalCombineFn finalCombineFn = new GBKFinalCombineFn(outputCoder);
 
     final SystemReduceFn partialSystemReduceFn =
@@ -300,8 +302,7 @@ final class PipelineTranslator {
         inputCoder.getKeyCoder(),
         AppliedCombineFn.withInputCoder(finalCombineFn,
           ctx.getPipeline().getCoderRegistry(),
-          KvCoder.of(inputCoder.getKeyCoder(),
-            outputCoder),
+          (KvCoder) outputCoder,
           null, mainInput.getWindowingStrategy()));
 
     // final SystemReduceFn finalSystemReduceFn =
