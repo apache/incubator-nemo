@@ -390,10 +390,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           // pToFinal.setPropertyPermanently(
           //  CommunicationPatternProperty.of(CommunicationPatternProperty.Value.Shuffle));
 
+          builder.connectVertices(toFinalEdge);
+          LOG.info("Final edge {}", toFinalEdge.getId());
+
           builder.connectVertices(pToFinal);
           LOG.info("Add edge pToFinal {}", pToFinal.getId());
-          builder.connectVertices(edge);
-          LOG.info("Final edge {}", edge.getId());
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
