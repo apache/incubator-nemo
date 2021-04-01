@@ -312,7 +312,7 @@ final class PipelineTranslator {
     final GBKFinalTransform partialCombineStreamTransform =
       new GBKFinalTransform(mainInput.getCoder(),
         inputCoder.getKeyCoder(),
-        Collections.singletonMap(partialMainOutputTag, KvCoder.of(inputCoder.getKeyCoder(), outputCoder)),
+        Collections.singletonMap(partialMainOutputTag, outputCoder),
         partialMainOutputTag,
         mainInput.getWindowingStrategy(),
         ctx.getPipelineOptions(),
@@ -321,7 +321,7 @@ final class PipelineTranslator {
         true);
 
     final GBKFinalTransform finalCombineStreamTransform =
-      new GBKFinalTransform(KvCoder.of(inputCoder.getKeyCoder(), outputCoder),
+      new GBKFinalTransform(outputCoder,
         inputCoder.getKeyCoder(),
         getOutputCoders(pTransform),
         Iterables.getOnlyElement(beamNode.getOutputs().keySet()),
@@ -346,7 +346,7 @@ final class PipelineTranslator {
 
     // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
     final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
-    final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), outputCoder);
+    final Coder intermediateCoder = outputCoder;
     ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
     /*
