@@ -213,7 +213,8 @@ public final class PipeOutputWriter implements OutputWriter {
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
     final List<String> dstTaskIds;
-    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)
+      || comValue.get().equals(CommunicationPatternProperty.Value.PFOneToOne)) {
       dstTaskIds = Collections.singletonList(
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(),srcTaskIndex, 0));
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
@@ -239,7 +240,8 @@ public final class PipeOutputWriter implements OutputWriter {
   private List<String> getPipeToWrite(final Object value) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
-    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+      || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
       return Collections.singletonList(dstTaskIds.get(0));
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return dstTaskIds;

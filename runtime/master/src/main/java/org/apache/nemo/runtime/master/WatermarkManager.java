@@ -99,7 +99,8 @@ public final class WatermarkManager {
   private boolean isOneToOne(final Stage stage) {
 
     for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
-      if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)) {
+      if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)
+        || edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.PFOneToOne)) {
         return true;
       }
     }

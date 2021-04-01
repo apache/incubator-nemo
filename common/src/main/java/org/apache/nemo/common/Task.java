@@ -222,7 +222,8 @@ public final class Task implements Serializable {
       final CommunicationPatternProperty.Value comm =
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+        || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
         return Pair.of(edge, Collections.singletonList(
           RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0)));
       } else {
@@ -241,7 +242,8 @@ public final class Task implements Serializable {
       final CommunicationPatternProperty.Value comm =
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+        || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
         return Pair.of(edge, Collections.singletonList(
           RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0)));
       } else {

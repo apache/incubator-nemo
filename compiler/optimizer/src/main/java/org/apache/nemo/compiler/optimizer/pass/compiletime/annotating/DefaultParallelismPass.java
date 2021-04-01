@@ -88,6 +88,8 @@ public final class DefaultParallelismPass extends AnnotatingPass {
 
           final Integer o2oParallelism = inEdges.stream()
              .filter(edge -> CommunicationPatternProperty.Value.OneToOne
+                  .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())
+             || CommunicationPatternProperty.Value.PFOneToOne
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .max().orElse(1);
