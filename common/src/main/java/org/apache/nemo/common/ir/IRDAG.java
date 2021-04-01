@@ -388,6 +388,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
           builder.connectVertices(pToFinal);
           builder.connectVertices(edge);
+          LOG.info("Final edge {}", edge);
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
