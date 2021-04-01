@@ -284,7 +284,6 @@ final class PipelineTranslator {
     final CombineFnBase.GlobalCombineFn partialCombineFn = new GBKPartialCombineFn(outputCoder);
     final CombineFnBase.GlobalCombineFn finalCombineFn = new GBKFinalCombineFn(outputCoder);
 
-    /*
     final SystemReduceFn partialSystemReduceFn =
       SystemReduceFn.combining(
         inputCoder.getKeyCoder(),
@@ -292,11 +291,10 @@ final class PipelineTranslator {
           ctx.getPipeline().getCoderRegistry(), inputCoder,
           null,
           mainInput.getWindowingStrategy()));
-          */
-    final SystemReduceFn partialSystemReduceFn =
-      SystemReduceFn.buffering(inputCoder);
 
-    /*
+   // final SystemReduceFn partialSystemReduceFn =
+   //   SystemReduceFn.buffering(inputCoder);
+
     final SystemReduceFn finalSystemReduceFn =
       SystemReduceFn.combining(
         inputCoder.getKeyCoder(),
@@ -305,10 +303,9 @@ final class PipelineTranslator {
           KvCoder.of(inputCoder.getKeyCoder(),
             outputCoder),
           null, mainInput.getWindowingStrategy()));
-          */
 
-    final SystemReduceFn finalSystemReduceFn =
-      SystemReduceFn.buffering(outputCoder);
+    // final SystemReduceFn finalSystemReduceFn =
+    //  SystemReduceFn.buffering(outputCoder);
 
     final TupleTag<?> partialMainOutputTag = new TupleTag<>();
     final GBKFinalTransform partialCombineStreamTransform =
