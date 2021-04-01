@@ -354,7 +354,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             edgeToAdd.getSrc(), vertexToInsert);
 
           // Edge from the streamVertex.
-          final IREdge fromSVRR = new IREdge(CommunicationPatternProperty.Value.Shuffle,
+          final IREdge fromSVRR = new IREdge(
+            edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
             vertexToInsert, partialCombine);
           edgeToAdd.copyExecutionPropertiesTo(fromSVRR);
           // fromSVRR.setPropertyPermanently(
@@ -370,8 +371,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           edgeToAdd.copyExecutionPropertiesTo(fromSVShuffle);
 
           // Track the new edges.
+          LOG.info("Add edge toSV {}", toSV.getId());
           builder.connectVertices(toSV);
+          LOG.info("Add edge fromSVRR {}", fromSVRR.getId());
           builder.connectVertices(fromSVRR);
+          LOG.info("Add edge fromSVShuffle {}", fromSVShuffle.getId());
           builder.connectVertices(fromSVShuffle);
 
         } else if (toFinalEdges.contains(edge)) {
@@ -387,8 +391,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           //  CommunicationPatternProperty.of(CommunicationPatternProperty.Value.Shuffle));
 
           builder.connectVertices(pToFinal);
+          LOG.info("Add edge pToFinal {}", pToFinal.getId());
           builder.connectVertices(edge);
-          LOG.info("Final edge {}", edge);
+          LOG.info("Final edge {}", edge.getId());
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
