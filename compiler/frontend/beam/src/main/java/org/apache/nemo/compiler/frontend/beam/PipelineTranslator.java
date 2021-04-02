@@ -284,7 +284,8 @@ final class PipelineTranslator {
     final CombineFnBase.GlobalCombineFn partialCombineFn = new GBKPartialCombineFn(
       ((KvCoder)outputCoder).getValueCoder());
 
-    final CombineFnBase.GlobalCombineFn finalCombineFn = new GBKFinalCombineFn(outputCoder);
+    final CombineFnBase.GlobalCombineFn finalCombineFn = new GBKFinalCombineFn(
+    ((KvCoder)outputCoder).getValueCoder());
 
     final SystemReduceFn partialSystemReduceFn =
       SystemReduceFn.combining(
