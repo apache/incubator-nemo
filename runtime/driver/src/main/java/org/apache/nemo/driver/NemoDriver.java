@@ -142,10 +142,7 @@ public final class NemoDriver {
    */
   private void shutdown() {
     LOG.info("Driver shutdown initiated");
-    runnerThread.execute(() -> {
-      runtimeMaster.saveMetrics();
-      runtimeMaster.terminate();
-    });
+    runnerThread.execute(runtimeMaster::terminate);
     runnerThread.shutdown();
   }
 

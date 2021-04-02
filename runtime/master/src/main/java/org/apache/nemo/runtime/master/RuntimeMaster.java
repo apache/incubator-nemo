@@ -229,12 +229,7 @@ public final class RuntimeMaster {
       // send metric flush request to all executors
       metricManagerMaster.sendMetricFlushRequest();
     }
-  }
 
-  /**
-   * Save metrics.
-   */
-  public void saveMetrics() {
     try {
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
         LOG.warn("Write Metric before all metric messages arrived.");
@@ -506,7 +501,6 @@ public final class RuntimeMaster {
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       public void run() {
         flushMetrics();
-        saveMetrics();
         planStateManager.storeJSON("periodic");
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
