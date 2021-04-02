@@ -90,9 +90,9 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
             });
 
       // Emit compressed windows for efficiency
-      outputCollector.emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
-
-
+      if (windows.size() > 0) {
+        outputCollector.emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
+      }
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
