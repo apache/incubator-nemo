@@ -236,7 +236,7 @@ public final class NemoDriver {
             for (int i = stages.size() - 1; i >= 0; i--) {
               jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
               try {
-                Thread.sleep(150);
+                Thread.sleep(200);
               } catch (InterruptedException e) {
                 e.printStackTrace();
               }
