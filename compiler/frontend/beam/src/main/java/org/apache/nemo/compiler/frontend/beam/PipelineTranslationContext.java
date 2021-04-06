@@ -175,6 +175,19 @@ final class PipelineTranslationContext {
     }
   }
 
+  void setEdgeProperty(final IREdge edge, final Coder elementCoder, final Coder windowCoder) {
+    edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+    if (elementCoder instanceof KvCoder) {
+      Coder keyCoder = ((KvCoder) elementCoder).getKeyCoder();
+      edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
+      edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
+    }
+
+    final WindowedValue.FullWindowedValueCoder coder = WindowedValue.getFullCoder(elementCoder, windowCoder);
+    edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
+    edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+  }
+
   /**
    * @param edge IR edge to add.
    * @param elementCoder element coder.

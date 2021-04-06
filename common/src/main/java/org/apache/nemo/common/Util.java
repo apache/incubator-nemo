@@ -123,7 +123,8 @@ public final class Util {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
 
-    if (commPattern.equals(CommunicationPatternProperty.Value.Shuffle)) {
+    if (commPattern.equals(CommunicationPatternProperty.Value.Shuffle)
+      || commPattern.equals(CommunicationPatternProperty.Value.TransientShuffle)) {
       edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
         if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
           clone.setProperty(PartitionerProperty.of(p.left()));

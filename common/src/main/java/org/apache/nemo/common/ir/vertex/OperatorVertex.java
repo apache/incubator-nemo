@@ -19,6 +19,7 @@
 package org.apache.nemo.common.ir.vertex;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
@@ -28,6 +29,10 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 public class OperatorVertex extends IRVertex {
   private Transform transform;
 
+  private OperatorVertex partialCombine;
+  private OperatorVertex finalCombine;
+  private IREdge partialToFinalEdge;
+
   /**
    * Constructor of OperatorVertex.
    * @param t transform for the OperatorVertex.
@@ -35,6 +40,30 @@ public class OperatorVertex extends IRVertex {
   public OperatorVertex(final Transform t) {
     super();
     this.transform = t;
+  }
+
+  public void setPartialCombine(final OperatorVertex pc) {
+    this.partialCombine = pc;
+  }
+
+  public void setFinalCombine(final OperatorVertex fc) {
+    this.finalCombine = fc;
+  }
+
+  public void setPartialToFinalEdge(final IREdge edge) {
+    this.partialToFinalEdge = edge;
+  }
+
+  public OperatorVertex getPartialCombine() {
+    return partialCombine;
+  }
+
+  public OperatorVertex getFinalCombine() {
+    return finalCombine;
+  }
+
+  public IREdge getPartialToFinalEdge() {
+    return partialToFinalEdge;
   }
 
   /**

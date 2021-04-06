@@ -55,11 +55,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
   private final Map<Integer, PCollectionView<?>> sideInputs;
-  private final WindowingStrategy<?, ?> windowingStrategy;
+  public final WindowingStrategy<?, ?> windowingStrategy;
   private final DoFn<InterT, OutputT> doFn;
   private final SerializablePipelineOptions serializedOptions;
-  private final Coder<InputT> inputCoder;
-  private final Map<TupleTag<?>, Coder<?>> outputCoders;
+  public final Coder<InputT> inputCoder;
+  public final Map<TupleTag<?>, Coder<?>> outputCoders;
 
   private transient OutputCollector<WindowedValue<OutputT>> outputCollector;
   private transient DoFnRunner<InterT, OutputT> doFnRunner;

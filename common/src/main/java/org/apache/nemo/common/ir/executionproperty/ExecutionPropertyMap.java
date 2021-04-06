@@ -133,6 +133,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     switch (commPattern) {
       case RoundRobin:
       case Shuffle:
+      case TransientShuffle:
         map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Hash));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
@@ -143,7 +144,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
-      case PFOneToOne:
+      case TransientOneToOne:
         map.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));

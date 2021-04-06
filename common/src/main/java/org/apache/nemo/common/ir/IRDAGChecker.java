@@ -278,6 +278,8 @@ public final class IRDAGChecker {
     final NeighborChecker shuffleChecker = ((v, inEdges, outEdges) -> {
       for (final IREdge inEdge : inEdges) {
         if (CommunicationPatternProperty.Value.Shuffle
+          .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())
+          || CommunicationPatternProperty.Value.TransientShuffle
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           // Shuffle edges must have the following properties
           if (!inEdge.getPropertyValue(KeyExtractorProperty.class).isPresent()

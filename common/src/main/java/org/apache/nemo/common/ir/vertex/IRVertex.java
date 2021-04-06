@@ -66,6 +66,8 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
+    thatVertex.isStateful = isStateful;
+    thatVertex.isSink = isSink;
     this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
   }
 

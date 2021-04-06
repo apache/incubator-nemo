@@ -30,13 +30,13 @@ import java.util.List;
  * Inserts the StreamVertex for each shuffle edge.
  */
 @Requires(CommunicationPatternProperty.class)
-public final class LargeShuffleReshapingPass extends ReshapingPass {
+public final class R1ReshapingPass extends ReshapingPass {
 
   /**
    * Default constructor.
    */
-  public LargeShuffleReshapingPass() {
-    super(LargeShuffleReshapingPass.class);
+  public R1ReshapingPass() {
+    super(R1ReshapingPass.class);
   }
 
 

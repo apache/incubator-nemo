@@ -26,7 +26,6 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
@@ -34,14 +33,12 @@ import org.apache.nemo.offloading.common.TaskCaching;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
@@ -223,7 +220,7 @@ public final class Task implements Serializable {
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
       if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-        || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
+        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
         return Pair.of(edge, Collections.singletonList(
           RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0)));
       } else {
@@ -243,7 +240,7 @@ public final class Task implements Serializable {
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
       if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-        || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
+        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
         return Pair.of(edge, Collections.singletonList(
           RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0)));
       } else {

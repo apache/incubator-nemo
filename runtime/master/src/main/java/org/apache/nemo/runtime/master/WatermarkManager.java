@@ -100,7 +100,7 @@ public final class WatermarkManager {
 
     for (final StageEdge edge : stageDag.getIncomingEdgesOf(stage)) {
       if (edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne)
-        || edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.PFOneToOne)) {
+        || edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
         return true;
       }
     }

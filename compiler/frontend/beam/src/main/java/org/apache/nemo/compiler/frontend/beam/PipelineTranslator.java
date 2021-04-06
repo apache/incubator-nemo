@@ -30,6 +30,8 @@ import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.util.AppliedCombineFn;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.CreateViewTransform;
@@ -338,28 +340,32 @@ final class PipelineTranslator {
     finalCombine.isStateful = true;
 
     // (Step 1) Partial Combine
-    ctx.addVertex(partialCombine);
-    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+    // ctx.addVertex(partialCombine);
+    // beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
 
     // (Step 2) Final Combine
-    ctx.addVertex(finalCombine);
-    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+    // ctx.addVertex(finalCombine);
+    // beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
 
     // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
     final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
     final Coder intermediateCoder = outputCoder;
-    ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+    ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+    // ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
-    /*
+
     final IRVertex vertex = new OperatorVertex(
       createGBKTransform(pTransform, mainInput, ctx, beamNode,
         SystemReduceFn.buffering(mainInput.getCoder())));
+
+    ((OperatorVertex) vertex).setPartialCombine(partialCombine);
+    ((OperatorVertex) vertex).setFinalCombine(finalCombine);
+    ((OperatorVertex) vertex).setPartialToFinalEdge(edge);
 
     vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
-    */
   }
 
   /**
@@ -465,7 +471,6 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      /*
      final SystemReduceFn systemReduceFn =
         SystemReduceFn.combining(
           inputCoder.getKeyCoder(),
@@ -480,7 +485,8 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           systemReduceFn,
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(beamNode.getTransform()),
+          false);
 
       // (Stage 2) final combine
 
@@ -491,8 +497,7 @@ final class PipelineTranslator {
       beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(finalCombine, input));
       beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
 
-      return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
-      */
+      // return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
 
       // Stream data processing, using GBKTransform
       final CombineFnBase.GlobalCombineFn partialCombineFn = new PartialCombineFn(
@@ -537,112 +542,33 @@ final class PipelineTranslator {
           DisplayData.from(beamNode.getTransform()),
           false);
 
-      final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
-      partialCombine.isStateful = true;
-      final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
+      final OperatorVertex partialCombineVertex = new OperatorVertex(partialCombineStreamTransform);
+      partialCombineVertex.isStateful = true;
+      final OperatorVertex finalCombineVertex = new OperatorVertex(finalCombineStreamTransform);
       finalCombine.isStateful = true;
 
       // (Step 1) Partial Combine
-      ctx.addVertex(partialCombine);
-      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+      // ctx.addVertex(partialCombineVertex);
+      // beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombineVertex, input));
 
       // (Step 2) Final Combine
-      ctx.addVertex(finalCombine);
-      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+      // ctx.addVertex(finalCombineVertex);
+      // beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombineVertex, output));
 
       // (Step 3) Adding an edge from partialCombine vertex to finalCombine vertex
-      final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombine, finalCombine);
+      final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, partialCombineVertex,
+        finalCombineVertex);
       final Coder intermediateCoder = KvCoder.of(inputCoder.getKeyCoder(), accumCoder);
-      ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+      ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
+
+      ((OperatorVertex) finalCombine).setPartialCombine(partialCombineVertex);
+      ((OperatorVertex) finalCombine).setFinalCombine(finalCombineVertex);
+      ((OperatorVertex) finalCombine).setPartialToFinalEdge(edge);
+
+      // ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
 
       // This composite transform has been translated in its entirety.
       return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
-
-      /*
-      // TODO #263: Partial Combining for Beam Streaming
-      final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
-      final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
-      final PCollection<?> mainInput = (PCollection<?>)
-        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-      final TupleTag mainOutputTag = new TupleTag<>();
-
-      final PCollection inputs = (PCollection) Iterables.getOnlyElement(
-        TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
-      final KvCoder inputCoder = (KvCoder) inputs.getCoder();
-
-
-      final Coder accumCoder;
-      try {
-        accumCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
-      } catch (CannotProvideCoderException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      final Combine.CombineFn partialCombineFn  = new PartialCombineFn((Combine.CombineFn) combineFn, accumCoder);
-      final SystemReduceFn partialSystemReduceFn =
-        SystemReduceFn.combining(
-          inputCoder.getKeyCoder(),
-          AppliedCombineFn.withInputCoder(partialCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
-
-      // (stage 1) partial combine
-      final GBKPartialTransform gbkPartial =
-        new GBKPartialTransform(
-          inputCoder.getKeyCoder(),
-          getOutputCoders(pTransform),
-          mainOutputTag,
-          mainInput.getWindowingStrategy(),
-          ctx.getPipelineOptions(),
-          partialSystemReduceFn,
-          DisplayData.from(beamNode.getTransform()));
-
-      final IRVertex partialCombine = new OperatorVertex(gbkPartial);
-      ctx.addVertex(partialCombine);
-      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
-
-      // (Stage 2) final combine
-
-
-      LOG.info("Accum coder: {}", accumCoder);
-
-      final Combine.CombineFn finalCombineFn = new FinalCombineFn((Combine.CombineFn) combineFn, accumCoder);
-
-      final SystemReduceFn finalSystemReduceFn =
-        SystemReduceFn.combining(
-          inputCoder.getKeyCoder(),
-          AppliedCombineFn.withInputCoder(finalCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
-
-      final GBKFinalTransform gbkFinalTransform =
-        new GBKFinalTransform(
-          inputCoder.getKeyCoder(),
-          getOutputCoders(pTransform),
-          mainOutputTag,
-          mainInput.getWindowingStrategy(),
-          ctx.getPipelineOptions(),
-          finalSystemReduceFn,
-          DisplayData.from(beamNode.getTransform()));
-
-      final Coder accumulatorCoder;
-      try {
-        accumulatorCoder =
-          combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
-      } catch (CannotProvideCoderException e) {
-        throw new RuntimeException(e);
-      }
-      final IRVertex finalCombine = new OperatorVertex(gbkFinalTransform);
-      finalCombine.isStateful = true;
-      ctx.addVertex(finalCombine);
-      final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
-      ctx.addEdge(
-        edge,
-        KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
-        inputs.getWindowingStrategy().getWindowFn().windowCoder());
-
-      // (Step 3) To Combine Output
-      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
-
-      return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
-      */
     }
 
     if (!perKey.getSideInputs().isEmpty()) {

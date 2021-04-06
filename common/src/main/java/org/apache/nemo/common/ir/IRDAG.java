@@ -70,13 +70,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
 
   // To remember original encoders/decoders, and etc
-  private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
+  // private transient final Map<OperatorVertex, IREdge> streamVertexToOriginalEdge;
 
   // To remember sampling vertex groups
-  private final Map<SamplingVertex, Set<SamplingVertex>> samplingVertexToGroup;
+  private transient final Map<SamplingVertex, Set<SamplingVertex>> samplingVertexToGroup;
 
   // To remember message barrier/aggregator vertex groups
-  private final Map<IRVertex, Set<IRVertex>> messageVertexToGroup;
+  private transient final Map<IRVertex, Set<IRVertex>> messageVertexToGroup;
+
 
   /**
    * @param originalUserApplicationDAG the initial DAG.
@@ -84,7 +85,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   public IRDAG(final DAG<IRVertex, IREdge> originalUserApplicationDAG) {
     this.modifiedDAG = originalUserApplicationDAG;
     this.dagSnapshot = originalUserApplicationDAG;
-    this.streamVertexToOriginalEdge = new HashMap<>();
+    // this.streamVertexToOriginalEdge = new HashMap<>();
     this.samplingVertexToGroup = new HashMap<>();
     this.messageVertexToGroup = new HashMap<>();
   }
@@ -201,10 +202,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         .forEach(dstVertex -> {
           modifiedDAG.getIncomingEdgesOf(vertexToDelete).stream()
             .filter(e -> !Util.isControlEdge(e))
-            .map(IREdge::getSrc)
+            .map(IREdge::getSrc);
+            /*
             .forEach(srcVertex-> { builder.connectVertices(
               Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex));
             });
+            */
         });
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
@@ -296,10 +299,245 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
 
     for (final IREdge edgeToStreamize : edges) {
-      streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
+      // streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
     }
     modifiedDAG = builder.build(); // update the DAG.
   }
+
+  public void addTransientDataPath(
+    final ConditionalRouterVertex vertexToStart,
+    final List<IRVertex> verticesToAdd) {
+
+    // duplicate verticesToAdd and add transient edge
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Add origin DAG because we do not change original vertices
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v);
+      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+        builder.connectVertices(edge);
+      }
+    });
+
+    // originVertex - newVertex mapping
+    final Map<IRVertex, IRVertex> originToNewVertexMap = new HashMap<>();
+
+    // Add transient path vertices
+    verticesToAdd.forEach(origin -> {
+      final IRVertex newVertex = new OperatorVertex((OperatorVertex) origin);
+      origin.copyExecutionPropertiesTo(newVertex);
+
+      builder.addVertex(newVertex);
+      originToNewVertexMap.put(origin, newVertex);
+    });
+
+    PassSharedData.originVertexToTransientVertexMap.putAll(originToNewVertexMap);
+
+    // Add transient data path edges
+    for (final IRVertex addVertex : verticesToAdd) {
+      final IRVertex newVertex = originToNewVertexMap.get(addVertex);
+
+      final List<IREdge> inEdges = modifiedDAG.getIncomingEdgesOf(addVertex);
+      final List<IREdge> outEdges = modifiedDAG.getOutgoingEdgesOf(addVertex);
+
+      inEdges.forEach(edge -> {
+        // Check whether this vertex is connected with the router vertex in source
+        // If it is, we should add a transient edge to the router vertex and
+        // connect with this vertex
+        if (!originToNewVertexMap.containsKey(edge.getSrc())) {
+          final IREdge newEdge = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            // this is conditional router vertex
+            edge.getSrc(),
+            newVertex);
+
+          edge.copyExecutionPropertiesTo(newEdge);
+
+          newEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientOneToOne));
+
+          // Add transient path for router vertex
+          builder.connectVertices(newEdge);
+        } else {
+          final IREdge newEdge = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            originToNewVertexMap.get(edge.getSrc()),
+            newVertex);
+
+          edge.copyExecutionPropertiesTo(newEdge);
+
+          builder.connectVertices(newEdge);
+        }
+      });
+
+      outEdges.forEach(edge -> {
+        // Check whether this vertex is sink or connected with the router vertex in the sink.
+        // If it is, we should add a transient edge to the dst router vertex
+        if (edge.getDst() instanceof ConditionalRouterVertex) {
+          final IREdge newEdge = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            newVertex,
+            // this is conditional router vertex
+            edge.getDst());
+
+          edge.copyExecutionPropertiesTo(newEdge);
+
+          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.OneToOne)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientOneToOne));
+
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientShuffle));
+          }
+
+          // Add transient path for final edge
+          // TODO: we should ignore watermarks when the transient path is not activated
+          builder.connectVertices(newEdge);
+        }
+      });
+    }
+
+    modifiedDAG = builder.build(); // update the DAG.
+  }
+
+  public void addStateMerger() {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Find gbk finals
+    // We should change its vertex to partial -> final combine
+    final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
+      .stream().filter(vertex -> vertex.isStateful).collect(Collectors.toList());
+
+    final List<IRVertex> gbkTransientPaths = gbks.stream()
+      .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
+
+    modifiedDAG.topologicalDo(vertex -> {
+      if (!vertex.isStateful) {
+        // Add origin vertex if it is not stateful
+        LOG.info("Add vertex in R3 {}", vertex.getId());
+        builder.addVertex(vertex);
+        modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
+          if (!incomingEdge.getSrc().isStateful) {
+            // Add edge if src is not stateful
+            builder.connectVertices(incomingEdge);
+          }
+        });
+      }
+    });
+
+    for (int i = 0; i < gbks.size(); i++) {
+      final IRVertex originGBK = gbks.get(i);
+      final IRVertex transientGBK = gbkTransientPaths.get(i);
+
+      final OperatorVertex partialOrigin = ((OperatorVertex)originGBK).getPartialCombine();
+      originGBK.getPropertyValue(ParallelismProperty.class)
+        .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
+      final OperatorVertex partialTransient =
+        new OperatorVertex(((OperatorVertex)originGBK).getPartialCombine());
+      originGBK.getPropertyValue(ParallelismProperty.class)
+        .ifPresent(p -> partialTransient.setProperty(ParallelismProperty.of(p)));
+      final OperatorVertex stateMerger = ((OperatorVertex)originGBK).getFinalCombine();
+      originGBK.getPropertyValue(ParallelismProperty.class)
+        .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));
+
+      // Add partial origin and transient vertex
+      builder.addVertex(partialOrigin);
+      builder.addVertex(partialTransient);
+      // Add merger
+      builder.addVertex(stateMerger);
+
+      // connect edge for partial origin
+      modifiedDAG.getIncomingEdgesOf(originGBK).forEach(edge -> {
+        final IREdge toPartialOriginEdge = new IREdge(
+          edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+          edge.getSrc(),
+          partialOrigin);
+        edge.copyExecutionPropertiesTo(toPartialOriginEdge);
+        builder.connectVertices(toPartialOriginEdge);
+      });
+      // connect edge for partial transient
+      modifiedDAG.getIncomingEdgesOf(transientGBK).forEach(edge -> {
+        final IREdge toPartialTransientEdge = new IREdge(
+          edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+          edge.getSrc(),
+          partialTransient);
+        edge.copyExecutionPropertiesTo(toPartialTransientEdge);
+        builder.connectVertices(toPartialTransientEdge);
+      });
+
+      // connect edge partial origin -> merger
+       final IREdge fromPartialOriginToMerger = new IREdge(
+         CommunicationPatternProperty.Value.OneToOne,
+          partialOrigin,
+          stateMerger);
+       final IREdge pToFinalEdge = ((OperatorVertex) originGBK).getPartialToFinalEdge();
+       pToFinalEdge.copyExecutionPropertiesTo(fromPartialOriginToMerger);
+
+       fromPartialOriginToMerger.setPropertyPermanently(
+              CommunicationPatternProperty.of(CommunicationPatternProperty.Value.OneToOne));
+
+       builder.connectVertices(fromPartialOriginToMerger);
+
+      // connect edge partial transient -> merger
+      final IREdge fromPartialTransientToMerger = new IREdge(
+        CommunicationPatternProperty.Value.TransientOneToOne,
+        partialTransient,
+        stateMerger);
+      pToFinalEdge.copyExecutionPropertiesTo(fromPartialTransientToMerger);
+
+      fromPartialTransientToMerger.setPropertyPermanently(
+        CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
+
+      builder.connectVertices(fromPartialTransientToMerger);
+
+      // connect edge merger -> originGBK_out
+      //                     -> transientGBK_out
+      final IREdge originGBKOutEdge = modifiedDAG.getOutgoingEdgesOf(originGBK).get(0);
+      final IREdge transientGBKOutEdge = modifiedDAG.getOutgoingEdgesOf(transientGBK).get(0);
+
+      final IREdge mergerToOriginGBKOut = new IREdge(
+        originGBKOutEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+        stateMerger,
+        originGBKOutEdge.getDst());
+      originGBKOutEdge.copyExecutionPropertiesTo(mergerToOriginGBKOut);
+
+      builder.connectVertices(mergerToOriginGBKOut);
+
+      if (transientGBKOutEdge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.OneToOne)) {
+        final IREdge mergerToTransientGBKOut = new IREdge(
+          CommunicationPatternProperty.Value.TransientOneToOne,
+          stateMerger,
+          transientGBKOutEdge.getDst());
+        transientGBKOutEdge.copyExecutionPropertiesTo(mergerToTransientGBKOut);
+        mergerToTransientGBKOut.setPropertyPermanently(
+          CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
+
+        builder.connectVertices(mergerToTransientGBKOut);
+      } else {
+        final IREdge mergerToTransientGBKOut = new IREdge(
+          CommunicationPatternProperty.Value.TransientShuffle,
+          stateMerger,
+          transientGBKOutEdge.getDst());
+        transientGBKOutEdge.copyExecutionPropertiesTo(mergerToTransientGBKOut);
+        mergerToTransientGBKOut.setPropertyPermanently(
+          CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientShuffle));
+
+        builder.connectVertices(mergerToTransientGBKOut);
+      }
+
+    }
+
+    modifiedDAG = builder.build(); // update the DAG.
+  }
+
 
   public void insertConditionalRouter(final IREdge edgeToAdd,
                                       final List<IREdge> toFinalEdges) {
@@ -362,7 +600,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           if (edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.OneToOne)) {
             fromSVRR.setPropertyPermanently(
-              CommunicationPatternProperty.of(CommunicationPatternProperty.Value.PFOneToOne));
+              CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
           }
 
 
@@ -378,7 +616,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           if (edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.OneToOne)) {
             fromSVShuffle.setPropertyPermanently(
-              CommunicationPatternProperty.of(CommunicationPatternProperty.Value.PFOneToOne));
+              CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
           }
 
           // Track the new edges.
@@ -416,6 +654,50 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build(); // update the DAG.
   }
 
+  public void change(final OperatorVertex origin, final OperatorVertex dst) {
+
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Insert the vertex.
+    builder.addVertex(dst);
+    origin.copyExecutionPropertiesTo(dst);
+    origin.getPropertyValue(ParallelismProperty.class)
+      .ifPresent(p -> dst.setProperty(ParallelismProperty.of(p)));
+
+    // Build the new DAG to reflect the new topology.
+    modifiedDAG.topologicalDo(v -> {
+
+      if (!v.equals(origin)) {
+        builder.addVertex(v); // None of the existing vertices are deleted.
+      }
+
+      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+        if (edge.getDst().equals(origin)) {
+          final IREdge newEdge = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            edge.getSrc(),
+            dst);
+          edge.copyExecutionPropertiesTo(newEdge);
+
+          builder.connectVertices(newEdge);
+        } else if (edge.getSrc().equals(origin)) {
+          final IREdge newEdge = new IREdge(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+            dst,
+            edge.getDst());
+          edge.copyExecutionPropertiesTo(newEdge);
+
+          builder.connectVertices(newEdge);
+        } else {
+          builder.connectVertices(edge);
+        }
+      }
+    });
+
+    modifiedDAG = builder.build(); // update the DAG.
+  }
+
   /**
    * Inserts a new vertex that streams data.
    *
@@ -428,7 +710,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param streamVertex to insert.
    * @param edgeToStreamize to modify.
    */
-  public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
+  public void insert(final OperatorVertex streamVertex, final IREdge edgeToStreamize) {
     assertNonExistence(streamVertex);
     assertNonControlEdge(edgeToStreamize);
 
@@ -489,6 +771,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
+    /*
     if (edgeToStreamize.getSrc() instanceof StreamVertex) {
       streamVertexToOriginalEdge.put(streamVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getSrc()));
     } else if (edgeToStreamize.getDst() instanceof StreamVertex) {
@@ -496,6 +779,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     } else {
       streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
     }
+    */
     modifiedDAG = builder.build(); // update the DAG.
   }
 
@@ -559,7 +843,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       edge.getSrc().getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> mbvToAdd.setProperty(ParallelismProperty.of(p)));
 
-      final IREdge edgeToClone;
+      final IREdge edgeToClone = edge;
+      /*
       if (edge.getSrc() instanceof StreamVertex) {
         edgeToClone = streamVertexToOriginalEdge.get(edge.getSrc());
       } else if (edge.getDst() instanceof StreamVertex) {
@@ -567,6 +852,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       } else {
         edgeToClone = edge;
       }
+      */
 
       final IREdge clone = Util.cloneEdge(
         CommunicationPatternProperty.Value.OneToOne, edgeToClone, edge.getSrc(), mbvToAdd);

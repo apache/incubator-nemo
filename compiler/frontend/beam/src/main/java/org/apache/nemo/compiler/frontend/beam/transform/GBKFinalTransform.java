@@ -60,7 +60,7 @@ public final class GBKFinalTransform<K, InputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> implements StatefulTransform<GBKFinalState<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKFinalTransform.class.getName());
 
-  private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
+  public final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
@@ -71,8 +71,8 @@ public final class GBKFinalTransform<K, InputT>
 
   private transient OutputCollector originOc;
 
-  private final Coder<K> keyCoder;
-  private final Coder windowCoder;
+  public final Coder<K> keyCoder;
+  public final Coder windowCoder;
 
   private transient Map<K, Integer> keyCountMap;
   private final boolean partial;

@@ -214,12 +214,13 @@ public final class PipeOutputWriter implements OutputWriter {
 
     final List<String> dstTaskIds;
     if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)
-      || comValue.get().equals(CommunicationPatternProperty.Value.PFOneToOne)) {
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
       dstTaskIds = Collections.singletonList(
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(),srcTaskIndex, 0));
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 
       final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
@@ -241,7 +242,7 @@ public final class PipeOutputWriter implements OutputWriter {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
     if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-      || comm.equals(CommunicationPatternProperty.Value.PFOneToOne)) {
+      || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
       return Collections.singletonList(dstTaskIds.get(0));
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return dstTaskIds;
