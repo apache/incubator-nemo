@@ -88,7 +88,7 @@ public final class TaskScheduledMapMaster {
     }
   }
 
-  public synchronized boolean isTaskScheduled(final String taskId) {
+  public boolean isTaskScheduled(final String taskId) {
     return taskExecutorIdMap.containsKey(taskId);
   }
 
