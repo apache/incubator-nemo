@@ -435,27 +435,16 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                             final List<Integer> pipeIndices,
                             final Serializer serializer,
                             final Object event) {
-    final ByteBuf byteBuf = channel.alloc().ioBuffer();
-    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
-
-    if (streamVertexSerializerManager.isStreamVertexTask(srcTaskId)) {
-      if (event instanceof TimestampAndValue && ((TimestampAndValue) event).value instanceof ByteBuf) {
+      if (event instanceof ByteBuf) {
         // Remote-Remote
         try {
-          byteBufOutputStream.write(0x00);
-          final DataOutputStream dis = new DataOutputStream(byteBufOutputStream);
-          dis.writeLong(((TimestampAndValue) event).timestamp);
-
-          final CompositeByteBuf cb = channel.alloc().compositeBuffer(2);
-          cb.addComponents(true, byteBuf, (ByteBuf) ((TimestampAndValue) event).value);
-
           if (pipeIndices.size() > 1) {
             channel.write(DataFrameEncoder.DataFrame.newInstance(
-              pipeIndices, cb, cb.readableBytes(), true))
+              pipeIndices, (ByteBuf)event, ((ByteBuf)event).readableBytes(), true))
               .addListener(listener);
           } else {
              channel.write(DataFrameEncoder.DataFrame.newInstance(
-              pipeIndices.get(0), cb, cb.readableBytes(), true))
+              pipeIndices.get(0), (ByteBuf)event, ((ByteBuf)event).readableBytes(), true))
               .addListener(listener);
           }
         } catch (final Exception e) {
@@ -464,57 +453,35 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         }
       } else {
         // Local-Remote
+        final ByteBuf byteBuf = channel.alloc().ioBuffer();
+        final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
 
         // a -> local stream vertex -> remote vertex
         // we should encode the data with the a-> edge serializer
         try {
           final OutputStream wrapped = byteBufOutputStream;
           //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
-          final EncoderFactory.Encoder encoder = streamVertexSerializerManager.getInputEncoderFactory(srcTaskId)
-            .create(wrapped);
-          //LOG.info("Element encoder: {}", encoder);
 
+          final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+          //LOG.info("Element encoder: {}", encoder);
           encoder.encode(event);
           wrapped.close();
+
+          if (pipeIndices.size() > 1) {
+            channel.write(DataFrameEncoder.DataFrame.newInstance(
+              pipeIndices, byteBuf, byteBuf.readableBytes(), true))
+              .addListener(listener);
+          } else {
+            channel.write(DataFrameEncoder.DataFrame.newInstance(
+              pipeIndices.get(0), byteBuf, byteBuf.readableBytes(), true))
+              .addListener(listener);
+          }
         } catch (final IOException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
 
-
-        if (pipeIndices.size() > 1) {
-          channel.write(DataFrameEncoder.DataFrame.newInstance(
-            pipeIndices, byteBuf, byteBuf.readableBytes(), true))
-            .addListener(listener);
-        } else {
-           channel.write(DataFrameEncoder.DataFrame.newInstance(
-            pipeIndices.get(0), byteBuf, byteBuf.readableBytes(), true))
-            .addListener(listener);
-        }
       }
-    } else {
-      try {
-        final OutputStream wrapped = byteBufOutputStream;
-        //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
-        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-        //LOG.info("Element encoder: {}", encoder);
-        encoder.encode(event);
-        wrapped.close();
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      if (pipeIndices.size() > 1) {
-        channel.write(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices, byteBuf, byteBuf.readableBytes(), true))
-          .addListener(listener);
-      } else {
-        channel.write(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices.get(0), byteBuf, byteBuf.readableBytes(), true))
-          .addListener(listener);
-      }
-    }
   }
 
   private void sendToLocal(final Serializer serializer,
@@ -523,16 +490,21 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                            final String edgeId,
                            final int index,
                            final Object event) {
+
     try {
-      if (streamVertexSerializerManager.isStreamVertexTask(srcTaskId)) {
+      if (event instanceof ByteBuf) {
         taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-          .addEvent(new TaskRelayDataEvent(dstTaskId, edgeId, index, event,
-            ((NemoEventDecoderFactory)streamVertexSerializerManager.getOutputDecoderFactory(srcTaskId))
-              .getValueDecoderFactory()));
+          .addEvent(
+            new TaskHandlingDataEvent(dstTaskId,
+              edgeId,
+              index,
+              (ByteBuf) event,
+              serializerManager.getSerializer(edgeId).getDecoderFactory()));
       } else {
         taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
           .addEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
       }
+
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Exception sending to local " + dstTaskId + ", " + edgeId + ", " + event);

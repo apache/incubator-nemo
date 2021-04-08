@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -37,9 +36,9 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.offloading.common.StateStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -57,8 +56,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * Should be accessed by a single thread.
  */
 @NotThreadSafe
-public final class DefaultTaskExecutorImpl implements TaskExecutor {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultTaskExecutorImpl.class.getName());
+public final class StreamTaskExecutorImpl implements TaskExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(StreamTaskExecutorImpl.class.getName());
 
   // Essential information
   private final Task task;
@@ -69,7 +68,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
   // Variables for prepareOffloading - start
-  private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
@@ -99,18 +97,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
-  private TaskInputWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
-
-  public enum CurrentState {
-    RUNNING,
-    WAIT_WORKER,
-    OFFLOAD_PENDING,
-    OFFLOADED,
-    DEOFFLOAD_PENDING
-  }
-
-  private CurrentState currentState = CurrentState.RUNNING;
 
   // private final OffloadingManager offloadingManager;
 
@@ -126,6 +113,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final Transform.ConditionalRouting conditionalRouting;
 
+  private final RuntimeEdge outputEdge;
+
+  private final Serializer serializer;
+
+  private final String dstTaskId;
+
   /**
    * Constructor.
    *
@@ -133,26 +126,22 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * @param irVertexDag            A DAG of vertices.
    * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    */
-  public DefaultTaskExecutorImpl(final long threadId,
-                                 final String executorId,
-                                 final Task task,
-                                 final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                 final IntermediateDataIOFactory intermediateDataIOFactory,
-                                 final SerializerManager serializerManager,
-                                 final ServerlessExecutorProvider serverlessExecutorProvider,
-                                 final Map<String, Double> samplingMap,
-                                 final boolean isLocalSource,
-                                 final ExecutorService prepareService,
-                                 final ExecutorThreadQueue executorThreadQueue,
-                                 final InputPipeRegister inputPipeRegister,
-                                 final StateStore stateStore,
-                                 //  final OffloadingManager offloadingManager,
-                                 final PipeManagerWorker pipeManagerWorker,
-                                 final OutputCollectorGenerator outputCollectorGenerator,
-                                 final byte[] bytes,
-                                 final Transform.ConditionalRouting conditionalRouting,
-                                 // final OffloadingPreparer offloadingPreparer,
-                                 final boolean offloaded) {
+  public StreamTaskExecutorImpl(final long threadId,
+                                final String executorId,
+                                final Task task,
+                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                final IntermediateDataIOFactory intermediateDataIOFactory,
+                                final SerializerManager serializerManager,
+                                final Map<String, Double> samplingMap,
+                                final ExecutorService prepareService,
+                                final ExecutorThreadQueue executorThreadQueue,
+                                final InputPipeRegister inputPipeRegister,
+                                final StateStore stateStore,
+                                final PipeManagerWorker pipeManagerWorker,
+                                final OutputCollectorGenerator outputCollectorGenerator,
+                                final byte[] bytes,
+                                final Transform.ConditionalRouting conditionalRouting,
+                                final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
@@ -168,12 +157,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
+    this.serializer = serializerManager
+      .getSerializer(((RuntimeEdge)task.getTaskOutgoingEdges().get(0)).getId());
 
     this.statefulTransforms = new ArrayList<>();
-
-    final long restoresSt = System.currentTimeMillis();
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
-    LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -183,10 +170,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
+    this.outputEdge = task.getTaskOutgoingEdges().get(0);
+
+    this.dstTaskId = RuntimeIdManager.generateTaskId(((StageEdge)outputEdge).getDst().getId(),
+      RuntimeIdManager.getIndexFromTaskId(taskId), 0);
 
     final long st = System.currentTimeMillis();
 
     LOG.info("Start to registering input output pipe {}", taskId);
+
 
     task.getTaskOutgoingEdges().forEach(edge -> {
       LOG.info("Task outgoing edge for {} {}", taskId, edge);
@@ -231,8 +223,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     // samplingMap.putAll(evalConf.samplingJson);
 
-    this.serverlessExecutorProvider = serverlessExecutorProvider;
-
     this.serializerManager = serializerManager;
 
     // TODO: Initialize states for the task
@@ -255,30 +245,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
     */
 
-    if (isLocalSource) {
-      this.adjustTime = System.currentTimeMillis() - 1436918400000L;
-    } else {
-      this.adjustTime = 0;
-    }
+    this.adjustTime = System.currentTimeMillis() - 1436918400000L;
 
     // For latency logging
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {
       metricCollector.left().setAdjustTime(adjustTime);
     }
-
-    /*
-    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-      offloadingService.execute(() -> {
-        try {
-          handleOffloadingRequestEvent();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      });
-    }
-    */
   }
 
   @Override
@@ -293,7 +266,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return false;
   }
 
-
   // per second
   private final AtomicLong throttleSourceRate =  new AtomicLong(1000000);
   private long processedSourceData = 0;
@@ -305,33 +277,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public CurrentState getStatus() {
-    return currentState;
+  public DefaultTaskExecutorImpl.CurrentState getStatus() {
+    return null;
   }
 
   // For source task
   @Override
   public boolean hasData() {
-
-    final long curr = System.currentTimeMillis();
-    if (curr - prevSourceTrackTime >= 5) {
-      final long elapsed = curr - prevSourceTrackTime;
-      if (processedSourceData * (1000 / (double)elapsed) > throttleSourceRate.get()) {
-        // Throttle !!
-        return false;
-      } else {
-        prevSourceTrackTime = curr;
-        processedSourceData = 0;
-      }
-    }
-
-    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
-      if (sourceVertexDataFetcher.hasData()) {
-        return true;
-      }
-    }
-
-    return false;
+    throw new RuntimeException("Not supported");
   }
 
   @Override
@@ -345,19 +298,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public int getNumKeys() {
-    if (isStateless) {
-      return 0;
-    } else {
-      //LOG.info("Key {}, {}", num, taskId);
-      return statefulTransforms.stream().map(t -> t.getNumKeys())
-        .reduce((x, y) -> x + y)
-        .get();
-    }
+    return 0;
   }
 
   @Override
   public boolean isSource() {
-    return sourceVertexDataFetchers.size() > 0;
+    return false;
   }
 
   @Override
@@ -378,7 +324,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean isStateless() {
-    return isStateless;
+    return true;
   }
 
   /**
@@ -417,20 +363,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     reverseTopologicallySorted.forEach(childVertex -> {
-
-      if (childVertex.isStateful) {
-        isStateless = false;
-        if (childVertex instanceof OperatorVertex) {
-          final OperatorVertex ov = (OperatorVertex) childVertex;
-          statefulTransforms.add(ov.getTransform());
-          LOG.info("Set GBK final transform");
-        }
-      }
-
-      if (childVertex instanceof ConditionalRouterVertex) {
-        crVertices.add((ConditionalRouterVertex)childVertex);
-      }
-
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
 
@@ -446,101 +378,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
     });
 
+
     // serializedDag = SerializationUtils.serialize(irVertexDag);
-
     final Map<String, OutputCollector> outputCollectorMap = new HashMap<>();
-
-    // Create a harness for each vertex
-    reverseTopologicallySorted.forEach(irVertex -> {
-        final Optional<Readable> sourceReader = TaskExecutorUtil
-          .getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
-
-        if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
-          throw new IllegalStateException(irVertex.toString());
-        }
-
-        final OutputCollector outputCollector = outputCollectorGenerator
-          .generate(irVertex,
-            taskId,
-            irVertexDag,
-            this,
-            serializerManager,
-            samplingMap,
-            vertexIdAndCollectorMap,
-            taskMetrics,
-            task.getTaskOutgoingEdges(),
-            operatorInfoMap);
-
-        outputCollectorMap.put(irVertex.getId(), outputCollector);
-
-        // Create VERTEX HARNESS
-        final Transform.Context context = new TransformContextImpl(
-          irVertex, serverlessExecutorProvider, taskId, stateStore,
-          conditionalRouting,
-          executorId);
-
-        TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
-
-        // Prepare data READ
-        // Source read
-        // TODO[SLS]: should consider multiple outgoing edges
-        // All edges will have the same encoder/decoder!
-        if (irVertex instanceof SourceVertex) {
-          // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
-          final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
-          // srcSerializer = serializerManager.getSerializer(edge.getId());
-          // LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
-          // srcSerializer);
-
-          // Source vertex read
-          final SourceVertexDataFetcher fe = new SourceVertexDataFetcher(
-            (SourceVertex) irVertex,
-            edge,
-            sourceReader.get(),
-            outputCollector,
-            prepareService,
-            taskId,
-            prepared,
-            new Readable.ReadableContext() {
-              @Override
-              public StateStore getStateStore() {
-                return stateStore;
-              }
-
-              @Override
-              public String getTaskId() {
-                return taskId;
-              }
-            },
-            offloaded);
-
-          edgeToDataFetcherMap.put(edge.getId(), fe);
-
-          sourceVertexDataFetchers.add(fe);
-          allFetchers.add(fe);
-
-        /*
-        // Register input pipe for offloaded source !!
-        if (offloaded) {
-          inputPipeRegister.registerInputPipe(
-            "Origin",
-            edge.getId(),
-            taskId,
-            intermediateDataIOFactory
-              .createReader(
-                taskId,
-                irVertex, edge, executorThreadQueue));
-        } else {
-          inputPipeRegister.retrieveIndexForOffloadingSource(taskId, edge.getId());
-        }
-        */
-
-          if (sourceVertexDataFetchers.size() > 1) {
-            throw new RuntimeException("Source vertex data fetcher is larger than one");
-          }
-        }
-      });
-
     LOG.info("End of source vertex prepare {}", taskId);
 
       // Parent-task read
@@ -551,7 +391,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         .map(incomingEdge -> {
 
           LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
-
           return Pair.of(incomingEdge, intermediateDataIOFactory
             .createReader(
               taskId,
@@ -597,9 +436,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 edge.getId(),
                 task.getTaskId(),
                 parentTaskReader);
-
-              // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -608,10 +444,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                   task.getTaskId(),
                   parentTaskReader);
               }
-              // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
-
 
             allFetchers.add(df);
 
@@ -621,155 +454,43 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // return sortedHarnessList;
   }
 
-  /**
-   * Process a data element down the DAG dependency.
-   */
-  private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
-
-    final long ns = System.nanoTime();
-
-    outputCollector.setInputTimestamp(dataElement.timestamp);
-    outputCollector.emit(dataElement.value);
-
-    final long endNs = System.nanoTime();
-
-    taskMetrics.incrementComputation(endNs - ns);
-  }
-
-  private void processWatermark(final OutputCollector outputCollector,
-                                final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     // input
-    taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-    final long serializedStart = System.nanoTime();
-    final Object data = taskHandlingEvent.getData();
-    final long serializedEnd = System.nanoTime();
+    // taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
+    // final long serializedStart = System.nanoTime();
+    if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+      final Object data = taskHandlingEvent.getDataByteBuf();
+      pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
 
-    taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
+    } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+      final Object data = taskHandlingEvent.getData();
+      pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+    }
+
+    // final long serializedEnd = System.nanoTime();
+
+    // taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
+
+    // directly send data to pipe manager
+    // taskMetrics.incrementInputElement();
+    // taskMetrics.incrementOutputElement();
 
     // LOG.info("Handling data for task {}, index {}, watermark {}",
     //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
-
-    try {
-      handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
-        edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-        " event " + data.getClass() + ", " +
-        ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
-        + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
-    }
-  }
-
-  private void handleInternalData(final DataFetcher dataFetcher, Object event) {
-    if (event instanceof Finishmark) {
-      // We've consumed all the data from this data fetcher.
-    } else if (event instanceof WatermarkWithIndex) {
-      // Watermark
-      // LOG.info("Handling watermark with index {}", event);
-      final WatermarkWithIndex d = (WatermarkWithIndex) event;
-      final Optional<Watermark> watermark =
-        taskWatermarkManager.updateWatermark(dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp());
-
-      if (watermark.isPresent()) {
-        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
-        processWatermark(dataFetcher.getOutputCollector(), watermark.get());
-      }
-    } else if (event instanceof Watermark) {
-      // This MUST BE generated from input source
-      if (!isSource()) {
-        throw new RuntimeException("Invalid watermark !! this task is not source " + taskId);
-      }
-      processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
-    } else if (event instanceof TimestampAndValue) {
-      // This MUST BE generated from remote source
-      taskMetrics.incrementInputElement();
-      // Process data element
-//      if (!isSource()) {
-//        final OperatorVertex ov = ((DataFetcherOutputCollector) dataFetcher.getOutputCollector()).getNextOperatorVertex();
-//        LOG.info("Processing element for task {}, of operator {}, transform {}", taskId, ov.getId(), ov.getTransform());
-//      }
-      processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
-    } else {
-      throw new RuntimeException("Invalids event type " + event);
-      /*
-      // input for streaming vertex !!
-      final long ns = System.nanoTime();
-      dataFetcher.getOutputCollector().emit(event);
-      final long endNs = System.nanoTime();
-      taskMetrics.incrementComputation(endNs - ns);
-      */
-    }
   }
 
   // exeutor thread가 바로 부르는 method
   @Override
   public boolean handleSourceData() {
-    boolean processed = false;
-    for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
-      final Object event = dataFetcher.fetchDataElement();
-      processedSourceData += 1;
-      if (!event.equals(EmptyElement.getInstance())) {
-        handleInternalData(dataFetcher, event);
-        processed = true;
-        break;
-      }
-    }
-    return processed;
+    throw new RuntimeException("Not supported");
   }
-
 
 
   ////////////////////////////////////////////// Transform-specific helper methods
 
-
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
-  }
-
-  private boolean finished = false;
-
-  private Optional<TaskInputWatermarkManager> restoreTaskInputWatermarkManager() {
-    if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
-      try {
-        final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(is);
-        return Optional.of(tm);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-    return Optional.empty();
-  }
-
-  private void restore() {
-    try {
-      final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-      taskWatermarkManager = TaskInputWatermarkManager.decode(is);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
-    if (!offloaded) {
-      for (final DataFetcher dataFetcher : allFetchers) {
-        if (dataFetcher instanceof SourceVertexDataFetcher) {
-          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-          final Readable readable = srcDataFetcher.getReadable();
-          readable.restore();
-        }
-      }
-    }
-
-    if (!isStateless) {
-      statefulTransforms.forEach(transform -> transform.restore());
-    }
   }
 
   @Override
@@ -778,16 +499,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     // stateStore.put(taskId + "-taskWatermarkManager", bytes);
-
-    final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
-    try {
-      taskWatermarkManager.encode(os);
-      os.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
     if (checkpointSource) {
       // Do not checkpoint source if it is offloaded
       // because source data will be redirected freom the origin executor
@@ -815,7 +526,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         }
       }
     }
-
 
     if (!isStateless) {
       statefulTransforms.forEach(transform -> transform.checkpoint());

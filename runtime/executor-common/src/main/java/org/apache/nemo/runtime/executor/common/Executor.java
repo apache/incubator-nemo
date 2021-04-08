@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -472,7 +473,26 @@ public final class Executor {
 
       TaskExecutor taskExecutor;
 
-      if (evalConf.scalingType.equals("migration")) {
+      if (irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex) {
+        taskExecutor = new StreamTaskExecutorImpl(
+          Thread.currentThread().getId(),
+          executorId,
+          task,
+          irDag,
+          intermediateDataIOFactory,
+          serializerManager,
+          evalConf.samplingJson,
+          prepareService,
+          executorThread,
+          pipeManagerWorker,
+          stateStore,
+          pipeManagerWorker,
+          outputCollectorGenerator,
+          bytes,
+          condRouting,
+          // new NoOffloadingPreparer(),
+          false);
+      } else {
         taskExecutor =
           new DefaultTaskExecutorImpl(
             Thread.currentThread().getId(),
@@ -495,30 +515,9 @@ public final class Executor {
             condRouting,
             // new NoOffloadingPreparer(),
             false);
-      } else {
-        taskExecutor =
-          new DefaultTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-           //  offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // preparer,
-            false);
       }
+;
+
 
       LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);

@@ -50,7 +50,9 @@ public final class R1ReshapingPass extends ReshapingPass {
 
       if (o2ocount > 1 && edges.size() == o2ocount) {
         // join !!
-        dag.insert(new StreamVertex(), edges);
+        for (final IREdge edge : edges) {
+          dag.insert(new StreamVertex(), edge);
+        }
       }
 
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {

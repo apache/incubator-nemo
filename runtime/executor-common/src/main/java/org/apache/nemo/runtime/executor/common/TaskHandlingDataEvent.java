@@ -60,6 +60,19 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
 
   @Override
   public Object getData() {
+    final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+    final Object t;
+    try {
+      t = decoderFactory.create(bis).decode();
+      bis.close();
+      byteBuf.release();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+    return t;
+
+    /*
     if (isStreamVertexEvent) {
       // for stream vertex !!
       final BytesDecoderFactory bytesDecoderFactory = (BytesDecoderFactory) decoderFactory;
@@ -70,18 +83,9 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
         throw new RuntimeException(e);
       }
     } else {
-      final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-      final Object t;
-      try {
-        t = decoderFactory.create(bis).decode();
-        bis.close();
-        byteBuf.release();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-      return t;
+
     }
+    */
   }
 
   @Override

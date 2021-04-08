@@ -750,12 +750,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
           // Annotations for efficient data transfers - toSV
-          toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
-          // toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
-          // toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
+          // toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
 
           // Annotations for efficient data transfers - fromSV
-          fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
+          // fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
 
           // fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
           // fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));

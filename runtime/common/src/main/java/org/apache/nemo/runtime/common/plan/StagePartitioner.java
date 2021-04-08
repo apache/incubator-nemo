@@ -132,6 +132,10 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       return false;
     }
 
+    if (edge.getDst() instanceof StreamVertex) {
+      return false;
+    }
+
     // Return true if and only if the execution properties of the two vertices are compatible
     return getStageProperties(edge.getSrc()).equals(getStageProperties(edge.getDst()));
   }

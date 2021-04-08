@@ -30,16 +30,17 @@ public final class TaskRelayDataEvent implements TaskHandlingEvent {
     this.event = event;
     this.pipeIndex = pipeIndex;
     this.valueDecoderFactory = valueDecoderFactory;
-    this.remoteLocal = event instanceof TimestampAndValue && ((TimestampAndValue) event).value instanceof ByteBuf;
+    this.remoteLocal = event instanceof ByteBuf;
+    // TimestampAndValue && ((TimestampAndValue) event).value instanceof ByteBuf;
 
   }
 
   @Override
   public int readableBytes() {
     if (remoteLocal) {
-      return ((ByteBuf) ((TimestampAndValue) event).value).readableBytes();
+      return ((ByteBuf)event).readableBytes();
+      // return ((ByteBuf) ((TimestampAndValue) event).value).readableBytes();
     }
-
     return 0;
   }
 
@@ -67,6 +68,20 @@ public final class TaskRelayDataEvent implements TaskHandlingEvent {
   public Object getData() {
     // Remote-Local
     if (remoteLocal) {
+      final ByteBufInputStream bis = new ByteBufInputStream((ByteBuf) event);
+      final Object t;
+      try {
+        t = valueDecoderFactory.create(bis).decode();
+        bis.close();
+        ((ByteBuf) event).release();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+      return t;
+
+
+      /*
       final TimestampAndValue timestampAndValue = (TimestampAndValue) event;
       final ByteBufInputStream bis = new ByteBufInputStream((ByteBuf)timestampAndValue.value);
 
@@ -81,6 +96,7 @@ public final class TaskRelayDataEvent implements TaskHandlingEvent {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+      */
     } else {
       // Local, Local
       return event;

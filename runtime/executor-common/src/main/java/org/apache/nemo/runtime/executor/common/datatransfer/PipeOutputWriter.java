@@ -141,65 +141,10 @@ public final class PipeOutputWriter implements OutputWriter {
     // send stop message!
     stopped = true;
     throw new RuntimeException("Stop exception " + taskId);
-
-    /*
-    final CountDownLatch count = new CountDownLatch(pipes.size());
-
-    for (final ByteOutputContext byteOutputContext : pipes) {
-      //LOG.info("Send message {}", pendingMsg);
-
-      byteOutputContext.sendStopMessage((m) -> {
-        LOG.info("receive ack from downstream!! {}/{}", runtimeEdge.getId(), runtimeEdge.getSrc());
-        count.countDown();
-      });
-    }
-
-    return new Future<Boolean>() {
-      @Override
-      public boolean cancel(boolean mayInterruptIfRunning) {
-        return false;
-      }
-
-      @Override
-      public boolean isCancelled() {
-        return false;
-      }
-
-      @Override
-      public boolean isDone() {
-        return count.getCount() == 0;
-      }
-
-      @Override
-      public Boolean get() throws InterruptedException, ExecutionException {
-        return count.getCount() == 0;
-      }
-
-      @Override
-      public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        return count.getCount() == 0;
-      }
-    };
-    */
-
-    // DO nothing
-
-    /*
-    pipes.forEach(pipe -> {
-      LOG.info("Pipe stop {}", pipe);
-      pipe.stop();
-    });
-    */
   }
 
   @Override
   public void restart(final String taskId) {
-    /*
-    pipes.forEach(pipe -> {
-      pipe.restart(taskId);
-    });
-    */
-
     stopped = false;
   }
 
