@@ -342,7 +342,8 @@ public final class GBKFinalTransform<K, InputT>
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         checkAndFinishBundle();
       } else {
-        LOG.info("Late input at {}, time {}", getContext().getTaskId(), new Instant(element.getTimestamp()));
+        LOG.info("Late input at {}, time {}, watermark {}", getContext().getTaskId(),
+          new Instant(element.getTimestamp()), new Instant(inputWatermark.getTimestamp()));
       }
     } catch (final Exception e) {
       e.printStackTrace();
