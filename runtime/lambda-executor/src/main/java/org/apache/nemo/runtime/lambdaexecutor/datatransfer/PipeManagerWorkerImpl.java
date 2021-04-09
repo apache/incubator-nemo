@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

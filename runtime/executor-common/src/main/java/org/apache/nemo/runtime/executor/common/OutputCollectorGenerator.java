@@ -8,6 +8,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;

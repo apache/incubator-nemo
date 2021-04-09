@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 
 import java.util.List;
 import java.util.Map;

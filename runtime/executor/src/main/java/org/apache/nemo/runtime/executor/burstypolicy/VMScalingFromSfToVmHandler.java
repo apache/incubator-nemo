@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.burstypolicy;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.vmscaling.VMScalingWorkerConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

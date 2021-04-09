@@ -132,6 +132,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case RoundRobin:
+      case TransientRR:
       case Shuffle:
       case TransientShuffle:
         map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));

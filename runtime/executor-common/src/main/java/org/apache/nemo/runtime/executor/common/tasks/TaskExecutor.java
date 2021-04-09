@@ -16,14 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.tasks;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
-
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import org.apache.nemo.runtime.executor.common.ExecutorThreadTask;
 
 /**
  * Executes a task.

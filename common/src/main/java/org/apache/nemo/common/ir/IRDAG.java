@@ -271,13 +271,16 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           fromSV.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
           fromSV.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
 
+          // fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
+          // fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+
           // Annotations for efficient data transfers - toSV
-          toSV1.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
+          // toSV1.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
           // toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
           // toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
 
           // Annotations for efficient data transfers - fromSV
-          fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
+         //  fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
 
           // fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
           // fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
@@ -320,18 +323,20 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
 
     // originVertex - newVertex mapping
-    final Map<IRVertex, IRVertex> originToNewVertexMap = new HashMap<>();
+    final Map<IRVertex, IRVertex> originToNewVertexMap = PassSharedData.originVertexToTransientVertexMap;
+
+    LOG.info("Add newVertices for {}", verticesToAdd);
 
     // Add transient path vertices
     verticesToAdd.forEach(origin -> {
-      final IRVertex newVertex = new OperatorVertex((OperatorVertex) origin);
-      origin.copyExecutionPropertiesTo(newVertex);
+      if (!originToNewVertexMap.containsKey(origin)) {
+        final IRVertex newVertex = new OperatorVertex((OperatorVertex) origin);
+        origin.copyExecutionPropertiesTo(newVertex);
 
-      builder.addVertex(newVertex);
-      originToNewVertexMap.put(origin, newVertex);
+        builder.addVertex(newVertex);
+        originToNewVertexMap.put(origin, newVertex);
+      }
     });
-
-    PassSharedData.originVertexToTransientVertexMap.putAll(originToNewVertexMap);
 
     // Add transient data path edges
     for (final IRVertex addVertex : verticesToAdd) {
@@ -345,6 +350,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         // If it is, we should add a transient edge to the router vertex and
         // connect with this vertex
         if (!originToNewVertexMap.containsKey(edge.getSrc())) {
+          LOG.info("R2Reshaping Edge src {} dst {} transient path ", edge.getSrc(), newVertex);
           final IREdge newEdge = new IREdge(
             edge.getPropertyValue(CommunicationPatternProperty.class).get(),
             // this is conditional router vertex
@@ -353,9 +359,22 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
           edge.copyExecutionPropertiesTo(newEdge);
 
-          newEdge.setPropertyPermanently(
-            CommunicationPatternProperty
-              .of(CommunicationPatternProperty.Value.TransientOneToOne));
+          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.OneToOne)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientOneToOne));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.RoundRobin)) {
+             newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientRR));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientShuffle));
+          }
 
           // Add transient path for router vertex
           builder.connectVertices(newEdge);
@@ -364,10 +383,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             edge.getPropertyValue(CommunicationPatternProperty.class).get(),
             originToNewVertexMap.get(edge.getSrc()),
             newVertex);
-
           edge.copyExecutionPropertiesTo(newEdge);
 
-          builder.connectVertices(newEdge);
+          if (!builder.hasEdge(newEdge)) {
+            LOG.info("R2Reshaping Edge src {} dst {} normal path ", originToNewVertexMap.get(edge.getSrc()), newVertex);
+            builder.connectVertices(newEdge);
+          }
         }
       });
 
@@ -396,9 +417,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
           }
 
-          // Add transient path for final edge
-          // TODO: we should ignore watermarks when the transient path is not activated
-          builder.connectVertices(newEdge);
+
+          if (!builder.hasEdge(newEdge)) {
+            // Add transient path for final edge
+            // TODO: we should ignore watermarks when the transient path is not activated
+            builder.connectVertices(newEdge);
+          }
         }
       });
     }
@@ -738,16 +762,33 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           // MATCH!
 
           // Edge to the streamVertex
-          final IREdge toSV = new IREdge(
-            edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
-            edgeToStreamize.getSrc(),
-            vertexToInsert);
-          edgeToStreamize.copyExecutionPropertiesTo(toSV);
+          final IREdge toSV;
+          final IREdge fromSV;
+          if (streamVertex instanceof SrcStreamVertex) {
+            toSV = new IREdge(
+                CommunicationPatternProperty.Value.OneToOne,
+              edgeToStreamize.getSrc(),
+              vertexToInsert);
+            // edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
-          // Edge from the streamVertex.
-          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
-          fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
-          fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+            fromSV = new IREdge(
+              edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
+              vertexToInsert,
+              v);
+            edgeToStreamize.copyExecutionPropertiesTo(fromSV);
+
+          } else {
+            toSV = new IREdge(
+              edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
+              edgeToStreamize.getSrc(),
+              vertexToInsert);
+            edgeToStreamize.copyExecutionPropertiesTo(toSV);
+
+            // Edge from the streamVertex.
+            fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
+            fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
+            fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+          }
 
           // Annotations for efficient data transfers - toSV
           // toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));

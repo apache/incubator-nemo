@@ -21,27 +21,16 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.TaskLoc;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
-import static org.apache.nemo.common.TaskLoc.VM_SCALING;
-import static org.apache.nemo.runtime.executor.common.ChannelStatus.RUNNING;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.

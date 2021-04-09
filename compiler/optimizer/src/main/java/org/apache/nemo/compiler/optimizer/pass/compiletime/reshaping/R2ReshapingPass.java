@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
+import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -51,11 +52,9 @@ public final class R2ReshapingPass extends ReshapingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> edges = dag.getIncomingEdgesOf(vertex);
 
-      if (edges.size() == 0) {
-        // source vertex
-        dag.getOutgoingEdgesOf(vertex).forEach(edge -> {
-          dag.insert(new ConditionalRouterVertex(), edge);
-        });
+      if (vertex instanceof SrcStreamVertex) {
+        // Local conditional router vertex
+        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex());
       }
 
       if (vertex instanceof StreamVertex) {
@@ -76,8 +75,10 @@ public final class R2ReshapingPass extends ReshapingPass {
           for (final IREdge outEdge : outEdges) {
             if (!(outEdge.getDst() instanceof ConditionalRouterVertex)) {
               if (!verticesToAdd.contains(outEdge.getDst())) {
-                verticesToAdd.add(outEdge.getDst());
-                stack.add(outEdge.getDst());
+                if (!outEdge.getDst().isAddedInDriver()) {
+                  verticesToAdd.add(outEdge.getDst());
+                  stack.add(outEdge.getDst());
+                }
               }
             }
           }

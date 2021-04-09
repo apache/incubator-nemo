@@ -1,16 +1,13 @@
 package org.apache.nemo.runtime.executor.common;
 
-import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 

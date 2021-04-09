@@ -44,7 +44,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.MetricMessageSender;
 import org.apache.nemo.runtime.executor.common.TaskStateManager;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;

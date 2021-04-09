@@ -21,6 +21,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -45,24 +47,29 @@ public final class R1ReshapingPass extends ReshapingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> edges = dag.getIncomingEdgesOf(vertex);
       final int o2ocount = (int) edges.stream().filter(edge -> CommunicationPatternProperty.Value.OneToOne
-          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
+        .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .count();
 
       if (o2ocount > 1 && edges.size() == o2ocount) {
         // join !!
-        for (final IREdge edge : edges) {
-          dag.insert(new StreamVertex(), edge);
-        }
+        dag.insert(new StreamVertex(), edges);
+        //for (final IREdge edge : edges) {
+        //  dag.insert(new StreamVertex(), edge);
+        // }
       }
+
 
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           dag.insert(new StreamVertex(), edge);
         }
+
+        if (edge.getSrc() instanceof SourceVertex) {
+          dag.insert(new SrcStreamVertex(), edge);
+        }
       });
     });
-
 
     return dag;
   }

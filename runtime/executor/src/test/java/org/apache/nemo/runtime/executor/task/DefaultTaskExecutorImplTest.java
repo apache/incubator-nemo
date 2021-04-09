@@ -53,6 +53,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.SerializerManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;

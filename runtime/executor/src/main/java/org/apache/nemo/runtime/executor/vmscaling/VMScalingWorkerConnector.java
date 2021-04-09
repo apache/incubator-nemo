@@ -13,7 +13,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.SFTaskMetrics;
 import org.apache.nemo.runtime.executor.StageOffloadingWorkerManager;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

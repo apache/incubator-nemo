@@ -38,6 +38,9 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.tasks.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.common.tasks.StreamTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -489,7 +492,6 @@ public final class Executor {
           pipeManagerWorker,
           outputCollectorGenerator,
           bytes,
-          condRouting,
           // new NoOffloadingPreparer(),
           false);
       } else {

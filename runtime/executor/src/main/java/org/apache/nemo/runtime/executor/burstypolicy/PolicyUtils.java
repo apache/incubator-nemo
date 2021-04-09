@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.executor.burstypolicy;
 
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

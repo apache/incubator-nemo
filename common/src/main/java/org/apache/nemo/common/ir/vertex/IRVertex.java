@@ -50,6 +50,10 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     this.executionProperties = ExecutionPropertyMap.of(this);
   }
 
+  public boolean isAddedInDriver() {
+    return getId().contains("(d)");
+  }
+
   /**
    * Copy Constructor for IRVertex.
    *

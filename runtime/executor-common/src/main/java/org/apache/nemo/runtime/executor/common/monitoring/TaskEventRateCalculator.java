@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor.common.monitoring;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;

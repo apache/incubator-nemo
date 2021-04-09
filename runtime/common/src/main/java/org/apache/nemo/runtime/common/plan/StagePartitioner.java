@@ -25,8 +25,12 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +49,7 @@ import java.util.stream.Collectors;
 @DriverSide
 @ThreadSafe
 public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
+  private static final Logger LOG = LoggerFactory.getLogger(StagePartitioner.class.getName());
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
 
@@ -71,7 +76,6 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       boolean isRoot = false;
       if (vertexToStageIdMap.get(irVertex) == null) {
         vertexToStageIdMap.put(irVertex, nextStageIndex.getValue());
-        nextStageIndex.increment();
         isRoot = true;
       }
 
@@ -94,8 +98,7 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
         if (testMergeability(edge, irDAG)) {
           vertexToStageIdMap.put(connectedIRVertex, stageId);
         } else {
-          vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());
-          nextStageIndex.increment();
+          vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.incrementAndGet());
         }
       }
     });
@@ -117,27 +120,39 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
     }
     */
 
+
     // If the destination vertex has multiple inEdges, return false
     if (dag.getIncomingEdgesOf(edge.getDst()).size() > 1) {
+      LOG.info("StagePartitioner Src {}, Dst {} getIncomingEdge > 1", edge.getSrc(), edge.getDst());
       return false;
     }
     // If the edge is not OneToOne, return false
     if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
         != CommunicationPatternProperty.Value.OneToOne) {
+      LOG.info("StagePartitioner Src {}, Dst {} edge != o2o", edge.getSrc(), edge.getDst());
       return false;
     }
 
     if (edge.getSrc() instanceof StreamVertex) {
       // create a new task for stream vertex
+      LOG.info("StagePartitioner Src {}, Dst {}  edge.getSrc() StreamVertex", edge.getSrc(), edge.getDst());
       return false;
     }
 
-    if (edge.getDst() instanceof StreamVertex) {
+    if (edge.getDst() instanceof StreamVertex && !(edge.getSrc() instanceof SourceVertex)) {
+      LOG.info("StagePartitioner Src {}, Dst {}  edge.getDst() StreamVertex", edge.getSrc(), edge.getDst());
       return false;
+    }
+
+    if (edge.getDst() instanceof SrcStreamVertex) {
+      LOG.info("StagePartitioner Src {}, Dst {}  edge.getDst() SrcStreamVertex", edge.getSrc(), edge.getDst());
+      return true;
     }
 
     // Return true if and only if the execution properties of the two vertices are compatible
-    return getStageProperties(edge.getSrc()).equals(getStageProperties(edge.getDst()));
+    final boolean val =  getStageProperties(edge.getSrc()).equals(getStageProperties(edge.getDst()));
+    LOG.info("StagePartitioner Src {}, Dst {} getStageProperties {}", edge.getSrc(), edge.getDst(), val);
+    return val;
   }
 
   /**

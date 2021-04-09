@@ -1,8 +1,14 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Annotates(ResourcePriorityProperty.class)
 public final class StreamingResourceAffinityPass extends AnnotatingPass {
@@ -38,9 +44,20 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
     });
     */
 
-    dag.getRootVertices().forEach(root -> {
-      root.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.SOURCE));
-    });
+    final List<IRVertex> sourceStages = new LinkedList<>();
+    sourceStages.addAll(dag.getRootVertices());
+
+    while (!sourceStages.isEmpty()) {
+      final IRVertex srcStageVertex = ((LinkedList<IRVertex>) sourceStages).poll();
+      srcStageVertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.SOURCE));
+
+      sourceStages.addAll(dag.getOutgoingEdgesOf(srcStageVertex)
+        .stream().filter(edge -> edge.getPropertyValue(CommunicationPatternProperty.class)
+          .get()
+          .equals(CommunicationPatternProperty.Value.OneToOne))
+        .map(edge -> edge.getDst())
+        .collect(Collectors.toList()));
+    }
 
     return dag;
   }

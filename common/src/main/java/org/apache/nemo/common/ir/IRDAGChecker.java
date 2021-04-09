@@ -290,6 +290,8 @@ public final class IRDAGChecker {
         } else {
           // Non-shuffle edges must not have the following properties
           if (CommunicationPatternProperty.Value.RoundRobin
+              .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())
+            || CommunicationPatternProperty.Value.TransientRR
               .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             LOG.info("Skipping check for RR");
           } else {

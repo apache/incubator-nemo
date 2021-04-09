@@ -13,6 +13,7 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;

@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.tasks;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -38,8 +37,10 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -685,6 +686,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // LOG.info("Handling watermark with index {}", event);
       final WatermarkWithIndex d = (WatermarkWithIndex) event;
 
+      /*
+      if (sourceVertexDataFetchers.size() == 0) {
+        LOG.info("Process watermark in task {} {}", taskId,
+          new Instant(d.getWatermark().getTimestamp()));
+      }
+      */
+
       if (singleOneToOneInput) {
         processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
       } else {
@@ -703,6 +711,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
       processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
+
+      /*
+      if (sourceVertexDataFetchers.size() == 0) {
+        LOG.info("Process data in task {} {}", taskId,
+          new Instant(((TimestampAndValue) event).timestamp));
+      }
+      */
+
       // This MUST BE generated from remote source
       taskMetrics.incrementInputElement();
       // Process data element

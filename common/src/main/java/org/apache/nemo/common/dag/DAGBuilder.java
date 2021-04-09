@@ -165,6 +165,12 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     return this;
   }
 
+  public boolean hasEdge(final E edge) {
+    return incomingEdges.get(edge.getDst()).stream().anyMatch(inEdge ->
+      inEdge.getSrc().getId().equals(edge.getSrc().getId()) &&
+        inEdge.getDst().getId().equals(edge.getDst().getId()));
+  }
+
   /**
    * Checks whether the DAGBuilder is empty.
    *

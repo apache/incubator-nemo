@@ -174,6 +174,35 @@ public final class LambdaContainerManager {
     });
   }
 
+  public boolean isAllWorkerActive() {
+    return requestIdControlChannelMap.size() == numRequestedLambda.get()
+     && requestIdControlChannelMap.values().stream()
+      .allMatch(worker -> worker.isActive());
+  }
+
+  public void deactivateAllWorkers() {
+    LOG.info("Deactivating all workers...");
+
+    while (!isAllWorkerActive()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    LOG.info("Starting deactivate workers...");
+
+    requestIdControlChannelMap.values().forEach(worker -> {
+      if (!worker.isActive()) {
+        throw new RuntimeException("Worker still active " + worker.getId());
+      }
+
+      worker.deactivate();
+    });
+  }
+
+
   public void close() {
     finished = true;
     channelThread.shutdownNow();

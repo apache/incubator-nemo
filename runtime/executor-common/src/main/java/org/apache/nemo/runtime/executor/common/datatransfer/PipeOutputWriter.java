@@ -166,6 +166,7 @@ public final class PipeOutputWriter implements OutputWriter {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 
       final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
@@ -191,7 +192,8 @@ public final class PipeOutputWriter implements OutputWriter {
       return Collections.singletonList(dstTaskIds.get(0));
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return dstTaskIds;
-    } else if (comm.equals(CommunicationPatternProperty.Value.RoundRobin)) {
+    } else if (comm.equals(CommunicationPatternProperty.Value.RoundRobin) ||
+      comm.equals(CommunicationPatternProperty.Value.TransientRR) ) {
       // RoundRobin
       return Collections.singletonList(dstTaskIds.get(random.nextInt(dstTaskIds.size())));
     } else {

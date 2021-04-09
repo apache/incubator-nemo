@@ -25,12 +25,12 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.EmptyElement;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

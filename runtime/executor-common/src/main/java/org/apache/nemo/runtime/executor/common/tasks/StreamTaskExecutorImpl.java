@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.tasks;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -29,18 +28,13 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
-import org.apache.nemo.common.punctuation.EmptyElement;
-import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +46,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * Executes a task.
@@ -108,13 +101,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   private final Map<String, DataFetcher> edgeToDataFetcherMap = new HashMap<>();
 
-  private final OutputCollectorGenerator outputCollectorGenerator;
-
   private final boolean offloaded;
-
-  private final List<ConditionalRouterVertex> crVertices;
-
-  private final Transform.ConditionalRouting conditionalRouting;
 
   private final RuntimeEdge outputEdge;
 
@@ -149,17 +136,13 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                                 final PipeManagerWorker pipeManagerWorker,
                                 final OutputCollectorGenerator outputCollectorGenerator,
                                 final byte[] bytes,
-                                final Transform.ConditionalRouting conditionalRouting,
                                 final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
-    this.conditionalRouting = conditionalRouting;
-    this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
-    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -279,24 +262,12 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean isSourceAvailable() {
-    //LOG.info("Source available in {}", taskId);
-    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
-      if (sourceVertexDataFetcher.isAvailable()) {
-        return true;
-      }
-    }
-
     return false;
   }
 
   // per second
-  private final AtomicLong throttleSourceRate =  new AtomicLong(1000000);
-  private long processedSourceData = 0;
-  private long prevSourceTrackTime = System.currentTimeMillis();
-
   @Override
   public void setThrottleSourceRate(final long num) {
-    throttleSourceRate.set(num);
   }
 
   @Override
@@ -472,9 +443,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader);
               }
 
-              if (!singleOneToOneInput) {
-                taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
-              }
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
 
             allFetchers.add(df);
@@ -495,13 +464,21 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
         pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
       } else {
 
-        if (((ByteBuf) data).getByte(0) == 0x01) {
+        final ByteBuf byteBuf = (ByteBuf) data;
+        byteBuf.markReaderIndex();
+        final Byte b = byteBuf.readByte();
+        byteBuf.resetReaderIndex();
+
+        if (b == 0x01) {
           // watermark!
           // we should manage the watermark
           final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
+
+              // LOG.info("Emit watermark streamvertex in {} {}", taskId, new Instant(watermark.getTimestamp()));
+
               pipeManagerWorker.writeData(taskId, outputEdge.getId(),
                 dstTaskId,
                 serializer,

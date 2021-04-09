@@ -1,7 +1,6 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.runtime.executor.TinyTaskWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 

@@ -5,7 +5,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.burstypolicy.TaskOffloadingPolicy;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.monitoring.CpuEventModel;
 import org.apache.nemo.runtime.executor.monitoring.PolynomialCpuTimeModel;
