@@ -126,6 +126,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final Transform.ConditionalRouting conditionalRouting;
 
+  private final boolean singleOneToOneInput;
+
   /**
    * Constructor.
    *
@@ -172,6 +174,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.statefulTransforms = new ArrayList<>();
 
     final long restoresSt = System.currentTimeMillis();
+
+    this.singleOneToOneInput = task.getTaskIncomingEdges().size() == 1
+      && (task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.OneToOne) ||
+      task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.TransientOneToOne));
+
     this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
@@ -183,6 +192,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
+
 
     final long st = System.currentTimeMillis();
 
@@ -674,12 +684,17 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // Watermark
       // LOG.info("Handling watermark with index {}", event);
       final WatermarkWithIndex d = (WatermarkWithIndex) event;
-      final Optional<Watermark> watermark =
-        taskWatermarkManager.updateWatermark(dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp());
 
-      if (watermark.isPresent()) {
-        // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
-        processWatermark(dataFetcher.getOutputCollector(), watermark.get());
+      if (singleOneToOneInput) {
+        processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
+      } else {
+        final Optional<Watermark> watermark =
+          taskWatermarkManager.updateWatermark(dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp());
+
+        if (watermark.isPresent()) {
+          // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
+          processWatermark(dataFetcher.getOutputCollector(), watermark.get());
+        }
       }
     } else if (event instanceof Watermark) {
       // This MUST BE generated from input source

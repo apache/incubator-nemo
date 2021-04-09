@@ -122,9 +122,11 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   private final String dstTaskId;
 
-  private TaskInputWatermarkManager taskWatermarkManager;
+  private final TaskInputWatermarkManager taskWatermarkManager;
 
   private final int taskIndex;
+
+  private final boolean singleOneToOneInput;
 
   /**
    * Constructor.
@@ -178,7 +180,18 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
     this.outputEdge = task.getTaskOutgoingEdges().get(0);
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+
+    this.singleOneToOneInput = task.getTaskIncomingEdges().size() == 1
+      && (task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.OneToOne) ||
+      task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.TransientOneToOne));
+
+    if (singleOneToOneInput) {
+      this.taskWatermarkManager =  null;
+    } else {
+      this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+    }
 
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
 
@@ -447,7 +460,9 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                 task.getTaskId(),
                 parentTaskReader);
 
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+              if (!singleOneToOneInput) {
+                taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+              }
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -457,7 +472,9 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader);
               }
 
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
+              if (!singleOneToOneInput) {
+                taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
+              }
             }
 
             allFetchers.add(df);
@@ -474,54 +491,52 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final Object data = taskHandlingEvent.getDataByteBuf();
 
-      if (((ByteBuf) data).getByte(0) == 0x01) {
-        // watermark!
-        // we should manage the watermark
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            pipeManagerWorker.writeData(taskId, outputEdge.getId(),
-              dstTaskId,
-              serializer,
-              new WatermarkWithIndex(watermark, taskIndex));
-          });
-
-      } else {
-        // data
+      if (singleOneToOneInput) {
         pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      } else {
+
+        if (((ByteBuf) data).getByte(0) == 0x01) {
+          // watermark!
+          // we should manage the watermark
+          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+            watermarkWithIndex.getWatermark().getTimestamp())
+            .ifPresent(watermark -> {
+              pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+                dstTaskId,
+                serializer,
+                new WatermarkWithIndex(watermark, taskIndex));
+            });
+
+        } else {
+          // data
+          pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+        }
       }
 
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
-      if (data instanceof WatermarkWithIndex) {
-        // watermark!
-        // we should manage the watermark
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            pipeManagerWorker.writeData(taskId, outputEdge.getId(),
-              dstTaskId,
-              serializer,
-              new WatermarkWithIndex(watermark, taskIndex));
-          });
-
-      } else {
+      if (singleOneToOneInput) {
         pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      } else {
+        if (data instanceof WatermarkWithIndex) {
+          // watermark!
+          // we should manage the watermark
+          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+            watermarkWithIndex.getWatermark().getTimestamp())
+            .ifPresent(watermark -> {
+              pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+                dstTaskId,
+                serializer,
+                new WatermarkWithIndex(watermark, taskIndex));
+            });
+
+        } else {
+          pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+        }
       }
     }
-
-    // final long serializedEnd = System.nanoTime();
-
-    // taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
-
-    // directly send data to pipe manager
-    // taskMetrics.incrementInputElement();
-    // taskMetrics.incrementOutputElement();
-
-    // LOG.info("Handling data for task {}, index {}, watermark {}",
-    //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
   }
 
   // exeutor thread가 바로 부르는 method
@@ -555,13 +570,15 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
   public boolean checkpoint(final boolean checkpointSource) {
     boolean hasChekpoint = false;
 
-    final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
-    try {
-      taskWatermarkManager.encode(os);
-      os.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+    if (!singleOneToOneInput) {
+      final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+      try {
+        taskWatermarkManager.encode(os);
+        os.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
 
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
