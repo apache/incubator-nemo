@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -50,6 +52,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Executes a task.
@@ -119,6 +122,10 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   private final String dstTaskId;
 
+  private TaskInputWatermarkManager taskWatermarkManager;
+
+  private final int taskIndex;
+
   /**
    * Constructor.
    *
@@ -171,6 +178,9 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
     this.outputEdge = task.getTaskOutgoingEdges().get(0);
+    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+
+    this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
 
     this.dstTaskId = RuntimeIdManager.generateTaskId(((StageEdge)outputEdge).getDst().getId(),
       RuntimeIdManager.getIndexFromTaskId(taskId), 0);
@@ -436,6 +446,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                 edge.getId(),
                 task.getTaskId(),
                 parentTaskReader);
+
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -444,6 +456,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                   task.getTaskId(),
                   parentTaskReader);
               }
+
+              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
 
             allFetchers.add(df);
@@ -457,16 +471,45 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    // input
-    // taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-    // final long serializedStart = System.nanoTime();
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final Object data = taskHandlingEvent.getDataByteBuf();
-      pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+
+      if (((ByteBuf) data).getByte(0) == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+              dstTaskId,
+              serializer,
+              new WatermarkWithIndex(watermark, taskIndex));
+          });
+
+      } else {
+        // data
+        pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      }
 
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
-      pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+              dstTaskId,
+              serializer,
+              new WatermarkWithIndex(watermark, taskIndex));
+          });
+
+      } else {
+        pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      }
     }
 
     // final long serializedEnd = System.nanoTime();
@@ -490,12 +533,36 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   ////////////////////////////////////////////// Transform-specific helper methods
 
+  private Optional<TaskInputWatermarkManager> restoreTaskInputWatermarkManager() {
+    if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
+      try {
+        final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
+        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(is);
+        return Optional.of(tm);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+    return Optional.empty();
+  }
+
+
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
   }
 
   @Override
   public boolean checkpoint(final boolean checkpointSource) {
     boolean hasChekpoint = false;
+
+    final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+    try {
+      taskWatermarkManager.encode(os);
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
 
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     // stateStore.put(taskId + "-taskWatermarkManager", bytes);
