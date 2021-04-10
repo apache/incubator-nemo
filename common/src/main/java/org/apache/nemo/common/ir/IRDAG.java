@@ -376,6 +376,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
           }
 
+          newEdge.setPropertyPermanently(
+            AdditionalOutputTagProperty.of(Util.PARTIAL_RR_TAG));
+
           // Add transient path for router vertex
           builder.connectVertices(newEdge);
         } else {
