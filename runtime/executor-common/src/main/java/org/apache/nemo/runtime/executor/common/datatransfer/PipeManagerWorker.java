@@ -65,6 +65,11 @@ public interface PipeManagerWorker extends InputPipeRegister {
 
   void stopOutputPipe(int index, String taskId);
 
+  void writeControlMessage(String srcTaskId,
+                           String edgeId,
+                           String dstTaskId,
+                           TaskControlMessage.TaskControlMessageType type);
+
   // When input pipe is initiated
   void startOutputPipe(int index, String taskId);
 

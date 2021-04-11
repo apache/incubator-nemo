@@ -255,6 +255,11 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
+  public void writeControlMessage(String srcTaskId, String edgeId, String dstTaskId, TaskControlMessage.TaskControlMessageType type) {
+
+  }
+
+  @Override
   public void startOutputPipe(int index, String taskId) {
     throw new RuntimeException("Not supported");
   }

@@ -42,7 +42,7 @@ public interface Transform<I, O> extends Serializable {
    */
   void prepare(Context context, OutputCollector<O> outputCollector);
 
-  default void restore() {
+  default void restore(final String taskId) {
 
   }
 
@@ -60,7 +60,7 @@ public interface Transform<I, O> extends Serializable {
    */
   void onWatermark(Watermark watermark);
 
-  default void checkpoint() {
+  default void checkpoint(final String taskId) {
 
   }
 

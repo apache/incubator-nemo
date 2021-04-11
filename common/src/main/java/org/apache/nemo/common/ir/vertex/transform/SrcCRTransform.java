@@ -55,7 +55,7 @@ public final class SrcCRTransform<T> implements Transform<T, T> {
   public void onData(final T element) {
     if (conditionalRouting.toPartial()) {
       if (random.nextDouble() < conditionalRouting.getPercent()) {
-        outputCollector.emit(Util.PARTIAL_RR_TAG, element);
+        outputCollector.emit(Util.TRANSIENT_PATH, element);
       } else {
         outputCollector.emit(element);
       }

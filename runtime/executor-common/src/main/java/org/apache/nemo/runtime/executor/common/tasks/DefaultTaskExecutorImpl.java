@@ -798,7 +798,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
 
     if (!isStateless) {
-      statefulTransforms.forEach(transform -> transform.restore());
+      statefulTransforms.forEach(transform -> transform.restore(taskId));
     }
   }
 
@@ -848,7 +848,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
     if (!isStateless) {
-      statefulTransforms.forEach(transform -> transform.checkpoint());
+      statefulTransforms.forEach(transform -> transform.checkpoint(taskId));
     }
 
     return true;

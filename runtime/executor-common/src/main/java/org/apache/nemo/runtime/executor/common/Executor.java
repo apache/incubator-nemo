@@ -35,13 +35,8 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.common.tasks.DefaultTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.common.tasks.StreamTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.*;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -523,6 +518,29 @@ public final class Executor {
             condRouting,
             // new NoOffloadingPreparer(),
             false);
+      } else if (task.isLambdaAffinity()) {
+        taskExecutor =
+          new TransientTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            // offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            condRouting,
+            // new NoOffloadingPreparer(),
+            false);
       } else {
         taskExecutor =
           new DefaultTaskExecutorImpl(
@@ -547,8 +565,6 @@ public final class Executor {
             // new NoOffloadingPreparer(),
             false);
       }
-;
-
 
       LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);
@@ -742,25 +758,42 @@ public final class Executor {
           });
           break;
         }
-        case StateMigration: {
+        case RoutingDataToLambda: {
           // for R2 reshaping
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
 
-          if (!(task.isCrTask()
-            || task.isLambdaAffinity())) {
+          if (!task.isCrTask()) {
             throw new RuntimeException("Cannot stage migration normal task " + taskId);
           }
 
           executorService.execute(() -> {
-            if (onLambda) {
-              LOG.info("Stage migration task {} from Lambda to VM in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
-            } else {
-              LOG.info("Stage migration task {} from VM to Lambda in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
-            }
+            LOG.info("Routing data from VM task {} to Lambda  {} in executor {}",
+              message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
+
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.STATE_MIGRATION_SIGNAL_BY_MASTER, -1, -1,
+              TaskControlMessage.TaskControlMessageType.ROUTING_DATA_TO_LAMBDA_BY_MASTER, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+          break;
+        }
+        case RoutingDataDoneToLambda: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+
+          if (!task.isCrTask()) {
+            throw new RuntimeException("Cannot stage migration normal task " + taskId);
+          }
+
+          executorService.execute(() -> {
+            LOG.info("Routing data done from VM task {} to Lambda  {} in executor {}",
+              message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
           break;

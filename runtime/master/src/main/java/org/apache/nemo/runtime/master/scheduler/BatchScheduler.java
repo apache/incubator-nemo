@@ -440,7 +440,10 @@ public final class BatchScheduler implements Scheduler {
         stageToSchedule.getIRDAG(),
         stageIncomingEdges,
         stageOutgoingEdges,
-        vertexIdToReadables.get(taskIdx)));
+        vertexIdToReadables.get(taskIdx),
+        null,
+        false,
+        false));
     });
     return tasks;
   }

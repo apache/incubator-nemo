@@ -23,6 +23,7 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
@@ -61,6 +62,8 @@ public final class Task implements Serializable {
   private final boolean crTask;
   public final boolean isStreamVertex;
 
+  private final String pairTaskId;
+
   /**
    *
    * @param planId               the id of the physical plan.
@@ -76,7 +79,10 @@ public final class Task implements Serializable {
               final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
-              final Map<String, Readable> irVertexIdToReadable) {
+              final Map<String, Readable> irVertexIdToReadable,
+              final String pairTaskId,
+              final boolean crTask,
+              final boolean lambdaAffinity) {
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
@@ -90,16 +96,15 @@ public final class Task implements Serializable {
     LOG.info("Task {} scheduled ... upstreamTasks {}",
       taskId, upstreamTasks.values());
 
-    final boolean hasTransientIncomingEdge = taskIncomingEdges.stream().anyMatch(edge ->
-      edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
-        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientRR) ||
-        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientShuffle));
+    // find pair task
+    this.pairTaskId = pairTaskId;
 
-    this.crTask = hasTransientIncomingEdge &&
-      irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+    this.lambdaAffinity = lambdaAffinity;
+    this.crTask =crTask;
+  }
 
-    this.lambdaAffinity = hasTransientIncomingEdge &&
-      irDag.getRootVertices().stream().noneMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+  public String getPairTaskId() {
+    return pairTaskId;
   }
 
   public boolean isCrTask() {
@@ -116,12 +121,17 @@ public final class Task implements Serializable {
       final String taskId = dis.readUTF();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
 
+      throw new RuntimeException("Not supported");
+
+      /*
       return new Task(taskId,
         null,
         irDag,
         taskCaching.taskIncomingEdges,
         taskCaching.taskOutgoingEdges,
         new HashMap<>());
+        */
+
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -153,12 +163,26 @@ public final class Task implements Serializable {
         irVertexIdToReadable.put(key, val);
       }
 
+      final boolean hasPairStageId = dis.readBoolean();
+      final String pairStageId;
+      if (hasPairStageId) {
+        pairStageId = dis.readUTF();
+      } else {
+        pairStageId = null;
+      }
+
+      final boolean crTask = dis.readBoolean();
+      final boolean lambdaAffinity = dis.readBoolean();
+
       return new Task(taskId,
         null,
         irDag,
         taskIncomingEdges,
         taskOutgoingEdges,
-        irVertexIdToReadable);
+        irVertexIdToReadable,
+        pairStageId,
+        crTask,
+        lambdaAffinity);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -186,6 +210,16 @@ public final class Task implements Serializable {
         dos.writeUTF(entry.getKey());
         SerializationUtils.serialize(entry.getValue(), dos);
       }
+
+      if (pairTaskId != null) {
+        dos.writeBoolean(true);
+        dos.writeUTF(pairTaskId);
+      } else {
+        dos.writeBoolean(false);
+      }
+
+      dos.writeBoolean(crTask);
+      dos.writeBoolean(lambdaAffinity);
 
     } catch (final Exception e) {
       e.printStackTrace();

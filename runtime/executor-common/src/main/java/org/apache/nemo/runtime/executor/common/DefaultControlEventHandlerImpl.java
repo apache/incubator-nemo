@@ -7,7 +7,9 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.TransientTaskExecutorImpl;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -15,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
+import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 
@@ -44,19 +47,52 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
+    if (evalConf.controlLogging) {
+      LOG.info("Handling control event {} / {}", control.type, control);
+    }
+
     switch (control.type) {
-      case STATE_MIGRATION_SIGNAL_BY_MASTER: {
+      case ROUTING_DATA_TO_LAMBDA_BY_MASTER: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
         if (taskExecutor.isSource()) {
           throw new RuntimeException("not supported");
         } else {
-          // Stop input pipe
-          taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
-            pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
-              entry.getKey().getId(), control.getTaskId());
-          });
+          final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
+          crTask.prepareRoutingToLambda();
         }
+        break;
+      }
+      case ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
+        crTask.prepareRoutingDoneToLambda();
+        break;
+      }
+      // From Transient -> CR
+      case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
+        crTask.startRoutingToLambda();
+        break;
+      }
+      case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
+        crTask.finishRoutingToLambda();
+        break;
+      }
+      // From CR -> Transient
+      case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final TransientTaskExecutorImpl trTask = (TransientTaskExecutorImpl) taskExecutor;
+        trTask.getStateFromRemote();
+        break;
+      }
+      case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final TransientTaskExecutorImpl trTask = (TransientTaskExecutorImpl) taskExecutor;
+        trTask.stateMigrationToVM();
         break;
       }
       case TASK_STOP_SIGNAL_BY_MASTER: {

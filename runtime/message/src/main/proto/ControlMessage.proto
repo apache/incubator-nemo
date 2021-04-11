@@ -180,9 +180,9 @@ enum MessageType {
 
     ConditionalRouting = 66;
 
-    // state migration from vm to lambda
-    // or from lambda to vm
-    StateMigration = 67;
+    // routing data from VM to lambda
+    RoutingDataToLambda = 67;
+    RoutingDataDoneToLambda = 68;
 }
 
 message LambdaEndMessage {

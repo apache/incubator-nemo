@@ -48,16 +48,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.*;
 
 /**
  * Executes a task.
  * Should be accessed by a single thread.
  */
 @NotThreadSafe
-public final class CRTaskExecutorImpl implements TaskExecutor {
-  private static final Logger LOG = LoggerFactory.getLogger(CRTaskExecutorImpl.class.getName());
+public final class TransientTaskExecutorImpl implements TaskExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(TransientTaskExecutorImpl.class.getName());
 
   // Essential information
   private final Task task;
@@ -123,14 +124,12 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   // THIS TASK SHOULD NOT BE MOVED !!
   // THIS TASK SHOULD NOT BE MOVED !!
 
-  private enum CRTaskState {
-    STATE_MIGRATION_TO_LAMBDA,
-    STATE_MIGRATION_FROM_LAMBDA,
+  private enum TransientTaskState {
     NORMAL,
-    SEND_DATA_TO_LAMBDA,
+    FINISH,
   }
 
-  private CRTaskState currState = CRTaskState.NORMAL;
+  private TransientTaskState currState = TransientTaskState.FINISH;
 
   private final RuntimeEdge transientPathEdge;
 
@@ -141,26 +140,26 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
    * @param irVertexDag            A DAG of vertices.
    * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    */
-  public CRTaskExecutorImpl(final long threadId,
-                            final String executorId,
-                            final Task task,
-                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                            final IntermediateDataIOFactory intermediateDataIOFactory,
-                            final SerializerManager serializerManager,
-                            final ServerlessExecutorProvider serverlessExecutorProvider,
-                            final Map<String, Double> samplingMap,
-                            final boolean isLocalSource,
-                            final ExecutorService prepareService,
-                            final ExecutorThreadQueue executorThreadQueue,
-                            final InputPipeRegister inputPipeRegister,
-                            final StateStore stateStore,
-                            //  final OffloadingManager offloadingManager,
-                            final PipeManagerWorker pipeManagerWorker,
-                            final OutputCollectorGenerator outputCollectorGenerator,
-                            final byte[] bytes,
-                            final Transform.ConditionalRouting conditionalRouting,
-                            // final OffloadingPreparer offloadingPreparer,
-                            final boolean offloaded) {
+  public TransientTaskExecutorImpl(final long threadId,
+                                   final String executorId,
+                                   final Task task,
+                                   final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                   final IntermediateDataIOFactory intermediateDataIOFactory,
+                                   final SerializerManager serializerManager,
+                                   final ServerlessExecutorProvider serverlessExecutorProvider,
+                                   final Map<String, Double> samplingMap,
+                                   final boolean isLocalSource,
+                                   final ExecutorService prepareService,
+                                   final ExecutorThreadQueue executorThreadQueue,
+                                   final InputPipeRegister inputPipeRegister,
+                                   final StateStore stateStore,
+                                   //  final OffloadingManager offloadingManager,
+                                   final PipeManagerWorker pipeManagerWorker,
+                                   final OutputCollectorGenerator outputCollectorGenerator,
+                                   final byte[] bytes,
+                                   final Transform.ConditionalRouting conditionalRouting,
+                                   // final OffloadingPreparer offloadingPreparer,
+                                   final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
@@ -201,14 +200,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
 
-    final long st = System.currentTimeMillis();
-
-    LOG.info("Start to registering input output pipe {}", taskId);
-
-    this.transientPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
+    this.transientPathEdge = task.getTaskIncomingEdges().stream().filter(edge ->
       edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent() &&
         edge.getPropertyValue(AdditionalOutputTagProperty.class).get().equals(Util.TRANSIENT_PATH))
       .findFirst().get();
+
+    final long st = System.currentTimeMillis();
+
+    LOG.info("Start to registering input output pipe {}", taskId);
 
     task.getTaskOutgoingEdges().forEach(edge -> {
       LOG.info("Task outgoing edge for {} {}", taskId, edge);
@@ -621,119 +620,59 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     outputCollector.emitWatermark(watermark);
   }
 
-  private final Queue<Pair<String, TaskHandlingEvent>> pendingQueue = new LinkedBlockingQueue<>();
-
-  // For state migration from VM -> Lambda
-  public void prepareRoutingToLambda() {
-    LOG.info("Prepare routing from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.STATE_MIGRATION_TO_LAMBDA;
-    stateMigration(task.getPairTaskId());
-
-    pipeManagerWorker.writeControlMessage(taskId,
-      transientPathEdge.getId(),
-      task.getPairTaskId(),
-      TaskControlMessage.TaskControlMessageType.INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK);
-  }
-
-  public void prepareRoutingDoneToLambda() {
-    LOG.info("Prepare routing done from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.STATE_MIGRATION_FROM_LAMBDA;
-
-    pipeManagerWorker.writeControlMessage(taskId,
-      transientPathEdge.getId(),
-      task.getPairTaskId(),
-      TaskControlMessage.TaskControlMessageType.INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK);
-  }
-
-  // From Lambda -> VM
-  public void finishRoutingToLambda() {
-    if (currState != CRTaskState.STATE_MIGRATION_FROM_LAMBDA) {
-      throw new RuntimeException("Invalid curr state " + currState);
-    }
-
+  public void getStateFromRemote() {
     stateRestore(taskId);
-    currState = CRTaskState.NORMAL;
 
-    // flush buffer to local
-    pendingQueue.forEach(data -> {
-      handleData(data.left(), data.right());
-    });
+    LOG.info("Send migration done signal from {} to {}", taskId, task.getPairTaskId());
+    currState = TransientTaskState.NORMAL;
+    pipeManagerWorker.writeControlMessage(
+      taskId,
+      transientPathEdge.getId(),
+      task.getPairTaskId(),
+      GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK);
   }
 
-  public void startRoutingToLambda() {
-    if (currState != CRTaskState.STATE_MIGRATION_TO_LAMBDA) {
-      throw new RuntimeException("Invalid curr state " + currState);
-    }
-    LOG.info("Start routing from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.SEND_DATA_TO_LAMBDA;
-    // flush buffer
-    pendingQueue.forEach(data -> {
-      // Send to remote additional tag output writer
-      externalAdditionalOutputMap.get(Util.TRANSIENT_PATH)
-        .forEach(writer -> {
-          final TaskHandlingEvent event = data.right();
-          if (event instanceof TaskHandlingDataEvent) {
-            writer.writeByteBuf(data.right().getDataByteBuf());
-          } else if (event instanceof TaskLocalDataEvent) {
-            writer.write(data.right().getData());
-          }
-        });
-    });
-    pendingQueue.clear();
+  public void stateMigrationToVM() {
+    stateMigration(task.getPairTaskId());
+    LOG.info("Send migration invoke signal from {} to {}", taskId, task.getPairTaskId());
+    currState = TransientTaskState.FINISH;
+    pipeManagerWorker.writeControlMessage(
+      taskId,
+      transientPathEdge.getId(),
+      task.getPairTaskId(),
+      STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK);
   }
 
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    switch (currState) {
-      case NORMAL: {
-        // input
-        taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-        final long serializedStart = System.nanoTime();
-        final Object data = taskHandlingEvent.getData();
-        final long serializedEnd = System.nanoTime();
+    if (currState.equals(TransientTaskState.FINISH)) {
+      throw new RuntimeException("Current state FINISH but receive data from " + edgeId +
+        " in " + taskId);
+    }
 
-        taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
+    taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
+    final long serializedStart = System.nanoTime();
+    final Object data = taskHandlingEvent.getData();
+    final long serializedEnd = System.nanoTime();
 
-        // LOG.info("Handling data for task {}, index {}, watermark {}",
-        //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+    taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
 
-        try {
-          handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
-            edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-            " event " + data.getClass() + ", " +
-            ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
-            + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
-        }
-        break;
-      }
-      case STATE_MIGRATION_TO_LAMBDA:
-      case STATE_MIGRATION_FROM_LAMBDA: {
-        pendingQueue.add(Pair.of(edgeId, taskHandlingEvent));
-        break;
-      }
-      case SEND_DATA_TO_LAMBDA: {
-        // Send to lambda transient task
-        externalAdditionalOutputMap.get(Util.TRANSIENT_PATH)
-          .forEach(writer -> {
-            if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-              writer.writeByteBuf(taskHandlingEvent.getDataByteBuf());
-            } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
-              writer.write(taskHandlingEvent.getData());
-            }
-          });
-        break;
-      }
-      default: {
-        throw new RuntimeException("Not supported " + currState);
-      }
+    // LOG.info("Handling data for task {}, index {}, watermark {}",
+    //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+
+    try {
+      handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
+        edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
+        " event " + data.getClass() + ", " +
+        ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
+        + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
     }
   }
 
-  // TODO: watermark handling for transient path
   private void handleInternalData(final DataFetcher dataFetcher, Object event) {
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
@@ -849,7 +788,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     stateMigration(taskId);
     return true;
   }
-
 
   @Override
   public String toString() {

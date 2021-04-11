@@ -14,7 +14,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
 
   public enum TaskControlMessageType {
     TASK_STOP_SIGNAL_BY_MASTER,
-    STATE_MIGRATION_SIGNAL_BY_MASTER,
+    ROUTING_DATA_TO_LAMBDA_BY_MASTER,
+    ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER,
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,
@@ -23,6 +24,16 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     DEACTIVATE_LAMBDA,
     BACKPRESSURE,
     BACKPRESSURE_RESTART,
+
+    // normal and transient path
+
+    // from CR -> Transient
+    INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK,
+    INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK,
+
+    // from Transient -> CR
+    GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK,
+    STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK,
 
     // For offloaded task
     OFFLOAD_TASK_STOP
@@ -118,7 +129,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case OFFLOAD_TASK_STOP:
         case PIPE_INIT:
         case DEACTIVATE_LAMBDA:
-        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
+
+        case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK:
+        case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK:
+        case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK:
+        case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK:{
           break;
         }
         default:
@@ -153,7 +169,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case OFFLOAD_TASK_STOP:
         case PIPE_INIT:
         case DEACTIVATE_LAMBDA:
-        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
+
+        case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK:
+        case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK:
+        case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK:
+        case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK:{
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
           break;
         }

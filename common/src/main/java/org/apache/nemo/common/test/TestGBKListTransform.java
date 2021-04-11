@@ -24,7 +24,7 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
   private OutputCollector outputCollector;
 
   @Override
-  public void restore() {
+  public void restore(String id) {
     final StateStore stateStore = context.getStateStore();
     if (stateStore.containsState(context.getTaskId())) {
       LOG.info("Restore state for TestGBK in {}", context.getTaskId());
@@ -45,11 +45,11 @@ public final class TestGBKListTransform implements Transform<Pair<Integer, Integ
   public void prepare(Context context, OutputCollector outputCollector) {
     this.context = context;
     this.outputCollector = outputCollector;
-    restore();
+    restore(null);
   }
 
   @Override
-  public void checkpoint() {
+  public void checkpoint(String id) {
     LOG.info("Checkpoint state for TestGBK in {}", context.getTaskId());
     final StateStore stateStore = context.getStateStore();
     final ByteArrayOutputStream bos = new ByteArrayOutputStream(100);

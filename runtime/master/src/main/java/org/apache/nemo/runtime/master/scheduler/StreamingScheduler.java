@@ -39,6 +39,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -61,6 +62,7 @@ public final class StreamingScheduler implements Scheduler {
   private final PipeIndexMaster pipeIndexMaster;
   private final TransferIndexMaster transferIndexMaster;
   private final TaskOffloadingManager taskOffloadingManager;
+  private final PairStageTaskManager pairStageTaskManager;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -70,6 +72,7 @@ public final class StreamingScheduler implements Scheduler {
                      final PipeManagerMaster pipeManagerMaster,
                      final PipeIndexMaster pipeIndexMaster,
                      final TransferIndexMaster transferIndexMaster,
+                     final PairStageTaskManager pairStageTaskManager,
                      final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
@@ -79,6 +82,7 @@ public final class StreamingScheduler implements Scheduler {
     this.pipeIndexMaster = pipeIndexMaster;
     this.transferIndexMaster = transferIndexMaster;
     this.taskOffloadingManager = taskOffloadingManager;
+    this.pairStageTaskManager = pairStageTaskManager;
   }
 
   @Override
@@ -88,6 +92,9 @@ public final class StreamingScheduler implements Scheduler {
     taskDispatcher.run();
     planStateManager.updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
     planStateManager.storeJSON("submitted");
+
+    // Prepare tasks
+    pairStageTaskManager.registerStageDag(submittedPhysicalPlan.getStageDAG());
 
     // Prepare tasks
     taskOffloadingManager.setStageDAG(submittedPhysicalPlan.getStageDAG());
@@ -139,13 +146,25 @@ public final class StreamingScheduler implements Scheduler {
 
       // Create tasks of this stage
       allTasks.addAll(
-        taskIdsToSchedule.stream().map(taskId -> new Task(
-          taskId,
-          stageToSchedule.getExecutionProperties(),
-          stageToSchedule.getIRDAG(),
-          stageIncomingEdges,
-          stageOutgoingEdges,
-          vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))))
+        taskIdsToSchedule.stream().map(taskId -> {
+          pairStageTaskManager.registerPairTask(stageIncomingEdges,
+            stageOutgoingEdges, taskId, stageToSchedule.getIRDAG());
+
+          final String pairTaskId = pairStageTaskManager.getPairTaskId(taskId);
+          final boolean crTask= PairStageTaskManager.isCrTask(stageIncomingEdges, stageToSchedule.getIRDAG());
+          final boolean lambdaAffinity = PairStageTaskManager.isLambdaAffinity(stageIncomingEdges, stageToSchedule.getIRDAG());
+
+          return new Task(
+            taskId,
+            stageToSchedule.getExecutionProperties(),
+            stageToSchedule.getIRDAG(),
+            stageIncomingEdges,
+            stageOutgoingEdges,
+            vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
+            pairTaskId,
+            crTask,
+            lambdaAffinity);
+        })
           .collect(Collectors.toList()));
 
     }

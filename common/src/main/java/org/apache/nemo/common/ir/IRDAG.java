@@ -23,8 +23,6 @@ import com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
-import org.apache.nemo.common.coder.BytesDecoderFactory;
-import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -378,7 +376,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           }
 
           newEdge.setPropertyPermanently(
-            AdditionalOutputTagProperty.of(Util.PARTIAL_RR_TAG));
+            AdditionalOutputTagProperty.of(Util.TRANSIENT_PATH));
 
           // Add transient path for router vertex
           builder.connectVertices(newEdge);
@@ -633,7 +631,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
 
            fromSVRR.setPropertyPermanently(
-             AdditionalOutputTagProperty.of(Util.PARTIAL_RR_TAG));
+             AdditionalOutputTagProperty.of(Util.TRANSIENT_PATH));
 
           final IREdge fromSVShuffle = new IREdge(
             edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),

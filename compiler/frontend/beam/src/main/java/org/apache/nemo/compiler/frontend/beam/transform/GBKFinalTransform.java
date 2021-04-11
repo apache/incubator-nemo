@@ -122,10 +122,10 @@ public final class GBKFinalTransform<K, InputT>
   }
 
   @Override
-  public void checkpoint() {
+  public void checkpoint(final String checkpointId) {
     final long st = System.currentTimeMillis();
     final StateStore stateStore = getContext().getStateStore();
-    final OutputStream os = stateStore.getOutputStream(getContext().getTaskId() + "-" + partial);
+    final OutputStream os = stateStore.getOutputStream(checkpointId + "-" + partial);
     final CountingOutputStream cos = new CountingOutputStream(os);
     final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
 
@@ -157,10 +157,10 @@ public final class GBKFinalTransform<K, InputT>
   private String taskId;
 
   @Override
-  public void restore() {
-    if (stateStore.containsState(getContext().getTaskId() + "-" + partial)) {
+  public void restore(final String id) {
+    if (stateStore.containsState(id + "-" + partial)) {
       final long st = System.currentTimeMillis();
-      final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-" + partial);
+      final InputStream is = stateStore.getStateStream(id + "-" + partial);
       final CountingInputStream countingInputStream = new CountingInputStream(is);
       final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
       final GBKFinalState<K> state;
