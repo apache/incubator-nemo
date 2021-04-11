@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Flushable;
@@ -34,6 +35,8 @@ public interface OutputWriter {
    * @param element the element to write.
    */
   void write(final Object element);
+
+  void writeByteBuf(ByteBuf byteBuf);
 
   /**
    * Writes watermarks to all edges.

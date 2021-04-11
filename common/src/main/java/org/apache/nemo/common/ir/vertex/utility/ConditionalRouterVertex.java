@@ -21,6 +21,7 @@ package org.apache.nemo.common.ir.vertex.utility;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.CRTransform;
 import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
  * Relays input data from upstream vertex to downstream vertex promptly.
@@ -29,7 +30,7 @@ public final class ConditionalRouterVertex extends OperatorVertex {
   /**
    * Constructor.
    */
-  public ConditionalRouterVertex() {
+  public ConditionalRouterVertex(final Transform transform) {
     super(new CRTransform());
   }
 }

@@ -23,6 +23,8 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.CRTransform;
+import org.apache.nemo.common.ir.vertex.transform.SrcCRTransform;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
@@ -54,11 +56,11 @@ public final class R2ReshapingPass extends ReshapingPass {
 
       if (vertex instanceof SrcStreamVertex) {
         // Local conditional router vertex
-        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex());
+        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex(new SrcCRTransform()));
       }
 
       if (vertex instanceof StreamVertex) {
-        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex());
+        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex(new CRTransform()));
       }
     });
 

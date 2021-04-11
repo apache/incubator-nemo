@@ -37,6 +37,7 @@ import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.transform.CRTransform;
 import org.apache.nemo.common.ir.vertex.utility.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -592,7 +593,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // CR, B' 추가
 
     // Insert the vertex.
-    final IRVertex vertexToInsert = new ConditionalRouterVertex();
+    final IRVertex vertexToInsert = new ConditionalRouterVertex(new CRTransform());
     final IRVertex partialCombine = new OperatorVertex(
       ((OperatorVertex)edgeToAdd.getDst()).getTransform());
     partialCombine.isStateful = true;

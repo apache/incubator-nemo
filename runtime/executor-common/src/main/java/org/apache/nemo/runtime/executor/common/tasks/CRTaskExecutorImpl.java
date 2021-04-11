@@ -507,22 +507,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
           sourceVertexDataFetchers.add(fe);
           allFetchers.add(fe);
 
-        /*
-        // Register input pipe for offloaded source !!
-        if (offloaded) {
-          inputPipeRegister.registerInputPipe(
-            "Origin",
-            edge.getId(),
-            taskId,
-            intermediateDataIOFactory
-              .createReader(
-                taskId,
-                irVertex, edge, executorThreadQueue));
-        } else {
-          inputPipeRegister.retrieveIndexForOffloadingSource(taskId, edge.getId());
-        }
-        */
-
           if (sourceVertexDataFetchers.size() > 1) {
             throw new RuntimeException("Source vertex data fetcher is larger than one");
           }
@@ -648,7 +632,8 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
     restore();
     currState = CRTaskState.NORMAL;
-    // flush buffer
+
+    // flush buffer to local
     pendingQueue.forEach(data -> {
       handleData(data.left(), data.right());
     });
@@ -663,13 +648,15 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     // flush buffer
     pendingQueue.forEach(data -> {
       // Send to remote additional tag output writer
-      /*
       externalAdditionalOutputMap.get(Util.PARTIAL_RR_TAG)
         .forEach(writer -> {
-          writer.wri
+          final TaskHandlingEvent event = data.right();
+          if (event instanceof TaskHandlingDataEvent) {
+            writer.writeByteBuf(data.right().getDataByteBuf());
+          } else if (event instanceof TaskLocalDataEvent) {
+            writer.write(data.right().getData());
+          }
         });
-      TODO
-      */
     });
     pendingQueue.clear();
   }
@@ -709,7 +696,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       }
       case SEND_DATA_TO_REMOTE: {
         // Send to remote
-        // TODO
+        externalAdditionalOutputMap.get(Util.PARTIAL_RR_TAG)
+          .forEach(writer -> {
+            if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+              writer.writeByteBuf(taskHandlingEvent.getDataByteBuf());
+            } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+              writer.write(taskHandlingEvent.getData());
+            }
+          });
         break;
       }
       default: {

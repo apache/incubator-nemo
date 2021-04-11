@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -93,6 +94,11 @@ public final class BlockOutputWriter implements OutputWriter {
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
+  }
+
+  @Override
+  public void writeByteBuf(ByteBuf byteBuf) {
+    throw new RuntimeException("Not supported");
   }
 
   @Override

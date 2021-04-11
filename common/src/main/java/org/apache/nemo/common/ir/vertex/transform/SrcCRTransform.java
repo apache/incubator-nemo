@@ -31,25 +31,38 @@ import java.util.Random;
  * This transform can be used for merging input data into the {@link OutputCollector}.
  * @param <T> input/output type.
  */
-public final class CRTransform<T> implements Transform<T, T> {
+public final class SrcCRTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
-  private static final Logger LOG = LoggerFactory.getLogger(CRTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(SrcCRTransform.class.getName());
 
+  private ConditionalRouting conditionalRouting;
+
+  private final Random random = new Random();
   /**
    * Default constructor.
    */
-  public CRTransform() {
+  public SrcCRTransform() {
     // Do nothing.
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
+    this.conditionalRouting = context.getCondRouting();
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final T element) {
-    outputCollector.emit(element);
+    if (conditionalRouting.toPartial()) {
+      if (random.nextDouble() < conditionalRouting.getPercent()) {
+        outputCollector.emit(Util.PARTIAL_RR_TAG, element);
+      } else {
+        outputCollector.emit(element);
+      }
+
+    } else {
+      outputCollector.emit(element);
+    }
   }
 
   @Override
@@ -65,7 +78,7 @@ public final class CRTransform<T> implements Transform<T, T> {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(CRTransform.class);
+    sb.append(SrcCRTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();

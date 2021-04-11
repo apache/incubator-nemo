@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.TaskMetrics;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -112,6 +113,13 @@ public final class PipeOutputWriter implements OutputWriter {
     //executorMetrics.increaseOutputCounter(stageId);
 
     writeData(element, getPipeToWrite(element), false);
+  }
+
+  @Override
+  public void writeByteBuf(final ByteBuf element) {
+    getPipeToWrite(element).forEach(dstTask -> {
+      pipeManagerWorker.writeByteBufData(srcTaskId, runtimeEdge.getId(), dstTask, element);
+    });
   }
 
   @Override
