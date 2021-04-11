@@ -18,9 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.TransientFinishMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +82,10 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
         outputStream.write(0x02);
         final DataOutputStream dos = new DataOutputStream(outputStream);
         ((Watermark) element).encode(dos);
+      } else if (element instanceof TransientFinishMark) {
+        outputStream.write(0x03);
+        final DataOutputStream dos = new DataOutputStream(outputStream);
+        ((TransientFinishMark) element).encode(dos);
       } else if (element instanceof TimestampAndValue) {
         final TimestampAndValue tsv = (TimestampAndValue) element;
         outputStream.write(0x00); // this is a data element

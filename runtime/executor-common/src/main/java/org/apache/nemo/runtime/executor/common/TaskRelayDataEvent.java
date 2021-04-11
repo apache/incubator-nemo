@@ -2,11 +2,7 @@ package org.apache.nemo.runtime.executor.common;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import org.apache.nemo.common.WatermarkWithIndex;
-import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
 import java.io.IOException;

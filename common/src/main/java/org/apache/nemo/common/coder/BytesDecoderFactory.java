@@ -21,7 +21,7 @@ package org.apache.nemo.common.coder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;

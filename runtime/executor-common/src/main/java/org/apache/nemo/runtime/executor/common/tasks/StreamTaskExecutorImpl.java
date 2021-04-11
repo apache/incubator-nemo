@@ -30,11 +30,11 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,6 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Executes a task.
@@ -458,13 +457,11 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-      final Object data = taskHandlingEvent.getDataByteBuf();
-
+      final ByteBuf data = taskHandlingEvent.getDataByteBuf();
       if (singleOneToOneInput) {
-        pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+        pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
       } else {
-
-        final ByteBuf byteBuf = (ByteBuf) data;
+        final ByteBuf byteBuf = data;
         byteBuf.markReaderIndex();
         final Byte b = byteBuf.readByte();
         byteBuf.resetReaderIndex();
@@ -487,7 +484,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
         } else {
           // data
-          pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+          pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
         }
       }
 

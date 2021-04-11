@@ -56,16 +56,11 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
                                   final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap,
                                   final TaskMetrics taskMetrics,
                                   final List<StageEdge> outgoingEdges,
-                                  final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap) {
+                                  final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap,
+                                  final Map<String, List<OutputWriter>> externalAdditionalOutputMap) {
           // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
         TaskExecutorUtil.getInternalOutputMap(irVertex, irVertexDag);
-
-      final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
-        TaskExecutorUtil.getExternalAdditionalOutputMap(
-          irVertex, outgoingEdges, intermediateDataIOFactory, taskId,
-          taskMetrics);
-
 
       for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
         for (final NextIntraTaskOperatorInfo interOp : interOps) {

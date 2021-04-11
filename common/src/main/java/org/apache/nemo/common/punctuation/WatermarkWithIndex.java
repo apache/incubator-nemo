@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
-
-import org.apache.nemo.common.punctuation.Watermark;
+package org.apache.nemo.common.punctuation;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

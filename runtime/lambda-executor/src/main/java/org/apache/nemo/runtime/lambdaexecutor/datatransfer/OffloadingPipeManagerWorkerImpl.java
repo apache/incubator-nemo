@@ -105,11 +105,6 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void broadcast(String srcTaskId, String edgeId, List<String> dstTasks, ByteBuf event) {
-    throw new RuntimeException("not supported");
-  }
-
-  @Override
   public void writeData(String srcTaskId,
                         String edgeId,
                         String dstTaskId,
@@ -136,7 +131,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void writeData(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
+  public void writeByteBufData(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
     throw new RuntimeException("not supported");
   }
 

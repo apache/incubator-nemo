@@ -179,6 +179,10 @@ enum MessageType {
     LatencyCollection = 65;
 
     ConditionalRouting = 66;
+
+    // state migration from vm to lambda
+    // or from lambda to vm
+    StateMigration = 67;
 }
 
 message LambdaEndMessage {

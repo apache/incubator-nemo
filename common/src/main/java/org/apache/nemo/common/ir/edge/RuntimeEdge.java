@@ -22,10 +22,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
-import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 
@@ -57,6 +54,15 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
                      final V dst) {
     super(runtimeEdgeId, src, dst);
     this.executionProperties = executionProperties;
+  }
+
+  public boolean isTransientPath() {
+    return executionProperties.get(CommunicationPatternProperty.class)
+      .equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
+     executionProperties.get(CommunicationPatternProperty.class)
+      .equals(CommunicationPatternProperty.Value.TransientRR) ||
+      executionProperties.get(CommunicationPatternProperty.class)
+      .equals(CommunicationPatternProperty.Value.TransientShuffle);
   }
 
   public void removeEncoderDecoder() {

@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;

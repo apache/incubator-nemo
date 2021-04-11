@@ -386,7 +386,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
             if (optional.isPresent()) {
               final OffloadingWorker worker = optional.get();
-              worker.writeData(pending.getInputPipeIndex(), pending);
+              worker.writeByteBufData(pending.getInputPipeIndex(), pending);
               currBufferedData.decrementAndGet();
               processed.set(true);
               queue.poll();
@@ -571,10 +571,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
           final TaskHandlingEvent bufferedData = iterator.next();
           iterator.remove();
           processedData += 1;
-          worker.writeData(bufferedData.getInputPipeIndex(), bufferedData);
+          worker.writeByteBufData(bufferedData.getInputPipeIndex(), bufferedData);
         }
       } else {
-        worker.writeData(data.getInputPipeIndex(), data);
+        worker.writeByteBufData(data.getInputPipeIndex(), data);
       }
 
     } else {
@@ -592,7 +592,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
       if (optional.isPresent()) {
         final OffloadingWorker worker = optional.get();
-        worker.writeData(data.getInputPipeIndex(), data);
+        worker.writeByteBufData(data.getInputPipeIndex(), data);
       } else {
         throw new RuntimeException("No worker for offloading ... " + taskId);
       }
@@ -615,7 +615,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
       if (optional.isPresent()) {
         final OffloadingWorker worker = optional.get();
-        worker.writeData(pending.getInputPipeIndex(), pending);
+        worker.writeByteBufData(pending.getInputPipeIndex(), pending);
         queue.poll();
       } else {
         break;

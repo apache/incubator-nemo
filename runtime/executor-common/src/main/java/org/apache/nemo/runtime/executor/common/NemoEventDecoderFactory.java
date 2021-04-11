@@ -18,9 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.TransientFinishMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +98,8 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
         return WatermarkWithIndex.decode(dis);
       } else if (isWatermark == 0x02) {
         return Watermark.decode(dis);
+      } else if (isWatermark == 0x03) {
+        return TransientFinishMark.decode(dis);
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }

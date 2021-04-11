@@ -45,6 +45,20 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
     switch (control.type) {
+      case STATE_MIGRATION_SIGNAL_BY_MASTER: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (taskExecutor.isSource()) {
+          throw new RuntimeException("not supported");
+        } else {
+          // Stop input pipe
+          taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
+            pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
+              entry.getKey().getId(), control.getTaskId());
+          });
+        }
+        break;
+      }
       case TASK_STOP_SIGNAL_BY_MASTER: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -110,12 +124,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   }
 
   private void stopAndCheckpointTask(final String taskId) {
+    // flush pipes
+    pipeManagerWorker.flush();
+
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
     taskExecutor.checkpoint(true);
-
-    // flush pipes
-    pipeManagerWorker.flush();
 
     try {
       Thread.sleep(100);

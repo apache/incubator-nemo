@@ -8,6 +8,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -18,13 +19,14 @@ import java.util.Map;
 public interface OutputCollectorGenerator {
 
   OutputCollector generate(final IRVertex irVertex,
-           final String taskId,
-           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-           final TaskExecutor taskExecutor,
-           final SerializerManager serializerManager,
-           final Map<String, Double> samplingMap,
-           final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap,
-           final TaskMetrics taskMetrics,
-           final List<StageEdge> outgoingEdges,
-           final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap);
+                           final String taskId,
+                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                           final TaskExecutor taskExecutor,
+                           final SerializerManager serializerManager,
+                           final Map<String, Double> samplingMap,
+                           final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap,
+                           final TaskMetrics taskMetrics,
+                           final List<StageEdge> outgoingEdges,
+                           final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap,
+                           final Map<String, List<OutputWriter>> externalAdditionalOutputMap);
 }

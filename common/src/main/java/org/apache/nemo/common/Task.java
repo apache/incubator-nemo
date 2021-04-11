@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.offloading.common.TaskCaching;
 import org.slf4j.Logger;
@@ -56,6 +57,8 @@ public final class Task implements Serializable {
   private final Map<RuntimeEdge, List<String>> downstreamTasks;
   private final Map<RuntimeEdge, List<String>> upstreamTasks;
 
+  private final boolean lambdaAffinity;
+  private final boolean crTask;
   public final boolean isStreamVertex;
 
   /**
@@ -86,6 +89,25 @@ public final class Task implements Serializable {
     this.isStreamVertex = irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex;
     LOG.info("Task {} scheduled ... upstreamTasks {}",
       taskId, upstreamTasks.values());
+
+    final boolean hasTransientIncomingEdge = taskIncomingEdges.stream().anyMatch(edge ->
+      edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientRR) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientShuffle));
+
+    this.crTask = hasTransientIncomingEdge &&
+      irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+
+    this.lambdaAffinity = hasTransientIncomingEdge &&
+      irDag.getRootVertices().stream().noneMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+  }
+
+  public boolean isCrTask() {
+    return crTask;
+  }
+
+  public boolean isLambdaAffinity() {
+    return lambdaAffinity;
   }
 
   public static Task decode(DataInputStream dis,

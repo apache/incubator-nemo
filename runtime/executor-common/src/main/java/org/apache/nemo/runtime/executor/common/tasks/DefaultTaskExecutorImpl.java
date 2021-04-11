@@ -31,16 +31,12 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
-import org.apache.nemo.common.punctuation.EmptyElement;
-import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.punctuation.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -470,35 +466,38 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           throw new IllegalStateException(irVertex.toString());
         }
 
-        final OutputCollector outputCollector = outputCollectorGenerator
-          .generate(irVertex,
-            taskId,
-            irVertexDag,
-            this,
-            serializerManager,
-            samplingMap,
-            vertexIdAndCollectorMap,
-            taskMetrics,
-            task.getTaskOutgoingEdges(),
-            operatorInfoMap);
+      final OutputCollector outputCollector = outputCollectorGenerator
+        .generate(irVertex,
+          taskId,
+          irVertexDag,
+          this,
+          serializerManager,
+          samplingMap,
+          vertexIdAndCollectorMap,
+          taskMetrics,
+          task.getTaskOutgoingEdges(),
+          operatorInfoMap,
+          TaskExecutorUtil.getExternalAdditionalOutputMap(
+            irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId,
+            taskMetrics));
 
-        outputCollectorMap.put(irVertex.getId(), outputCollector);
+      outputCollectorMap.put(irVertex.getId(), outputCollector);
 
-        // Create VERTEX HARNESS
-        final Transform.Context context = new TransformContextImpl(
-          irVertex, serverlessExecutorProvider, taskId, stateStore,
-          conditionalRouting,
-          executorId);
+      // Create VERTEX HARNESS
+      final Transform.Context context = new TransformContextImpl(
+        irVertex, serverlessExecutorProvider, taskId, stateStore,
+        conditionalRouting,
+        executorId);
 
-        TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
+      TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
 
-        // Prepare data READ
-        // Source read
-        // TODO[SLS]: should consider multiple outgoing edges
-        // All edges will have the same encoder/decoder!
-        if (irVertex instanceof SourceVertex) {
-          // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
-          final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
+      // Prepare data READ
+      // Source read
+      // TODO[SLS]: should consider multiple outgoing edges
+      // All edges will have the same encoder/decoder!
+      if (irVertex instanceof SourceVertex) {
+        // final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
+        final RuntimeEdge edge = task.getTaskOutgoingEdges().get(0);
           // srcSerializer = serializerManager.getSerializer(edge.getId());
           // LOG.info("SourceVertex: {}, edge: {}, serializer: {}", irVertex.getId(), edge.getId(),
           // srcSerializer);

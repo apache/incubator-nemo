@@ -19,13 +19,10 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
@@ -38,10 +35,13 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.StreamTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -132,6 +132,8 @@ public final class Executor {
 
   private final DefaultCondRouting condRouting;
 
+  private final boolean onLambda;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -143,6 +145,7 @@ public final class Executor {
                    final ExecutorMetrics executorMetrics,
                    final CpuBottleneckDetector bottleneckDetector,
                    final EvalConf evalConf,
+                   @Parameter(EvalConf.ExecutorOnLambda.class) final boolean onLambda,
                    // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
@@ -165,6 +168,8 @@ public final class Executor {
                    final OutputCollectorGenerator outputCollectorGenerator) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
+
+    this.onLambda = onLambda;
 
     this.messageEnvironment = messageEnvironment;
     this.condRouting = condRouting;
@@ -494,6 +499,30 @@ public final class Executor {
           bytes,
           // new NoOffloadingPreparer(),
           false);
+      } else if (task.isCrTask()) {
+        // conditional routing task
+        taskExecutor =
+          new CRTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            // offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            condRouting,
+            // new NoOffloadingPreparer(),
+            false);
       } else {
         taskExecutor =
           new DefaultTaskExecutorImpl(
@@ -713,6 +742,29 @@ public final class Executor {
           });
           break;
         }
+        case StateMigration: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+
+          if (!(task.isCrTask()
+            || task.isLambdaAffinity())) {
+            throw new RuntimeException("Cannot stage migration normal task " + taskId);
+          }
+
+          executorService.execute(() -> {
+            if (onLambda) {
+              LOG.info("Stage migration task {} from Lambda to VM in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
+            } else {
+              LOG.info("Stage migration task {} from VM to Lambda in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
+            }
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.STATE_MIGRATION_SIGNAL_BY_MASTER, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+          break;
+        }
         case StopTask: {
           // TODO: receive stop task message
           executorService.execute(() -> {
@@ -756,30 +808,6 @@ public final class Executor {
           // rendevousServerClient = new RendevousServerClient(msg.getRendevousAddress(), msg.getRendevousPort());
 
           LOG.info("{} Setting global relay server info {}", executorId, m);
-
-          /*
-          final OffloadingTransform lambdaExecutor = new OffloadingExecutorDeprecated(
-            evalConf.offExecutorThreadNum,
-            byteTransport.getExecutorAddressMap(),
-            serializerManager.runtimeEdgeIdToSerializer,
-            // pipeManagerWorker.getTaskExecutorIdMap(),
-            // taskTransferIndexMap.getMap(),
-            relayServer.getPublicAddress(),
-            relayServer.getPort(),
-            msg.getRendevousAddress(),
-            msg.getRendevousPort(),
-            executorId,
-            m,
-            evalConf.offloadingType.equals("vm") ? VM_SCALING : SF);
-
-          tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
-            offloadingWorkerFactory,
-            lambdaExecutor,
-            evalConf,
-            sfTaskMetrics);
-
-          jobScalingHandlerWorker.setTinyWorkerManager(tinyWorkerManager);
-          */
           break;
         case ScheduleTask:
           executorService.execute(() -> {

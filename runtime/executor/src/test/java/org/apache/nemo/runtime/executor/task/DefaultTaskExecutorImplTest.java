@@ -41,6 +41,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;

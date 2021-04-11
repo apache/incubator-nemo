@@ -14,6 +14,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
 
   public enum TaskControlMessageType {
     TASK_STOP_SIGNAL_BY_MASTER,
+    STATE_MIGRATION_SIGNAL_BY_MASTER,
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
     PIPE_INIT,

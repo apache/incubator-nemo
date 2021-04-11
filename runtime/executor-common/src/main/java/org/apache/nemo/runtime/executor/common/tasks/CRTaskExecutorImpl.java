@@ -31,10 +31,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
-import org.apache.nemo.common.punctuation.EmptyElement;
-import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.punctuation.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -49,8 +46,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Executes a task.
@@ -118,6 +115,21 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   private final boolean singleOneToOneInput;
 
+  final Map<String, List<OutputWriter>> externalAdditionalOutputMap;
+
+  // THIS TASK SHOULD NOT BE MOVED !!
+  // THIS TASK SHOULD NOT BE MOVED !!
+  // THIS TASK SHOULD NOT BE MOVED !!
+
+  private enum CRTaskState {
+    STATE_MIGRATION_TO_REMOTE,
+    STATE_MIGRATION_FROM_REMOTE,
+    NORMAL,
+    SEND_DATA_TO_REMOTE,
+  }
+
+  private CRTaskState currState = CRTaskState.NORMAL;
+
   /**
    * Constructor.
    *
@@ -160,6 +172,8 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
+
+    this.externalAdditionalOutputMap = new HashMap<>();
 
     this.statefulTransforms = new ArrayList<>();
 
@@ -283,25 +297,12 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean isSourceAvailable() {
-    //LOG.info("Source available in {}", taskId);
-    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
-      if (sourceVertexDataFetcher.isAvailable()) {
-        return true;
-      }
-    }
-
-    return false;
+    throw new RuntimeException("not supported");
   }
 
 
-  // per second
-  private final AtomicLong throttleSourceRate =  new AtomicLong(1000000);
-  private long processedSourceData = 0;
-  private long prevSourceTrackTime = System.currentTimeMillis();
-
   @Override
   public void setThrottleSourceRate(final long num) {
-    throttleSourceRate.set(num);
   }
 
   @Override
@@ -312,26 +313,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   // For source task
   @Override
   public boolean hasData() {
-
-    final long curr = System.currentTimeMillis();
-    if (curr - prevSourceTrackTime >= 5) {
-      final long elapsed = curr - prevSourceTrackTime;
-      if (processedSourceData * (1000 / (double)elapsed) > throttleSourceRate.get()) {
-        // Throttle !!
-        return false;
-      } else {
-        prevSourceTrackTime = curr;
-        processedSourceData = 0;
-      }
-    }
-
-    for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
-      if (sourceVertexDataFetcher.hasData()) {
-        return true;
-      }
-    }
-
-    return false;
+    throw new RuntimeException("Not supported");
   }
 
   @Override
@@ -357,7 +339,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean isSource() {
-    return sourceVertexDataFetchers.size() > 0;
+    return false;
   }
 
   @Override
@@ -459,6 +441,11 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
           throw new IllegalStateException(irVertex.toString());
         }
 
+      externalAdditionalOutputMap.putAll(
+        TaskExecutorUtil.getExternalAdditionalOutputMap(
+          irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId,
+          taskMetrics));
+
         final OutputCollector outputCollector = outputCollectorGenerator
           .generate(irVertex,
             taskId,
@@ -469,7 +456,8 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
             vertexIdAndCollectorMap,
             taskMetrics,
             task.getTaskOutgoingEdges(),
-            operatorInfoMap);
+            operatorInfoMap,
+            externalAdditionalOutputMap);
 
         outputCollectorMap.put(irVertex.getId(), outputCollector);
 
@@ -641,30 +629,94 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     outputCollector.emitWatermark(watermark);
   }
 
+  private final Queue<Pair<String, TaskHandlingEvent>> pendingQueue = new LinkedBlockingQueue<>();
+
+  // For state migration from VM -> Lambda or Lambda -> VM task
+  public void prepareStateMigration() {
+    currState = CRTaskState.STATE_MIGRATION_TO_REMOTE;
+    checkpoint(false);
+  }
+
+  public void prepareStateGetFromRemote() {
+    currState = CRTaskState.STATE_MIGRATION_FROM_REMOTE;
+  }
+
+  public void getStateFromRemote() {
+    if (currState != CRTaskState.STATE_MIGRATION_FROM_REMOTE) {
+      throw new RuntimeException("Invalid curr state " + currState);
+    }
+
+    restore();
+    currState = CRTaskState.NORMAL;
+    // flush buffer
+    pendingQueue.forEach(data -> {
+      handleData(data.left(), data.right());
+    });
+  }
+
+  public void finishStateMigration() {
+    if (currState != CRTaskState.STATE_MIGRATION_TO_REMOTE) {
+      throw new RuntimeException("Invalid curr state " + currState);
+    }
+
+    currState = CRTaskState.SEND_DATA_TO_REMOTE;
+    // flush buffer
+    pendingQueue.forEach(data -> {
+      // Send to remote additional tag output writer
+      /*
+      externalAdditionalOutputMap.get(Util.PARTIAL_RR_TAG)
+        .forEach(writer -> {
+          writer.wri
+        });
+      TODO
+      */
+    });
+    pendingQueue.clear();
+  }
+
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    // input
-    taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-    final long serializedStart = System.nanoTime();
-    final Object data = taskHandlingEvent.getData();
-    final long serializedEnd = System.nanoTime();
+    switch (currState) {
+      case NORMAL: {
+        // input
+        taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
+        final long serializedStart = System.nanoTime();
+        final Object data = taskHandlingEvent.getData();
+        final long serializedEnd = System.nanoTime();
 
-    taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
+        taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
 
-    // LOG.info("Handling data for task {}, index {}, watermark {}",
-    //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+        // LOG.info("Handling data for task {}, index {}, watermark {}",
+        //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
 
-    try {
-      handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
-        edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-        " event " + data.getClass() + ", " +
-        ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
-        + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
+        try {
+          handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
+            edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
+            " event " + data.getClass() + ", " +
+            ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
+            + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
+        }
+        break;
+      }
+      case STATE_MIGRATION_TO_REMOTE:
+      case STATE_MIGRATION_FROM_REMOTE: {
+        pendingQueue.add(Pair.of(edgeId, taskHandlingEvent));
+        break;
+      }
+      case SEND_DATA_TO_REMOTE: {
+        // Send to remote
+        // TODO
+        break;
+      }
+      default: {
+        throw new RuntimeException("Not supported " + currState);
+      }
     }
+
   }
 
   private void handleInternalData(final DataFetcher dataFetcher, Object event) {
@@ -752,16 +804,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       throw new RuntimeException(e);
     }
 
-    if (!offloaded) {
-      for (final DataFetcher dataFetcher : allFetchers) {
-        if (dataFetcher instanceof SourceVertexDataFetcher) {
-          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-          final Readable readable = srcDataFetcher.getReadable();
-          readable.restore();
-        }
-      }
-    }
-
     if (!isStateless) {
       statefulTransforms.forEach(transform -> transform.restore());
     }
@@ -769,11 +811,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public boolean checkpoint(final boolean checkpointSource) {
-    boolean hasChekpoint = false;
-
-    // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
-    // stateStore.put(taskId + "-taskWatermarkManager", bytes);
-
     final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
     try {
       taskWatermarkManager.encode(os);
@@ -782,35 +819,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    if (checkpointSource) {
-      // Do not checkpoint source if it is offloaded
-      // because source data will be redirected freom the origin executor
-      for (final DataFetcher dataFetcher : allFetchers) {
-        if (dataFetcher instanceof SourceVertexDataFetcher) {
-          if (hasChekpoint) {
-            throw new RuntimeException("Double checkpoint..." + taskId);
-          }
-
-          hasChekpoint = true;
-          final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-          final Readable readable = srcDataFetcher.getReadable();
-          LOG.info("Checkpointing readable for task {}", taskId);
-          readable.checkpoint();
-          LOG.info("End of Checkpointing readable for task {}", taskId);
-        }
-
-        try {
-          LOG.info("Closing data fetcher for task {}", taskId);
-          dataFetcher.close();
-          LOG.info("End of Closing data fetcher for task {}", taskId);
-        } catch (Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-    }
-
 
     if (!isStateless) {
       statefulTransforms.forEach(transform -> transform.checkpoint());

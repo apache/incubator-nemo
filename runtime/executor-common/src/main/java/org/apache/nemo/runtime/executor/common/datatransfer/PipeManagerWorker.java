@@ -43,23 +43,17 @@ public interface PipeManagerWorker extends InputPipeRegister {
                  final List<String> dstTasks,
                  final Serializer serializer, Object event);
 
-  // For offloaded data
-  void broadcast(final String srcTaskId,
-                 final String edgeId,
-                 final List<String> dstTasks,
-                 final ByteBuf event);
-
   void writeData(final String srcTaskId,
                  final String edgeId,
                  final String dstTaskId,
                  final Serializer serializer,
                  final Object event);
 
-  // For offloaded data
-  void writeData(final String srcTaskId,
-                 final String edgeId,
-                 final String dstTaskId,
-                 final ByteBuf event);
+  // For relay data
+  void writeByteBufData(final String srcTaskId,
+                        final String edgeId,
+                        final String dstTaskId,
+                        final ByteBuf event);
 
   void taskScheduled(final String taskId);
 
