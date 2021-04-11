@@ -27,7 +27,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskStopSignalByDownstreamTask;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
@@ -370,7 +369,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         pendingPipes.forEach(pendingIndex -> {
           synchronized (pendingOutputPipeMap) {
             if (pendingOutputPipeMap.containsKey(pendingIndex)) {
-              pendingOutputPipeMap.get(pendingIndex).add(Pair.of(edgeId, event));
+              pendingOutputPipeMap.get(pendingIndex).add(event);
                 // DataFrameEncoder.DataFrame.newInstance(
                 //  pendingIndex, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
             } else {
