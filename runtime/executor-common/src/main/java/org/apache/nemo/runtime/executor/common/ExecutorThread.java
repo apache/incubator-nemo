@@ -63,6 +63,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
+  private final TaskScheduledMapWorker taskScheduledMapWorker;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
                         final ControlEventHandler controlEventHandler,
@@ -72,9 +74,11 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                         final MetricMessageSender metricMessageSender,
                         final MessageSender<ControlMessage.Message> taskScheduledMapSender,
                         final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                        final TaskScheduledMapWorker taskScheduledMapWorker,
                         final boolean testing) {
     this.index = executorThreadIndex;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
+    this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
@@ -258,9 +262,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               if (!unInitializedTasks.isEmpty()) {
                 unInitializedTasks.forEach(t -> {
                   final long st = System.currentTimeMillis();
-
-                  LOG.info("Initializing task {}", t.getId());
-                  t.initialize();
                   // send task schedule done message
                   final TaskStateManager taskStateManager =
                     new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
@@ -272,7 +273,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                     System.currentTimeMillis() - st);
 
                   taskExecutorMapWrapper.putTaskExecutor(t, this);
-
                   taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
                     .setId(RuntimeIdManager.generateMessageId())
                     .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
@@ -282,6 +282,19 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                       .setTaskId(t.getId())
                       .build())
                     .build());
+
+                  // After putTaskExecutor and scheduling the task, we should send pipe init message
+                  while (taskScheduledMapWorker
+                    .getRemoteExecutorId(t.getId(), true) == null) {
+                    try {
+                      Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                      e.printStackTrace();
+                    }
+                  }
+
+                  LOG.info("Initializing task {}", t.getId());
+                  t.initialize();
 
                   if (t.isSource() && !t.isOffloadedTask()) {
                     synchronized (pendingSourceTasks) {

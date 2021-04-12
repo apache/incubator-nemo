@@ -176,6 +176,7 @@ public final class SrcCRTaskExecutorImpl implements TaskExecutor {
     this.taskWatermarkManager = new TaskInputWatermarkManager();
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
+
     this.threadId = threadId;
     this.executorId = executorId;
     this.sourceVertexDataFetchers = new ArrayList<>();
@@ -186,6 +187,8 @@ public final class SrcCRTaskExecutorImpl implements TaskExecutor {
     this.samplingMap = samplingMap;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.serializerManager = serializerManager;
+
+    prepare();
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
@@ -293,8 +296,13 @@ public final class SrcCRTaskExecutorImpl implements TaskExecutor {
     return isStateless;
   }
 
+
   @Override
   public void initialize() {
+    TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
+  }
+
+  private void prepare() {
     final long st = System.currentTimeMillis();
 
     LOG.info("Start to registering input output pipe {}", taskId);

@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ public final class TaskExecutorMapWrapper {
     return taskIdExecutorMap.get(taskId);
   }
 
-  public void removeTask(String taskId) {
+  public synchronized void removeTask(String taskId) {
     final TaskExecutor e = taskIdExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(e);
     et.deleteTask(e);
@@ -69,6 +70,10 @@ public final class TaskExecutorMapWrapper {
         l.remove(e);
       }
     });
+  }
+
+  public synchronized void forEach(EventHandler<TaskExecutor> handler) {
+    taskExecutorMap.keySet().forEach(taskExecutor -> handler.onNext(taskExecutor));
   }
 
   public ExecutorThread getTaskExecutorThread(final String taskId) {

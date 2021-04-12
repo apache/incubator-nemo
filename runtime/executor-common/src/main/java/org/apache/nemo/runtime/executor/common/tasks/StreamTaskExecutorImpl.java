@@ -181,6 +181,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
       RuntimeIdManager.getIndexFromTaskId(taskId), 0);
     this.serializerManager = serializerManager;
     this.adjustTime = System.currentTimeMillis() - 1436918400000L;
+
+    prepare();
   }
 
   @Override
@@ -244,9 +246,13 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     return true;
   }
 
+
   @Override
   public void initialize() {
+    TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
+  }
 
+  private void prepare() {
 
     final long st = System.currentTimeMillis();
 

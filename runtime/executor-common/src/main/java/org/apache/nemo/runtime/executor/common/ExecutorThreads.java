@@ -29,6 +29,7 @@ public final class ExecutorThreads {
                           final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                           final MetricMessageSender metricMessageSender,
                           final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                          final TaskScheduledMapWorker taskScheduledMapWorker,
                           final ExecutorMetrics executorMetrics) {
     final MessageSender<ControlMessage.Message> taskScheduledMapSender =
       persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
@@ -39,7 +40,8 @@ public final class ExecutorThreads {
       executorThreads.add(new ExecutorThread(
         i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics,
         persistentConnectionToMasterMap, metricMessageSender,
-        taskScheduledMapSender, taskExecutorMapWrapper, false));
+        taskScheduledMapSender, taskExecutorMapWrapper,
+        taskScheduledMapWorker, false));
       executorThreads.get(i).start();
     }
   }

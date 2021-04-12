@@ -196,6 +196,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.serializerManager = serializerManager;
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
+    prepare();
+
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
     } else {
@@ -321,7 +323,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * For example, we should never perform an expensive hash operation to traverse the harnesses.
    * @return fetchers and harnesses.
    */
+  @Override
   public void initialize() {
+    TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
+  }
+
+  private void prepare() {
 
     final long st = System.currentTimeMillis();
 
@@ -367,7 +374,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     });
 
     LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
-
 
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 

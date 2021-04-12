@@ -750,7 +750,7 @@ public final class Executor {
 
             scheduledMapWorker.registerTask(split[0], split[1]);
 
-            taskExecutorMapWrapper.getTaskExecutorMap().keySet().forEach(taskExecutor -> {
+            taskExecutorMapWrapper.forEach(taskExecutor -> {
               final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
               executorThread.addEvent(new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType.TASK_SCHEDULED, -1, -1,

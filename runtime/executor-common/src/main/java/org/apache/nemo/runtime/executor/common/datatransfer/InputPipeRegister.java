@@ -48,6 +48,10 @@ public interface InputPipeRegister {
   void retrieveIndexForOffloadingSource(final String srcTaskId,
                                         final String edgeId);
 
+  void sendPipeInitMessage(final String srcTaskId,
+                           final String edgeId,
+                           final String dstTaskId);
+
   void registerInputPipe(final String srcTaskId,
                          final String edgeId,
                          final String dstTaskId,

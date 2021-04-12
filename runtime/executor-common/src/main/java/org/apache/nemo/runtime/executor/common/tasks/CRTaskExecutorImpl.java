@@ -219,6 +219,8 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     } else {
       this.adjustTime = 0;
     }
+
+    prepare();
   }
 
   @Override
@@ -291,6 +293,10 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void initialize() {
+    TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
+  }
+
+  private void prepare() {
     final long st = System.currentTimeMillis();
 
     LOG.info("Start to registering input output pipe {}", taskId);

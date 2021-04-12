@@ -24,10 +24,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.offloading.common.StateStore;
-import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
-import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +34,66 @@ import java.util.stream.Collectors;
 
 public final class TaskExecutorUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorUtil.class.getName());
+
+  public static void sendInitMessage(final Task task,
+                                     final InputPipeRegister inputPipeRegister) {
+    task.getTaskOutgoingEdges().forEach(edge -> {
+      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
+      // bidrectional !!
+      final int parallelism = edge
+        .getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      final CommunicationPatternProperty.Value comm =
+        edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+        inputPipeRegister.sendPipeInitMessage(
+          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
+          edge.getId(),
+          task.getTaskId());
+      } else {
+        for (int i = 0; i < parallelism; i++) {
+          inputPipeRegister.sendPipeInitMessage(
+            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
+            edge.getId(),
+            task.getTaskId());
+        }
+      }
+    });
+
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
+    // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
+    final List<IRVertex> reverseTopologicallySorted = new ArrayList<>(task.getIrDag().getTopologicalSort());
+    Collections.reverse(reverseTopologicallySorted);
+
+    task.getTaskIncomingEdges()
+      .forEach(edge -> {
+        // LOG.info("Adding data fetcher for {} / {}", taskId, irVertex.getId());
+        final int parallelism = edge
+          .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+        final CommunicationPatternProperty.Value comm =
+          edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+        if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+          || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+          inputPipeRegister.sendPipeInitMessage(
+            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+            edge.getId(),
+            task.getTaskId());
+        } else {
+          for (int i = 0; i < parallelism; i++) {
+            inputPipeRegister.sendPipeInitMessage(
+              RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
+              edge.getId(),
+              task.getTaskId());
+          }
+        }
+      });
+  }
 
   /*
   // TODO: set stateless

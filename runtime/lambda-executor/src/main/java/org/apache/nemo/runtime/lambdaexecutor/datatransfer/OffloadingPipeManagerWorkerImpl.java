@@ -136,7 +136,7 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void taskScheduled(String taskId) {
+  public void taskScheduled(String taskId, String a) {
     throw new RuntimeException("not supported");
   }
 
@@ -287,6 +287,11 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   @Override
   public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
     throw new RuntimeException("not suport");
+  }
+
+  @Override
+  public void sendPipeInitMessage(String srcTaskId, String edgeId, String dstTaskId) {
+
   }
 
   @Override
