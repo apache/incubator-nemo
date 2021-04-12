@@ -541,6 +541,29 @@ public final class Executor {
             condRouting,
             // new NoOffloadingPreparer(),
             false);
+      } else if (task.isSrcCrTask()) {
+        taskExecutor =
+          new SrcCRTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            // offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            condRouting,
+            // new NoOffloadingPreparer(),
+            false);
       } else {
         taskExecutor =
           new DefaultTaskExecutorImpl(

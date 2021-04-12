@@ -8,6 +8,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
+import org.apache.nemo.runtime.executor.common.tasks.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.tasks.TransientTaskExecutorImpl;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -58,8 +59,15 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         if (taskExecutor.isSource()) {
           throw new RuntimeException("not supported");
         } else {
-          final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
-          crTask.prepareRoutingToLambda();
+
+          if (taskExecutor instanceof CRTaskExecutorImpl) {
+            final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
+            crTask.prepareRoutingToLambda();
+          } else if (taskExecutor instanceof DefaultTaskExecutorImpl) {
+            // we should stop input stream
+
+          }
+
         }
         break;
       }

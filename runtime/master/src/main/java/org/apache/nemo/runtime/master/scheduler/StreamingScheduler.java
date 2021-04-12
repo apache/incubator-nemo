@@ -147,12 +147,10 @@ public final class StreamingScheduler implements Scheduler {
       // Create tasks of this stage
       allTasks.addAll(
         taskIdsToSchedule.stream().map(taskId -> {
-          pairStageTaskManager.registerPairTask(stageIncomingEdges,
+          final Task.TaskType taskType = pairStageTaskManager.registerPairTask(stageIncomingEdges,
             stageOutgoingEdges, taskId, stageToSchedule.getIRDAG());
 
           final String pairTaskId = pairStageTaskManager.getPairTaskId(taskId);
-          final boolean crTask= PairStageTaskManager.isCrTask(stageIncomingEdges, stageToSchedule.getIRDAG());
-          final boolean lambdaAffinity = PairStageTaskManager.isLambdaAffinity(stageIncomingEdges, stageToSchedule.getIRDAG());
 
           return new Task(
             taskId,
@@ -162,8 +160,7 @@ public final class StreamingScheduler implements Scheduler {
             stageOutgoingEdges,
             vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
             pairTaskId,
-            crTask,
-            lambdaAffinity);
+            taskType);
         })
           .collect(Collectors.toList()));
 

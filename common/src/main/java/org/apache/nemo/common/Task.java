@@ -58,11 +58,19 @@ public final class Task implements Serializable {
   private final Map<RuntimeEdge, List<String>> downstreamTasks;
   private final Map<RuntimeEdge, List<String>> upstreamTasks;
 
-  private final boolean lambdaAffinity;
-  private final boolean crTask;
   public final boolean isStreamVertex;
 
   private final String pairTaskId;
+
+  public enum TaskType {
+    SrcCRTask,
+    CRTask,
+    TransientTask,
+    NormalTaskWithoutCR,
+    DefaultTask,
+  }
+
+  private final TaskType taskType;
 
   /**
    *
@@ -81,8 +89,7 @@ public final class Task implements Serializable {
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable,
               final String pairTaskId,
-              final boolean crTask,
-              final boolean lambdaAffinity) {
+              final TaskType taskType) {
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
@@ -98,21 +105,15 @@ public final class Task implements Serializable {
 
     // find pair task
     this.pairTaskId = pairTaskId;
-
-    this.lambdaAffinity = lambdaAffinity;
-    this.crTask =crTask;
+    this.taskType = taskType;
   }
 
   public String getPairTaskId() {
     return pairTaskId;
   }
 
-  public boolean isCrTask() {
-    return crTask;
-  }
-
-  public boolean isLambdaAffinity() {
-    return lambdaAffinity;
+  public TaskType getTaskType() {
+    return taskType;
   }
 
   public static Task decode(DataInputStream dis,
@@ -171,8 +172,7 @@ public final class Task implements Serializable {
         pairStageId = null;
       }
 
-      final boolean crTask = dis.readBoolean();
-      final boolean lambdaAffinity = dis.readBoolean();
+      final TaskType taskType = TaskType.values()[dis.readByte()];
 
       return new Task(taskId,
         null,
@@ -181,8 +181,7 @@ public final class Task implements Serializable {
         taskOutgoingEdges,
         irVertexIdToReadable,
         pairStageId,
-        crTask,
-        lambdaAffinity);
+        taskType);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -218,13 +217,23 @@ public final class Task implements Serializable {
         dos.writeBoolean(false);
       }
 
-      dos.writeBoolean(crTask);
-      dos.writeBoolean(lambdaAffinity);
-
+      dos.writeByte(taskType.ordinal());
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  public boolean isCrTask() {
+    return taskType.equals(TaskType.CRTask);
+  }
+
+  public boolean isLambdaAffinity() {
+    return taskType.equals(TaskType.TransientTask);
+  }
+
+  public boolean isSrcCrTask() {
+    return taskType.equals(TaskType.SrcCRTask);
   }
 
   public boolean isSourceTask() {

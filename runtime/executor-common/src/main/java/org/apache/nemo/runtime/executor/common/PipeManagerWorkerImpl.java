@@ -771,6 +771,92 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
      inputPipeIndexInputReaderMap.get(index).addControl(controlMessage);
   }
 
+  // this is called by SrcCRTask
+  public void stopOutputForReroutingToLambda(int index, String taskId) {
+    // send control message
+    final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+
+    if (taskExecutorMapWrapper.containsTask(key.getRight())) {
+      throw new RuntimeException("Source CR task should not be colocated with other tasks");
+    }
+
+    // remote task
+    final Optional<Channel> optional = getChannelForDstTask(key.getRight(), false);
+    if (!optional.isPresent()) {
+      throw new RuntimeException("Contextmanager should exist for " + key);
+    }
+
+    final Channel channel = optional.get();
+
+    synchronized (pendingOutputPipeMap) {
+      pendingOutputPipeMap.putIfAbsent(index, new LinkedList<>());
+      taskStoppedOutputPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
+      pipeOuptutIndicesForDstTask.putIfAbsent(key.getRight(), new HashSet<>());
+      pipeOuptutIndicesForDstTask.get(key.getRight()).add(index);
+    }
+
+    synchronized (taskStoppedOutputPipeIndicesMap.get(taskId)) {
+      taskStoppedOutputPipeIndicesMap.get(taskId).add(index);
+    }
+
+    channel.writeAndFlush(new TaskControlMessage(
+      TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
+      index,
+      index,
+      key.getRight(),
+      null));
+  }
+
+  public void redirectPendingDataToLambda(int index, String taskId,
+                                          final int lambdaIndex, String lambdaTaskId) {
+    // restart pending output
+    try {
+      synchronized (pendingOutputPipeMap) {
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(index);
+        // remote task
+        if (pendingOutputPipeMap.containsKey(index)) {
+          final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), false);
+
+          if (evalConf.controlLogging) {
+            LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to executor {}", taskId, key, executorId, remoteExecutorId);
+          }
+
+          Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
+
+          if (!optional.isPresent()) {
+            LOG.warn("{} is not schedule yet... we buffer the event and it will be emitted when task is scheduled in executor {}", key, executorId);
+            return;
+          }
+
+          final Channel channel = optional.get();
+
+          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+          final String edgeId = pipeIndexMapWorker.getKey(index).getMiddle();
+          final Serializer serializer = serializerManager.getSerializer(edgeId);
+          pendingData.forEach(data -> sendPendingDataToChannel(index, serializer, data, channel));
+
+          channel.flush();
+
+        } else {
+          if (evalConf.controlLogging) {
+            LOG.info("Start pipe {} from {} in executor {}", index, taskId, executorId);
+          }
+        }
+
+        if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)) {
+          taskStoppedOutputPipeIndicesMap.get(taskId).remove((Integer) index);
+          if (taskStoppedOutputPipeIndicesMap.get(taskId).isEmpty()) {
+            taskStoppedOutputPipeIndicesMap.remove(taskId);
+          }
+        }
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+
   @Override
   public synchronized void stopOutputPipe(int index, String taskId) {
     if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)

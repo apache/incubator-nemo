@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -39,10 +40,10 @@ public final class PairStageTaskManager {
     return pairTaskMap.get(taskId);
   }
 
-  public void registerPairTask(final List<StageEdge> taskIncomingEdges,
-                               final List<StageEdge> taskOutgoingEdges,
-                               final String taskId,
-                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+  public Task.TaskType registerPairTask(final List<StageEdge> taskIncomingEdges,
+                                        final List<StageEdge> taskOutgoingEdges,
+                                        final String taskId,
+                                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
 
     if (stageDag == null) {
       throw new RuntimeException("Stage DAG is null...");
@@ -66,6 +67,9 @@ public final class PairStageTaskManager {
         pairTaskMap.put(taskId, pairTaskId);
         pairTaskMap.put(pairTaskId, taskId);
       });
+
+      return Task.TaskType.CRTask;
+
     } else if (lambdaAffinity) {
       // find incoming edge
       // we should find outgoing edge of source stage
@@ -93,25 +97,41 @@ public final class PairStageTaskManager {
             pairTaskMap.put(pairTaskId, taskId);
           });
       }
+
+      return Task.TaskType.TransientTask;
     } else {
       // this is a normal path task connected with source
       // we should find outgoing edge of source stage
-      // source stage
-      final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
-      stageDag.getOutgoingEdgesOf(srcStage)
-        .stream().filter(stageEdge -> stageEdge
-        .getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-        .map(stageEdge ->
-          RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0))
-        .findFirst()
-        .ifPresent(pairTaskId -> {
+      if (taskIncomingEdges.isEmpty()) {
+        // source stage
+        if (irDag.getVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex)) {
+          return Task.TaskType.SrcCRTask;
+        } else {
+          return Task.TaskType.DefaultTask;
+        }
+      } else {
+        final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
+        final Optional<String> pairTaskId = stageDag.getOutgoingEdgesOf(srcStage)
+          .stream().filter(stageEdge -> stageEdge
+            .getPropertyValue(AdditionalOutputTagProperty.class).isPresent()
+            && stageEdge.getPropertyValue(AdditionalOutputTagProperty.class)
+            .get().equals(Util.TRANSIENT_PATH))
+          .map(stageEdge ->
+            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0))
+          .findFirst();
+
+        if (pairTaskId.isPresent()) {
           LOG.info("Registering pair task 444 {} <-> {}", taskId, pairTaskId);
-          pairTaskMap.put(taskId, pairTaskId);
-          pairTaskMap.put(pairTaskId, taskId);
-        });
+          pairTaskMap.put(taskId, pairTaskId.get());
+          pairTaskMap.put(pairTaskId.get(), taskId);
+          return Task.TaskType.NormalTaskWithoutCR;
+        } else {
+
+          return Task.TaskType.DefaultTask;
+        }
+      }
     }
   }
-
 
   public static boolean isCrTask(final List<StageEdge> taskIncomingEdges,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
