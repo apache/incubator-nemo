@@ -55,7 +55,7 @@ public interface PipeManagerWorker extends InputPipeRegister {
                         final String dstTaskId,
                         final ByteBuf event);
 
-  void taskScheduled(final String taskId);
+  void taskScheduled(final String srcTaskId, String dstTaskId);
 
   void addInputData(int index, ByteBuf event);
 

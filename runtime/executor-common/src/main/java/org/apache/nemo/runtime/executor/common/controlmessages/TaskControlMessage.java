@@ -24,6 +24,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     DEACTIVATE_LAMBDA,
     BACKPRESSURE,
     BACKPRESSURE_RESTART,
+    TASK_SCHEDULED,
 
     // normal and transient path
 
@@ -40,7 +41,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   public final TaskControlMessageType type;
+  // remote의 input pipe index
+  // 이 input pipe로 내가 input을 보내겠다!!
   public final int inputPipeIndex;
+
+  // remote에서 input pipe index로 input 받은 뒤,
+  // output pipe index로 뭐 주고 싶은 경우
   public final int targetPipeIndex;
   public final String targetTaskId;
   public final Object event;

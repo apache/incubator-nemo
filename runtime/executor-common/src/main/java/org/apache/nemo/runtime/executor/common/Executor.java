@@ -119,8 +119,6 @@ public final class Executor {
 
   // private final OffloadingWorkerFactory workerFactory;
 
-  private final MessageSender<ControlMessage.Message> taskScheduledMapSender;
-
   private final MessageEnvironment messageEnvironment;
 
   private final StreamVertexSerializerManager streamVertexSerializerManager;
@@ -168,12 +166,7 @@ public final class Executor {
 
     this.messageEnvironment = messageEnvironment;
     this.condRouting = condRouting;
-
     this.streamVertexSerializerManager = streamVertexSerializerManager;
-
-    this.taskScheduledMapSender =
-      persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
-
     this.executorMetrics = executorMetrics;
     this.bottleneckDetector = bottleneckDetector;
     bottleneckDetector.start();
@@ -593,31 +586,8 @@ public final class Executor {
         System.currentTimeMillis() - st);
 
       executorThread.addNewTask(taskExecutor);
-      taskExecutorMapWrapper.putTaskExecutor(taskExecutor, executorThread);
 
       LOG.info("Put Task time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
-        System.currentTimeMillis() - st);
-
-      final TaskStateManager taskStateManager =
-        new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
-
-      //taskExecutor.execute();
-      taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-
-      LOG.info("Task message send time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
-        System.currentTimeMillis() - st);
-
-      taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
-        .setType(ControlMessage.MessageType.TaskExecuting)
-        .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
-          .setExecutorId(executorId)
-          .setTaskId(task.getTaskId())
-          .build())
-        .build());
-
-      LOG.info("Task message send time 222 {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
         System.currentTimeMillis() - st);
 
     } catch (final Exception e) {
@@ -776,8 +746,16 @@ public final class Executor {
           executorService.execute(() -> {
             LOG.info("Task scheduled {} received at {}", message.getRegisteredExecutor(), executorId);
             final String[] split = message.getRegisteredExecutor().split(",");
+            final String scheduledTaskId = split[0];
+
             scheduledMapWorker.registerTask(split[0], split[1]);
-            pipeManagerWorker.taskScheduled(split[0]);
+
+            taskExecutorMapWrapper.getTaskExecutorMap().keySet().forEach(taskExecutor -> {
+              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
+              executorThread.addEvent(new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType.TASK_SCHEDULED, -1, -1,
+                taskExecutor.getId(), scheduledTaskId));
+            });
           });
           break;
         }

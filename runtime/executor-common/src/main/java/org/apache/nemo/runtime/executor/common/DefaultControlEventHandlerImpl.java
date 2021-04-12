@@ -139,6 +139,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         }
         break;
       }
+      case TASK_SCHEDULED: {
+        final String srcTaskId = control.getTaskId();
+        final String dstTaskId = (String) control.event;
+        pipeManagerWorker.taskScheduled(srcTaskId, dstTaskId);
+        break;
+      }
       case PIPE_INIT: {
 
         if (evalConf.controlLogging) {

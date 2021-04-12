@@ -125,6 +125,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final boolean singleOneToOneInput;
 
+  private final IntermediateDataIOFactory intermediateDataIOFactory;
+
   /**
    * Constructor.
    *
@@ -155,6 +157,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
+    this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.conditionalRouting = conditionalRouting;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
@@ -189,103 +192,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
     this.samplingMap = samplingMap;
-
-
-    final long st = System.currentTimeMillis();
-
-    LOG.info("Start to registering input output pipe {}", taskId);
-
-    task.getTaskOutgoingEdges().forEach(edge -> {
-      LOG.info("Task outgoing edge for {} {}", taskId, edge);
-      final IRVertex src = edge.getSrcIRVertex();
-      final IRVertex dst = edge.getDstIRVertex();
-      taskOutgoingEdges.putIfAbsent(src.getId(), new LinkedList<>());
-      taskOutgoingEdges.get(src.getId()).add(dst.getId());
-      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-
-      // bidrectional !!
-      final int parallelism = edge
-        .getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
-
-      final CommunicationPatternProperty.Value comm =
-        edge.getPropertyValue(CommunicationPatternProperty.class).get();
-
-      LOG.info("Registering pipe for output edges in {}, parallelism {}", taskId, parallelism);
-
-      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
-        inputPipeRegister.registerInputPipe(
-          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
-          edge.getId(),
-          task.getTaskId(),
-          new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
-          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
-      } else {
-        for (int i = 0; i < parallelism; i++) {
-          inputPipeRegister.registerInputPipe(
-            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
-            edge.getId(),
-            task.getTaskId(),
-            new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
-          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
-        }
-      }
-
-      LOG.info("End of task outgoing edge for {} {}", taskId, edge);
-    });
-
-    LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
-
-    // samplingMap.putAll(evalConf.samplingJson);
-
     this.serverlessExecutorProvider = serverlessExecutorProvider;
-
     this.serializerManager = serializerManager;
-
-    // TODO: Initialize states for the task
-    // TODO: restart output writers and sources if it is moved
-
-    // Prepare data structures
-    final long st1 = System.currentTimeMillis();
-    prepare(task, irVertexDag, intermediateDataIOFactory);
-
-    // offloadingPreparer.prepare(taskId, bytes);
-
-    LOG.info("Task {} prepar time: {}", taskId, System.currentTimeMillis() - st1);
-    prepared.set(true);
-
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
-
-    /*
-    pollingTrigger.scheduleAtFixedRate(() -> {
-      pollingTime = true;
-    }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
-    */
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
     } else {
       this.adjustTime = 0;
     }
-
-    // For latency logging
-    for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
-      vertexIdAndCollectorMap.values()) {
-      metricCollector.left().setAdjustTime(adjustTime);
-    }
-
-    /*
-    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-      offloadingService.execute(() -> {
-        try {
-          handleOffloadingRequestEvent();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      });
-    }
-    */
   }
 
   @Override
@@ -404,16 +319,56 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
    * This means that overheads associated with jumping from one harness to the other should be minimal.
    * For example, we should never perform an expensive hash operation to traverse the harnesses.
-   *
-   * @param task        task.
-   * @param irVertexDag dag.
-   * @param intermediateDataIOFactory intermediate IO.
    * @return fetchers and harnesses.
    */
-  private void prepare(
-    final Task task,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final IntermediateDataIOFactory intermediateDataIOFactory) {
+  public void initialize() {
+
+    final long st = System.currentTimeMillis();
+
+    LOG.info("Start to registering input output pipe {}", taskId);
+
+    task.getTaskOutgoingEdges().forEach(edge -> {
+      LOG.info("Task outgoing edge for {} {}", taskId, edge);
+      final IRVertex src = edge.getSrcIRVertex();
+      final IRVertex dst = edge.getDstIRVertex();
+      taskOutgoingEdges.putIfAbsent(src.getId(), new LinkedList<>());
+      taskOutgoingEdges.get(src.getId()).add(dst.getId());
+      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
+      // bidrectional !!
+      final int parallelism = edge
+        .getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      final CommunicationPatternProperty.Value comm =
+        edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+      LOG.info("Registering pipe for output edges in {}, parallelism {}", taskId, parallelism);
+
+      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+        inputPipeRegister.registerInputPipe(
+          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
+          edge.getId(),
+          task.getTaskId(),
+          new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
+          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
+      } else {
+        for (int i = 0; i < parallelism; i++) {
+          inputPipeRegister.registerInputPipe(
+            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
+            edge.getId(),
+            task.getTaskId(),
+            new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
+          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
+        }
+      }
+
+      LOG.info("End of task outgoing edge for {} {}", taskId, edge);
+    });
+
+    LOG.info("Task {} registering pipe time: {}", taskId, System.currentTimeMillis() - st);
+
+
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
@@ -553,82 +508,91 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     LOG.info("End of source vertex prepare {}", taskId);
 
-      // Parent-task read
-      // TODO #285: Cache broadcasted data
-      task.getTaskIncomingEdges()
-        .stream()
-        // .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
-        .map(incomingEdge -> {
+    // Parent-task read
+    // TODO #285: Cache broadcasted data
+    task.getTaskIncomingEdges()
+      .stream()
+      // .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
+      .map(incomingEdge -> {
 
-          LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
+        LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
 
-          return Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(
-              taskId,
-              incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
-        })
-        .forEach(pair -> {
-          final String irVertexId = pair.left().getDstIRVertex().getId();
-          final IRVertex irVertex = irVertexDag.getVertexById(irVertexId);
+        return Pair.of(incomingEdge, intermediateDataIOFactory
+          .createReader(
+            taskId,
+            incomingEdge.getSrcIRVertex(), incomingEdge, executorThreadQueue));
+      })
+      .forEach(pair -> {
+        final String irVertexId = pair.left().getDstIRVertex().getId();
+        final IRVertex irVertex = irVertexDag.getVertexById(irVertexId);
 
-          if (irVertex instanceof OperatorVertex) {
+        if (irVertex instanceof OperatorVertex) {
 
-            // LOG.info("Adding data fetcher for {} / {}", taskId, irVertex.getId());
+          // LOG.info("Adding data fetcher for {} / {}", taskId, irVertex.getId());
 
-            final StageEdge edge = pair.left();
-            final InputReader parentTaskReader = pair.right();
-            final OutputCollector dataFetcherOutputCollector =
-              new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollectorMap.get(irVertex.getId()), taskId);
+          final StageEdge edge = pair.left();
+          final InputReader parentTaskReader = pair.right();
+          final OutputCollector dataFetcherOutputCollector =
+            new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
+              outputCollectorMap.get(irVertex.getId()), taskId);
 
-            final int parallelism = edge
-              .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+          final int parallelism = edge
+            .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
 
-            final CommunicationPatternProperty.Value comm =
-              edge.getPropertyValue(CommunicationPatternProperty.class).get();
+          final CommunicationPatternProperty.Value comm =
+            edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-            final DataFetcher df = new MultiThreadParentTaskDataFetcher(
-              taskId,
-              edge.getSrcIRVertex(),
-              edge,
-              dataFetcherOutputCollector);
+          final DataFetcher df = new MultiThreadParentTaskDataFetcher(
+            taskId,
+            edge.getSrcIRVertex(),
+            edge,
+            dataFetcherOutputCollector);
 
-            edgeToDataFetcherMap.put(edge.getId(), df);
+          edgeToDataFetcherMap.put(edge.getId(), df);
 
-            // LOG.info("Adding data fetcher 22 for {} / {}, parallelism {}",
-            //  taskId, irVertex.getId(), parallelism);
+          // LOG.info("Adding data fetcher 22 for {} / {}, parallelism {}",
+          //  taskId, irVertex.getId(), parallelism);
 
-            LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
+          LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
 
-            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-              || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+          if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+            || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+            inputPipeRegister.registerInputPipe(
+              RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+              edge.getId(),
+              task.getTaskId(),
+              parentTaskReader);
+
+            // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
+            taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+          } else {
+            for (int i = 0; i < parallelism; i++) {
               inputPipeRegister.registerInputPipe(
-                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
                 edge.getId(),
                 task.getTaskId(),
                 parentTaskReader);
-
-              // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
-            } else {
-              for (int i = 0; i < parallelism; i++) {
-                inputPipeRegister.registerInputPipe(
-                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
-                  edge.getId(),
-                  task.getTaskId(),
-                  parentTaskReader);
-              }
-              // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
-
-
-            allFetchers.add(df);
-
-            // LOG.info("End of adding data fetcher for {} / {}", taskId, irVertex.getId());
+            // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
+            taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
           }
-        });
-    // return sortedHarnessList;
+
+
+          allFetchers.add(df);
+
+          // LOG.info("End of adding data fetcher for {} / {}", taskId, irVertex.getId());
+        }
+      });
+
+    // For latency logging
+    for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
+      vertexIdAndCollectorMap.values()) {
+      metricCollector.left().setAdjustTime(adjustTime);
+    }
+
+    prepared.set(true);
+
+    LOG.info("Task {} prepar time: {}", taskId, System.currentTimeMillis() - st);
   }
 
   /**

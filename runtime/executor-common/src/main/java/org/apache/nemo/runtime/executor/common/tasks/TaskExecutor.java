@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.executor.common.ExecutorThreadTask;
  */
 public interface TaskExecutor extends ExecutorThreadTask {
 
+  void initialize();
   Task getTask();
   public int getNumKeys();
   TaskMetrics getTaskMetrics();

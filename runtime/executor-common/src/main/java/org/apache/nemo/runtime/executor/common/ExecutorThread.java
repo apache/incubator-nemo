@@ -1,7 +1,13 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskState;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.message.MessageSender;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +16,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public final class ExecutorThread implements ExecutorThreadQueue {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorThread.class.getName());
@@ -29,6 +37,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   private final List<ExecutorThreadTask> sourceTasks;
   private final List<ExecutorThreadTask> pendingSourceTasks;
 
+  private final Queue<TaskExecutor> unInitializedTasks;
+
   private final String executorId;
 
   private final Map<String, ExecutorThreadTask> taskIdExecutorMap = new ConcurrentHashMap<>();
@@ -43,12 +53,28 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final ExecutorMetrics executorMetrics;
 
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+
+  private final MetricMessageSender metricMessageSender;
+
+  private final MessageSender<ControlMessage.Message> taskScheduledMapSender;
+
+  private final int index;
+
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper;
+
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
                         final ControlEventHandler controlEventHandler,
                         final long throttleRate,
                         final ExecutorMetrics executorMetrics,
+                        final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                        final MetricMessageSender metricMessageSender,
+                        final MessageSender<ControlMessage.Message> taskScheduledMapSender,
+                        final TaskExecutorMapWrapper taskExecutorMapWrapper,
                         final boolean testing) {
+    this.index = executorThreadIndex;
+    this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.dispatcher = Executors.newSingleThreadScheduledExecutor();
     this.executorService = Executors.newSingleThreadExecutor();
     this.throttle = new AtomicBoolean(false);
@@ -61,6 +87,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     this.throttleRate = throttleRate;
     this.testing = testing;
     this.executorMetrics = executorMetrics;
+    this.unInitializedTasks = new LinkedBlockingQueue<>();
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.metricMessageSender = metricMessageSender;
+    this.taskScheduledMapSender = taskScheduledMapSender;
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -105,14 +135,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     LOG.info("Deleting done task {} in executor {}", task.getId(), executorId);
   }
 
-  public void addNewTask(final ExecutorThreadTask task) {
+  public void addNewTask(final TaskExecutor task) {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
 
-    if (task.isSource() && !task.isOffloadedTask()) {
-      synchronized (pendingSourceTasks) {
-        pendingSourceTasks.add(task);
-      }
+    synchronized (unInitializedTasks) {
+      unInitializedTasks.add(task);
     }
   }
 
@@ -193,32 +221,76 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           // process source tasks
           boolean processed = false;
 
-          synchronized (pendingSourceTasks) {
-            synchronized (sourceTasks) {
-              final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
-              while (iterator.hasNext()) {
-                final ExecutorThreadTask sourceTask = iterator.next();
+          if (!sourceTasks.isEmpty()) {
+            synchronized (pendingSourceTasks) {
+              synchronized (sourceTasks) {
+                final Iterator<ExecutorThreadTask> iterator = sourceTasks.iterator();
+                while (iterator.hasNext()) {
+                  final ExecutorThreadTask sourceTask = iterator.next();
 
-                throttling();
+                  throttling();
 
-                if (sourceTask.hasData()) {
-                  if (testing) {
-                    currProcessedCnt += 1;
-                    long st = System.nanoTime();
-                    sourceTask.handleSourceData();
-                    // executorMetrics.eventProcessed.incrementAndGet();
-                    long et = System.nanoTime();
-                    elapsedTime += (et - st);
+                  if (sourceTask.hasData()) {
+                    if (testing) {
+                      currProcessedCnt += 1;
+                      long st = System.nanoTime();
+                      sourceTask.handleSourceData();
+                      // executorMetrics.eventProcessed.incrementAndGet();
+                      long et = System.nanoTime();
+                      elapsedTime += (et - st);
+                    } else {
+                      sourceTask.handleSourceData();
+                      // executorMetrics.eventProcessed.incrementAndGet();
+                    }
+                    processed = true;
                   } else {
-                    sourceTask.handleSourceData();
-                    // executorMetrics.eventProcessed.incrementAndGet();
+                    iterator.remove();
+                    pendingSourceTasks.add(sourceTask);
+                    //LOG.info("Add pending task {}", sourceTask.getId());
                   }
-                  processed = true;
-                } else {
-                  iterator.remove();
-                  pendingSourceTasks.add(sourceTask);
-                  //LOG.info("Add pending task {}", sourceTask.getId());
                 }
+              }
+            }
+          }
+
+          if (!unInitializedTasks.isEmpty()) {
+            synchronized (unInitializedTasks) {
+              if (!unInitializedTasks.isEmpty()) {
+                unInitializedTasks.forEach(t -> {
+                  final long st = System.currentTimeMillis();
+
+                  LOG.info("Initializing task {}", t.getId());
+                  t.initialize();
+                  // send task schedule done message
+                  final TaskStateManager taskStateManager =
+                    new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
+
+                  //taskExecutor.execute();
+                  taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
+                  LOG.info("Task message send time {} to {} thread of {}, time {}", t.getId(), index, executorId,
+                    System.currentTimeMillis() - st);
+
+                  taskExecutorMapWrapper.putTaskExecutor(t, this);
+
+                  taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
+                    .setType(ControlMessage.MessageType.TaskExecuting)
+                    .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
+                      .setExecutorId(executorId)
+                      .setTaskId(t.getId())
+                      .build())
+                    .build());
+
+                  if (t.isSource() && !t.isOffloadedTask()) {
+                    synchronized (pendingSourceTasks) {
+                      pendingSourceTasks.add(t);
+                    }
+                  }
+                });
+
+                unInitializedTasks.clear();
               }
             }
           }
