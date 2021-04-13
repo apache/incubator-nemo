@@ -240,7 +240,7 @@ public final class LambdaContainerManager {
       list.add(initService.submit(() -> {
         final int rid = requestIdCnt.getAndIncrement();
         final String lambdaExecutorId = "Lambda-" + rid;
-        LOG.info("Request lambda executor " + lambdaExecutorId);
+        LOG.info("Request lambda executor {}, resource type {}", lambdaExecutorId, resourceType);
 
         requestIdExecutorMap.put(rid, lambdaExecutorId);
 

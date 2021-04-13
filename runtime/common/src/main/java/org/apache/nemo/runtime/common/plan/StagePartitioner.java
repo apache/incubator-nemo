@@ -150,19 +150,26 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       return true;
     }
 
+
     if (edge.getSrc() instanceof ConditionalRouterVertex) {
+      // create a new task for stream vertex
       LOG.info("StagePartitioner Src {}, Dst {}  edge.getSrc() CRVertex", edge.getSrc(), edge.getDst());
-      return true;
+      return false;
     }
 
     if (edge.getDst() instanceof ConditionalRouterVertex)  {
       LOG.info("StagePartitioner Src {}, Dst {}  edge.getDst() CRVertex", edge.getSrc(), edge.getDst());
-      return true;
+      return false;
     }
 
     // Return true if and only if the execution properties of the two vertices are compatible
     final boolean val =  getStageProperties(edge.getSrc()).equals(getStageProperties(edge.getDst()));
-    LOG.info("StagePartitioner Src {}, Dst {} getStageProperties {}", edge.getSrc(), edge.getDst(), val);
+    if (!val) {
+      LOG.info("StagePartitioner Src {}, Dst {} getStageProperties {}, src {}, dst {}",
+        edge.getSrc(), edge.getDst(), val, getStageProperties(edge.getSrc()), getStageProperties(edge.getDst()));
+    } else {
+      LOG.info("StagePartitioner Src {}, Dst {} getStageProperties {}", edge.getSrc(), edge.getDst(), val);
+    }
     return val;
   }
 

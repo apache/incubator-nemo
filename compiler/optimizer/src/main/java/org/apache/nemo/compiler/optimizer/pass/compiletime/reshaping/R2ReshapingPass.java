@@ -56,7 +56,7 @@ public final class R2ReshapingPass extends ReshapingPass {
 
       if (vertex instanceof SrcStreamVertex) {
         // Local conditional router vertex
-        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex(new SrcCRTransform()));
+        dag.change((OperatorVertex) vertex, new ConditionalRouterVertex(new CRTransform()));
       }
 
       if (vertex instanceof StreamVertex) {

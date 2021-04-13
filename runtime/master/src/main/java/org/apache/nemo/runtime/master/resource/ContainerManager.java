@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.exception.ContainerException;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
@@ -162,7 +163,7 @@ public final class ContainerManager {
       return;
     }
 
-    final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
+    final ResourceSpecification resourceSpecification = selectResourceSpecForContainer(executorId);
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
@@ -282,18 +283,33 @@ public final class ContainerManager {
    * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
    * @return the selected executor specification.
    */
-  private ResourceSpecification selectResourceSpecForContainer() {
-    ResourceSpecification selectedResourceSpec = null;
-    for (final Map.Entry<String, List<ResourceSpecification>> entry
-        : pendingContainerRequestsByContainerType.entrySet()) {
-      if (entry.getValue().size() > 0) {
-        selectedResourceSpec = entry.getValue().remove(0);
-        break;
-      }
-    }
+  private ResourceSpecification selectResourceSpecForContainer(final String executorId) {
+    synchronized (pendingContainerRequestsByContainerType) {
+      ResourceSpecification selectedResourceSpec = null;
 
-    if (selectedResourceSpec != null) {
-      return selectedResourceSpec;
+      if (executorId.contains("Lambda")) {
+
+      }
+
+      if (executorId.contains("Lambda") &&
+        pendingContainerRequestsByContainerType.containsKey(ResourcePriorityProperty.LAMBDA)
+        && pendingContainerRequestsByContainerType.get(ResourcePriorityProperty.LAMBDA).size() > 0) {
+        selectedResourceSpec = pendingContainerRequestsByContainerType.get(ResourcePriorityProperty.LAMBDA)
+          .remove(0);
+      } else {
+        for (final Map.Entry<String, List<ResourceSpecification>> entry
+          : pendingContainerRequestsByContainerType.entrySet()) {
+          if (entry.getValue().size() > 0) {
+            selectedResourceSpec = entry.getValue().remove(0);
+            break;
+          }
+        }
+
+      }
+
+      if (selectedResourceSpec != null) {
+        return selectedResourceSpec;
+      }
     }
     throw new ContainerException(new Throwable("We never requested for an extra container"));
   }

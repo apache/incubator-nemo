@@ -43,7 +43,7 @@ public final class StreamingOffloadingPolicy implements Policy {
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new StreamingOffloadingCompositePass(parallelism));
     builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
-    builder.registerCompileTimePass(new StreamingResourceAffinityPass());
+    builder.registerCompileTimePass(new StreamingResourceAffinityPass(false));
     this.policy = builder.build();
   }
 

@@ -763,13 +763,13 @@ public final class RuntimeMaster {
 
     try {
       LOG.info("Receive requestOffloadingExecutor " + executorId
-        + ", " + name + ", " + port);
+        + ", " + name + ", " + port + ", type " + containerType);
 
       synchronized (responsePendingMap) {
         responsePendingMap.put(name, Pair.of((int) port, requestHandler));
       }
 
-      LOG.info("Try to request {}/{}", name, executorId);
+      LOG.info("Try to request {}/{}/{}", name, executorId, containerType);
 
       containerManager.requestContainer(1,
               new ResourceSpecification(containerType, capacity, slot, memory, -1), name);

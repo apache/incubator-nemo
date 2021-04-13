@@ -43,7 +43,7 @@ public final class StreamingR1Policy implements Policy {
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new StreamingR1ReshapingPass(parallelism));
     builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
-    builder.registerCompileTimePass(new StreamingResourceAffinityPass());
+    builder.registerCompileTimePass(new StreamingResourceAffinityPass(false));
     this.policy = builder.build();
   }
 

@@ -22,6 +22,8 @@ import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -30,6 +32,7 @@ import javax.inject.Inject;
  */
 @AssociatedProperty(ResourcePriorityProperty.class)
 public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
+  private static final Logger LOG = LoggerFactory.getLogger(ContainerTypeAwareSchedulingConstraint.class.getName());
 
   @Inject
   private ContainerTypeAwareSchedulingConstraint() {
@@ -39,6 +42,9 @@ public final class ContainerTypeAwareSchedulingConstraint implements SchedulingC
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
         .orElse(ResourcePriorityProperty.NONE);
+
+    LOG.info("Check container resource type and task type... task {}/{}, container {}/{}",
+      task.getTaskId(), executorPlacementPropertyValue, executor.getExecutorId(), executor.getContainerType());
     return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
         : executor.getContainerType().equals(executorPlacementPropertyValue);
   }
