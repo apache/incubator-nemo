@@ -226,9 +226,14 @@ public final class LambdaContainerManager {
   }
 
   public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num,
-                                                                 final boolean resourceTypeLambda) {
+                                                                 final boolean resourceTypeLambda,
+                                                                 final int capacity,
+                                                                 final int slot,
+                                                                 final int memory) {
 
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
+
+    final String resourceType = resourceTypeLambda ? LAMBDA : COMPUTE;
 
     for (int i = 0; i < num; i++) {
 
@@ -240,7 +245,8 @@ public final class LambdaContainerManager {
         requestIdExecutorMap.put(rid, lambdaExecutorId);
 
         requester.createRequest(workerControlTransport.getPublicAddress(),
-          workerControlTransport.getPort(), rid, "Lambda-" + rid);
+          workerControlTransport.getPort(), rid, "Lambda-" + rid,
+          resourceType, capacity, slot, memory);
 
         final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
           evalConf.executorThreadNum,
@@ -318,9 +324,8 @@ public final class LambdaContainerManager {
         }
 
         // TODO: fix memory and slot
-        final String type = resourceTypeLambda ? LAMBDA : COMPUTE;
         final ResourceSpecification lambdaResourceSpec =
-          new ResourceSpecification(type, 1, 300, 1024);
+          new ResourceSpecification(resourceType, capacity, slot, memory);
 
         final ExecutorRepresenter er = new DefaultExecutorRepresenterImpl(lambdaExecutorId,
           lambdaResourceSpec,

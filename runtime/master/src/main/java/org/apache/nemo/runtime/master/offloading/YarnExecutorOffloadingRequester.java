@@ -97,7 +97,8 @@ public final class YarnExecutorOffloadingRequester implements OffloadingRequeste
     final String key = executorId + "-offloading-" + myPort;
 
     runtimeMasterInjectionFuture.get()
-      .requestOffloadingExecutor(myPort, key, executorId, (hostAddress) -> {
+      .requestOffloadingExecutor(myPort, key, executorId, "Lambda", 2, 300,
+        10000, (hostAddress) -> {
         LOG.info("Host address for " + key +  ": " + hostAddress);
 
         final long waitingTime = 1000;

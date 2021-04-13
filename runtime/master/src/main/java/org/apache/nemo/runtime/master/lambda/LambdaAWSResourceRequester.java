@@ -35,7 +35,11 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
   @Override
   public void createRequest(String address, int port,
                             final int requestId,
-                            String executorId) {
+                            String executorId,
+                            String containerType,
+                            int capacity,
+                            int slot,
+                            int memory) {
     final InvokeRequest request = new InvokeRequest()
       .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",

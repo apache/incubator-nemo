@@ -136,7 +136,7 @@ public final class PairStageTaskManager {
           Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
             stageEdge.getId()))
         .findFirst().get();
-    } else {
+    } else if (currTaskType.equals(VMTask)) {
       // find transient task
       return stageDag.getOutgoingEdgesOf(srcStage)
         .stream().filter(stageEdge -> stageEdge
@@ -146,7 +146,9 @@ public final class PairStageTaskManager {
         .map(stageEdge ->
           Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
             stageEdge.getId()))
-        .findFirst().get();
+        .findFirst().orElse(null);
+    } else {
+      return null;
     }
   }
 

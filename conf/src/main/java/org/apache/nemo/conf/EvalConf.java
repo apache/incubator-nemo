@@ -230,12 +230,14 @@ public final class EvalConf {
 
   public final long latencyLimit;
   public final int partialPercent;
+  public final String optimizationPolicy;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
                    @Parameter(LambdaWarmupPool.class) final int poolSize,
                    @Parameter(FlushBytes.class) final int flushBytes,
                    @Parameter(FlushCount.class) final int flushCount,
+                   @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                    @Parameter(FlushPeriod.class) final int flushPeriod,
                    @Parameter(EnableOffloadingDebug.class) final boolean offloadingdebug,
                    @Parameter(Ec2.class) final boolean ec2,
@@ -281,6 +283,7 @@ public final class EvalConf {
     this.scalingType = scalingType;
     this.offExecutorThreadNum = offExecutorThreadNum;
     this.deoffloadingThreshold = deoffloadingThreshold;
+    this.optimizationPolicy = optimizationPolicy;
     this.ec2 = ec2;
     this.flushCount = flushCount;
     this.flushPeriod = flushPeriod;
@@ -369,6 +372,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     jcb.bindNamedParameter(LatencyLimit.class, Long.toString(latencyLimit));
     jcb.bindNamedParameter(PartialPercent.class, Integer.toString(partialPercent));
+    jcb.bindNamedParameter(JobConf.OptimizationPolicy.class, optimizationPolicy);
     return jcb.build();
   }
 
@@ -463,6 +467,7 @@ public final class EvalConf {
     sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("latencyLimit: "); sb.append(latencyLimit); sb.append("\n");
     sb.append("partialPercent: "); sb.append(partialPercent); sb.append("\n");
+    sb.append("optimizationPolicy: "); sb.append(optimizationPolicy); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

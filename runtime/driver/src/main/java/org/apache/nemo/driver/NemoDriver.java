@@ -170,13 +170,16 @@ public final class NemoDriver {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               runtimeMaster.requestContainer(resourceSpecificationString,
-                true, false, "Evaluator", num);
+                false, false, "Evaluator", num);
             } else if (decision.equals("add-lambda-executor")) {
               // scaling executor for Lambda
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               final boolean resourceTypeLambda = new Boolean(args[2]);
-              runtimeMaster.requestLambdaContainer(num, resourceTypeLambda);
+              final int capacity = new Integer(args[3]);
+              final int slot = new Integer(args[4]);
+              final int memory = new Integer(args[5]);
+              runtimeMaster.requestLambdaContainer(num, resourceTypeLambda, capacity, slot, memory);
             } else if (decision.equals("stop-lambda-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
@@ -222,7 +225,6 @@ public final class NemoDriver {
               final boolean partial = new Boolean(args[1]);
               final double percent = new Double(args[2]);
               runtimeMaster.triggerConditionalRouting(partial, percent);
-
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
               // VM -> Lambda
@@ -280,7 +282,7 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              runtimeMaster.triggerConditionalRouting(false, 0);
+              // runtimeMaster.triggerConditionalRouting(false, 0);
               jobScaler.sendPrevMovedTaskStopSignal(num, stages);
             } else if (decision.equals("throttle-source")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
@@ -334,8 +336,13 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-      runtimeMaster.requestContainer(
-        resourceSpecificationString, false, false, "Evaluator", 0);
+      if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
+        runtimeMaster.requestContainer(
+          resourceSpecificationString, true, false, "Evaluator", 0);
+      } else {
+        runtimeMaster.requestContainer(
+          resourceSpecificationString, false, false, "Evaluator", 0);
+      }
     }
   }
 

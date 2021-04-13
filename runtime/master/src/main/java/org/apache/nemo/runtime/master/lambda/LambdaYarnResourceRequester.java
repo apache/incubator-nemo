@@ -78,7 +78,11 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
   public void createRequest(String controlAddr,
                             int controlPort,
                             int requestId,
-                            final String executorId) {
+                            final String executorId,
+                            final String containerType,
+                            final int capacity,
+                            final int slot,
+                            final int memory) {
     final int myPort = port + atomicInteger.getAndIncrement();
 
     LOG.info("Creating VM worker with port for yarn " + myPort);
@@ -86,7 +90,8 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
     final String key = executorId + "-offloading-" + myPort;
 
     runtimeMasterInjectionFuture.get()
-      .requestOffloadingExecutor(myPort, key, executorId, (hostAddress) -> {
+      .requestOffloadingExecutor(myPort, key, executorId, containerType,
+        capacity, slot, memory, (hostAddress) -> {
         LOG.info("Host address for " + key +  ": " + hostAddress);
 
         final long waitingTime = 1000;

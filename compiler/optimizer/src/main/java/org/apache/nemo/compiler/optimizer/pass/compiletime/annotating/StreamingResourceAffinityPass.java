@@ -64,7 +64,12 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
     }
 
     // Set [Src->CR vertex] to SOURCE in order to schedule them in the same machine
-    dag.getOutgoingEdgesOf(sourceStages.get(0))
+    if (dag.getRootVertices().size() > 1) {
+      throw new RuntimeException("Root vertex size > 1");
+    }
+
+    final IRVertex rootVertex = dag.getRootVertices().get(0);
+    dag.getOutgoingEdgesOf(rootVertex)
       .stream()
       .filter(edge -> edge.getDst() instanceof ConditionalRouterVertex)
       .forEach(edge -> edge.getDst()
