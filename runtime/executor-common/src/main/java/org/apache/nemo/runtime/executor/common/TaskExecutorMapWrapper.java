@@ -20,12 +20,20 @@ public final class TaskExecutorMapWrapper {
   private final ConcurrentMap<String, TaskExecutor> taskIdExecutorMap;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskExecutorThreadMap;
 
+  public enum TaskExecutorState {
+    DEACTIVATED,
+    RUNNING
+  }
+
+  private final ConcurrentMap<TaskExecutor, TaskExecutorState> taskExecutorStateMap;
+
   @Inject
   private TaskExecutorMapWrapper() {
     this.taskExecutorMap = new ConcurrentHashMap<>();
     this.stageTaskMap = new ConcurrentHashMap<>();
     this.taskIdExecutorMap = new ConcurrentHashMap<>();
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
+    this.taskExecutorStateMap = new ConcurrentHashMap<>();
   }
 
   public void putTaskExecutor(final TaskExecutor taskExecutor,
@@ -36,6 +44,8 @@ public final class TaskExecutorMapWrapper {
 
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskExecutor.getId());
     stageTaskMap.putIfAbsent(stageId, new ArrayList<>());
+
+    taskExecutorStateMap.put(taskExecutor, TaskExecutorState.RUNNING);
 
     final List<TaskExecutor> tasks = stageTaskMap.get(stageId);
 
@@ -64,6 +74,7 @@ public final class TaskExecutorMapWrapper {
     et.deleteTask(e);
 
     taskExecutorMap.remove(e);
+    taskExecutorStateMap.remove(e);
 
     stageTaskMap.values().forEach(l -> {
       synchronized (l) {
@@ -78,6 +89,18 @@ public final class TaskExecutorMapWrapper {
 
   public ExecutorThread getTaskExecutorThread(final String taskId) {
     return taskExecutorThreadMap.get(taskIdExecutorMap.get(taskId));
+  }
+
+  public TaskExecutorState getTaskExecutorState(final String taskId) {
+    return taskExecutorStateMap.get(taskIdExecutorMap.get(taskId));
+  }
+
+  public TaskExecutorState getTaskExecutorState(final TaskExecutor taskExecutor) {
+    return taskExecutorStateMap.get(taskExecutor);
+  }
+
+  public void setTaskExecutorState(final TaskExecutor taskExecutor, final TaskExecutorState state) {
+    taskExecutorStateMap.put(taskExecutor, state);
   }
 
   public ConcurrentMap<TaskExecutor, Boolean> getTaskExecutorMap() {

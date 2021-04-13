@@ -116,10 +116,20 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
+  public void write(Object element, String dstTaskId) {
+    pipeManagerWorker.writeData(srcTaskId, runtimeEdge.getId(), dstTaskId, serializer, element);
+  }
+
+  @Override
   public void writeByteBuf(final ByteBuf element) {
     getPipeToWrite(element).forEach(dstTask -> {
       pipeManagerWorker.writeByteBufData(srcTaskId, runtimeEdge.getId(), dstTask, element);
     });
+  }
+
+  @Override
+  public void writeByteBuf(ByteBuf byteBuf, String dstTaskId) {
+    pipeManagerWorker.writeByteBufData(srcTaskId, runtimeEdge.getId(), dstTaskId, byteBuf);
   }
 
   @Override

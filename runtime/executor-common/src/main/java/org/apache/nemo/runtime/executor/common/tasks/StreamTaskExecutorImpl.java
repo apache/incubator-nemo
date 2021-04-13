@@ -501,16 +501,19 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     return Optional.empty();
   }
 
+  @Override
+  public void restore() {
+  }
 
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
   }
 
   @Override
-  public boolean checkpoint(final boolean checkpointSource) {
+  public boolean checkpoint(final boolean checkpointSource, final String checkpointId) {
     boolean hasChekpoint = false;
 
     if (!singleOneToOneInput) {
-      final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+      final OutputStream os = stateStore.getOutputStream(checkpointId + "-taskWatermarkManager");
       try {
         taskWatermarkManager.encode(os);
         os.close();

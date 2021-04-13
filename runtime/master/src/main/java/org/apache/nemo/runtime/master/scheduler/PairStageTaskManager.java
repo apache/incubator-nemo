@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.Util;
@@ -17,14 +18,17 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.nemo.common.Task.TaskType.TransientTask;
+import static org.apache.nemo.common.Task.TaskType.VMTask;
 
 public final class PairStageTaskManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PairStageTaskManager.class.getName());
 
-  private final Map<String, String> pairTaskMap = new ConcurrentHashMap<>();
+  private final Map<String, Pair<String, String>> pairTaskEdgeMap = new ConcurrentHashMap<>();
+  private final Map<String, String> taskCrTaskMap = new ConcurrentHashMap<>();
   private DAG<Stage, StageEdge> stageDag;
 
   @Inject
@@ -36,8 +40,8 @@ public final class PairStageTaskManager {
     this.stageDag = stageDag;
   }
 
-  public String getPairTaskId(final String taskId) {
-    return pairTaskMap.get(taskId);
+  public Pair<String, String> getPairTaskEdgeId(final String taskId) {
+    return pairTaskEdgeMap.get(taskId);
   }
 
   public Task.TaskType registerPairTask(final List<StageEdge> taskIncomingEdges,
@@ -49,12 +53,14 @@ public final class PairStageTaskManager {
       throw new RuntimeException("Stage DAG is null...");
     }
 
-    final boolean crTask = isCrTask(taskIncomingEdges, irDag);
-    final boolean lambdaAffinity = isLambdaAffinity(taskIncomingEdges, irDag);
+    final boolean crTask = isCrTask(irDag);
+    final boolean transientTask = isTransientTask(taskIncomingEdges, irDag);
     final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
 
     if (crTask) {
+      return Task.TaskType.CRTask;
       // find output edge with PartialRR tag
+      /*
       final Optional<String> pairTask = taskOutgoingEdges.stream().filter(edge ->
         edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()
           && edge.getPropertyValue(AdditionalOutputTagProperty.class).get().equals(Util.TRANSIENT_PATH))
@@ -64,95 +70,97 @@ public final class PairStageTaskManager {
 
       pairTask.ifPresent(pairTaskId -> {
         LOG.info("Registering pair task 111 {} <-> {}", taskId, pairTaskId);
-        pairTaskMap.put(taskId, pairTaskId);
-        pairTaskMap.put(pairTaskId, taskId);
+        pairTaskEdgeMap.put(taskId, pairTaskId);
+        pairTaskEdgeMap.put(pairTaskId, taskId);
       });
-
-      return Task.TaskType.CRTask;
-
-    } else if (lambdaAffinity) {
-      // find incoming edge
-      // we should find outgoing edge of source stage
-      final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
-      if (srcStage.getId().equals("Stage0")) {
-        // source stage
-        stageDag.getOutgoingEdgesOf(srcStage)
-          .stream().filter(stageEdge -> !stageEdge
-          .getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-          .map(stageEdge ->
-            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0))
-          .findFirst()
-          .ifPresent(pairTaskId -> {
-            LOG.info("Registering pair task 222 {} <-> {}", taskId, pairTaskId);
-            pairTaskMap.put(taskId, pairTaskId);
-            pairTaskMap.put(pairTaskId, taskId);
-          });
-      } else {
-        // this is a transient path connected with CR vertex
-        taskIncomingEdges.stream().findFirst().map(stageEdge ->
-          RuntimeIdManager.generateTaskId(stageEdge.getSrc().getId(), index, 0))
-          .ifPresent(pairTaskId -> {
-            LOG.info("Registering pair task 333 {} <-> {}", taskId, pairTaskId);
-            pairTaskMap.put(taskId, pairTaskId);
-            pairTaskMap.put(pairTaskId, taskId);
-          });
-      }
-
+      */
+    } else if (transientTask) {
+      final Pair<String, String> pairTaskEdgeId =
+        getPairTaskEdge(taskIncomingEdges, taskId, Task.TaskType.TransientTask);
+      final String crTaskId = getCrTaskId(taskIncomingEdges, taskId, Task.TaskType.TransientTask);
+      LOG.info("Registering pair task 222 {} <-> {}", taskId, pairTaskEdgeId);
+      pairTaskEdgeMap.put(taskId, pairTaskEdgeId);
+      taskCrTaskMap.put(taskId, crTaskId);
       return Task.TaskType.TransientTask;
     } else {
-      // this is a normal path task connected with source
-      // we should find outgoing edge of source stage
-      if (taskIncomingEdges.isEmpty()) {
-        // source stage
-        if (irDag.getVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex)) {
-          return Task.TaskType.SrcCRTask;
-        } else {
-          return Task.TaskType.DefaultTask;
-        }
+      final Pair<String, String> pairTaskEdgeId = getPairTaskEdge(taskIncomingEdges, taskId, VMTask);
+
+      if (pairTaskEdgeId == null) {
+        return Task.TaskType.DefaultTask;
       } else {
-        final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
-        final Optional<String> pairTaskId = stageDag.getOutgoingEdgesOf(srcStage)
-          .stream().filter(stageEdge -> stageEdge
-            .getPropertyValue(AdditionalOutputTagProperty.class).isPresent()
-            && stageEdge.getPropertyValue(AdditionalOutputTagProperty.class)
-            .get().equals(Util.TRANSIENT_PATH))
-          .map(stageEdge ->
-            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0))
-          .findFirst();
-
-        if (pairTaskId.isPresent()) {
-          LOG.info("Registering pair task 444 {} <-> {}", taskId, pairTaskId);
-          pairTaskMap.put(taskId, pairTaskId.get());
-          pairTaskMap.put(pairTaskId.get(), taskId);
-          return Task.TaskType.NormalTaskWithoutCR;
-        } else {
-
-          return Task.TaskType.DefaultTask;
-        }
+        LOG.info("Registering pair task 444 {} <-> {}", taskId, pairTaskEdgeId);
+        pairTaskEdgeMap.put(taskId, pairTaskEdgeId);
+        final String crTaskId = getCrTaskId(taskIncomingEdges, taskId, Task.TaskType.VMTask);
+        taskCrTaskMap.put(taskId, crTaskId);
+        return VMTask;
       }
     }
   }
 
-  public static boolean isCrTask(final List<StageEdge> taskIncomingEdges,
-                          final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
-    final boolean hasTransientIncomingEdge = taskIncomingEdges.stream().anyMatch(edge ->
-      edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
-        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientRR) ||
-        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientShuffle));
+  private String getCrTaskId(final List<StageEdge> taskIncomingEdges,
+                            final String taskId,
+                            final Task.TaskType currTaskType) {
+    final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
 
-    return hasTransientIncomingEdge &&
+    if (taskIncomingEdges.isEmpty()) {
+      return null;
+    }
+
+
+    final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
+
+    if (currTaskType.equals(TransientTask) || currTaskType.equals(VMTask)) {
+      return RuntimeIdManager.generateTaskId(srcStage.getId(), index, 0);
+    } else {
+      return null;
+    }
+  }
+
+  private Pair<String, String> getPairTaskEdge(final List<StageEdge> taskIncomingEdges,
+                                               final String taskId,
+                                               final Task.TaskType currTaskType) {
+    final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+
+    if (taskIncomingEdges.isEmpty()) {
+      return null;
+    }
+
+    final Stage srcStage = taskIncomingEdges.stream().findFirst().get().getSrc();
+
+    if (currTaskType.equals(Task.TaskType.TransientTask)) {
+      // find vm task
+      return stageDag.getOutgoingEdgesOf(srcStage)
+        .stream().filter(stageEdge -> !stageEdge
+          .getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+        .map(stageEdge ->
+          Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
+            stageEdge.getId()))
+        .findFirst().get();
+    } else {
+      // find transient task
+      return stageDag.getOutgoingEdgesOf(srcStage)
+        .stream().filter(stageEdge -> stageEdge
+          .getPropertyValue(AdditionalOutputTagProperty.class).isPresent()
+          && stageEdge.getPropertyValue(AdditionalOutputTagProperty.class)
+          .get().equals(Util.TRANSIENT_PATH))
+        .map(stageEdge ->
+          Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
+            stageEdge.getId()))
+        .findFirst().get();
+    }
+  }
+
+  public static boolean isCrTask(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+    return
       irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex);
   }
 
-  public static boolean isLambdaAffinity(final List<StageEdge> taskIncomingEdges,
-                                  final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
-
+  public static boolean isTransientTask(final List<StageEdge> taskIncomingEdges,
+                                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     final boolean hasTransientIncomingEdge = taskIncomingEdges.stream().anyMatch(edge ->
       edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
         edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientRR) ||
         edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientShuffle));
-
-    return hasTransientIncomingEdge &&
-      irDag.getRootVertices().stream().noneMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+    return hasTransientIncomingEdge;
   }
 }

@@ -30,7 +30,6 @@ import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
@@ -511,52 +510,6 @@ public final class Executor {
             condRouting,
             // new NoOffloadingPreparer(),
             false);
-      } else if (task.isLambdaAffinity()) {
-        taskExecutor =
-          new TransientTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-            // offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // new NoOffloadingPreparer(),
-            false);
-      } else if (task.isSrcCrTask()) {
-        taskExecutor =
-          new SrcCRTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-            // offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // new NoOffloadingPreparer(),
-            false);
       } else {
         taskExecutor =
           new DefaultTaskExecutorImpl(
@@ -629,20 +582,6 @@ public final class Executor {
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case ConditionalRouting: {
-          final ControlMessage.ConditionalRoutingMessage msg = message.getConditionalRoutingMsg();
-          final boolean toPartial = msg.getToPartial();
-          final double percent = msg.getPercent();
-          condRouting.setPercent(percent);
-          condRouting.setPartial(toPartial);
-          break;
-        }
-        case InvokePartialOffloading: {
-          throw new RuntimeException("Not supoprted");
-          // LOG.info("Invoke partial offloading for {}", executorId);
-          // offloadingManager.invokeParitalOffloading();
-          // break;
-        }
         case ThrottleSource: {
           LOG.info("Throttle source message for {}, rate {}", executorId, message.getSetNum());
           for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
@@ -764,8 +703,8 @@ public final class Executor {
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
 
-          if (!task.isCrTask()) {
-            throw new RuntimeException("Cannot stage migration normal task " + taskId);
+          if (!task.isVMTask()) {
+            throw new RuntimeException("Cannot stage migration task " + taskId + ", " + task.getTaskType());
           }
 
           executorService.execute(() -> {
@@ -774,9 +713,40 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.ROUTING_DATA_TO_LAMBDA_BY_MASTER, -1, -1,
+              TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
+              message.getStopTaskMsg().getTaskId(), false));
+          });
+          break;
+        }
+        case DeactivateLambdaTask: {
+          // for R2 reshaping
+          LOG.info("Deactivation task in executor {}", executorId);
+
+          taskExecutorMapWrapper.getTaskExecutorMap()
+            .keySet().forEach(taskExecutor -> {
+              executorService.execute(() -> {
+                final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
+                executorThread.addEvent(new TaskControlMessage(
+                  TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
+                  taskExecutor.getId(), true));
+              });
+            });
+          break;
+        }
+        case GetStateSignal: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get state signal from VM task {} to Lambda {} in executor {}",
+              task.getPairTaskId(), message.getStopTaskMsg().getTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.GET_STATE_SIGNAL, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
+
           break;
         }
         case RoutingDataDoneToLambda: {
@@ -784,17 +754,17 @@ public final class Executor {
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
 
-          if (!task.isCrTask()) {
+          if (!task.isTransientTask()) {
             throw new RuntimeException("Cannot stage migration normal task " + taskId);
           }
 
           executorService.execute(() -> {
-            LOG.info("Routing data done from VM task {} to Lambda  {} in executor {}",
+            LOG.info("Routing data done from Lambda task {} to VM {} in executor {}",
               message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER, -1, -1,
+              TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
           break;

@@ -748,7 +748,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     return Optional.empty();
   }
 
-  private void restore() {
+  @Override
+  public void restore() {
     try {
       final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
       taskWatermarkManager = TaskInputWatermarkManager.decode(is);
@@ -773,13 +774,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public boolean checkpoint(final boolean checkpointSource) {
+  public boolean checkpoint(final boolean checkpointSource,
+                            final String checkpointId) {
     boolean hasChekpoint = false;
 
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     // stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
-    final OutputStream os = stateStore.getOutputStream(taskId + "-taskWatermarkManager");
+    final OutputStream os = stateStore.getOutputStream(checkpointId + "-taskWatermarkManager");
     try {
       taskWatermarkManager.encode(os);
       os.close();
@@ -818,7 +820,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
     if (!isStateless) {
-      statefulTransforms.forEach(transform -> transform.checkpoint(taskId));
+      statefulTransforms.forEach(transform -> transform.checkpoint(checkpointId));
     }
 
     return true;

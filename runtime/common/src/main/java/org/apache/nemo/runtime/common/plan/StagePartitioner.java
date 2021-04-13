@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -146,6 +147,16 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
 
     if (edge.getDst() instanceof SrcStreamVertex) {
       LOG.info("StagePartitioner Src {}, Dst {}  edge.getDst() SrcStreamVertex", edge.getSrc(), edge.getDst());
+      return true;
+    }
+
+    if (edge.getSrc() instanceof ConditionalRouterVertex) {
+      LOG.info("StagePartitioner Src {}, Dst {}  edge.getSrc() CRVertex", edge.getSrc(), edge.getDst());
+      return true;
+    }
+
+    if (edge.getDst() instanceof ConditionalRouterVertex)  {
+      LOG.info("StagePartitioner Src {}, Dst {}  edge.getDst() CRVertex", edge.getSrc(), edge.getDst());
       return true;
     }
 

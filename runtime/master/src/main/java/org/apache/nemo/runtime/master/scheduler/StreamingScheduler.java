@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Lists;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.RuntimeIdManager;
@@ -150,17 +151,31 @@ public final class StreamingScheduler implements Scheduler {
           final Task.TaskType taskType = pairStageTaskManager.registerPairTask(stageIncomingEdges,
             stageOutgoingEdges, taskId, stageToSchedule.getIRDAG());
 
-          final String pairTaskId = pairStageTaskManager.getPairTaskId(taskId);
+          final Pair<String, String> pairTaskEdgeId = pairStageTaskManager.getPairTaskEdgeId(taskId);
 
-          return new Task(
-            taskId,
-            stageToSchedule.getExecutionProperties(),
-            stageToSchedule.getIRDAG(),
-            stageIncomingEdges,
-            stageOutgoingEdges,
-            vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
-            pairTaskId,
-            taskType);
+          if (pairTaskEdgeId == null) {
+            return new Task(
+              taskId,
+              stageToSchedule.getExecutionProperties(),
+              stageToSchedule.getIRDAG(),
+              stageIncomingEdges,
+              stageOutgoingEdges,
+              vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
+              null,
+              null,
+              taskType);
+          } else {
+            return new Task(
+              taskId,
+              stageToSchedule.getExecutionProperties(),
+              stageToSchedule.getIRDAG(),
+              stageIncomingEdges,
+              stageOutgoingEdges,
+              vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
+              pairTaskEdgeId.left(),
+              pairTaskEdgeId.right(),
+              taskType);
+          }
         })
           .collect(Collectors.toList()));
 

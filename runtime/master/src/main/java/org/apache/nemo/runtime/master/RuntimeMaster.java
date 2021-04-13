@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskState.State.COMPLETE;
 import static org.apache.nemo.common.TaskState.State.ON_HOLD;
+import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.LAMBDA;
 import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.OFFLOAD;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
@@ -120,6 +121,7 @@ public final class RuntimeMaster {
 
   private final LambdaContainerManager lambdaContainerManager;
   private final EvalConf evalConf;
+  private final PairStageTaskManager pairStageTaskManager;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -133,6 +135,7 @@ public final class RuntimeMaster {
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
                         final EvalConf evalConf,
+                        final PairStageTaskManager pairStageTaskManager,
                         final LambdaContainerManager lambdaContainerManager,
                         final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
@@ -146,6 +149,7 @@ public final class RuntimeMaster {
     this.executorRegistry = executorRegistry;
     this.taskDispatcher = taskDispatcher;
     this.evalConf = evalConf;
+    this.pairStageTaskManager = pairStageTaskManager;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.requestContainerThread = Executors.newCachedThreadPool();
     this.runtimeMasterThread =
@@ -309,7 +313,7 @@ public final class RuntimeMaster {
         final TreeNode resourceNode = jsonRootNode.get(i);
         final String type = resourceNode.get("type").traverse().nextTextValue();
 
-        if (type.equals(OFFLOAD)) {
+        if (type.equals(LAMBDA)) {
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
           final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int slot = resourceNode.get("slot").traverse().getIntValue();
@@ -387,7 +391,7 @@ public final class RuntimeMaster {
             type, memory, capacity, slot, executorNum);
 
           if (offloading) {
-            if (type.equals(OFFLOAD)) {
+            if (type.equals(LAMBDA)) {
               containerManager.requestContainer(executorNum,
                 new ResourceSpecification(type,
                   capacity, slot, memory, poisonSec), name);
@@ -400,10 +404,12 @@ public final class RuntimeMaster {
                   new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
               }
             } else {
-              if (!type.equals(OFFLOAD)) {
+              if (!type.equals(LAMBDA)) {
                 resourceRequestCount.getAndAdd(executorNum);
                 containerManager.requestContainer(executorNum,
                   new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+              } else {
+                requestLambdaContainer(executorNum, true);
               }
             }
           }
@@ -492,10 +498,12 @@ public final class RuntimeMaster {
     });
   }
 
-  public void requestLambdaContainer(final int num) {
+  public void requestLambdaContainer(final int num,
+                                     final boolean resourceTypeLambda) {
+    resourceRequestCount.getAndAdd(num);
     requestContainerThread.execute(() -> {
       final List<Future<ExecutorRepresenter>> list =
-        lambdaContainerManager.createLambdaContainer(num);
+        lambdaContainerManager.createLambdaContainer(num, resourceTypeLambda);
 
       for (final Future<ExecutorRepresenter> future : list) {
         final Callable<Boolean> processExecutorLaunchedEvent = () -> {
@@ -506,7 +514,8 @@ public final class RuntimeMaster {
 
         final boolean eventResult;
         try {
-          eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
+          eventResult = processExecutorLaunchedEvent.call();
+          // eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
         } catch (final Exception e) {
           throw new ContainerException(e);
         }
@@ -516,24 +525,6 @@ public final class RuntimeMaster {
 
   public void stopLambdaContainer(final int num) {
     lambdaContainerManager.stopLambdaContainer(num);
-  }
-
-
-  public void createOffloadingExecutor(final int num) {
-    LOG.info("Create offloading executor");
-    executorRegistry.viewExecutors(executors -> {
-      executors.forEach(executor -> {
-        if (!executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
-          LOG.info("Create offloading executor for executor {}", executor.getExecutorId());
-          executor.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.CreateOffloadingExecutor)
-            .setSetNum(num)
-            .build());
-        }
-      });
-    });
   }
 
   public void throttleSource(final int num) {
@@ -584,6 +575,21 @@ public final class RuntimeMaster {
 
   public void deactivateLambda() {
    // offloadingWorkerManager.deactivateAllWorkers();
+    // 1) deactivate tasks
+    executorRegistry.viewExecutors(executors -> {
+      executors.forEach(executor -> {
+        if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+          LOG.info("Deactivate lambda task for executor {}", executor.getExecutorId());
+          executor.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.DeactivateLambdaTask)
+            .build());
+        }
+      });
+    });
+
+    // 2) TODO: deactivate lambda workers
   }
 
   public void invokePartialOffloading() {
@@ -649,6 +655,66 @@ public final class RuntimeMaster {
     deactivateLambda();
   }
 
+  private final Set<String> prevRedirectionTasks = new HashSet<>();
+
+  public void redirectionToLambda(final int num,
+                          final int stageId) {
+    final Map<String, String> scheduledMap = taskScheduledMap.getTaskExecutorIdMap();
+    scheduledMap.entrySet().stream()
+      .filter(entry -> RuntimeIdManager.getStageIdFromTaskId(entry.getKey())
+        .equals("Stage" + stageId)
+      && !prevRedirectionTasks.contains(entry.getKey()))
+      .forEach(entry -> {
+        final String taskId = entry.getKey();
+        final String executorId = entry.getValue();
+        final ExecutorRepresenter executor = executorRegistry.getExecutorRepresentor(executorId);
+
+        LOG.info("Redirection VM task {} for executor {}", taskId, executor.getExecutorId());
+
+        prevRedirectionTasks.add(taskId);
+
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.RoutingDataToLambda)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(taskId)
+            .build())
+          .build());
+      });
+
+    LOG.info("Redirection tasks {} / stage {}", num, stageId);
+  }
+
+  public void redirectionDoneToLambda(final int num,
+                                      final int stageId) {
+    prevRedirectionTasks.stream()
+      .filter(taskId -> RuntimeIdManager.getStageIdFromTaskId(taskId)
+        .equals("Stage" + stageId))
+      .limit(num)
+      .iterator()
+      .forEachRemaining(taskId -> {
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(taskId).left();
+        final String pairExecutorId = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
+
+        LOG.info("Redirection Lambda task {} for executor {}", pairTask, pairExecutorId);
+        final ExecutorRepresenter executor = executorRegistry.getExecutorRepresentor(pairExecutorId);
+
+        prevRedirectionTasks.remove(pairTask);
+
+        executor.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.RoutingDataDoneToLambda)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+      });
+
+    LOG.info("Redirection lambda tasks {} / stage {}", num, stageId);
+  }
 
   public void offloadTask(final int num,
                           final int stageId) {
@@ -778,6 +844,26 @@ public final class RuntimeMaster {
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case GetStateSignal: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        LOG.info("Send GetStateSignal for rerouting data from {} to {}", reroutingTask, pairTask);
+        final ExecutorRepresenter executorRepresenter = executorRegistry
+          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.GetStateSignal)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+
+        break;
+      }
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();

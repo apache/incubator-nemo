@@ -1,16 +1,17 @@
-package org.apache.nemo.runtime.executor.common;
+package org.apache.nemo.runtime.executor.common.controlmessages;
 
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.ControlEventHandler;
+import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
+import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
-import org.apache.nemo.runtime.executor.common.tasks.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.tasks.TransientTaskExecutorImpl;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -18,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 
@@ -30,19 +30,25 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final PipeManagerWorker pipeManagerWorker;
   private final PersistentConnectionToMasterMap toMaster;
   private final EvalConf evalConf;
+  private final PipeIndexMapWorker pipeIndexMapWorker;
+  private final R2ControlEventHandler r2ControlEventHandler;
 
   @Inject
   private DefaultControlEventHandlerImpl(
     @Parameter(JobConf.ExecutorId.class) final String executorId,
+    final PipeIndexMapWorker pipeIndexMapWorker,
     final TaskExecutorMapWrapper taskExecutorMapWrapper,
     final PipeManagerWorker pipeManagerWorker,
     final EvalConf evalConf,
+    final R2ControlEventHandler r2ControlEventHandler,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.pipeManagerWorker = pipeManagerWorker;
     this.toMaster = toMaster;
     this.evalConf = evalConf;
+    this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.r2ControlEventHandler = r2ControlEventHandler;
   }
 
   @Override
@@ -53,54 +59,14 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     }
 
     switch (control.type) {
-      case ROUTING_DATA_TO_LAMBDA_BY_MASTER: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-
-        if (taskExecutor.isSource()) {
-          throw new RuntimeException("not supported");
-        } else {
-
-          if (taskExecutor instanceof CRTaskExecutorImpl) {
-            final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
-            crTask.prepareRoutingToLambda();
-          } else if (taskExecutor instanceof DefaultTaskExecutorImpl) {
-            // we should stop input stream
-
-          }
-
-        }
-        break;
-      }
-      case ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
-        crTask.prepareRoutingDoneToLambda();
-        break;
-      }
-      // From Transient -> CR
-      case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
-        crTask.startRoutingToLambda();
-        break;
-      }
-      case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        final CRTaskExecutorImpl crTask = (CRTaskExecutorImpl) taskExecutor;
-        crTask.finishRoutingToLambda();
-        break;
-      }
-      // From CR -> Transient
-      case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        final TransientTaskExecutorImpl trTask = (TransientTaskExecutorImpl) taskExecutor;
-        trTask.getStateFromRemote();
-        break;
-      }
-      case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        final TransientTaskExecutorImpl trTask = (TransientTaskExecutorImpl) taskExecutor;
-        trTask.stateMigrationToVM();
+      case INVOKE_REDIRECTION_FOR_CR:
+      case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
+      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:
+      case TASK_OUTPUT_DONE:
+      case GET_STATE_SIGNAL:
+      case TASK_INPUT_START:
+      case STATE_MIGRATION_DONE: {
+        r2ControlEventHandler.handleControlEvent(event);
         break;
       }
       case TASK_STOP_SIGNAL_BY_MASTER: {
@@ -117,7 +83,17 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           // Stop input pipe
           taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
             pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
-              entry.getKey().getId(), control.getTaskId());
+              entry.getKey().getId(), control.getTaskId(),
+              (triple) -> {
+                return new TaskControlMessage(
+                  TaskControlMessage.TaskControlMessageType
+                    .PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
+                  triple.getLeft(), // my output pipe index
+                  triple.getMiddle(), // my input pipe index
+                  triple.getRight(), // srct ask id
+                  new TaskStopSignalByDownstreamTask(control.getTaskId(),
+                    entry.getKey().getId(), triple.getRight()));
+              });
           });
         }
         break;
@@ -179,7 +155,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
-    taskExecutor.checkpoint(true);
+    taskExecutor.checkpoint(true, taskId);
 
     try {
       Thread.sleep(100);

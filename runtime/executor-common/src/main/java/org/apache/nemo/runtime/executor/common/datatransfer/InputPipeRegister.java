@@ -19,12 +19,14 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 /**
  * Two threads use this class
@@ -45,9 +47,6 @@ public interface InputPipeRegister {
     RUNNING
   }
 
-  void retrieveIndexForOffloadingSource(final String srcTaskId,
-                                        final String edgeId);
-
   void sendPipeInitMessage(final String srcTaskId,
                            final String edgeId,
                            final String dstTaskId);
@@ -59,7 +58,14 @@ public interface InputPipeRegister {
 
   void sendStopSignalForInputPipes(final List<String> srcTasks,
                                    final String edgeId,
-                                   final String dstTaskId);
+                                   final String dstTaskId,
+                                   final Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder);
+
+
+  void sendSignalForInputPipes(final List<String> srcTasks,
+                               final String edgeId,
+                               final String dstTaskId,
+                               final Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder);
 
   // return true if the all of the pipe is stopped.
   void receiveAckInputStopSignal(String taskId, int pipeIndex);

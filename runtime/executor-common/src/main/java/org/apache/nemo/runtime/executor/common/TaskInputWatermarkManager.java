@@ -82,6 +82,18 @@ public final class TaskInputWatermarkManager implements Serializable {
     }
   }
 
+  public void stopInputPipeIndex(final String edgeId,
+                                 final int taskIndex) {
+    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
+    stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, Long.MAX_VALUE);
+  }
+
+  public void startInputPipeIndex(final String edgeId,
+                                  final int taskIndex) {
+    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
+    stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, prevWatermark);
+  }
+
   public void addDataFetcher(String edgeId, int parallelism) {
     LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", edgeId, parallelism);
     dataFetcherWatermarkMap.put(edgeId, 0L);

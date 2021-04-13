@@ -36,7 +36,13 @@ public interface OutputWriter {
    */
   void write(final Object element);
 
+  // write to certain task
+  void write(final Object element, String dstTaskId);
+
   void writeByteBuf(ByteBuf byteBuf);
+
+  // write to certain task
+  void writeByteBuf(ByteBuf byteBuf, String dstTaskId);
 
   /**
    * Writes watermarks to all edges.

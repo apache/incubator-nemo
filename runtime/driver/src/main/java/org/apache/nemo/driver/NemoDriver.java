@@ -30,6 +30,7 @@ import org.apache.nemo.runtime.common.NettyVMStateStore;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.bytetransfer.DefaultByteTransportImpl;
+import org.apache.nemo.runtime.executor.common.controlmessages.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.common.monitoring.CpuBottleneckDetectorImpl;
 import org.apache.nemo.runtime.executor.offloading.*;
 import org.apache.nemo.runtime.executor.common.*;
@@ -113,6 +114,8 @@ public final class NemoDriver {
   private final EvalConf evalConf;
   private final JobScaler jobScaler;
 
+  private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -146,120 +149,150 @@ public final class NemoDriver {
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
 
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Scaling, message -> {
-      final String decision = message.getScalingMsg().getDecision();
+      singleThread.execute(() -> {
+        final String decision = message.getScalingMsg().getDecision();
 
-      if (evalConf.enableOffloading) {
-        synchronized (this) {
-          LOG.info("Receive scaling decision {}", message.getScalingMsg().getInfo());
+        if (evalConf.enableOffloading) {
+          synchronized (this) {
+            LOG.info("Receive scaling decision {}", message.getScalingMsg().getInfo());
 
-          if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
-            // Op: priority prepareOffloading
-            jobScaler.scalingOut(message.getScalingMsg());
-          } else if (decision.equals("i")) {
-            jobScaler.scalingIn();
-          } else if (decision.equals("pa")) {
-            jobScaler.proactive(message.getScalingMsg());
-          } else if (decision.equals("info")) {
-            jobScaler.broadcastInfo(message.getScalingMsg());
+            if (decision.equals("o") || decision.equals("no") || decision.equals("oratio") || decision.equals("op")) {
+              // Op: priority prepareOffloading
+              jobScaler.scalingOut(message.getScalingMsg());
+            } else if (decision.equals("i")) {
+              jobScaler.scalingIn();
+            } else if (decision.equals("pa")) {
+              jobScaler.proactive(message.getScalingMsg());
+            } else if (decision.equals("info")) {
+              jobScaler.broadcastInfo(message.getScalingMsg());
 
-          } else if (decision.equals("add-yarn")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-          /*
-          final int mem = new Integer(args[1]);
-          final int capactiy = new Integer(args[2]);
-          final String spec = ResourceSpecBuilder.builder()
-            .addResource(ResourceSpecBuilder.ResourceType.Reserved, mem, capactiy)
-            .build();
-          LOG.info("Requesting new yarn executor!! " + spec);
-          */
-            runtimeMaster.requestContainer(resourceSpecificationString,
-              true, false, "Evaluator", num);
-          } else if (decision.equals("add-lambda-executor")) {
-            // scaling executor for Lambda
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.requestLambdaContainer(num);
-          } else if (decision.equals("stop-lambda-executor")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.stopLambdaContainer(num);
-          } else if (decision.equals("add-offloading-executor")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.stopLambdaContainer(num);
-          } else if (decision.equals("send-task-lambda")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            runtimeMaster.sendTaskToLambda();
-          } else if (decision.equals("activate-lambda")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            runtimeMaster.activateLambda();
-          } else if (decision.equals("deactivate-lambda")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            runtimeMaster.deactivateLambda();
-          } else if (decision.equals("send-bursty")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.sendBursty(num);
-          } else if (decision.equals("finish-bursty")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.finishBursty(num);
-          } else if (decision.equals("invoke-partial-offloading")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            runtimeMaster.invokePartialOffloading();
-          } else if (decision.equals("offload-task")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            final int stageId = new Integer(args[2]);
-            runtimeMaster.offloadTask(num, stageId);
+            } else if (decision.equals("add-yarn")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.requestContainer(resourceSpecificationString,
+                true, false, "Evaluator", num);
+            } else if (decision.equals("add-lambda-executor")) {
+              // scaling executor for Lambda
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final boolean resourceTypeLambda = new Boolean(args[2]);
+              runtimeMaster.requestLambdaContainer(num, resourceTypeLambda);
+            } else if (decision.equals("stop-lambda-executor")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.stopLambdaContainer(num);
+            } else if (decision.equals("add-offloading-executor")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.stopLambdaContainer(num);
+            } else if (decision.equals("send-task-lambda")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              runtimeMaster.sendTaskToLambda();
+            } else if (decision.equals("activate-lambda")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              runtimeMaster.activateLambda();
+            } else if (decision.equals("deactivate-lambda")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              runtimeMaster.deactivateLambda();
+            } else if (decision.equals("send-bursty")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.sendBursty(num);
+            } else if (decision.equals("finish-bursty")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.finishBursty(num);
+            } else if (decision.equals("invoke-partial-offloading")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              runtimeMaster.invokePartialOffloading();
+            } else if (decision.equals("offload-task")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final int stageId = new Integer(args[2]);
+              runtimeMaster.offloadTask(num, stageId);
 
-          } else if (decision.equals("deoffload-task")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            final int stageId = new Integer(args[2]);
-            runtimeMaster.deoffloadTask(num, stageId);
+            } else if (decision.equals("deoffload-task")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final int stageId = new Integer(args[2]);
+              runtimeMaster.deoffloadTask(num, stageId);
 
-          } else if (decision.equals("conditional-routing")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final boolean partial = new Boolean(args[1]);
-            final double percent = new Double(args[2]);
-            runtimeMaster.triggerConditionalRouting(partial, percent);
+            } else if (decision.equals("conditional-routing")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final boolean partial = new Boolean(args[1]);
+              final double percent = new Double(args[2]);
+              runtimeMaster.triggerConditionalRouting(partial, percent);
 
-          } else if (decision.equals("move-task")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            final String[] stageIds = args[2].split(",");
-            final List<String> stages =
-              Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
-                .collect(Collectors.toList());
-            for (int i = stages.size() - 1; i >= 0; i--) {
-              jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
-              try {
-                Thread.sleep(300);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
+            } else if (decision.equals("redirection")) {
+              // FOR CR ROUTING!!
+              // VM -> Lambda
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              for (int i = stages.size() - 1; i >= 0; i--) {
+                runtimeMaster.redirectionToLambda(num, Integer.valueOf(stages.get(i)));
+                try {
+                  Thread.sleep(100);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
               }
+            }  else if (decision.equals("redirection-done")) {
+              // FOR CR ROUTING!!
+              // Lambda -> VM
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              for (int i = stages.size() - 1; i >= 0; i--) {
+                runtimeMaster.redirectionDoneToLambda(num, Integer.valueOf(stages.get(i)));
+                try {
+                  Thread.sleep(100);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+            } else if (decision.equals("move-task")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              for (int i = stages.size() - 1; i >= 0; i--) {
+                jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
+                try {
+                  Thread.sleep(150);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+              // runtimeMaster.triggerConditionalRouting(true, evalConf.partialPercent * 0.01);
+            } else if (decision.equals("reclaim-task")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              runtimeMaster.triggerConditionalRouting(false, 0);
+              jobScaler.sendPrevMovedTaskStopSignal(num, stages);
+            } else if (decision.equals("throttle-source")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              runtimeMaster.throttleSource(num);
+            } else {
+              throw new RuntimeException("Invalid scaling decision " + decision);
             }
-            // runtimeMaster.triggerConditionalRouting(true, evalConf.partialPercent * 0.01);
-          } else if (decision.equals("reclaim-task")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            final String[] stageIds = args[2].split(",");
-            final List<String> stages =
-              Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
-                .collect(Collectors.toList());
-            runtimeMaster.triggerConditionalRouting(false, 0);
-            jobScaler.sendPrevMovedTaskStopSignal(num, stages);
-          } else if (decision.equals("throttle-source")) {
-            final String[] args = message.getScalingMsg().getInfo().split(" ");
-            final int num = new Integer(args[1]);
-            runtimeMaster.throttleSource(num);
-          } else {
-            throw new RuntimeException("Invalid scaling decision " + decision);
           }
         }
-      }
+
+      });
     });
 
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {

@@ -97,8 +97,18 @@ public final class BlockOutputWriter implements OutputWriter {
   }
 
   @Override
+  public void write(Object element, String dstTaskId) {
+
+  }
+
+  @Override
   public void writeByteBuf(ByteBuf byteBuf) {
     throw new RuntimeException("Not supported");
+  }
+
+  @Override
+  public void writeByteBuf(ByteBuf byteBuf, String dstTaskId) {
+
   }
 
   @Override

@@ -183,6 +183,11 @@ enum MessageType {
     // routing data from VM to lambda
     RoutingDataToLambda = 67;
     RoutingDataDoneToLambda = 68;
+
+    // for CR
+    GetStateSignal = 69;
+
+    DeactivateLambdaTask = 70;
 }
 
 message LambdaEndMessage {

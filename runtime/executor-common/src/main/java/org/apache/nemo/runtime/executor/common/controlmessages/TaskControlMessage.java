@@ -12,12 +12,83 @@ import java.util.Objects;
 
 public final class TaskControlMessage implements TaskHandlingEvent {
 
+  /*
+   * For R2 reshaping:
+   * CR -> Lambda
+   *    -> VM
+   *
+   ****** TODO: Steps for moving Lambda task *****
+   * (WE SHOULD STOP THE OUTPUT PIPE OF CR TASK AFTER LAMBDA TASK IS MOVED FROM VM->LAMBDA)
+   *  - TODO:
+   *
+   * ****************************************************************************************
+   * ****************************************************************************************
+   * ****************************************************************************************
+   *  STEPS for scheduling Lambda task to Lambda executor
+   *  1) create lambda executor (resource type: LAMBDA)
+   *  2) schedule lambda task (set resource affinity to LAMBDA)
+   *  3) waiting for the scheduling of all tasks
+   *  4) task done in lambda executor (Deactivate task)
+   *  5) TODO: deactivate lamba executor
+   *
+   *  STEPS for activating and deactivating of Lambda tasks
+   *  1) activate lambda executor
+   *  2) redirection
+   *  3) redirection done
+   *  4) TODO: deactivate lambda executor
+   *
+   **************************************************************************************************
+   **************************************************************************************************
+   ****** Steps for rerouting from VM (Lambda) task to Lambda (VM) task ****
+   * 1) from Master -> VM (Lambda) task: INVOKE_REDIRECTION_FOR_CR // done
+   *  For VM->Lambda redirection
+   *    - a) Driver: "redirection num stage_id"
+   *    - b) Master: RoutingDataToLambda control message
+   *    - c) Executor: receive RoutingDataToLambda control message and add INVOKE_REDI.. signal
+   *  For Lambda->VM redirection
+   *    - a) Driver: "redirection-done num stage_id"
+   *    - b) Master: RoutingDataToLambdaDone control message (to the "pair" Lambda task)
+   *    - c) Executor: receive RoutingDataToLambdaDone control message
+   * ----------- (done) -----------
+   * 2) VM (Lambda) task -> CR task: PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING
+   *    - send: (originTaskId, pairTaskId, pairEdge)
+   * 3) CR task: set redirection to Lambda/VM
+   *    - a) add originTaksId, pairTaskId to rerouting table
+   *    - b) redirect when data is sent to originTaskId;
+   * 4) CR task -> VM/Lambda task: PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING // done
+   *    - Here, input pipe state becomes STOPPED,
+   *       we should change it to RUNNING when the data goes back to the task again
+   * 5) VM/Lambda task: state checkpoint for Lambda/VM task // done
+   *    - VM/Lambda task -> Master -> Lambda/VM task: signal GET_STATE_SIGNAL
+   *    - Master: a) receives (VM/Lambda task id)
+   *              b) find pair task id
+   *              c) send GET_STATE_SIGNAL to the pair task id
+   *    - After sending the message, the VM/Lambda task sends stop signal to output pipes
+    *       -- (TASK_OUTPUT_DONE) signal; VM/Lambda task -> downstream tasks
+    *       -- downstream tasks set their input pipe to STOPPED
+   *        -- this is because of watermark handling of transient path
+   * 6) Lambda/VM task (target task):
+   *    - get checkpointed state (taskExecutor.restore())
+   *    - Lambda/VM task -> CR task: STATE_MIGRATION_DONE (TODO)
+   *       - a) send pipe init message to output pipes (TASK_INPUT_START) (TODO)
+   *       - b) send STATE_MIGRATION_DONE to input pipes
+   * 7) CR task:
+   *    - receives STATE_MIGRATION_DONE and flush buffered data to Lambda/VM task
+   **************************************************************************************************
+   **************************************************************************************************
+   * TODO: If Lambda instance is closed, how to handle lambad tasks? and redeploy?
+   */
+
   public enum TaskControlMessageType {
     TASK_STOP_SIGNAL_BY_MASTER,
-    ROUTING_DATA_TO_LAMBDA_BY_MASTER,
-    ROUTING_DATA_DONE_TO_LAMBDA_BY_MASTER,
+    INVOKE_REDIRECTION_FOR_CR,
+
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
+    PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
+
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
+    PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
+
     PIPE_INIT,
     OFFLOAD_CONTROL,
     REGISTER_EXECUTOR,
@@ -27,14 +98,10 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     TASK_SCHEDULED,
 
     // normal and transient path
-
-    // from CR -> Transient
-    INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK,
-    INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK,
-
-    // from Transient -> CR
-    GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK,
-    STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK,
+    GET_STATE_SIGNAL,
+    STATE_MIGRATION_DONE,
+    TASK_OUTPUT_DONE,
+    TASK_INPUT_START,
 
     // For offloaded task
     OFFLOAD_TASK_STOP
@@ -132,19 +199,20 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           bos.writeUTF((String) event);
           break;
         }
+        case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
+          ((RedirectionMessage) event).encode(bos);
+          break;
+        }
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
+          bos.writeBoolean((Boolean)event);
+          break;
+        }
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
         case OFFLOAD_TASK_STOP:
         case PIPE_INIT:
         case DEACTIVATE_LAMBDA:
-        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
-
-        case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK:
-        case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK:
-        case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK:
-        case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK:{
-          break;
-        }
         default:
-          throw new RuntimeException("Invalid control message type encoding " + type);
+          break;
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -167,6 +235,16 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             TaskStopSignalByDownstreamTask.decode(bis));
           break;
         }
+        case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
+          msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
+            RedirectionMessage.decode(bis));
+          break;
+        }
+        case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
+          msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
+            bis.readBoolean());
+          break;
+        }
         case REGISTER_EXECUTOR: {
           msg = new TaskControlMessage(type, inputPipeIndex,
             targetPipeIndex, targetTaskId, bis.readUTF());
@@ -176,16 +254,10 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case PIPE_INIT:
         case DEACTIVATE_LAMBDA:
         case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
-
-        case INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK:
-        case INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK:
-        case GET_STATE_DONE_SIGNAL_FROM_LAMBDA_TASK:
-        case STATE_CHECKPOINT_DONE_SIGNAL_FROM_LAMBDA_TASK:{
+        default:{
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId, null);
           break;
         }
-        default:
-          throw new RuntimeException("invalid control message decoding " + type);
       }
       return msg;
     } catch (final Exception e) {

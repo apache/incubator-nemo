@@ -13,6 +13,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
@@ -42,6 +43,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.COMPUTE;
+import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.LAMBDA;
 import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
@@ -223,7 +225,8 @@ public final class LambdaContainerManager {
     });
   }
 
-  public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num) {
+  public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num,
+                                                                 final boolean resourceTypeLambda) {
 
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
 
@@ -315,8 +318,9 @@ public final class LambdaContainerManager {
         }
 
         // TODO: fix memory and slot
+        final String type = resourceTypeLambda ? LAMBDA : COMPUTE;
         final ResourceSpecification lambdaResourceSpec =
-          new ResourceSpecification(COMPUTE, 1, 100, 1024);
+          new ResourceSpecification(type, 1, 300, 1024);
 
         final ExecutorRepresenter er = new DefaultExecutorRepresenterImpl(lambdaExecutorId,
           lambdaResourceSpec,

@@ -88,6 +88,6 @@ public final class OffloadingTaskControlEventHandlerImpl implements ControlEvent
     final TaskExecutor taskExecutor = taskExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(taskId);
     et.deleteTask(taskExecutor);
-    taskExecutor.checkpoint(false);
+    taskExecutor.checkpoint(false, null);
   }
 }

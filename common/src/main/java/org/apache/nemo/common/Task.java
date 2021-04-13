@@ -61,12 +61,12 @@ public final class Task implements Serializable {
   public final boolean isStreamVertex;
 
   private final String pairTaskId;
+  private final String pairEdgeId;
 
   public enum TaskType {
-    SrcCRTask,
     CRTask,
     TransientTask,
-    NormalTaskWithoutCR,
+    VMTask,
     DefaultTask,
   }
 
@@ -89,6 +89,7 @@ public final class Task implements Serializable {
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable,
               final String pairTaskId,
+              final String pairEdgeId,
               final TaskType taskType) {
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
@@ -105,11 +106,37 @@ public final class Task implements Serializable {
 
     // find pair task
     this.pairTaskId = pairTaskId;
+    this.pairEdgeId = pairEdgeId;
+    /*
+    if (pairTaskId != null) {
+      this.vmTaskTransientTaskEdge = Pair.of(
+         taskOutgoingEdges.stream().filter(edge ->
+        !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()).findFirst().get().getId(),
+        taskOutgoingEdges.stream().filter(edge ->
+        edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()).findFirst().get().getId());
+    } else {
+      this.vmTaskTransientTaskEdge = null;
+    }
+    */
     this.taskType = taskType;
   }
 
+  /*
+  public Pair<String, String> getVmTaskTransientTaskId() {
+    return vmTaskTransientTaskId;
+  }
+
+  public Pair<String, String> getVmTaskTransientTaskEdge() {
+    return vmTaskTransientTaskEdge;
+  }
+  */
+
   public String getPairTaskId() {
     return pairTaskId;
+  }
+
+  public String getPairEdgeId() {
+    return pairEdgeId;
   }
 
   public TaskType getTaskType() {
@@ -172,6 +199,14 @@ public final class Task implements Serializable {
         pairStageId = null;
       }
 
+      final boolean hasPairEdgeId = dis.readBoolean();
+      final String pairEdgeId;
+      if (hasPairEdgeId) {
+        pairEdgeId = dis.readUTF();
+      } else {
+        pairEdgeId = null;
+      }
+
       final TaskType taskType = TaskType.values()[dis.readByte()];
 
       return new Task(taskId,
@@ -181,6 +216,7 @@ public final class Task implements Serializable {
         taskOutgoingEdges,
         irVertexIdToReadable,
         pairStageId,
+        pairEdgeId,
         taskType);
     } catch (final Exception e) {
       e.printStackTrace();
@@ -217,6 +253,13 @@ public final class Task implements Serializable {
         dos.writeBoolean(false);
       }
 
+      if (pairEdgeId != null) {
+        dos.writeBoolean(true);
+        dos.writeUTF(pairEdgeId);
+      } else {
+        dos.writeBoolean(false);
+      }
+
       dos.writeByte(taskType.ordinal());
     } catch (final Exception e) {
       e.printStackTrace();
@@ -228,12 +271,16 @@ public final class Task implements Serializable {
     return taskType.equals(TaskType.CRTask);
   }
 
-  public boolean isLambdaAffinity() {
+  public boolean isTransientTask() {
     return taskType.equals(TaskType.TransientTask);
   }
 
-  public boolean isSrcCrTask() {
-    return taskType.equals(TaskType.SrcCRTask);
+  public boolean isVMTask() {
+    return taskType.equals(TaskType.VMTask);
+  }
+
+  public boolean isDefaultTask() {
+    return taskType.equals(TaskType.DefaultTask);
   }
 
   public boolean isSourceTask() {

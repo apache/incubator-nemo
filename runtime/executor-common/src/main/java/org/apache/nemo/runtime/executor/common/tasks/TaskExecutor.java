@@ -32,7 +32,8 @@ public interface TaskExecutor extends ExecutorThreadTask {
   Task getTask();
   public int getNumKeys();
   TaskMetrics getTaskMetrics();
-  boolean checkpoint(boolean checkpointSource);
+  boolean checkpoint(boolean checkpointSource, String checkpointId);
+  void restore();
   long getThreadId();
   boolean isStateless();
   void setThrottleSourceRate(long rate);

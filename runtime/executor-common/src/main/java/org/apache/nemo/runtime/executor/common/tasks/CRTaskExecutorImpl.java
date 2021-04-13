@@ -18,8 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.common.tasks;
 
+import io.netty.buffer.ByteBuf;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -50,6 +53,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
  * Executes a task.
@@ -116,6 +120,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   private final Transform.ConditionalRouting conditionalRouting;
 
   private final boolean singleOneToOneInput;
+  private final boolean singleOneToOneOutput;
 
   final Map<String, List<OutputWriter>> externalAdditionalOutputMap;
 
@@ -133,8 +138,18 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   private CRTaskState currState = CRTaskState.NORMAL;
 
   private final RuntimeEdge transientPathEdge;
+  private final List<String> transientPathDstTasks;
+  private final Serializer transientPathSerializer;
+
+  private final RuntimeEdge vmPathEdge;
+  private final List<String> vmPathDstTasks;
+  private final Serializer vmPathSerializer;
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
+
+  private final GetDstTaskId getDstTaskId;
+
+  private final int taskIndex;
 
   /**
    * Constructor.
@@ -179,6 +194,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
+    this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
 
     this.externalAdditionalOutputMap = new HashMap<>();
 
@@ -192,7 +208,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne));
 
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+    this.singleOneToOneOutput = task.getTaskOutgoingEdges().get(0)
+      .getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.OneToOne) ||
+      task.getTaskOutgoingEdges().get(0)
+      .getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.TransientOneToOne);
+
+
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
@@ -213,6 +236,22 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent() &&
         edge.getPropertyValue(AdditionalOutputTagProperty.class).get().equals(Util.TRANSIENT_PATH))
       .findFirst().get();
+    this.transientPathDstTasks = getDstTaskIds(transientPathEdge);
+    this.transientPathSerializer = serializerManager.getSerializer(transientPathEdge.getId());
+
+    this.vmPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
+      !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .findFirst().get();
+    this.vmPathDstTasks = getDstTaskIds(vmPathEdge);
+    this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
+
+    this.taskWatermarkManager = new TaskInputWatermarkManager();
+
+    if (vmPathDstTasks.size() > 1) {
+      this.getDstTaskId = new RRDstTAskId();
+    } else {
+      this.getDstTaskId = new O2oDstTaskId();
+    }
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
@@ -222,6 +261,39 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
     prepare();
   }
+
+
+  private List<String> getDstTaskIds(final RuntimeEdge runtimeEdge) {
+    final Optional<CommunicationPatternProperty.Value> comValue =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+
+    final List<String> dstTaskIds;
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+      dstTaskIds = Collections.singletonList(
+        RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0));
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
+      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
+
+      final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
+      dstTaskIds =
+        dstIndices.stream()
+          .map(dstTaskIndex ->
+            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), dstTaskIndex, 0))
+          .collect(Collectors.toList());
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), taskId, dstIndices);
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+    return dstTaskIds;
+  }
+
 
   @Override
   public boolean isSourceAvailable() {
@@ -294,6 +366,18 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   @Override
   public void initialize() {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
+  }
+
+  public void stopInputPipeIndex(final Triple<String, String, String> triple) {
+    LOG.info("Stop input pipe index {}", triple);
+    taskWatermarkManager.stopInputPipeIndex(triple.getMiddle(),
+      RuntimeIdManager.getIndexFromTaskId(triple.getLeft()));
+  }
+
+  public void startInputPipeIndex(final Triple<String, String, String> triple) {
+    LOG.info("Start input pipe index {}", triple);
+    taskWatermarkManager.startInputPipeIndex(triple.getMiddle(),
+      RuntimeIdManager.getIndexFromTaskId(triple.getLeft()));
   }
 
   private void prepare() {
@@ -558,185 +642,130 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       vertexIdAndCollectorMap.values()) {
       metricCollector.left().setAdjustTime(adjustTime);
     }
-
   }
 
-  /**
-   * Process a data element down the DAG dependency.
+  private final Map<String, String> reroutingTable = new HashMap<>();
+
+  private void writeByteBuf(final String vmDstTaskId,
+                            final ByteBuf data) {
+    if (reroutingTable.containsKey(vmDstTaskId)) {
+      pipeManagerWorker.writeByteBufData(taskId,
+        transientPathEdge.getId(), reroutingTable.get(vmDstTaskId), data);
+    } else {
+      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(), vmDstTaskId, data);
+    }
+  }
+
+  private void writeData(final String vmDstTaskId,
+                         final Object data) {
+    if (reroutingTable.containsKey(vmDstTaskId)) {
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        reroutingTable.get(vmDstTaskId),
+        transientPathSerializer,
+        data);
+    } else {
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmDstTaskId,
+        vmPathSerializer,
+        data);
+    }
+  }
+
+  public void setRerouting(final String originTask,
+                           final String pairTaskId,
+                           final String pairEdgeId) {
+    if (pairEdgeId.equals(transientPathEdge.getId())) {
+      // rerouting from VM to Lambda
+      reroutingTable.put(originTask, pairTaskId);
+    } else {
+      // rerouting from Lambda to VM
+      reroutingTable.remove(pairTaskId);
+    }
+  }
+
+
+  /*****************************************************************
+   ************************ WATERMARK HANDLING *********************
+   *****************************************************************
+   * 현재 문제점:
+   *  - TaskWatermarkHandler는 static하게 edge를 받아서, 모든 edge로부터 watermark를 기다림.
+   *  - 만약 transient path로 data가 안가고 있다면, 이쪽으로 watermark도 보내지지 않을 것.
+   *  - 따라서, data가 안가는 incoming edge를 판단해서 (stopped edge), 이 edge로는 watermark tracking X
+   *    - a) input stop 시키고, state가 0이될 때까지 output은 stop시키지 않음.
+   *    - b) state가 0이 되면, downstream task로 output stop signal 보냄.
+   *    - c) taskWatermarkManager에서 input pipe stop되면 tracking하지 않음.
    */
-  private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
-
-    final long ns = System.nanoTime();
-
-    outputCollector.setInputTimestamp(dataElement.timestamp);
-    outputCollector.emit(dataElement.value);
-
-    final long endNs = System.nanoTime();
-
-    taskMetrics.incrementComputation(endNs - ns);
-  }
-
-  private void processWatermark(final OutputCollector outputCollector,
-                                final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
-  private final Queue<Pair<String, TaskHandlingEvent>> pendingQueue = new LinkedBlockingQueue<>();
-
-  // For state migration from VM -> Lambda
-  public void prepareRoutingToLambda() {
-    LOG.info("Prepare routing from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.STATE_MIGRATION_TO_LAMBDA;
-    stateMigration(task.getPairTaskId());
-
-    pipeManagerWorker.writeControlMessage(taskId,
-      transientPathEdge.getId(),
-      task.getPairTaskId(),
-      TaskControlMessage.TaskControlMessageType.INIT_GET_STATE_SIGNAL_TO_LAMBDA_TASK);
-  }
-
-  public void prepareRoutingDoneToLambda() {
-    LOG.info("Prepare routing done from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.STATE_MIGRATION_FROM_LAMBDA;
-
-    pipeManagerWorker.writeControlMessage(taskId,
-      transientPathEdge.getId(),
-      task.getPairTaskId(),
-      TaskControlMessage.TaskControlMessageType.INIT_STATE_CHECKPOINT_SIGNAL_TO_LAMBDA_TASK);
-  }
-
-  // From Lambda -> VM
-  public void finishRoutingToLambda() {
-    if (currState != CRTaskState.STATE_MIGRATION_FROM_LAMBDA) {
-      throw new RuntimeException("Invalid curr state " + currState);
-    }
-
-    stateRestore(taskId);
-    currState = CRTaskState.NORMAL;
-
-    // flush buffer to local
-    pendingQueue.forEach(data -> {
-      handleData(data.left(), data.right());
-    });
-  }
-
-  public void startRoutingToLambda() {
-    if (currState != CRTaskState.STATE_MIGRATION_TO_LAMBDA) {
-      throw new RuntimeException("Invalid curr state " + currState);
-    }
-    LOG.info("Start routing from {} to {}", taskId, task.getPairTaskId());
-    currState = CRTaskState.SEND_DATA_TO_LAMBDA;
-    // flush buffer
-    pendingQueue.forEach(data -> {
-      // Send to remote additional tag output writer
-      externalAdditionalOutputMap.get(Util.TRANSIENT_PATH)
-        .forEach(writer -> {
-          final TaskHandlingEvent event = data.right();
-          if (event instanceof TaskHandlingDataEvent) {
-            writer.writeByteBuf(data.right().getDataByteBuf());
-          } else if (event instanceof TaskLocalDataEvent) {
-            writer.write(data.right().getData());
-          }
-        });
-    });
-    pendingQueue.clear();
-  }
 
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    switch (currState) {
-      case NORMAL: {
-        // input
-        taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-        final long serializedStart = System.nanoTime();
-        final Object data = taskHandlingEvent.getData();
-        final long serializedEnd = System.nanoTime();
-
-        taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
-
-        // LOG.info("Handling data for task {}, index {}, watermark {}",
-        //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
-
-        try {
-          handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
-            edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-            " event " + data.getClass() + ", " +
-            ((TaskRelayDataEvent) taskHandlingEvent).remoteLocal + ", "
-            + ((TaskRelayDataEvent) taskHandlingEvent).valueDecoderFactory);
-        }
-        break;
-      }
-      case STATE_MIGRATION_TO_LAMBDA:
-      case STATE_MIGRATION_FROM_LAMBDA: {
-        pendingQueue.add(Pair.of(edgeId, taskHandlingEvent));
-        break;
-      }
-      case SEND_DATA_TO_LAMBDA: {
-        // Send to lambda transient task
-        externalAdditionalOutputMap.get(Util.TRANSIENT_PATH)
-          .forEach(writer -> {
-            if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-              writer.writeByteBuf(taskHandlingEvent.getDataByteBuf());
-            } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
-              writer.write(taskHandlingEvent.getData());
-            }
-          });
-        break;
-      }
-      default: {
-        throw new RuntimeException("Not supported " + currState);
-      }
-    }
-  }
-
-  // TODO: watermark handling for transient path
-  private void handleInternalData(final DataFetcher dataFetcher, Object event) {
-    if (event instanceof Finishmark) {
-      // We've consumed all the data from this data fetcher.
-    } else if (event instanceof WatermarkWithIndex) {
-      // Watermark
-      // LOG.info("Handling watermark with index {}", event);
-      final WatermarkWithIndex d = (WatermarkWithIndex) event;
-
+    // watermark handling
+    final String vmDstTaskId = getDstTaskId.getDstTaskId();
+    if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+      final ByteBuf data = taskHandlingEvent.getDataByteBuf();
       if (singleOneToOneInput) {
-        processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
+        if (singleOneToOneOutput) {
+          // single o2o - single o2o output
+          writeByteBuf(vmDstTaskId, data);
+        } else {
+          // single o2o - RR output
+          // broadcast watermark
+          vmPathDstTasks.forEach(vmTId -> {
+            writeByteBuf(vmTId, data);
+          });
+        }
       } else {
-        final Optional<Watermark> watermark =
-          taskWatermarkManager.updateWatermark(dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp());
+        final ByteBuf byteBuf = data;
+        byteBuf.markReaderIndex();
+        final Byte b = byteBuf.readByte();
+        byteBuf.resetReaderIndex();
 
-        if (watermark.isPresent()) {
-          // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
-          processWatermark(dataFetcher.getOutputCollector(), watermark.get());
+        if (b == 0x01) {
+          // watermark!
+          // we should manage the watermark
+          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+            watermarkWithIndex.getWatermark().getTimestamp())
+            .ifPresent(watermark -> {
+              // LOG.info("Emit watermark streamvertex in {} {}", taskId, new Instant(watermark.getTimestamp()));
+              vmPathDstTasks.forEach(vmTId -> {
+                writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
+              });
+            });
+        } else {
+          // data
+          writeByteBuf(vmDstTaskId, data);
         }
       }
-    } else if (event instanceof Watermark) {
-      // This MUST BE generated from input source
-      if (!isSource()) {
-        throw new RuntimeException("Invalid watermark !! this task is not source " + taskId);
+    } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+      final Object data = taskHandlingEvent.getData();
+      if (singleOneToOneInput) {
+        if (singleOneToOneOutput) {
+          writeData(vmDstTaskId, data);
+        } else {
+          // single o2o - RR output
+          // broadcast watermark
+          vmPathDstTasks.forEach(vmTId -> {
+            writeData(vmTId, data);
+          });
+        }
+      } else {
+        if (data instanceof WatermarkWithIndex) {
+          // watermark!
+          // we should manage the watermark
+          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+            watermarkWithIndex.getWatermark().getTimestamp())
+            .ifPresent(watermark -> {
+              vmPathDstTasks.forEach(vmTId -> {
+                writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
+              });
+            });
+
+        } else {
+          writeData(vmDstTaskId, data);
+        }
       }
-      processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
-    } else if (event instanceof TimestampAndValue) {
-      // This MUST BE generated from remote source
-      taskMetrics.incrementInputElement();
-      // Process data element
-//      if (!isSource()) {
-//        final OperatorVertex ov = ((DataFetcherOutputCollector) dataFetcher.getOutputCollector()).getNextOperatorVertex();
-//        LOG.info("Processing element for task {}, of operator {}, transform {}", taskId, ov.getId(), ov.getTransform());
-//      }
-      processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
-    } else {
-      throw new RuntimeException("Invalids event type " + event);
-      /*
-      // input for streaming vertex !!
-      final long ns = System.nanoTime();
-      dataFetcher.getOutputCollector().emit(event);
-      final long endNs = System.nanoTime();
-      taskMetrics.incrementComputation(endNs - ns);
-      */
     }
   }
 
@@ -745,8 +774,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   public boolean handleSourceData() {
     throw new RuntimeException("not support");
   }
-
-
 
   ////////////////////////////////////////////// Transform-specific helper methods
 
@@ -770,7 +797,8 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     return Optional.empty();
   }
 
-  private void restore() {
+  @Override
+  public void restore() {
     stateRestore(taskId);
   }
 
@@ -805,14 +833,42 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
-  public boolean checkpoint(final boolean checkpointSource) {
-    stateMigration(taskId);
+  public boolean checkpoint(final boolean checkpointSource,
+                            final String checkpointId) {
+    stateMigration(checkpointId);
     return true;
   }
-
 
   @Override
   public String toString() {
     return taskId;
+  }
+
+  interface GetDstTaskId {
+    String getDstTaskId();
+  }
+
+  final class RRDstTAskId implements GetDstTaskId {
+    int index = 0;
+    public RRDstTAskId() {
+
+    }
+
+    @Override
+    public String getDstTaskId() {
+      index = (index + 1) % vmPathDstTasks.size();
+      return vmPathDstTasks.get(index);
+    }
+  }
+
+  final class O2oDstTaskId implements GetDstTaskId {
+    public O2oDstTaskId() {
+
+    }
+
+    @Override
+    public String getDstTaskId() {
+      return vmPathDstTasks.get(0);
+    }
   }
 }

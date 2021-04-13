@@ -1,10 +1,14 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -59,6 +63,42 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
         .collect(Collectors.toList()));
     }
 
+    // Set [Src->CR vertex] to SOURCE in order to schedule them in the same machine
+    dag.getOutgoingEdgesOf(sourceStages.get(0))
+      .stream()
+      .filter(edge -> edge.getDst() instanceof ConditionalRouterVertex)
+      .forEach(edge -> edge.getDst()
+        .setPropertyPermanently(ResourcePriorityProperty.of(ResourcePriorityProperty.SOURCE)));
+
+    dag.topologicalDo(vertex -> {
+      if (vertex instanceof ConditionalRouterVertex) {
+        if (!vertex.getPropertyValue(ResourcePriorityProperty.class)
+          .get().equals(ResourcePriorityProperty.SOURCE)) {
+
+          final List<IRVertex> verticesToAdd = new LinkedList<>();
+          final List<IRVertex> stack = new LinkedList<>();
+
+          final IREdge transientEdge = dag.getOutgoingEdgesOf(vertex).stream().filter(edge ->
+            edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+            .findFirst().get();
+
+          stack.add(transientEdge.getDst());
+          while (!stack.isEmpty()) {
+            final IRVertex s = ((LinkedList<IRVertex>) stack).poll();
+            final List<IREdge> outEdges = dag.getOutgoingEdgesOf(s);
+            for (final IREdge outEdge : outEdges) {
+              if (!(outEdge.getDst() instanceof ConditionalRouterVertex)) {
+                if (!verticesToAdd.contains(outEdge.getDst())) {
+                    verticesToAdd.add(outEdge.getDst());
+                    stack.add(outEdge.getDst());
+                    outEdge.getDst().setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
+                }
+              }
+            }
+          }
+        }
+      }
+    });
     return dag;
   }
 }

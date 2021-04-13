@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 
 /**
@@ -255,7 +256,8 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void writeControlMessage(String srcTaskId, String edgeId, String dstTaskId, TaskControlMessage.TaskControlMessageType type) {
+  public void writeControlMessage(String srcTaskId, String edgeId, String dstTaskId, TaskControlMessage.TaskControlMessageType type,
+                                  Object event) {
 
   }
 
@@ -285,11 +287,6 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
-    throw new RuntimeException("not suport");
-  }
-
-  @Override
   public void sendPipeInitMessage(String srcTaskId, String edgeId, String dstTaskId) {
 
   }
@@ -307,7 +304,12 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId) {
+  public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
+
+  }
+
+  @Override
+  public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
 
   }
 
