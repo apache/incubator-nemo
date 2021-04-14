@@ -46,6 +46,10 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
   }
 
   private int findNextMinWatermarkIndex() {
+    if (allStopped) {
+      return -1;
+    }
+
     int index = -1;
     long timestamp = Long.MAX_VALUE;
     for (int i = 0; i < watermarks.size(); i++) {
@@ -59,6 +63,8 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
     return index;
   }
 
+  private boolean allStopped = false;
+
   public synchronized long getWatermark(final int index) {
     //LOG.info("Watermark request index: {}. size: {},. get {}",
     //  index, watermarks.size(), watermarks.get(index));
@@ -67,6 +73,9 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
 
   public void stopInputPipeWatermark(final int edgeIndex) {
     stoppedWatermarks.set(edgeIndex, true);
+    if (stoppedWatermarks.stream().allMatch(val -> val)) {
+      allStopped = true;
+    }
   }
 
   public List<Boolean> getStoppedWatermarks() {
@@ -79,9 +88,14 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
     if (watermarks.get(edgeIndex) < watermark) {
       watermarks.set(edgeIndex, watermark);
     }
+    allStopped = false;
   }
 
   public Optional<Long> updateAndGetCurrentWatermark() {
+    if (allStopped) {
+      return Optional.empty();
+    }
+
     if (watermarks.size() == 1) {
       if (stoppedWatermarks.get(0)) {
         return Optional.empty();

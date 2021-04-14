@@ -22,6 +22,9 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
   private final String taskId;
 
+  private boolean vmPathAllStopped = false;
+  private boolean lambdaPathAllStopped = false;
+
   public R2PairEdgeWatermarkTracker(final String vmPathEdgeId,
                                     final String lambdaPathEdgeId,
                                     final String taskId,
@@ -51,6 +54,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
           dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
         });
 
+      if (!lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
+        lambdaPathAllStopped = true;
+      }
+
+      vmPathAllStopped = false;
       vmWatermarkTracker.startInputPipeWatermark(index,
         lambdaWatermarkTracker.getWatermark(index));
 
@@ -64,6 +72,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         .ifPresent(watermark -> {
           dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
         });
+
+      if (!vmWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
+        vmPathAllStopped = true;
+      }
+      lambdaPathAllStopped = false;
     }
 
     LOG.info("Stopped watermark index in task {}, " +
@@ -77,9 +90,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     final int index = parallelism == 1 ? 0 : taskIndex;
 
     if (edgeId.equals(lambdaPathEdgeId)) {
+      lambdaPathAllStopped = false;
       lambdaWatermarkTracker.startInputPipeWatermark(index,
         vmWatermarkTracker.getWatermark(index));
     } else {
+      vmPathAllStopped = false;
       vmWatermarkTracker.startInputPipeWatermark(index,
         lambdaWatermarkTracker.getWatermark(index));
     }
@@ -89,25 +104,40 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
   public Optional<Long> trackAndEmitWatermarks(final String edgeId,
                                                final int taskIndex,
                                                final long watermark) {
+    if (lambdaPathAllStopped) {
+      final Optional<Long> val =
+        vmWatermarkTracker.trackAndEmitWatermarks(vmPathEdgeId, taskIndex, watermark);
 
-    final Optional<Long> val;
-    final boolean pairStopped;
-    if (edgeId.equals(lambdaPathEdgeId)) {
-      val = lambdaWatermarkTracker.trackAndEmitWatermarks(lambdaPathEdgeId, taskIndex, watermark);
-      pairStopped = !vmWatermarkTracker.updateAndGetCurrentWatermark().isPresent();
-    } else {
-      val = vmWatermarkTracker.trackAndEmitWatermarks(vmPathEdgeId, taskIndex, watermark);
-      pairStopped = !lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent();
-    }
-
-    if (val.isPresent()) {
-      // update output watermark!
-      final long outputW = dataFetcherWatermarkMap.get(edgeId);
-      if (outputW > val.get()) {
-        throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
+      if (val.isPresent()) {
+        dataFetcherWatermarkMap.put(edgeId, val.get());
       }
 
-      dataFetcherWatermarkMap.put(edgeId, val.get());
+      return val;
+    } else if (vmPathAllStopped) {
+      final Optional<Long> val = lambdaWatermarkTracker
+        .trackAndEmitWatermarks(lambdaPathEdgeId, taskIndex, watermark);
+
+      if (val.isPresent()) {
+        dataFetcherWatermarkMap.put(edgeId, val.get());
+      }
+
+      return val;
+    } else {
+      final Optional<Long> val;
+      if (edgeId.equals(lambdaPathEdgeId)) {
+        val = lambdaWatermarkTracker.trackAndEmitWatermarks(lambdaPathEdgeId, taskIndex, watermark);
+      } else {
+        val = vmWatermarkTracker.trackAndEmitWatermarks(vmPathEdgeId, taskIndex, watermark);
+      }
+
+      if (val.isPresent()) {
+        // update output watermark!
+        final long outputW = dataFetcherWatermarkMap.get(edgeId);
+        if (outputW > val.get()) {
+          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
+        }
+
+        dataFetcherWatermarkMap.put(edgeId, val.get());
 
       /*
       LOG.info("R2 pair trackAndEmitWatermark task {} edge {} / {} / {} emit watermark {}, pairStopped {} / prev watermark {}" +
@@ -115,20 +145,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         taskId, edgeId, taskIndex, watermark, outputW, pairStopped, prevWatermark, dataFetcherWatermarkMap);
         */
 
-      final long minWatermark;
-      if (pairStopped) {
-        minWatermark = outputW;
-      } else {
-        minWatermark = Collections.min(dataFetcherWatermarkMap.values());
-      }
-
-      if (minWatermark > prevWatermark) {
-        // watermark progress
-        prevWatermark = minWatermark;
+        final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
         return Optional.of(minWatermark);
+      } else {
+        return Optional.empty();
       }
     }
-
-    return Optional.empty();
   }
 }
