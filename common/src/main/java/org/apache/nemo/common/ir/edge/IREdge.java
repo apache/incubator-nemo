@@ -72,6 +72,19 @@ public final class IREdge extends Edge<IRVertex> {
     return this;
   }
 
+  public boolean isTransientEdge() {
+    return getPropertyValue(CommunicationPatternProperty.class)
+      .get()
+      .equals(CommunicationPatternProperty.Value.TransientShuffle) ||
+      getPropertyValue(CommunicationPatternProperty.class)
+        .get()
+        .equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
+      getPropertyValue(CommunicationPatternProperty.class)
+        .get()
+        .equals(CommunicationPatternProperty.Value.TransientRR);
+  }
+
+
   /**
    * Get the executionProperty of the IREdge.
    *

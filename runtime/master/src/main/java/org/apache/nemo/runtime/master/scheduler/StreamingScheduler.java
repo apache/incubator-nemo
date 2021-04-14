@@ -64,6 +64,7 @@ public final class StreamingScheduler implements Scheduler {
   private final TransferIndexMaster transferIndexMaster;
   private final TaskOffloadingManager taskOffloadingManager;
   private final PairStageTaskManager pairStageTaskManager;
+  private final TaskScheduledMapMaster taskScheduledMapMaster;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -74,6 +75,7 @@ public final class StreamingScheduler implements Scheduler {
                      final PipeIndexMaster pipeIndexMaster,
                      final TransferIndexMaster transferIndexMaster,
                      final PairStageTaskManager pairStageTaskManager,
+                     final TaskScheduledMapMaster taskScheduledMapMaster,
                      final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
@@ -84,6 +86,7 @@ public final class StreamingScheduler implements Scheduler {
     this.transferIndexMaster = transferIndexMaster;
     this.taskOffloadingManager = taskOffloadingManager;
     this.pairStageTaskManager = pairStageTaskManager;
+    this.taskScheduledMapMaster = taskScheduledMapMaster;
   }
 
   @Override
@@ -184,15 +187,19 @@ public final class StreamingScheduler implements Scheduler {
     // Schedule everything at once
     LOG.info("All tasks: {}", allTasks);
 
-      try {
-        Thread.sleep(6000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    // Add pending tasks
+    taskScheduledMapMaster.tasksToBeScheduled(allTasks);
 
-      for (final Task t : allTasks) {
-        pendingTaskCollectionPointer.addTask(t);
-      }
+    try {
+      Thread.sleep(6000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+
+    for (final Task t : allTasks) {
+      pendingTaskCollectionPointer.addTask(t);
+    }
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 

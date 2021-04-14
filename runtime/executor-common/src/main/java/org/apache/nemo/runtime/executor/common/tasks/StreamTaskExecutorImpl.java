@@ -174,7 +174,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     if (singleOneToOneInput) {
       this.taskWatermarkManager =  null;
     } else {
-      this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+      this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager(taskId));
     }
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.dstTaskId = RuntimeIdManager.generateTaskId(((StageEdge)outputEdge).getDst().getId(),

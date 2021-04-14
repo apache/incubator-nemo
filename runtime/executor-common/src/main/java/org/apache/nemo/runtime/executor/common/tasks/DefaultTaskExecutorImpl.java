@@ -181,7 +181,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne));
 
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager());
+    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager(taskId));
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;

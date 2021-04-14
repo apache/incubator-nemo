@@ -25,6 +25,8 @@ import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -38,6 +40,7 @@ import java.util.Optional;
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
+  private static final Logger LOG = LoggerFactory.getLogger(RuntimeEdge.class.getName());
   private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
 
   /**
@@ -57,12 +60,14 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   }
 
   public boolean isTransientPath() {
-    return executionProperties.get(CommunicationPatternProperty.class)
-      .equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
-     executionProperties.get(CommunicationPatternProperty.class)
-      .equals(CommunicationPatternProperty.Value.TransientRR) ||
-      executionProperties.get(CommunicationPatternProperty.class)
-      .equals(CommunicationPatternProperty.Value.TransientShuffle);
+    final CommunicationPatternProperty.Value val =
+      executionProperties.get(CommunicationPatternProperty.class).get();
+
+    LOG.info("Runtime edge {}, transient path check {}", getId(), val);
+
+    return val.equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
+      val.equals(CommunicationPatternProperty.Value.TransientRR) ||
+      val.equals(CommunicationPatternProperty.Value.TransientShuffle);
   }
 
   public void removeEncoderDecoder() {

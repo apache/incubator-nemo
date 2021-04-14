@@ -5,8 +5,10 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.runtime.master.lambda.LambdaTaskContainerEventHandler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
@@ -22,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
 public final class TaskScheduledMapMaster {
@@ -46,14 +49,20 @@ public final class TaskScheduledMapMaster {
 
   private final Map<String, String> taskOriginalExecutorIdMap = new ConcurrentHashMap<>();
 
+  private final Map<String, Task> lambdaTaskMap = new ConcurrentHashMap<>();
+
+  private final LambdaTaskContainerEventHandler lambdaEventHandler;
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final MessageEnvironment messageEnvironment,
-                                 final TaskLocationMap taskLocationMap) {
+                                 final TaskLocationMap taskLocationMap,
+                                 final LambdaTaskContainerEventHandler lambdaEventHandler) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
+    this.lambdaEventHandler = lambdaEventHandler;
     this.taskLocationMap = taskLocationMap;
     messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
       new TaskScheduleMapReceiver());
@@ -93,7 +102,9 @@ public final class TaskScheduledMapMaster {
   }
 
   public Task removeTask(final String taskId) {
-    return taskIdTaskMap.remove(taskId);
+    final Task t = taskIdTaskMap.remove(taskId);
+    lambdaTaskMap.remove(taskId);
+    return t;
   }
 
   public synchronized void keepOnceCurrentTaskExecutorIdMap() {
@@ -113,13 +124,34 @@ public final class TaskScheduledMapMaster {
     return prevTaskExecutorIdMap;
   }
 
-  public void addTask(final String taskId, final Task task) {
-    taskIdTaskMap.put(taskId, task);
+  public void tasksToBeScheduled(final List<Task> tasks) {
+    tasks.forEach(task -> {
+      taskIdTaskMap.put(task.getTaskId(), task);
+
+      task.getPropertyValue(ResourcePriorityProperty.class).ifPresent(val -> {
+        if (val.equals(ResourcePriorityProperty.LAMBDA)) {
+          lambdaTaskMap.put(task.getTaskId(), task);
+        }
+      });
+    });
+  }
+
+  public boolean isAllLambdaTaskExecuting() {
+    if (lambdaTaskMap.size() <= 0) {
+      return false;
+    }
+
+    for (final String lambdaTaskId : lambdaTaskMap.keySet()) {
+      if (!taskExecutorIdMap.containsKey(lambdaTaskId)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private synchronized void executingTask(final String executorId, final String taskId) {
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
-
 
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
     LOG.info("Put task {} to executor {}", taskId, representer.getExecutorId());
@@ -217,6 +249,9 @@ public final class TaskScheduledMapMaster {
           final ControlMessage.TaskExecutingMessage m = message.getTaskExecutingMsg();
           LOG.info("Receive task executing message {} from {}", m.getTaskId(), m.getExecutorId());
           executingTask(m.getExecutorId(), m.getTaskId());
+          if (isAllLambdaTaskExecuting()) {
+            lambdaEventHandler.onAllLambdaTaskScheduled();
+          }
           break;
         }
         default: {

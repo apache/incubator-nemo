@@ -309,7 +309,6 @@ public final class TaskDispatcher {
 
               LOG.info("{} scheduled to {} for origin", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
-              taskScheduledMap.addTask(task.getTaskId(), task);
               selectedExecutor.onTaskScheduled(task);
 
             } else {
@@ -334,7 +333,6 @@ public final class TaskDispatcher {
 
                 LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
                 // send the task
-                taskScheduledMap.addTask(task.getTaskId(), task);
                 selectedExecutor.onTaskScheduled(task);
               } else {
                 couldNotSchedule.add(task);

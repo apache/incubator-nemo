@@ -3,6 +3,8 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -169,14 +171,34 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           final int index = RuntimeIdManager.getIndexFromTaskId(srcTask);
           taskExecutor.getTask().getTaskOutgoingEdges()
             .forEach(outgoingEdge -> {
-              final String dstTaskId =
-                RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), index, 0);
-              pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
-                TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE,
-                null);
-              if (evalConf.controlLogging) {
-                LOG.info("Send task output done signal from {} to {}", srcTask,
-                  dstTaskId);
+              if (outgoingEdge.getDataCommunicationPattern()
+                .equals(CommunicationPatternProperty.Value.TransientOneToOne)
+                || outgoingEdge.getDataCommunicationPattern()
+                .equals(CommunicationPatternProperty.Value.OneToOne)) {
+                final String dstTaskId =
+                  RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), index, 0);
+                pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
+                  TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE,
+                  null);
+                if (evalConf.controlLogging) {
+                  LOG.info("Send task output done signal from {} to {}", srcTask,
+                    dstTaskId);
+                }
+              } else {
+                final int parallelism = outgoingEdge.getSrcIRVertex()
+                  .getPropertyValue(ParallelismProperty.class).get();
+
+                for (int i = 0; i < parallelism; i++) {
+                  final String dstTaskId =
+                    RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), i, 0);
+                  pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
+                    TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE,
+                    null);
+                  if (evalConf.controlLogging) {
+                    LOG.info("Send task output done signal from {} to {}", srcTask,
+                      dstTaskId);
+                  }
+                }
               }
             });
 

@@ -1,32 +1,47 @@
 package org.apache.nemo.runtime.executor.common;
 
+import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public final class StageWatermarkTracker {
+public final class SingleStageWatermarkTracker implements WatermarkTracker {
 
   private final List<Long> watermarks;
+  private final List<Boolean> stoppedWatermarks;
   private int minWatermarkIndex;
   private Long currMinWatermark = Long.MIN_VALUE;
+  private static final Logger LOG = LoggerFactory.getLogger(SingleStageWatermarkTracker.class.getName());
+  private final String taskId;
 
 
-  public StageWatermarkTracker(final List<Long> watermarks,
-                               final int minWatermarkIndex,
-                               final Long currMinWatermark) {
+  private SingleStageWatermarkTracker(final List<Long> watermarks,
+                                      final List<Boolean> stoppedWatermarks,
+                                      final int minWatermarkIndex,
+                                      final Long currMinWatermark,
+                                      final String taskId) {
     this.watermarks = watermarks;
+    this.stoppedWatermarks = stoppedWatermarks;
     this.minWatermarkIndex = minWatermarkIndex;
     this.currMinWatermark = currMinWatermark;
+    this.taskId = taskId;
   }
 
-  public StageWatermarkTracker(final int numTasks) {
+  public SingleStageWatermarkTracker(final int numTasks,
+                                     final String taskId) {
     this.watermarks = new ArrayList<>(numTasks);
+    this.stoppedWatermarks = new ArrayList<>(numTasks);
     this.minWatermarkIndex = 0;
+    this.taskId = taskId;
 
     for (int i = 0; i < numTasks; i++) {
       watermarks.add(Long.MIN_VALUE);
+      stoppedWatermarks.add(false);
     }
   }
 
@@ -34,9 +49,11 @@ public final class StageWatermarkTracker {
     int index = -1;
     long timestamp = Long.MAX_VALUE;
     for (int i = 0; i < watermarks.size(); i++) {
-      if (watermarks.get(i) < timestamp) {
-        index = i;
-        timestamp = watermarks.get(i);
+      if (!stoppedWatermarks.get(i)) {
+        if (watermarks.get(i) < timestamp) {
+          index = i;
+          timestamp = watermarks.get(i);
+        }
       }
     }
     return index;
@@ -48,8 +65,63 @@ public final class StageWatermarkTracker {
     return watermarks.get(index);
   }
 
+  public void stopInputPipeWatermark(final int edgeIndex) {
+    stoppedWatermarks.set(edgeIndex, true);
+  }
 
-  public synchronized Optional<Long> trackAndEmitWatermarks(final int edgeIndex, final long watermark) {
+  public List<Boolean> getStoppedWatermarks() {
+    return stoppedWatermarks;
+  }
+
+  public void startInputPipeWatermark(final int edgeIndex,
+                                      final long watermark) {
+    stoppedWatermarks.set(edgeIndex, false);
+    if (watermarks.get(edgeIndex) < watermark) {
+      watermarks.set(edgeIndex, watermark);
+    }
+  }
+
+  public Optional<Long> updateAndGetCurrentWatermark() {
+    if (watermarks.size() == 1) {
+      if (stoppedWatermarks.get(0)) {
+        return Optional.empty();
+      } else {
+        return Optional.of(watermarks.get(0));
+      }
+    } else {
+      // find min watermark
+      final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
+
+      if (nextMinWatermarkIndex <= 0) {
+        return Optional.empty();
+      }
+
+      final Long nextMinWatermark = watermarks.get(nextMinWatermarkIndex);
+
+      if (nextMinWatermark > currMinWatermark) {
+        // Watermark timestamp progress!
+        // Emit the min watermark
+        minWatermarkIndex = nextMinWatermarkIndex;
+        currMinWatermark = nextMinWatermark;
+        return Optional.of(currMinWatermark);
+      } else {
+        return Optional.of(currMinWatermark);
+      }
+    }
+  }
+
+  @Override
+  public synchronized Optional<Long> trackAndEmitWatermarks(final String edgeId,
+                                                            final int edgeIndex,
+                                                            final long watermark) {
+    LOG.info("Track and emit watermark in task {} for edge {} / {} / {}, " +
+        "minWatermark: {}, minWatermarkIndex: {}, watermarks: {}",
+      taskId,
+      edgeId, edgeIndex, new Instant(watermark),
+      currMinWatermark,
+      minWatermarkIndex,
+      watermarks);
+
     if (watermarks.size() == 1) {
       // single o2o
       // update min watermark
@@ -95,7 +167,8 @@ public final class StageWatermarkTracker {
         // The recent watermark timestamp cannot be less than the previous one
         // because watermark is monotonically increasing.
         if (watermarks.get(edgeIndex) > watermark) {
-
+          LOG.warn("Warning pre watermark {} is larger than current {}, index {}",
+            new Instant(watermarks.get(edgeIndex)), new Instant(watermark), edgeIndex);
         } else {
           watermarks.set(edgeIndex, watermark);
         }
@@ -123,11 +196,13 @@ public final class StageWatermarkTracker {
   public void encode(DataOutputStream dos) {
     try {
       dos.writeInt(watermarks.size());
-      for (final Long watermark : watermarks) {
-        dos.writeLong(watermark);
+      for (int i = 0; i < watermarks.size(); i++) {
+        dos.writeLong(watermarks.get(i));
+        dos.writeBoolean(stoppedWatermarks.get(i));
       }
       dos.writeInt(minWatermarkIndex);
       dos.writeLong(currMinWatermark);
+      dos.writeUTF(taskId);
 
     } catch (final Exception e) {
       e.printStackTrace();
@@ -136,17 +211,20 @@ public final class StageWatermarkTracker {
     }
   }
 
-  public static StageWatermarkTracker decode(final DataInputStream is) {
+  public static SingleStageWatermarkTracker decode(final DataInputStream is) {
     try {
       final int size = is.readInt();
       final List<Long> watermarks = new ArrayList<>(size);
+      final List<Boolean> stoppedWatermarks = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
         watermarks.add(is.readLong());
+        stoppedWatermarks.add(is.readBoolean());
       }
       final int minWatermarkIndex = is.readInt();
       final long currMinWatermark = is.readLong();
+      final String taskId = is.readUTF();
 
-      return new StageWatermarkTracker(watermarks, minWatermarkIndex, currMinWatermark);
+      return new SingleStageWatermarkTracker(watermarks, stoppedWatermarks, minWatermarkIndex, currMinWatermark, taskId);
     } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);

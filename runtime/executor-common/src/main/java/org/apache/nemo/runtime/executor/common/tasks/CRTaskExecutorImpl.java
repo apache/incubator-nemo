@@ -27,8 +27,8 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.PairEdgeProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -40,8 +40,8 @@ import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -102,7 +101,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
-  private TaskInputWatermarkManager taskWatermarkManager;
+  private R2WatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
   // private final OffloadingManager offloadingManager;
@@ -233,19 +232,19 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     this.serializerManager = serializerManager;
 
     this.transientPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
-      edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent() &&
-        edge.getPropertyValue(AdditionalOutputTagProperty.class).get().equals(Util.TRANSIENT_PATH))
+      edge.isTransientPath())
       .findFirst().get();
+
     this.transientPathDstTasks = getDstTaskIds(transientPathEdge);
     this.transientPathSerializer = serializerManager.getSerializer(transientPathEdge.getId());
 
     this.vmPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
-      !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      !edge.isTransientPath())
       .findFirst().get();
     this.vmPathDstTasks = getDstTaskIds(vmPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
-    this.taskWatermarkManager = new TaskInputWatermarkManager();
+    this.taskWatermarkManager = new R2WatermarkManager(taskId);
 
     if (vmPathDstTasks.size() > 1) {
       this.getDstTaskId = new RRDstTAskId();
@@ -261,7 +260,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
     prepare();
   }
-
 
   private List<String> getDstTaskIds(final RuntimeEdge runtimeEdge) {
     final Optional<CommunicationPatternProperty.Value> comValue =
@@ -370,14 +368,16 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Stop input pipe index {}", triple);
-    taskWatermarkManager.stopInputPipeIndex(triple.getMiddle(),
-      RuntimeIdManager.getIndexFromTaskId(triple.getLeft()));
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+    final String edgeId = triple.getMiddle();
+    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
   }
 
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Start input pipe index {}", triple);
-    taskWatermarkManager.startInputPipeIndex(triple.getMiddle(),
-      RuntimeIdManager.getIndexFromTaskId(triple.getLeft()));
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+    final String edgeId = triple.getMiddle();
+    taskWatermarkManager.startIndex(taskIndex, edgeId);
   }
 
   private void prepare() {
@@ -609,7 +609,15 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
                 parentTaskReader);
 
               // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+              if (edge.isTransientPath()) {
+                final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
+                taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), 1);
+              } else {
+                if (task.getTaskIncomingEdges().size() == 1) {
+                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), 1);
+                }
+              }
+
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -618,8 +626,16 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
                   task.getTaskId(),
                   parentTaskReader);
               }
+
+              if (edge.isTransientPath()) {
+                final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
+                taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), parallelism);
+              } else {
+                if (task.getTaskIncomingEdges().size() == 1) {
+                  taskWatermarkManager.addDataFetcher(df.getEdgeId(), df.getEdgeId(), parallelism);
+                }
+              }
               // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
 
 
@@ -709,10 +725,25 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
           writeByteBuf(vmDstTaskId, data);
         } else {
           // single o2o - RR output
-          // broadcast watermark
-          vmPathDstTasks.forEach(vmTId -> {
-            writeByteBuf(vmTId, data);
-          });
+          final ByteBuf byteBuf = data;
+          byteBuf.markReaderIndex();
+          final Byte b = byteBuf.readByte();
+          byteBuf.resetReaderIndex();
+
+          if (b == 0x01) {
+            // broadcast watermark
+            final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+            taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+              watermarkWithIndex.getWatermark().getTimestamp())
+              .ifPresent(watermark -> {
+                vmPathDstTasks.forEach(vmTId -> {
+                  writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
+                });
+              });
+          } else {
+            // data
+            writeByteBuf(vmDstTaskId, data);
+          }
         }
       } else {
         final ByteBuf byteBuf = data;
@@ -745,18 +776,37 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
         } else {
           // single o2o - RR output
           // broadcast watermark
-          vmPathDstTasks.forEach(vmTId -> {
-            writeData(vmTId, data);
-          });
+          if (data instanceof WatermarkWithIndex) {
+            // watermark!
+            // we should manage the watermark
+            final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+            taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
+              watermarkWithIndex.getWatermark().getTimestamp())
+              .ifPresent(watermark -> {
+                vmPathDstTasks.forEach(vmTId -> {
+                  writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
+                });
+              });
+
+          } else {
+            writeData(vmDstTaskId, data);
+          }
         }
       } else {
         if (data instanceof WatermarkWithIndex) {
           // watermark!
           // we should manage the watermark
           final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+          LOG.info("Receive CR watermark from {}/{} {} at {}",
+            new Instant(watermarkWithIndex.getWatermark().getTimestamp()),
+            edgeId, watermarkWithIndex.getIndex(), taskId);
+
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
+              LOG.info("Emit CR watermark {} at {}",
+            new Instant(watermark.getTimestamp()), taskId);
+
               vmPathDstTasks.forEach(vmTId -> {
                 writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
               });
@@ -799,9 +849,11 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void restore() {
-    stateRestore(taskId);
+    throw new RuntimeException("CRTask not support restore " + taskId);
+    // stateRestore(taskId);
   }
 
+  /*
   private void stateRestore(final String id) {
     try {
       final InputStream is = stateStore.getStateStream(id + "-taskWatermarkManager");
@@ -831,12 +883,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     }
 
   }
+  */
 
   @Override
   public boolean checkpoint(final boolean checkpointSource,
                             final String checkpointId) {
-    stateMigration(checkpointId);
-    return true;
+    throw new RuntimeException("CRTask not support checkpoint " + taskId);
+    // stateMigration(checkpointId);
+    // return true;
   }
 
   @Override

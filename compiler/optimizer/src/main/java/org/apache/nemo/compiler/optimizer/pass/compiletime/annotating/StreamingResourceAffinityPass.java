@@ -89,7 +89,7 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
           final List<IRVertex> stack = new LinkedList<>();
 
           final IREdge transientEdge = dag.getOutgoingEdgesOf(vertex).stream().filter(edge ->
-            edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+            edge.isTransientEdge())
             .findFirst().get();
 
           stack.add(transientEdge.getDst());

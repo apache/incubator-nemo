@@ -130,8 +130,7 @@ public final class PairStageTaskManager {
     if (currTaskType.equals(Task.TaskType.TransientTask)) {
       // find vm task
       return stageDag.getOutgoingEdgesOf(srcStage)
-        .stream().filter(stageEdge -> !stageEdge
-          .getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+        .stream().filter(stageEdge -> !stageEdge.isTransientPath())
         .map(stageEdge ->
           Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
             stageEdge.getId()))
@@ -139,10 +138,7 @@ public final class PairStageTaskManager {
     } else if (currTaskType.equals(VMTask)) {
       // find transient task
       return stageDag.getOutgoingEdgesOf(srcStage)
-        .stream().filter(stageEdge -> stageEdge
-          .getPropertyValue(AdditionalOutputTagProperty.class).isPresent()
-          && stageEdge.getPropertyValue(AdditionalOutputTagProperty.class)
-          .get().equals(Util.TRANSIENT_PATH))
+        .stream().filter(stageEdge -> stageEdge.isTransientPath())
         .map(stageEdge ->
           Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
             stageEdge.getId()))

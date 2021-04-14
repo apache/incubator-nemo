@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,20 +14,24 @@ public final class TaskInputWatermarkManager implements Serializable {
 
   private long prevWatermark = 0L;
   private final Map<String, Long> dataFetcherWatermarkMap;
-  private final Map<String, StageWatermarkTracker> dataFetcherWatermarkTracker;
+  private final Map<String, WatermarkTracker> dataFetcherWatermarkTracker;
+  private final String taskId;
 
 
-  public TaskInputWatermarkManager() {
+  public TaskInputWatermarkManager(final String taskId) {
     this.dataFetcherWatermarkMap = new HashMap<>();
     this.dataFetcherWatermarkTracker = new HashMap<>();
+    this.taskId = taskId;
   }
 
   public TaskInputWatermarkManager(final long prevWatermark,
                                    final Map<String, Long> dataFetcherWatermarkMap,
-                                   final Map<String, StageWatermarkTracker> dataFetcherWatermarkTracker) {
+                                   final Map<String, WatermarkTracker> dataFetcherWatermarkTracker,
+                                   final String taskId) {
     this.prevWatermark = prevWatermark;
     this.dataFetcherWatermarkTracker = dataFetcherWatermarkTracker;
     this.dataFetcherWatermarkMap = dataFetcherWatermarkMap;
+    this.taskId = taskId;
   }
 
   public void encode(final OutputStream os) {
@@ -43,8 +47,10 @@ public final class TaskInputWatermarkManager implements Serializable {
       dos.writeInt(dataFetcherWatermarkTracker.size());
       for (final String df : dataFetcherWatermarkTracker.keySet()) {
         dos.writeUTF(df);
-        dataFetcherWatermarkTracker.get(df).encode(dos);
+        ((SingleStageWatermarkTracker)dataFetcherWatermarkTracker.get(df)).encode(dos);
       }
+
+      dos.writeUTF(taskId);
 
       dos.close();
     } catch (final Exception e) {
@@ -67,43 +73,33 @@ public final class TaskInputWatermarkManager implements Serializable {
       }
 
       final int size2 = dis.readInt();
-      final Map<String, StageWatermarkTracker> dtaFetcherWatermarkTracker = new HashMap<>(size2);
+      final Map<String, WatermarkTracker> dtaFetcherWatermarkTracker = new HashMap<>(size2);
 
       for (int i = 0; i < size2; i++) {
         final String df = dis.readUTF();
-        final StageWatermarkTracker stageWatermarkTracker = StageWatermarkTracker.decode(dis);
+        final SingleStageWatermarkTracker stageWatermarkTracker = SingleStageWatermarkTracker.decode(dis);
         dtaFetcherWatermarkTracker.put(df, stageWatermarkTracker);
       }
 
-      return new TaskInputWatermarkManager(prevWatermark, dataFetcherWatermarkMap, dtaFetcherWatermarkTracker);
+      final String taskId = dis.readUTF();
+
+      return new TaskInputWatermarkManager(prevWatermark, dataFetcherWatermarkMap, dtaFetcherWatermarkTracker, taskId);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
   }
 
-  public void stopInputPipeIndex(final String edgeId,
-                                 final int taskIndex) {
-    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
-    stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, Long.MAX_VALUE);
-  }
-
-  public void startInputPipeIndex(final String edgeId,
-                                  final int taskIndex) {
-    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
-    stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, prevWatermark);
-  }
-
   public void addDataFetcher(String edgeId, int parallelism) {
     LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", edgeId, parallelism);
     dataFetcherWatermarkMap.put(edgeId, 0L);
-    dataFetcherWatermarkTracker.put(edgeId, new StageWatermarkTracker(parallelism));
+    dataFetcherWatermarkTracker.put(edgeId, new SingleStageWatermarkTracker(parallelism, taskId));
   }
 
   public Optional<Watermark> updateWatermark(final String edgeId,
                               final int taskIndex, final long watermark) {
-    final StageWatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
-    final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(taskIndex, watermark);
+    final WatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
+    final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(edgeId, taskIndex, watermark);
 
     if (val.isPresent()) {
       // update output watermark!
@@ -115,7 +111,7 @@ public final class TaskInputWatermarkManager implements Serializable {
       dataFetcherWatermarkMap.put(edgeId, val.get());
       final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
 
-      if (minWatermark > prevWatermark) {
+      if (minWatermark >= prevWatermark + Util.WATERMARK_PROGRESS) {
         // watermark progress
         prevWatermark = minWatermark;
         return Optional.of(new Watermark(minWatermark));
