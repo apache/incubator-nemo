@@ -274,7 +274,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       lambdaChannelMap.lambdaChannelMap.put(executorId, ctx.channel());
 
     } else {
-      pipeManagerWorker.addControlData(taskControlMessage.inputPipeIndex, taskControlMessage);
+      pipeManagerWorker.addControlData(taskControlMessage.remoteInputPipeIndex, taskControlMessage);
     }
 
     controlBodyBytesToRead = 0;

@@ -5,9 +5,6 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.OutputStream;
 import java.util.Objects;
 
 public final class TaskControlMessage implements TaskHandlingEvent {
@@ -58,6 +55,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
    * 4) CR task -> VM/Lambda task: PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING // done
    *    - Here, input pipe state becomes STOPPED,
    *       we should change it to RUNNING when the data goes back to the task again
+   *    - stop output pipe of CR task -> VM/Lambda task
    * 5) VM/Lambda task: state checkpoint for Lambda/VM task // done
    *    - VM/Lambda task -> Master -> Lambda/VM task: signal GET_STATE_SIGNAL
    *    - Master: a) receives (VM/Lambda task id)
@@ -101,6 +99,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     GET_STATE_SIGNAL,
     STATE_MIGRATION_DONE,
     TASK_OUTPUT_DONE,
+    TASK_OUTPUT_DONE_ACK,
+    INIT_SIGNAL,
     TASK_INPUT_START,
 
     // For offloaded task
@@ -110,7 +110,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   public final TaskControlMessageType type;
   // remote의 input pipe index
   // 이 input pipe로 내가 input을 보내겠다!!
-  public final int inputPipeIndex;
+  public final int remoteInputPipeIndex;
 
   // remote에서 input pipe index로 input 받은 뒤,
   // output pipe index로 뭐 주고 싶은 경우
@@ -119,12 +119,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   public final Object event;
 
   public TaskControlMessage(final TaskControlMessageType type,
-                            final int inputPipeIndex,
+                            final int remoteInputPipeIndex,
                             final int targetPipeIndex,
                             final String targetTaskId,
                             final Object event) {
     this.type = type;
-    this.inputPipeIndex = inputPipeIndex;
+    this.remoteInputPipeIndex = remoteInputPipeIndex;
     this.targetPipeIndex = targetPipeIndex;
     this.targetTaskId = targetTaskId;
     this.event = event;
@@ -174,8 +174,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   }
 
   @Override
-  public int getInputPipeIndex() {
-    return inputPipeIndex;
+  public int getRemoteInputPipeIndex() {
+    return remoteInputPipeIndex;
   }
 
   @Override
@@ -186,7 +186,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   public void encode(final ByteBufOutputStream bos) {
     try {
       bos.writeInt(type.ordinal());
-      bos.writeInt(inputPipeIndex);
+      bos.writeInt(remoteInputPipeIndex);
       bos.writeInt(targetPipeIndex);
       bos.writeUTF(targetTaskId);
 
@@ -271,7 +271,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TaskControlMessage that = (TaskControlMessage) o;
-    return inputPipeIndex == that.inputPipeIndex &&
+    return remoteInputPipeIndex == that.remoteInputPipeIndex &&
       type == that.type &&
       Objects.equals(targetTaskId, that.targetTaskId) &&
       Objects.equals(event, that.event);
@@ -280,6 +280,6 @@ public final class TaskControlMessage implements TaskHandlingEvent {
   @Override
   public int hashCode() {
 
-    return Objects.hash(type, inputPipeIndex, targetTaskId, event);
+    return Objects.hash(type, remoteInputPipeIndex, targetTaskId, event);
   }
 }

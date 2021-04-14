@@ -268,15 +268,6 @@ public final class TaskDispatcher {
       final List<Task> couldNotSchedule = new ArrayList<>();
 
       for (final List<Task> stageTask : stageTasks) {
-
-        /*
-        try {
-          Thread.sleep(8000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        */
-
         for (final Task task : stageTask) {
           if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
             // Guard against race conditions causing duplicate task launches

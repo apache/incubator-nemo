@@ -47,7 +47,7 @@ public final class TaskInputWatermarkManager implements Serializable {
       dos.writeInt(dataFetcherWatermarkTracker.size());
       for (final String df : dataFetcherWatermarkTracker.keySet()) {
         dos.writeUTF(df);
-        ((SingleStageWatermarkTracker)dataFetcherWatermarkTracker.get(df)).encode(dos);
+        ((SingleStageWatermarkTracker)dataFetcherWatermarkTracker.get(df)).encode(taskId, dos);
       }
 
       dos.writeUTF(taskId);
@@ -59,7 +59,8 @@ public final class TaskInputWatermarkManager implements Serializable {
     }
   }
 
-  public static TaskInputWatermarkManager decode(final InputStream is) {
+  public static TaskInputWatermarkManager decode(final String tid,
+                                                 final InputStream is) {
     final DataInputStream dis = new DataInputStream(is);
     try {
       final long prevWatermark = dis.readLong();
@@ -77,7 +78,7 @@ public final class TaskInputWatermarkManager implements Serializable {
 
       for (int i = 0; i < size2; i++) {
         final String df = dis.readUTF();
-        final SingleStageWatermarkTracker stageWatermarkTracker = SingleStageWatermarkTracker.decode(dis);
+        final SingleStageWatermarkTracker stageWatermarkTracker = SingleStageWatermarkTracker.decode(tid, dis);
         dtaFetcherWatermarkTracker.put(df, stageWatermarkTracker);
       }
 
@@ -93,32 +94,41 @@ public final class TaskInputWatermarkManager implements Serializable {
   public void addDataFetcher(String edgeId, int parallelism) {
     LOG.info("Add data fetcher for datafetcher {}, parallelism: {}", edgeId, parallelism);
     dataFetcherWatermarkMap.put(edgeId, 0L);
-    dataFetcherWatermarkTracker.put(edgeId, new SingleStageWatermarkTracker(parallelism, taskId));
+    dataFetcherWatermarkTracker.put(edgeId, new SingleStageWatermarkTracker(parallelism));
   }
 
   public Optional<Watermark> updateWatermark(final String edgeId,
                               final int taskIndex, final long watermark) {
-    final WatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
-    final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(edgeId, taskIndex, watermark);
+    try {
+      final WatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(edgeId);
+      final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(taskId,
+        edgeId, taskIndex, watermark);
 
-    if (val.isPresent()) {
-      // update output watermark!
-      final long outputW = dataFetcherWatermarkMap.get(edgeId);
-      if (outputW > val.get()) {
-        throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
+      if (val.isPresent()) {
+        // update output watermark!
+        final long outputW = dataFetcherWatermarkMap.get(edgeId);
+        if (outputW > val.get()) {
+          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
+        }
+
+        dataFetcherWatermarkMap.put(edgeId, val.get());
+        final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
+
+        if (minWatermark >= prevWatermark + Util.WATERMARK_PROGRESS) {
+          // watermark progress
+          prevWatermark = minWatermark;
+          return Optional.of(new Watermark(minWatermark));
+        }
       }
 
-      dataFetcherWatermarkMap.put(edgeId, val.get());
-      final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
-
-      if (minWatermark >= prevWatermark + Util.WATERMARK_PROGRESS) {
-        // watermark progress
-        prevWatermark = minWatermark;
-        return Optional.of(new Watermark(minWatermark));
-      }
+      return Optional.empty();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("UpdateWatermark exception " + edgeId + ", task "
+        + taskId + ", watermark " + watermark +
+        ", dataFetcherTracker: " + dataFetcherWatermarkTracker.keySet() +
+        ", watermarkMap: " + dataFetcherWatermarkMap + ", prevWatermark: " + prevWatermark);
     }
-
-    return Optional.empty();
   }
 
 }

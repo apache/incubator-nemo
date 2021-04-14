@@ -41,9 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -96,7 +94,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final StateStore stateStore;
 
-  private TaskInputWatermarkManager taskWatermarkManager;
+  private WatermarkTracker taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
   public enum CurrentState {
@@ -156,6 +154,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.task = task;
     this.offloaded = offloaded;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.conditionalRouting = conditionalRouting;
@@ -175,19 +174,20 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     final long restoresSt = System.currentTimeMillis();
 
+    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(getTaskWatermarkManager());
+
     this.singleOneToOneInput = task.getTaskIncomingEdges().size() == 1
       && (task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
       .equals(CommunicationPatternProperty.Value.OneToOne) ||
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne));
 
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager(taskId));
+
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
     this.executorId = executorId;
     this.sourceVertexDataFetchers = new ArrayList<>();
-    this.task = task;
     this.irVertexDag = irVertexDag;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.taskOutgoingEdges = new HashMap<>();
@@ -202,6 +202,52 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
     } else {
       this.adjustTime = 0;
+    }
+  }
+
+  private WatermarkTracker getTaskWatermarkManager() {
+    if (task.getTaskIncomingEdges().size() == 0) {
+      return null;
+    } else if (task.getTaskIncomingEdges().size() == 1) {
+      final int parallelism = task.getTaskIncomingEdges().get(0)
+        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      LOG.info("Registering pipe for input edges {} in {}, parallelism {}",
+        task.getTaskIncomingEdges().get(0).getId(), taskId, parallelism);
+
+      final CommunicationPatternProperty.Value comm = task.getTaskIncomingEdges().get(0)
+        .getDataCommunicationPattern();
+      return new SingleStageWatermarkTracker(getWatermarkParllelism(parallelism, comm));
+
+    } else if (task.getTaskIncomingEdges().size() == 2) {
+      final StageEdge firstEdge = task.getTaskIncomingEdges().get(0);
+      final StageEdge secondEdge = task.getTaskIncomingEdges().get(1);
+      final int firstParallelism = ((StageEdge) firstEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
+        .get();
+      final int secondParallelism = ((StageEdge) secondEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
+        .get();
+      final CommunicationPatternProperty.Value firstComm = firstEdge
+        .getDataCommunicationPattern();
+       final CommunicationPatternProperty.Value secondComm = secondEdge
+        .getDataCommunicationPattern();
+
+       return new DoubleStageWatermarkTracker(
+         firstEdge.getId(),
+         getWatermarkParllelism(firstParallelism, firstComm),
+         secondEdge.getId(),
+         getWatermarkParllelism(secondParallelism, secondComm));
+    } else {
+      throw new RuntimeException("Not support incoming edge >= 3 " + taskId + ", " +  task.getTaskIncomingEdges());
+    }
+  }
+
+  private int getWatermarkParllelism(final int parallelism,
+                                     final CommunicationPatternProperty.Value comm) {
+    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+      || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+      return 1;
+    } else {
+      return parallelism;
     }
   }
 
@@ -542,11 +588,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
               outputCollectorMap.get(irVertex.getId()), taskId);
 
-          final int parallelism = edge
-            .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
-
-          final CommunicationPatternProperty.Value comm =
-            edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
           final DataFetcher df = new MultiThreadParentTaskDataFetcher(
             taskId,
@@ -559,7 +600,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           // LOG.info("Adding data fetcher 22 for {} / {}, parallelism {}",
           //  taskId, irVertex.getId(), parallelism);
 
-          LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
+          final CommunicationPatternProperty.Value comm =
+            edge.getPropertyValue(CommunicationPatternProperty.class).get();
+
+          final int parallelism = edge
+            .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+          LOG.info("Registering pipe for input edges {} in {}, parallelism {}",
+            edge.getId(), taskId, parallelism);
 
           if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
             || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
@@ -570,7 +618,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
               parentTaskReader);
 
             // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
-            taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
+            // taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
           } else {
             for (int i = 0; i < parallelism; i++) {
               inputPipeRegister.registerInputPipe(
@@ -580,7 +628,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                 parentTaskReader);
             }
             // LOG.info("Adding data fetcher 44 for {} / {}", taskId, irVertex.getId());
-            taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
+            // taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
           }
 
 
@@ -633,7 +681,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
 
     // LOG.info("Handling data for task {}, index {}, watermark {}",
-    //  taskId, taskHandlingEvent.getInputPipeIndex(), data instanceof WatermarkWithIndex);
+    //  taskId, taskHandlingEvent.getRemoteInputPipeIndex(), data instanceof WatermarkWithIndex);
 
     try {
       handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
@@ -665,13 +713,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       if (singleOneToOneInput) {
         processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
       } else {
-        final Optional<Watermark> watermark =
-          taskWatermarkManager.updateWatermark(dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp());
-
-        if (watermark.isPresent()) {
-          // LOG.info("Emitting watermark for {} / {}", taskId, new Instant(watermark.get().getTimestamp()));
-          processWatermark(dataFetcher.getOutputCollector(), watermark.get());
-        }
+          taskWatermarkManager.trackAndEmitWatermarks(
+            taskId,
+            dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
+            .ifPresent(watermark ->
+              processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark)));
       }
     } else if (event instanceof Watermark) {
       // This MUST BE generated from input source
@@ -732,14 +778,21 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
   }
 
-  private boolean finished = false;
-
-  private Optional<TaskInputWatermarkManager> restoreTaskInputWatermarkManager() {
+  private Optional<WatermarkTracker> restoreTaskInputWatermarkManager() {
     if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
       try {
-        final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(is);
-        return Optional.of(tm);
+        final DataInputStream is = new DataInputStream(
+          stateStore.getStateStream(taskId + "-taskWatermarkManager"));
+
+        if (task.getTaskIncomingEdges().size() == 0) {
+          return Optional.empty();
+        } else if (task.getTaskIncomingEdges().size() == 1) {
+          return Optional.of(SingleStageWatermarkTracker.decode(taskId, is));
+        } else if (task.getTaskIncomingEdges().size() == 2) {
+          return Optional.of(DoubleStageWatermarkTracker.decode(taskId, is));
+        } else {
+          throw new RuntimeException("Not supported edge > 2" + taskId);
+        }
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -751,8 +804,16 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   @Override
   public void restore() {
     try {
-      final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-      taskWatermarkManager = TaskInputWatermarkManager.decode(is);
+      final DataInputStream is = new DataInputStream(stateStore.getStateStream(taskId + "-taskWatermarkManager"));
+      if (task.getTaskIncomingEdges().size() == 0) {
+        taskWatermarkManager = null;
+      } else if (task.getTaskIncomingEdges().size() == 1) {
+        taskWatermarkManager = SingleStageWatermarkTracker.decode(taskId, is);
+      } else if (task.getTaskIncomingEdges().size() == 2) {
+        taskWatermarkManager = DoubleStageWatermarkTracker.decode(taskId, is);
+      } else {
+        throw new RuntimeException("Not supported edge > 2" + taskId);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -781,9 +842,19 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     // stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
-    final OutputStream os = stateStore.getOutputStream(checkpointId + "-taskWatermarkManager");
+    final DataOutputStream os = new DataOutputStream(
+      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"));
+
     try {
-      taskWatermarkManager.encode(os);
+      if (task.getTaskIncomingEdges().size() == 0) {
+        // do nothing
+      } else if (task.getTaskIncomingEdges().size() == 1) {
+        ((SingleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+      } else if (task.getTaskIncomingEdges().size() == 2) {
+        ((DoubleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+      } else {
+        throw new RuntimeException("Not supported edge > 2" + taskId);
+      }
       os.close();
     } catch (IOException e) {
       e.printStackTrace();

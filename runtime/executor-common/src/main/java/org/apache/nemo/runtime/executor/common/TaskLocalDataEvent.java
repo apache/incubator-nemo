@@ -52,7 +52,7 @@ public final class TaskLocalDataEvent implements TaskHandlingEvent {
   }
 
   @Override
-  public int getInputPipeIndex() {
+  public int getRemoteInputPipeIndex() {
     return index;
   }
 

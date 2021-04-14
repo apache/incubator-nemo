@@ -665,12 +665,13 @@ public final class RuntimeMaster {
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
   public void redirectionToLambda(final int num,
-                          final int stageId) {
+                                  final String stageId) {
     final Map<String, String> scheduledMap = taskScheduledMap.getTaskExecutorIdMap();
     scheduledMap.entrySet().stream()
       .filter(entry -> RuntimeIdManager.getStageIdFromTaskId(entry.getKey())
-        .equals("Stage" + stageId)
+        .equals(stageId)
       && !prevRedirectionTasks.contains(entry.getKey()))
+      .limit(num)
       .forEach(entry -> {
         final String taskId = entry.getKey();
         final String executorId = entry.getValue();
@@ -694,13 +695,15 @@ public final class RuntimeMaster {
   }
 
   public void redirectionDoneToLambda(final int num,
-                                      final int stageId) {
-    prevRedirectionTasks.stream()
-      .filter(taskId -> RuntimeIdManager.getStageIdFromTaskId(taskId)
-        .equals("Stage" + stageId))
-      .limit(num)
-      .iterator()
-      .forEachRemaining(taskId -> {
+                                      final String stageId) {
+    final Iterator<String> iterator = prevRedirectionTasks.iterator();
+
+
+    int count = 0;
+    while (iterator.hasNext()) {
+      final String taskId = iterator.next();
+      if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId) && count < num) {
+        count += 1;
         // find pair task
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(taskId).left();
         final String pairExecutorId = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
@@ -708,17 +711,18 @@ public final class RuntimeMaster {
         LOG.info("Redirection Lambda task {} for executor {}", pairTask, pairExecutorId);
         final ExecutorRepresenter executor = executorRegistry.getExecutorRepresentor(pairExecutorId);
 
-        prevRedirectionTasks.remove(pairTask);
+        iterator.remove();
 
         executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.RoutingDataDoneToLambda)
+          .setType(ControlMessage.MessageType.RoutingDataToLambda)
           .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
             .setTaskId(pairTask)
             .build())
           .build());
-      });
+      }
+    }
 
     LOG.info("Redirection lambda tasks {} / stage {}", num, stageId);
   }
@@ -854,6 +858,26 @@ public final class RuntimeMaster {
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case InitSignal: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        LOG.info("Send InitSignal to {}", pairTask);
+        final ExecutorRepresenter executorRepresenter = executorRegistry
+          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.InitSignal)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+
+        break;
+      }
       case GetStateSignal: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();

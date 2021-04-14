@@ -386,7 +386,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
             if (optional.isPresent()) {
               final OffloadingWorker worker = optional.get();
-              worker.writeByteBufData(pending.getInputPipeIndex(), pending);
+              worker.writeByteBufData(pending.getRemoteInputPipeIndex(), pending);
               currBufferedData.decrementAndGet();
               processed.set(true);
               queue.poll();
@@ -463,14 +463,14 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
       final int cnt = workerParitalOffloadingCntMap.get(offloadingWorker).incrementAndGet();
 
       if (cnt == PARTIAL_CNT_THRESHOLD) {
-        offloadingWorker.writeData(data.getInputPipeIndex(), data);
+        offloadingWorker.writeData(data.getRemoteInputPipeIndex(), data);
         // deactivation worker!!
         LOG.info("Worker partial offloading cnt is larger than threshold.. deoffloading", offloadingWorker.getId());
         offloadingWorker.deactivate();
         return true;
       } else if (cnt < PARTIAL_CNT_THRESHOLD) {
         // LOG.info("Offloading partial data for task {} to worker {}, cnt {}", taskId, offloadingWorker.getId(), cnt);
-        offloadingWorker.writeData(data.getInputPipeIndex(), data);
+        offloadingWorker.writeData(data.getRemoteInputPipeIndex(), data);
         return true;
       } else {
         return false;
@@ -546,8 +546,8 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
     final OffloadingWorker worker = optional.get();
 
-    // LOG.info("Offloading data index {}, cnt {}", data.getInputPipeIndex(), c.getAndIncrement());
-    worker.writeData(data.getInputPipeIndex(), data);
+    // LOG.info("Offloading data index {}, cnt {}", data.getRemoteInputPipeIndex(), c.getAndIncrement());
+    worker.writeData(data.getRemoteInputPipeIndex(), data);
 
     /*
     if (optional.isPresent()) {
@@ -571,10 +571,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
           final TaskHandlingEvent bufferedData = iterator.next();
           iterator.remove();
           processedData += 1;
-          worker.writeByteBufData(bufferedData.getInputPipeIndex(), bufferedData);
+          worker.writeByteBufData(bufferedData.getRemoteInputPipeIndex(), bufferedData);
         }
       } else {
-        worker.writeByteBufData(data.getInputPipeIndex(), data);
+        worker.writeByteBufData(data.getRemoteInputPipeIndex(), data);
       }
 
     } else {
@@ -592,7 +592,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
       if (optional.isPresent()) {
         final OffloadingWorker worker = optional.get();
-        worker.writeByteBufData(data.getInputPipeIndex(), data);
+        worker.writeByteBufData(data.getRemoteInputPipeIndex(), data);
       } else {
         throw new RuntimeException("No worker for offloading ... " + taskId);
       }
@@ -615,7 +615,7 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
 
       if (optional.isPresent()) {
         final OffloadingWorker worker = optional.get();
-        worker.writeByteBufData(pending.getInputPipeIndex(), pending);
+        worker.writeByteBufData(pending.getRemoteInputPipeIndex(), pending);
         queue.poll();
       } else {
         break;

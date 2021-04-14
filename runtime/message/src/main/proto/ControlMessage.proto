@@ -188,6 +188,8 @@ enum MessageType {
     GetStateSignal = 69;
 
     DeactivateLambdaTask = 70;
+
+    InitSignal = 71;
 }
 
 message LambdaEndMessage {

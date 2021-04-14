@@ -491,7 +491,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
       try {
         final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(is);
+        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(taskId, is);
         return Optional.of(tm);
       } catch (Exception e) {
         e.printStackTrace();

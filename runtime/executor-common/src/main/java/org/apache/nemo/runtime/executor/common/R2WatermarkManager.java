@@ -50,7 +50,7 @@ public final class R2WatermarkManager implements Serializable {
   public void startIndex(final int taskIndex,
                          final String edgeId) {
     final Pair<String, String> key = pairEdgeMap.get(edgeId);
-    dataFetcherWatermarkTracker.get(key).startIndex(taskIndex, edgeId);
+    dataFetcherWatermarkTracker.get(key).startIndexAndStop(taskIndex, edgeId);
   }
 
   public Optional<Watermark> updateWatermark(final String edgeId,
@@ -58,7 +58,7 @@ public final class R2WatermarkManager implements Serializable {
     try {
       final Pair<String, String> key = pairEdgeMap.get(edgeId);
       final WatermarkTracker stageWatermarkTracker = dataFetcherWatermarkTracker.get(key);
-      final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(edgeId, taskIndex, watermark);
+      final Optional<Long> val = stageWatermarkTracker.trackAndEmitWatermarks(taskId, edgeId, taskIndex, watermark);
 
       if (val.isPresent()) {
         // update output watermark!
@@ -70,7 +70,7 @@ public final class R2WatermarkManager implements Serializable {
         dataFetcherWatermarkMap.put(key, val.get());
         final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
 
-        if (minWatermark > prevWatermark + Util.WATERMARK_PROGRESS) {
+        if (minWatermark >= prevWatermark + Util.WATERMARK_PROGRESS) {
           // watermark progress
           prevWatermark = minWatermark;
           return Optional.of(new Watermark(minWatermark));
@@ -82,7 +82,9 @@ public final class R2WatermarkManager implements Serializable {
       e.printStackTrace();
       throw new RuntimeException("Watermark update failed ... edgeId " + edgeId + ", taskIndex " + taskIndex
         + " watermark " + watermark + ", " + " pairEdgeMap: " + pairEdgeMap +
-        ", dataFetcherWatermarkTracker key: " + dataFetcherWatermarkTracker.keySet());
+        ", dataFetcherWatermarkTracker key: " + dataFetcherWatermarkTracker.keySet() +
+      ", watermark map: " + dataFetcherWatermarkMap + ", "
+      + "R2PairEdgeTracker: " + dataFetcherWatermarkTracker.values());
     }
   }
 

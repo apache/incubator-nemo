@@ -779,6 +779,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
               vertexToInsert);
             // edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
+            toSV.setPropertyPermanently(EncoderProperty.of(edgeToStreamize
+              .getPropertyValue(EncoderProperty.class).get()));
+
             fromSV = new IREdge(
               edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
               vertexToInsert,

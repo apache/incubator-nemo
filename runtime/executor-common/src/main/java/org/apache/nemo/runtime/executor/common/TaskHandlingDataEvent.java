@@ -94,7 +94,7 @@ public final class TaskHandlingDataEvent implements TaskHandlingEvent {
   }
 
   @Override
-  public int getInputPipeIndex() {
+  public int getRemoteInputPipeIndex() {
     return pipeIndex;
   }
 

@@ -64,6 +64,7 @@ public interface PipeManagerWorker extends InputPipeRegister {
   void setTaskStop(String taskId);
 
   void stopOutputPipe(int index, String taskId);
+  void stopOutputPipeForRouting(int index, String taskId);
 
   void writeControlMessage(String srcTaskId,
                            String edgeId,

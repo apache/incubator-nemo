@@ -19,6 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 
@@ -32,6 +35,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final EvalConf evalConf;
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final R2ControlEventHandler r2ControlEventHandler;
+  private final Map<String, Boolean> taskToBeStopped;
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -49,6 +53,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     this.evalConf = evalConf;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.r2ControlEventHandler = r2ControlEventHandler;
+    this.taskToBeStopped = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -65,6 +70,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case TASK_OUTPUT_DONE:
       case GET_STATE_SIGNAL:
       case TASK_INPUT_START:
+      case TASK_OUTPUT_DONE_ACK:
+      case INIT_SIGNAL:
       case STATE_MIGRATION_DONE: {
         r2ControlEventHandler.handleControlEvent(event);
         break;
@@ -81,6 +88,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           }
         } else {
           // Stop input pipe
+          taskToBeStopped.put(taskExecutor.getId(), true);
           taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
             pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
               entry.getKey().getId(), control.getTaskId(),
@@ -145,13 +153,16 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
   private boolean canTaskMoved(final String taskId) {
     // output stopped means that it is waiting for moving downstream task
-    return pipeManagerWorker.isInputPipeStopped(taskId)
+    return taskToBeStopped.containsKey(taskId) &&
+      pipeManagerWorker.isInputPipeStopped(taskId)
       && !pipeManagerWorker.isOutputPipeStopped(taskId);
   }
 
   private void stopAndCheckpointTask(final String taskId) {
     // flush pipes
     pipeManagerWorker.flush();
+
+    taskToBeStopped.remove(taskId);
 
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);

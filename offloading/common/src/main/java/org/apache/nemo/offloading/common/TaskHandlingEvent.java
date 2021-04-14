@@ -20,7 +20,7 @@ public interface TaskHandlingEvent {
 
   String getTaskId();
 
-  int getInputPipeIndex();
+  int getRemoteInputPipeIndex();
 
   Object getControl();
 }

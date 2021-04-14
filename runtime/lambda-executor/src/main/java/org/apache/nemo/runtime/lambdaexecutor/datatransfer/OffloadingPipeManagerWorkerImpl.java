@@ -256,6 +256,11 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
+  public void stopOutputPipeForRouting(int index, String taskId) {
+
+  }
+
+  @Override
   public void writeControlMessage(String srcTaskId, String edgeId, String dstTaskId, TaskControlMessage.TaskControlMessageType type,
                                   Object event) {
 

@@ -703,14 +703,18 @@ public final class Executor {
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
 
-          if (!task.isVMTask()) {
+          if (!(task.isVMTask() || task.isTransientTask())) {
             throw new RuntimeException("Cannot stage migration task " + taskId + ", " + task.getTaskType());
           }
 
           executorService.execute(() -> {
-            LOG.info("Routing data from VM task {} to Lambda  {} in executor {}",
-              message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
-
+            if (task.isVMTask()) {
+              LOG.info("Routing data from VM task {} to Lambda  {} in executor {}",
+                message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
+            } else {
+               LOG.info("Routing data from lambda task {} VM Lambda  {} in executor {}",
+                message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
+            }
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
               TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
@@ -749,24 +753,20 @@ public final class Executor {
 
           break;
         }
-        case RoutingDataDoneToLambda: {
+        case InitSignal: {
           // for R2 reshaping
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
-
-          if (!task.isTransientTask()) {
-            throw new RuntimeException("Cannot stage migration normal task " + taskId);
-          }
-
           executorService.execute(() -> {
-            LOG.info("Routing data done from Lambda task {} to VM {} in executor {}",
-              message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
+            LOG.info("Get init signal VM task {} in executor {}",
+              message.getStopTaskMsg().getTaskId(), executorId);
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
+              TaskControlMessage.TaskControlMessageType.INIT_SIGNAL, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
+
           break;
         }
         case StopTask: {

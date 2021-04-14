@@ -235,7 +235,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
-                runtimeMaster.redirectionToLambda(num, Integer.valueOf(stages.get(i)));
+                runtimeMaster.redirectionToLambda(num, stages.get(i));
                 try {
                   Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -252,7 +252,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
-                runtimeMaster.redirectionDoneToLambda(num, Integer.valueOf(stages.get(i)));
+                runtimeMaster.redirectionDoneToLambda(num, stages.get(i));
                 try {
                   Thread.sleep(100);
                 } catch (InterruptedException e) {

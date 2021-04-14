@@ -57,7 +57,7 @@ public final class TaskOffloadedDataOutputEvent implements TaskHandlingEvent {
   }
 
   @Override
-  public int getInputPipeIndex() {
+  public int getRemoteInputPipeIndex() {
     throw new RuntimeException("not supported");
   }
 

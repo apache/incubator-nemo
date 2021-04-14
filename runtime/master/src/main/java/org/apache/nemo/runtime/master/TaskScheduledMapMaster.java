@@ -102,8 +102,8 @@ public final class TaskScheduledMapMaster {
   }
 
   public Task removeTask(final String taskId) {
-    final Task t = taskIdTaskMap.remove(taskId);
-    lambdaTaskMap.remove(taskId);
+    final Task t = taskIdTaskMap.get(taskId);
+    // lambdaTaskMap.remove(taskId);
     return t;
   }
 

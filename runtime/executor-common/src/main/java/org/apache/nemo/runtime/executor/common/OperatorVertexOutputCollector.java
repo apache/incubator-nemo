@@ -249,9 +249,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
-    }
+    //if (LOG.isDebugEnabled()) {
+       // LOG.info("{}/{} emits watermark {}", irVertex.getId(), taskId, watermark.getTimestamp());
+    //}
 
     List<String> offloadingIds = null;
 
