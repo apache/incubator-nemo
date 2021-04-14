@@ -45,6 +45,7 @@ import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,6 +58,8 @@ import java.util.stream.Collectors;
 /**
  * Executes a task.
  * Should be accessed by a single thread.
+ * TODO: Watermark tracker로 인해 hop이 커지면 latency가 증가함. 그냥 watermark progress input에서만?
+ * TODO: 아니면 shuffle edge만!
  */
 @NotThreadSafe
 public final class CRTaskExecutorImpl implements TaskExecutor {
@@ -797,15 +800,19 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
           // watermark!
           // we should manage the watermark
           final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+          /*
           LOG.info("Receive CR watermark from {}/{} {} at {}",
             new Instant(watermarkWithIndex.getWatermark().getTimestamp()),
             edgeId, watermarkWithIndex.getIndex(), taskId);
+            */
 
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
+              /*
               LOG.info("Emit CR watermark {} at {}",
             new Instant(watermark.getTimestamp()), taskId);
+            */
 
               vmPathDstTasks.forEach(vmTId -> {
                 writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
