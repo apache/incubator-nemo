@@ -56,6 +56,23 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     this.taskToBeStopped = new ConcurrentHashMap<>();
   }
 
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+  // TODO: optimize protocol
+
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
