@@ -12,6 +12,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
+import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +55,13 @@ public final class PairStageTaskManager {
     }
 
     final boolean crTask = isCrTask(irDag);
+    final boolean smTask = isStateMergerTask(irDag);
     final boolean transientTask = isTransientTask(taskIncomingEdges, irDag);
     final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
 
-    if (crTask) {
+    if (smTask) {
+      return Task.TaskType.MergerTask;
+    }if (crTask) {
       return Task.TaskType.CRTask;
       // find output edge with PartialRR tag
       /*
@@ -151,6 +155,11 @@ public final class PairStageTaskManager {
   public static boolean isCrTask(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     return
       irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof ConditionalRouterVertex);
+  }
+
+  public static boolean isStateMergerTask(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+    return
+      irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof StateMergerVertex);
   }
 
   public static boolean isTransientTask(final List<StageEdge> taskIncomingEdges,

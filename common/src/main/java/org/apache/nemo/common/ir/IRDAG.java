@@ -475,7 +475,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         new OperatorVertex(((OperatorVertex)originGBK).getPartialCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialTransient.setProperty(ParallelismProperty.of(p)));
-      final OperatorVertex stateMerger = ((OperatorVertex)originGBK).getFinalCombine();
+      final StateMergerVertex stateMerger = new StateMergerVertex(((OperatorVertex)originGBK).getFinalCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));
 

@@ -65,6 +65,7 @@ public final class Task implements Serializable {
 
   public enum TaskType {
     CRTask,
+    MergerTask,
     TransientTask,
     VMTask,
     DefaultTask,
