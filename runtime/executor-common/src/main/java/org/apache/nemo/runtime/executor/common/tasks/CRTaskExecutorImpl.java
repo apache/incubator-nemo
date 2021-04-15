@@ -55,6 +55,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
+
 /**
  * Executes a task.
  * Should be accessed by a single thread.
@@ -238,13 +240,13 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
       edge.isTransientPath())
       .findFirst().get();
 
-    this.transientPathDstTasks = getDstTaskIds(transientPathEdge);
+    this.transientPathDstTasks = getDstTaskIds(taskId, transientPathEdge);
     this.transientPathSerializer = serializerManager.getSerializer(transientPathEdge.getId());
 
     this.vmPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
       !edge.isTransientPath())
       .findFirst().get();
-    this.vmPathDstTasks = getDstTaskIds(vmPathEdge);
+    this.vmPathDstTasks = getDstTaskIds(taskId, vmPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
     this.taskWatermarkManager = new R2WatermarkManager(taskId);
@@ -262,37 +264,6 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     }
 
     prepare();
-  }
-
-  private List<String> getDstTaskIds(final RuntimeEdge runtimeEdge) {
-    final Optional<CommunicationPatternProperty.Value> comValue =
-      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
-
-    final StageEdge stageEdge = (StageEdge) runtimeEdge;
-    final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
-
-    final List<String> dstTaskIds;
-    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)
-      || comValue.get().equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
-      dstTaskIds = Collections.singletonList(
-        RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0));
-    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
-      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
-      || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
-      || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
-      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
-
-      final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
-      dstTaskIds =
-        dstIndices.stream()
-          .map(dstTaskIndex ->
-            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), dstTaskIndex, 0))
-          .collect(Collectors.toList());
-      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), taskId, dstIndices);
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-    }
-    return dstTaskIds;
   }
 
 

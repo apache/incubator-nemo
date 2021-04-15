@@ -858,19 +858,19 @@ public final class RuntimeMaster {
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
-      case InitSignal: {
+      case TaskOutputStart: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
-        LOG.info("Send InitSignal to {}", pairTask);
+        LOG.info("Send task output start to {}", pairTask);
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
 
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.InitSignal)
+          .setType(ControlMessage.MessageType.TaskOutputStart)
           .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
             .setTaskId(pairTask)
             .build())

@@ -672,6 +672,31 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     }
   }
 
+  @Override
+  public void startOutputPipeForRerouting(final String srcTaskId,
+                                          final String edgeId,
+                                          final String dstTaskId) {
+    final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    final TaskControlMessage msg = buildControlMessage(TaskControlMessage
+        .TaskControlMessageType.TASK_INPUT_START,
+      index, index, srcTaskId, dstTaskId, edgeId, null);
+
+    if (taskExecutorMapWrapper.containsTask(dstTaskId)) {
+      // local task
+      sendControlToLocal(dstTaskId, msg);
+    } else {
+      final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);
+      if (!optional.isPresent()) {
+        throw new RuntimeException("Remote task does not scheduled for sending control message " +
+          srcTaskId + " ->" + dstTaskId + ", " + index + ", in executor " + executorId);
+      } else {
+        sendControlToRemote(optional.get(), msg);
+      }
+    }
+
+    startOutputPipe(index, srcTaskId);
+  }
+
   // Write local data.
   // Data should not be the type of ByteBuf
   @Override

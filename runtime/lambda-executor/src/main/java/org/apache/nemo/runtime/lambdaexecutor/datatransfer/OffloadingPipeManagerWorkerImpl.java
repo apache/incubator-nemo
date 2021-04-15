@@ -267,6 +267,11 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
+  public void startOutputPipeForRerouting(String srcTaskId, String edgeId, String dstTaskId) {
+
+  }
+
+  @Override
   public void startOutputPipe(int index, String taskId) {
     throw new RuntimeException("Not supported");
   }

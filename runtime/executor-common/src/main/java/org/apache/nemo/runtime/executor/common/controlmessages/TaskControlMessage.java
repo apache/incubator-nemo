@@ -100,6 +100,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     STATE_MIGRATION_DONE,
     TASK_OUTPUT_DONE,
     TASK_OUTPUT_DONE_ACK,
+    TASK_OUTPUT_START,
     INIT_SIGNAL,
     TASK_INPUT_START,
 

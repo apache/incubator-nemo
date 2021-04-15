@@ -9,6 +9,7 @@ import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
@@ -34,6 +35,40 @@ import java.util.stream.Collectors;
 
 public final class TaskExecutorUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorUtil.class.getName());
+
+
+
+  public static List<String> getDstTaskIds(final String taskId,
+                                     final RuntimeEdge runtimeEdge) {
+    final Optional<CommunicationPatternProperty.Value> comValue =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+
+    final List<String> dstTaskIds;
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+      dstTaskIds = Collections.singletonList(
+        RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0));
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
+      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
+
+      final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
+      dstTaskIds =
+        dstIndices.stream()
+          .map(dstTaskIndex ->
+            RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), dstTaskIndex, 0))
+          .collect(Collectors.toList());
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), taskId, dstIndices);
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+    return dstTaskIds;
+  }
 
   public static void sendInitMessage(final Task task,
                                      final InputPipeRegister inputPipeRegister) {

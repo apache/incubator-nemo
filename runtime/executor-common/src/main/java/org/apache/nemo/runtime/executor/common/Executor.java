@@ -753,7 +753,7 @@ public final class Executor {
 
           break;
         }
-        case InitSignal: {
+        case TaskOutputStart: {
           // for R2 reshaping
           final String taskId = message.getStopTaskMsg().getTaskId();
           final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
@@ -763,7 +763,7 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.INIT_SIGNAL, -1, -1,
+              TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_START, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
 

@@ -12,6 +12,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,6 +62,16 @@ public final class R2ControlEventHandler implements ControlEventHandler {
     this.taskInitMap = new ConcurrentHashMap<>();
   }
 
+  /**
+   * A ------> B -------> D
+   * --------> C -------->
+   * (1): Stop A----->B
+   * (2): Checkpoint B and move state to C
+   * (3): Start A---->C
+   * (4): Stop B----->D
+   * (5): Start C----->D
+   * @param event
+   */
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
@@ -68,6 +80,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
     }
 
     switch (control.type) {
+      // (1)
       case INVOKE_REDIRECTION_FOR_CR: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
         final boolean init = (Boolean) control.event;
@@ -103,6 +116,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         });
         break;
       }
+      // (1): stop input pipe
       case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
         // should be handled by cr task
         final TaskExecutor taskExecutor =
@@ -148,6 +162,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId);
         break;
       }
+      // (1): stop input pipe
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -165,7 +180,28 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
         final boolean init = (Boolean) control.event;
 
+        // (2): send state
+        final String pairTaskId = taskExecutor.getTask().getPairTaskId();
+
+
+        // (3): close output
         if (pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
+
+          if (!init) {
+            taskExecutor.checkpoint(false, pairTaskId);
+            // Send signal to master
+            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .send(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.GetStateSignal)
+                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                  .setExecutorId(executorId)
+                  .setTaskId(control.getTaskId())
+                  .build())
+                .build());
+          }
+
           taskOutputDoneAckCounter.put(control.getTaskId(),
             new AtomicInteger(taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
 
@@ -242,7 +278,6 @@ public final class R2ControlEventHandler implements ControlEventHandler {
               null);
           });
 
-
         /* disable because we will use TASK_INPUT_START signal
 
         // Set input pipe to STOPPED for watermark handling
@@ -267,68 +302,64 @@ public final class R2ControlEventHandler implements ControlEventHandler {
          final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
            .decrementAndGet();
 
+         pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
+
+         /*
+        if (init) {
+          // if init, close output pipe of lambda task
+          taskExecutor.getTask().getTaskOutgoingEdges().forEach(edge -> {
+            final List<String> dstTasks = TaskExecutorUtil.getDstTaskIds(taskExecutor.getId(), edge);
+            dstTasks.forEach(dstTask -> {
+              final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), edge.getId(), dstTask);
+              pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
+            });
+          });
+        }
+        */
+
         if (cnt == 0) {
+          // (5): start pair task output pipe
+
           LOG.info("Receive all task output done ack {}", control.getTaskId());
           taskOutputDoneAckCounter.remove(control.getTaskId());
 
-          final boolean init = taskInitMap.remove(control.getTaskId());
-
-          final String pairTaskId = taskExecutor.getTask().getPairTaskId();
-
-          if (!init) {
-            taskExecutor.checkpoint(false, pairTaskId);
-            // Send signal to master
-            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .send(ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-                .setType(ControlMessage.MessageType.GetStateSignal)
-                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
-                  .setExecutorId(executorId)
-                  .setTaskId(control.getTaskId())
-                  .build())
-                .build());
-          } else {
-            // Send signal to master
-            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .send(ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-                .setType(ControlMessage.MessageType.InitSignal)
-                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
-                  .setExecutorId(executorId)
-                  .setTaskId(control.getTaskId())
-                  .build())
-                .build());
-          }
+          // Send signal to master
+          toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.TaskOutputStart)
+              .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                .setExecutorId(executorId)
+                .setTaskId(control.getTaskId())
+                .build())
+              .build());
         }
         break;
       }
-      case INIT_SIGNAL: {
+      case TASK_OUTPUT_START: {
+        // (5): task output start !!
+        // send pipe init to output pipe
         if (evalConf.controlLogging) {
-          LOG.info("Init signal at {}", control.getTaskId());
+          LOG.info("Task output start at {}", control.getTaskId());
         }
 
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-
-        // send pipe init to output pipe
         taskExecutor.getTask().getDownstreamTasks().entrySet().forEach(entry -> {
           entry.getValue().forEach(dstTaskId -> {
-            pipeManagerWorker.writeControlMessage(
+            pipeManagerWorker.startOutputPipeForRerouting(
               control.getTaskId(),
               entry.getKey().getId(),
-              dstTaskId,
-              TaskControlMessage.TaskControlMessageType.TASK_INPUT_START,
-              null);
+              dstTaskId);
           });
         });
+
         break;
       }
       case GET_STATE_SIGNAL: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-
 
         if (evalConf.controlLogging) {
           LOG.info("Get checkpointed state in {}", control.getTaskId());
@@ -337,18 +368,6 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         taskExecutor.restore();
         taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
           TaskExecutorMapWrapper.TaskExecutorState.RUNNING);
-
-        // send pipe init to output pipe
-        taskExecutor.getTask().getDownstreamTasks().entrySet().forEach(entry -> {
-          entry.getValue().forEach(dstTaskId -> {
-            pipeManagerWorker.writeControlMessage(
-              control.getTaskId(),
-              entry.getKey().getId(),
-              dstTaskId,
-              TaskControlMessage.TaskControlMessageType.TASK_INPUT_START,
-              null);
-          });
-        });
 
         // Send signal to CR input pipes for rerouting
         // Here, reset the input of pairTask to running

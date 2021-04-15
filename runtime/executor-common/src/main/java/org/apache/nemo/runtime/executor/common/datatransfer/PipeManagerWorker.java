@@ -72,7 +72,12 @@ public interface PipeManagerWorker extends InputPipeRegister {
                            TaskControlMessage.TaskControlMessageType type,
                            Object event);
 
-  // When input pipe is initiated
+  void startOutputPipeForRerouting(final String srcTaskId,
+                                          final String edgeId,
+                                          final String dstTaskId);
+
+
+    // When input pipe is initiated
   void startOutputPipe(int index, String taskId);
 
   boolean isOutputPipeStopped(String taskId);

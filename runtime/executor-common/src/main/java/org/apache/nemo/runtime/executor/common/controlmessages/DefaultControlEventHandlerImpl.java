@@ -71,6 +71,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case GET_STATE_SIGNAL:
       case TASK_INPUT_START:
       case TASK_OUTPUT_DONE_ACK:
+      case TASK_OUTPUT_START:
       case INIT_SIGNAL:
       case STATE_MIGRATION_DONE: {
         r2ControlEventHandler.handleControlEvent(event);

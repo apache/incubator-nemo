@@ -190,6 +190,7 @@ enum MessageType {
     DeactivateLambdaTask = 70;
 
     InitSignal = 71;
+    TaskOutputStart = 72;
 }
 
 message LambdaEndMessage {
