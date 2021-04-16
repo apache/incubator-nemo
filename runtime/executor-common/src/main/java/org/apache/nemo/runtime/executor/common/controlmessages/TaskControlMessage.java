@@ -37,7 +37,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
    **************************************************************************************************
    **************************************************************************************************
    ****** Steps for rerouting from VM (Lambda) task to Lambda (VM) task ****
-   * 1) from Master -> VM (Lambda) task: R2_INVOKE_REDIRECTION_FOR_CR // done
+   * 1) from Master -> VM (Lambda) task: R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER // done
    *  For VM->Lambda redirection
    *    - a) Driver: "redirection num stage_id"
    *    - b) Master: RoutingDataToLambda control message
@@ -57,21 +57,21 @@ public final class TaskControlMessage implements TaskHandlingEvent {
    *       we should change it to RUNNING when the data goes back to the task again
    *    - stop output pipe of CR task -> VM/Lambda task
    * 5) VM/Lambda task: state checkpoint for Lambda/VM task // done
-   *    - VM/Lambda task -> Master -> Lambda/VM task: signal R2_GET_STATE_SIGNAL
+   *    - VM/Lambda task -> Master -> Lambda/VM task: signal R2_GET_STATE_SIGNAL_BY_PAIR
    *    - Master: a) receives (VM/Lambda task id)
    *              b) find pair task id
-   *              c) send R2_GET_STATE_SIGNAL to the pair task id
+   *              c) send R2_GET_STATE_SIGNAL_BY_PAIR to the pair task id
    *    - After sending the message, the VM/Lambda task sends stop signal to output pipes
-    *       -- (R2_TASK_OUTPUT_DONE) signal; VM/Lambda task -> downstream tasks
+    *       -- (R2_TASK_OUTPUT_DONE_FROM_UPSTREAM) signal; VM/Lambda task -> downstream tasks
     *       -- downstream tasks set their input pipe to STOPPED
    *        -- this is because of watermark handling of transient path
    * 6) Lambda/VM task (target task):
    *    - get checkpointed state (taskExecutor.restore())
-   *    - Lambda/VM task -> CR task: R2_STATE_MIGRATION_DONE (TODO)
-   *       - a) send pipe init message to output pipes (R2_TASK_INPUT_START) (TODO)
-   *       - b) send R2_STATE_MIGRATION_DONE to input pipes
+   *    - Lambda/VM task -> CR task: R2_START_OUTPUT_FROM_DOWNSTREAM (TODO)
+   *       - a) send pipe init message to output pipes (R2_TASK_INPUT_START_FROM_UPSTREAM) (TODO)
+   *       - b) send R2_START_OUTPUT_FROM_DOWNSTREAM to input pipes
    * 7) CR task:
-   *    - receives R2_STATE_MIGRATION_DONE and flush buffered data to Lambda/VM task
+   *    - receives R2_START_OUTPUT_FROM_DOWNSTREAM and flush buffered data to Lambda/VM task
    **************************************************************************************************
    **************************************************************************************************
    * TODO: If Lambda instance is closed, how to handle lambad tasks? and redeploy?
@@ -88,28 +88,36 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     REGISTER_EXECUTOR,
     TASK_SCHEDULED,
 
-
     // For R2
-    R2_INVOKE_REDIRECTION_FOR_CR,
+    R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER,
     R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
     R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
-    R2_GET_STATE_SIGNAL,
-    R2_STATE_MIGRATION_DONE,
-    R2_TASK_OUTPUT_DONE,
-    R2_TASK_OUTPUT_DONE_ACK,
-    R2_TASK_OUTPUT_START,
-    R2_INIT_SIGNAL,
-    R2_TASK_INPUT_START,
+    R2_GET_STATE_SIGNAL_BY_PAIR,
+    R2_START_OUTPUT_FROM_DOWNSTREAM,
+    R2_TASK_OUTPUT_DONE_FROM_UPSTREAM,
+    R2_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+    R2_TASK_OUTPUT_START_BY_PAIR,
+    R2_TASK_INPUT_START_FROM_UPSTREAM,
+    R2_INPUT_START_BY_PAIR,
 
     // For R3
-
-
+    R3_INIT,
+    R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER,
+    R3_TASK_STATE_CHECK, // periodically check whether the task state becomes zero
+    R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK,
+    R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_ACK_BY_DOWNSTREAM_TASK,
+    R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK,
+    R3_DATA_STOP_BY_DOWNSTREMA_TASK,
+    R3_DATA_WATERMARK_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
+    R3_TASK_OUTPUT_DONE_FROM_UPSTREAM,
+    R3_INPUT_OUTPUT_START_BY_PAIR,
+    R3_START_OUTPUT_FROM_DOWNSTREAM,
+    R3_TASK_INPUT_START_FROM_UPSTREAM,
 
     // For offloaded task
     OFFLOAD_TASK_STOP,
     OFFLOAD_CONTROL,
     DEACTIVATE_LAMBDA,
-
 
     // Not used
     BACKPRESSURE,
@@ -208,12 +216,18 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           bos.writeUTF((String) event);
           break;
         }
+        case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
+        case R3_DATA_STOP_BY_DOWNSTREMA_TASK:
         case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
           ((RedirectionMessage) event).encode(bos);
           break;
         }
         case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
           bos.writeBoolean((Boolean)event);
+          break;
+        }
+        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK: {
+          bos.writeUTF((String)event);
           break;
         }
         case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
@@ -244,6 +258,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             TaskStopSignalByDownstreamTask.decode(bis));
           break;
         }
+        case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
+        case R3_DATA_STOP_BY_DOWNSTREMA_TASK:
         case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             RedirectionMessage.decode(bis));
@@ -252,6 +268,11 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             bis.readBoolean());
+          break;
+        }
+        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK: {
+          msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
+            bis.readUTF());
           break;
         }
         case REGISTER_EXECUTOR: {

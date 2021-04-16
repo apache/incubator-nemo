@@ -6,16 +6,16 @@ public final class RedirectionMessage {
   public final String originTaskId;
   public final String pairTaskId;
   public final String pairEdgeId;
-  public final boolean init;
+  public final boolean checkpoint;
 
   public RedirectionMessage(final String originTaskId,
                             final String pairTaskId,
                             final String pairEdgeId,
-                            final boolean init) {
+                            final boolean checkpoint) {
     this.originTaskId = originTaskId;
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
-    this.init = init;
+    this.checkpoint = checkpoint;
   }
 
   public void encode(final OutputStream bos) {
@@ -24,7 +24,7 @@ public final class RedirectionMessage {
       dos.writeUTF(originTaskId);
       dos.writeUTF(pairTaskId);
       dos.writeUTF(pairEdgeId);
-      dos.writeBoolean(init);
+      dos.writeBoolean(checkpoint);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -37,10 +37,10 @@ public final class RedirectionMessage {
       final String oid = dis.readUTF();
       final String pid = dis.readUTF();
       final String eid = dis.readUTF();
-      final boolean init = dis.readBoolean();
+      final boolean checkpoint = dis.readBoolean();
 
       return new RedirectionMessage(
-        oid, pid, eid, init);
+        oid, pid, eid, checkpoint);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);

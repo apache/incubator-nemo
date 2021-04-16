@@ -189,8 +189,9 @@ enum MessageType {
 
     DeactivateLambdaTask = 70;
 
-    InitSignal = 71;
+    InputStart = 71;
     TaskOutputStart = 72;
+    R3PairInputOutputStart = 73;
 }
 
 message LambdaEndMessage {

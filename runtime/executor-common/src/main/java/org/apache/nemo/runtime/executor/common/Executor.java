@@ -197,6 +197,9 @@ public final class Executor {
         CpuInfoExtractor.printNetworkStat(-1);
       }
 
+      // Add R3 task state checker
+      taskExecutorMapWrapper.addR3StateCheckEvent();
+
       // final double load = profiler.getCpuLoad();
       // LOG.info("Cpu load: {}", load);
 
@@ -488,8 +491,56 @@ public final class Executor {
           false);
       } else if (task.isCrTask()) {
         // conditional routing task
+        if (evalConf.optimizationPolicy.contains("R3")) {
+          taskExecutor =
+            new R3CRTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        } else {
+          taskExecutor =
+            new CRTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        }
+      } else if (task.isMerger()) {
         taskExecutor =
-          new CRTaskExecutorImpl(
+          new MergerTaskExecutorImpl(
             Thread.currentThread().getId(),
             executorId,
             task,
@@ -715,24 +766,42 @@ public final class Executor {
                LOG.info("Routing data from lambda task {} VM Lambda  {} in executor {}",
                 message.getStopTaskMsg().getTaskId(), task.getPairTaskId(), executorId);
             }
+
+            // For R3 reshaping
+            // Checkpoint if task is not partial combine
+            // Otherwise, we should not checkpoint the partial combine task
+            // because state merger will merge its state
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
-            executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR, -1, -1,
-              message.getStopTaskMsg().getTaskId(), false));
+
+            if (task.isParitalCombine()) {
+              executorThread.addShortcutEvent(new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType.R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
+                message.getStopTaskMsg().getTaskId(), false));
+            } else {
+              executorThread.addShortcutEvent(new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
+                message.getStopTaskMsg().getTaskId(), true));
+            }
           });
           break;
         }
+        // Deactivate lambda in init of executor
         case DeactivateLambdaTask: {
           // for R2 reshaping
-          LOG.info("Deactivation task in executor {}", executorId);
-
+          LOG.info("Deactivation lambda task in executor {}", executorId);
           taskExecutorMapWrapper.getTaskExecutorMap()
             .keySet().forEach(taskExecutor -> {
               executorService.execute(() -> {
                 final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
-                executorThread.addEvent(new TaskControlMessage(
-                  TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR, -1, -1,
-                  taskExecutor.getId(), true));
+                if (taskExecutor.getTask().isParitalCombine()) {
+                   executorThread.addEvent(new TaskControlMessage(
+                    TaskControlMessage.TaskControlMessageType.R3_INIT, -1, -1,
+                    taskExecutor.getId(), false));
+                } else {
+                  executorThread.addEvent(new TaskControlMessage(
+                    TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
+                    taskExecutor.getId(), false));
+                }
               });
             });
           break;
@@ -747,11 +816,25 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.R2_GET_STATE_SIGNAL, -1, -1,
+              TaskControlMessage.TaskControlMessageType.R2_GET_STATE_SIGNAL_BY_PAIR, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
 
           break;
+        }
+        case R3PairInputOutputStart: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get state signal from VM task {} to Lambda {} in executor {}",
+              task.getPairTaskId(), message.getStopTaskMsg().getTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.R3_INPUT_OUTPUT_START_BY_PAIR, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
         }
         case TaskOutputStart: {
           // for R2 reshaping
@@ -763,7 +846,7 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_START, -1, -1,
+              TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_START_BY_PAIR, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
 

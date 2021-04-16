@@ -117,8 +117,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final boolean offloaded;
 
-  private final List<ConditionalRouterVertex> crVertices;
-
   private final Transform.ConditionalRouting conditionalRouting;
 
   private final boolean singleOneToOneInput;
@@ -162,7 +160,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
-    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -439,10 +436,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
-      }
-
-      if (childVertex instanceof ConditionalRouterVertex) {
-        crVertices.add((ConditionalRouterVertex)childVertex);
       }
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {

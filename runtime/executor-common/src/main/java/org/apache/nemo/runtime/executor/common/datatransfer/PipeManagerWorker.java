@@ -73,8 +73,9 @@ public interface PipeManagerWorker extends InputPipeRegister {
                            Object event);
 
   void startOutputPipeForRerouting(final String srcTaskId,
-                                          final String edgeId,
-                                          final String dstTaskId);
+                                   final String edgeId,
+                                   final String dstTaskId,
+                                   TaskControlMessage.TaskControlMessageType type);
 
 
     // When input pipe is initiated

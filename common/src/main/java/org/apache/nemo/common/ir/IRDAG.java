@@ -471,13 +471,21 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       final OperatorVertex partialOrigin = ((OperatorVertex)originGBK).getPartialCombine();
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
+
+      partialOrigin.isStateful = true;
+
       final OperatorVertex partialTransient =
         new OperatorVertex(((OperatorVertex)originGBK).getPartialCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialTransient.setProperty(ParallelismProperty.of(p)));
+
+      partialTransient.isStateful = true;
+
       final StateMergerVertex stateMerger = new StateMergerVertex(((OperatorVertex)originGBK).getFinalCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));
+
+      stateMerger.isStateful = true;
 
       // Add partial origin and transient vertex
       builder.addVertex(partialOrigin);
@@ -485,15 +493,20 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       // Add merger
       builder.addVertex(stateMerger);
 
+      final Map<String, String> oldNewEdgeId = new HashMap<>();
+
       // connect edge for partial origin
       modifiedDAG.getIncomingEdgesOf(originGBK).forEach(edge -> {
         final IREdge toPartialOriginEdge = new IREdge(
           edge.getPropertyValue(CommunicationPatternProperty.class).get(),
           edge.getSrc(),
           partialOrigin);
+
+        oldNewEdgeId.put(edge.getId(), toPartialOriginEdge.getId());
         edge.copyExecutionPropertiesTo(toPartialOriginEdge);
         builder.connectVertices(toPartialOriginEdge);
       });
+
       // connect edge for partial transient
       modifiedDAG.getIncomingEdgesOf(transientGBK).forEach(edge -> {
         final IREdge toPartialTransientEdge = new IREdge(
@@ -501,6 +514,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           edge.getSrc(),
           partialTransient);
         edge.copyExecutionPropertiesTo(toPartialTransientEdge);
+
+        // final String newPairEdgeId =
+        //  oldNewEdgeId.get(edge.getPropertyValue(PairEdgeProperty.class).get());
+
+        LOG.info("Old new edge id: {} " +
+          "transient edge {} old pair: {}", oldNewEdgeId, toPartialTransientEdge.getId(),
+          edge.getPropertyValue(PairEdgeProperty.class));
+
+        //toPartialTransientEdge.setProperty(PairEdgeProperty.of(newPairEdgeId));
         builder.connectVertices(toPartialTransientEdge);
       });
 
@@ -527,6 +549,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       fromPartialTransientToMerger.setPropertyPermanently(
         CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
 
+      fromPartialTransientToMerger.setProperty(PairEdgeProperty.of(fromPartialOriginToMerger.getId()));
+
       builder.connectVertices(fromPartialTransientToMerger);
 
       // connect edge merger -> originGBK_out
@@ -552,6 +576,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         mergerToTransientGBKOut.setPropertyPermanently(
           CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
 
+        mergerToTransientGBKOut.setProperty(
+          PairEdgeProperty.of(mergerToOriginGBKOut.getId()));
+
         builder.connectVertices(mergerToTransientGBKOut);
       } else {
         final IREdge mergerToTransientGBKOut = new IREdge(
@@ -561,6 +588,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         transientGBKOutEdge.copyExecutionPropertiesTo(mergerToTransientGBKOut);
         mergerToTransientGBKOut.setPropertyPermanently(
           CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientShuffle));
+
+        mergerToTransientGBKOut.setProperty(
+          PairEdgeProperty.of(mergerToOriginGBKOut.getId()));
 
         builder.connectVertices(mergerToTransientGBKOut);
       }

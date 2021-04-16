@@ -2,6 +2,8 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskToBeStoppedMap;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,13 +29,16 @@ public final class TaskExecutorMapWrapper {
 
   private final ConcurrentMap<TaskExecutor, TaskExecutorState> taskExecutorStateMap;
 
+  private final TaskToBeStoppedMap taskToBeStoppedMap;
+
   @Inject
-  private TaskExecutorMapWrapper() {
+  private TaskExecutorMapWrapper(final TaskToBeStoppedMap taskToBeStoppedMap) {
     this.taskExecutorMap = new ConcurrentHashMap<>();
     this.stageTaskMap = new ConcurrentHashMap<>();
     this.taskIdExecutorMap = new ConcurrentHashMap<>();
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorStateMap = new ConcurrentHashMap<>();
+    this.taskToBeStoppedMap = taskToBeStoppedMap;
   }
 
   public void putTaskExecutor(final TaskExecutor taskExecutor,
@@ -66,6 +71,19 @@ public final class TaskExecutorMapWrapper {
       throw new RuntimeException("No task executor " + taskId);
     }
     return taskIdExecutorMap.get(taskId);
+  }
+
+  public synchronized void addR3StateCheckEvent() {
+    taskExecutorMap.keySet().stream()
+      .filter(taskExecutor -> taskExecutor.getTask().isParitalCombine()
+        && !taskToBeStoppedMap.taskToBeStopped.containsKey(taskExecutor.getId()))
+      .forEach(partialTask -> {
+        taskExecutorThreadMap.get(partialTask)
+          .addShortcutEvent(new TaskControlMessage(
+            TaskControlMessage.TaskControlMessageType.R3_TASK_STATE_CHECK,
+            -1, -1,
+            partialTask.getId(), null));
+      });
   }
 
   public synchronized void removeTask(String taskId) {

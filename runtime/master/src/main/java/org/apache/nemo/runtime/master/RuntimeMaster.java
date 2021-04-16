@@ -898,6 +898,45 @@ public final class RuntimeMaster {
 
         break;
       }
+      case R3PairInputOutputStart: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        LOG.info("Send R3PairInputOutputStart for rerouting data from {} to {}", reroutingTask, pairTask);
+        final ExecutorRepresenter executorRepresenter = executorRegistry
+          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.R3PairInputOutputStart)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+        break;
+      }
+      case InputStart: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        LOG.info("Send GetStateSignal for rerouting data from {} to {}", reroutingTask, pairTask);
+        final ExecutorRepresenter executorRepresenter = executorRegistry
+          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.InputStart)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+
+        break;
+      }
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();

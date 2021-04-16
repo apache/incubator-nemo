@@ -37,6 +37,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -120,15 +121,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   // THIS TASK SHOULD NOT BE MOVED !!
   // THIS TASK SHOULD NOT BE MOVED !!
   // THIS TASK SHOULD NOT BE MOVED !!
-
-  private enum CRTaskState {
-    STATE_MIGRATION_TO_LAMBDA,
-    STATE_MIGRATION_FROM_LAMBDA,
-    NORMAL,
-    SEND_DATA_TO_LAMBDA,
-  }
-
-  private CRTaskState currState = CRTaskState.NORMAL;
 
   private final RuntimeEdge transientPathEdge;
   private final List<String> transientPathDstTasks;
@@ -256,11 +248,14 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
       @Override
       public void emit(Object output) {
-        writeData(output);
+        taskMetrics.incrementOutputElement();
+        final long timestamp = ts;
+        writeData(new TimestampAndValue<>(timestamp, output));
       }
 
       @Override
       public void emitWatermark(Watermark watermark) {
+        LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
         vmPathDstTasks.forEach(vmTId -> {
           writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
         });
@@ -352,18 +347,27 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   private boolean allPathStopped = false;
   @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
-    LOG.info("Stop input pipe index {}", triple);
+    LOG.info("Stop input pipe index {} in {}", triple, taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    allPathStopped = taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    // allPathStopped = taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
   }
 
   @Override
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
-    LOG.info("Start input pipe index {}", triple);
-    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
-    final String edgeId = triple.getMiddle();
-    taskWatermarkManager.startIndex(taskIndex, edgeId);
+    try {
+      LOG.info("Start input pipe index {}", triple);
+      final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+      final String edgeId = triple.getMiddle();
+      taskWatermarkManager.startIndex(taskIndex, edgeId);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception in " + taskId +
+        ", vmEdgEId: " + vmPathEdge.getId()
+      + ", lambdaEdgeId: " + transientPathEdge.getId()
+      + " triple: " + triple);
+    }
   }
 
   private void prepare() {
@@ -671,7 +675,8 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   @Override
   public void setRerouting(final String originTask,
                            final String pairTaskId,
-                           final String pairEdgeId) {
+                           final String pairEdgeId,
+                           final ReroutingState state) {
     if (pairEdgeId.equals(transientPathEdge.getId())) {
       // rerouting from VM to Lambda
       reroutingTable.put(originTask, pairTaskId);
@@ -731,7 +736,15 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         } else {
           // data
           LOG.info("Emit SM data to merger in {} {}", taskId);
-          mergerTransform.onData(taskHandlingEvent.getData());
+          final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
+          final long ns = System.nanoTime();
+          taskMetrics.incrementInputElement();
+
+          outputCollector.setInputTimestamp(event.timestamp);
+          mergerTransform.onData(event.value);
+
+          final long endNs = System.nanoTime();
+          taskMetrics.incrementComputation(endNs - ns);
         }
       }
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
@@ -760,7 +773,15 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         } else {
           // data
           LOG.info("Emit SM data to merger in {} {}", taskId);
-          mergerTransform.onData(taskHandlingEvent.getData());
+          final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
+          final long ns = System.nanoTime();
+          taskMetrics.incrementInputElement();
+
+          outputCollector.setInputTimestamp(event.timestamp);
+          mergerTransform.onData(event.value);
+
+          final long endNs = System.nanoTime();
+          taskMetrics.incrementComputation(endNs - ns);
         }
       }
     }

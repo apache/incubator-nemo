@@ -33,7 +33,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final EvalConf evalConf;
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final R2ControlEventHandler r2ControlEventHandler;
-  private final Map<String, Boolean> taskToBeStopped;
+  private final R3ControlEventHandler r3ControlEventHandler;
+  private final TaskToBeStoppedMap taskToBeStopped;
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -43,6 +44,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final PipeManagerWorker pipeManagerWorker,
     final EvalConf evalConf,
     final R2ControlEventHandler r2ControlEventHandler,
+    final R3ControlEventHandler r3ControlEventHandler,
+    final TaskToBeStoppedMap taskToBeStoppedMap,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
@@ -51,7 +54,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     this.evalConf = evalConf;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.r2ControlEventHandler = r2ControlEventHandler;
-    this.taskToBeStopped = new ConcurrentHashMap<>();
+    this.r3ControlEventHandler = r3ControlEventHandler;
+    this.taskToBeStopped = taskToBeStoppedMap;
   }
 
   // TODO: optimize protocol
@@ -79,16 +83,31 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     }
 
     switch (control.type) {
-      case R2_INVOKE_REDIRECTION_FOR_CR:
+      case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
+      case R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
+      case R3_DATA_WATERMARK_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
+      case R3_INIT:
+      case R3_INPUT_OUTPUT_START_BY_PAIR:
+      case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_ACK_BY_DOWNSTREAM_TASK:
+      case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK:
+      case R3_START_OUTPUT_FROM_DOWNSTREAM:
+      case R3_TASK_INPUT_START_FROM_UPSTREAM:
+      case R3_TASK_OUTPUT_DONE_FROM_UPSTREAM:
+      case R3_TASK_STATE_CHECK:
+      case R3_DATA_STOP_BY_DOWNSTREMA_TASK: {
+        r3ControlEventHandler.handleControlEvent(event);
+        break;
+      }
+      case R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
       case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
       case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:
-      case R2_TASK_OUTPUT_DONE:
-      case R2_GET_STATE_SIGNAL:
-      case R2_TASK_INPUT_START:
-      case R2_TASK_OUTPUT_DONE_ACK:
-      case R2_TASK_OUTPUT_START:
-      case R2_INIT_SIGNAL:
-      case R2_STATE_MIGRATION_DONE: {
+      case R2_TASK_OUTPUT_DONE_FROM_UPSTREAM:
+      case R2_GET_STATE_SIGNAL_BY_PAIR:
+      case R2_TASK_INPUT_START_FROM_UPSTREAM:
+      case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
+      case R2_TASK_OUTPUT_START_BY_PAIR:
+      case R2_INPUT_START_BY_PAIR:
+      case R2_START_OUTPUT_FROM_DOWNSTREAM: {
         r2ControlEventHandler.handleControlEvent(event);
         break;
       }
@@ -104,7 +123,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           }
         } else {
           // Stop input pipe
-          taskToBeStopped.put(taskExecutor.getId(), true);
+          taskToBeStopped.taskToBeStopped.put(taskExecutor.getId(), true);
           taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
             pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
               entry.getKey().getId(), control.getTaskId(),
@@ -169,7 +188,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
   private boolean canTaskMoved(final String taskId) {
     // output stopped means that it is waiting for moving downstream task
-    return taskToBeStopped.containsKey(taskId) &&
+    return taskToBeStopped.taskToBeStopped.containsKey(taskId) &&
       pipeManagerWorker.isInputPipeStopped(taskId)
       && !pipeManagerWorker.isOutputPipeStopped(taskId);
   }
@@ -178,7 +197,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     // flush pipes
     pipeManagerWorker.flush();
 
-    taskToBeStopped.remove(taskId);
+    taskToBeStopped.taskToBeStopped.remove(taskId);
 
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);

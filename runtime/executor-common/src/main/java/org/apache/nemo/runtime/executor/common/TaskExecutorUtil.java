@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.offloading.common.StateStore;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.slf4j.Logger;
@@ -37,6 +38,47 @@ public final class TaskExecutorUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorUtil.class.getName());
 
 
+  public static void sendOutputDoneMessage(final Task task,
+                                           final PipeManagerWorker pipeManagerWorker,
+                                           final TaskControlMessage.TaskControlMessageType type) {
+
+    final String srcTask = task.getTaskId();
+    final int index = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+
+    task.getTaskOutgoingEdges()
+      .forEach(outgoingEdge -> {
+        if (outgoingEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
+          || outgoingEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.OneToOne)) {
+
+          final String dstTaskId =
+            RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), index, 0);
+          pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
+            type,
+            null);
+
+          LOG.info("Send task output done signal from {} to {}", srcTask,
+            dstTaskId);
+
+        } else {
+          final int parallelism = outgoingEdge.getSrcIRVertex()
+            .getPropertyValue(ParallelismProperty.class).get();
+
+          for (int i = 0; i < parallelism; i++) {
+            final String dstTaskId =
+              RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), i, 0);
+            pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
+              type,
+              null);
+
+            LOG.info("Send task output done signal from {} to {}", srcTask,
+              dstTaskId);
+          }
+        }
+      });
+
+  }
 
   public static List<String> getDstTaskIds(final String taskId,
                                      final RuntimeEdge runtimeEdge) {

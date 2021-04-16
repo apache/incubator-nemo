@@ -675,10 +675,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   @Override
   public void startOutputPipeForRerouting(final String srcTaskId,
                                           final String edgeId,
-                                          final String dstTaskId) {
+                                          final String dstTaskId,
+                                          final TaskControlMessage.TaskControlMessageType type) {
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
-    final TaskControlMessage msg = buildControlMessage(TaskControlMessage
-        .TaskControlMessageType.R2_TASK_INPUT_START,
+    final TaskControlMessage msg = buildControlMessage(type,
       index, index, srcTaskId, dstTaskId, edgeId, null);
 
     if (taskExecutorMapWrapper.containsTask(dstTaskId)) {

@@ -10,5 +10,6 @@ public interface  CRTaskExecutor extends TaskExecutor {
 
   void setRerouting(final String originTask,
                     final String pairTaskId,
-                    final String pairEdgeId);
+                    final String pairEdgeId,
+                    final ReroutingState rstate);
 }

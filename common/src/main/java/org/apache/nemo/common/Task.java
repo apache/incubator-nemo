@@ -30,6 +30,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
+import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.offloading.common.TaskCaching;
 import org.slf4j.Logger;
@@ -72,6 +73,7 @@ public final class Task implements Serializable {
   }
 
   private final TaskType taskType;
+  private final boolean isPartial;
 
   /**
    *
@@ -108,6 +110,11 @@ public final class Task implements Serializable {
     // find pair task
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
+    this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
+      return edge.getDst().getIRDAG().getVertices().stream()
+        .anyMatch(vertex -> vertex instanceof StateMergerVertex);
+    });
+
     /*
     if (pairTaskId != null) {
       this.vmTaskTransientTaskEdge = Pair.of(
@@ -131,6 +138,10 @@ public final class Task implements Serializable {
     return vmTaskTransientTaskEdge;
   }
   */
+
+  public boolean isParitalCombine() {
+    return isPartial;
+  }
 
   public String getPairTaskId() {
     return pairTaskId;
@@ -279,6 +290,8 @@ public final class Task implements Serializable {
   public boolean isVMTask() {
     return taskType.equals(TaskType.VMTask);
   }
+
+  public boolean isMerger() { return taskType.equals(TaskType.MergerTask); }
 
   public boolean isDefaultTask() {
     return taskType.equals(TaskType.DefaultTask);

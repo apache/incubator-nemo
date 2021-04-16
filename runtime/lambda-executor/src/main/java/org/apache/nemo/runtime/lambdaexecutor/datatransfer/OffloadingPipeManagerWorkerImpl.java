@@ -267,7 +267,8 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void startOutputPipeForRerouting(String srcTaskId, String edgeId, String dstTaskId) {
+  public void startOutputPipeForRerouting(String srcTaskId, String edgeId, String dstTaskId,
+                                          TaskControlMessage.TaskControlMessageType type) {
 
   }
 
