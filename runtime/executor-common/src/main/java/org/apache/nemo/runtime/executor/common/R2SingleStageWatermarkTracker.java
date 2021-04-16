@@ -73,6 +73,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     }
   }
 
+  public boolean isStopped(final int edgeIndex) {
+    return stoppedWatermarks.get(edgeIndex);
+  }
+
   public List<Boolean> getStoppedWatermarks() {
     return stoppedWatermarks;
   }

@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
 @NotThreadSafe
-public final class MergerTaskExecutorImpl implements TaskExecutor {
+public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(MergerTaskExecutorImpl.class.getName());
 
   // Essential information
@@ -349,19 +349,21 @@ public final class MergerTaskExecutorImpl implements TaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
+  private boolean allPathStopped = false;
+  @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    allPathStopped = taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
   }
 
-  private boolean allPathStopped = false;
+  @Override
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Start input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    allPathStopped = taskWatermarkManager.startIndex(taskIndex, edgeId);
+    taskWatermarkManager.startIndex(taskIndex, edgeId);
   }
 
   private void prepare() {
@@ -666,6 +668,7 @@ public final class MergerTaskExecutorImpl implements TaskExecutor {
     }
   }
 
+  @Override
   public void setRerouting(final String originTask,
                            final String pairTaskId,
                            final String pairEdgeId) {

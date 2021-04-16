@@ -64,7 +64,7 @@ import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTas
  * TODO: 아니면 shuffle edge만!
  */
 @NotThreadSafe
-public final class CRTaskExecutorImpl implements TaskExecutor {
+public final class CRTaskExecutorImpl implements CRTaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(CRTaskExecutorImpl.class.getName());
 
   // Essential information
@@ -340,6 +340,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
+  @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
@@ -347,6 +348,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
   }
 
+  @Override
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Start input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
@@ -671,6 +673,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     }
   }
 
+  @Override
   public void setRerouting(final String originTask,
                            final String pairTaskId,
                            final String pairEdgeId) {

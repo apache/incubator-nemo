@@ -101,6 +101,9 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R2_INIT_SIGNAL,
     R2_TASK_INPUT_START,
 
+    // For R3
+
+
 
     // For offloaded task
     OFFLOAD_TASK_STOP,

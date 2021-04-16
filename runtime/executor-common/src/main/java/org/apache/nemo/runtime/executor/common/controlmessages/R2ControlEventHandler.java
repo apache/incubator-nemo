@@ -13,6 +13,7 @@ import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutor;
 import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -156,7 +157,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         }
 
         // redirection
-        final CRTaskExecutorImpl crTaskExecutor = (CRTaskExecutorImpl) taskExecutor;
+        final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
         crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId);
         break;
       }
@@ -276,17 +277,13 @@ public final class R2ControlEventHandler implements ControlEventHandler {
               null);
           });
 
-        /* disable because we will use R2_TASK_INPUT_START signal
-
         // Set input pipe to STOPPED for watermark handling
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        if (taskExecutor instanceof CRTaskExecutorImpl) {
-          final CRTaskExecutorImpl crTaskExecutor = (CRTaskExecutorImpl) taskExecutor;
+        if (taskExecutor instanceof CRTaskExecutor) {
+          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
           final Triple<String, String, String> triple =
             pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
           crTaskExecutor.stopInputPipeIndex(triple);
         }
-        */
 
         break;
       }
@@ -317,7 +314,6 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
         if (cnt == 0) {
           // (5): start pair task output pipe
-
           LOG.info("Receive all task output done ack {}", control.getTaskId());
           taskOutputDoneAckCounter.remove(control.getTaskId());
 
@@ -388,8 +384,8 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         LOG.info("Receive task input start pipe {} running ", control.targetPipeIndex);
 
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-        if (taskExecutor instanceof CRTaskExecutorImpl) {
-          final CRTaskExecutorImpl crTaskExecutor = (CRTaskExecutorImpl) taskExecutor;
+        if (taskExecutor instanceof CRTaskExecutor) {
+          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
           final Triple<String, String, String> triple =
             pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
           crTaskExecutor.startInputPipeIndex(triple);
