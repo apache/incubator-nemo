@@ -717,7 +717,7 @@ public final class Executor {
             }
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
+              TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR, -1, -1,
               message.getStopTaskMsg().getTaskId(), false));
           });
           break;
@@ -731,7 +731,7 @@ public final class Executor {
               executorService.execute(() -> {
                 final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
                 executorThread.addEvent(new TaskControlMessage(
-                  TaskControlMessage.TaskControlMessageType.INVOKE_REDIRECTION_FOR_CR, -1, -1,
+                  TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR, -1, -1,
                   taskExecutor.getId(), true));
               });
             });
@@ -747,7 +747,7 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.GET_STATE_SIGNAL, -1, -1,
+              TaskControlMessage.TaskControlMessageType.R2_GET_STATE_SIGNAL, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
 
@@ -763,7 +763,7 @@ public final class Executor {
 
             final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
             executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_START, -1, -1,
+              TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_START, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
 

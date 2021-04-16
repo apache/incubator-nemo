@@ -12,7 +12,6 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
-import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
@@ -24,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,7 +79,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
     switch (control.type) {
       // (1)
-      case INVOKE_REDIRECTION_FOR_CR: {
+      case R2_INVOKE_REDIRECTION_FOR_CR: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
         final boolean init = (Boolean) control.event;
 
@@ -103,7 +101,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             (triple) -> {
               return new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType
-                  .PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
+                  .R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
                 triple.getLeft(), // my output pipe index
                 triple.getMiddle(), // my input pipe index
                 triple.getRight(), // srct ask id
@@ -117,7 +115,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         break;
       }
       // (1): stop input pipe
-      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
+      case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
         // should be handled by cr task
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -147,7 +145,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         pipeManagerWorker.writeControlMessage(
           key.getLeft(), key.getMiddle(), key.getRight(),
           TaskControlMessage.TaskControlMessageType
-            .PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
+            .R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
           message.init);
 
         // Here, we should stop output pipe
@@ -163,13 +161,13 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         break;
       }
       // (1): stop input pipe
-      case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
+      case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
         if (!(taskExecutor.getTask().isVMTask() || taskExecutor.getTask().isTransientTask())) {
           throw new RuntimeException("Invalid task receive " +
-            "PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING " + control.getTaskId());
+            "R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING " + control.getTaskId());
         }
 
         if (evalConf.controlLogging) {
@@ -217,7 +215,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
                 final String dstTaskId =
                   RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), index, 0);
                 pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
-                  TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE,
+                  TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_DONE,
                   null);
                 if (evalConf.controlLogging) {
                   LOG.info("Send task output done signal from {} to {}", srcTask,
@@ -231,7 +229,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
                   final String dstTaskId =
                     RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), i, 0);
                   pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
-                    TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE,
+                    TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_DONE,
                     null);
                   if (evalConf.controlLogging) {
                     LOG.info("Send task output done signal from {} to {}", srcTask,
@@ -253,7 +251,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         }
         break;
       }
-      case TASK_OUTPUT_DONE: {
+      case R2_TASK_OUTPUT_DONE: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -271,14 +269,14 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           (triple) -> {
             return new TaskControlMessage(
               TaskControlMessage.TaskControlMessageType
-                .TASK_OUTPUT_DONE_ACK,
+                .R2_TASK_OUTPUT_DONE_ACK,
               triple.getLeft(), // my output pipe index
               triple.getMiddle(), // my input pipe index
               triple.getRight(),  // srct ask id
               null);
           });
 
-        /* disable because we will use TASK_INPUT_START signal
+        /* disable because we will use R2_TASK_INPUT_START signal
 
         // Set input pipe to STOPPED for watermark handling
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -292,7 +290,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
         break;
       }
-      case TASK_OUTPUT_DONE_ACK: {
+      case R2_TASK_OUTPUT_DONE_ACK: {
          final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -337,7 +335,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         }
         break;
       }
-      case TASK_OUTPUT_START: {
+      case R2_TASK_OUTPUT_START: {
         // (5): task output start !!
         // send pipe init to output pipe
         if (evalConf.controlLogging) {
@@ -357,7 +355,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
         break;
       }
-      case GET_STATE_SIGNAL: {
+      case R2_GET_STATE_SIGNAL: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -377,7 +375,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             (triple) -> {
               return new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType
-                  .STATE_MIGRATION_DONE,
+                  .R2_STATE_MIGRATION_DONE,
                 triple.getLeft(), // my output pipe index
                 triple.getMiddle(), // my input pipe index
                 triple.getRight(),  // srct ask id
@@ -386,7 +384,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         });
         break;
       }
-      case TASK_INPUT_START: {
+      case R2_TASK_INPUT_START: {
         LOG.info("Receive task input start pipe {} running ", control.targetPipeIndex);
 
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -398,7 +396,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         }
         break;
       }
-      case STATE_MIGRATION_DONE: {
+      case R2_STATE_MIGRATION_DONE: {
         final long st = System.currentTimeMillis();
         LOG.info("State migration done receive at {} / {}", control.getTaskId(), control.targetPipeIndex);
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());

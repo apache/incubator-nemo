@@ -1,7 +1,5 @@
 package org.apache.nemo.runtime.executor.common.controlmessages;
 
-import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -81,16 +79,16 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     }
 
     switch (control.type) {
-      case INVOKE_REDIRECTION_FOR_CR:
-      case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
-      case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:
-      case TASK_OUTPUT_DONE:
-      case GET_STATE_SIGNAL:
-      case TASK_INPUT_START:
-      case TASK_OUTPUT_DONE_ACK:
-      case TASK_OUTPUT_START:
-      case INIT_SIGNAL:
-      case STATE_MIGRATION_DONE: {
+      case R2_INVOKE_REDIRECTION_FOR_CR:
+      case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
+      case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:
+      case R2_TASK_OUTPUT_DONE:
+      case R2_GET_STATE_SIGNAL:
+      case R2_TASK_INPUT_START:
+      case R2_TASK_OUTPUT_DONE_ACK:
+      case R2_TASK_OUTPUT_START:
+      case R2_INIT_SIGNAL:
+      case R2_STATE_MIGRATION_DONE: {
         r2ControlEventHandler.handleControlEvent(event);
         break;
       }

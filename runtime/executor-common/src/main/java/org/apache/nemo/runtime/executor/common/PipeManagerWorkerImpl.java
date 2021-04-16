@@ -678,7 +678,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                           final String dstTaskId) {
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
     final TaskControlMessage msg = buildControlMessage(TaskControlMessage
-        .TaskControlMessageType.TASK_INPUT_START,
+        .TaskControlMessageType.R2_TASK_INPUT_START,
       index, index, srcTaskId, dstTaskId, edgeId, null);
 
     if (taskExecutorMapWrapper.containsTask(dstTaskId)) {
