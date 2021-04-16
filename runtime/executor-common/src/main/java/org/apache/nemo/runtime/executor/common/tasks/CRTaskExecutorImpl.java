@@ -636,6 +636,11 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
 
   private final Map<String, String> reroutingTable = new HashMap<>();
 
+  private void writeByteBuf(final ByteBuf data) {
+    final String vmDstTaskId = getDstTaskId.getDstTaskId();
+    writeByteBuf(vmDstTaskId, data);
+  }
+
   private void writeByteBuf(final String vmDstTaskId,
                             final ByteBuf data) {
     if (reroutingTable.containsKey(vmDstTaskId)) {
@@ -644,6 +649,11 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
     } else {
       pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(), vmDstTaskId, data);
     }
+  }
+
+  private void writeData(final Object data) {
+    final String vmDstTaskId = getDstTaskId.getDstTaskId();
+    writeData(vmDstTaskId, data);
   }
 
   private void writeData(final String vmDstTaskId,
@@ -690,13 +700,12 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     // watermark handling
-    final String vmDstTaskId = getDstTaskId.getDstTaskId();
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final ByteBuf data = taskHandlingEvent.getDataByteBuf();
       if (singleOneToOneInput) {
         if (singleOneToOneOutput) {
           // single o2o - single o2o output
-          writeByteBuf(vmDstTaskId, data);
+          writeByteBuf(data);
         } else {
           // single o2o - RR output
           final ByteBuf byteBuf = data;
@@ -711,7 +720,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
             });
           } else {
             // data
-            writeByteBuf(vmDstTaskId, data);
+            writeByteBuf(data);
           }
         }
       } else {
@@ -734,14 +743,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
             });
         } else {
           // data
-          writeByteBuf(vmDstTaskId, data);
+          writeByteBuf(data);
         }
       }
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
       if (singleOneToOneInput) {
         if (singleOneToOneOutput) {
-          writeData(vmDstTaskId, data);
+          writeData(data);
         } else {
           // single o2o - RR output
           // broadcast watermark
@@ -753,7 +762,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
               writeData(vmTId, data);
             });
           } else {
-            writeData(vmDstTaskId, data);
+            writeData(data);
           }
         }
       } else {
@@ -782,7 +791,7 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
             });
 
         } else {
-          writeData(vmDstTaskId, data);
+          writeData(data);
         }
       }
     }
@@ -885,13 +894,14 @@ public final class CRTaskExecutorImpl implements TaskExecutor {
   }
 
   final class O2oDstTaskId implements GetDstTaskId {
+    private final String dstTaskId;
     public O2oDstTaskId() {
-
+      this.dstTaskId = vmPathDstTasks.get(0);
     }
 
     @Override
     public String getDstTaskId() {
-      return vmPathDstTasks.get(0);
+      return dstTaskId;
     }
   }
 }

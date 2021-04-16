@@ -90,7 +90,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
 
   // this will be used for R3
-  public void startIndexAndStop(final int taskIndex,
+  // return if all path is stopped
+  public boolean startIndexAndStop(final int taskIndex,
                          final String edgeId) {
     final int index = parallelism == 1 ? 0 : taskIndex;
     if (edgeId.equals(lambdaPathEdgeId)) {
@@ -120,6 +121,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       LOG.info("After Stop vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+      return vmPathAllStopped;
     } else {
       // start vm path
       // stop lambda path path
@@ -149,6 +151,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       LOG.info("After Stop lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+      return lambdaPathAllStopped;
     }
   }
 

@@ -9,6 +9,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
+import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +84,7 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
 
     if (lambdaAffinity) {
       dag.topologicalDo(vertex -> {
-        if (vertex instanceof ConditionalRouterVertex) {
+        if (vertex instanceof ConditionalRouterVertex || vertex instanceof StateMergerVertex) {
 
           final List<IRVertex> verticesToAdd = new LinkedList<>();
           final List<IRVertex> stack = new LinkedList<>();
@@ -101,7 +102,8 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
 
             final List<IREdge> outEdges = dag.getOutgoingEdgesOf(s);
             for (final IREdge outEdge : outEdges) {
-              if (!(outEdge.getDst() instanceof ConditionalRouterVertex)) {
+              if (!(outEdge.getDst() instanceof ConditionalRouterVertex)
+                && !(outEdge.getDst() instanceof StateMergerVertex)) {
                 if (!verticesToAdd.contains(outEdge.getDst())) {
                   verticesToAdd.add(outEdge.getDst());
                   stack.add(outEdge.getDst());

@@ -236,11 +236,6 @@ public final class NemoDriver {
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
                 runtimeMaster.redirectionToLambda(num, stages.get(i));
-                try {
-                  Thread.sleep(100);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
               }
             }  else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
@@ -253,11 +248,6 @@ public final class NemoDriver {
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
                 runtimeMaster.redirectionDoneToLambda(num, stages.get(i));
-                try {
-                  Thread.sleep(100);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
               }
             } else if (decision.equals("move-task")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");

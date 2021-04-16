@@ -47,10 +47,10 @@ public final class R2WatermarkManager implements Serializable {
     dataFetcherWatermarkTracker.get(key).stopAndToggleIndex(taskIndex, edgeId);
   }
 
-  public void startIndex(final int taskIndex,
+  public boolean startIndex(final int taskIndex,
                          final String edgeId) {
     final Pair<String, String> key = pairEdgeMap.get(edgeId);
-    dataFetcherWatermarkTracker.get(key).startIndexAndStop(taskIndex, edgeId);
+    return dataFetcherWatermarkTracker.get(key).startIndexAndStop(taskIndex, edgeId);
   }
 
   public Optional<Watermark> updateWatermark(final String edgeId,
