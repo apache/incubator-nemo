@@ -138,11 +138,13 @@ public final class ContainerManager {
       LOG.info("Request container: {}", resourceSpecification);
       // Request the evaluators
 
-      evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-        .setNumber(numToRequest)
-        .setMemory(resourceSpecification.getMemory())
-        .setNumberOfCores(resourceSpecification.getCapacity())
-        .build());
+      for (int i = 0; i < numToRequest; i++) {
+        evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+          .setNumber(1)
+          .setMemory(resourceSpecification.getMemory())
+          .setNumberOfCores(resourceSpecification.getCapacity())
+          .build());
+      }
     } else {
       LOG.info("Request {} containers", numToRequest);
     }
