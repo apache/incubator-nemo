@@ -165,6 +165,14 @@ public final class ContainerManager {
 
     final ResourceSpecification resourceSpecification =
       selectResourceSpecForContainer(executorId, allocatedContainer);
+
+    if (resourceSpecification == null) {
+      LOG.info("We never requested for an extra container {} / {} / {}",
+        executorId, allocatedContainer, executorConfiguration);
+      allocatedContainer.close();
+      return;
+    }
+
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
@@ -312,10 +320,9 @@ public final class ContainerManager {
         }
       }
 
-      if (selectedResourceSpec != null) {
-        return selectedResourceSpec;
-      }
+      return selectedResourceSpec;
     }
-    throw new ContainerException(new Throwable("We never requested for an extra container"));
+
+    // throw new ContainerException(new Throwable("We never requested for an extra container"));
   }
 }
