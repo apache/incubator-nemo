@@ -380,6 +380,7 @@ public final class RuntimeMaster {
           resourceSpecificationString, createWithLambda, createOnlyLambda, name);
 
         for (int i = 0; i < jsonRootNode.size(); i++) {
+
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
           final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
@@ -395,6 +396,8 @@ public final class RuntimeMaster {
 
           LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
             type, memory, capacity, slot, executorNum);
+
+          final int currContainer = containerManager.getCurrContainer();
 
           if (createWithLambda) {
             if (type.equals(LAMBDA)) {
@@ -415,6 +418,10 @@ public final class RuntimeMaster {
                 new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
             }
           }
+
+          // Wait for request container
+          LOG.info("Waiting for container allocation");
+          containerManager.waitForContainer(currContainer + executorNum);
         }
 
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
