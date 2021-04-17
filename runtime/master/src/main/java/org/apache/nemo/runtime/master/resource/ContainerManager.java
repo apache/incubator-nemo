@@ -163,7 +163,8 @@ public final class ContainerManager {
       return;
     }
 
-    final ResourceSpecification resourceSpecification = selectResourceSpecForContainer(executorId);
+    final ResourceSpecification resourceSpecification =
+      selectResourceSpecForContainer(executorId, allocatedContainer);
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
@@ -283,13 +284,11 @@ public final class ContainerManager {
    * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
    * @return the selected executor specification.
    */
-  private ResourceSpecification selectResourceSpecForContainer(final String executorId) {
+  private ResourceSpecification selectResourceSpecForContainer(
+    final String executorId,
+    final AllocatedEvaluator allocatedEvaluator) {
     synchronized (pendingContainerRequestsByContainerType) {
       ResourceSpecification selectedResourceSpec = null;
-
-      if (executorId.contains("Lambda")) {
-
-      }
 
       if (executorId.contains("Lambda") &&
         pendingContainerRequestsByContainerType.containsKey(ResourcePriorityProperty.LAMBDA)
@@ -300,8 +299,10 @@ public final class ContainerManager {
         for (final Map.Entry<String, List<ResourceSpecification>> entry
           : pendingContainerRequestsByContainerType.entrySet()) {
           if (entry.getValue().size() > 0) {
-            selectedResourceSpec = entry.getValue().remove(0);
-            break;
+            if (entry.getValue().get(0).getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
+              selectedResourceSpec = entry.getValue().remove(0);
+              break;
+            }
           }
         }
 
