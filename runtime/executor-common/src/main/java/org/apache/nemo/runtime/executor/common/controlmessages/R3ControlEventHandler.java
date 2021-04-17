@@ -84,9 +84,6 @@ public final class R3ControlEventHandler implements ControlEventHandler {
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
-    if (evalConf.controlLogging) {
-      LOG.info("Handling control event {} / {}", control.type, control);
-    }
 
     switch (control.type) {
       case R3_INIT: {

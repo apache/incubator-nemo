@@ -183,10 +183,7 @@ public final class ContainerManager {
       selectResourceSpecForContainer(executorId, allocatedContainer);
 
     if (resourceSpecification == null) {
-      LOG.info("We never requested for an extra container {} / {} / {}",
-        executorId, allocatedContainer, executorConfiguration);
-      allocatedContainer.close();
-      return;
+      throw new RuntimeException("We never requested for an extra container " + executorId + "/");
     }
 
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
@@ -328,10 +325,8 @@ public final class ContainerManager {
               while (iterator.hasNext()) {
                 final ResourceSpecification spec = iterator.next();
                 LOG.info("Entry memory: {}, allocated memory: {}", spec.getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
-                if (spec.getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
-                  iterator.remove();
-                  return spec;
-                }
+                iterator.remove();
+                return spec;
               }
             }
           }
