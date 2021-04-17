@@ -308,14 +308,16 @@ public final class ContainerManager {
       } else {
         for (final Map.Entry<String, List<ResourceSpecification>> entry
           : pendingContainerRequestsByContainerType.entrySet()) {
-          if (entry.getValue().size() > 0) {
-            final Iterator<ResourceSpecification> iterator = entry.getValue().iterator();
-            while (iterator.hasNext()) {
-              final ResourceSpecification spec = iterator.next();
-              LOG.info("Entry memory: {}, allocated memory: {}", spec.getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
-              if (spec.getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
-                iterator.remove();
-                return spec;
+          if (!entry.getKey().equals(ResourcePriorityProperty.LAMBDA)) {
+            if (entry.getValue().size() > 0) {
+              final Iterator<ResourceSpecification> iterator = entry.getValue().iterator();
+              while (iterator.hasNext()) {
+                final ResourceSpecification spec = iterator.next();
+                LOG.info("Entry memory: {}, allocated memory: {}", spec.getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
+                if (spec.getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
+                  iterator.remove();
+                  return spec;
+                }
               }
             }
           }
