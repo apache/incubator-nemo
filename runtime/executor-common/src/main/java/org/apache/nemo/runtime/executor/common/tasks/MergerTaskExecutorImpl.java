@@ -255,7 +255,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
       @Override
       public void emitWatermark(Watermark watermark) {
-        LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
+        // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
         vmPathDstTasks.forEach(vmTId -> {
           writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
         });
@@ -719,23 +719,23 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
           .ifPresent(watermark -> {
             if (allPathStopped) {
               // if one path is stopped, bypass the merger
-              LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
               vmPathDstTasks.forEach(vmTId -> {
                 writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
               });
             } else {
-              LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
               mergerTransform.onWatermark(watermark);
             }
           });
       } else {
         // data
         if (allPathStopped) {
-          LOG.info("Emit SM data and bypass in {} {}", taskId);
+          // LOG.info("Emit SM data and bypass in {} {}", taskId);
           writeByteBuf(data);
         } else {
           // data
-          LOG.info("Emit SM data to merger in {} {}", taskId);
+          // LOG.info("Emit SM data to merger in {} {}", taskId);
           final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
           final long ns = System.nanoTime();
           taskMetrics.incrementInputElement();
@@ -757,22 +757,22 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
           .ifPresent(watermark -> {
             if (allPathStopped) {
               // if one path is stopped, bypass the merger
-              LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
               vmPathDstTasks.forEach(vmTId -> {
                 writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
               });
             } else {
-              LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
               mergerTransform.onWatermark(watermark);
             }
           });
       } else {
         if (allPathStopped) {
-          LOG.info("Emit SM data and bypass in {} {}", taskId);
+          // LOG.info("Emit SM data and bypass in {} {}", taskId);
           writeData(data);
         } else {
           // data
-          LOG.info("Emit SM data to merger in {} {}", taskId);
+          // LOG.info("Emit SM data to merger in {} {}", taskId);
           final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
           final long ns = System.nanoTime();
           taskMetrics.incrementInputElement();

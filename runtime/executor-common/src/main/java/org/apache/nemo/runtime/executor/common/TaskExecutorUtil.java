@@ -32,11 +32,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public final class TaskExecutorUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorUtil.class.getName());
 
+
+
+  public static int taskOutgoingEdgeDoneAckCounter(final Task task) {
+    final AtomicInteger cnt = new AtomicInteger(0);
+
+    task.getTaskOutgoingEdges()
+      .forEach(outgoingEdge -> {
+        if (outgoingEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
+          || outgoingEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.OneToOne)) {
+          cnt.getAndIncrement();
+        } else {
+          final int parallelism = outgoingEdge.getSrcIRVertex()
+            .getPropertyValue(ParallelismProperty.class).get();
+          cnt.getAndAdd(parallelism);
+        }
+      });
+
+    return cnt.get();
+  }
 
   public static void sendOutputDoneMessage(final Task task,
                                            final PipeManagerWorker pipeManagerWorker,

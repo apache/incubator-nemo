@@ -167,11 +167,13 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
                                                final int taskIndex,
                                                final long watermark) {
 
+    /*
     LOG.info("Receive watermark {} / index {} edge {} task {} / " +
         "lambdaStopoped: {} vmStopped: {} prevWatermark: {} dataFetcherWatermarkAMp: {}, " +
         "vmWatermarkTracker: {}, lambdaWatermarkTracker: {}", watermark, taskIndex, edgeId, taskId,
       lambdaPathAllStopped, vmPathAllStopped, prevWatermark, dataFetcherWatermarkMap,
       vmWatermarkTracker, lambdaWatermarkTracker);
+      */
 
     if (lambdaPathAllStopped) {
       if (edgeId.equals(lambdaPathEdgeId)) {
@@ -226,9 +228,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         dataFetcherWatermarkMap.put(edgeId, val.get());
 
+        /*
       LOG.info("R2 pair trackAndEmitWatermark task {} edge {} / {} / {} emit watermark {} prevW: {} " +
           "dataFetcherWatermarkMap {}",
         taskId, edgeId, taskIndex, watermark, outputW, prevWatermark, dataFetcherWatermarkMap);
+        */
 
         final long minWatermark = Collections.min(dataFetcherWatermarkMap.values());
         if (minWatermark < prevWatermark) {

@@ -204,7 +204,8 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           }
 
           taskOutputDoneAckCounter.put(control.getTaskId(),
-            new AtomicInteger(taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
+            new AtomicInteger(TaskExecutorUtil
+              .taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
 
           if (evalConf.controlLogging) {
             LOG.info("End of Receive ACK for task {} pipe {}", control.getTaskId());
@@ -257,8 +258,10 @@ public final class R2ControlEventHandler implements ControlEventHandler {
          final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-         LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
-           taskOutputDoneAckCounter);
+         if (evalConf.controlLogging) {
+           LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+             taskOutputDoneAckCounter);
+         }
 
          final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
            .decrementAndGet();
@@ -267,8 +270,10 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
         if (cnt == 0) {
           // (5): start pair task output pipe
-          LOG.info("Receive all task output done ack {}", control.getTaskId());
-          taskOutputDoneAckCounter.remove(control.getTaskId());
+          if (evalConf.controlLogging) {
+            LOG.info("Receive all task output done ack {}", control.getTaskId());
+            taskOutputDoneAckCounter.remove(control.getTaskId());
+          }
 
           // Send signal to master for the pair task to start its output
           toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
@@ -340,7 +345,9 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         break;
       }
       case R2_TASK_INPUT_START_FROM_UPSTREAM: {
-        LOG.info("Receive task input start pipe {} running ", control.targetPipeIndex);
+        if (evalConf.controlLogging) {
+          LOG.info("Receive task input start pipe {} running ", control.targetPipeIndex);
+        }
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
         if (taskExecutor instanceof CRTaskExecutor) {
           final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
@@ -352,35 +359,19 @@ public final class R2ControlEventHandler implements ControlEventHandler {
       }
       case R2_START_OUTPUT_FROM_DOWNSTREAM: {
         final long st = System.currentTimeMillis();
-        LOG.info("State migration done receive at {} / {}", control.getTaskId(), control.targetPipeIndex);
+        if (evalConf.controlLogging) {
+          LOG.info("State migration done receive at {} / {}", control.getTaskId(), control.targetPipeIndex);
+        }
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
         final long et = System.currentTimeMillis();
-        LOG.info("STAGE_MIGRATION output pipe flush done at {} / {} / {}", control.getTaskId(), control.targetPipeIndex,
-          et - st);
+        if (evalConf.controlLogging) {
+          LOG.info("STAGE_MIGRATION output pipe flush done at {} / {} / {}", control.getTaskId(), control.targetPipeIndex,
+            et - st);
+        }
         break;
       }
       default:
         throw new RuntimeException("Invalid control message type " + control.type);
     }
-  }
-
-  private int taskOutgoingEdgeDoneAckCounter(final Task task) {
-    final AtomicInteger cnt = new AtomicInteger(0);
-
-    task.getTaskOutgoingEdges()
-      .forEach(outgoingEdge -> {
-        if (outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
-          || outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.OneToOne)) {
-          cnt.getAndIncrement();
-        } else {
-          final int parallelism = outgoingEdge.getSrcIRVertex()
-            .getPropertyValue(ParallelismProperty.class).get();
-          cnt.getAndAdd(parallelism);
-        }
-      });
-
-    return cnt.get();
   }
 }

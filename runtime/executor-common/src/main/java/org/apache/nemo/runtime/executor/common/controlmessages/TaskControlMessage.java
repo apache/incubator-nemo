@@ -82,6 +82,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     TASK_STOP_SIGNAL_BY_MASTER,
     PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK,
     PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK,
+    TASK_OUTPUT_DONE_FROM_UPSTREAM,
+    TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
     PIPE_INIT,
 
     // control message

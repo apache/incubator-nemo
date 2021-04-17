@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.common.controlmessages;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -8,6 +9,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
+import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -17,9 +19,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter;
+import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_DONE_FROM_UPSTREAM;
+import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE_FROM_UPSTREAM;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 
@@ -35,6 +42,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final R2ControlEventHandler r2ControlEventHandler;
   private final R3ControlEventHandler r3ControlEventHandler;
   private final TaskToBeStoppedMap taskToBeStopped;
+  private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -56,31 +64,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     this.r2ControlEventHandler = r2ControlEventHandler;
     this.r3ControlEventHandler = r3ControlEventHandler;
     this.taskToBeStopped = taskToBeStoppedMap;
+    this.taskOutputDoneAckCounter = new ConcurrentHashMap<>();
   }
-
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
-  // TODO: optimize protocol
 
   @Override
   public void handleControlEvent(TaskHandlingEvent event) {
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
-    if (evalConf.controlLogging) {
-      LOG.info("Handling control event {} / {}", control.type, control);
-    }
 
     switch (control.type) {
       case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
@@ -111,6 +100,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         r2ControlEventHandler.handleControlEvent(event);
         break;
       }
+
       case TASK_STOP_SIGNAL_BY_MASTER: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -153,7 +143,56 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
         pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
 
-        if (canTaskMoved(control.getTaskId())) {
+        if (taskToBeStopped.taskToBeStopped.containsKey(control.getTaskId()) &&
+          pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
+          final TaskExecutor taskExecutor =
+            taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+          taskOutputDoneAckCounter.put(control.getTaskId(),
+            new AtomicInteger(taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
+
+          // stop output pipe
+          TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
+            TASK_OUTPUT_DONE_FROM_UPSTREAM);
+        }
+        break;
+      }
+      case TASK_OUTPUT_DONE_FROM_UPSTREAM: {
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
+
+        if (evalConf.controlLogging) {
+          LOG.info("Task output done signal received in {} for index {} / key {}", control.getTaskId(),
+            control.targetPipeIndex, key);
+        }
+
+        // Send ack
+        pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
+          key.getMiddle(),
+          control.getTaskId(),
+          (triple) -> {
+            return new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType
+                .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+              triple.getLeft(), // my output pipe index
+              triple.getMiddle(), // my input pipe index
+              triple.getRight(),  // srct ask id
+              null);
+          });
+        break;
+      }
+      case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
+        LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+          taskOutputDoneAckCounter);
+
+        final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
+          .decrementAndGet();
+
+        pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
+
+        if (cnt == 0) {
+          // (5): start pair task output pipe
+          LOG.info("Receive all task output done ack {}", control.getTaskId());
+          taskOutputDoneAckCounter.remove(control.getTaskId());
           stopAndCheckpointTask(control.getTaskId());
         }
         break;
@@ -170,7 +209,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           LOG.info("Pipe init message, targetIndex: {}, targetTask {}, in executor {}", control.targetPipeIndex, control.getTaskId(), executorId);
         }
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
-
+        /*
         if (canTaskMoved(control.getTaskId())) {
           if (evalConf.controlLogging) {
             LOG.info("Task can be moved {}, inputStateStopped {}, isOutputStoped: {}",
@@ -179,6 +218,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           }
           stopAndCheckpointTask(control.getTaskId());
         }
+        */
         break;
       }
       default:
@@ -204,13 +244,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     taskExecutor.checkpoint(true, taskId);
 
     try {
-      Thread.sleep(100);
+      Thread.sleep(10);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
 
     taskExecutorMapWrapper.removeTask(taskId);
-
 
     toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()

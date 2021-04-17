@@ -741,7 +741,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
-              LOG.info("Emit CR watermark in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit CR watermark in {} {}", taskId, watermark.getTimestamp());
               vmPathDstTasks.forEach(vmTId -> {
                 writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
               });
@@ -762,7 +762,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
           if (data instanceof WatermarkWithIndex) {
             // watermark!
             // we should manage the watermark
-            LOG.info("Emit CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+            // LOG.info("Emit CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
             vmPathDstTasks.forEach(vmTId -> {
               writeData(vmTId, data);
             });
@@ -784,7 +784,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
-              LOG.info("Emit CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+              // LOG.info("Emit CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
               /*
               LOG.info("Emit CR watermark {} at {}",
             new Instant(watermark.getTimestamp()), taskId);

@@ -651,7 +651,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
   private void writeWatermarkByteBufBoth(final String vmDstTaskId,
                                          final ByteBuf data) {
     final String lambdaId = getLambdaTaskId(vmDstTaskId);
-    LOG.info("Emit both R3 CR watermark in {}->{}", taskId, lambdaId);
+    // LOG.info("Emit both R3 CR watermark in {}->{}", taskId, lambdaId);
     // Lambda path
     pipeManagerWorker.writeByteBufData(taskId,
       transientPathEdge.getId(), lambdaId, data);
@@ -683,8 +683,8 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
   private void writeWatermarkDataBoth(final String vmDstTaskId,
                                       final Object data) {
     final String lambdaId = getLambdaTaskId(vmDstTaskId);
-    LOG.info("Emit both R3 CR watermark in {}->{} {}", taskId, lambdaId,
-      ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+    // LOG.info("Emit both R3 CR watermark in {}->{} {}", taskId, lambdaId,
+    //  ((WatermarkWithIndex) data).getWatermark().getTimestamp());
 
     pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
       lambdaId,
@@ -718,6 +718,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       }
     }
 
+    /*
     LOG.info("Set rerouting in R3C3 {} / {}/{}/{}/{}, " +
         "transient path edge: {}, vm path edge: {}," +
         "dataReroutingTable: {}, watermarkRTable: {}",
@@ -725,6 +726,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       vmPathEdge.getId(),
       dataReroutingTable,
       watermarkReroutingTable);
+      */
   }
 
   private boolean isSendWatermarkToBothEdges(String originTaskId) {
@@ -773,7 +775,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
-              LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
+              // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
               vmPathDstTasks.forEach(vmTId -> {
                 if (isSendWatermarkToBothEdges(vmTId)) {
                   writeWatermarkDataBoth(vmTId, new WatermarkWithIndex(watermark, taskIndex));
@@ -795,7 +797,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         if (data instanceof WatermarkWithIndex) {
           // watermark!
           // we should manage the watermark
-          LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+          // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
           vmPathDstTasks.forEach(vmTId -> {
             if (isSendWatermarkToBothEdges(vmTId)) {
               writeWatermarkDataBoth(vmTId, data);
@@ -814,7 +816,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
-              LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+              // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
               vmPathDstTasks.forEach(vmTId -> {
                 if (isSendWatermarkToBothEdges(vmTId)) {
                   writeWatermarkDataBoth(vmTId, new WatermarkWithIndex(watermark, taskIndex));
