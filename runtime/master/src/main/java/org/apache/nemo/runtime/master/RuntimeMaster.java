@@ -397,8 +397,6 @@ public final class RuntimeMaster {
           LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
             type, memory, capacity, slot, executorNum);
 
-          final int currContainer = containerManager.getCurrContainer();
-
           if (createWithLambda) {
             if (type.equals(LAMBDA)) {
               requestLambdaContainer(executorNum, true, capacity, slot, memory);
@@ -418,10 +416,6 @@ public final class RuntimeMaster {
                 new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
             }
           }
-
-          // Wait for request container
-          LOG.info("Waiting for container allocation");
-          containerManager.waitForContainer(currContainer + executorNum);
         }
 
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());

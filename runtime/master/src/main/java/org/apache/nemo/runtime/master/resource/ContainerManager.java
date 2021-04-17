@@ -137,6 +137,8 @@ public final class ContainerManager {
       requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
         new CountDownLatch(numToRequest));
 
+      final int currContainer = getCurrContainer();
+
       LOG.info("Request container: {}", resourceSpecification);
       // Request the evaluators
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
@@ -144,6 +146,10 @@ public final class ContainerManager {
         .setMemory(resourceSpecification.getMemory())
         .setNumberOfCores(resourceSpecification.getCapacity())
         .build());
+
+      // Wait for request container
+      LOG.info("Waiting for container allocation");
+      waitForContainer(currContainer + numToRequest);
 
     } else {
       LOG.info("Request {} containers", numToRequest);
