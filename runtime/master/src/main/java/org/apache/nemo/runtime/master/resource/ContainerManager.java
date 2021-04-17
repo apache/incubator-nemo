@@ -128,9 +128,11 @@ public final class ContainerManager {
       }
 
       // Mark the request as pending with the given specifications.
-      pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
-      pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
+      synchronized (pendingContainerRequestsByContainerType) {
+        pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
+        pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
           .addAll(resourceSpecificationList);
+      }
 
       requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
         new CountDownLatch(numToRequest));
