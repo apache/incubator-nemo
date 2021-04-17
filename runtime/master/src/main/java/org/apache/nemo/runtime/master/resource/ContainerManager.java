@@ -299,6 +299,7 @@ public final class ContainerManager {
         for (final Map.Entry<String, List<ResourceSpecification>> entry
           : pendingContainerRequestsByContainerType.entrySet()) {
           if (entry.getValue().size() > 0) {
+            LOG.info("Entry memory: {}, allocated memory: {}", entry.getValue().get(0).getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
             if (entry.getValue().get(0).getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
               selectedResourceSpec = entry.getValue().remove(0);
               break;
