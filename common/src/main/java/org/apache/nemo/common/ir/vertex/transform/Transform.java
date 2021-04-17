@@ -98,6 +98,10 @@ public interface Transform<I, O> extends Serializable {
     // for conditional router vertex
     ConditionalRouting getCondRouting();
 
+    Object getSharedObject(final String key);
+    boolean hasSharedObject(final String key);
+    void setSharedObject(final String key, Object object);
+
     /**
      * @param id of the variable to get.
      * @return the broadcast variable.

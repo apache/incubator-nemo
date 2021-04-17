@@ -562,28 +562,55 @@ public final class Executor {
             // new NoOffloadingPreparer(),
             false);
       } else {
-        taskExecutor =
-          new DefaultTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-            // offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // new NoOffloadingPreparer(),
-            false);
+        if (evalConf.optimizationPolicy.contains("R3")
+          && task.isParitalCombine()) {
+          taskExecutor =
+            new PartialTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        } else {
+          LOG.info("DefaultTaskExecutor for {}", task.getTaskId());
+          taskExecutor =
+            new DefaultTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        }
       }
 
       LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
@@ -806,6 +833,22 @@ public final class Executor {
             });
           break;
         }
+        case R2Init: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get state signal from VM task {} to Lambda {} in executor {}",
+              task.getPairTaskId(), message.getStopTaskMsg().getTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.R2_INIT, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+
+          break;
+        }
         case GetStateSignal: {
           // for R2 reshaping
           final String taskId = message.getStopTaskMsg().getTaskId();
@@ -835,6 +878,21 @@ public final class Executor {
               TaskControlMessage.TaskControlMessageType.R3_INPUT_OUTPUT_START_BY_PAIR, -1, -1,
               message.getStopTaskMsg().getTaskId(), null));
           });
+          break;
+        }
+        case R3OptSignalFinalCombine: {
+          // for R2 reshaping
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get opt fial signal from VM task {} to Lambda {} in executor {}",
+              task.getPairTaskId(), message.getStopTaskMsg().getTaskId(), executorId);
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+          break;
         }
         case TaskOutputStart: {
           // for R2 reshaping

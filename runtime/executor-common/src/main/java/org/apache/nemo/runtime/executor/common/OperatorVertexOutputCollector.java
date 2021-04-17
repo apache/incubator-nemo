@@ -150,7 +150,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
       final Pair<OperatorMetricCollector, OutputCollector> pair =
         outputCollectorMap.get(nextOperator.getId());
-      ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+      pair.right().setInputTimestamp(inputTimestamp);
       emit(nextOperator, output);
     }
 
@@ -220,7 +220,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
           final Pair<OperatorMetricCollector, OutputCollector> pair =
             outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
+          pair.right().setInputTimestamp(inputTimestamp);
           emit(internalVertex.getNextOperator(), (O) output);
         }
       }

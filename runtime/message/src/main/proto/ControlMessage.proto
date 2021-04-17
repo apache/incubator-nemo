@@ -192,6 +192,8 @@ enum MessageType {
     InputStart = 71;
     TaskOutputStart = 72;
     R3PairInputOutputStart = 73;
+    R2Init = 74;
+    R3OptSignalFinalCombine = 75;
 }
 
 message LambdaEndMessage {

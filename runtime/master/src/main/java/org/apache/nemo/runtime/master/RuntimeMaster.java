@@ -898,18 +898,61 @@ public final class RuntimeMaster {
         final String reroutingTask = m.getTaskId();
         // find pair task
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
-        LOG.info("Send GetStateSignal for rerouting data from {} to {}", reroutingTask, pairTask);
-        final ExecutorRepresenter executorRepresenter = executorRegistry
-          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
 
-        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.GetStateSignal)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(pairTask)
-            .build())
-          .build());
+        pool.execute(() -> {
+          while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
+            LOG.info("Waiting for scheduling {} for GetStateSignal", pairTask);
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          LOG.info("Send GetStateSignal for rerouting data from {} to {}", reroutingTask, pairTask);
+          final ExecutorRepresenter executorRepresenter = executorRegistry
+            .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+          executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.GetStateSignal)
+            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+              .setTaskId(pairTask)
+              .build())
+            .build());
+        });
+
+        break;
+      }
+      case R2Init: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+
+        pool.execute(() -> {
+          while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
+            LOG.info("Waiting for scheduling {} for R2Init", pairTask);
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          LOG.info("Send R2Init from {} to {}", reroutingTask, pairTask);
+          final ExecutorRepresenter executorRepresenter = executorRegistry
+            .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+          executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.R2Init)
+            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+              .setTaskId(pairTask)
+              .build())
+            .build());
+        });
 
         break;
       }
@@ -926,6 +969,25 @@ public final class RuntimeMaster {
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.R3PairInputOutputStart)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(pairTask)
+            .build())
+          .build());
+        break;
+      }
+      case R3OptSignalFinalCombine: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        // find pair task
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        LOG.info("Send R3OptSignalFinalCombine from {} to {}", reroutingTask, pairTask);
+        final ExecutorRepresenter executorRepresenter = executorRegistry
+          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.R3OptSignalFinalCombine)
           .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
             .setTaskId(pairTask)
             .build())

@@ -63,7 +63,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
           dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
         });
 
-
       // Start vm path if possible to prevent two edges stopped at the same time
       vmPathAllStopped = false;
       if (vmWatermarkTracker.isStopped(index)) {

@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter;
-import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_DONE_FROM_UPSTREAM;
 import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.TASK_OUTPUT_DONE_FROM_UPSTREAM;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
@@ -72,6 +71,11 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final TaskControlMessage control = (TaskControlMessage) event.getControl();
 
     switch (control.type) {
+      // For optimization of R3 state merger
+      case R3_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
+      case R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER:
+      case R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER:
+      case R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR:
       case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
       case R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
       case R3_DATA_WATERMARK_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
@@ -87,6 +91,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         r3ControlEventHandler.handleControlEvent(event);
         break;
       }
+      case R2_INIT:
       case R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
       case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
       case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:

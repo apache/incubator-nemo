@@ -24,6 +24,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -37,6 +39,17 @@ public final class TransformContextImpl implements Transform.Context {
   private final StateStore stateStore;
   private final Transform.ConditionalRouting conditionalRouting;
   private final String executorId;
+  private final Map<String, Object> sharedObjectMap;
+
+  public TransformContextImpl(final IRVertex irVertex,
+                              final ServerlessExecutorProvider serverlessExecutorProvider,
+                              final String taskId,
+                              final StateStore stateStore,
+                              final Transform.ConditionalRouting conditionalRouting,
+                              final String executorId) {
+    this(irVertex, serverlessExecutorProvider, taskId, stateStore, conditionalRouting,
+      executorId, new HashMap<>());
+  }
 
   /**
    * Constructor of Context Implementation.
@@ -46,7 +59,8 @@ public final class TransformContextImpl implements Transform.Context {
                               final String taskId,
                               final StateStore stateStore,
                               final Transform.ConditionalRouting conditionalRouting,
-                              final String executorId) {
+                              final String executorId,
+                              final Map<String, Object> sharedObjectMap) {
     this.data = null;
     this.irVertex = irVertex;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -54,6 +68,7 @@ public final class TransformContextImpl implements Transform.Context {
     this.stateStore = stateStore;
     this.conditionalRouting = conditionalRouting;
     this.executorId = executorId;
+    this.sharedObjectMap = sharedObjectMap;
   }
 
   @Override
@@ -79,6 +94,21 @@ public final class TransformContextImpl implements Transform.Context {
   @Override
   public Transform.ConditionalRouting getCondRouting() {
     return conditionalRouting;
+  }
+
+  @Override
+  public Object getSharedObject(String key) {
+    return sharedObjectMap.get(key);
+  }
+
+  @Override
+  public boolean hasSharedObject(String key) {
+    return sharedObjectMap.containsKey(key);
+  }
+
+  @Override
+  public void setSharedObject(String key, Object object) {
+    sharedObjectMap.put(key, object);
   }
 
   @Override

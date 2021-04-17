@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.EvalConf;
@@ -14,16 +15,13 @@ import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutor;
-import org.apache.nemo.runtime.executor.common.tasks.ReroutingState;
-import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,7 +40,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
   private final EvalConf evalConf;
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final Map<String, AtomicInteger> pairTaskInputStartCounter;
-  private final Map<String, AtomicInteger> upstreamTaskStopCounter;
+  private final Map<String, AtomicInteger> taskOutputStopCounter;
   private final Map<String, Boolean> partialTaskOutputToBeStopped;
 
   @Inject
@@ -61,7 +59,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.pairTaskInputStartCounter = new ConcurrentHashMap<>();
     this.partialTaskOutputToBeStopped = new ConcurrentHashMap<>();
-    this.upstreamTaskStopCounter = new ConcurrentHashMap<>();
+    this.taskOutputStopCounter = new ConcurrentHashMap<>();
   }
 
   /**
@@ -198,9 +196,28 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
+
+        if (!taskExecutor.getTask().isParitalCombine()) {
+          throw new RuntimeException("Task is not partial combine " + taskExecutor.getId());
+        }
+
+
         final int cnt = pairTaskInputStartCounter.get(control.getTaskId()).decrementAndGet();
 
         if (cnt == 0) {
+          // Set pair task stopped
+          ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(false);
+
+          // Send downstream merger that it will send partial result
+          final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
+          final String mergerId =
+            TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
+
+          LOG.info("Send partial result signal from {} to {}", control.getTaskId(), mergerId);
+
+          pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
+            R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
+
           // start input and output pipe of pair task !!
           // Send signal to master
           toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
@@ -316,6 +333,47 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
         break;
       }
+      case R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!taskExecutor.getTask().isParitalCombine()) {
+          throw new RuntimeException("Non partial TASK receives pair done stop signal "
+            + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
+        }
+
+        LOG.info("Receive pair task output stopped in {}", control.getTaskId());
+        ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(true);
+
+        // Send downstream merger that it will send final result
+        final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
+        final String mergerId =
+          TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
+
+        LOG.info("Send final result signal from {} to {}", control.getTaskId(), mergerId);
+
+        pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
+          R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
+
+        break;
+      }
+      case R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER:
+      case R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!taskExecutor.getTask().isMerger()) {
+          throw new RuntimeException("Non merger TASK receives final result signal "
+            + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
+        }
+
+        if (control.type.equals(R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER)) {
+          ((MergerTaskExecutorImpl) taskExecutor).receivePartialFinal(true);
+        } else {
+          ((MergerTaskExecutorImpl) taskExecutor).receivePartialFinal(false);
+        }
+        break;
+      }
       // Periodically check partial combine state
       case R3_TASK_STATE_CHECK: {
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -359,6 +417,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           LOG.info("Receive data watermark stop ack for task {} pipe {}", control.getTaskId(), control.targetPipeIndex);
         }
 
+
         pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
 
         if (pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
@@ -368,6 +427,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             LOG.info("End of Receive ACK for task {} pipe {}", control.getTaskId());
           }
 
+          // Send done message to the merger
           final Task task = taskExecutor.getTask();
           TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
             R3_TASK_OUTPUT_DONE_FROM_UPSTREAM);
@@ -397,6 +457,34 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         final Triple<String, String, String> triple =
           pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
         crTaskExecutor.stopInputPipeIndex(triple);
+
+        // Send ack
+        pipeManagerWorker.writeControlMessage(
+          key.getRight(), key.getMiddle(), key.getLeft(),
+          TaskControlMessage.TaskControlMessageType
+            .R3_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+          null);
+        break;
+      }
+      case R3_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!taskExecutor.getTask().isParitalCombine()) {
+          throw new RuntimeException("Task is not partial combine " + control.getTaskId());
+        }
+
+        // For optimization: send signal to partial that the pair task is stopped
+        toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.R3OptSignalFinalCombine)
+            .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setTaskId(control.getTaskId())
+              .build())
+            .build());
         break;
       }
       default:

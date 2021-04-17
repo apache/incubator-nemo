@@ -258,7 +258,8 @@ public final class LambdaContainerManager {
           lambdaExecutorId,
           evalConf.flushPeriod,
           evalConf.controlLogging,
-          evalConf.latencyLimit);
+          evalConf.latencyLimit,
+          evalConf.optimizationPolicy);
 
 
         final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();

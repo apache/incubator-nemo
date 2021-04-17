@@ -334,10 +334,19 @@ final class PipelineTranslator {
         DisplayData.from(beamNode.getTransform()),
         false);
 
+
+    // Original vertex
+    final IRVertex vertex = new OperatorVertex(
+      createGBKTransform(pTransform, mainInput, ctx, beamNode,
+        SystemReduceFn.buffering(mainInput.getCoder())));
+
     final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
     partialCombine.isStateful = true;
+    partialCombine.setPartialToFinalTransform(new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
+
     final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
     finalCombine.isStateful = true;
+
 
     // (Step 1) Partial Combine
     // ctx.addVertex(partialCombine);
@@ -352,11 +361,6 @@ final class PipelineTranslator {
     final Coder intermediateCoder = outputCoder;
     ctx.setEdgeProperty(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
     // ctx.addEdge(edge, intermediateCoder, mainInput.getWindowingStrategy().getWindowFn().windowCoder());
-
-
-    final IRVertex vertex = new OperatorVertex(
-      createGBKTransform(pTransform, mainInput, ctx, beamNode,
-        SystemReduceFn.buffering(mainInput.getCoder())));
 
     ((OperatorVertex) vertex).setPartialCombine(partialCombine);
     ((OperatorVertex) vertex).setFinalCombine(finalCombine);
@@ -544,6 +548,9 @@ final class PipelineTranslator {
 
       final OperatorVertex partialCombineVertex = new OperatorVertex(partialCombineStreamTransform);
       partialCombineVertex.isStateful = true;
+      partialCombineVertex.setPartialToFinalTransform(
+        new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
+
       final OperatorVertex finalCombineVertex = new OperatorVertex(finalCombineStreamTransform);
       finalCombine.isStateful = true;
 

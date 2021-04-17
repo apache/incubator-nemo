@@ -23,6 +23,7 @@ import com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -472,6 +473,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
 
+      // Get encoder and transform
+      // Optimization of R3 !!
+      final EncoderFactory ef =
+        modifiedDAG.getOutgoingEdgesOf(originGBK).get(0).getPropertyValue(EncoderProperty.class).get();
+      partialOrigin.setOriginEncoderFactory(ef);
+
+      LOG.info("Set final transform to partial origin {}", partialOrigin.getId());
       partialOrigin.isStateful = true;
 
       final OperatorVertex partialTransient =
@@ -481,6 +489,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
       partialTransient.isStateful = true;
 
+      // Get encoder and transform
+      // Optimization of R3 !!
+      partialTransient.setOriginEncoderFactory(ef);
+      LOG.info("Set final transform to partial transient {}", partialTransient.getId());
+
+      // State merger
       final StateMergerVertex stateMerger = new StateMergerVertex(((OperatorVertex)originGBK).getFinalCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));

@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.EvalConf;
@@ -15,6 +16,7 @@ import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.CRTaskExecutor;
+import org.apache.nemo.runtime.executor.common.tasks.PartialTaskExecutorImpl;
 import org.apache.nemo.runtime.executor.common.tasks.ReroutingState;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -43,6 +45,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
   private final EvalConf evalConf;
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
+  private final Map<String, Boolean> taskInitMap;
 
   @Inject
   private R2ControlEventHandler(
@@ -59,6 +62,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
     this.evalConf = evalConf;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.taskOutputDoneAckCounter = new ConcurrentHashMap<>();
+    this.taskInitMap = new ConcurrentHashMap<>();
   }
 
   /**
@@ -198,6 +202,8 @@ public final class R2ControlEventHandler implements ControlEventHandler {
                   .setTaskId(control.getTaskId())
                   .build())
                 .build());
+          } else {
+            taskInitMap.put(taskExecutor.getId(), true);
           }
 
           taskOutputDoneAckCounter.put(control.getTaskId(),
@@ -266,6 +272,21 @@ public final class R2ControlEventHandler implements ControlEventHandler {
          pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
         if (cnt == 0) {
+          if (taskInitMap.containsKey(control.getTaskId())) {
+            taskInitMap.remove(control.getTaskId());
+            // Send signal to master
+            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .send(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.R2Init)
+                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                  .setExecutorId(executorId)
+                  .setTaskId(control.getTaskId())
+                  .build())
+                .build());
+          }
+
           // (5): start pair task output pipe
           if (evalConf.controlLogging) {
             LOG.info("Receive all task output done ack {}", control.getTaskId());
@@ -283,6 +304,25 @@ public final class R2ControlEventHandler implements ControlEventHandler {
                 .setTaskId(control.getTaskId())
                 .build())
               .build());
+        }
+        break;
+      }
+      case R2_INIT: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (taskExecutor instanceof PartialTaskExecutorImpl) {
+          ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(true);
+
+          // Send downstream merger that it will send final result
+          final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
+          final String mergerId =
+            TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
+
+          LOG.info("Send final result signal from {} to {}", control.getTaskId(), mergerId);
+
+          pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
+            R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
         }
         break;
       }

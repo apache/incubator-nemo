@@ -19,6 +19,7 @@
 package org.apache.nemo.common.ir.vertex;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
@@ -32,6 +33,10 @@ public class OperatorVertex extends IRVertex {
   private OperatorVertex partialCombine;
   private OperatorVertex finalCombine;
   private IREdge partialToFinalEdge;
+
+  // for parital vertex !!
+  private EncoderFactory originEncoderFactory;
+  private Transform partialToFinalTransform;
 
   /**
    * Constructor of OperatorVertex.
@@ -54,6 +59,22 @@ public class OperatorVertex extends IRVertex {
     this.partialToFinalEdge = edge;
   }
 
+  public void setOriginEncoderFactory(final EncoderFactory originEncoderFactory) {
+    this.originEncoderFactory = originEncoderFactory;
+  }
+
+  public EncoderFactory getOriginEncoderFactory() {
+    return originEncoderFactory;
+  }
+
+  public void setPartialToFinalTransform(final Transform finalTransform) {
+    this.partialToFinalTransform = finalTransform;
+  }
+
+  public Transform getPartialToFinalTransform() {
+    return partialToFinalTransform;
+  }
+
   public OperatorVertex getPartialCombine() {
     return partialCombine;
   }
@@ -73,6 +94,10 @@ public class OperatorVertex extends IRVertex {
   public OperatorVertex(final OperatorVertex that) {
     super();
     this.transform = that.transform;
+    this.partialToFinalTransform = that.partialToFinalTransform;
+    this.partialToFinalEdge = that.partialToFinalEdge;
+    this.originEncoderFactory = that.originEncoderFactory;
+    this.isStateful = that.isStateful;
   }
 
   @Override

@@ -227,46 +227,70 @@ public final class GBKFinalTransform<K, InputT>
     stateStore = getContext().getStateStore();
 
     if (stateStore.containsState(getContext().getTaskId() + "-" + partial)) {
-      final long st = System.currentTimeMillis();
-      final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-" + partial);
-      final CountingInputStream countingInputStream = new CountingInputStream(is);
-      final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
-      final GBKFinalState<K> state;
-      try {
-        state = coder.decode(countingInputStream);
-        countingInputStream.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      // TODO set ...
-      if (inMemoryStateInternalsFactory == null) {
-        inMemoryStateInternalsFactory = state.stateInternalsFactory;
-        inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+      final String sharedKey = getContext().getTaskId() + "-shared-state-timer";
+      if (getContext().hasSharedObject(sharedKey)) {
+        final Pair<InMemoryStateInternalsFactory, InMemoryTimerInternalsFactory> pair =
+          (Pair<InMemoryStateInternalsFactory, InMemoryTimerInternalsFactory>)
+            getContext().getSharedObject(sharedKey);
+        this.inMemoryStateInternalsFactory = pair.left();
+        this.inMemoryTimerInternalsFactory = pair.right();
       } else {
-        inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
-        inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+        final long st = System.currentTimeMillis();
+        final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-" + partial);
+        final CountingInputStream countingInputStream = new CountingInputStream(is);
+        final GBKFinalStateCoder<K> coder = new GBKFinalStateCoder<>(keyCoder, windowCoder);
+        final GBKFinalState<K> state;
+        try {
+          state = coder.decode(countingInputStream);
+          countingInputStream.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        // TODO set ...
+        if (inMemoryStateInternalsFactory == null) {
+          inMemoryStateInternalsFactory = state.stateInternalsFactory;
+          inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+        } else {
+          inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
+          inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+        }
+
+        final long et = System.currentTimeMillis();
+        LOG.info("State decoding byte {}, time {}, numKey {}, Restored size {} for {} in {}",
+          countingInputStream.getCount(),
+          et - st,
+          inMemoryTimerInternalsFactory.getNumKey(),
+          inMemoryStateInternalsFactory.stateInternalMap.size(),
+          getContext().getTaskId(),
+          getContext().getExecutorId());
+
+        inputWatermark = state.inputWatermark;
+        prevOutputWatermark = state.prevOutputWatermark;
+
+        keyAndWatermarkHoldMap.clear();
+        keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
+
+        getContext().setSharedObject(sharedKey, Pair.of(
+          inMemoryStateInternalsFactory, inMemoryTimerInternalsFactory));
+      }
+    } else {
+      final String sharedKey = getContext().getTaskId() + "-shared-state-timer";
+      if (getContext().hasSharedObject(sharedKey)) {
+        final Pair<InMemoryStateInternalsFactory, InMemoryTimerInternalsFactory> pair =
+          (Pair<InMemoryStateInternalsFactory, InMemoryTimerInternalsFactory>)
+          getContext().getSharedObject(sharedKey);
+        this.inMemoryStateInternalsFactory = pair.left();
+        this.inMemoryTimerInternalsFactory = pair.right();
+      } else {
+        this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
+        this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
+        getContext().setSharedObject(sharedKey, Pair.of(inMemoryStateInternalsFactory,
+          inMemoryTimerInternalsFactory));
       }
 
-      final long et = System.currentTimeMillis();
-      LOG.info("State decoding byte {}, time {}, numKey {}, Restored size {} for {} in {}",
-        countingInputStream.getCount(),
-        et - st,
-        inMemoryTimerInternalsFactory.getNumKey(),
-        inMemoryStateInternalsFactory.stateInternalMap.size(),
-        getContext().getTaskId(),
-        getContext().getExecutorId());
-
-
-      inputWatermark = state.inputWatermark;
-      prevOutputWatermark = state.prevOutputWatermark;
-
-      keyAndWatermarkHoldMap.clear();
-      keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
-
-    } else {
-
+      /*
       if (inMemoryStateInternalsFactory == null) {
         this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
       } else {
@@ -277,8 +301,9 @@ public final class GBKFinalTransform<K, InputT>
         this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
       } else {
         LOG.info("InMemoryTimerInternalsFactory is already set");
-
       }
+      */
+
     }
 
     // This function performs group by key and window operation

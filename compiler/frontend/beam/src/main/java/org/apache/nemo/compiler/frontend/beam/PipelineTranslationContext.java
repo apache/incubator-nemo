@@ -28,6 +28,7 @@ import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.CreateViewTransform;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -145,6 +146,14 @@ final class PipelineTranslationContext {
       secondEdge.setProperty(DecoderProperty.of(new BeamDecoderFactory(sideInputElementCoder)));
       builder.connectVertices(secondEdge);
     }
+  }
+
+  public EncoderFactory getEncoderFactory(PValue input) {
+    final Coder elementCoder = ((PCollection) input).getCoder();
+    final Coder windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
+
+    final WindowedValue.FullWindowedValueCoder coder = WindowedValue.getFullCoder(elementCoder, windowCoder);
+    return new BeamEncoderFactory<>(coder);
   }
 
   /**
