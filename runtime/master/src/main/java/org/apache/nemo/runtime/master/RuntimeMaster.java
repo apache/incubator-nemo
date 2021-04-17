@@ -854,6 +854,7 @@ public final class RuntimeMaster {
   }
 
   private final long st = System.currentTimeMillis();
+  private final ExecutorService pool = Executors.newCachedThreadPool();
 
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
@@ -864,17 +865,30 @@ public final class RuntimeMaster {
         // find pair task
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
         LOG.info("Send task output start to {}", pairTask);
-        final ExecutorRepresenter executorRepresenter = executorRegistry
-          .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
 
-        executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.TaskOutputStart)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(pairTask)
-            .build())
-          .build());
+        pool.execute(() -> {
+          while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
+            LOG.info("Waiting for scheduling {} for TaskOutputStart", pairTask);
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          final ExecutorRepresenter executorRepresenter = executorRegistry
+            .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+          executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.TaskOutputStart)
+            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+              .setTaskId(pairTask)
+              .build())
+            .build());
+        });
+
 
         break;
       }
