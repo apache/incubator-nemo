@@ -299,14 +299,17 @@ public final class ContainerManager {
         for (final Map.Entry<String, List<ResourceSpecification>> entry
           : pendingContainerRequestsByContainerType.entrySet()) {
           if (entry.getValue().size() > 0) {
-            LOG.info("Entry memory: {}, allocated memory: {}", entry.getValue().get(0).getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
-            if (entry.getValue().get(0).getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
-              selectedResourceSpec = entry.getValue().remove(0);
-              break;
+            final Iterator<ResourceSpecification> iterator = entry.getValue().iterator();
+            while (iterator.hasNext()) {
+              final ResourceSpecification spec = iterator.next();
+              LOG.info("Entry memory: {}, allocated memory: {}", spec.getMemory(), allocatedEvaluator.getEvaluatorDescriptor().getMemory());
+              if (spec.getMemory() + 500 >= allocatedEvaluator.getEvaluatorDescriptor().getMemory()) {
+                iterator.remove();
+                return spec;
+              }
             }
           }
         }
-
       }
 
       if (selectedResourceSpec != null) {
