@@ -93,8 +93,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
 
-  private List<Transform> statefulTransforms;
-
   private final TaskMetrics taskMetrics;
 
   private final StateStore stateStore;
@@ -192,8 +190,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
 
     this.externalAdditionalOutputMap = new HashMap<>();
-
-    this.statefulTransforms = new ArrayList<>();
 
     final long restoresSt = System.currentTimeMillis();
 
@@ -325,14 +321,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public int getNumKeys() {
-    if (isStateless) {
-      return 0;
-    } else {
-      //LOG.info("Key {}, {}", num, taskId);
-      return statefulTransforms.stream().map(t -> t.getNumKeys())
-        .reduce((x, y) -> x + y)
-        .get();
-    }
+    return mergerTransform.getNumKeys();
   }
 
   @Override
@@ -493,7 +482,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
-          statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
       }
@@ -835,10 +823,17 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
                                 TaskHandlingEvent event) {
       if (data instanceof WatermarkWithIndex) {
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), event.getEdgeId());
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            if (getNumKeys() > 0) {
+              mergerTransform.onWatermark(watermark);
+            } else {
               dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+              dataHandler = new BypassOptimizeDataHandler();
+            }
           });
       } else {
         dataRouter.writeData(data);
@@ -856,6 +851,58 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            if (getNumKeys() > 0) {
+              mergerTransform.onWatermark(watermark);
+            } else {
+              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+              dataHandler = new BypassOptimizeDataHandler();
+            }
+          });
+      } else {
+        // data
+        dataRouter.writeByteBuf(data);
+      }
+    }
+  }
+
+  final class BypassOptimizeDataHandler implements DataHandler {
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      if (data instanceof WatermarkWithIndex) {
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), event.getEdgeId());
+
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+          });
+      } else {
+        dataRouter.writeData(data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
+
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
@@ -874,6 +921,8 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     public void handleLocalData(Object data, TaskHandlingEvent taskHandlingEvent) {
       if (data instanceof WatermarkWithIndex) {
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
 
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
@@ -906,6 +955,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
+        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
+
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {

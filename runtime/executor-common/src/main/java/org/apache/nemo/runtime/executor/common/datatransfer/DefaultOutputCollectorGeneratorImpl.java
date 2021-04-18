@@ -97,14 +97,11 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
       OperatorMetricCollector omc;
 
       if (!dstVertices.isEmpty()) {
-        omc = new OperatorMetricCollector(irVertex,
-          dstVertices,
-          null,
-          null,
-          // serializerManager.getSerializer(edges.get(0).getId()),
-          // edges.get(0),
-          samplingMap,
-          taskId);
+        omc = new OperatorMetricCollector(irVertex.getId(),
+          executorId,
+          taskId,
+          latencyLimit,
+          persistentConnectionToMasterMap);
 
         outputCollector = new OperatorVertexOutputCollector(
           executorId,
@@ -114,12 +111,11 @@ public final class DefaultOutputCollectorGeneratorImpl implements OutputCollecto
           taskId, samplingMap, latencyLimit, persistentConnectionToMasterMap);
 
       } else {
-        omc = new OperatorMetricCollector(irVertex,
-          dstVertices,
-          null,
-          null,
-          samplingMap,
-          taskId);
+        omc = new OperatorMetricCollector(irVertex.getId(),
+          executorId,
+          taskId,
+          latencyLimit,
+          persistentConnectionToMasterMap);
 
         outputCollector = new OperatorVertexOutputCollector(
           executorId,

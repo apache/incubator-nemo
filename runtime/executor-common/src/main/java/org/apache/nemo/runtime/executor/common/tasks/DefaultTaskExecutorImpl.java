@@ -123,6 +123,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
 
+  private final WatermarkHandler watermarkHandler;
+
   /**
    * Constructor.
    *
@@ -179,6 +181,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne));
 
+    this.watermarkHandler = singleOneToOneInput ?
+      new SingleWatermarkHandler() : new MultiWatermarkHandler();
 
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
@@ -691,25 +695,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof WatermarkWithIndex) {
       // Watermark
-      // LOG.info("Handling watermark with index {}", event);
-      final WatermarkWithIndex d = (WatermarkWithIndex) event;
-
-      /*
-      if (sourceVertexDataFetchers.size() == 0) {
-        LOG.info("Process watermark in task {} {}", taskId,
-          new Instant(d.getWatermark().getTimestamp()));
-      }
-      */
-
-      if (singleOneToOneInput) {
-        processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
-      } else {
-          taskWatermarkManager.trackAndEmitWatermarks(
-            taskId,
-            dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
-            .ifPresent(watermark ->
-              processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark)));
-      }
+      watermarkHandler.handleWatermark(dataFetcher, event);
     } else if (event instanceof Watermark) {
       // This MUST BE generated from input source
       if (!isSource()) {
@@ -717,31 +703,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       }
       processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
-
-      /*
-      if (sourceVertexDataFetchers.size() == 0) {
-        LOG.info("Process data in task {} {}", taskId,
-          new Instant(((TimestampAndValue) event).timestamp));
-      }
-      */
-
       // This MUST BE generated from remote source
       taskMetrics.incrementInputElement();
-      // Process data element
-//      if (!isSource()) {
-//        final OperatorVertex ov = ((DataFetcherOutputCollector) dataFetcher.getOutputCollector()).getNextOperatorVertex();
-//        LOG.info("Processing element for task {}, of operator {}, transform {}", taskId, ov.getId(), ov.getTransform());
-//      }
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalids event type " + event);
-      /*
-      // input for streaming vertex !!
-      final long ns = System.nanoTime();
-      dataFetcher.getOutputCollector().emit(event);
-      final long endNs = System.nanoTime();
-      taskMetrics.incrementComputation(endNs - ns);
-      */
     }
   }
 
@@ -764,6 +730,31 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
   ////////////////////////////////////////////// Transform-specific helper methods
+  interface WatermarkHandler {
+    void handleWatermark(final DataFetcher dataFetcher, Object event);
+  }
+
+  final class SingleWatermarkHandler implements WatermarkHandler {
+
+    @Override
+    public void handleWatermark(DataFetcher dataFetcher, Object event) {
+      final WatermarkWithIndex d = (WatermarkWithIndex) event;
+      processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
+    }
+  }
+
+  final class MultiWatermarkHandler implements WatermarkHandler {
+
+    @Override
+    public void handleWatermark(DataFetcher dataFetcher, Object event) {
+      final WatermarkWithIndex d = (WatermarkWithIndex) event;
+      taskWatermarkManager.trackAndEmitWatermarks(
+        taskId,
+        dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
+        .ifPresent(watermark ->
+          processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark)));
+    }
+  }
 
 
   public void setIRVertexPutOnHold(final IRVertex irVertex) {

@@ -132,6 +132,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   private final Serializer serializer;
   private PartialOutputEmitter partialOutputEmitter;
 
+  private final PartialOutputEmitter pToRemoteEmitter;
+  private final PartialOutputEmitter pToLocalCombiner;
+
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
    * Output: single o2o (normal) - o2o (transient)
@@ -254,7 +257,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     };
 
     this.serializer = serializerManager.getSerializer(mergerEdgeId);
-    this.partialOutputEmitter = new PartialOutputEmitToRemoteMerger();
+    this.pToLocalCombiner = new PartialOutputEmitToLocalFinal();
+    this.pToRemoteEmitter = new PartialOutputEmitToRemoteMerger();
+    this.partialOutputEmitter = pToRemoteEmitter;
 
     this.partialOutputCollector = new OutputCollector() {
       private long ts;
@@ -650,9 +655,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     LOG.info("Pair task of {} stopped {}", taskId, val);
     this.pairTaskStopped = val;
     if (pairTaskStopped) {
-      partialOutputEmitter = new PartialOutputEmitToLocalFinal();
+      partialOutputEmitter = pToLocalCombiner;
     } else {
-      partialOutputEmitter = new PartialOutputEmitToRemoteMerger();
+      partialOutputEmitter = pToRemoteEmitter;
     }
   }
 

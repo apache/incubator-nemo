@@ -25,6 +25,13 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
   private boolean vmPathAllStopped = false;
   private boolean lambdaPathAllStopped = false;
 
+
+  private WatermarkTracker watermarkTracker;
+
+  private final WatermarkTracker lambdaPathTracker;
+  private final WatermarkTracker vmPathTracker;
+  private final WatermarkTracker bothPathTracker;
+
   public R2PairEdgeWatermarkTracker(final String vmPathEdgeId,
                                     final String lambdaPathEdgeId,
                                     final String taskId,
@@ -40,11 +47,26 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     this.parallelism = parallelism;
 
     this.taskId = taskId;
+    this.lambdaPathTracker = new LambdaWatermarkTracker();
+    this.vmPathTracker = new VMWatermarkTracker();
+    this.bothPathTracker = new BothWatermarkTracker();
+
+    this.watermarkTracker = bothPathTracker;
+  }
+
+  private void setWatermarkTracker() {
+    if (lambdaPathAllStopped) {
+      watermarkTracker = vmPathTracker;
+    } else if (vmPathAllStopped) {
+      watermarkTracker = lambdaPathTracker;
+    } else {
+      watermarkTracker = bothPathTracker;
+    }
   }
 
   // this will be used for R2
   public boolean stopAndToggleIndex(final int taskIndex,
-                                 final String edgeId) {
+                                    final String edgeId) {
     final int index = parallelism == 1 ? 0 : taskIndex;
     if (edgeId.equals(lambdaPathEdgeId)) {
       // start vm path
@@ -57,6 +79,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       if (!lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
         lambdaPathAllStopped = true;
       }
+
 
       lambdaWatermarkTracker.updateAndGetCurrentWatermark()
         .ifPresent(watermark -> {
@@ -74,6 +97,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
             dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
           });
       }
+
+      setWatermarkTracker();
 
       LOG.info("After Stop lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
@@ -106,6 +131,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
           });
       }
 
+      setWatermarkTracker();
+
       LOG.info("After Stop vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
       return vmPathAllStopped;
@@ -120,7 +147,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     final int index = parallelism == 1 ? 0 : taskIndex;
     if (edgeId.equals(lambdaPathEdgeId)) {
       // start lambda path
-       // stop vm path path
+      // stop vm path path
       LOG.info("Before Start lambda path watermark index in task {}/{}/{}, vm: {}, lambda: {}, map: {}",
         taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
       lambdaPathAllStopped = false;
@@ -140,8 +167,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     } else {
       // start vm path
       // stop lambda path path
-        LOG.info("Before Start vm path watermark index in task {}/{}/{}, vm: {}, lambda: {}, map: {}"
-          , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+      LOG.info("Before Start vm path watermark index in task {}/{}/{}, vm: {}, lambda: {}, map: {}"
+        , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
 
       vmPathAllStopped = false;
 
@@ -158,6 +185,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       LOG.info("After Start vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
     }
+
+    setWatermarkTracker();
   }
 
   @Override
@@ -166,39 +195,23 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
                                                final int taskIndex,
                                                final long watermark) {
 
-    /*
-    LOG.info("Receive watermark {} / index {} edge {} task {} / " +
-        "lambdaStopoped: {} vmStopped: {} prevWatermark: {} dataFetcherWatermarkAMp: {}, " +
-        "vmWatermarkTracker: {}, lambdaWatermarkTracker: {}", watermark, taskIndex, edgeId, taskId,
-      lambdaPathAllStopped, vmPathAllStopped, prevWatermark, dataFetcherWatermarkMap,
-      vmWatermarkTracker, lambdaWatermarkTracker);
-      */
+    return watermarkTracker.trackAndEmitWatermarks(taskId, edgeId, taskIndex, watermark);
+  }
 
-    if (lambdaPathAllStopped) {
-      if (edgeId.equals(lambdaPathEdgeId)) {
-        throw new RuntimeException("Lambda path stopped .. but receive watermark");
-      }
+  @Override
+  public String toString() {
+    return "LambdaPathAllStopped: " + lambdaPathAllStopped + ", "  +
+      "VMPathAllStopped: " + vmPathAllStopped + ", " +
+      "DataFetcherWatermarkMap: " + dataFetcherWatermarkMap + ", " +
+      "PrevW: " + prevWatermark;
+  }
 
-      final Optional<Long> val =
-        vmWatermarkTracker.trackAndEmitWatermarks(taskId, vmPathEdgeId, taskIndex, watermark);
+  final class LambdaWatermarkTracker implements WatermarkTracker {
 
-      if (val.isPresent()) {
-        dataFetcherWatermarkMap.put(edgeId, val.get());
-        if (val.get() < prevWatermark) {
-          return Optional.empty();
-        } else {
-          prevWatermark = val.get();
-        }
-      }
-
-      return val;
-    } else if (vmPathAllStopped) {
-       if (edgeId.equals(vmPathEdgeId)) {
-        throw new RuntimeException("VM path stopped .. but receive watermark");
-      }
-
+    @Override
+    public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
       final Optional<Long> val = lambdaWatermarkTracker
-        .trackAndEmitWatermarks(taskId, lambdaPathEdgeId, taskIndex, watermark);
+        .trackAndEmitWatermarks(taskId, lambdaPathEdgeId, edgeIndex, watermark);
 
       if (val.isPresent()) {
         dataFetcherWatermarkMap.put(edgeId, val.get());
@@ -210,12 +223,39 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       }
 
       return val;
-    } else {
+    }
+  }
+
+  final class VMWatermarkTracker implements WatermarkTracker {
+
+    @Override
+    public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
+      final Optional<Long> val =
+        vmWatermarkTracker.trackAndEmitWatermarks(taskId, vmPathEdgeId, edgeIndex, watermark);
+
+      if (val.isPresent()) {
+        dataFetcherWatermarkMap.put(edgeId, val.get());
+        if (val.get() < prevWatermark) {
+          return Optional.empty();
+        } else {
+          prevWatermark = val.get();
+        }
+      }
+
+      return val;
+    }
+  }
+
+  final class BothWatermarkTracker implements WatermarkTracker {
+
+    @Override
+    public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
+
       final Optional<Long> val;
       if (edgeId.equals(lambdaPathEdgeId)) {
-        val = lambdaWatermarkTracker.trackAndEmitWatermarks(taskId, lambdaPathEdgeId, taskIndex, watermark);
+        val = lambdaWatermarkTracker.trackAndEmitWatermarks(taskId, lambdaPathEdgeId, edgeIndex, watermark);
       } else {
-        val = vmWatermarkTracker.trackAndEmitWatermarks(taskId, vmPathEdgeId, taskIndex, watermark);
+        val = vmWatermarkTracker.trackAndEmitWatermarks(taskId, vmPathEdgeId, edgeIndex, watermark);
       }
 
       if (val.isPresent()) {
@@ -237,19 +277,12 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         if (minWatermark < prevWatermark) {
           return Optional.empty();
         } else {
+          prevWatermark = minWatermark;
           return Optional.of(minWatermark);
         }
       } else {
         return Optional.empty();
       }
     }
-  }
-
-  @Override
-  public String toString() {
-    return "LambdaPathAllStopped: " + lambdaPathAllStopped + ", "  +
-      "VMPathAllStopped: " + vmPathAllStopped + ", " +
-      "DataFetcherWatermarkMap: " + dataFetcherWatermarkMap + ", " +
-      "PrevW: " + prevWatermark;
   }
 }

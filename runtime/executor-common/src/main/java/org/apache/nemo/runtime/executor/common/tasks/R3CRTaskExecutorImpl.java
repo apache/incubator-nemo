@@ -271,12 +271,26 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       this.adjustTime = 0;
     }
 
-    this.dataHandler = singleOneToOneInput ? new SingleO2ODataHandler()
-      : new MultiInputDataHandler();
+    this.dataHandler = getDataHandler();
 
     prepare();
   }
 
+  private DataHandler getDataHandler() {
+    if (singleOneToOneInput) {
+      if (singleOneToOneOutput) {
+        return new SingleO2OSingleOutputDataHandler();
+      } else {
+        return new SingleO2OMultiOutputDataHandler();
+      }
+    } else {
+      if (singleOneToOneOutput) {
+        return new MultiInputSingleOutputDataHandler();
+      } else {
+        return new MultiInputMultiOutputDataHandler();
+      }
+    }
+  }
 
   @Override
   public boolean isSourceAvailable() {
@@ -809,7 +823,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
                              TaskHandlingEvent event);
   }
 
-  final class SingleO2ODataHandler implements DataHandler {
+  final class SingleO2OMultiOutputDataHandler implements DataHandler {
 
     @Override
     public void handleLocalData(Object data,
@@ -847,7 +861,42 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
   }
 
-  final class MultiInputDataHandler implements DataHandler {
+
+  final class SingleO2OSingleOutputDataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      // single o2o - RR output
+      // broadcast watermark
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+        watermarkRouters[0].writeData(data);
+      } else {
+        dataRouters[0].writeData(data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent event) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // broadcast watermark
+        watermarkRouters[0].writeByteBuf(data);
+      } else {
+        // data
+        dataRouters[0].writeByteBuf(data);
+      }
+    }
+  }
+
+  final class MultiInputMultiOutputDataHandler implements DataHandler {
 
     @Override
     public void handleLocalData(Object data,
@@ -895,6 +944,53 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       }
     }
   }
+
+
+  final class MultiInputSingleOutputDataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+            watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
+          });
+
+      } else {
+        dataRouters[0].writeData(data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
+            watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
+          });
+      } else {
+        // data
+        dataRouters[0].writeByteBuf(data);
+      }
+    }
+  }
+
 
   interface DataRouter {
     void writeData(Object data);

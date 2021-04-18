@@ -50,9 +50,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> outputCollectorMap;
   private final IRVertex irVertex;
-  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private final NextIntraTaskOperatorInfo[] internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
-  private final List<OutputWriter> externalMainOutputs;
+  private final OutputWriter[] externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
   // for logging
@@ -64,6 +64,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   private final long latencyLimit;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final long st = System.currentTimeMillis();
+  private final boolean isSink;
+
+  private final MainDataEmitter mainDataEmitter;
 
   /**
    * Constructor of the output collector.
@@ -90,33 +93,49 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.taskId = taskId;
-    this.internalMainOutputs = internalMainOutputs;
+    this.internalMainOutputs = new NextIntraTaskOperatorInfo[internalMainOutputs.size()];
+    internalMainOutputs.toArray(this.internalMainOutputs);
     this.internalAdditionalOutputs = internalAdditionalOutputs;
-    this.externalMainOutputs = externalMainOutputs;
+    this.externalMainOutputs = new OutputWriter[externalMainOutputs.size()];
+    externalMainOutputs.toArray(this.externalMainOutputs);
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
     this.samplingRate = samplingMap.getOrDefault(irVertex.getId(), 0.0);
     this.latencyLimit = latencyLimit;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.isSink = this.internalMainOutputs.length == 0 && this.externalMainOutputs.length == 0
+      && internalAdditionalOutputs.size() == 0 && externalAdditionalOutputs.size() == 0;
 
+    LOG.info("Vertex {} is sink {}", irVertex.getId(), isSink);
+    this.mainDataEmitter = getMainDataEmitter();
     // LOG.info("Vertex Id Sampling Rate {} / {} / {}", irVertex.getId(), samplingRate, samplingMap);
+  }
+
+  private MainDataEmitter getMainDataEmitter() {
+    if (isSink) {
+      return new SinkEmtter();
+    }
+
+    if (internalMainOutputs.length > 0 && externalMainOutputs.length > 0) {
+      return new InternalExternalMainEmitter();
+    } else if (internalMainOutputs.length > 0) {
+      return new InternalMainDataEmitter();
+    } else {
+      return new ExternalMainEmitter();
+    }
   }
 
   public IRVertex getIRVertex() {
     return irVertex;
   }
 
-  private void emit(final OperatorVertex vertex, final O output) {
-    final String vertexId = irVertex.getId();
-
+  private void emit(final OperatorVertex vertex, final Object output) {
     vertex.getTransform().onData(output);
   }
 
-  private void emit(final OutputWriter writer, final TimestampAndValue<O> output) {
+  private void emit(final OutputWriter writer, final TimestampAndValue output) {
     // metric collection
     //LOG.info("Write {} to writer {}", output, writer);
-
-    final String vertexId = irVertex.getId();
     writer.write(output);
   }
 
@@ -137,29 +156,10 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     //LOG.info("Offloading {}, Start prepareOffloading {}, End prepareOffloading {}, in {}",
     //  prepareOffloading, startOffloading, endOffloading, irVertex.getId());
 
-    if (irVertex.isSink) {
-      operatorMetricCollector.processDone(inputTimestamp);
-    }
+    mainDataEmitter.emitData(output);
 
-    // For prepareOffloading
-    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      final OperatorVertex nextOperator = internalVertex.getNextOperator();
-
-      //LOG.info("NexOp: {}, isOffloading: {}, isOffloadedTask: {}",
-      //  nextOperator.getId(), nextOperator.isOffloading, isOffloadedTask.get());
-
-      final Pair<OperatorMetricCollector, OutputCollector> pair =
-        outputCollectorMap.get(nextOperator.getId());
-      pair.right().setInputTimestamp(inputTimestamp);
-      emit(nextOperator, output);
-    }
-
-    for (final OutputWriter externalWriter : externalMainOutputs) {
-      emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
-    }
-
-    proceseedCnt += 1;
-
+    /*
+    // For sampling
     final long currTime = System.currentTimeMillis();
     final int latency = (int) ((currTime - inputTimestamp));
 
@@ -185,6 +185,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
             .build());
       }
     }
+      */
+
+
 
     /*
     if (random.nextDouble() <= samplingRate) {
@@ -197,58 +200,27 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     // }
   }
 
-  int proceseedCnt = 0;
-  long prevLogTime = System.currentTimeMillis();
-  private final Random random = new Random();
-
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
-
-    if (dstVertexId.equals("Logging")) {
-      if (random.nextDouble() < samplingRate) {
-        final long currTime = System.currentTimeMillis();
-        final int latency = (int) ((currTime - inputTimestamp));
-        LOG.info("Event Latency {} from {} in {}/{}", latency,
-          irVertex.getId(),
-          executorId,
-          taskId,
-          output);
+    if (internalAdditionalOutputs.containsKey(dstVertexId)) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        pair.right().setInputTimestamp(inputTimestamp);
+        emit(internalVertex.getNextOperator(), (O) output);
       }
-    } else {
-      if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-        for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-          final Pair<OperatorMetricCollector, OutputCollector> pair =
-            outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          pair.right().setInputTimestamp(inputTimestamp);
-          emit(internalVertex.getNextOperator(), (O) output);
-        }
-      }
+    }
 
-      if (externalAdditionalOutputs.containsKey(dstVertexId)) {
-        for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-          emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
-        }
+    if (externalAdditionalOutputs.containsKey(dstVertexId)) {
+      for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
+        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
       }
     }
   }
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-
-
-    // prepareOffloading
-    /* TODO: for middle offloader
-    if (taskExecutor.isOffloadedTask() && !offloadingIds.isEmpty()) {
-      LOG.info("Offloading watermark to serverless: {} at {}", watermark, taskExecutor.getId());
-      taskExecutor.sendToServerless(
-        watermark, offloadingIds, currWatermark, edgeId);
-      return;
-    }
-    */
-
-    // LOG.info("Emit watermark {} from {} / {}", new Instant(watermark.getTimestamp()), taskId, irVertex.getId());
-
     //if (LOG.isDebugEnabled()) {
        // LOG.info("{}/{} emits watermark {}", irVertex.getId(), taskId, watermark.getTimestamp());
     //}
@@ -287,7 +259,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
       }
     }
 
-
     // Emit watermarks to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {
       outputWriter.writeWatermark(watermark);
@@ -298,5 +269,73 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         externalVertex.writeWatermark(watermark);
       }
     }
+  }
+
+  interface MainDataEmitter {
+    void emitData(Object data);
+  }
+
+
+  final class SinkEmtter implements MainDataEmitter {
+    @Override
+    public void emitData(Object data) {
+      operatorMetricCollector.processDone(inputTimestamp,
+        irVertex.getId(), executorId, taskId, latencyLimit, persistentConnectionToMasterMap);
+    }
+  }
+
+  final class InternalMainDataEmitter implements MainDataEmitter {
+
+    @Override
+    public void emitData(Object data) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+        final OperatorVertex nextOperator = internalVertex.getNextOperator();
+
+        //LOG.info("NexOp: {}, isOffloading: {}, isOffloadedTask: {}",
+        //  nextOperator.getId(), nextOperator.isOffloading, isOffloadedTask.get());
+
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(nextOperator.getId());
+        pair.right().setInputTimestamp(inputTimestamp);
+        emit(nextOperator, data);
+      }
+    }
+  }
+
+  final class ExternalMainEmitter implements MainDataEmitter {
+
+    @Override
+    public void emitData(Object data) {
+      for (final OutputWriter externalWriter : externalMainOutputs) {
+        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, data));
+      }
+    }
+  }
+
+  final class InternalExternalMainEmitter implements MainDataEmitter {
+
+    @Override
+    public void emitData(Object data) {
+       for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+        final OperatorVertex nextOperator = internalVertex.getNextOperator();
+
+        //LOG.info("NexOp: {}, isOffloading: {}, isOffloadedTask: {}",
+        //  nextOperator.getId(), nextOperator.isOffloading, isOffloadedTask.get());
+
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(nextOperator.getId());
+        pair.right().setInputTimestamp(inputTimestamp);
+        emit(nextOperator, data);
+      }
+
+      for (final OutputWriter externalWriter : externalMainOutputs) {
+        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, data));
+      }
+    }
+  }
+
+
+  interface WatermarkEmitter {
+    void emitWatermark(final Watermark watermark);
   }
 }

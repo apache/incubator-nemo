@@ -1,17 +1,12 @@
 package org.apache.nemo.runtime.executor.common;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.offloading.common.ServerlessExecutorService;
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.*;
 
 public final class OperatorMetricCollector {
@@ -21,140 +16,22 @@ public final class OperatorMetricCollector {
   final long windowsize = 2000;
   long adjustTime;
 
-  public final IRVertex irVertex;
-  public final List<IRVertex> dstVertices;
-
-  private ByteBuf inputBuffer;
-  private ByteBufOutputStream bos;
-  public int serializedCnt;
-  private final Serializer serializer;
-  private final Edge edge;
-
-  private ServerlessExecutorService serverlessExecutorService;
-
-  public boolean isOffloading = false;
-
-  // processed events - key: timestamp, value: processed events
-  public final List<Pair<Long, Long>> processedEvents;
-
-  private long watermark;
-
-  private final boolean isMonitor;
-
-  final double samplingRate;
-
-  private final Random random = new Random();
+  private final String vertexId;
+  private final String executorId;
   private final String taskId;
+  private final long latencyLimit;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-  public OperatorMetricCollector(final IRVertex srcVertex,
-                                 final List<IRVertex> dstVertices,
-                                 final Serializer serializer,
-                                 final Edge edge,
-                                 final Map<String, Double> samplingMap,
-                                 final String taskId) {
-    this.irVertex = srcVertex;
-    this.serializedCnt = 0;
-    this.dstVertices = dstVertices;
-    this.serializer = serializer;
-    this.edge = edge;
-    this.processedEvents = new LinkedList<>();
-    this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-    this.bos = new ByteBufOutputStream(inputBuffer);
-    this.isMonitor = samplingMap.containsKey(srcVertex.getId());
-    this.samplingRate = samplingMap.getOrDefault(srcVertex.getId(), 0.0);
+  public OperatorMetricCollector(final String vertexId,
+                                 final String executorId,
+                                 final String taskId,
+                                 final long latencyLimit,
+                                 final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+    this.vertexId = vertexId;
+    this.executorId = executorId;
     this.taskId = taskId;
-
-    //LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
-  }
-
-  public void setServerlessExecutorService(final ServerlessExecutorService sls) {
-    serverlessExecutorService = sls;
-  }
-
-  @Override
-  public String toString() {
-    return irVertex.getId();
-  }
-
-  private void checkSink() {
-    if (edge == null){
-      throw new RuntimeException("This is sink!!");
-    }
-  }
-
-  public void startOffloading() {
-    //LOG.info("OPeratorMetricCollector startOffloading");
-    checkSink();
-    serializedCnt = 0;
-    isOffloading = true;
-  }
-
-  public void endOffloading() {
-    checkSink();
-
-    LOG.info("End of prepareOffloading vertex {}", irVertex.getId());
-    if (inputBuffer.readableBytes() > 0) {
-      // TODO: send remaining data to serverless
-      flushToServerless();
-    }
-    LOG.info("End of prepareOffloading vertex  -- end {}", irVertex.getId());
-    serializedCnt = 0;
-    isOffloading = false;
-  }
-
-  public boolean hasFlushableData() {
-    return inputBuffer.readableBytes() > 0;
-  }
-
-  public void flushToServerless() {
-    final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
-    final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(12);
-    lengthBuf.writeInt(serializedCnt);
-    lengthBuf.writeLong(watermark);
-
-    LOG.info("Flush to serverless in vertex {}, watermark: {}: {}", irVertex.getId(), serializedCnt,
-      watermark);
-
-    compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
-    // execute
-
-    serverlessExecutorService.execute(compositeByteBuf);
-
-    // reset
-    inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-    bos = new ByteBufOutputStream(inputBuffer);
-    serializedCnt = 0;
-  }
-
-  public void sendToServerless(final Object event,
-                               final List<String> nextOperatorIds,
-                               final long wm) {
-    watermark = wm;
-    checkSink();
-
-    //final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
-
-    //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
-    // serializedCnt);
-    //LOG.info("Offload from {} to {}", irVertex.getId(), nextOperatorIds);
-
-    try {
-      bos.writeInt(nextOperatorIds.size());
-      for (int i = 0; i < nextOperatorIds.size(); i++) {
-        bos.writeUTF(nextOperatorIds.get(i));
-      }
-      bos.writeUTF(edge.getId());
-      serializer.getEncoderFactory().create(bos).encode(event);
-      serializedCnt += 1;
-
-      // if (isFlusheable()) {
-        // flush
-        flushToServerless();
-      // }
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    this.latencyLimit = latencyLimit;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
   }
 
   //private final LatencyAndCnt latencyAndCnt = new LatencyAndCnt();
@@ -183,7 +60,7 @@ public final class OperatorMetricCollector {
       final long p95 = latencies.get(p95Index);
       final long p99 = latencies.get(p99Index);
       LOG.info("Avg Latency {} P95: {}, P99: {}, Max: {} from vertex {}, processCnt {}",
-        avg, p95, p99, latencies.get(latencies.size() - 1), irVertex.getId(), latencies.size());
+        avg, p95, p99, latencies.get(latencies.size() - 1), "taskId", latencies.size());
       latencies.clear();
 
       prevWindowTime = currTime;
@@ -193,17 +70,35 @@ public final class OperatorMetricCollector {
   int proceseedCnt = 0;
   long prevLogTime = System.currentTimeMillis();
 
-  public void processDone(final long startTimestamp) {
+  public void processDone(final long inputTimestamp,
+                          final String vertexId,
+                          final String executorId,
+                          final String taskId,
+                          final long latencyLimit,
+                          final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
 
-    proceseedCnt += 1;
+    final long currTime = System.currentTimeMillis();
+    final int latency = (int) ((currTime - inputTimestamp));
 
-    if (isMonitor) {
-      final long currTime = System.currentTimeMillis();
+    if (currTime - prevLogTime >= 500) {
+      prevLogTime = currTime;
+      LOG.info("Event Latency {} from {} in {}/{} ", latency,
+        vertexId,
+        executorId,
+        taskId);
 
-      if (random.nextDouble() < samplingRate) {
-        final int latency = (int)((currTime - startTimestamp) - adjustTime);
-        // LOG.info("Event Latency {} from {} in {}", latency, irVertex.getId(),
-        //  taskId);
+      if (latency > latencyLimit) {
+        persistentConnectionToMasterMap
+          .getMessageSender(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.LatencyCollection)
+            .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setLatency(latency)
+              .build())
+            .build());
       }
     }
   }
