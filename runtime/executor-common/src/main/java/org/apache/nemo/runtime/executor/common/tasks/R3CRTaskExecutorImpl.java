@@ -36,7 +36,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.StateStore;
@@ -116,8 +115,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
   private final boolean offloaded;
 
-  private final List<ConditionalRouterVertex> crVertices;
-
   private final Transform.ConditionalRouting conditionalRouting;
 
   private final boolean singleOneToOneInput;
@@ -130,11 +127,9 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
   // THIS TASK SHOULD NOT BE MOVED !!
 
   private final RuntimeEdge transientPathEdge;
-  private final List<String> transientPathDstTasks;
   private final Serializer transientPathSerializer;
 
   private final RuntimeEdge vmPathEdge;
-  private final List<String> vmPathDstTasks;
   private final Serializer vmPathSerializer;
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
@@ -143,8 +138,13 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
   private final int taskIndex;
 
-  private final Map<String, String> dataReroutingTable = new HashMap<>();
-  private final Map<String, String> watermarkReroutingTable = new HashMap<>();
+  private final String[] vmPathDstTasks;
+  private final String[] transientPathDstTasks;
+  private final Boolean[] dataReroutingTable;
+  private final Boolean[] watermarkReroutingTable;
+  private final DataRouter[] dataRouters;
+  private final DataRouter[] watermarkRouters;
+  private final DataHandler dataHandler;
 
   /**
    * Constructor.
@@ -182,7 +182,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
-    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -210,7 +209,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       .getDataCommunicationPattern()
       .equals(CommunicationPatternProperty.Value.TransientOneToOne);
 
-
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
@@ -231,21 +229,40 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       edge.isTransientPath())
       .findFirst().get();
 
-    this.transientPathDstTasks = getDstTaskIds(taskId, transientPathEdge);
+    final List<String> transientDsts = getDstTaskIds(taskId, transientPathEdge);
+    this.transientPathDstTasks = new String[transientDsts.size()];
+    transientDsts.toArray(transientPathDstTasks);
+
     this.transientPathSerializer = serializerManager.getSerializer(transientPathEdge.getId());
 
     this.vmPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
       !edge.isTransientPath())
       .findFirst().get();
-    this.vmPathDstTasks = getDstTaskIds(taskId, vmPathEdge);
+
+    final List<String> dstTasks = getDstTaskIds(taskId, vmPathEdge);
+    this.vmPathDstTasks = new String[dstTasks.size()];
+    dstTasks.toArray(vmPathDstTasks);
+
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
     this.taskWatermarkManager = new R2WatermarkManager(taskId);
 
-    if (vmPathDstTasks.size() > 1) {
+    if (vmPathDstTasks.length > 1) {
       this.getDstTaskId = new RRDstTAskId();
     } else {
       this.getDstTaskId = new O2oDstTaskId();
+    }
+
+    this.dataReroutingTable = new Boolean[vmPathDstTasks.length];
+    this.watermarkReroutingTable = new Boolean[vmPathDstTasks.length];
+    this.dataRouters = new DataRouter[vmPathDstTasks.length];
+    this.watermarkRouters = new DataRouter[vmPathDstTasks.length];
+
+    for (int i = 0; i < vmPathDstTasks.length; i++) {
+      this.dataReroutingTable[i] = false;
+      this.watermarkReroutingTable[i] = false;
+      this.dataRouters[i] = new VMDataRouter(vmPathDstTasks[i]);
+      this.watermarkRouters[i] = new VMDataRouter(vmPathDstTasks[i]);
     }
 
     if (isLocalSource) {
@@ -253,6 +270,9 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     } else {
       this.adjustTime = 0;
     }
+
+    this.dataHandler = singleOneToOneInput ? new SingleO2ODataHandler()
+      : new MultiInputDataHandler();
 
     prepare();
   }
@@ -412,10 +432,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
-      }
-
-      if (childVertex instanceof ConditionalRouterVertex) {
-        crVertices.add((ConditionalRouterVertex)childVertex);
       }
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
@@ -628,73 +644,18 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
   }
 
   private void writeByteBuf(final ByteBuf data) {
-    final String vmDstTaskId = getDstTaskId.getDstTaskId();
-    writeByteBuf(vmDstTaskId, data);
+    dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
   }
 
-  private void writeByteBuf(final String vmDstTaskId,
-                            final ByteBuf data) {
-    if (dataReroutingTable.containsKey(vmDstTaskId)) {
-      pipeManagerWorker.writeByteBufData(taskId,
-        transientPathEdge.getId(), dataReroutingTable.get(vmDstTaskId), data);
-    } else {
-      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(), vmDstTaskId, data);
+  private int findVmTaskIdx(final String vmTaskId) {
+    for (int i = 0; i < vmPathDstTasks.length; i++) {
+      if (vmPathDstTasks[i].equals(vmTaskId)) {
+        return i;
+      }
     }
-  }
 
-  private String getLambdaTaskId(String vmDstTaskId) {
-    return dataReroutingTable.containsKey(vmDstTaskId) ?
-      dataReroutingTable.get(vmDstTaskId) :
-      watermarkReroutingTable.get(vmDstTaskId);
-  }
-
-  private void writeWatermarkByteBufBoth(final String vmDstTaskId,
-                                         final ByteBuf data) {
-    final String lambdaId = getLambdaTaskId(vmDstTaskId);
-    // LOG.info("Emit both R3 CR watermark in {}->{}", taskId, lambdaId);
-    // Lambda path
-    pipeManagerWorker.writeByteBufData(taskId,
-      transientPathEdge.getId(), lambdaId, data);
-
-    // VM path
-    pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(), vmDstTaskId, data);
-  }
-
-  private void writeData(final Object data) {
-    final String vmDstTaskId = getDstTaskId.getDstTaskId();
-    writeData(vmDstTaskId, data);
-  }
-
-  private void writeData(final String vmDstTaskId,
-                         final Object data) {
-    if (dataReroutingTable.containsKey(vmDstTaskId)) {
-      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
-        dataReroutingTable.get(vmDstTaskId),
-        transientPathSerializer,
-        data);
-    } else {
-      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
-        vmDstTaskId,
-        vmPathSerializer,
-        data);
-    }
-  }
-
-  private void writeWatermarkDataBoth(final String vmDstTaskId,
-                                      final Object data) {
-    final String lambdaId = getLambdaTaskId(vmDstTaskId);
-    // LOG.info("Emit both R3 CR watermark in {}->{} {}", taskId, lambdaId,
-    //  ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-
-    pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
-      lambdaId,
-      transientPathSerializer,
-      data);
-
-    pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
-      vmDstTaskId,
-      vmPathSerializer,
-      data);
+    throw new RuntimeException("Cannot find vm task id " + vmTaskId
+      + " in " + vmPathDstTasks + ", " + taskId);
   }
 
   @Override
@@ -703,37 +664,39 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
                            final String pairEdgeId,
                            final ReroutingState state) {
 
-
     if (pairEdgeId.equals(transientPathEdge.getId())) {
       // rerouting from VM to Lambda
-      dataReroutingTable.put(originTask, pairTaskId);
+      final int idx = findVmTaskIdx(originTask);
+      dataReroutingTable[idx] = true;
+      dataRouters[idx] = new LambdaDataRouter(transientPathDstTasks[idx]);
       if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
-        watermarkReroutingTable.put(originTask, pairTaskId);
+        watermarkReroutingTable[idx] = true;
       }
+
+      watermarkRouters[idx] = createWatermarkRouter(idx);
+
     } else {
       // rerouting from Lambda to VM
-      dataReroutingTable.remove(pairTaskId);
+      final int idx = findVmTaskIdx(pairTaskId);
+      dataReroutingTable[idx] = false;
+      dataRouters[idx] = new VMDataRouter(vmPathDstTasks[idx]);
       if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
-        watermarkReroutingTable.remove(pairTaskId);
+        watermarkReroutingTable[idx] = false;
+        watermarkRouters[idx] = new VMDataRouter(transientPathDstTasks[idx]);
       }
+      watermarkRouters[idx] = createWatermarkRouter(idx);
     }
-
-    /*
-    LOG.info("Set rerouting in R3C3 {} / {}/{}/{}/{}, " +
-        "transient path edge: {}, vm path edge: {}," +
-        "dataReroutingTable: {}, watermarkRTable: {}",
-      taskId, originTask, pairTaskId, pairEdgeId, state, transientPathEdge.getId(),
-      vmPathEdge.getId(),
-      dataReroutingTable,
-      watermarkReroutingTable);
-      */
   }
 
-  private boolean isSendWatermarkToBothEdges(String originTaskId) {
-    return (dataReroutingTable.containsKey(originTaskId) &&
-      !watermarkReroutingTable.containsKey(originTaskId))
-      || (!dataReroutingTable.containsKey(originTaskId) &&
-      watermarkReroutingTable.containsKey(originTaskId));
+  private DataRouter createWatermarkRouter(int originTaskIdIndex) {
+
+    if (dataReroutingTable[originTaskIdIndex] && watermarkReroutingTable[originTaskIdIndex]) {
+      return new LambdaDataRouter(transientPathDstTasks[originTaskIdIndex]);
+    } else if (!dataReroutingTable[originTaskIdIndex] && !watermarkReroutingTable[originTaskIdIndex]) {
+      return new VMDataRouter(vmPathDstTasks[originTaskIdIndex]);
+    } else {
+      return new VMLambdaBothRouter(transientPathDstTasks[originTaskIdIndex], vmPathDstTasks[originTaskIdIndex]);
+    }
   }
 
   @Override
@@ -742,94 +705,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     // watermark handling
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-      if (singleOneToOneInput) {
-        final ByteBuf byteBuf = data;
-        byteBuf.markReaderIndex();
-        final Byte b = byteBuf.readByte();
-        byteBuf.resetReaderIndex();
-
-        if (b == 0x01) {
-          // broadcast watermark
-          vmPathDstTasks.forEach(vmTId -> {
-            if (isSendWatermarkToBothEdges(vmTId)) {
-              writeWatermarkByteBufBoth(vmTId, data);
-            } else {
-              writeByteBuf(vmTId, data);
-            }
-          });
-        } else {
-          // data
-          writeByteBuf(data);
-        }
-
-      } else {
-        final ByteBuf byteBuf = data;
-        byteBuf.markReaderIndex();
-        final Byte b = byteBuf.readByte();
-        byteBuf.resetReaderIndex();
-
-        if (b == 0x01) {
-          // watermark!
-          // we should manage the watermark
-          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-            watermarkWithIndex.getWatermark().getTimestamp())
-            .ifPresent(watermark -> {
-              // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
-              vmPathDstTasks.forEach(vmTId -> {
-                if (isSendWatermarkToBothEdges(vmTId)) {
-                  writeWatermarkDataBoth(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-                } else {
-                  writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-                }
-              });
-            });
-        } else {
-          // data
-          writeByteBuf(data);
-        }
-      }
+      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
-      if (singleOneToOneInput) {
-        // single o2o - RR output
-        // broadcast watermark
-        if (data instanceof WatermarkWithIndex) {
-          // watermark!
-          // we should manage the watermark
-          // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-          vmPathDstTasks.forEach(vmTId -> {
-            if (isSendWatermarkToBothEdges(vmTId)) {
-              writeWatermarkDataBoth(vmTId, data);
-            } else {
-              writeData(vmTId, data);
-            }
-          });
-        } else {
-          writeData(data);
-        }
-      } else {
-        if (data instanceof WatermarkWithIndex) {
-          // watermark!
-          // we should manage the watermark
-          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-            watermarkWithIndex.getWatermark().getTimestamp())
-            .ifPresent(watermark -> {
-              // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-              vmPathDstTasks.forEach(vmTId -> {
-                if (isSendWatermarkToBothEdges(vmTId)) {
-                  writeWatermarkDataBoth(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-                } else {
-                  writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-                }
-              });
-            });
-
-        } else {
-          writeData(data);
-        }
-      }
+      dataHandler.handleLocalData(data, taskHandlingEvent);
     }
   }
 
@@ -913,7 +792,197 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
   }
 
   interface GetDstTaskId {
-    String getDstTaskId();
+    int getDstTaskIdIndex();
+  }
+
+
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////
+
+  interface DataHandler {
+    void handleLocalData(Object data, TaskHandlingEvent event);
+    void handleRemoteByteBuf(ByteBuf data,
+                             TaskHandlingEvent event);
+  }
+
+  final class SingleO2ODataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      // single o2o - RR output
+      // broadcast watermark
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+        for (int i = 0; i < vmPathDstTasks.length; i++) {
+          watermarkRouters[i].writeData(data);
+        }
+      } else {
+        dataRouters[getDstTaskId.getDstTaskIdIndex()].writeData(data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent event) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // broadcast watermark
+        for (int i = 0; i < vmPathDstTasks.length; i++) {
+          watermarkRouters[i].writeByteBuf(data);
+        }
+      } else {
+        // data
+        dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
+      }
+    }
+  }
+
+  final class MultiInputDataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+            for (int i = 0; i < vmPathDstTasks.length; i++) {
+              watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
+            }
+          });
+
+      } else {
+        dataRouters[getDstTaskId.getDstTaskIdIndex()].writeData(data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
+            for (int i = 0; i < vmPathDstTasks.length; i++) {
+              watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
+            }
+          });
+      } else {
+        // data
+        dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
+      }
+    }
+  }
+
+  interface DataRouter {
+    void writeData(Object data);
+    void writeByteBuf(ByteBuf data);
+  }
+
+
+  final class VMLambdaBothRouter implements DataRouter {
+
+    private final String lambdaId;
+    private final String vmId;
+
+    public VMLambdaBothRouter(final String lambdaId,
+                                final String vmId) {
+      this.lambdaId = lambdaId;
+      this.vmId = vmId;
+    }
+
+    @Override
+    public void writeByteBuf(final ByteBuf data) {
+      // LOG.info("Emit both R3 CR watermark in {}->{}", taskId, lambdaId);
+      // Lambda path
+      pipeManagerWorker.writeByteBufData(taskId,
+        transientPathEdge.getId(), lambdaId, data);
+
+      // VM path
+      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(),
+        vmId, data);
+    }
+
+    @Override
+    public void writeData(Object watermark) {
+      // final WatermarkWithIndex w = new WatermarkWithIndex((Watermark) watermark, taskIndex);
+
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        lambdaId,
+        transientPathSerializer,
+        watermark);
+
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmId,
+        vmPathSerializer,
+        watermark);
+    }
+  }
+
+  final class LambdaDataRouter implements DataRouter {
+    private final String lambdaTaskId;
+
+    public LambdaDataRouter(final String lambdaTaskId) {
+      this.lambdaTaskId = lambdaTaskId;
+    }
+
+    @Override
+    public void writeData(Object data) {
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        lambdaTaskId,
+        transientPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufData(taskId,
+        transientPathEdge.getId(), lambdaTaskId, data);
+    }
+  }
+
+  final class VMDataRouter implements DataRouter {
+    private final String vmTaskId;
+
+    public VMDataRouter(final String vmTaskId) {
+      this.vmTaskId = vmTaskId;
+    }
+
+    @Override
+    public void writeData(Object data) {
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmTaskId,
+        vmPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(),
+        vmTaskId, data);
+    }
   }
 
   final class RRDstTAskId implements GetDstTaskId {
@@ -923,21 +992,19 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
 
     @Override
-    public String getDstTaskId() {
-      index = (index + 1) % vmPathDstTasks.size();
-      return vmPathDstTasks.get(index);
+    public int getDstTaskIdIndex() {
+      index = (index + 1) % vmPathDstTasks.length;
+      return index;
     }
   }
 
   final class O2oDstTaskId implements GetDstTaskId {
-    private final String dstTaskId;
     public O2oDstTaskId() {
-      this.dstTaskId = vmPathDstTasks.get(0);
     }
 
     @Override
-    public String getDstTaskId() {
-      return dstTaskId;
+    public int getDstTaskIdIndex() {
+      return 0;
     }
   }
 }

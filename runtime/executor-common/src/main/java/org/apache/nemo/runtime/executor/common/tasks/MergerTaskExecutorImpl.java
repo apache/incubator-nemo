@@ -142,6 +142,13 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final OutputCollector outputCollector;
 
+  private final String vmPathDstTask;
+  private final String transientPathDstTask;
+  private boolean reroutingToLambda = false;
+  private DataRouter dataRouter;
+  private DataHandler dataHandler;
+  private boolean receiveFinal = false;
+
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
    * Output: single o2o (normal) - o2o (transient)
@@ -234,15 +241,20 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     if (vmPathDstTasks.size() > 1) {
       throw new RuntimeException("Not supported multiple dstTAsks in merger task "
         + vmPathDstTasks + " , " + taskId);
-    } else {
-      this.getDstTaskId = new O2oDstTaskId();
     }
+    this.getDstTaskId = new O2oDstTaskId();
+
+    this.vmPathDstTask = vmPathDstTasks.get(0);
+    this.transientPathDstTask = transientPathDstTasks.get(0);
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
     } else {
       this.adjustTime = 0;
     }
+
+    this.dataRouter = new VMDataRouter(vmPathDstTask);
+    this.dataHandler = new ToMergerDataHandler();
 
     this.mergerTransform = ((OperatorVertex)irVertexDag.getVertices().get(0)).getTransform();
 
@@ -262,15 +274,13 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
       public void emit(Object output) {
         taskMetrics.incrementOutputElement();
         final long timestamp = ts;
-        writeData(new TimestampAndValue<>(timestamp, output));
+        dataRouter.writeData(new TimestampAndValue<>(timestamp, output));
       }
 
       @Override
       public void emitWatermark(Watermark watermark) {
         // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
-        vmPathDstTasks.forEach(vmTId -> {
-          writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-        });
+        dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
       }
 
       @Override
@@ -357,7 +367,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   }
 
   private boolean allPathStopped = false;
-  private boolean receiveFinal = false;
   private boolean lambdaPathStopped = false;
   private boolean vmPathStopped = false;
 
@@ -415,6 +424,11 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     LOG.info("Receive set partial/final {} in {}", finalResult, taskId);
 
     receiveFinal = finalResult;
+    if (receiveFinal) {
+      dataHandler = new BypassDataHandler();
+    } else {
+      dataHandler = new ToMergerDataHandler();
+    }
   }
 
   private void prepare() {
@@ -681,44 +695,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     }
   }
 
-  private final Map<String, String> reroutingTable = new HashMap<>();
-
-  private void writeByteBuf(final ByteBuf data) {
-    final String vmDstTaskId = getDstTaskId.getDstTaskId();
-    writeByteBuf(vmDstTaskId, data);
-  }
-
-  private void writeByteBuf(final String vmDstTaskId,
-                            final ByteBuf data) {
-    if (reroutingTable.containsKey(vmDstTaskId)) {
-      pipeManagerWorker.writeByteBufData(taskId,
-        transientOutputPathEdge.getId(), reroutingTable.get(vmDstTaskId), data);
-    } else {
-      pipeManagerWorker.writeByteBufData(taskId, vmOutputPathEdge.getId(), vmDstTaskId, data);
-    }
-  }
-
-  private void writeData(final Object data) {
-    final String vmDstTaskId = getDstTaskId.getDstTaskId();
-    writeData(vmDstTaskId, data);
-  }
-
-
-  private void writeData(final String vmDstTaskId,
-                         final Object data) {
-    if (reroutingTable.containsKey(vmDstTaskId)) {
-      pipeManagerWorker.writeData(taskId, transientOutputPathEdge.getId(),
-        reroutingTable.get(vmDstTaskId),
-        transientPathSerializer,
-        data);
-    } else {
-      pipeManagerWorker.writeData(taskId, vmOutputPathEdge.getId(),
-        vmDstTaskId,
-        vmPathSerializer,
-        data);
-    }
-  }
-
   @Override
   public void setRerouting(final String originTask,
                            final String pairTaskId,
@@ -726,10 +702,12 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
                            final ReroutingState state) {
     if (pairEdgeId.equals(transientOutputPathEdge.getId())) {
       // rerouting from VM to Lambda
-      reroutingTable.put(originTask, pairTaskId);
+      reroutingToLambda = true;
+      dataRouter = new LambdaDataRouter(transientPathDstTask);
     } else {
       // rerouting from Lambda to VM
-      reroutingTable.remove(pairTaskId);
+      reroutingToLambda = false;
+      dataRouter = new VMDataRouter(vmPathDstTask);
     }
   }
 
@@ -749,88 +727,12 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    // watermark handling
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-      final ByteBuf byteBuf = data;
-      byteBuf.markReaderIndex();
-      final Byte b = byteBuf.readByte();
-      byteBuf.resetReaderIndex();
-
-      if (b == 0x01) {
-        // watermark!
-        // we should manage the watermark
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            if (receiveFinal) {
-              // if one path is stopped, bypass the merger
-              // LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
-              vmPathDstTasks.forEach(vmTId -> {
-                writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-              });
-            } else {
-              // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-              mergerTransform.onWatermark(watermark);
-            }
-          });
-      } else {
-        // data
-        if (receiveFinal) {
-          // LOG.info("Emit SM data and bypass in {} {}", taskId);
-          writeByteBuf(data);
-        } else {
-          // data
-          // LOG.info("Emit SM data to merger in {} {}", taskId);
-          final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
-          final long ns = System.nanoTime();
-          taskMetrics.incrementInputElement();
-
-          outputCollector.setInputTimestamp(event.timestamp);
-          mergerTransform.onData(event.value);
-
-          final long endNs = System.nanoTime();
-          taskMetrics.incrementComputation(endNs - ns);
-        }
-      }
+      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
-      if (data instanceof WatermarkWithIndex) {
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-
-        taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            if (receiveFinal) {
-              // if one path is stopped, bypass the merger
-              // LOG.info("Emit SM watermark and bypass in {} {}", taskId, watermark.getTimestamp());
-              vmPathDstTasks.forEach(vmTId -> {
-                writeData(vmTId, new WatermarkWithIndex(watermark, taskIndex));
-              });
-            } else {
-              // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-              mergerTransform.onWatermark(watermark);
-            }
-          });
-      } else {
-        if (receiveFinal) {
-          // LOG.info("Emit SM data and bypass in {} {}", taskId);
-          writeData(data);
-        } else {
-          // data
-          // LOG.info("Emit SM data to merger in {} {}", taskId);
-          final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
-          final long ns = System.nanoTime();
-          taskMetrics.incrementInputElement();
-
-          outputCollector.setInputTimestamp(event.timestamp);
-          mergerTransform.onData(event.value);
-
-          final long endNs = System.nanoTime();
-          taskMetrics.incrementComputation(endNs - ns);
-        }
-      }
+      dataHandler.handleLocalData(data, taskHandlingEvent);
     }
   }
 
@@ -913,19 +815,179 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     return taskId;
   }
 
-  interface GetDstTaskId {
-    String getDstTaskId();
+
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////
+
+  interface DataHandler {
+    void handleLocalData(Object data, TaskHandlingEvent event);
+    void handleRemoteByteBuf(ByteBuf data,
+                             TaskHandlingEvent event);
   }
 
-  final class O2oDstTaskId implements GetDstTaskId {
-    private final String dstTaskId;
-    public O2oDstTaskId() {
-      this.dstTaskId = vmPathDstTasks.get(0);
+  final class BypassDataHandler implements DataHandler {
+    @Override
+    public void handleLocalData(Object data,
+                                TaskHandlingEvent event) {
+      if (data instanceof WatermarkWithIndex) {
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+          });
+      } else {
+        dataRouter.writeData(data);
+      }
     }
 
     @Override
-    public String getDstTaskId() {
-      return dstTaskId;
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+          });
+      } else {
+        // data
+        dataRouter.writeByteBuf(data);
+      }
+    }
+  }
+
+  final class ToMergerDataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data, TaskHandlingEvent taskHandlingEvent) {
+      if (data instanceof WatermarkWithIndex) {
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
+            mergerTransform.onWatermark(watermark);
+          });
+      } else {
+        // LOG.info("Emit SM data to merger in {} {}", taskId);
+        final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
+        final long ns = System.nanoTime();
+        taskMetrics.incrementInputElement();
+
+        outputCollector.setInputTimestamp(event.timestamp);
+        mergerTransform.onData(event.value);
+
+        final long endNs = System.nanoTime();
+        taskMetrics.incrementComputation(endNs - ns);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
+            mergerTransform.onWatermark(watermark);
+          });
+      } else {
+        // data
+        // LOG.info("Emit SM data to merger in {} {}", taskId);
+        final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
+        final long ns = System.nanoTime();
+        taskMetrics.incrementInputElement();
+
+        outputCollector.setInputTimestamp(event.timestamp);
+        mergerTransform.onData(event.value);
+
+        final long endNs = System.nanoTime();
+        taskMetrics.incrementComputation(endNs - ns);
+      }
+    }
+  }
+
+  interface DataRouter {
+    void writeData(Object data);
+    void writeByteBuf(ByteBuf data);
+  }
+
+  final class LambdaDataRouter implements DataRouter {
+    private final String lambdaTaskId;
+
+    public LambdaDataRouter(final String lambdaTaskId) {
+      this.lambdaTaskId = lambdaTaskId;
+    }
+
+    @Override
+    public void writeData(Object data) {
+      pipeManagerWorker.writeData(taskId, transientOutputPathEdge.getId(),
+        lambdaTaskId,
+        transientPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufData(taskId,
+        transientOutputPathEdge.getId(), lambdaTaskId, data);
+    }
+  }
+
+  final class VMDataRouter implements DataRouter {
+    private final String vmTaskId;
+
+    public VMDataRouter(final String vmTaskId) {
+      this.vmTaskId = vmTaskId;
+    }
+
+    @Override
+    public void writeData(Object data) {
+      pipeManagerWorker.writeData(taskId, vmOutputPathEdge.getId(),
+        vmTaskId,
+        vmPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufData(taskId, vmOutputPathEdge.getId(),
+        vmTaskId, data);
+    }
+  }
+
+  interface GetDstTaskId {
+    int getDstTaskIdIndex();
+  }
+
+  final class O2oDstTaskId implements GetDstTaskId {
+    public O2oDstTaskId() {
+    }
+
+    @Override
+    public int getDstTaskIdIndex() {
+      return 0;
     }
   }
 }

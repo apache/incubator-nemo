@@ -129,6 +129,8 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   private final Map<String, Object> sharedObject;
 
   private final OutputCollector partialOutputCollector;
+  private final Serializer serializer;
+  private PartialOutputEmitter partialOutputEmitter;
 
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
@@ -251,7 +253,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
       }
     };
 
-    final Serializer serializer = serializerManager.getSerializer(mergerEdgeId);
+    this.serializer = serializerManager.getSerializer(mergerEdgeId);
+    this.partialOutputEmitter = new PartialOutputEmitToRemoteMerger();
+
     this.partialOutputCollector = new OutputCollector() {
       private long ts;
       @Override
@@ -266,27 +270,12 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
       @Override
       public void emit(Object output) {
-        if (pairTaskStopped) {
-          // send to final
-          finalOutputCollector.setInputTimestamp(ts);
-          pToFinalTransform.onData(output);
-        } else {
-          // LOG.info("Emit partial output in {}, element: {}", taskId, output);
-          pipeManagerWorker.writeData(taskId,
-            mergerEdgeId, mergerTaskId, serializer,
-            new TimestampAndValue<>(ts, output));
-        }
+        partialOutputEmitter.emit(output, ts);
       }
 
       @Override
       public void emitWatermark(Watermark watermark) {
-        if (pairTaskStopped) {
-          // send to final
-          pToFinalTransform.onWatermark(watermark);
-        } else {
-          pipeManagerWorker.writeData(taskId,
-            mergerEdgeId, mergerTaskId, serializer, new WatermarkWithIndex(watermark, taskIndex));
-        }
+        partialOutputEmitter.emitWatermark(watermark);
       }
 
       @Override
@@ -660,6 +649,11 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   public void setPairTaskStopped(boolean val) {
     LOG.info("Pair task of {} stopped {}", taskId, val);
     this.pairTaskStopped = val;
+    if (pairTaskStopped) {
+      partialOutputEmitter = new PartialOutputEmitToLocalFinal();
+    } else {
+      partialOutputEmitter = new PartialOutputEmitToRemoteMerger();
+    }
   }
 
   @Override
@@ -713,6 +707,42 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   }
 
   ////////////////////////////////////////////// Transform-specific helper methods
+  interface PartialOutputEmitter {
+    void emit(Object output, long ts);
+    void emitWatermark(Watermark watermark);
+  }
+
+  final class PartialOutputEmitToLocalFinal implements PartialOutputEmitter {
+
+    @Override
+    public void emit(Object output, long ts) {
+      // send to final
+      finalOutputCollector.setInputTimestamp(ts);
+      pToFinalTransform.onData(output);
+    }
+
+    @Override
+    public void emitWatermark(Watermark watermark) {
+      // send to final
+      pToFinalTransform.onWatermark(watermark);
+    }
+  }
+
+  final class PartialOutputEmitToRemoteMerger implements PartialOutputEmitter {
+
+    @Override
+    public void emit(Object output, long ts) {
+      pipeManagerWorker.writeData(taskId,
+        mergerEdgeId, mergerTaskId, serializer,
+        new TimestampAndValue<>(ts, output));
+    }
+
+    @Override
+    public void emitWatermark(Watermark watermark) {
+      pipeManagerWorker.writeData(taskId,
+        mergerEdgeId, mergerTaskId, serializer, new WatermarkWithIndex(watermark, taskIndex));
+    }
+  }
 
 
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
