@@ -1,0 +1,14 @@
+service: nemo # NOTE: update this with your service name
+
+provider:
+  name: aws
+  runtime: java8
+  profile: taegeonum
+  region: ap-northeast-2
+  layers:
+    - arn:aws:lambda:ap-northeast-2:243787491444:layer:layer-0420:1
+
+package:
+  artifact: build/distributions/lambda.zip
+
+functions:

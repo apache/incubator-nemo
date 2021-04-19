@@ -596,9 +596,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         if (remoteExecutorId.equals(executorId)) {
           return Optional.empty();
         } else {
-          final Channel channel = executorChannelManagerMap
-            .getExecutorChannel(
-              taskScheduledMapWorker.getRemoteExecutorId(dstTaskId, syncToMaster));
+          final Channel channel = executorChannelManagerMap.getExecutorChannel(remoteExecutorId);
           if (channel == null) {
             return Optional.empty();
           } else {
@@ -902,14 +900,21 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             sendPendingDataToLocal(key.getRight(), key.getMiddle(), index, data));
         } else {
           // remote
-          final String remoteExecutorId = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), true);
-
           if (evalConf.controlLogging) {
-            LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to " +
-              "executor {}", taskId, key, executorId, remoteExecutorId);
+            LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to "
+              , taskId, key, executorId);
           }
 
           Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
+          long prevLog = System.currentTimeMillis();
+          while (!optional.isPresent()) {
+            Thread.sleep(100);
+            optional = getChannelForDstTask(key.getRight(), true);
+            if (System.currentTimeMillis() - prevLog >= 1000) {
+              LOG.warn("Waiting for get channel of task {}....", key.getRight());
+              prevLog = System.currentTimeMillis();
+            }
+          }
 
           if (!optional.isPresent()) {
             throw new RuntimeException(key + " is not schedule yet... we buffer the event and " +

@@ -126,6 +126,8 @@ public final class Executor {
 
   private final boolean onLambda;
 
+  private final TaskScheduledMapWorker taskScheduledMapWorker;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -162,7 +164,7 @@ public final class Executor {
                    //final CpuEventModel cpuEventModel) {
 
     this.onLambda = onLambda;
-
+    this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.messageEnvironment = messageEnvironment;
     this.condRouting = condRouting;
     this.streamVertexSerializerManager = streamVertexSerializerManager;
@@ -327,14 +329,13 @@ public final class Executor {
     // this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     messageEnvironment.setupListener(EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
-
-    taskScheduledMapWorker.init();
-    executorChannelManagerMap.init();
-
     this.stageExecutorThreadMap = stageExecutorThreadMap;
   }
 
   public void start() {
+    taskScheduledMapWorker.init();
+    executorChannelManagerMap.init();
+
     // Connect the globally known message listener IDs.
     try {
       messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_ID,

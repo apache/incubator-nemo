@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
+import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,9 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.nemo.runtime.master.WorkerControlProxy.State.ACTIVATE;
-import static org.apache.nemo.runtime.master.WorkerControlProxy.State.DEACTIVATE;
-import static org.apache.nemo.runtime.master.WorkerControlProxy.State.DEACTIVATING;
+import static org.apache.nemo.runtime.master.WorkerControlProxy.State.*;
 
 public final class WorkerControlProxy implements EventHandler<OffloadingMasterEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(WorkerControlProxy.class.getName());
@@ -23,6 +22,7 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     DEACTIVATING,
     DEACTIVATE,
     ACTIVATE,
+    ACTIVATING,
     READY,
   }
 
@@ -40,15 +40,18 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
   public final Set<String> pendingTasks = new HashSet<>();
 
   private final Set<WorkerControlProxy> pendingActivationWorkers;
+  private final LambdaContainerRequester.LambdaActivator activator;
 
   public WorkerControlProxy(final int requestId,
                             final String executorId,
                             final Channel controlChannel,
+                            final LambdaContainerRequester.LambdaActivator activator,
                             final Set<WorkerControlProxy> pendingActivationWorkers) {
     this.requestId = requestId;
     this.executorId = executorId;
     this.controlChannel = controlChannel;
     this.pendingActivationWorkers = pendingActivationWorkers;
+    this.activator = activator;
     this.state = new AtomicReference<>(State.ACTIVATE);
   }
 
@@ -73,7 +76,6 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
     this.er = er;
     this.dataFullAddr = fullAddr;
-
   }
 
   public boolean isActive() {
@@ -92,6 +94,19 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
   public boolean reclaimed() {
     return !(controlChannel.isActive() && controlChannel.isOpen());
+  }
+
+  public void activate() {
+    synchronized (state) {
+      if (state.get().equals(DEACTIVATE)) {
+        LOG.info("Send activate message for worker {}", requestId);
+        state.set(ACTIVATING);
+        activator.activate();
+      } else {
+        throw new RuntimeException("Worker " + requestId + "/" + state +
+          " is not deactive but try to activate");
+      }
+    }
   }
 
   public void deactivate() {

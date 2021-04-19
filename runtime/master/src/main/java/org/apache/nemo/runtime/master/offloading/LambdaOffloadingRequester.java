@@ -14,9 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class LambdaOffloadingRequester implements OffloadingRequester {
 
@@ -45,14 +43,12 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
                                    final int requestId,
                                    String executorId) {
     final InvokeRequest request = new InvokeRequest()
-      .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+      .withFunctionName(AWSUtils.LAMBDA_EXECUTOR_PREFIX)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
         address, port, requestId));
 
     LOG.info("Invoke async request {}", request);
     final Future<InvokeResult> future = awsLambda.invokeAsync(request);
-
-
 
     /*
     try {

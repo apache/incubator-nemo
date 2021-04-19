@@ -161,7 +161,9 @@ public final class TaskScheduledMapMaster {
     }
 
     taskOriginalExecutorIdMap.putIfAbsent(taskId, representer.getExecutorId());
-    taskExecutorIdMap.put(taskId, representer.getExecutorId());
+    synchronized (taskExecutorIdMap) {
+      taskExecutorIdMap.put(taskId, representer.getExecutorId());
+    }
 
     // Add task location to VM
     taskLocationMap.locationMap.put(taskId, TaskLoc.VM);
@@ -265,18 +267,19 @@ public final class TaskScheduledMapMaster {
       switch (message.getType()) {
         case TaskScheduled: {
           final String requestedTaskId = message.getRegisteredExecutor();
-          final String executorId = taskExecutorIdMap.get(requestedTaskId);
+          synchronized (taskExecutorIdMap) {
+            final String executorId = taskExecutorIdMap.get(requestedTaskId);
+            //  LOG.info("Send reply for location of {}, {} / {}",
+            //   messageContext.getRequestId(),
+            //   requestedTaskId, executorId);
 
-         //  LOG.info("Send reply for location of {}, {} / {}",
-         //   messageContext.getRequestId(),
-         //   requestedTaskId, executorId);
-
-          messageContext.reply(ControlMessage.Message.newBuilder()
-            .setId(messageContext.getRequestId())
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.TaskScheduled)
-            .setRegisteredExecutor(requestedTaskId + "," + executorId)
-            .build());
+            messageContext.reply(ControlMessage.Message.newBuilder()
+              .setId(messageContext.getRequestId())
+              .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.TaskScheduled)
+              .setRegisteredExecutor(requestedTaskId + "," + executorId)
+              .build());
+          }
           break;
         }
 

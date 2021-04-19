@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import org.apache.nemo.runtime.executor.common.LambdaChannelMap;
+import org.apache.nemo.runtime.executor.common.ExecutorChannelMap;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +71,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private static final int HEADER_LENGTH = 2 + Integer.BYTES + Integer.BYTES;
 
   private final PipeManagerWorker pipeManagerWorker;
-  private final LambdaChannelMap lambdaChannelMap;
+  private final ExecutorChannelMap executorChannelMap;
 
   /**
    * The number of bytes consisting body of a control frame to be read next.
@@ -100,9 +100,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private List<Integer> currPipeIndices;
 
   public FrameDecoder(final PipeManagerWorker pipeManagerWorker,
-                      final LambdaChannelMap lambdaChannelMap) {
+                      final ExecutorChannelMap executorChannelMap) {
     this.pipeManagerWorker = pipeManagerWorker;
-    this.lambdaChannelMap = lambdaChannelMap;
+    this.executorChannelMap = executorChannelMap;
   }
 
   @Override
@@ -271,7 +271,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       .type.equals(TaskControlMessage.TaskControlMessageType.REGISTER_EXECUTOR))  {
       final String executorId = (String) taskControlMessage.event;
       LOG.info("Registration lambda channel {}/{}", executorId, ctx.channel().remoteAddress());
-      lambdaChannelMap.lambdaChannelMap.put(executorId, ctx.channel());
+      executorChannelMap.map.put(executorId, ctx.channel());
 
     } else {
       pipeManagerWorker.addControlData(taskControlMessage.remoteInputPipeIndex, taskControlMessage);

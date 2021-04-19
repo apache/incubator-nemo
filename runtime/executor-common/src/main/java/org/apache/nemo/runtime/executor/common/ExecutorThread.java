@@ -146,6 +146,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     synchronized (unInitializedTasks) {
       unInitializedTasks.add(task);
     }
+    LOG.info("Add task to unInitializedTasks {} / {}", task.getId(), unInitializedTasks);
   }
 
   @Override
@@ -262,6 +263,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               if (!unInitializedTasks.isEmpty()) {
                 unInitializedTasks.forEach(t -> {
                   final long st = System.currentTimeMillis();
+                  LOG.info("Start initialization of {}", t.getId());
                   // send task schedule done message
                   final TaskStateManager taskStateManager =
                     new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
@@ -295,6 +297,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
                   LOG.info("Initializing task {}", t.getId());
                   t.initialize();
+                  LOG.info("Initializing done of task {}", t.getId());
 
                   if (t.isSource() && !t.isOffloadedTask()) {
                     synchronized (pendingSourceTasks) {

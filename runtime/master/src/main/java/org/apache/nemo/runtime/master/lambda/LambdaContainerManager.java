@@ -69,6 +69,7 @@ public final class LambdaContainerManager {
   private final AtomicInteger requestIdCnt = new AtomicInteger();
   private final Map<Integer, WorkerControlProxy> requestIdControlChannelMap = new ConcurrentHashMap<>();
   private final Map<Integer, String> requestIdExecutorMap = new ConcurrentHashMap<>();
+  private final Map<Integer, LambdaContainerRequester.LambdaActivator> requestIdActivatorMap = new ConcurrentHashMap<>();
 
   private final TaskScheduledMapMaster taskScheduledMapMaster;
 
@@ -139,8 +140,17 @@ public final class LambdaContainerManager {
             final Pair<Channel, OffloadingMasterEvent> pair = event.right();
 
             LOG.info("Channel for requestId {}: {}", requestId, pair.left());
+            while (!requestIdActivatorMap.containsKey(requestId)) {
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
+
             final WorkerControlProxy proxy = new WorkerControlProxy(
-              requestId, requestIdExecutorMap.get(requestId), pair.left(), pendingActivationWorkers);
+              requestId, requestIdExecutorMap.get(requestId), pair.left(),
+              requestIdActivatorMap.get(requestId), pendingActivationWorkers);
 
             requestIdControlChannelMap.put(requestId, proxy);
             channelEventHandlerMap.put(pair.left(), proxy);
@@ -195,10 +205,7 @@ public final class LambdaContainerManager {
         if (!worker.isActive()) {
           initService.execute(() -> {
             LOG.info("Activating worker {}", worker.getId());
-            requester.createRequest(workerControlTransport.getPublicAddress(),
-              workerControlTransport.getPort(), worker.getId(), worker.getExecutorId(),
-              worker.getExecutorRepresenter().getContainerType(),
-              worker.getExecutorRepresenter().getExecutorCapacity(), 1, 1000);
+            worker.activate();
           });
         }
       });
@@ -300,9 +307,12 @@ public final class LambdaContainerManager {
 
         requestIdExecutorMap.put(rid, lambdaExecutorId);
 
-        requester.createRequest(workerControlTransport.getPublicAddress(),
-          workerControlTransport.getPort(), rid, "Lambda-" + rid,
-          resourceType, capacity, slot, memory);
+        final LambdaContainerRequester.LambdaActivator activator =
+          requester.createRequest(workerControlTransport.getPublicAddress(),
+            workerControlTransport.getPort(), rid, lambdaExecutorId,
+            resourceType, capacity, slot, memory);
+
+        requestIdActivatorMap.put(rid, activator);
 
         final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
           evalConf.executorThreadNum,

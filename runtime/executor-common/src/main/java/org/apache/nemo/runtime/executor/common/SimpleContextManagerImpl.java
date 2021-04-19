@@ -22,7 +22,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
-import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +41,7 @@ public final class SimpleContextManagerImpl extends SimpleChannelInboundHandler<
   private final Channel channel;
   private volatile String remoteExecutorId = null;
   private final OutputWriterFlusher outputWriterFlusher;
-  private final LambdaChannelMap lambdaChannelMap;
+  private final ExecutorChannelMap executorChannelMap;
 
   /**
    * Creates context manager for this channel.
@@ -50,12 +49,12 @@ public final class SimpleContextManagerImpl extends SimpleChannelInboundHandler<
    * @param channel             the {@link Channel} to manage
    */
   public SimpleContextManagerImpl(final ChannelGroup channelGroup,
-                                  final LambdaChannelMap lambdaChannelMap,
+                                  final ExecutorChannelMap executorChannelMap,
                                   final String localExecutorId,
                                   final Channel channel,
                                   final OutputWriterFlusher outputWriterFlusher) {
     this.channelGroup = channelGroup;
-    this.lambdaChannelMap = lambdaChannelMap;
+    this.executorChannelMap = executorChannelMap;
     this.localExecutorId = localExecutorId;
     this.outputWriterFlusher = outputWriterFlusher;
     this.channel = channel;

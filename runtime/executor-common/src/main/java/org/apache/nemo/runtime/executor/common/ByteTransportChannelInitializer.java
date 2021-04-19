@@ -75,7 +75,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   //private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
 
   private final OutputWriterFlusher outputWriterFlusher;
-  private final LambdaChannelMap lambdaChannelMap;
+  private final ExecutorChannelMap executorChannelMap;
 
   /**
    * Creates a netty channel initializer.
@@ -87,12 +87,12 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   @Inject
   private ByteTransportChannelInitializer(final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
-                                          final LambdaChannelMap lambdaChannelMap,
+                                          final ExecutorChannelMap executorChannelMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                           @Parameter(EvalConf.FlushPeriod.class) final int flushPeriod) {
 
     this.controlFrameEncoder = controlFrameEncoder;
-    this.lambdaChannelMap = lambdaChannelMap;
+    this.executorChannelMap = executorChannelMap;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
     this.outputWriterFlusher = new OutputWriterFlusher(flushPeriod);
@@ -108,14 +108,14 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   protected void initChannel(final SocketChannel ch) {
     final ContextManager contextManager = new SimpleContextManagerImpl(
             byteTransport.getChannelGroup(),
-            lambdaChannelMap,
+      executorChannelMap,
             localExecutorId,
             ch,
             outputWriterFlusher);
 
     ch.pipeline()
       // inbound
-      .addLast(new FrameDecoder(pipeManagerWorker, lambdaChannelMap))
+      .addLast(new FrameDecoder(pipeManagerWorker, executorChannelMap))
       // outbound
       .addLast(controlFrameEncoder)
       .addLast(dataFrameEncoder)

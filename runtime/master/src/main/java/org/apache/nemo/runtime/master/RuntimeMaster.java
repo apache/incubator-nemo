@@ -68,9 +68,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskState.State.COMPLETE;
 import static org.apache.nemo.common.TaskState.State.ON_HOLD;
-import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.COMPUTE;
-import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.LAMBDA;
-import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.OFFLOAD;
+import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.*;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
@@ -358,6 +356,53 @@ public final class RuntimeMaster {
     });
   }
 
+  private int createTypeContainer(final TreeNode resourceNode,
+                                   final String name,
+                                   final int num) throws IOException {
+    final String type = resourceNode.get("type").traverse().nextTextValue();
+    final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+    final int capacity = resourceNode.get("capacity").traverse().getIntValue();
+    final int slot = resourceNode.get("slot").traverse().getIntValue();
+    int executorNum = 0;
+    if (num > 0) {
+      executorNum = num;
+    } else {
+      executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+    }
+    final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
+
+    LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
+      type, memory, capacity, slot, executorNum);
+
+    resourceRequestCount.getAndAdd(executorNum);
+    containerManager.requestContainer(executorNum,
+      new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
+
+    return executorNum;
+  }
+
+  private void createTypeLambda(final TreeNode resourceNode,
+                                final int num) throws IOException {
+    final String type = resourceNode.get("type").traverse().nextTextValue();
+    final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+    final int capacity = resourceNode.get("capacity").traverse().getIntValue();
+    final int slot = resourceNode.get("slot").traverse().getIntValue();
+    int executorNum = 0;
+    if (num > 0) {
+      executorNum = num;
+    } else {
+      executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+    }
+    final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
+
+    LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
+      type, memory, capacity, slot, executorNum);
+
+    resourceRequestCount.getAndAdd(executorNum);
+
+    requestLambdaContainer(executorNum, true, capacity, slot, memory);
+  }
+
   /**
    * Requests a container with resource specification.
    *
@@ -382,43 +427,25 @@ public final class RuntimeMaster {
         LOG.info("Request container {} / {} / {} / {}",
           resourceSpecificationString, createWithLambda, createOnlyLambda, name);
 
-        for (int i = 0; i < jsonRootNode.size(); i++) {
+        final Map<String, TreeNode> map = new HashMap<>(jsonRootNode.size());
 
+        for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
-          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
-          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
-          final int slot = resourceNode.get("slot").traverse().getIntValue();
-          int executorNum = 0;
-          if (num > 0) {
-            executorNum = num;
-          } else {
-            executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          }
-          final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
+          map.put(type, resourceNode);
+        }
 
-          LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
-            type, memory, capacity, slot, executorNum);
+        int executorNum = createTypeContainer(map.get(COMPUTE), name, num);
+        executorNum += createTypeContainer(map.get(SOURCE), name, num);
 
-          if (createWithLambda) {
-            if (type.equals(LAMBDA)) {
-              requestLambdaContainer(executorNum, true, capacity, slot, memory);
-            } else {
-              resourceRequestCount.getAndAdd(executorNum);
-              containerManager.requestContainer(executorNum,
-                new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
-            }
-          } else if (createOnlyLambda) {
-            if (type.equals(LAMBDA)) {
-              requestLambdaContainer(executorNum, true, capacity, slot, memory);
-            }
-          } else {
-            if (!type.equals(LAMBDA)) {
-              resourceRequestCount.getAndAdd(executorNum);
-              containerManager.requestContainer(executorNum,
-                new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
-            }
+        // lambda later
+        if (createWithLambda) {
+          LOG.info("Waiting for ActiveContext to generate Lambda container");
+          while (executorRegistry.getRunningExecutors().size() < executorNum) {
+            Thread.sleep(100);
           }
+          LOG.info("Generate Lambda container");
+          createTypeLambda(map.get(LAMBDA), num);
         }
 
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());

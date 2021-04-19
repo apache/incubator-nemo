@@ -25,12 +25,14 @@ public final class EvalConf {
   @NamedParameter(short_name = "handler_timeout", default_value = "120")
   public final class HandlerTimeout implements Name<Integer> {}
 
+  @NamedParameter(short_name = "num_init_lambda", default_value = "1")
+  public final class NumInitLambda implements Name<Integer> {}
+
+  @NamedParameter(short_name = "num_max_lambda", default_value = "1")
+  public final class MaxLambda implements Name<Integer> {}
+
   @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading_debug", default_value = "false")
   public final class EnableOffloadingDebug implements Name<Boolean> {
-  }
-
-  @NamedParameter(doc = "lambda pool size", short_name = "lambda_warmup_pool", default_value = "100")
-  public final class LambdaWarmupPool implements Name<Integer> {
   }
 
   @NamedParameter(doc = "flush byte size", short_name = "flush_bytes", default_value = "1000000")
@@ -105,10 +107,6 @@ public final class EvalConf {
   public static final class EventThreshold implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "min_vm_task", default_value = "8")
-  public static final class MinVmTask implements Name<Integer> {
-  }
-
   @NamedParameter(short_name = "is_local_source", default_value = "true")
   public static final class IsLocalSource implements Name<Boolean> {
   }
@@ -162,34 +160,14 @@ public final class EvalConf {
   @NamedParameter(short_name = "num_offloading_worker", default_value = "1")
   public static final class NumOffloadingWorker implements Name<Integer> {}
 
-  // # offload workers
-  @NamedParameter(short_name = "num_offloading_worker_after_merging", default_value = "1")
-  public static final class NumOffloadingWorkerAfterMerging implements Name<Integer> {}
-
-  @NamedParameter(short_name = "destroy_offloading_worker", default_value = "false")
-  public static final class DestroyOffloadingWorker implements Name<Boolean> {}
-
   @NamedParameter(short_name = "offloading_manager", default_value = "shared")
   public static final class OffloadingManagerType implements Name<String> {}
 
   @NamedParameter(short_name = "aws_profile", default_value = "default")
   public static final class AWSProfileName implements Name<String> {}
 
-  // per executor
-  @NamedParameter(short_name = "num_lambda_pool", default_value = "1")
-  public static final class NumLambdaPool implements Name<Integer> {}
-
-   // per executor
-  @NamedParameter(short_name = "partial_warmup", default_value = "false")
-  public static final class PartialWarmup implements Name<Boolean> {}
-
-  // 0 ~ 100
-  @NamedParameter(short_name = "partial_percent", default_value = "0")
-  public static final class PartialPercent implements Name<Integer> {}
-
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
-  public final int poolSize;
   public final int flushBytes;
   public final int flushCount;
   public final int flushPeriod;
@@ -202,7 +180,6 @@ public final class EvalConf {
   public final String burstyOperatorStr;
   public final boolean isLocalSource;
   public final int sourceParallelism;
-  public final int minVmTask;
   public final int eventThreshold;
   public final boolean ec2;
   public final double deoffloadingThreshold;
@@ -223,22 +200,26 @@ public final class EvalConf {
   public final double cpuLimit; // cpu limit for executor  (for testing)
   public final double offloadingCpuLimit; // cpu limit for offloading container (for testing)
   public final int numOffloadingWorker;
-  public final int numOffloadingWorkerAfterMerging;
   public final boolean destroyOffloadingWorker;
   public final String scalingType;
   public final String offloadingManagerType;
   public final String awsProfileName;
-  public final int numLambdaPool;
-  public final boolean partialWarmup;
 
   public final long latencyLimit;
-  public final int partialPercent;
   public final String optimizationPolicy;
   public final int handlerTimeout;
+  public final int numInitLambda;
+  public final int numMaxLambda;
+
+
+  // LEGACY
+  // NOT USED
+  public final boolean partialWarmup = false;
+  public final int numLambdaPool = 1;
+  public final int numOffloadingWorkerAfterMerging = 1;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
-                   @Parameter(LambdaWarmupPool.class) final int poolSize,
                    @Parameter(FlushBytes.class) final int flushBytes,
                    @Parameter(FlushCount.class) final int flushCount,
                    @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
@@ -252,7 +233,6 @@ public final class EvalConf {
                    @Parameter(BurstyOperatorString.class) final String burstyOperatorStr,
                    @Parameter(IsLocalSource.class) final boolean isLocalSource,
                    @Parameter(SourceParallelism.class) final int sourceParallelism,
-                   @Parameter(MinVmTask.class) final int minVmTask,
                    @Parameter(DeoffloadingThreshold.class) final double deoffloadingThreshold,
                    @Parameter(EventThreshold.class) final int eventThreshold,
                    @Parameter(OffloadingType.class) final String offloadingType,
@@ -272,18 +252,14 @@ public final class EvalConf {
                    @Parameter(ScalingType.class) final String scalingType,
                    @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit,
                    @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker,
-                   @Parameter(NumOffloadingWorkerAfterMerging.class) final int numOffloadingWorkerAfterMerging,
                    @Parameter(OffloadingManagerType.class) final String offloadingManagerType,
                    @Parameter(AWSProfileName.class) final String awsProfileName,
-                   @Parameter(DestroyOffloadingWorker.class) final boolean destroyOffloadingWorker,
-                   @Parameter(PartialWarmup.class) final boolean partialWarmup,
-                   @Parameter(NumLambdaPool.class) final int numLambdaPool,
-                   @Parameter(PartialPercent.class) final int partialPercent,
                    @Parameter(HandlerTimeout.class) final int handlerTimeout,
+                   @Parameter(NumInitLambda.class) final int numInitLambda,
+                   @Parameter(MaxLambda.class) final int numMaxLambda,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
-    this.poolSize = poolSize;
     this.flushBytes = flushBytes;
     this.scalingType = scalingType;
     this.offExecutorThreadNum = offExecutorThreadNum;
@@ -300,7 +276,6 @@ public final class EvalConf {
     this.burstyOperatorStr = burstyOperatorStr;
     this.isLocalSource = isLocalSource;
     this.sourceParallelism = sourceParallelism;
-    this.minVmTask = minVmTask;
     this.eventThreshold = eventThreshold;
     this.offloadingType = offloadingType;
     this.middleParallelism = middleParallelism;
@@ -310,21 +285,19 @@ public final class EvalConf {
     this.autoscaling = autoscaling;
     this.randomSelection = randomSelection;
     this.scalingAlpha = scalingAlpha;
-    this.partialPercent = partialPercent;
     this.sfToVm = sfToVm;
     this.awsRegion = awsRegion;
     this.allocatedCores = allocatedCores;
     this.cpuLimit = cpuLimit;
     this.offloadingCpuLimit = offloadingCpuLimit;
     this.numOffloadingWorker = numOffloadingWorker;
-    this.destroyOffloadingWorker = destroyOffloadingWorker;
+    this.destroyOffloadingWorker = true;
     this.offloadingManagerType = offloadingManagerType;
-    this.numOffloadingWorkerAfterMerging = numOffloadingWorkerAfterMerging;
     this.awsProfileName = awsProfileName;
-    this.numLambdaPool = numLambdaPool;
-    this.partialWarmup = partialWarmup;
     this.latencyLimit = latencyLimit;
     this.handlerTimeout = handlerTimeout;
+    this.numInitLambda = numInitLambda;
+    this.numMaxLambda = numMaxLambda;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -338,7 +311,6 @@ public final class EvalConf {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     jcb.bindNamedParameter(EnableOffloading.class, Boolean.toString(enableOffloading));
     jcb.bindNamedParameter(EnableOffloadingDebug.class, Boolean.toString(offloadingdebug));
-    jcb.bindNamedParameter(LambdaWarmupPool.class, Integer.toString(poolSize));
     jcb.bindNamedParameter(FlushBytes.class, Integer.toString(flushBytes));
     jcb.bindNamedParameter(FlushCount.class, Integer.toString(flushCount));
     jcb.bindNamedParameter(FlushPeriod.class, Integer.toString(flushPeriod));
@@ -349,7 +321,6 @@ public final class EvalConf {
     jcb.bindNamedParameter(BurstyOperatorString.class, burstyOperatorStr);
     jcb.bindNamedParameter(IsLocalSource.class, Boolean.toString(isLocalSource));
     jcb.bindNamedParameter(SourceParallelism.class, Integer.toString(sourceParallelism));
-    jcb.bindNamedParameter(MinVmTask.class, Integer.toString(minVmTask));
     jcb.bindNamedParameter(EventThreshold.class, Integer.toString(eventThreshold));
     jcb.bindNamedParameter(Ec2.class, Boolean.toString(ec2));
     jcb.bindNamedParameter(DeoffloadingThreshold.class, Double.toString(deoffloadingThreshold));
@@ -369,17 +340,14 @@ public final class EvalConf {
     jcb.bindNamedParameter(CpuLimit.class, Double.toString(cpuLimit));
     jcb.bindNamedParameter(OffloadingCpuLimit.class, Double.toString(offloadingCpuLimit));
     jcb.bindNamedParameter(NumOffloadingWorker.class, Integer.toString(numOffloadingWorker));
-    jcb.bindNamedParameter(NumOffloadingWorkerAfterMerging.class, Integer.toString(numOffloadingWorkerAfterMerging));
-    jcb.bindNamedParameter(DestroyOffloadingWorker.class, Boolean.toString(destroyOffloadingWorker));
     jcb.bindNamedParameter(ScalingType.class, scalingType);
     jcb.bindNamedParameter(OffloadingManagerType.class, offloadingManagerType);
     jcb.bindNamedParameter(AWSProfileName.class, awsProfileName);
-    jcb.bindNamedParameter(NumLambdaPool.class, Integer.toString(numLambdaPool));
-    jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     jcb.bindNamedParameter(LatencyLimit.class, Long.toString(latencyLimit));
-    jcb.bindNamedParameter(PartialPercent.class, Integer.toString(partialPercent));
     jcb.bindNamedParameter(JobConf.OptimizationPolicy.class, optimizationPolicy);
     jcb.bindNamedParameter(HandlerTimeout.class, Integer.toString(handlerTimeout));
+    jcb.bindNamedParameter(NumInitLambda.class, Integer.toString(numInitLambda));
+    jcb.bindNamedParameter(MaxLambda.class, Integer.toString(numMaxLambda));
     return jcb.build();
   }
 
@@ -387,7 +355,6 @@ public final class EvalConf {
   public static void registerCommandLineArgument(final CommandLine cl) {
     cl.registerShortNameOfClass(EnableOffloading.class);
     cl.registerShortNameOfClass(EnableOffloadingDebug.class);
-    cl.registerShortNameOfClass(LambdaWarmupPool.class);
     cl.registerShortNameOfClass(FlushBytes.class);
     cl.registerShortNameOfClass(FlushCount.class);
     cl.registerShortNameOfClass(FlushPeriod.class);
@@ -398,7 +365,6 @@ public final class EvalConf {
     cl.registerShortNameOfClass(BurstyOperatorString.class);
     cl.registerShortNameOfClass(IsLocalSource.class);
     cl.registerShortNameOfClass(SourceParallelism.class);
-    cl.registerShortNameOfClass(MinVmTask.class);
     cl.registerShortNameOfClass(EventThreshold.class);
     cl.registerShortNameOfClass(Ec2.class);
     cl.registerShortNameOfClass(DeoffloadingThreshold.class);
@@ -418,16 +384,13 @@ public final class EvalConf {
     cl.registerShortNameOfClass(CpuLimit.class);
     cl.registerShortNameOfClass(OffloadingCpuLimit.class);
     cl.registerShortNameOfClass(NumOffloadingWorker.class);
-    cl.registerShortNameOfClass(NumOffloadingWorkerAfterMerging.class);
-    cl.registerShortNameOfClass(DestroyOffloadingWorker.class);
     cl.registerShortNameOfClass(ScalingType.class);
     cl.registerShortNameOfClass(OffloadingManagerType.class);
     cl.registerShortNameOfClass(AWSProfileName.class);
-    cl.registerShortNameOfClass(NumLambdaPool.class);
-    cl.registerShortNameOfClass(PartialWarmup.class);
     cl.registerShortNameOfClass(LatencyLimit.class);
-    cl.registerShortNameOfClass(PartialPercent.class);
     cl.registerShortNameOfClass(HandlerTimeout.class);
+    cl.registerShortNameOfClass(NumInitLambda.class);
+    cl.registerShortNameOfClass(MaxLambda.class);
   }
 
   @Override
@@ -437,7 +400,6 @@ public final class EvalConf {
     sb.append("enableOffloading: "); sb.append(enableOffloading); sb.append("\n");
     sb.append("enableOffloadingDebug: "); sb.append(offloadingdebug); sb.append("\n");
     sb.append("ec2: "); sb.append(ec2); sb.append("\n");
-    sb.append("poolSize: "); sb.append(poolSize); sb.append("\n");
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");
     sb.append("flushPeriod: "); sb.append(flushPeriod); sb.append("\n");
@@ -450,7 +412,6 @@ public final class EvalConf {
     sb.append("burstyOps: "); sb.append(burstyOperatorStr); sb.append("\n");
     sb.append("isLocalSource: "); sb.append(isLocalSource); sb.append("\n");
     sb.append("sourceParallelism: "); sb.append(sourceParallelism); sb.append("\n");
-    sb.append("minVmTask: "); sb.append(minVmTask); sb.append("\n");
     sb.append("eventThreshold: "); sb.append(eventThreshold); sb.append("\n");
     sb.append("offloadingType: "); sb.append(offloadingType); sb.append("\n");
     sb.append("middleParallelism: "); sb.append(middleParallelism); sb.append("\n");
@@ -466,17 +427,14 @@ public final class EvalConf {
     sb.append("cpuLimit: "); sb.append(cpuLimit); sb.append("\n");
     sb.append("offloadingCpuLimit: "); sb.append(offloadingCpuLimit); sb.append("\n");
     sb.append("numOffloadingWorker: "); sb.append(numOffloadingWorker); sb.append("\n");
-    sb.append("numOffloadingWorkerAfterMerging: "); sb.append(numOffloadingWorkerAfterMerging); sb.append("\n");
-    sb.append("destroyOffloadingWorker: "); sb.append(destroyOffloadingWorker); sb.append("\n");
     sb.append("scalingType: "); sb.append(scalingType); sb.append("\n");
     sb.append("offloadingManagerType: "); sb.append(offloadingManagerType); sb.append("\n");
     sb.append("awsProfileName: "); sb.append(awsProfileName); sb.append("\n");
-    sb.append("numLambdaPool: "); sb.append(numLambdaPool); sb.append("\n");
-    sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("latencyLimit: "); sb.append(latencyLimit); sb.append("\n");
-    sb.append("partialPercent: "); sb.append(partialPercent); sb.append("\n");
     sb.append("optimizationPolicy: "); sb.append(optimizationPolicy); sb.append("\n");
     sb.append("handlerTimeout: "); sb.append(handlerTimeout); sb.append("\n");
+    sb.append("numInitLambda: "); sb.append(numInitLambda); sb.append("\n");
+    sb.append("maxLambda: "); sb.append(numMaxLambda); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

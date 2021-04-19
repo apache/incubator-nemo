@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
@@ -23,8 +24,7 @@ public final class ExecutorChannelManagerMap {
   private static final Logger LOG = LoggerFactory.getLogger(ExecutorChannelManagerMap.class.getName());
 
   // key: task id, value: executpr od
-  private final ConcurrentMap<String, Channel>
-    executorChannelMap = new ConcurrentHashMap<>();
+  private final Map<String, Channel> executorChannelMap;
 
   private final String executorId;
   private final PersistentConnectionToMasterMap toMaster;
@@ -36,11 +36,13 @@ public final class ExecutorChannelManagerMap {
     @Parameter(JobConf.ExecutorId.class) final String executorId,
     @Parameter(EvalConf.ExecutorOnLambda.class) final boolean onLambda,
     final ByteTransfer byteTransfer,
+    final ExecutorChannelMap executorChannelMap,
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.executorId = executorId;
     this.toMaster = persistentConnectionToMasterMap;
     this.byteTransfer = byteTransfer;
     this.onLambda = onLambda;
+    this.executorChannelMap = executorChannelMap.map;
   }
 
   public void init() {
@@ -84,8 +86,8 @@ public final class ExecutorChannelManagerMap {
 
   public synchronized void initConnectToExecutor(final String remoteExecutorId) {
 
-    if (onLambda && remoteExecutorId.contains("Lambda")) {
-      LOG.warn("Prevent connection to lambda executor {} in lambda {}",
+    if (remoteExecutorId.contains("Lambda")) {
+      LOG.warn("Prevent init connection to lambda executor {} in {}",
         remoteExecutorId, executorId);
       return;
     }

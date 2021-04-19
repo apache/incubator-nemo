@@ -26,7 +26,7 @@ import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
-import org.apache.nemo.runtime.executor.common.LambdaChannelMap;
+import org.apache.nemo.runtime.executor.common.ExecutorChannelMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -76,7 +76,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
   private int publicBindingPort;
   private final String localExecutorId;
   private final NemoNameResolver nameResolver;
-  private final LambdaChannelMap lambdaChannelMap;
+  private final ExecutorChannelMap executorChannelMap;
 
 
   /**
@@ -101,7 +101,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
     final TcpPortProvider tcpPortProvider,
     final LocalAddressProvider localAddressProvider,
     final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-    final LambdaChannelMap lambdaChannelMap,
+    final ExecutorChannelMap executorChannelMap,
     @Parameter(EvalConf.Ec2.class) final boolean ec2,
     @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
     @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
@@ -113,7 +113,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
 
     this.nameResolver = nameResolver;
     this.localExecutorId = localExecutorId;
-    this.lambdaChannelMap = lambdaChannelMap;
+    this.executorChannelMap = executorChannelMap;
 
     if (port < 0) {
       throw new IllegalArgumentException(String.format("Invalid ByteTransportPort: %d", port));
@@ -233,6 +233,19 @@ public final class DefaultByteTransportImpl implements ByteTransport {
       } else {
         nameResolver.register(localExecutorId, new InetSocketAddress(address, bindingPort));
       }
+
+      /*
+      LOG.info("Send name server register {} to {}/{}", localExecutorId ,address, bindingPort);
+
+      persistentConnectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.ExecutorRegistered)
+          .setRegisteredExecutor(localExecutorId)
+          .build());
+          */
+
       //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
     } catch (final Exception e) {
       LOG.error("Cannot register DefaultByteTransportImpl listening address to the naming registry", e);
@@ -287,9 +300,8 @@ public final class DefaultByteTransportImpl implements ByteTransport {
   public ChannelFuture connectTo(final String remoteExecutorId) {
 
     if (remoteExecutorId.contains("Lambda")) {
-
       final long st = System.currentTimeMillis();
-      while (!lambdaChannelMap.lambdaChannelMap.containsKey(remoteExecutorId)) {
+      while (!executorChannelMap.map.containsKey(remoteExecutorId)) {
 
         try {
           Thread.sleep(50);
@@ -302,7 +314,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
         }
       }
 
-      return lambdaChannelMap.lambdaChannelMap.get(remoteExecutorId).newSucceededFuture();
+      return executorChannelMap.map.get(remoteExecutorId).newSucceededFuture();
 
     } else {
       final InetSocketAddress address = getAndPutInetAddress(remoteExecutorId);
