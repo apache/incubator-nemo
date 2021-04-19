@@ -492,53 +492,29 @@ public final class Executor {
           false);
       } else if (task.isCrTask()) {
         // conditional routing task
-        if (evalConf.optimizationPolicy.contains("R3")) {
-          taskExecutor =
-            new R3CRTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        } else {
-          taskExecutor =
-            new CRTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        }
+        // if (evalConf.optimizationPolicy.contains("R3")) {
+        taskExecutor =
+          new R3CRTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            null,
+            evalConf.samplingJson,
+            evalConf.isLocalSource,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            // offloadingManager,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            condRouting,
+            // new NoOffloadingPreparer(),
+            false);
       } else if (task.isMerger()) {
         taskExecutor =
           new MergerTaskExecutorImpl(

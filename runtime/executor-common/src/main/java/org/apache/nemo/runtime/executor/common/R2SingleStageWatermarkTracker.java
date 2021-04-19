@@ -41,20 +41,20 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     this.currWatermarkTracker = allStopped ? stoppedWatermarkTracker : watermarkTracker;
   }
 
-  public R2SingleStageWatermarkTracker(final int numTasks) {
+  public R2SingleStageWatermarkTracker(final int numTasks, final boolean stopped) {
     this.watermarks = new Long[numTasks];
     this.stoppedWatermarks = new Boolean[numTasks];
     this.minWatermarkIndex = 0;
 
     for (int i = 0; i < numTasks; i++) {
       watermarks[i] = Long.MIN_VALUE;
-      stoppedWatermarks[i] = false;
+      stoppedWatermarks[i] = stopped;
     }
 
     this.stoppedWatermarkTracker = new StoppedWatermarkTracker();
     this.watermarkTracker = numTasks == 1 ? new SingleWatermarkTracker()
       : new MultiWatermarkTracker();
-    this.currWatermarkTracker = watermarkTracker;
+    this.currWatermarkTracker = stopped ? stoppedWatermarkTracker : watermarkTracker;
   }
 
   private int findNextMinWatermarkIndex() {
@@ -101,7 +101,9 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
   public void startInputPipeWatermark(final int edgeIndex,
                                       final long watermark) {
     stoppedWatermarks[edgeIndex] = false;
-    watermarks[edgeIndex] = watermark;
+    if (watermarks[edgeIndex] < watermark) {
+      watermarks[edgeIndex] = watermark;
+    }
     allStopped = false;
     currWatermarkTracker = watermarkTracker;
   }
@@ -238,13 +240,21 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     }
   }
 
+  private void buildArray(StringBuilder sb, Object[] array) {
+    sb.append("[");
+    for (int i = 0; i < array.length; i++) {
+      sb.append(array[i]);
+      sb.append(",");
+    }
+    sb.append("]");
+  }
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("watermarks: ");
-    sb.append(watermarks);
+    buildArray(sb, watermarks);
     sb.append(", stopped: ");
-    sb.append(stoppedWatermarks);
+    buildArray(sb, stoppedWatermarks);
     sb.append(", prevEmitWatermark: ");
     sb.append(prevEmitWatermark);
     sb.append(", minWatermarkIndex: ");

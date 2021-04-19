@@ -5,6 +5,8 @@ provider:
   runtime: java8
   profile: taegeonum
   region: ap-northeast-2
+  memorySize: 1536 # Overwrite the default memory size. Default is 1024
+  timeout: 100
   layers:
     - arn:aws:lambda:ap-northeast-2:243787491444:layer:layer-0420:1
 

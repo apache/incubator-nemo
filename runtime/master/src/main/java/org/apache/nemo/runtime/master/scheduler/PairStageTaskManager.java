@@ -28,6 +28,7 @@ public final class PairStageTaskManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PairStageTaskManager.class.getName());
 
+  // pair<taskId,edgeId>
   private final Map<String, Pair<String, String>> pairTaskEdgeMap = new ConcurrentHashMap<>();
   private final Map<String, String> taskCrTaskMap = new ConcurrentHashMap<>();
   private DAG<Stage, StageEdge> stageDag;

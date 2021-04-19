@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.COMPUTE;
 import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.LAMBDA;
@@ -87,6 +89,9 @@ public final class LambdaContainerManager {
 
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
 
+  private final PairStageTaskManager pairStageTaskManager;
+
+
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                                  final TcpPortProvider tcpPortProvider,
@@ -94,6 +99,7 @@ public final class LambdaContainerManager {
                                  final ExecutorRegistry executorRegistry,
                                  final PipeIndexMaster pipeIndexMaster,
                                  final SerializedTaskMap serializedTaskMap,
+                                 final PairStageTaskManager pairStageTaskManager,
                                  final TaskScheduledMapMaster taskScheduledMapMaster,
                                  final LambdaContainerRequester requester,
                                  final MessageEnvironment messageEnvironment,
@@ -104,6 +110,7 @@ public final class LambdaContainerManager {
     this.stateStore = stateStore;
     this.localAddressProvider = localAddressProvider;
     this.evalConf = evalConf;
+    this.pairStageTaskManager = pairStageTaskManager;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
     this.serializedTaskMap = serializedTaskMap;
     this.executorRegistry = executorRegistry;
@@ -186,6 +193,44 @@ public final class LambdaContainerManager {
     });
   }
 
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
+
+  public void redirectionToLambda(final Collection<String> lambdaTasks,
+                                  final ExecutorRepresenter lambdaExecutor) {
+    if (lambdaTasks.isEmpty()) {
+      return;
+    }
+
+    executorService.execute(() -> {
+      // redirection signal to the origin task
+      lambdaTasks.forEach(lambdaTaskId -> {
+        final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(lambdaTaskId).left();
+        final String vmExecutorId = taskScheduledMapMaster.getTaskOriginalExecutorId(vmTaskId);
+        final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
+        lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
+      });
+    });
+  }
+
+
+  public void redirectionDoneLambda(final Collection<String> lambdaTasks,
+                                    final ExecutorRepresenter lambdaExecutor) {
+    if (lambdaTasks.isEmpty()) {
+      return;
+    }
+
+    executorService.execute(() -> {
+      if (!lambdaExecutor.getLambdaControlProxy().isActive()) {
+        throw new RuntimeException("Lambda " + lambdaExecutor.getExecutorId() +
+          " is inactive ... but try to redirect done " + lambdaTasks);
+      }
+
+      lambdaTasks.forEach(lambdaTask -> {
+        lambdaExecutor.deactivateLambdaTask(lambdaTask);
+      });
+    });
+  }
+
   public boolean isAllWorkerActive() {
     return requestIdControlChannelMap.size() == numRequestedLambda.get()
      && requestIdControlChannelMap.values().stream()
@@ -265,6 +310,10 @@ public final class LambdaContainerManager {
     }
   }
 
+  public int numLambdaContainer() {
+    return requestIdControlChannelMap.size();
+  }
+
 
   public void close() {
     finished = true;
@@ -291,7 +340,6 @@ public final class LambdaContainerManager {
                                                                  final int capacity,
                                                                  final int slot,
                                                                  final int memory) {
-
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
 
     final String resourceType = resourceTypeLambda ? LAMBDA : COMPUTE;
@@ -402,7 +450,8 @@ public final class LambdaContainerManager {
           lambdaExecutorId,
           serializedTaskMap);
 
-        proxy.setRepresentor(er);
+        // proxy.setRepresentor(er);
+        er.setLambdaControlProxy(proxy);
 
         return er;
       }));

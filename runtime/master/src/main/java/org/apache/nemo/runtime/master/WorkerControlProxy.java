@@ -70,18 +70,18 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
   public void setDataChannel(ExecutorRepresenter er,
                              final String fullAddr) {
 
-    synchronized (state) {
-      state.set(State.ACTIVATE);
-    }
+    state.set(State.ACTIVATE);
 
     this.er = er;
     this.dataFullAddr = fullAddr;
   }
 
   public boolean isActive() {
-    synchronized (state) {
-      return state.get().equals(State.ACTIVATE);
-    }
+    return state.get().equals(State.ACTIVATE);
+  }
+
+  public boolean isActivating() {
+    return state.get().equals(State.ACTIVATING);
   }
 
   public int getId() {
@@ -101,6 +101,9 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
       if (state.get().equals(DEACTIVATE)) {
         LOG.info("Send activate message for worker {}", requestId);
         state.set(ACTIVATING);
+        synchronized (pendingActivationWorkers) {
+          pendingActivationWorkers.add(this);
+        }
         activator.activate();
       } else {
         throw new RuntimeException("Worker " + requestId + "/" + state +
@@ -167,9 +170,8 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
           pendingActivationWorkers.remove(this);
 
-          synchronized (state) {
-            state.set(State.ACTIVATE);
-          }
+          LOG.info("Set lambda worker {} to actviate", requestId);
+          state.set(State.ACTIVATE);
         }
         break;
       }

@@ -121,7 +121,6 @@ public final class RuntimeMaster {
   private final LambdaContainerManager lambdaContainerManager;
   private final EvalConf evalConf;
   private final PairStageTaskManager pairStageTaskManager;
-  private final Set<String> pendingRedirectionTasks;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -137,7 +136,6 @@ public final class RuntimeMaster {
                         final EvalConf evalConf,
                         final PairStageTaskManager pairStageTaskManager,
                         final LambdaContainerManager lambdaContainerManager,
-                        final PendingRedirectionTasks pendingRedirectionTasks,
                         final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
@@ -153,7 +151,6 @@ public final class RuntimeMaster {
     this.pairStageTaskManager = pairStageTaskManager;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.requestContainerThread = Executors.newCachedThreadPool();
-    this.pendingRedirectionTasks = pendingRedirectionTasks.pendingRedirectionTasks;
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> {
           final Thread t = new Thread(runnable, "RuntimeMaster thread");
@@ -398,10 +395,10 @@ public final class RuntimeMaster {
     LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
       type, memory, capacity, slot, executorNum);
 
-    resourceRequestCount.getAndAdd(executorNum);
-
     requestLambdaContainer(executorNum, true, capacity, slot, memory);
   }
+
+  private TreeNode computeTypeNode;
 
   /**
    * Requests a container with resource specification.
@@ -432,6 +429,9 @@ public final class RuntimeMaster {
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final String type = resourceNode.get("type").traverse().nextTextValue();
+          if (type.equals(COMPUTE)) {
+            computeTypeNode = resourceNode;
+          }
           map.put(type, resourceNode);
         }
 
@@ -439,12 +439,13 @@ public final class RuntimeMaster {
         executorNum += createTypeContainer(map.get(SOURCE), name, num);
 
         // lambda later
-        if (createWithLambda) {
+        if (createWithLambda && map.containsKey(LAMBDA)) {
           LOG.info("Waiting for ActiveContext to generate Lambda container");
           while (executorRegistry.getRunningExecutors().size() < executorNum) {
             Thread.sleep(100);
           }
-          LOG.info("Generate Lambda container");
+          LOG.info("Generate Lambda container after 20 seconds");
+          Thread.sleep(20000);
           createTypeLambda(map.get(LAMBDA), num);
         }
 
@@ -693,88 +694,64 @@ public final class RuntimeMaster {
     deactivateLambda();
   }
 
-
-  public void redirectionToLambda(final int num,
-                                  final String stageId) {
-    // Activate all workers
-    lambdaContainerManager.activateAllWorkers();
-
-    final Map<String, String> scheduledMap = taskScheduledMap.getTaskExecutorIdMap();
-    scheduledMap.entrySet().stream()
-      .filter(entry -> RuntimeIdManager.getStageIdFromTaskId(entry.getKey())
-        .equals(stageId)
-      && !prevRedirectionTasks.contains(entry.getKey()))
-      .limit(num)
-      .forEach(entry -> {
-        final String taskId = entry.getKey();
-        final String executorId = entry.getValue();
-        final ExecutorRepresenter executor = executorRegistry.getExecutorRepresentor(executorId);
-
-        LOG.info("Redirection VM task {} for executor {}", taskId, executor.getExecutorId());
-
-        prevRedirectionTasks.add(taskId);
-
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.RoutingDataToLambda)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(taskId)
-            .build())
-          .build());
-      });
-
-    LOG.info("Redirection tasks {} / stage {}", num, stageId);
-  }
-
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
+  public void redirectionToLambda(final int num,
+                                  final List<String> stageIds) {
+    final Map<String, Integer> stageCnt = new HashMap<>();
+    stageIds.forEach(sid -> stageCnt.put(sid, 0));
+
+    executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+      // find list of tasks that the lambda executor has
+        final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
+          .filter(lambdaTask -> {
+            final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
+            final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+            if (stageIds.contains(stageId)
+              && !prevRedirectionTasks.contains(vmTaskId)
+              && stageCnt.get(stageId) < num) {
+              prevRedirectionTasks.add(vmTaskId);
+              stageCnt.put(stageId, stageCnt.get(stageId) + 1);
+              return true;
+            } else {
+              return false;
+            }
+          })
+          .map(Task::getTaskId)
+          .collect(Collectors.toSet());
+
+      LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
+      lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
+    });
+  }
 
   public void redirectionDoneToLambda(final int num,
-                                      final String stageId) {
-    final Iterator<String> iterator = prevRedirectionTasks.iterator();
+                                      final List<String> stageIds) {
+    final Map<String, Integer> stageCnt = new HashMap<>();
+    stageIds.forEach(sid -> stageCnt.put(sid, 0));
 
-    int count = 0;
-    while (iterator.hasNext()) {
-      final String taskId = iterator.next();
-      if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId) && count < num) {
-        count += 1;
-        // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(taskId).left();
-        final String pairExecutorId = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
+    executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+      // find list of tasks that the lambda executor has
+      final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
+        .filter(lambdaTask -> {
+          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+          if (stageIds.contains(stageId)
+            && prevRedirectionTasks.contains(vmTaskId)
+            && stageCnt.get(stageId) < num) {
+            prevRedirectionTasks.remove(vmTaskId);
+            stageCnt.put(stageId, stageCnt.get(stageId) + 1);
+            return true;
+          } else {
+            return false;
+          }
+        })
+        .map(Task::getTaskId)
+        .collect(Collectors.toSet());
 
-        LOG.info("Redirection Lambda task {} for executor {}", pairTask, pairExecutorId);
-        final ExecutorRepresenter executor = executorRegistry.getExecutorRepresentor(pairExecutorId);
-
-        iterator.remove();
-
-        pendingRedirectionTasks.add(pairTask);
-
-        executor.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.RoutingDataToLambda)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(pairTask)
-            .build())
-          .build());
-      }
-    }
-
-    LOG.info("Redirection lambda tasks {} / stage {}", num, stageId);
-
-    // TODO: Waiting for redirection done
-    while (!pendingRedirectionTasks.isEmpty()) {
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-
-    LOG.info("Done of redirection done ... deactivate workers that have no rerouting task");
-    // Deactivate all workers
-    lambdaContainerManager.deactivateAllWorkers();
+      LOG.info("Redirection from lambda to vm tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorCapacity());
+      lambdaContainerManager.redirectionDoneLambda(tasksToBeRedirected, lambdaExecutor);
+    });
   }
 
   public void offloadTask(final int num,
@@ -916,11 +893,11 @@ public final class RuntimeMaster {
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
         LOG.info("Send task output start to {}", pairTask);
 
-        // Remove pending redirection task
-        synchronized (pendingRedirectionTasks) {
-          pendingRedirectionTasks.remove(reroutingTask);
-          LOG.info("Receive TaskOutputStart." +
-            " Curr pending redirection task in lambda after removing {}: {}", reroutingTask, pendingRedirectionTasks);
+        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
+        final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
+        if (executorId.contains("Lambda")) {
+          LOG.info("Deactivation done of {}", reroutingTask);
+          lambdaExecutor.deactivationDoneSignal(reroutingTask);
         }
 
         pool.execute(() -> {
@@ -1040,12 +1017,12 @@ public final class RuntimeMaster {
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
 
-
         // Remove pending redirection task
-        synchronized (pendingRedirectionTasks) {
-          pendingRedirectionTasks.remove(reroutingTask);
-          LOG.info("Receive R3OptsignalFianlCombine." +
-            " Curr pending redirection task in lambda after removing {}: {}", reroutingTask, pendingRedirectionTasks);
+        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
+        final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
+        if (executorId.contains("Lambda")) {
+          LOG.info("Deactivation done of {}", reroutingTask);
+          lambdaExecutor.deactivationDoneSignal(reroutingTask);
         }
 
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()

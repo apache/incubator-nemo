@@ -28,6 +28,7 @@ import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.ExecutorShutdownHandler;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
+import org.apache.nemo.runtime.master.WorkerControlProxy;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
@@ -38,8 +39,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -73,6 +73,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final String nodeName;
   private final SerializedTaskMap serializedTaskMap;
 
+  private WorkerControlProxy lambdaControlProxy;
+
+  private final ScheduledExecutorService scheduledService;
+
   /**
    * Creates a reference to the specified executor.
    * @param executorId the executor id
@@ -100,6 +104,107 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
     this.serializedTaskMap = serializedTaskMap;
+    this.scheduledService = Executors.newScheduledThreadPool(10);
+  }
+
+  @Override
+  public void setLambdaControlProxy(final WorkerControlProxy workerControlProxy) {
+    this.lambdaControlProxy = workerControlProxy;
+  }
+
+  @Override
+  public WorkerControlProxy getLambdaControlProxy() {
+    return lambdaControlProxy;
+  }
+
+  private final Set<String> activatedTasks = new HashSet<>();
+
+  private void sendRoutingSignal(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
+    // waiting
+    while (!lambdaControlProxy.isActive()) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    activatedTasks.add(taskId);
+
+    // send signal
+    LOG.info("Activation lambda task {} for executor {}", taskId, executorId);
+    vmExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
+      .setId(RuntimeIdManager.generateMessageId())
+      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+      .setType(ControlMessage.MessageType.RoutingDataToLambda)
+      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+        .setTaskId(pairVmTaskId)
+        .build())
+      .build());
+  }
+
+  @Override
+  public void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
+    if (lambdaControlProxy == null) {
+      throw new RuntimeException("Lambda control proxy null " + executorId);
+    }
+
+    if (getRunningTasks().stream().noneMatch(task -> task.getTaskId().equals(taskId))) {
+      throw new RuntimeException("Lambda executor " + executorId + " does not contain lambda task " + taskId);
+    }
+
+    synchronized (this) {
+      if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
+        sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
+      } else {
+        // activate signal
+        lambdaControlProxy.activate();
+        sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
+      }
+    }
+  }
+
+  @Override
+  public void deactivationDoneSignal(final String taskId) {
+    synchronized (this) {
+      if (!activatedTasks.contains(taskId)) {
+        throw new RuntimeException("Task is not activated but deactivate done signal " + taskId + " in " + executorId);
+      }
+      activatedTasks.remove(taskId);
+      LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
+
+      if (activatedTasks.isEmpty()) {
+        // deactivation of the worker
+        lambdaControlProxy.deactivate();
+      }
+    }
+  }
+
+  @Override
+  public void deactivateLambdaTask(final String taskId) {
+    if (lambdaControlProxy == null) {
+      throw new RuntimeException("Lambda control proxy null " + executorId);
+    }
+    if (getRunningTasks().stream().noneMatch(task -> task.getTaskId().equals(taskId))) {
+      throw new RuntimeException("Lambda executor " + executorId + " does not contain lambda task " + taskId);
+    }
+     if (!activatedTasks.contains(taskId)) {
+      throw new RuntimeException("Lambda executor " + executorId + " does not contain activate task " + taskId);
+    }
+    if (!lambdaControlProxy.isActive()) {
+      throw new RuntimeException("Lambda proxy " + executorId + " is not activated, but try to deactivate task " + taskId);
+    }
+
+    LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
+
+    sendControlMessage(ControlMessage.Message.newBuilder()
+      .setId(RuntimeIdManager.generateMessageId())
+      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+      .setType(ControlMessage.MessageType.RoutingDataToLambda)
+      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+        .setTaskId(taskId)
+        .build())
+      .build());
   }
 
   /**
@@ -128,6 +233,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
+
+    if (task.isTransientTask()) {
+      activatedTasks.add(task.getTaskId());
+    }
 
     serializationExecutorService.execute(() -> {
       final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);

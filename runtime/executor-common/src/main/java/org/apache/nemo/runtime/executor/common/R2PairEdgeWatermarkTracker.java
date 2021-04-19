@@ -23,7 +23,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
   private final String taskId;
 
   private boolean vmPathAllStopped = false;
-  private boolean lambdaPathAllStopped = false;
+  private boolean lambdaPathAllStopped = true;
 
 
   private WatermarkTracker watermarkTracker;
@@ -36,8 +36,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
                                     final String lambdaPathEdgeId,
                                     final String taskId,
                                     final int parallelism) {
-    this.lambdaWatermarkTracker = new R2SingleStageWatermarkTracker(parallelism);
-    this.vmWatermarkTracker = new R2SingleStageWatermarkTracker(parallelism);
+    this.lambdaWatermarkTracker = new R2SingleStageWatermarkTracker(parallelism, true);
+    this.vmWatermarkTracker = new R2SingleStageWatermarkTracker(parallelism, false);
     this.dataFetcherWatermarkMap = new HashMap<>();
     this.dataFetcherWatermarkMap.put(lambdaPathEdgeId, 0L);
     this.dataFetcherWatermarkMap.put(vmPathEdgeId, 0L);
@@ -51,7 +51,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     this.vmPathTracker = new VMWatermarkTracker();
     this.bothPathTracker = new BothWatermarkTracker();
 
-    this.watermarkTracker = bothPathTracker;
+    this.watermarkTracker = vmWatermarkTracker;
   }
 
   private void setWatermarkTracker() {
@@ -79,7 +79,6 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       if (!lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
         lambdaPathAllStopped = true;
       }
-
 
       lambdaWatermarkTracker.updateAndGetCurrentWatermark()
         .ifPresent(watermark -> {

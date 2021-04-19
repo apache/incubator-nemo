@@ -234,9 +234,7 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              for (int i = stages.size() - 1; i >= 0; i--) {
-                runtimeMaster.redirectionToLambda(num, stages.get(i));
-              }
+              runtimeMaster.redirectionToLambda(num, stages);
             }  else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
@@ -246,9 +244,7 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              for (int i = stages.size() - 1; i >= 0; i--) {
-                runtimeMaster.redirectionDoneToLambda(num, stages.get(i));
-              }
+              runtimeMaster.redirectionDoneToLambda(num, stages);
             } else if (decision.equals("move-task")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);

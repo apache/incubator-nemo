@@ -73,6 +73,7 @@ release.properties
 
 offloading/workers/lambda/.gradle
 offloading/workers/lambda/.serverless
+offloading/workers/lambda/serverless.yml
 .serverless
 
 .gradle

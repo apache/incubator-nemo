@@ -42,6 +42,7 @@ public final class LambdaTaskContainerEventHandler {
   public void onAllLambdaTaskScheduled() {
     singleThread.execute(() -> {
       // deactivate tasks
+
       if (!deactivateInit) {
         deactivateInit = true;
         try {
@@ -60,25 +61,12 @@ public final class LambdaTaskContainerEventHandler {
                 .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
                 .setType(ControlMessage.MessageType.DeactivateLambdaTask)
                 .build());
-
-              synchronized (pendingRedirectionTasks) {
-                pendingRedirectionTasks.addAll(executor.getRunningTasks().stream().map(task ->
-                  task.getTaskId()).collect(Collectors.toList()));
-              }
             }
           });
         });
 
-        while (!pendingRedirectionTasks.isEmpty()) {
-          try {
-            Thread.sleep(50);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-
         LOG.info("Done of task init ... deactivate workers that have no rerouting task");
-        lambdaContainerManager.get().deactivateAllWorkers();
+        // lambdaContainerManager.get().deactivateAllWorkers();
       }
     });
   }

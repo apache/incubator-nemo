@@ -7,6 +7,9 @@ import java.util.*;
 
 public interface ExecutorRepresenter {
 
+  void setLambdaControlProxy(WorkerControlProxy proxy);
+
+  WorkerControlProxy getLambdaControlProxy();
 
   /**
    * Marks all Tasks which were running in this executor as failed.
@@ -89,4 +92,10 @@ public interface ExecutorRepresenter {
    * Shuts down this executor.
    */
   void shutDown();
+
+
+  // For activation/ deactivation
+  void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor);
+  void deactivationDoneSignal(final String taskId);
+  void deactivateLambdaTask(final String taskId);
 }

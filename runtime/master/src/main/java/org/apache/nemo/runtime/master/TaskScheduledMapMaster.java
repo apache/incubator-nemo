@@ -137,10 +137,6 @@ public final class TaskScheduledMapMaster {
   }
 
   public boolean isAllLambdaTaskExecuting() {
-    if (lambdaTaskMap.size() <= 0) {
-      return false;
-    }
-
     for (final String lambdaTaskId : lambdaTaskMap.keySet()) {
       if (!taskExecutorIdMap.containsKey(lambdaTaskId)) {
         return false;

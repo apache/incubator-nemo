@@ -142,10 +142,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final String vmPathDstTask;
   private final String transientPathDstTask;
-  private boolean reroutingToLambda = false;
   private DataRouter dataRouter;
   private DataHandler dataHandler;
-  private boolean receiveFinal = false;
+  private boolean receiveFinal = true;
 
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
@@ -250,7 +249,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     }
 
     this.dataRouter = new VMDataRouter(vmPathDstTask);
-    this.dataHandler = new ToMergerDataHandler();
+    this.dataHandler = new BypassDataHandler();
 
     this.mergerTransform = ((OperatorVertex)irVertexDag.getVertices().get(0)).getTransform();
 
@@ -355,8 +354,8 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
-  private boolean allPathStopped = false;
-  private boolean lambdaPathStopped = false;
+  private boolean allPathStopped = true;
+  private boolean lambdaPathStopped = true;
   private boolean vmPathStopped = false;
 
   @Override
@@ -690,11 +689,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
                            final ReroutingState state) {
     if (pairEdgeId.equals(transientOutputPathEdge.getId())) {
       // rerouting from VM to Lambda
-      reroutingToLambda = true;
       dataRouter = new LambdaDataRouter(transientPathDstTask);
     } else {
       // rerouting from Lambda to VM
-      reroutingToLambda = false;
       dataRouter = new VMDataRouter(vmPathDstTask);
     }
   }

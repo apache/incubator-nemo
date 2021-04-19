@@ -124,7 +124,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   private final String mergerEdgeId;
   private final String mergerTaskId;
 
-  private boolean pairTaskStopped = false;
+  private boolean pairTaskStopped = true;
 
   private final Map<String, Object> sharedObject;
 
@@ -259,7 +259,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.serializer = serializerManager.getSerializer(mergerEdgeId);
     this.pToLocalCombiner = new PartialOutputEmitToLocalFinal();
     this.pToRemoteEmitter = new PartialOutputEmitToRemoteMerger();
-    this.partialOutputEmitter = pToRemoteEmitter;
+    this.partialOutputEmitter = pToLocalCombiner;
 
     this.partialOutputCollector = new OutputCollector() {
       private long ts;

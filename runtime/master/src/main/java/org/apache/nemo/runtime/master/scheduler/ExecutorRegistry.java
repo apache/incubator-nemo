@@ -32,6 +32,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -57,10 +58,14 @@ public final class ExecutorRegistry {
   }
 
   private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
+  private final Set<String> lambdaExecutors;
+  private final Set<String> activatedLambdaTasks;
 
   @Inject
   private ExecutorRegistry() {
     this.executors = new ConcurrentHashMap<>();
+    this.lambdaExecutors = new ConcurrentSkipListSet<>();
+    this.activatedLambdaTasks = new ConcurrentSkipListSet<>();
   }
 
   public synchronized void registerExecutor(final ExecutorRepresenter executor) {
@@ -107,6 +112,9 @@ public final class ExecutorRegistry {
       }
 
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
+      if (executor.getExecutorId().contains("Lambda")) {
+        lambdaExecutors.add(executorId);
+      }
     }
   }
 
@@ -119,6 +127,7 @@ public final class ExecutorRegistry {
     LOG.info("Remove executor {}", executor);
 
     final ExecutorRepresenter executorRepresenter = executors.remove(executor).left();
+    lambdaExecutors.remove(executor);
     executorRepresenter.shutDown();
 
     // broadcast executors
@@ -131,6 +140,10 @@ public final class ExecutorRegistry {
         .setRegisteredExecutor(executor)
         .build());
     });
+  }
+
+  public void viewLambdaExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
+    consumer.accept(getLambdaExecutors());
   }
 
   public synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
@@ -170,6 +183,12 @@ public final class ExecutorRegistry {
       }
     }
     return Optional.empty();
+  }
+
+  public Set<ExecutorRepresenter> getLambdaExecutors() {
+    return lambdaExecutors.stream()
+      .map(lambdaExecutor -> executors.get(lambdaExecutor).left())
+      .collect(Collectors.toSet());
   }
 
   public Set<ExecutorRepresenter> getRunningExecutors() {

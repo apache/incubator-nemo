@@ -324,14 +324,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public int getNumKeys() {
-    if (isStateless) {
-      return 0;
-    } else {
-      //LOG.info("Key {}, {}", num, taskId);
-      return statefulTransforms.stream().map(t -> t.getNumKeys())
-        .reduce((x, y) -> x + y)
-        .get();
-    }
+    return 0;
   }
 
   @Override
@@ -656,10 +649,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
   }
 
-  private void writeByteBuf(final ByteBuf data) {
-    dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
-  }
-
   private int findVmTaskIdx(final String vmTaskId) {
     for (int i = 0; i < vmPathDstTasks.length; i++) {
       if (vmPathDstTasks[i].equals(vmTaskId)) {
@@ -832,7 +821,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       if (data instanceof WatermarkWithIndex) {
         // watermark!
         // we should manage the watermark
-        // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+
         for (int i = 0; i < vmPathDstTasks.length; i++) {
           watermarkRouters[i].writeData(data);
         }
@@ -954,6 +943,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        // LOG.info("Receive R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
@@ -977,6 +967,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
+        // LOG.info("Receive R3 CR watermark in {} {}", taskId, watermarkWithIndex.getWatermark().getTimestamp());
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
