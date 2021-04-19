@@ -131,6 +131,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     */
   }
 
+  public void registerPipeIndex(final String srcTaskId,
+                                final String edgeId,
+                                final String dstTaskId) {
+    final int inputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
+    final int outputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTaskId);
+  }
+
   @Override
   public void sendPipeInitMessage(final String srcTaskId,
                                 final String edgeId,
@@ -140,6 +147,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
     // If the dst task is not scheduled yet
     // We should buffer the message and flush when the dst task is scheduled and pipe is initiated
+
+    if (evalConf.controlLogging) {
+      LOG.info("Send pipe init message {}->{}->{}", srcTaskId, edgeId, dstTaskId);
+    }
 
     // A -> B [*] remoteInputPipeIndex of B == outputPipeIndex of A
     // B -> A  (outputPipeIndex) of B  == (inputPIpeInex) of A

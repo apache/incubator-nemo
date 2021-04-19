@@ -640,7 +640,6 @@ public final class OffloadingHandler {
             final String taskId = bis.readUTF();
             final Object data = decoder.decode(bis);
 
-
             /*
             final ByteBufOutputStream bos = new ByteBufOutputStream(
               offloadingTransform.getDataChannel().alloc().ioBuffer());

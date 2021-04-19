@@ -649,7 +649,6 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
-
     // For latency logging
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {

@@ -182,6 +182,43 @@ public final class LambdaContainerManager {
       .allMatch(worker -> worker.isActive());
   }
 
+  public void activateAllWorkers() {
+    LOG.info("Activating all workers...");
+    synchronized (pendingActivationWorkers) {
+      if (!pendingActivationWorkers.isEmpty()) {
+        throw new RuntimeException("Still pending activation workers " + pendingActivationWorkers);
+      }
+
+      pendingActivationWorkers.addAll(requestIdControlChannelMap.values());
+
+      requestIdControlChannelMap.values().forEach(worker -> {
+        if (!worker.isActive()) {
+          initService.execute(() -> {
+            LOG.info("Activating worker {}", worker.getId());
+            requester.createRequest(workerControlTransport.getPublicAddress(),
+              workerControlTransport.getPort(), worker.getId(), worker.getExecutorId(),
+              worker.getExecutorRepresenter().getContainerType(),
+              worker.getExecutorRepresenter().getExecutorCapacity(), 1, 1000);
+          });
+        }
+      });
+    }
+
+    LOG.info("Waiting for activation of all workers {}", pendingActivationWorkers.size());
+    long prevLog = System.currentTimeMillis();
+    while (!pendingActivationWorkers.isEmpty()) {
+      if (System.currentTimeMillis() - prevLog >= 1000) {
+        LOG.info("Waiting for activation of all workers {}", pendingActivationWorkers);
+        prevLog = System.currentTimeMillis();
+      }
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
   public void deactivateAllWorkers() {
     LOG.info("Deactivating all workers...");
 
@@ -202,6 +239,23 @@ public final class LambdaContainerManager {
 
       worker.deactivate();
     });
+
+
+    LOG.info("Waiting for deactivation of all workers");
+    long prevLog = System.currentTimeMillis();
+    while (requestIdControlChannelMap.values().stream().anyMatch(proxy -> !proxy.isDeactivated())) {
+      if (System.currentTimeMillis() - prevLog >= 1000) {
+        LOG.info("Waiting for deactivation of all workers {}", requestIdControlChannelMap.values().stream()
+          .filter(proxy -> !proxy.isDeactivated()));
+
+        prevLog = System.currentTimeMillis();
+      }
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
 
@@ -236,6 +290,8 @@ public final class LambdaContainerManager {
     final String resourceType = resourceTypeLambda ? LAMBDA : COMPUTE;
 
     for (int i = 0; i < num; i++) {
+
+      numRequestedLambda.getAndIncrement();
 
       list.add(initService.submit(() -> {
         final int rid = requestIdCnt.getAndIncrement();

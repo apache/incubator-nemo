@@ -20,6 +20,9 @@ public final class VMWorkerExecutor {
   @NamedParameter
   public static final class VMWorkerPort implements Name<Integer> {}
 
+  @NamedParameter(default_value = "120")
+  public static final class HandlerTimeout implements Name<Integer> {}
+
 
   private final ExecutorService waitingExecutor = Executors.newCachedThreadPool();
 
@@ -27,6 +30,7 @@ public final class VMWorkerExecutor {
 
   @Inject
   private VMWorkerExecutor(
+    @Parameter(HandlerTimeout.class) final int timeout,
     @Parameter(VMWorkerPort.class) final int port) {
     final String nemo_home = "/home/taegeonum/incubator-nemo";
     LOG.info("Creating VM worker with port " + port);
@@ -43,14 +47,14 @@ public final class VMWorkerExecutor {
 
     final String path = sb.toString();
 
-    LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+    LOG.info("java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + timeout);
     waitingExecutor.execute(() -> {
       try {
 
         //LOG.info("cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
-        LOG.info("java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+        LOG.info("java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + timeout);
         Process p = Runtime.getRuntime().exec(
-          "java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + 10000000);
+          "java -verbosegc -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + port + " " + timeout);
         //   "cpulimit -l " + cpulimit + " java -cp " + path + " org.apache.nemo.offloading.workers.vm.VMWorker " + myPort + " " + 10000000);
 
         String line;

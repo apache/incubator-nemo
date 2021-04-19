@@ -373,6 +373,7 @@ public final class NemoDriver {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
       .bindNamedParameter(VMWorkerExecutor.VMWorkerPort.class,
         Integer.toString(port))
+      .bindNamedParameter(VMWorkerExecutor.HandlerTimeout.class, Integer.toString(evalConf.handlerTimeout))
       .build();
 
     return Configurations.merge(contextConfiguration, conf);

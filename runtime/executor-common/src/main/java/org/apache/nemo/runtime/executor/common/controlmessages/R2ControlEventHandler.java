@@ -206,19 +206,52 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             taskInitMap.put(taskExecutor.getId(), true);
           }
 
-          taskOutputDoneAckCounter.put(control.getTaskId(),
-            new AtomicInteger(TaskExecutorUtil
-              .taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
+          final int cnt = TaskExecutorUtil
+              .taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
 
           if (evalConf.controlLogging) {
             LOG.info("End of Receive ACK for task {} pipe {}", control.getTaskId());
           }
 
           final Task task = taskExecutor.getTask();
-          TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
-            R2_TASK_OUTPUT_DONE_FROM_UPSTREAM);
-          taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
-            TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
+          if (cnt == 0) {
+            // this is sink
+            if (taskInitMap.containsKey(control.getTaskId())) {
+              taskInitMap.remove(control.getTaskId());
+              // Send signal to master
+              toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .send(ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                  .setType(ControlMessage.MessageType.R2Init)
+                  .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTaskId(control.getTaskId())
+                    .build())
+                  .build());
+            }
+
+            // Send signal to master for the pair task to start its output
+            // This is also a signal that this task rerouting is done
+            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .send(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.TaskOutputStart)
+                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                  .setExecutorId(executorId)
+                  .setTaskId(control.getTaskId())
+                  .build())
+                .build());
+
+          } else {
+            LOG.info("Send task output done from upstream signal in {}", control.getTaskId());
+            taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
+            TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
+              R2_TASK_OUTPUT_DONE_FROM_UPSTREAM);
+            taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
+              TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
+          }
         }
         break;
       }
@@ -294,6 +327,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           }
 
           // Send signal to master for the pair task to start its output
+          // This is also a signal that this task rerouting is done
           toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
             .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdManager.generateMessageId())

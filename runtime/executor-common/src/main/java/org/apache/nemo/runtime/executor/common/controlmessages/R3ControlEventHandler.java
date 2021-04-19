@@ -417,7 +417,6 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           LOG.info("Receive data watermark stop ack for task {} pipe {}", control.getTaskId(), control.targetPipeIndex);
         }
 
-
         pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
 
         if (pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
@@ -429,8 +428,24 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
           // Send done message to the merger
           final Task task = taskExecutor.getTask();
-          TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
-            R3_TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          if (task.getTaskOutgoingEdges().isEmpty()) {
+            // This is sink
+            // For optimization: send signal to partial that the pair task is stopped
+            // This is also a signal that this task rerouting is done.
+            toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .send(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.R3OptSignalFinalCombine)
+                .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                  .setExecutorId(executorId)
+                  .setTaskId(control.getTaskId())
+                  .build())
+                .build());
+          } else {
+            TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
+              R3_TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          }
 
           taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
             TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
@@ -474,7 +489,9 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           throw new RuntimeException("Task is not partial combine " + control.getTaskId());
         }
 
+
         // For optimization: send signal to partial that the pair task is stopped
+        // This is also a signal that this task rerouting is done.
         toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())

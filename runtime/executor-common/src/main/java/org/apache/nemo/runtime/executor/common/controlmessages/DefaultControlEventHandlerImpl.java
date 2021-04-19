@@ -211,8 +211,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case PIPE_INIT: {
 
         if (evalConf.controlLogging) {
-          LOG.info("Pipe init message, targetIndex: {}, targetTask {}, in executor {}", control.targetPipeIndex, control.getTaskId(), executorId);
+          LOG.info("Pipe init message, key: {}, targetTask {}, in executor {}", pipeIndexMapWorker.getKey(control.targetPipeIndex), control.getTaskId(), executorId);
         }
+
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
         /*
         if (canTaskMoved(control.getTaskId())) {

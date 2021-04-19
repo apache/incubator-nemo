@@ -22,6 +22,9 @@ public final class EvalConf {
   public final class EnableOffloading implements Name<Boolean> {
   }
 
+  @NamedParameter(short_name = "handler_timeout", default_value = "120")
+  public final class HandlerTimeout implements Name<Integer> {}
+
   @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading_debug", default_value = "false")
   public final class EnableOffloadingDebug implements Name<Boolean> {
   }
@@ -231,6 +234,7 @@ public final class EvalConf {
   public final long latencyLimit;
   public final int partialPercent;
   public final String optimizationPolicy;
+  public final int handlerTimeout;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -275,6 +279,7 @@ public final class EvalConf {
                    @Parameter(PartialWarmup.class) final boolean partialWarmup,
                    @Parameter(NumLambdaPool.class) final int numLambdaPool,
                    @Parameter(PartialPercent.class) final int partialPercent,
+                   @Parameter(HandlerTimeout.class) final int handlerTimeout,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -319,6 +324,7 @@ public final class EvalConf {
     this.numLambdaPool = numLambdaPool;
     this.partialWarmup = partialWarmup;
     this.latencyLimit = latencyLimit;
+    this.handlerTimeout = handlerTimeout;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -373,6 +379,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(LatencyLimit.class, Long.toString(latencyLimit));
     jcb.bindNamedParameter(PartialPercent.class, Integer.toString(partialPercent));
     jcb.bindNamedParameter(JobConf.OptimizationPolicy.class, optimizationPolicy);
+    jcb.bindNamedParameter(HandlerTimeout.class, Integer.toString(handlerTimeout));
     return jcb.build();
   }
 
@@ -420,6 +427,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(PartialWarmup.class);
     cl.registerShortNameOfClass(LatencyLimit.class);
     cl.registerShortNameOfClass(PartialPercent.class);
+    cl.registerShortNameOfClass(HandlerTimeout.class);
   }
 
   @Override
@@ -468,6 +476,7 @@ public final class EvalConf {
     sb.append("latencyLimit: "); sb.append(latencyLimit); sb.append("\n");
     sb.append("partialPercent: "); sb.append(partialPercent); sb.append("\n");
     sb.append("optimizationPolicy: "); sb.append(optimizationPolicy); sb.append("\n");
+    sb.append("handlerTimeout: "); sb.append(handlerTimeout); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

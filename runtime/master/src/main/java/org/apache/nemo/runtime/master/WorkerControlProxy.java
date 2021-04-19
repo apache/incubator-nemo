@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.nemo.runtime.master.WorkerControlProxy.State.ACTIVATE;
+import static org.apache.nemo.runtime.master.WorkerControlProxy.State.DEACTIVATE;
 import static org.apache.nemo.runtime.master.WorkerControlProxy.State.DEACTIVATING;
 
 public final class WorkerControlProxy implements EventHandler<OffloadingMasterEvent> {
@@ -59,6 +60,10 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     this.er = er;
   }
 
+  public ExecutorRepresenter getExecutorRepresenter() {
+    return er;
+  }
+
   public void setDataChannel(ExecutorRepresenter er,
                              final String fullAddr) {
 
@@ -101,6 +106,10 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
           " is not active but try to deactivate");
       }
     }
+  }
+
+  public boolean isDeactivated() {
+    return state.get().equals(DEACTIVATE);
   }
 
   public boolean allPendingTasksReady() {

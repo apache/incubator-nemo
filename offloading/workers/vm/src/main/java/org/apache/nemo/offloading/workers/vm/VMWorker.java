@@ -38,12 +38,16 @@ public class VMWorker {
 
   private final Map<String, OffloadingHandler.LambdaEventHandler> lambdaEventHandlerMap;
 
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private final CountDownLatch countDownLatch = new CountDownLatch(1);
+  private final BlockingQueue<OffloadingHandler> handlerQueue = new LinkedBlockingQueue<>();
+  private final BlockingQueue<OffloadingMasterEvent> requestQueue = new LinkedBlockingQueue<>();
 
-  private VMWorker(final int port, final long throttleRate) {
+  private final int timeout;
+  private VMWorker(final int port, final int timeout) {
+    this.timeout = timeout;
 
+    LOG.info("VM worker port: {}, timeout: {}", port, timeout);
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
 
@@ -51,59 +55,6 @@ public class VMWorker {
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
     serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
-
-    final BlockingQueue<OffloadingHandler> handlers = new LinkedBlockingQueue<>();
-
-    final BlockingQueue<OffloadingMasterEvent> requestQueue = new LinkedBlockingQueue<>();
-    singleThread.execute(() -> {
-      while (true) {
-        try {
-          final OffloadingMasterEvent event = requestQueue.take();
-          executorService.execute(() -> {
-            switch (event.getType()) {
-              case SEND_ADDRESS: {
-                final OffloadingHandler handler =
-                  new OffloadingHandler(lambdaEventHandlerMap, false, throttleRate, true);
-                handlers.add(handler);
-                final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
-                event.getByteBuf().readBytes(bytes);
-
-                final String str = new String(bytes);
-                System.out.println("Receive request " + str);
-                final JSONObject jsonObj = new JSONObject(str);
-                final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
-                handler.handleRequest(map, null);
-                // Finish handler and worker here
-                countDownLatch.countDown();
-                break;
-              }
-              case DATA: {
-                // It receives data from upstream tasks
-                // We first retrieve taskId
-                final ByteBuf byteBuf = event.getByteBuf();
-                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-                final DataInputStream dataInputStream = new DataInputStream(bis);
-                try {
-                  final String taskId = dataInputStream.readUTF();
-                  LOG.info("Receive data for task {}", taskId);
-
-                  lambdaEventHandlerMap.get(taskId).onNext(event);
-                } catch (IOException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
-                }
-                break;
-              }
-              default:
-                throw new RuntimeException("unsupported type: " + event.getType());
-            }
-
-          });
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-    });
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(serverBossGroup, serverWorkerGroup)
@@ -124,27 +75,62 @@ public class VMWorker {
     }
   }
 
+  private boolean finished = false;
   // blocking
-  public void start() {
-    try {
-      countDownLatch.await();
+  public void start() throws TimeoutException, ExecutionException {
+    while (!finished) {
+      try {
+        final OffloadingMasterEvent event = requestQueue.take();
+        final OffloadingHandler handler;
+        if (handlerQueue.isEmpty()) {
+          handler =
+            new OffloadingHandler(lambdaEventHandlerMap, false, 1000000, true);
+        } else {
+          handler = handlerQueue.take();
+        }
 
-      serverWorkerGroup.shutdownGracefully();
-      serverBossGroup.shutdownGracefully();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+        switch (event.getType()) {
+          case SEND_ADDRESS: {
+            final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
+            event.getByteBuf().readBytes(bytes);
+
+            final String str = new String(bytes);
+            System.out.println("Receive request " + str);
+            final JSONObject jsonObj = new JSONObject(str);
+            final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
+            final Future future = singleThread.submit(() -> {
+              handler.handleRequest(map, null);
+              handlerQueue.add(handler);
+            });
+
+            try {
+              future.get(timeout, TimeUnit.SECONDS);
+            } catch (final InterruptedException|TimeoutException e) {
+              LOG.info("Handler interrupted due to timeout");
+            }
+            break;
+          }
+          default:
+            throw new RuntimeException("unsupported type: " + event.getType());
+        }
+
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
+
+    serverWorkerGroup.shutdownGracefully();
+    serverBossGroup.shutdownGracefully();
   }
 
 
-  public static void main(final String[] args) throws InterruptedException {
+  public static void main(final String[] args) throws InterruptedException, TimeoutException, ExecutionException {
 
     if (args.length > 0) {
       final int port = Integer.valueOf(args[0]);
-      final long throttleRate = Long.valueOf(args[1]);
+      final int timeout = Integer.valueOf(args[1]);
       LOG.info("Start worker with args {}, {}", args[0], args[1]);
-      final VMWorker worker = new VMWorker(port, throttleRate);
+      final VMWorker worker = new VMWorker(port, timeout);
       worker.start();
     } else {
       final VMWorker worker = new VMWorker(Constants.VM_WORKER_PORT, 100000);
@@ -153,7 +139,6 @@ public class VMWorker {
     LOG.info("End of worker");
     System.exit(0);
   }
-
 
   @ChannelHandler.Sharable
   final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {

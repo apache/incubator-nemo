@@ -123,6 +123,7 @@ public final class RuntimeMaster {
   private final LambdaContainerManager lambdaContainerManager;
   private final EvalConf evalConf;
   private final PairStageTaskManager pairStageTaskManager;
+  private final Set<String> pendingRedirectionTasks;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -138,6 +139,7 @@ public final class RuntimeMaster {
                         final EvalConf evalConf,
                         final PairStageTaskManager pairStageTaskManager,
                         final LambdaContainerManager lambdaContainerManager,
+                        final PendingRedirectionTasks pendingRedirectionTasks,
                         final InMasterControlMessageQueue inMasterControlMessageQueue,
                         final ExecutorRegistry executorRegistry) throws IOException {
     // We would like to use a single thread for runtime master operations
@@ -153,6 +155,7 @@ public final class RuntimeMaster {
     this.pairStageTaskManager = pairStageTaskManager;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.requestContainerThread = Executors.newCachedThreadPool();
+    this.pendingRedirectionTasks = pendingRedirectionTasks.pendingRedirectionTasks;
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> {
           final Thread t = new Thread(runnable, "RuntimeMaster thread");
@@ -578,7 +581,7 @@ public final class RuntimeMaster {
   }
 
   public void activateLambda() {
-   //  offloadingWorkerManager.activateAllWorkers();
+    // offloadingWorkerManager.activateAllWorkers();
   }
 
   public void deactivateLambda() {
@@ -663,10 +666,12 @@ public final class RuntimeMaster {
     deactivateLambda();
   }
 
-  private final Set<String> prevRedirectionTasks = new HashSet<>();
 
   public void redirectionToLambda(final int num,
                                   final String stageId) {
+    // Activate all workers
+    lambdaContainerManager.activateAllWorkers();
+
     final Map<String, String> scheduledMap = taskScheduledMap.getTaskExecutorIdMap();
     scheduledMap.entrySet().stream()
       .filter(entry -> RuntimeIdManager.getStageIdFromTaskId(entry.getKey())
@@ -695,10 +700,12 @@ public final class RuntimeMaster {
     LOG.info("Redirection tasks {} / stage {}", num, stageId);
   }
 
+  private final Set<String> prevRedirectionTasks = new HashSet<>();
+
+
   public void redirectionDoneToLambda(final int num,
                                       final String stageId) {
     final Iterator<String> iterator = prevRedirectionTasks.iterator();
-
 
     int count = 0;
     while (iterator.hasNext()) {
@@ -714,6 +721,8 @@ public final class RuntimeMaster {
 
         iterator.remove();
 
+        pendingRedirectionTasks.add(pairTask);
+
         executor.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
@@ -726,6 +735,19 @@ public final class RuntimeMaster {
     }
 
     LOG.info("Redirection lambda tasks {} / stage {}", num, stageId);
+
+    // TODO: Waiting for redirection done
+    while (!pendingRedirectionTasks.isEmpty()) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+    LOG.info("Done of redirection done ... deactivate workers that have no rerouting task");
+    // Deactivate all workers
+    lambdaContainerManager.deactivateAllWorkers();
   }
 
   public void offloadTask(final int num,
@@ -867,6 +889,13 @@ public final class RuntimeMaster {
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
         LOG.info("Send task output start to {}", pairTask);
 
+        // Remove pending redirection task
+        synchronized (pendingRedirectionTasks) {
+          pendingRedirectionTasks.remove(reroutingTask);
+          LOG.info("Receive TaskOutputStart." +
+            " Curr pending redirection task in lambda after removing {}: {}", reroutingTask, pendingRedirectionTasks);
+        }
+
         pool.execute(() -> {
           while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
             LOG.info("Waiting for scheduling {} for TaskOutputStart", pairTask);
@@ -983,6 +1012,14 @@ public final class RuntimeMaster {
         LOG.info("Send R3OptSignalFinalCombine from {} to {}", reroutingTask, pairTask);
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+
+        // Remove pending redirection task
+        synchronized (pendingRedirectionTasks) {
+          pendingRedirectionTasks.remove(reroutingTask);
+          LOG.info("Receive R3OptsignalFianlCombine." +
+            " Curr pending redirection task in lambda after removing {}: {}", reroutingTask, pendingRedirectionTasks);
+        }
 
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())

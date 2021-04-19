@@ -73,6 +73,7 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
    + VM_WORKER_PORT;
 
   private final AtomicInteger atomicInteger = new AtomicInteger(0);
+  private final Map<String, Channel> executorChannelMap = new ConcurrentHashMap<>();
 
   @Override
   public void createRequest(String controlAddr,
@@ -87,44 +88,55 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
 
     LOG.info("Creating VM worker with port for yarn " + myPort);
 
-    final String key = executorId + "-offloading-" + myPort;
+    if (executorChannelMap.containsKey(executorId)) {
 
-    runtimeMasterInjectionFuture.get()
-      .requestOffloadingExecutor(myPort, key, executorId, containerType,
-        capacity, slot, memory, (hostAddress) -> {
-        LOG.info("Host address for " + key +  ": " + hostAddress);
+      final Channel channel = executorChannelMap.get(executorId);
+      // send handshake
+      final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+        controlAddr, controlPort, requestId).getBytes();
+      channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+    } else {
+      final String key = executorId + "-offloading-" + myPort;
 
-        final long waitingTime = 1000;
-        waitingExecutor.execute(() -> {
-          ChannelFuture channelFuture;
-          while (true) {
-            final long st = System.currentTimeMillis();
-            channelFuture = clientBootstrap.connect(new InetSocketAddress(hostAddress, myPort));
-            channelFuture.awaitUninterruptibly(waitingTime);
-            assert channelFuture.isDone();
-            if (!channelFuture.isSuccess()) {
-              LOG.warn("A connection failed for " + hostAddress + ":" + myPort + "  waiting...");
-              final long elapsedTime = System.currentTimeMillis() - st;
-              try {
-                Thread.sleep(waitingTime);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
+      runtimeMasterInjectionFuture.get()
+        .requestOffloadingExecutor(myPort, key, executorId, containerType,
+          capacity, slot, memory, (hostAddress) -> {
+            LOG.info("Host address for " + key + ": " + hostAddress);
+
+            final long waitingTime = 1000;
+            waitingExecutor.execute(() -> {
+              ChannelFuture channelFuture;
+              while (true) {
+                final long st = System.currentTimeMillis();
+                channelFuture = clientBootstrap.connect(new InetSocketAddress(hostAddress, myPort));
+                channelFuture.awaitUninterruptibly(waitingTime);
+                assert channelFuture.isDone();
+                if (!channelFuture.isSuccess()) {
+                  LOG.warn("A connection failed for " + hostAddress + ":" + myPort + "  waiting...");
+                  final long elapsedTime = System.currentTimeMillis() - st;
+                  try {
+                    Thread.sleep(waitingTime);
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  }
+                } else {
+                  break;
+                }
               }
-            } else {
-              break;
-            }
-          }
 
-          final Channel openChannel = channelFuture.channel();
-          LOG.info("Open channel for VM: {}", openChannel);
+              final Channel openChannel = channelFuture.channel();
+              LOG.info("Open channel for VM: {}", openChannel);
 
-          // send handshake
-          final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
-            controlAddr, controlPort, requestId).getBytes();
-          openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+              // send handshake
+              final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
+                controlAddr, controlPort, requestId).getBytes();
+              openChannel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
 
-          LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
-        });
-      });
+              executorChannelMap.put(executorId, openChannel);
+
+              LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
+            });
+          });
+    }
   }
 }
