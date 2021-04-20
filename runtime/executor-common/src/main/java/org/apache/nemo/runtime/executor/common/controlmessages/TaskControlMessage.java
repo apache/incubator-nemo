@@ -118,10 +118,14 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R3_START_OUTPUT_FROM_DOWNSTREAM,
     R3_TASK_INPUT_START_FROM_UPSTREAM,
 
-    // For R3 optimization
+    // For R3 optimization: partial/final bypass
     R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR,
     R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER,
     R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER,
+
+    // For R3 optimization: fast partial rerouting
+    R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL,
+    R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL,
 
     // For offloaded task
     OFFLOAD_TASK_STOP,

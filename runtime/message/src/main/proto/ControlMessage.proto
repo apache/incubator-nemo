@@ -194,6 +194,8 @@ enum MessageType {
     R3PairInputOutputStart = 73;
     R2Init = 74;
     R3OptSignalFinalCombine = 75;
+    R3PairTaskInitiateProtocol = 76;
+    R3AckPairTaskInitiateProtocol = 77;
 }
 
 message LambdaEndMessage {

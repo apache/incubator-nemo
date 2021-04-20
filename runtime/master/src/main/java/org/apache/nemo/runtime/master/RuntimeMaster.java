@@ -886,6 +886,39 @@ public final class RuntimeMaster {
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case R3PairTaskInitiateProtocol:
+      case R3AckPairTaskInitiateProtocol: {
+        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
+        final String reroutingTask = m.getTaskId();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+
+        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
+        final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
+
+        pool.execute(() -> {
+          while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
+            LOG.info("Waiting for scheduling {} for {}", pairTask, message.getType());
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          final ExecutorRepresenter executorRepresenter = executorRegistry
+            .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+
+          executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(message.getType())
+            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+              .setTaskId(pairTask)
+              .build())
+            .build());
+        });
+        break;
+      }
       case TaskOutputStart: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();

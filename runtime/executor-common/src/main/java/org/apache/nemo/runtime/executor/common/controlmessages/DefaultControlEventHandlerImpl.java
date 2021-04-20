@@ -72,6 +72,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
     switch (control.type) {
       // For optimization of R3 state merger
+      case R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
+      case R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
       case R3_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
       case R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER:
       case R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER:

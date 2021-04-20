@@ -673,8 +673,9 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       dataRouters[idx] = new LambdaDataRouter(transientPathDstTasks[idx]);
       if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
         watermarkReroutingTable[idx] = true;
+      } else {
+        watermarkReroutingTable[idx] = false;
       }
-
       watermarkRouters[idx] = createWatermarkRouter(idx);
 
     } else {
@@ -684,7 +685,8 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       dataRouters[idx] = new VMDataRouter(vmPathDstTasks[idx]);
       if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
         watermarkReroutingTable[idx] = false;
-        watermarkRouters[idx] = new VMDataRouter(transientPathDstTasks[idx]);
+      } else {
+        watermarkReroutingTable[idx] = true;
       }
       watermarkRouters[idx] = createWatermarkRouter(idx);
     }

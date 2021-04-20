@@ -42,6 +42,8 @@ public final class R3ControlEventHandler implements ControlEventHandler {
   private final Map<String, AtomicInteger> pairTaskInputStartCounter;
   private final Map<String, AtomicInteger> taskOutputStopCounter;
   private final Map<String, Boolean> partialTaskOutputToBeStopped;
+  private final Map<String, Boolean> partialTaskStopRemaining;
+  private final Map<String, Boolean> pairTaskWaitingAck;
 
   @Inject
   private R3ControlEventHandler(
@@ -59,7 +61,9 @@ public final class R3ControlEventHandler implements ControlEventHandler {
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.pairTaskInputStartCounter = new ConcurrentHashMap<>();
     this.partialTaskOutputToBeStopped = new ConcurrentHashMap<>();
+    this.partialTaskStopRemaining = new ConcurrentHashMap<>();
     this.taskOutputStopCounter = new ConcurrentHashMap<>();
+    this.pairTaskWaitingAck = new ConcurrentHashMap<>();
   }
 
   /**
@@ -122,6 +126,69 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             taskExecutor.getTask().getPairEdgeId());
         }
 
+        // PING PONG BTW PAIR TASK TO SYNC AND GUARANTEE PARTIAL OFFLOADING
+        toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.R3PairTaskInitiateProtocol)
+            .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setTaskId(control.getTaskId())
+              .build())
+            .build());
+        break;
+      }
+      case R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!(taskExecutor.getTask().isParitalCombine())) {
+          throw new RuntimeException("Not supported for R3 redirection " + taskExecutor.getId());
+        }
+
+        if (partialTaskOutputToBeStopped.containsKey(taskExecutor.getId())
+           && !partialTaskStopRemaining.containsKey(taskExecutor.getId())) {
+          // This represents that taskExecutor is performing partial aggregation (waiting for key=0)
+          // We stop this process by removing partialTaskOutputToBeStopped
+          // and send ack to the pair task
+          LOG.info("Task {} sending partial combine.. but stop this process", taskExecutor.getId());
+          partialTaskOutputToBeStopped.remove(taskExecutor.getId());
+          toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.R3AckPairTaskInitiateProtocol)
+              .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                .setExecutorId(executorId)
+                .setTaskId(control.getTaskId())
+                .build())
+              .build());
+        } else if (partialTaskStopRemaining.containsKey(taskExecutor.getId())) {
+          // Waiting for the remaining process
+          LOG.info("Waiting for the remaining process for partial combine", taskExecutor.getId());
+          pairTaskWaitingAck.put(taskExecutor.getId(), true);
+        } else {
+          LOG.info("Sending rerouting protocol ack in {}", taskExecutor.getId());
+          toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.R3AckPairTaskInitiateProtocol)
+              .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                .setExecutorId(executorId)
+                .setTaskId(control.getTaskId())
+                .build())
+              .build());
+        }
+        break;
+      }
+      case R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!(taskExecutor.getTask().isParitalCombine())) {
+          throw new RuntimeException("Not supported for R3 redirection " + taskExecutor.getId());
+        }
+
         // Stop data send from upstream
         taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
           entry.getValue().forEach(srcTask -> {
@@ -152,7 +219,6 @@ public final class R3ControlEventHandler implements ControlEventHandler {
                 taskExecutor.getTask().getPairTaskId());
           });
         });
-
         break;
       }
       case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK: {
@@ -170,7 +236,6 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
         final Triple<String, String, String> key =
           pipeIndexMapWorker.getKey(control.targetPipeIndex);
-
 
         final String pairEdgeId = taskExecutor.getTask().getTaskIncomingEdges()
           .stream().filter(edge -> !edge.getId().equals(key.getMiddle()))
@@ -205,7 +270,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         final int cnt = pairTaskInputStartCounter.get(control.getTaskId()).decrementAndGet();
 
         if (cnt == 0) {
-          // Set pair task stopped
+          // Set pair task stopped false
           ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(false);
 
           // Send downstream merger that it will send partial result
@@ -342,18 +407,23 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
         }
 
-        LOG.info("Receive pair task output stopped in {}", control.getTaskId());
-        ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(true);
+        if (partialTaskOutputToBeStopped.containsKey(control.getTaskId())) {
+          LOG.info("This task rerouting protocol is initiated {} ... so skip set pair task stopped",
+            control.getTaskId());
+        } else {
+          LOG.info("Receive pair task output stopped in {}", control.getTaskId());
+          ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(true);
 
-        // Send downstream merger that it will send final result
-        final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
-        final String mergerId =
-          TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
+          // Send downstream merger that it will send final result
+          final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
+          final String mergerId =
+            TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
 
-        LOG.info("Send final result signal from {} to {}", control.getTaskId(), mergerId);
+          LOG.info("Send final result signal from {} to {}", control.getTaskId(), mergerId);
 
-        pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
-          R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
+          pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
+            R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
+        }
 
         break;
       }
@@ -382,6 +452,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           if (taskExecutor.getNumKeys() == 0) {
 
             partialTaskOutputToBeStopped.remove(taskExecutor.getId());
+            partialTaskStopRemaining.put(taskExecutor.getId(), true);
 
             if (evalConf.controlLogging) {
               LOG.info("Try to stop data and watermark of input pipe of {}", taskExecutor.getId());
@@ -432,6 +503,8 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             // This is sink
             // For optimization: send signal to partial that the pair task is stopped
             // This is also a signal that this task rerouting is done.
+            partialTaskStopRemaining.remove(control.getTaskId());
+
             toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .send(ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdManager.generateMessageId())
@@ -442,6 +515,21 @@ public final class R3ControlEventHandler implements ControlEventHandler {
                   .setTaskId(control.getTaskId())
                   .build())
                 .build());
+
+            if (pairTaskWaitingAck.containsKey(control.getTaskId())) {
+              pairTaskWaitingAck.remove(control.getTaskId());
+
+              toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .send(ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                  .setType(ControlMessage.MessageType.R3AckPairTaskInitiateProtocol)
+                  .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTaskId(control.getTaskId())
+                    .build())
+                  .build());
+            }
           } else {
             TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
               R3_TASK_OUTPUT_DONE_FROM_UPSTREAM);
@@ -489,6 +577,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           throw new RuntimeException("Task is not partial combine " + control.getTaskId());
         }
 
+        partialTaskStopRemaining.remove(control.getTaskId());
 
         // For optimization: send signal to partial that the pair task is stopped
         // This is also a signal that this task rerouting is done.
@@ -502,6 +591,21 @@ public final class R3ControlEventHandler implements ControlEventHandler {
               .setTaskId(control.getTaskId())
               .build())
             .build());
+
+        if (pairTaskWaitingAck.containsKey(control.getTaskId())) {
+          pairTaskWaitingAck.remove(control.getTaskId());
+
+          toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.R3AckPairTaskInitiateProtocol)
+              .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                .setExecutorId(executorId)
+                .setTaskId(control.getTaskId())
+                .build())
+              .build());
+        }
         break;
       }
       default:

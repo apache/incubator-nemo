@@ -871,6 +871,34 @@ public final class Executor {
           });
           break;
         }
+        case R3AckPairTaskInitiateProtocol: {
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get R3AckPairTaskInitiateProtocol {}",
+              message.getStopTaskMsg().getTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+          break;
+        }
+        case R3PairTaskInitiateProtocol: {
+          final String taskId = message.getStopTaskMsg().getTaskId();
+          final Task task = taskExecutorMapWrapper.getTaskExecutor(taskId).getTask();
+          executorService.execute(() -> {
+            LOG.info("Get R3PairTaskInitiateProtocol {}",
+              message.getStopTaskMsg().getTaskId(), executorId);
+
+            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL, -1, -1,
+              message.getStopTaskMsg().getTaskId(), null));
+          });
+          break;
+        }
         case TaskOutputStart: {
           // for R2 reshaping
           final String taskId = message.getStopTaskMsg().getTaskId();
