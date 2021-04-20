@@ -140,6 +140,7 @@ public final class JobScaler {
     this.taskOffloadingManager = taskOffloadingManager;
 
     this.scheduler = Executors.newSingleThreadScheduledExecutor();
+    /*
     this.scheduler.scheduleAtFixedRate(() -> {
       try {
         // TODO: avg keys, input element, output element per stage
@@ -363,6 +364,7 @@ public final class JobScaler {
       }
 
     }, 1, 1, TimeUnit.SECONDS);
+    */
   }
 
   private boolean isVmScalingWorkerReady() {
@@ -1190,7 +1192,7 @@ public final class JobScaler {
           if (stageStoppedCnt.get(stageId) < num) {
             LOG.info("Stop task {}", taskId);
             currStageStopped.add(taskId);
-            taskScheduledMap.stopTask(taskId);
+            taskScheduledMap.stopTask(taskId, false);
             stoppedTasks.add(taskId);
             prevStoppedTasks.add(taskId);
 
@@ -1226,8 +1228,8 @@ public final class JobScaler {
   }
 
   public synchronized void sendTaskStopSignal(final int num,
+                                              final boolean lambdaAffinity,
                                               final List<String> stageIds) {
-
     taskDispatcher.setReclaiming(false);
 
     LOG.info("Send task stop signal for {} / {}", stageIds, num);
@@ -1240,27 +1242,6 @@ public final class JobScaler {
     final List<String> stoppedTasks = new LinkedList<>();
 
     for (final String stageId : stageIds) {
-
-      if (prevStageId != null &&
-        (Integer.valueOf(prevStageId.split("Stage")[1]) ==
-        Integer.valueOf(stageId.split("Stage")[1]) - 1)) {
-        // waiting for the finish of scheduling
-        for (final String taskId : prevStoppedTasks) {
-          LOG.info("Waiting for prev stage task rescheduling {}, task {}", prevStageId, taskId);
-          if (RuntimeIdManager.getStageIdFromTaskId(taskId).equals(prevStageId)) {
-            while (!taskScheduledMap.isTaskScheduled(taskId)) {
-              try {
-                Thread.sleep(50);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              // Waiting for task scheduling
-            }
-          }
-        }
-        LOG.info("End of waiting for stage rescheduling {}", prevStageId);
-      }
-
       prevStageId = stageId;
       prevStoppedTasks.clear();
 
@@ -1279,7 +1260,7 @@ public final class JobScaler {
 
               if (stageStoppedCnt.get(stageId) < num) {
                 LOG.info("Stop task {}", taskId);
-                taskScheduledMap.stopTask(taskId);
+                taskScheduledMap.stopTask(taskId, lambdaAffinity);
                 prevMovedTask.add(taskId);
                 prevStoppedTasks.add(taskId);
 
@@ -1294,6 +1275,7 @@ public final class JobScaler {
     }
 
     // waiting
+    /*
     for (final String taskId : stoppedTasks) {
       LOG.info("Waiting for task rescheduling {}", taskId);
       while (!taskScheduledMap.isTaskScheduled(taskId)) {
@@ -1305,6 +1287,7 @@ public final class JobScaler {
         // Waiting for task scheduling
       }
     }
+    */
 
     LOG.info("End of waiting for task rescheduling");
   }

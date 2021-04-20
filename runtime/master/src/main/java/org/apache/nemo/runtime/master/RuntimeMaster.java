@@ -395,7 +395,7 @@ public final class RuntimeMaster {
     LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
       type, memory, capacity, slot, executorNum);
 
-    requestLambdaContainer(executorNum, true, capacity, slot, memory);
+    requestLambdaContainer(executorNum, capacity, slot, memory);
   }
 
   private TreeNode computeTypeNode;
@@ -534,32 +534,36 @@ public final class RuntimeMaster {
   }
 
   public void requestLambdaContainer(final int num,
-                                     final boolean resourceTypeLambda,
                                      final int capacity,
                                      final int slot,
                                      final int memory) {
     resourceRequestCount.getAndAdd(num);
-    requestContainerThread.execute(() -> {
-      final List<Future<ExecutorRepresenter>> list =
-        lambdaContainerManager.createLambdaContainer(num, resourceTypeLambda,
-          capacity, slot, memory);
+    try {
+      requestContainerThread.submit(() -> {
+        final List<Future<ExecutorRepresenter>> list =
+          lambdaContainerManager.createLambdaContainer(num, capacity, slot, memory);
 
-      for (final Future<ExecutorRepresenter> future : list) {
-        final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-          final ExecutorRepresenter executor = future.get();
-          scheduler.onExecutorAdded(executor);
-          return (resourceRequestCount.decrementAndGet() == 0);
-        };
+        for (final Future<ExecutorRepresenter> future : list) {
+          final Callable<Boolean> processExecutorLaunchedEvent = () -> {
+            final ExecutorRepresenter executor = future.get();
+            scheduler.onExecutorAdded(executor);
+            return (resourceRequestCount.decrementAndGet() == 0);
+          };
 
-        final boolean eventResult;
-        try {
-          eventResult = processExecutorLaunchedEvent.call();
-          // eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
-        } catch (final Exception e) {
-          throw new ContainerException(e);
+          final boolean eventResult;
+          try {
+            eventResult = processExecutorLaunchedEvent.call();
+            // eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
+          } catch (final Exception e) {
+            throw new ContainerException(e);
+          }
         }
-      }
-    });
+      }).get();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } catch (ExecutionException e) {
+      e.printStackTrace();
+    }
   }
 
   public void stopLambdaContainer(final int num) {
@@ -927,10 +931,14 @@ public final class RuntimeMaster {
         LOG.info("Send task output start to {}", pairTask);
 
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
-        final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
         if (executorId.contains("Lambda")) {
           LOG.info("Deactivation done of {}", reroutingTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
           lambdaExecutor.deactivationDoneSignal(reroutingTask);
+        }  else {
+          final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
+          lambdaExecutor.activationDoneSignal(pairTask);
         }
 
         pool.execute(() -> {
@@ -1052,10 +1060,14 @@ public final class RuntimeMaster {
 
         // Remove pending redirection task
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
-        final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
         if (executorId.contains("Lambda")) {
           LOG.info("Deactivation done of {}", reroutingTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
           lambdaExecutor.deactivationDoneSignal(reroutingTask);
+        } else {
+          final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
+          lambdaExecutor.activationDoneSignal(pairTask);
         }
 
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()

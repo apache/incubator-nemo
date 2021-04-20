@@ -91,6 +91,7 @@ public final class LambdaContainerManager {
 
   private final PairStageTaskManager pairStageTaskManager;
 
+  private final ScheduledExecutorService scheduledExecutorService;
 
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
@@ -118,6 +119,8 @@ public final class LambdaContainerManager {
     this.requester = requester;
 
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
+
+    this.scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
     this.messageEnvironment = messageEnvironment;
     this.channelThread = Executors.newSingleThreadExecutor();
@@ -336,13 +339,12 @@ public final class LambdaContainerManager {
   }
 
   public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num,
-                                                                 final boolean resourceTypeLambda,
                                                                  final int capacity,
                                                                  final int slot,
                                                                  final int memory) {
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
 
-    final String resourceType = resourceTypeLambda ? LAMBDA : COMPUTE;
+    final String resourceType = LAMBDA;
 
     for (int i = 0; i < num; i++) {
 
@@ -453,12 +455,30 @@ public final class LambdaContainerManager {
         // proxy.setRepresentor(er);
         er.setLambdaControlProxy(proxy);
 
+        if (evalConf.partialWarmup) {
+          scheduledExecutorService.schedule(() -> {
+            partialWarmup(rid, er);
+          }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);
+        }
         return er;
       }));
     }
 
     return list;
   }
+
+  private void partialWarmup(final int rid,
+                             final ExecutorRepresenter er) {
+    if (requestIdControlChannelMap.containsKey(rid)) {
+      if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
+        er.partialWarmupStatelessTasks(2, taskScheduledMapMaster, executorRegistry, pairStageTaskManager);
+        scheduledExecutorService.schedule(() -> {
+          partialWarmup(rid, er);
+        }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);
+      }
+    }
+  }
+
 
   public final class MessageReceiver implements MessageListener<ControlMessage.Message> {
 

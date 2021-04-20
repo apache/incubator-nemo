@@ -25,10 +25,9 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.ExecutorRepresenter;
-import org.apache.nemo.runtime.master.ExecutorShutdownHandler;
-import org.apache.nemo.runtime.master.SerializedTaskMap;
-import org.apache.nemo.runtime.master.WorkerControlProxy;
+import org.apache.nemo.runtime.master.*;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
@@ -118,6 +117,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   private final Set<String> activatedTasks = new HashSet<>();
+  private final Set<String> activatedPendingTasks = new HashSet<>();
 
   private void sendRoutingSignal(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
     // waiting
@@ -129,10 +129,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       }
     }
 
-    activatedTasks.add(taskId);
+    activatedPendingTasks.add(taskId);
 
     // send signal
-    LOG.info("Activation lambda task {} for executor {}", taskId, executorId);
+    LOG.info("Activation lambda task {} for executor {}, {}", taskId, executorId, activatedPendingTasks);
     vmExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
       .setId(RuntimeIdManager.generateMessageId())
       .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
@@ -142,6 +142,55 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         .build())
       .build());
   }
+
+  @Override
+  public void partialWarmupStatelessTasks(final int num,
+                                          final TaskScheduledMapMaster taskScheduledMapMaster,
+                                          final ExecutorRegistry executorRegistry,
+                                          final PairStageTaskManager pairStageTaskManager) {
+
+    final Collection<String> tasks;
+    synchronized (this) {
+      if (!lambdaControlProxy.isDeactivated()) {
+        return;
+      }
+
+      tasks = getRunningTasks().stream()
+        .filter(task -> !task.isStateful())
+        .map(task -> task.getTaskId())
+        .sorted((t1, t2) -> Integer.valueOf(t1.split("-")[0].split("Stage")[1]).compareTo(
+          Integer.valueOf(t2.split("-")[0].split("Stage")[1])))
+        .limit(num).collect(Collectors.toSet());
+
+      tasks.forEach(tid -> {
+        final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).left();
+        final ExecutorRepresenter vm = executorRegistry.getExecutorRepresentor(
+          taskScheduledMapMaster.getTaskExecutorIdMap().get(pairTid));
+        activateLambdaTask(tid, pairTid, vm);
+      });
+    }
+
+    LOG.info("Waiting for partial warmup activation {}/{}", executorId, tasks);
+    while (tasks.stream().anyMatch(tid -> !activatedTasks.contains(tid))) {
+      try {
+        Thread.sleep(20);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    LOG.info("End of waiting for partial warmup activation {}/{}", executorId, tasks);
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    LOG.info("Deactivate partial warmup");
+
+    tasks.forEach(tid -> {
+      deactivateLambdaTask(tid);
+    });
+  }
+
 
   @Override
   public void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
@@ -161,6 +210,22 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         lambdaControlProxy.activate();
         sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
       }
+    }
+  }
+
+  @Override
+  public void activationDoneSignal(final String taskId) {
+    if (!executorId.contains("Lambda")) {
+      throw new RuntimeException("Non lambda executor receive signal " + executorId);
+    }
+
+    synchronized (this) {
+      if (!activatedPendingTasks.contains(taskId)) {
+        throw new RuntimeException("Task is not activated but receive activation done " + taskId + " in " + executorId
+          + ", pending: " + activatedPendingTasks + ", active: " + activatedTasks);
+      }
+      activatedPendingTasks.remove(taskId);
+      activatedTasks.add(taskId);
     }
   }
 
@@ -188,23 +253,36 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     if (getRunningTasks().stream().noneMatch(task -> task.getTaskId().equals(taskId))) {
       throw new RuntimeException("Lambda executor " + executorId + " does not contain lambda task " + taskId);
     }
-     if (!activatedTasks.contains(taskId)) {
+    if (!activatedTasks.contains(taskId) && !activatedPendingTasks.contains(taskId)) {
       throw new RuntimeException("Lambda executor " + executorId + " does not contain activate task " + taskId);
     }
     if (!lambdaControlProxy.isActive()) {
       throw new RuntimeException("Lambda proxy " + executorId + " is not activated, but try to deactivate task " + taskId);
     }
 
-    LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
+    while (true) {
+      synchronized (this) {
+        if (!activatedPendingTasks.contains(taskId)) {
+          LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
+          sendControlMessage(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.RoutingDataToLambda)
+            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+              .setTaskId(taskId)
+              .build())
+            .build());
 
-    sendControlMessage(ControlMessage.Message.newBuilder()
-      .setId(RuntimeIdManager.generateMessageId())
-      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-      .setType(ControlMessage.MessageType.RoutingDataToLambda)
-      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-        .setTaskId(taskId)
-        .build())
-      .build());
+          return;
+        }
+      }
+
+      try {
+        Thread.sleep(40);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   /**

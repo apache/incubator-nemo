@@ -41,7 +41,7 @@ public final class TaskExecutorMapWrapper {
     this.taskToBeStoppedMap = taskToBeStoppedMap;
   }
 
-  public void putTaskExecutor(final TaskExecutor taskExecutor,
+  public synchronized void putTaskExecutor(final TaskExecutor taskExecutor,
                               ExecutorThread thread) {
     taskExecutorMap.put(taskExecutor, true);
     taskIdExecutorMap.put(taskExecutor.getId(), taskExecutor);
@@ -56,13 +56,11 @@ public final class TaskExecutorMapWrapper {
 
     LOG.info("Put task {}", taskExecutor.getId());
 
-    synchronized (tasks) {
-      tasks.add(taskExecutor);
-    }
+    tasks.add(taskExecutor);
   }
 
   // for testing
-  public boolean containsTask(final String taskId) {
+  public synchronized boolean containsTask(final String taskId) {
     return taskIdExecutorMap.containsKey(taskId);
   }
 

@@ -28,6 +28,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "num_init_lambda", default_value = "1")
   public final class NumInitLambda implements Name<Integer> {}
 
+  @NamedParameter(short_name = "partial_warmup_period", default_value = "100")
+  public final class PartialWarmupPeriod implements Name<Integer> {}
+
   @NamedParameter(short_name = "num_max_lambda", default_value = "1")
   public final class MaxLambda implements Name<Integer> {}
 
@@ -166,6 +169,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "aws_profile", default_value = "default")
   public static final class AWSProfileName implements Name<String> {}
 
+  @NamedParameter(short_name = "partial_warmup", default_value = "false")
+  public static final class PartialWarmup implements Name<Boolean> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int flushBytes;
@@ -210,11 +216,11 @@ public final class EvalConf {
   public final int handlerTimeout;
   public final int numInitLambda;
   public final int numMaxLambda;
-
+  public final int partialWarmupPeriod;
+  public final boolean partialWarmup;
 
   // LEGACY
   // NOT USED
-  public final boolean partialWarmup = false;
   public final int numLambdaPool = 1;
   public final int numOffloadingWorkerAfterMerging = 1;
 
@@ -250,8 +256,10 @@ public final class EvalConf {
                    @Parameter(AllocatedCores.class) final double allocatedCores,
                    @Parameter(CpuLimit.class) final double cpuLimit,
                    @Parameter(ScalingType.class) final String scalingType,
+                   @Parameter(PartialWarmup.class) final boolean partialWarmup,
                    @Parameter(OffloadingCpuLimit.class) final double offloadingCpuLimit,
                    @Parameter(NumOffloadingWorker.class) final int numOffloadingWorker,
+                   @Parameter(PartialWarmupPeriod.class) final int partialWarmupPeriod,
                    @Parameter(OffloadingManagerType.class) final String offloadingManagerType,
                    @Parameter(AWSProfileName.class) final String awsProfileName,
                    @Parameter(HandlerTimeout.class) final int handlerTimeout,
@@ -263,8 +271,10 @@ public final class EvalConf {
     this.flushBytes = flushBytes;
     this.scalingType = scalingType;
     this.offExecutorThreadNum = offExecutorThreadNum;
+    this.partialWarmup = partialWarmup;
     this.deoffloadingThreshold = deoffloadingThreshold;
     this.optimizationPolicy = optimizationPolicy;
+    this.partialWarmupPeriod = partialWarmupPeriod;
     this.ec2 = ec2;
     this.flushCount = flushCount;
     this.flushPeriod = flushPeriod;
@@ -348,6 +358,8 @@ public final class EvalConf {
     jcb.bindNamedParameter(HandlerTimeout.class, Integer.toString(handlerTimeout));
     jcb.bindNamedParameter(NumInitLambda.class, Integer.toString(numInitLambda));
     jcb.bindNamedParameter(MaxLambda.class, Integer.toString(numMaxLambda));
+    jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
+    jcb.bindNamedParameter(PartialWarmupPeriod.class, Integer.toString(partialWarmupPeriod));
     return jcb.build();
   }
 
@@ -391,6 +403,8 @@ public final class EvalConf {
     cl.registerShortNameOfClass(HandlerTimeout.class);
     cl.registerShortNameOfClass(NumInitLambda.class);
     cl.registerShortNameOfClass(MaxLambda.class);
+    cl.registerShortNameOfClass(PartialWarmup.class);
+    cl.registerShortNameOfClass(PartialWarmupPeriod.class);
   }
 
   @Override
@@ -435,6 +449,8 @@ public final class EvalConf {
     sb.append("handlerTimeout: "); sb.append(handlerTimeout); sb.append("\n");
     sb.append("numInitLambda: "); sb.append(numInitLambda); sb.append("\n");
     sb.append("maxLambda: "); sb.append(numMaxLambda); sb.append("\n");
+    sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
+    sb.append("partialWarmupPeriod: "); sb.append(partialWarmupPeriod); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

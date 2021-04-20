@@ -74,6 +74,7 @@ public final class Task implements Serializable {
 
   private final TaskType taskType;
   private final boolean isPartial;
+  private final boolean isStateful;
 
   /**
    *
@@ -110,6 +111,7 @@ public final class Task implements Serializable {
     // find pair task
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
+    this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isStateful);
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
@@ -141,6 +143,10 @@ public final class Task implements Serializable {
 
   public boolean isParitalCombine() {
     return isPartial;
+  }
+
+  public boolean isStateful() {
+    return isStateful;
   }
 
   public String getPairTaskId() {
@@ -401,6 +407,10 @@ public final class Task implements Serializable {
   public <T extends Serializable> Optional<T> getPropertyValue(
       final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
+  }
+
+  public void setProperty(final VertexExecutionProperty<?> executionProperty) {
+    executionProperties.put(executionProperty);
   }
 
   /**

@@ -175,11 +175,10 @@ public final class NemoDriver {
               // scaling executor for Lambda
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
-              final boolean resourceTypeLambda = new Boolean(args[2]);
-              final int capacity = new Integer(args[3]);
-              final int slot = new Integer(args[4]);
-              final int memory = new Integer(args[5]);
-              runtimeMaster.requestLambdaContainer(num, resourceTypeLambda, capacity, slot, memory);
+              final int capacity = new Integer(args[2]);
+              final int slot = new Integer(args[3]);
+              final int memory = new Integer(args[4]);
+              runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
             } else if (decision.equals("stop-lambda-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
@@ -188,9 +187,6 @@ public final class NemoDriver {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               runtimeMaster.stopLambdaContainer(num);
-            } else if (decision.equals("send-task-lambda")) {
-              final String[] args = message.getScalingMsg().getInfo().split(" ");
-              runtimeMaster.sendTaskToLambda();
             } else if (decision.equals("activate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               runtimeMaster.activateLambda();
@@ -245,6 +241,21 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               runtimeMaster.redirectionDoneToLambda(num, stages);
+            } else if (decision.equals("move-task-lambda")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              for (int i = stages.size() - 1; i >= 0; i--) {
+                jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));
+                try {
+                  Thread.sleep(150);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
             } else if (decision.equals("move-task")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
@@ -253,7 +264,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
-                jobScaler.sendTaskStopSignal(num, Collections.singletonList(stages.get(i)));
+                jobScaler.sendTaskStopSignal(num, false, Collections.singletonList(stages.get(i)));
                 try {
                   Thread.sleep(150);
                 } catch (InterruptedException e) {

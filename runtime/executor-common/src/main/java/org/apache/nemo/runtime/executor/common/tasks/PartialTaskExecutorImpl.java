@@ -182,6 +182,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     final long restoresSt = System.currentTimeMillis();
 
+
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
@@ -239,6 +240,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
       @Override
       public void emit(Object output) {
+//        if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
+//        LOG.info("Final output to remote for {}: {}", taskId, output);
+//      }
         final long timestamp = ts;
         // LOG.info("Emit pTofinal output in {}, element: {}", taskId, output);
         writeData(new TimestampAndValue<>(timestamp, output));
@@ -259,7 +263,15 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.serializer = serializerManager.getSerializer(mergerEdgeId);
     this.pToLocalCombiner = new PartialOutputEmitToLocalFinal();
     this.pToRemoteEmitter = new PartialOutputEmitToRemoteMerger();
-    this.partialOutputEmitter = pToLocalCombiner;
+
+    // TODO: preserve this value when migratrion
+    if (task.isTransientTask()) {
+      setPairTaskStopped(false);
+      pairTaskStopped = false;
+    } else {
+      setPairTaskStopped(true);
+    }
+
 
     this.partialOutputCollector = new OutputCollector() {
       private long ts;
@@ -717,11 +729,14 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     void emitWatermark(Watermark watermark);
   }
 
-  final class PartialOutputEmitToLocalFinal implements PartialOutputEmitter {
+  final class PartialOutputEmitToLocalFinal implements PartialOutputEmitter{
 
     @Override
     public void emit(Object output, long ts) {
       // send to final
+//      if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
+//        LOG.info("Partial output to Local final for {}: {}", taskId, output);
+//      }
       finalOutputCollector.setInputTimestamp(ts);
       pToFinalTransform.onData(output);
     }
@@ -737,6 +752,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     @Override
     public void emit(Object output, long ts) {
+//      if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
+//        LOG.info("Partial output to remote (partial) for {}: {}", taskId, output);
+//      }
       pipeManagerWorker.writeData(taskId,
         mergerEdgeId, mergerTaskId, serializer,
         new TimestampAndValue<>(ts, output));

@@ -155,12 +155,18 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           final TaskExecutor taskExecutor =
             taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-          taskOutputDoneAckCounter.put(control.getTaskId(),
-            new AtomicInteger(taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask())));
+          final int cnt = taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
 
-          // stop output pipe
-          TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
-            TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          if (cnt == 0) {
+            LOG.info("Receive all task output done ack {}", control.getTaskId());
+            taskOutputDoneAckCounter.remove(control.getTaskId());
+            stopAndCheckpointTask(control.getTaskId());
+          } else {
+            taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
+            // stop output pipe
+            TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
+              TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          }
         }
         break;
       }
@@ -194,7 +200,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
           .decrementAndGet();
 
-        pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
+        // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
         if (cnt == 0) {
           // (5): start pair task output pipe

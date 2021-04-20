@@ -347,7 +347,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
           final Triple<String, String, String> triple =
             pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
-          crTaskExecutor.startInputPipeIndex(triple);
+          // crTaskExecutor.startInputPipeIndex(triple);
         }
         break;
       }

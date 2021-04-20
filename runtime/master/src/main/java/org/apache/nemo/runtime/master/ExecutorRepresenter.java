@@ -2,6 +2,8 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 
 import java.util.*;
 
@@ -96,6 +98,11 @@ public interface ExecutorRepresenter {
 
   // For activation/ deactivation
   void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor);
+  void activationDoneSignal(final String taskId);
   void deactivationDoneSignal(final String taskId);
   void deactivateLambdaTask(final String taskId);
+  void partialWarmupStatelessTasks(final int num,
+                                   final TaskScheduledMapMaster taskScheduledMapMaster,
+                                   final ExecutorRegistry executorRegistry,
+                                   final PairStageTaskManager pairStageTaskManager);
 }
