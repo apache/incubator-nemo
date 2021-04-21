@@ -441,7 +441,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
               // LOG.info("Emit watermark streamvertex in {} {}", taskId, new Instant(watermark.getTimestamp()));
 
-              pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+              pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
                 dstTaskId,
                 serializer,
                 new WatermarkWithIndex(watermark, taskIndex));
@@ -465,7 +465,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
           taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
             watermarkWithIndex.getWatermark().getTimestamp())
             .ifPresent(watermark -> {
-              pipeManagerWorker.writeData(taskId, outputEdge.getId(),
+              pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
                 dstTaskId,
                 serializer,
                 new WatermarkWithIndex(watermark, taskIndex));

@@ -25,6 +25,7 @@ public final class OutputWriterFlusher {
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.channelList = new HashSet<>();
 
+    /*
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
       synchronized (channelList) {
@@ -43,6 +44,8 @@ public final class OutputWriterFlusher {
       }
 
     }, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
+    */
+
   }
 
   public void registerChannel(final Channel channel) {

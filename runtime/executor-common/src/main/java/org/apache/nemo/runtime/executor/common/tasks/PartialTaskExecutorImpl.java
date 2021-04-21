@@ -260,7 +260,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 //            new Instant(watermark.getTimestamp()));
 //        }
         // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
-        writeData(new WatermarkWithIndex(watermark, taskIndex));
+        writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
       }
 
       @Override
@@ -321,6 +321,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
   private void writeData(Object data) {
     pipeManagerWorker.writeData(taskId, mergerEdgeId, mergerTaskId, shortcutSerializer, data);
+  }
+
+  private void writeWatermark(Object data) {
+    pipeManagerWorker.writeWatermark(taskId, mergerEdgeId, mergerTaskId, shortcutSerializer, data);
   }
 
   @Override
@@ -791,7 +795,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 //        LOG.info("Partial output watermark remote (partial) for {}: ts: {} {}", taskId,
 //          new Instant(watermark.getTimestamp()));
 //      }
-      pipeManagerWorker.writeData(taskId,
+      pipeManagerWorker.writeWatermark(taskId,
         mergerEdgeId, mergerTaskId, serializer, new WatermarkWithIndex(watermark, taskIndex));
     }
   }

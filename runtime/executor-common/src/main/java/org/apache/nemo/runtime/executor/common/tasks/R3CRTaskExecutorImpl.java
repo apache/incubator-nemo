@@ -825,7 +825,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         // we should manage the watermark
 
         for (int i = 0; i < vmPathDstTasks.length; i++) {
-          watermarkRouters[i].writeData(data);
+          watermarkRouters[i].writeWatermark(data);
         }
       } else {
         dataRouters[getDstTaskId.getDstTaskIdIndex()].writeData(data);
@@ -842,7 +842,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       if (b == 0x01) {
         // broadcast watermark
         for (int i = 0; i < vmPathDstTasks.length; i++) {
-          watermarkRouters[i].writeByteBuf(data);
+          watermarkRouters[i].writeWatermarkByteBuf(data);
         }
       } else {
         // data
@@ -863,7 +863,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-        watermarkRouters[0].writeData(data);
+        watermarkRouters[0].writeWatermark(data);
       } else {
         dataRouters[0].writeData(data);
       }
@@ -878,7 +878,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
       if (b == 0x01) {
         // broadcast watermark
-        watermarkRouters[0].writeByteBuf(data);
+        watermarkRouters[0].writeWatermarkByteBuf(data);
       } else {
         // data
         dataRouters[0].writeByteBuf(data);
@@ -900,7 +900,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           .ifPresent(watermark -> {
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
             for (int i = 0; i < vmPathDstTasks.length; i++) {
-              watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
+              watermarkRouters[i].writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
             }
           });
 
@@ -925,7 +925,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           .ifPresent(watermark -> {
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
             for (int i = 0; i < vmPathDstTasks.length; i++) {
-              watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
+              watermarkRouters[i].writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
             }
           });
       } else {
@@ -950,7 +950,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-            watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
+            watermarkRouters[0].writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
           });
 
       } else {
@@ -974,7 +974,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
-            watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
+            watermarkRouters[0].writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
         // data
@@ -986,7 +986,9 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
   interface DataRouter {
     void writeData(Object data);
+    void writeWatermark(Object data);
     void writeByteBuf(ByteBuf data);
+    void writeWatermarkByteBuf(ByteBuf data);
   }
 
 
@@ -1014,15 +1016,30 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
 
     @Override
-    public void writeData(Object watermark) {
+    public void writeWatermarkByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufDataAndFlush(taskId,
+        transientPathEdge.getId(), lambdaId, data);
+
+      // VM path
+      pipeManagerWorker.writeByteBufDataAndFlush(taskId, vmPathEdge.getId(),
+        vmId, data);
+    }
+
+    @Override
+    public void writeData(Object data) {
+      throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void writeWatermark(Object watermark) {
       // final WatermarkWithIndex w = new WatermarkWithIndex((Watermark) watermark, taskIndex);
 
-      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+      pipeManagerWorker.writeWatermark(taskId, transientPathEdge.getId(),
         lambdaId,
         transientPathSerializer,
         watermark);
 
-      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+      pipeManagerWorker.writeWatermark(taskId, vmPathEdge.getId(),
         vmId,
         vmPathSerializer,
         watermark);
@@ -1045,8 +1062,22 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
 
     @Override
+    public void writeWatermark(Object data) {
+      pipeManagerWorker.writeWatermark(taskId, transientPathEdge.getId(),
+        lambdaTaskId,
+        transientPathSerializer,
+        data);
+    }
+
+    @Override
     public void writeByteBuf(ByteBuf data) {
       pipeManagerWorker.writeByteBufData(taskId,
+        transientPathEdge.getId(), lambdaTaskId, data);
+    }
+
+    @Override
+    public void writeWatermarkByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufDataAndFlush(taskId,
         transientPathEdge.getId(), lambdaTaskId, data);
     }
   }
@@ -1067,8 +1098,22 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     }
 
     @Override
+    public void writeWatermark(Object data) {
+      pipeManagerWorker.writeWatermark(taskId, vmPathEdge.getId(),
+        vmTaskId,
+        vmPathSerializer,
+        data);
+    }
+
+    @Override
     public void writeByteBuf(ByteBuf data) {
       pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(),
+        vmTaskId, data);
+    }
+
+    @Override
+    public void writeWatermarkByteBuf(ByteBuf data) {
+      pipeManagerWorker.writeByteBufDataAndFlush(taskId, vmPathEdge.getId(),
         vmTaskId, data);
     }
   }
