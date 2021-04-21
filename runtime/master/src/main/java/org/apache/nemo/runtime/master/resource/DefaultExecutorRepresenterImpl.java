@@ -144,12 +144,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
-  public synchronized void partialWarmupStatelessTasks(final int num,
+  public synchronized void partialWarmupStatelessTasks(final double percent,
                                                        final TaskScheduledMapMaster taskScheduledMapMaster,
                                                        final ExecutorRegistry executorRegistry,
                                                        final PairStageTaskManager pairStageTaskManager) {
 
-    final Collection<String> tasks;
     if (!lambdaControlProxy.isDeactivated()) {
       return;
     }
@@ -160,12 +159,16 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       return;
     }
 
-    tasks = getRunningTasks().stream()
+    final Collection<String> statelessTasks = getRunningTasks().stream()
       .filter(task -> !task.isStateful())
       .map(task -> task.getTaskId())
       .sorted((t1, t2) -> Integer.valueOf(t1.split("-")[0].split("Stage")[1]).compareTo(
         Integer.valueOf(t2.split("-")[0].split("Stage")[1])))
-      .limit(num).collect(Collectors.toSet());
+      .collect(Collectors.toSet());
+
+    final Set<String> tasks = statelessTasks
+      .stream()
+      .limit((int)(percent * statelessTasks.size())).collect(Collectors.toSet());
 
     tasks.forEach(tid -> {
       final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).left();
@@ -185,7 +188,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
     LOG.info("End of waiting for partial warmup activation {}/{}", executorId, tasks);
     try {
-      Thread.sleep(500);
+      Thread.sleep(800);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }

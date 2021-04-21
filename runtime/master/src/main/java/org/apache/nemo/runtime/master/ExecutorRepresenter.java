@@ -101,7 +101,7 @@ public interface ExecutorRepresenter {
   void activationDoneSignal(final String taskId);
   void deactivationDoneSignal(final String taskId);
   void deactivateLambdaTask(final String taskId);
-  void partialWarmupStatelessTasks(final int num,
+  void partialWarmupStatelessTasks(final double percent,
                                    final TaskScheduledMapMaster taskScheduledMapMaster,
                                    final ExecutorRegistry executorRegistry,
                                    final PairStageTaskManager pairStageTaskManager);
