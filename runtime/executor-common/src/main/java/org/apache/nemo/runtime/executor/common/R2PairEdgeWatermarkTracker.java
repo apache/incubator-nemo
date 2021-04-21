@@ -54,13 +54,16 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     this.watermarkTracker = vmWatermarkTracker;
   }
 
-  private void setWatermarkTracker() {
+  private void setWatermarkTrackerAndPrevWatermark() {
     if (lambdaPathAllStopped) {
       watermarkTracker = vmPathTracker;
+      prevWatermark = dataFetcherWatermarkMap.get(vmPathEdgeId);
     } else if (vmPathAllStopped) {
       watermarkTracker = lambdaPathTracker;
+      prevWatermark = dataFetcherWatermarkMap.get(lambdaPathEdgeId);
     } else {
       watermarkTracker = bothPathTracker;
+      prevWatermark = Collections.min(dataFetcherWatermarkMap.values());
     }
   }
 
@@ -97,7 +100,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
           });
       }
 
-      setWatermarkTracker();
+      setWatermarkTrackerAndPrevWatermark();
 
       LOG.info("After Stop lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
@@ -130,7 +133,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
           });
       }
 
-      setWatermarkTracker();
+      setWatermarkTrackerAndPrevWatermark();
 
       LOG.info("After Stop vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
@@ -185,7 +188,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
     }
 
-    setWatermarkTracker();
+    setWatermarkTrackerAndPrevWatermark();
   }
 
   @Override
