@@ -456,6 +456,7 @@ public final class LambdaContainerManager {
         er.setLambdaControlProxy(proxy);
 
         if (evalConf.partialWarmup) {
+          LOG.info("Setup partial warmup");
           scheduledExecutorService.schedule(() -> {
             partialWarmup(rid, er);
           }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);

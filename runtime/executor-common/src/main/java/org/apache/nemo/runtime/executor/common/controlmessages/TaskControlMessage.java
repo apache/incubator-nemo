@@ -107,21 +107,22 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R3_INIT,
     R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER,
     R3_TASK_STATE_CHECK, // periodically check whether the task state becomes zero
-    R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK,
-    R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_ACK_BY_DOWNSTREAM_TASK,
-    R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK,
-    R3_DATA_STOP_BY_DOWNSTREMA_TASK,
-    R3_DATA_WATERMARK_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
-    R3_TASK_OUTPUT_DONE_FROM_UPSTREAM,
-    R3_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+    R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M,
+    R3_ACK_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_FROM_M_TO_P,
+    R3_DATA_WATERMARK_STOP_FROM_P_TO_CR,
+    R3_DATA_STOP_FROM_P_TO_CR,
+    R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P,
+    R3_TASK_OUTPUT_DONE_FROM_P_TO_M,
+    R3_ACK_TASK_OUTPUT_DONE_ACK_FROM_M_TO_P,
     R3_INPUT_OUTPUT_START_BY_PAIR,
-    R3_START_OUTPUT_FROM_DOWNSTREAM,
-    R3_TASK_INPUT_START_FROM_UPSTREAM,
+    R3_START_OUTPUT_FROM_P_TO_CR,
+    R3_TASK_INPUT_START_FROM_P_TO_M,
 
     // For R3 optimization: partial/final bypass
     R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR,
-    R3_OPT_SEND_PARTIAL_RESULT_FROM_PARTIAL_TO_MERGER,
-    R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER,
+    R3_OPT_SEND_PARTIAL_RESULT_FROM_P_TO_M,
+    R3_AC_OPT_SEND_PARTIAL_RESULT_FROM_M_TO_P,
+    R3_OPT_SEND_FINAL_RESULT_FROM_P_TO_M,
 
     // For R3 optimization: fast partial rerouting
     R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL,
@@ -229,8 +230,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           bos.writeUTF((String) event);
           break;
         }
-        case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
-        case R3_DATA_STOP_BY_DOWNSTREMA_TASK:
+        case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
+        case R3_DATA_STOP_FROM_P_TO_CR:
         case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
           ((RedirectionMessage) event).encode(bos);
           break;
@@ -239,7 +240,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           bos.writeBoolean((Boolean)event);
           break;
         }
-        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK: {
+        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           bos.writeUTF((String)event);
           break;
         }
@@ -271,8 +272,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             TaskStopSignalByDownstreamTask.decode(bis));
           break;
         }
-        case R3_DATA_WATERMARK_STOP_BY_DOWNSTREMA_TASK:
-        case R3_DATA_STOP_BY_DOWNSTREMA_TASK:
+        case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
+        case R3_DATA_STOP_FROM_P_TO_CR:
         case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             RedirectionMessage.decode(bis));
@@ -283,7 +284,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             bis.readBoolean());
           break;
         }
-        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_BY_UPSTREAM_TASK: {
+        case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             bis.readUTF());
           break;

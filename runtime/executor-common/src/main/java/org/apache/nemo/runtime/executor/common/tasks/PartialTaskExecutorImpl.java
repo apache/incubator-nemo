@@ -43,6 +43,7 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,6 +244,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 //        if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
 //        LOG.info("Final output to remote for {}: {}", taskId, output);
 //      }
+//        if (taskId.contains("Stage6")) {
+//          LOG.info("Partial output from local final for {}: ts: {} {}", taskId,
+//            new Instant(ts));
+//        }
         final long timestamp = ts;
         // LOG.info("Emit pTofinal output in {}, element: {}", taskId, output);
         writeData(new TimestampAndValue<>(timestamp, output));
@@ -250,6 +255,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
       @Override
       public void emitWatermark(Watermark watermark) {
+//        if (taskId.contains("Stage6")) {
+//          LOG.info("Partial watermark from local final for {}: ts: {} {}", taskId,
+//            new Instant(watermark.getTimestamp()));
+//        }
         // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
         writeData(new WatermarkWithIndex(watermark, taskIndex));
       }
@@ -267,7 +276,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     // TODO: preserve this value when migratrion
     if (task.isTransientTask()) {
       setPairTaskStopped(false);
-      pairTaskStopped = false;
     } else {
       setPairTaskStopped(true);
     }
@@ -673,6 +681,12 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     }
   }
 
+  public void clearState() {
+    // TODO
+    LOG.info("Clear state of {}", taskId);
+    statefulTransforms.forEach(transform -> transform.clearState());
+  }
+
   @Override
   public void handleData(final String edgeId,
                                 final TaskHandlingEvent taskHandlingEvent) {
@@ -737,6 +751,11 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 //      if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
 //        LOG.info("Partial output to Local final for {}: {}", taskId, output);
 //      }
+
+//      if (taskId.contains("Stage6")) {
+//        LOG.info("Partial output to local final for {}: ts: {}", taskId,
+//          new Instant(ts));
+//      }
       finalOutputCollector.setInputTimestamp(ts);
       pToFinalTransform.onData(output);
     }
@@ -744,6 +763,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     @Override
     public void emitWatermark(Watermark watermark) {
       // send to final
+//      if (taskId.contains("Stage6")) {
+//        LOG.info("Partial output watermark local final for {}: ts: {} {}", taskId,
+//          new Instant(watermark.getTimestamp()));
+//      }
       pToFinalTransform.onWatermark(watermark);
     }
   }
@@ -752,8 +775,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     @Override
     public void emit(Object output, long ts) {
-//      if (taskId.contains("Stage17") || taskId.contains("Stage18")) {
-//        LOG.info("Partial output to remote (partial) for {}: {}", taskId, output);
+//      if (taskId.contains("Stage6")) {
+//        LOG.info("Partial output to remote (partial) for {}: ts: {} {}", taskId,
+//          new Instant(ts),
+//          output);
 //      }
       pipeManagerWorker.writeData(taskId,
         mergerEdgeId, mergerTaskId, serializer,
@@ -762,6 +787,10 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     @Override
     public void emitWatermark(Watermark watermark) {
+//      if (taskId.contains("Stage6")) {
+//        LOG.info("Partial output watermark remote (partial) for {}: ts: {} {}", taskId,
+//          new Instant(watermark.getTimestamp()));
+//      }
       pipeManagerWorker.writeData(taskId,
         mergerEdgeId, mergerTaskId, serializer, new WatermarkWithIndex(watermark, taskIndex));
     }

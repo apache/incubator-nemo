@@ -144,56 +144,72 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
-  public void partialWarmupStatelessTasks(final int num,
-                                          final TaskScheduledMapMaster taskScheduledMapMaster,
-                                          final ExecutorRegistry executorRegistry,
-                                          final PairStageTaskManager pairStageTaskManager) {
+  public synchronized void partialWarmupStatelessTasks(final int num,
+                                                       final TaskScheduledMapMaster taskScheduledMapMaster,
+                                                       final ExecutorRegistry executorRegistry,
+                                                       final PairStageTaskManager pairStageTaskManager) {
 
     final Collection<String> tasks;
-    synchronized (this) {
-      if (!lambdaControlProxy.isDeactivated()) {
-        return;
-      }
-
-      tasks = getRunningTasks().stream()
-        .filter(task -> !task.isStateful())
-        .map(task -> task.getTaskId())
-        .sorted((t1, t2) -> Integer.valueOf(t1.split("-")[0].split("Stage")[1]).compareTo(
-          Integer.valueOf(t2.split("-")[0].split("Stage")[1])))
-        .limit(num).collect(Collectors.toSet());
-
-      tasks.forEach(tid -> {
-        final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).left();
-        final ExecutorRepresenter vm = executorRegistry.getExecutorRepresentor(
-          taskScheduledMapMaster.getTaskExecutorIdMap().get(pairTid));
-        activateLambdaTask(tid, pairTid, vm);
-      });
+    if (!lambdaControlProxy.isDeactivated()) {
+      return;
     }
+
+    if (!activatedTasks.isEmpty() || !activatedPendingTasks.isEmpty()) {
+      LOG.info("There are activated tasks do not trigger warmup ... {}/{}",
+        activatedTasks, activatedPendingTasks);
+      return;
+    }
+
+    tasks = getRunningTasks().stream()
+      .filter(task -> !task.isStateful())
+      .map(task -> task.getTaskId())
+      .sorted((t1, t2) -> Integer.valueOf(t1.split("-")[0].split("Stage")[1]).compareTo(
+        Integer.valueOf(t2.split("-")[0].split("Stage")[1])))
+      .limit(num).collect(Collectors.toSet());
+
+    tasks.forEach(tid -> {
+      final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).left();
+      final ExecutorRepresenter vm = executorRegistry.getExecutorRepresentor(
+        taskScheduledMapMaster.getTaskExecutorIdMap().get(pairTid));
+      activateLambdaTask(tid, pairTid, vm);
+    });
 
     LOG.info("Waiting for partial warmup activation {}/{}", executorId, tasks);
     while (tasks.stream().anyMatch(tid -> !activatedTasks.contains(tid))) {
       try {
-        Thread.sleep(20);
+        wait(30);
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        LOG.info("Interrupted 11..");
       }
     }
+
     LOG.info("End of waiting for partial warmup activation {}/{}", executorId, tasks);
     try {
       Thread.sleep(500);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+
     LOG.info("Deactivate partial warmup");
 
     tasks.forEach(tid -> {
       deactivateLambdaTask(tid);
     });
+
+
+    LOG.info("Waiting for deactivation of {} after partial warmup", executorId);
+    while (!lambdaControlProxy.isDeactivated()) {
+      try {
+        wait(30);
+      } catch (InterruptedException e) {
+      }
+    }
+    LOG.info("End of waiting for deactivation of {} after partial warmup", executorId);
   }
 
 
   @Override
-  public void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
+  public synchronized void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
     if (lambdaControlProxy == null) {
       throw new RuntimeException("Lambda control proxy null " + executorId);
     }
@@ -202,51 +218,45 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       throw new RuntimeException("Lambda executor " + executorId + " does not contain lambda task " + taskId);
     }
 
-    synchronized (this) {
-      if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
-        sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
-      } else {
-        // activate signal
-        lambdaControlProxy.activate();
-        sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
-      }
+    if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
+      sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
+    } else {
+      // activate signal
+      lambdaControlProxy.activate();
+      sendRoutingSignal(taskId, pairVmTaskId, vmExecutor);
     }
   }
 
   @Override
-  public void activationDoneSignal(final String taskId) {
+  public synchronized void activationDoneSignal(final String taskId) {
     if (!executorId.contains("Lambda")) {
       throw new RuntimeException("Non lambda executor receive signal " + executorId);
     }
 
-    synchronized (this) {
-      if (!activatedPendingTasks.contains(taskId)) {
-        throw new RuntimeException("Task is not activated but receive activation done " + taskId + " in " + executorId
-          + ", pending: " + activatedPendingTasks + ", active: " + activatedTasks);
-      }
-      activatedPendingTasks.remove(taskId);
-      activatedTasks.add(taskId);
+    if (!activatedPendingTasks.contains(taskId)) {
+      throw new RuntimeException("Task is not activated but receive activation done " + taskId + " in " + executorId
+        + ", pending: " + activatedPendingTasks + ", active: " + activatedTasks);
+    }
+    activatedPendingTasks.remove(taskId);
+    activatedTasks.add(taskId);
+  }
+
+  @Override
+  public synchronized void deactivationDoneSignal(final String taskId) {
+    if (!activatedTasks.contains(taskId)) {
+      throw new RuntimeException("Task is not activated but deactivate done signal " + taskId + " in " + executorId);
+    }
+    activatedTasks.remove(taskId);
+    LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
+
+    if (activatedTasks.isEmpty()) {
+      // deactivation of the worker
+      lambdaControlProxy.deactivate();
     }
   }
 
   @Override
-  public void deactivationDoneSignal(final String taskId) {
-    synchronized (this) {
-      if (!activatedTasks.contains(taskId)) {
-        throw new RuntimeException("Task is not activated but deactivate done signal " + taskId + " in " + executorId);
-      }
-      activatedTasks.remove(taskId);
-      LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
-
-      if (activatedTasks.isEmpty()) {
-        // deactivation of the worker
-        lambdaControlProxy.deactivate();
-      }
-    }
-  }
-
-  @Override
-  public void deactivateLambdaTask(final String taskId) {
+  public synchronized void deactivateLambdaTask(final String taskId) {
     if (lambdaControlProxy == null) {
       throw new RuntimeException("Lambda control proxy null " + executorId);
     }
@@ -261,26 +271,23 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     }
 
     while (true) {
-      synchronized (this) {
-        if (!activatedPendingTasks.contains(taskId)) {
-          LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
-          sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.RoutingDataToLambda)
-            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-              .setTaskId(taskId)
-              .build())
-            .build());
+      if (!activatedPendingTasks.contains(taskId)) {
+        LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
+        sendControlMessage(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.RoutingDataToLambda)
+          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+            .setTaskId(taskId)
+            .build())
+          .build());
 
-          return;
-        }
+        return;
       }
 
       try {
-        Thread.sleep(40);
+        wait(40);
       } catch (InterruptedException e) {
-        e.printStackTrace();
       }
     }
   }

@@ -111,14 +111,23 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   public int getNumKeys() {
-    //LOG.info("TimerInteranslKey: {} StateInternalsKey: {}", inMemoryTimerInternalsFactory.getNumKey(),
-    //  inMemoryStateInternalsFactory.getNumKeys());
-    return inMemoryTimerInternalsFactory.getNumKey();
+//    LOG.info("TimerInteranslKey: {} StateInternalsKey: {} in {}", inMemoryTimerInternalsFactory.getNumKey(),
+//      inMemoryStateInternalsFactory.getNumKeys(), getContext().getTaskId());
+    return Math.max(inMemoryTimerInternalsFactory.getNumKey(), inMemoryStateInternalsFactory.getNumKeys());
   }
 
   @Override
   public boolean isGBKPartialTransform() {
     return partial;
+  }
+
+  @Override
+  public void clearState() {
+    LOG.info("Before clear TimerInternal: {}, StateInternal: {}, KAW: {}, inputWatermark: {}, prevWatermark: {} in {}",
+      inMemoryTimerInternalsFactory.getNumKey(), inMemoryStateInternalsFactory.getNumKeys(),
+      keyAndWatermarkHoldMap, inputWatermark, prevOutputWatermark,
+      getContext().getTaskId());
+    keyAndWatermarkHoldMap.clear();
   }
 
   @Override
@@ -332,9 +341,12 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    // LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {}",
-    //  getContext().getTaskId(),
-    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+
+//    if (getContext().getTaskId().contains("Stage7")) {
+//      LOG.info("Final input receive at {}, timestamp: {}, inputWatermark: {} / {} / {}",
+//        getContext().getTaskId(),
+//        element.getTimestamp(), new Instant(inputWatermark.getTimestamp()), element, element.getWindows());
+//    }
 
     if (keyCountMap.containsKey(element.getValue().getKey())) {
       keyCountMap.put(element.getValue().getKey(), keyCountMap.get(element.getValue().getKey()) + 1);
@@ -343,37 +355,42 @@ public final class GBKFinalTransform<K, InputT>
     }
 
     // drop late data
-    try {
-      if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
 
-        //LOG.info("Final input!!: {}", element);
-        // We can call Beam's DoFnRunner#processElement here,
-        // but it may generate some overheads if we call the method for each data.
-        // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
-        // TODO #250: But, this approach can delay the event processing in streaming,
-        // TODO #250: if the watermark is not triggered for a long time.
-        final KV<K, InputT> kv = element.getValue();
-        checkAndInvokeBundle();
-        final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.elementsWorkItem(kv.getKey(),
-            Collections.singletonList(element.withValue(kv.getValue())));
-        numProcessedData += 1;
+      //LOG.info("Final input!!: {}", element);
+      // We can call Beam's DoFnRunner#processElement here,
+      // but it may generate some overheads if we call the method for each data.
+      // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+      // TODO #250: But, this approach can delay the event processing in streaming,
+      // TODO #250: if the watermark is not triggered for a long time.
+      final KV<K, InputT> kv = element.getValue();
+      checkAndInvokeBundle();
+      final KeyedWorkItem<K, InputT> keyedWorkItem =
+        KeyedWorkItems.elementsWorkItem(kv.getKey(),
+          Collections.singletonList(element.withValue(kv.getValue())));
+      numProcessedData += 1;
 
-        // LOG.info("Final input process: {} key {}, time {}", getContext().getTaskId(),
-        //  kv.getKey(), new Instant(element.getTimestamp()));
+      // LOG.info("Final input process: {} key {}, time {}", getContext().getTaskId(),
+      //  kv.getKey(), new Instant(element.getTimestamp()));
 
-        // The DoFnRunner interface requires WindowedValue,
-        // but this windowed value is actually not used in the ReduceFnRunner internal.
-        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+      // The DoFnRunner interface requires WindowedValue,
+      // but this windowed value is actually not used in the ReduceFnRunner internal.
+      final WindowedValue v = WindowedValue.valueInGlobalWindow(keyedWorkItem);
+      try {
+        getDoFnRunner().processElement(v);
         checkAndFinishBundle();
-      } else {
-        LOG.info("Late input at {}, time {}, watermark {}", getContext().getTaskId(),
-          new Instant(element.getTimestamp()), new Instant(inputWatermark.getTimestamp()));
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("Exception trigggered element " + element.toString() + ", at "
+          + getContext().getTaskId() + ", input watermark " + new Instant(inputWatermark.getTimestamp()) +
+          " keyedWorkItem: " + keyedWorkItem +
+          ", windowedValue: " + v + ", getWindow: " + element.getWindows());
       }
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException("exception trigggered element " + element.toString());
+    } else {
+      LOG.info("Late input at {}, time {}, watermark {}", getContext().getTaskId(),
+        new Instant(element.getTimestamp()), new Instant(inputWatermark.getTimestamp()));
     }
+
   }
 
   /**
@@ -469,7 +486,9 @@ public final class GBKFinalTransform<K, InputT>
       return;
     }
 
-    // LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+//    if (getContext().getTaskId().contains("Stage7")) {
+//      LOG.info("Final watermark receive at {}:  {}", getContext().getTaskId(), new Instant(watermark.getTimestamp()));
+//    }
 
     //LOG.info("Before bundle {} at {}", new Instant(watermark.getTimestamp()), getContext().getTaskId());
     checkAndInvokeBundle();
@@ -694,8 +713,8 @@ public final class GBKFinalTransform<K, InputT>
         keyAndWatermarkHoldMap.put(key,
           // adds the output timestamp to the watermark hold of each key
           // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-          new Watermark(output.getTimestamp().getMillis() + 1));
-        timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
+          new Watermark(output.getTimestamp().getMillis()));
+        timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis()));
       }
 
       // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());

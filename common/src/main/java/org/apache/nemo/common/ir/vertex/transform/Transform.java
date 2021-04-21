@@ -46,6 +46,10 @@ public interface Transform<I, O> extends Serializable {
 
   }
 
+  default void clearState() {
+
+  }
+
   /**
    * On data received.
    * @param element data received.

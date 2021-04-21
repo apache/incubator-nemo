@@ -4,8 +4,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -356,7 +354,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           LOG.info("Send final result signal from {} to {}", control.getTaskId(), mergerId);
 
           pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
-            R3_OPT_SEND_FINAL_RESULT_FROM_PARTIAL_TO_MERGER, null);
+            R3_OPT_SEND_FINAL_RESULT_FROM_P_TO_M, null);
         }
         break;
       }
