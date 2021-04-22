@@ -64,6 +64,7 @@ public final class TaskDispatcher {
   private final SchedulingPolicy schedulingPolicy;
   private final TaskScheduledMapMaster taskScheduledMap;
   private final RendevousServer rendevousServer;
+  private final ResourceRequestCounter resourceRequestCounter;
 
   private boolean reclaiming;
 
@@ -73,6 +74,7 @@ public final class TaskDispatcher {
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager,
+                         final ResourceRequestCounter resourceRequestCounter,
                          final TaskScheduledMapMaster taskScheduledMap,
                          final RendevousServer rendevousServer) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
@@ -82,6 +84,7 @@ public final class TaskDispatcher {
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
+    this.resourceRequestCounter = resourceRequestCounter;
     this.schedulingPolicy = schedulingPolicy;
     this.schedulingConstraintRegistry = schedulingConstraintRegistry;
     this.taskScheduledMap = taskScheduledMap;
@@ -250,7 +253,7 @@ public final class TaskDispatcher {
   private void doScheduleTaskList() {
 
 
-      final List<Task> taskList = Collections.singletonList(pendingTaskCollectionPointer.getTask());
+      final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
       /* final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
       if (!taskListOptional.isPresent()) {
         // Task list is empty
@@ -260,6 +263,18 @@ public final class TaskDispatcher {
 
       final Collection<Task> taskList = taskListOptional.get();
       */
+
+    // Check whehter multiple containers are created (for scheduling)
+    // !all container is executed
+    if (resourceRequestCounter.resourceRequestCount.get() > 0) {
+      pendingTaskCollectionPointer.addTasks(taskList);
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      return;
+    }
 
       LOG.info("Size of tasks: {}", taskList.size());
       // Reverse order by stage number
@@ -336,9 +351,7 @@ public final class TaskDispatcher {
       LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
       if (couldNotSchedule.size() > 0) {
         // Try these again, if no new task list has been set
-        for (final Task t : couldNotSchedule) {
-          pendingTaskCollectionPointer.addTask(t);
-        }
+        pendingTaskCollectionPointer.addTasks(couldNotSchedule);
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {

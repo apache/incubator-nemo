@@ -105,7 +105,6 @@ public final class RuntimeMaster {
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
   private final Set<IRVertex> irVertices;
-  private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
 
   private final TaskScheduledMapMaster taskScheduledMap;
@@ -121,6 +120,7 @@ public final class RuntimeMaster {
   private final LambdaContainerManager lambdaContainerManager;
   private final EvalConf evalConf;
   private final PairStageTaskManager pairStageTaskManager;
+  private final ResourceRequestCounter resourceRequestCounter;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -133,6 +133,7 @@ public final class RuntimeMaster {
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                         final TaskDispatcher taskDispatcher,
+                        final ResourceRequestCounter resourceRequestCounter,
                         final EvalConf evalConf,
                         final PairStageTaskManager pairStageTaskManager,
                         final LambdaContainerManager lambdaContainerManager,
@@ -142,6 +143,7 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.resourceRequestCounter = resourceRequestCounter;
     this.lambdaContainerManager = lambdaContainerManager;
     // this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
@@ -186,7 +188,6 @@ public final class RuntimeMaster {
         .setupListener(RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.irVertices = new HashSet<>();
-    this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
     this.planStateManager = planStateManager;
   }
@@ -371,7 +372,7 @@ public final class RuntimeMaster {
     LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
       type, memory, capacity, slot, executorNum);
 
-    resourceRequestCount.getAndAdd(executorNum);
+    resourceRequestCounter.resourceRequestCount.getAndAdd(executorNum);
     containerManager.requestContainer(executorNum,
       new ResourceSpecification(type, capacity, slot, memory, poisonSec), name);
 
@@ -449,7 +450,7 @@ public final class RuntimeMaster {
           createTypeLambda(map.get(LAMBDA), num);
         }
 
-        metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
+        metricCountDownLatch = new CountDownLatch(resourceRequestCounter.resourceRequestCount.get());
       } catch (final Exception e) {
         e.printStackTrace();
         throw new ContainerException(e);
@@ -495,7 +496,7 @@ public final class RuntimeMaster {
         final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
         if (executor.isPresent()) {
           scheduler.onExecutorAdded(executor.get());
-          return (resourceRequestCount.decrementAndGet() == 0);
+          return (resourceRequestCounter.resourceRequestCount.decrementAndGet() == 0);
         } else {
           return false;
         }
@@ -537,17 +538,20 @@ public final class RuntimeMaster {
                                      final int capacity,
                                      final int slot,
                                      final int memory) {
-    resourceRequestCount.getAndAdd(num);
+    resourceRequestCounter.resourceRequestCount.getAndAdd(num);
     try {
-      requestContainerThread.submit(() -> {
+      final List<ExecutorRepresenter> executorRepresenters =
+        requestContainerThread.submit(() -> {
         final List<Future<ExecutorRepresenter>> list =
           lambdaContainerManager.createLambdaContainer(num, capacity, slot, memory);
 
+        final List<ExecutorRepresenter> erList = new ArrayList<>(list.size());
         for (final Future<ExecutorRepresenter> future : list) {
           final Callable<Boolean> processExecutorLaunchedEvent = () -> {
             final ExecutorRepresenter executor = future.get();
+            erList.add(executor);
             scheduler.onExecutorAdded(executor);
-            return (resourceRequestCount.decrementAndGet() == 0);
+            return (resourceRequestCounter.resourceRequestCount.decrementAndGet() == 0);
           };
 
           final boolean eventResult;
@@ -558,7 +562,22 @@ public final class RuntimeMaster {
             throw new ContainerException(e);
           }
         }
+
+        return erList;
       }).get();
+
+      LOG.info("Request lambda container waiting for deactivation");
+      executorRepresenters.forEach(er -> {
+        while (!er.getLambdaControlProxy().isDeactivated()) {
+          try {
+            Thread.sleep(30);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      });
+      LOG.info("Done of Request lambda container waiting for deactivation");
+
     } catch (InterruptedException e) {
       e.printStackTrace();
     } catch (ExecutionException e) {

@@ -196,10 +196,13 @@ public final class StreamingScheduler implements Scheduler {
       e.printStackTrace();
     }
 
+    final List<Task> lambdaTasks = allTasks.stream()
+      .filter(task -> task.isTransientTask()).collect(Collectors.toList());
+    final List<Task> vmTasks = allTasks.stream()
+      .filter(task -> !task.isTransientTask()).collect(Collectors.toList());
 
-    for (final Task t : allTasks) {
-      pendingTaskCollectionPointer.addTask(t);
-    }
+    pendingTaskCollectionPointer.addTasks(vmTasks);
+    pendingTaskCollectionPointer.addTasks(lambdaTasks);
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 

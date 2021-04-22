@@ -25,10 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -41,7 +38,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public final class PendingTaskCollectionPointer {
   private static final Logger LOG = LoggerFactory.getLogger(PendingTaskCollectionPointer.class.getName());
   private Collection<Task> curTaskCollection;
-  private final BlockingQueue<Task> queue;
+  private final BlockingQueue<List<Task>> queue;
 
   @Inject
   private PendingTaskCollectionPointer() {
@@ -56,9 +53,16 @@ public final class PendingTaskCollectionPointer {
     this.curTaskCollection = newCollection;
   }
 
-  public void addTask(final Task task) {
+  public synchronized void addTasks(final List<Task> tasks) {
+    if (tasks.size() > 0) {
+      LOG.info("Add tasks " + tasks);
+      queue.add(tasks);
+    }
+  }
+
+  public synchronized void addTask(final Task task) {
     LOG.info("Add task " + task.getTaskId());
-    queue.add(task);
+    queue.add(Collections.singletonList(task));
 
     /*
     if (this.curTaskCollection == null) {
@@ -80,7 +84,7 @@ public final class PendingTaskCollectionPointer {
     }
   }
 
-  public Task getTask() {
+  public synchronized List<Task> getTasks() {
     try {
       return queue.take();
     } catch (InterruptedException e) {
