@@ -115,6 +115,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
   private final boolean singleOneToOneInput;
   private final IntermediateDataIOFactory intermediateDataIOFactory;
 
+  private final DataHandler dataHandler;
+
   /**
    * Constructor.
    *
@@ -173,8 +175,10 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
     if (singleOneToOneInput) {
       this.taskWatermarkManager =  null;
+      this.dataHandler = new SingleO2ODataHandler();
     } else {
       this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager(taskId));
+      this.dataHandler = new MultiInputDataHandler();
     }
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.dstTaskId = RuntimeIdManager.generateTaskId(((StageEdge)outputEdge).getDst().getId(),
@@ -423,58 +427,10 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                          final TaskHandlingEvent taskHandlingEvent) {
     if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
       final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-      if (singleOneToOneInput) {
-        pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
-      } else {
-        final ByteBuf byteBuf = data;
-        byteBuf.markReaderIndex();
-        final Byte b = byteBuf.readByte();
-        byteBuf.resetReaderIndex();
-
-        if (b == 0x01) {
-          // watermark!
-          // we should manage the watermark
-          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-            watermarkWithIndex.getWatermark().getTimestamp())
-            .ifPresent(watermark -> {
-
-              // LOG.info("Emit watermark streamvertex in {} {}", taskId, new Instant(watermark.getTimestamp()));
-
-              pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
-                dstTaskId,
-                serializer,
-                new WatermarkWithIndex(watermark, taskIndex));
-            });
-
-        } else {
-          // data
-          pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
-        }
-      }
-
+      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
     } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
       final Object data = taskHandlingEvent.getData();
-      if (singleOneToOneInput) {
-        pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
-      } else {
-        if (data instanceof WatermarkWithIndex) {
-          // watermark!
-          // we should manage the watermark
-          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-          taskWatermarkManager.updateWatermark(edgeId, watermarkWithIndex.getIndex(),
-            watermarkWithIndex.getWatermark().getTimestamp())
-            .ifPresent(watermark -> {
-              pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
-                dstTaskId,
-                serializer,
-                new WatermarkWithIndex(watermark, taskIndex));
-            });
-
-        } else {
-          pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
-        }
-      }
+      dataHandler.handleLocalData(data, taskHandlingEvent);
     }
   }
 
@@ -525,6 +481,72 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     return true;
   }
 
+  interface DataHandler {
+    void handleLocalData(Object data, TaskHandlingEvent event);
+    void handleRemoteByteBuf(ByteBuf data,
+                             TaskHandlingEvent event);
+  }
+
+  final class SingleO2ODataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data, TaskHandlingEvent event) {
+      pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent event) {
+      pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
+    }
+  }
+
+  final class MultiInputDataHandler implements DataHandler {
+
+    @Override
+    public void handleLocalData(Object data, TaskHandlingEvent event) {
+      if (data instanceof WatermarkWithIndex) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+            pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
+              dstTaskId,
+              serializer,
+              new WatermarkWithIndex(watermark, taskIndex));
+          });
+
+      } else {
+        pipeManagerWorker.writeData(taskId, outputEdge.getId(), dstTaskId, serializer, data);
+      }
+    }
+
+    @Override
+    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent event) {
+      final ByteBuf byteBuf = data;
+      byteBuf.markReaderIndex();
+      final Byte b = byteBuf.readByte();
+      byteBuf.resetReaderIndex();
+
+      if (b == 0x01) {
+        // watermark!
+        // we should manage the watermark
+        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) event.getData();
+        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+          watermarkWithIndex.getWatermark().getTimestamp())
+          .ifPresent(watermark -> {
+
+            // LOG.info("Emit watermark streamvertex in {} {}", taskId, new Instant(watermark.getTimestamp()));
+
+            pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
+              dstTaskId,
+              serializer,
+              new WatermarkWithIndex(watermark, taskIndex));
+          });
+      }
+    }
+  }
 
   @Override
   public String toString() {
