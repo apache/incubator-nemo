@@ -474,6 +474,7 @@ public final class LambdaContainerManager {
       if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
         er.partialWarmupStatelessTasks(1.0, taskScheduledMapMaster, executorRegistry, pairStageTaskManager);
         scheduledExecutorService.schedule(() -> {
+          LOG.info("Trigger partial warmup");
           partialWarmup(rid, er);
         }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);
       }

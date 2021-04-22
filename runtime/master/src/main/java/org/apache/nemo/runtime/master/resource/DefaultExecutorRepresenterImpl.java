@@ -153,11 +153,12 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
                                                        final PairStageTaskManager pairStageTaskManager) {
 
     if (!lambdaControlProxy.isDeactivated()) {
+      LOG.info("Skip partial warmup because lambda is active");
       return;
     }
 
     if (!activatedTasks.isEmpty() || !activatedPendingTasks.isEmpty()) {
-      LOG.info("There are activated tasks do not trigger warmup ... {}/{}",
+      LOG.info("Skip partial warmup because lambda has active tasks {} / {}",
         activatedTasks, activatedPendingTasks);
       return;
     }
