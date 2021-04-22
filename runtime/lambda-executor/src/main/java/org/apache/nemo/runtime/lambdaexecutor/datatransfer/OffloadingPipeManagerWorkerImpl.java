@@ -132,18 +132,8 @@ public final class OffloadingPipeManagerWorkerImpl implements PipeManagerWorker 
   }
 
   @Override
-  public void writeWatermark(String srcTaskId, String edgeId, String dstTaskId, Serializer serializer, Object event) {
-
-  }
-
-  @Override
   public void writeByteBufData(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
     throw new RuntimeException("not supported");
-  }
-
-  @Override
-  public void writeByteBufDataAndFlush(String srcTaskId, String edgeId, String dstTaskId, ByteBuf event) {
-
   }
 
   @Override

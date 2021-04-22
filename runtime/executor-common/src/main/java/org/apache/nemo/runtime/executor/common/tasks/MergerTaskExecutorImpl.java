@@ -275,7 +275,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
       @Override
       public void emitWatermark(Watermark watermark) {
         // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
-        dataRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
+        dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
       }
 
       @Override
@@ -833,7 +833,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
             if (getNumKeys() > 0) {
               mergerTransform.onWatermark(watermark);
             } else {
-              dataRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
+              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
               dataHandler = new BypassOptimizeDataHandler();
             }
           });
@@ -861,7 +861,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
             if (getNumKeys() > 0) {
               mergerTransform.onWatermark(watermark);
             } else {
-              dataRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
+              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
               dataHandler = new BypassOptimizeDataHandler();
             }
           });
@@ -884,7 +884,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
-            dataRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
+            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
         dataRouter.writeData(data);
@@ -908,7 +908,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
-            dataRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
+            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
         // data
@@ -984,7 +984,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   interface DataRouter {
     void writeData(Object data);
-    void writeWatermark(Object data);
     void writeByteBuf(ByteBuf data);
   }
 
@@ -993,14 +992,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     public LambdaDataRouter(final String lambdaTaskId) {
       this.lambdaTaskId = lambdaTaskId;
-    }
-
-    @Override
-    public void writeWatermark(Object data) {
-       pipeManagerWorker.writeWatermark(taskId, transientOutputPathEdge.getId(),
-        lambdaTaskId,
-        transientPathSerializer,
-        data);
     }
 
     @Override
@@ -1023,14 +1014,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     public VMDataRouter(final String vmTaskId) {
       this.vmTaskId = vmTaskId;
-    }
-
-    @Override
-    public void writeWatermark(Object data) {
-      pipeManagerWorker.writeWatermark(taskId, vmOutputPathEdge.getId(),
-        vmTaskId,
-        vmPathSerializer,
-        data);
     }
 
     @Override

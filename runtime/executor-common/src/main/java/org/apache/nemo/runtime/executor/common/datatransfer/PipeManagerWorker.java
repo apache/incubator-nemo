@@ -49,19 +49,8 @@ public interface PipeManagerWorker extends InputPipeRegister {
                  final Serializer serializer,
                  final Object event);
 
-  void writeWatermark(final String srcTaskId,
-                 final String edgeId,
-                 final String dstTaskId,
-                 final Serializer serializer,
-                 final Object event);
-
   // For relay data
   void writeByteBufData(final String srcTaskId,
-                        final String edgeId,
-                        final String dstTaskId,
-                        final ByteBuf event);
-
-  void writeByteBufDataAndFlush(final String srcTaskId,
                         final String edgeId,
                         final String dstTaskId,
                         final ByteBuf event);
