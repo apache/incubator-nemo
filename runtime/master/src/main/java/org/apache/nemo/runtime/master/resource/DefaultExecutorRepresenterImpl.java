@@ -163,7 +163,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       return;
     }
 
-    partialWarmupStarted = true;
 
     final Collection<String> statelessTasks = getRunningTasks().stream()
       .filter(task -> !task.isStateful())
@@ -183,7 +182,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       activateLambdaTask(tid, pairTid, vm);
     });
 
+
     LOG.info("Waiting for partial warmup activation {}/{}", executorId, tasks);
+    partialWarmupStarted = true;
     while (tasks.stream().anyMatch(tid -> !activatedTasks.contains(tid))) {
       try {
         wait(30);
