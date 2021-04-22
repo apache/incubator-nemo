@@ -471,6 +471,7 @@ public final class LambdaContainerManager {
   private void partialWarmup(final int rid,
                              final ExecutorRepresenter er) {
     if (requestIdControlChannelMap.containsKey(rid)) {
+      LOG.info("Start to partial warmup haha {}", evalConf.optimizationPolicy);
       if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
         er.partialWarmupStatelessTasks(1.0, taskScheduledMapMaster, executorRegistry, pairStageTaskManager);
         scheduledExecutorService.schedule(() -> {
