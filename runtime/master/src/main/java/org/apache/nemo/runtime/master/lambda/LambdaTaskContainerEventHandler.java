@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.master.lambda;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.master.PendingRedirectionTasks;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
@@ -29,45 +30,50 @@ public final class LambdaTaskContainerEventHandler {
 
   private final Set<String> pendingRedirectionTasks;
   private final InjectionFuture<LambdaContainerManager> lambdaContainerManager;
+  private final EvalConf evalConf;
 
   @Inject
   private LambdaTaskContainerEventHandler(final ExecutorRegistry executorRegistry,
+                                          final EvalConf evalConf,
                                           final PendingRedirectionTasks pendingRedirectionTasks,
                                           final InjectionFuture<LambdaContainerManager> lambdaContainerManager) {
     this.executorRegistry = executorRegistry;
     this.lambdaContainerManager = lambdaContainerManager;
     this.pendingRedirectionTasks = pendingRedirectionTasks.pendingRedirectionTasks;
+    this.evalConf = evalConf;
   }
 
   public void onAllLambdaTaskScheduled() {
-    singleThread.execute(() -> {
-      // deactivate tasks
+    if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
+      singleThread.execute(() -> {
+        // deactivate tasks
 
-      if (!deactivateInit) {
-        deactivateInit = true;
-        try {
-          Thread.sleep(300);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+        if (!deactivateInit) {
+          deactivateInit = true;
+          try {
+            Thread.sleep(300);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
 
-        executorRegistry.viewExecutors(executors -> {
-          executors.forEach(executor -> {
-            if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
-              LOG.info("Deactivate lambda task for executor {} / {}", executor.getExecutorId(),
-                executor.getRunningTasks());
-              executor.sendControlMessage(ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-                .setType(ControlMessage.MessageType.DeactivateLambdaTask)
-                .build());
-            }
+          executorRegistry.viewExecutors(executors -> {
+            executors.forEach(executor -> {
+              if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+                LOG.info("Deactivate lambda task for executor {} / {}", executor.getExecutorId(),
+                  executor.getRunningTasks());
+                executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                  .setType(ControlMessage.MessageType.DeactivateLambdaTask)
+                  .build());
+              }
+            });
           });
-        });
 
-        LOG.info("Done of task init ... deactivate workers that have no rerouting task");
-        // lambdaContainerManager.get().deactivateAllWorkers();
-      }
-    });
+          LOG.info("Done of task init ... deactivate workers that have no rerouting task");
+          // lambdaContainerManager.get().deactivateAllWorkers();
+        }
+      });
+    }
   }
 }

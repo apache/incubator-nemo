@@ -568,18 +568,19 @@ public final class RuntimeMaster {
         return erList;
       }).get();
 
-      LOG.info("Request lambda container waiting for deactivation");
-      executorRepresenters.forEach(er -> {
-        while (!er.getLambdaControlProxy().isDeactivated()) {
-          try {
-            Thread.sleep(30);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+      if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
+        LOG.info("Request lambda container waiting for deactivation");
+        executorRepresenters.forEach(er -> {
+          while (!er.getLambdaControlProxy().isDeactivated()) {
+            try {
+              Thread.sleep(30);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
-        }
-      });
-      LOG.info("Done of Request lambda container waiting for deactivation");
-
+        });
+        LOG.info("Done of Request lambda container waiting for deactivation");
+      }
     } catch (InterruptedException e) {
       e.printStackTrace();
     } catch (ExecutionException e) {
