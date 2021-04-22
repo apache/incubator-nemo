@@ -544,6 +544,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
               serializer,
               new WatermarkWithIndex(watermark, taskIndex));
           });
+      } else {
+        pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
       }
     }
   }
