@@ -43,8 +43,11 @@ public final class ContainerTypeAwareSchedulingConstraint implements SchedulingC
     final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
         .orElse(ResourcePriorityProperty.NONE);
 
-    LOG.info("Check container resource type and task type... task {}/{}, container {}/{}",
-      task.getTaskId(), executorPlacementPropertyValue, executor.getExecutorId(), executor.getContainerType());
+    LOG.info("Check container resource type and task type... task {}/{}, container {}/{}, " +
+        "result: {}",
+      task.getTaskId(), executorPlacementPropertyValue, executor.getExecutorId(), executor.getContainerType(),
+      executor.getContainerType().equals(executorPlacementPropertyValue));
+
     return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
         : executor.getContainerType().equals(executorPlacementPropertyValue);
   }

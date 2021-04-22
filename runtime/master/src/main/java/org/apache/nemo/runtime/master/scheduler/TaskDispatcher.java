@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskState;
@@ -251,8 +252,6 @@ public final class TaskDispatcher {
   }
 
   private void doScheduleTaskList() {
-
-
       final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
       if (taskList == null) {
         try {
@@ -298,7 +297,8 @@ public final class TaskDispatcher {
             continue;
           }
 
-          LOG.info("Start to scheduling task {}", task);
+          LOG.info("Start to scheduling task {}, resource {}", task,
+            task.getExecutionProperties().get(ResourcePriorityProperty.class));
 
           executorRegistry.viewExecutors(executors -> {
             final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);

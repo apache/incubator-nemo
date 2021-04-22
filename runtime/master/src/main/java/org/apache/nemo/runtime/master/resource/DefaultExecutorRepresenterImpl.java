@@ -132,7 +132,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     activatedPendingTasks.add(taskId);
 
     // send signal
-    LOG.info("Activation lambda task {} for executor {}, {}", taskId, executorId, activatedPendingTasks);
+    LOG.info("Activation lambda task {} / pairTask {} for executor {}, {}", taskId,
+      pairVmTaskId, executorId, activatedPendingTasks);
     vmExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
       .setId(RuntimeIdManager.generateMessageId())
       .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
@@ -142,6 +143,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         .build())
       .build());
   }
+
+  private boolean partialWarmupStarted = false;
 
   @Override
   public synchronized void partialWarmupStatelessTasks(final double percent,
@@ -158,6 +161,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         activatedTasks, activatedPendingTasks);
       return;
     }
+
+    partialWarmupStarted = true;
 
     final Collection<String> statelessTasks = getRunningTasks().stream()
       .filter(task -> !task.isStateful())
@@ -199,7 +204,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       deactivateLambdaTask(tid);
     });
 
-
     LOG.info("Waiting for deactivation of {} after partial warmup", executorId);
     while (!lambdaControlProxy.isDeactivated()) {
       try {
@@ -207,6 +211,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       } catch (InterruptedException e) {
       }
     }
+
+    partialWarmupStarted = false;
     LOG.info("End of waiting for deactivation of {} after partial warmup", executorId);
   }
 
@@ -219,6 +225,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
     if (getRunningTasks().stream().noneMatch(task -> task.getTaskId().equals(taskId))) {
       throw new RuntimeException("Lambda executor " + executorId + " does not contain lambda task " + taskId);
+    }
+
+    while (partialWarmupStarted) {
+      // wait for partial warmup
+      try {
+        wait(30);
+      } catch (InterruptedException e) {
+      }
     }
 
     if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
