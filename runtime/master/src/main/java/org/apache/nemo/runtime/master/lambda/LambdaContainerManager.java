@@ -473,7 +473,13 @@ public final class LambdaContainerManager {
     if (requestIdControlChannelMap.containsKey(rid)) {
       LOG.info("Start to partial warmup haha {}", evalConf.optimizationPolicy);
       if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
-        er.partialWarmupStatelessTasks(1.0, taskScheduledMapMaster, executorRegistry, pairStageTaskManager);
+        LOG.info("Start to partial warmup haha 222 {}", evalConf.optimizationPolicy);
+        try {
+          er.partialWarmupStatelessTasks(1.0, taskScheduledMapMaster, executorRegistry, pairStageTaskManager);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException("Cannot trigger partial warmup");
+        }
         scheduledExecutorService.schedule(() -> {
           LOG.info("Trigger partial warmup");
           partialWarmup(rid, er);
