@@ -30,6 +30,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -39,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -108,7 +110,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
   private final String dstTaskId;
 
-  private final TaskInputWatermarkManager taskWatermarkManager;
+  private final WatermarkTracker taskWatermarkManager;
 
   private final int taskIndex;
 
@@ -173,13 +175,13 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
       .equals(CommunicationPatternProperty.Value.TransientOneToOne));
 
+    this.taskWatermarkManager = getTaskWatermarkManager();
     if (singleOneToOneInput) {
-      this.taskWatermarkManager =  null;
       this.dataHandler = new SingleO2ODataHandler();
     } else {
-      this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(new TaskInputWatermarkManager(taskId));
       this.dataHandler = new MultiInputDataHandler();
     }
+
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.dstTaskId = RuntimeIdManager.generateTaskId(((StageEdge)outputEdge).getDst().getId(),
       RuntimeIdManager.getIndexFromTaskId(taskId), 0);
@@ -187,6 +189,52 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
     this.adjustTime = System.currentTimeMillis() - 1436918400000L;
 
     prepare();
+  }
+
+  private WatermarkTracker getTaskWatermarkManager() {
+    if (task.getTaskIncomingEdges().size() == 0) {
+      return null;
+    } else if (task.getTaskIncomingEdges().size() == 1) {
+      final int parallelism = task.getTaskIncomingEdges().get(0)
+        .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+      LOG.info("Registering pipe for input edges {} in {}, parallelism {}",
+        task.getTaskIncomingEdges().get(0).getId(), taskId, parallelism);
+
+      final CommunicationPatternProperty.Value comm = task.getTaskIncomingEdges().get(0)
+        .getDataCommunicationPattern();
+      return new SingleStageWatermarkTracker(getWatermarkParllelism(parallelism, comm));
+
+    } else if (task.getTaskIncomingEdges().size() == 2) {
+      final StageEdge firstEdge = task.getTaskIncomingEdges().get(0);
+      final StageEdge secondEdge = task.getTaskIncomingEdges().get(1);
+      final int firstParallelism = ((StageEdge) firstEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
+        .get();
+      final int secondParallelism = ((StageEdge) secondEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
+        .get();
+      final CommunicationPatternProperty.Value firstComm = firstEdge
+        .getDataCommunicationPattern();
+       final CommunicationPatternProperty.Value secondComm = secondEdge
+        .getDataCommunicationPattern();
+
+       return new DoubleStageWatermarkTracker(
+         firstEdge.getId(),
+         getWatermarkParllelism(firstParallelism, firstComm),
+         secondEdge.getId(),
+         getWatermarkParllelism(secondParallelism, secondComm));
+    } else {
+      throw new RuntimeException("Not support incoming edge >= 3 " + taskId + ", " +  task.getTaskIncomingEdges());
+    }
+  }
+
+  private int getWatermarkParllelism(final int parallelism,
+                                     final CommunicationPatternProperty.Value comm) {
+    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+      || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+      return 1;
+    } else {
+      return parallelism;
+    }
   }
 
   @Override
@@ -387,9 +435,6 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                 task.getTaskId(),
                 parentTaskReader);
 
-              if (!singleOneToOneInput) {
-                taskWatermarkManager.addDataFetcher(df.getEdgeId(), 1);
-              }
             } else {
               for (int i = 0; i < parallelism; i++) {
                 inputPipeRegister.registerInputPipe(
@@ -399,7 +444,6 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
                   parentTaskReader);
               }
 
-              taskWatermarkManager.addDataFetcher(df.getEdgeId(), parallelism);
             }
 
             allFetchers.add(df);
@@ -468,16 +512,25 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
   public boolean checkpoint(final boolean checkpointSource, final String checkpointId) {
     boolean hasChekpoint = false;
 
-    if (!singleOneToOneInput) {
-      final OutputStream os = stateStore.getOutputStream(checkpointId + "-taskWatermarkManager");
-      try {
-        taskWatermarkManager.encode(os);
-        os.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+    final DataOutputStream os = new DataOutputStream(
+      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"));
+
+    try {
+      if (task.getTaskIncomingEdges().size() == 0) {
+        // do nothing
+      } else if (task.getTaskIncomingEdges().size() == 1) {
+        ((SingleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+      } else if (task.getTaskIncomingEdges().size() == 2) {
+        ((DoubleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+      } else {
+        throw new RuntimeException("Not supported edge > 2" + taskId);
       }
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
+
     return true;
   }
 
@@ -508,13 +561,15 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+        taskWatermarkManager.trackAndEmitWatermarks(taskId,
+          event.getEdgeId(),
+          watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
             pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
               dstTaskId,
               serializer,
-              new WatermarkWithIndex(watermark, taskIndex));
+              new WatermarkWithIndex(new Watermark(watermark), taskIndex));
           });
 
       } else {
@@ -533,7 +588,8 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) event.getData();
-        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
+        taskWatermarkManager.trackAndEmitWatermarks(taskId,
+          event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
 
@@ -542,7 +598,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
             pipeManagerWorker.writeWatermark(taskId, outputEdge.getId(),
               dstTaskId,
               serializer,
-              new WatermarkWithIndex(watermark, taskIndex));
+              new WatermarkWithIndex(new Watermark(watermark), taskIndex));
           });
       } else {
         pipeManagerWorker.writeByteBufData(taskId, outputEdge.getId(), dstTaskId, data);
