@@ -254,6 +254,14 @@ public final class TaskDispatcher {
 
 
       final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
+      if (taskList == null) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return;
+      }
       /* final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
       if (!taskListOptional.isPresent()) {
         // Task list is empty

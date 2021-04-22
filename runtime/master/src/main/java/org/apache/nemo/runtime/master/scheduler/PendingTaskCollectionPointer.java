@@ -38,11 +38,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 public final class PendingTaskCollectionPointer {
   private static final Logger LOG = LoggerFactory.getLogger(PendingTaskCollectionPointer.class.getName());
   private Collection<Task> curTaskCollection;
-  private final BlockingQueue<List<Task>> queue;
+  private final List<List<Task>> queue;
 
   @Inject
   private PendingTaskCollectionPointer() {
-    this.queue = new LinkedBlockingQueue<>();
+    this.queue = new LinkedList<>();
   }
 
   /**
@@ -85,11 +85,10 @@ public final class PendingTaskCollectionPointer {
   }
 
   public synchronized List<Task> getTasks() {
-    try {
-      return queue.take();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+    if (queue.isEmpty()) {
+      return null;
+    } else {
+      return queue.remove(0);
     }
   }
 
