@@ -256,6 +256,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       throw new RuntimeException("Task is not activated but receive activation done " + taskId + " in " + executorId
         + ", pending: " + activatedPendingTasks + ", active: " + activatedTasks);
     }
+
+    LOG.info("Activation done lambda task {}", taskId);
     activatedPendingTasks.remove(taskId);
     activatedTasks.add(taskId);
   }
