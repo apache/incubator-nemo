@@ -496,7 +496,9 @@ public final class RuntimeMaster {
         final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
         if (executor.isPresent()) {
           scheduler.onExecutorAdded(executor.get());
-          return (resourceRequestCounter.resourceRequestCount.decrementAndGet() == 0);
+          final int cnt = resourceRequestCounter.resourceRequestCount.decrementAndGet();
+          LOG.info("Remaining executor {}", cnt);
+          return cnt == 0;
         } else {
           return false;
         }
