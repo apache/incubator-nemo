@@ -161,11 +161,15 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       final Long nextMinWatermark = watermarks[0];
 
       if (nextMinWatermark < prevEmitWatermark) {
-        // it is possible
-        throw new RuntimeException("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark" +
+        final StringBuilder sb = new StringBuilder();
+        buildArray(sb,stoppedWatermarks);
+        final StringBuilder sb2 = new StringBuilder();
+        buildArray(sb2, watermarks);
+        LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
           nextMinWatermark + " <= " + prevEmitWatermark + ", "
-          + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-          " stopped: " + stoppedWatermarks);
+          + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2.toString() +
+          " stopped: " + sb.toString());
+        return Optional.empty();
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
       } else {
@@ -201,13 +205,18 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
 
         if (nextMinWatermark < prevEmitWatermark) {
           // it is possible
-          throw new RuntimeException("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark" +
+          final StringBuilder sb = new StringBuilder();
+          buildArray(sb,stoppedWatermarks);
+          final StringBuilder sb2 = new StringBuilder();
+          buildArray(sb2, watermarks);
+          LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
             nextMinWatermark + " <= " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-            " stopped: " + stoppedWatermarks);
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2.toString() +
+            " stopped: " + sb.toString());
           // minWatermarkIndex = nextMinWatermarkIndex;
           //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
           //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
+          return Optional.empty();
         } else {
           // Watermark timestamp progress!
           // Emit the min watermark
