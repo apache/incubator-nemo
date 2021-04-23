@@ -247,6 +247,32 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
+  public synchronized boolean isAllTaskActivated() {
+    return lambdaControlProxy.isActive() && activatedPendingTasks.isEmpty();
+  }
+
+  private Task findTask(final String taskId) {
+    for (final Task t : runningTaskToAttempt.keySet()) {
+      if (t.getTaskId().equals(taskId)) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  @Override
+  public synchronized boolean isAllTaskActivatedExceptPartial() {
+    return lambdaControlProxy.isActive() && activatedPendingTasks
+      .stream().noneMatch(taskId -> {
+        final Task task = findTask(taskId);
+        if (task == null) {
+          throw new RuntimeException("Task is null " + taskId);
+        }
+        return !task.isParitalCombine();
+      });
+  }
+
+  @Override
   public synchronized void activationDoneSignal(final String taskId) {
     if (!executorId.contains("Lambda")) {
       throw new RuntimeException("Non lambda executor receive signal " + executorId);
@@ -265,7 +291,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public synchronized void deactivationDoneSignal(final String taskId) {
     if (!activatedTasks.contains(taskId)) {
-      throw new RuntimeException("Task is not activated but deactivate done signal " + taskId + " in " + executorId);
+      throw new RuntimeException("Task is not activated but deactivate done signal " + taskId + " in " + executorId
+        + ", activatedTasks " + activatedTasks);
     }
     activatedTasks.remove(taskId);
     LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);

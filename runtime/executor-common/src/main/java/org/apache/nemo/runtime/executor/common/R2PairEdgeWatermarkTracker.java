@@ -63,13 +63,12 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       prevWatermark = dataFetcherWatermarkMap.get(lambdaPathEdgeId);
     } else {
       watermarkTracker = bothPathTracker;
-      prevWatermark = Collections.min(dataFetcherWatermarkMap.values());
+      // prevWatermark = Collections.min(dataFetcherWatermarkMap.values());
     }
   }
 
-  // this will be used for R2
-  public boolean stopAndToggleIndex(final int taskIndex,
-                                    final String edgeId) {
+  public boolean stopInputIndex(final int taskIndex,
+                                final String edgeId) {
     final int index = parallelism == 1 ? 0 : taskIndex;
     if (edgeId.equals(lambdaPathEdgeId)) {
       // start vm path
@@ -78,22 +77,24 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
 
       // Stop lambda path
-      lambdaWatermarkTracker.stopInputPipeWatermark(index);
-      if (!lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
-        lambdaPathAllStopped = true;
-      }
+      if (lambdaWatermarkTracker.isStopped(index)) {
+        LOG.warn("Edge already stopped but try to stop lambda edge " + edgeId + "/" + taskIndex  + " in " + taskId);
+      } else {
+        lambdaWatermarkTracker.stopInputPipeWatermark(index);
+        if (!lambdaWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
+          lambdaPathAllStopped = true;
+        }
 
-      lambdaWatermarkTracker.updateAndGetCurrentWatermark()
-        .ifPresent(watermark -> {
-          dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
-        });
+        lambdaWatermarkTracker.updateAndGetCurrentWatermark()
+          .ifPresent(watermark -> {
+            dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
+          });
 
-      // Start vm path if possible to prevent two edges stopped at the same time
-      vmPathAllStopped = false;
-      if (vmWatermarkTracker.isStopped(index)) {
-        vmWatermarkTracker.startInputPipeWatermark(index,
-          lambdaWatermarkTracker.getWatermark(index));
+        // Start vm path if possible to prevent two edges stopped at the same time
+        vmPathAllStopped = false;
 
+        // Set watermark
+        vmWatermarkTracker.setWatermark(index, lambdaWatermarkTracker.getWatermark(index));
         vmWatermarkTracker.updateAndGetCurrentWatermark()
           .ifPresent(watermark -> {
             dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
@@ -111,26 +112,31 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
 
       // Stop vm path path
-      vmWatermarkTracker.stopInputPipeWatermark(index);
-      vmWatermarkTracker.updateAndGetCurrentWatermark()
-        .ifPresent(watermark -> {
-          dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
-        });
+      if (vmWatermarkTracker.isStopped(index)) {
+        LOG.warn("Edge already stopped but try to stop edge " + edgeId + "/" + taskIndex + " in " + taskId);
+      } else {
 
-      if (!vmWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
-        vmPathAllStopped = true;
-      }
+        vmWatermarkTracker.stopInputPipeWatermark(index);
 
-      // Start lambda path if possible to prevent two edges stopped at the same time
-      lambdaPathAllStopped = false;
-      if (lambdaWatermarkTracker.isStopped(index)) {
-        lambdaWatermarkTracker.startInputPipeWatermark(index,
-          vmWatermarkTracker.getWatermark(index));
+        if (!vmWatermarkTracker.updateAndGetCurrentWatermark().isPresent()) {
+          vmPathAllStopped = true;
+        }
 
+        vmWatermarkTracker.updateAndGetCurrentWatermark()
+          .ifPresent(watermark -> {
+            dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
+          });
+
+
+        lambdaPathAllStopped = false;
+
+        // Set watermark
+        lambdaWatermarkTracker.setWatermark(index, vmWatermarkTracker.getWatermark(index));
         lambdaWatermarkTracker.updateAndGetCurrentWatermark()
           .ifPresent(watermark -> {
             dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
           });
+
       }
 
       setWatermarkTrackerAndPrevWatermark();
@@ -141,51 +147,56 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     }
   }
 
-
   // this will be used for R3
   // return if all path is stopped
   public void startIndex(final int taskIndex,
-                         final String edgeId) {
-    final int index = parallelism == 1 ? 0 : taskIndex;
-    if (edgeId.equals(lambdaPathEdgeId)) {
-      // start lambda path
-      // stop vm path path
-      LOG.info("Before Start lambda path watermark index in task {}/{}/{}, vm: {}, lambda: {}, map: {}",
-        taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
-      lambdaPathAllStopped = false;
+                         final String edgeId,
+                         final long watermark) {
+    try {
+      final int index = parallelism == 1 ? 0 : taskIndex;
+      if (edgeId.equals(lambdaPathEdgeId)) {
+        // start lambda path
+        // stop vm path path
+        LOG.info("Start lambda path watermark {} index in task {}/{}/{}, vm: {}, lambda: {}, map: {}",
+          watermark,
+          taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+        lambdaPathAllStopped = false;
 
-      if (lambdaWatermarkTracker.isStopped(index)) {
-        lambdaWatermarkTracker.startInputPipeWatermark(index,
-          vmWatermarkTracker.getWatermark(index));
-
-        lambdaWatermarkTracker.updateAndGetCurrentWatermark()
-          .ifPresent(watermark -> {
-            dataFetcherWatermarkMap.put(lambdaPathEdgeId, watermark);
+        if (lambdaWatermarkTracker.isStopped(index)) {
+          lambdaWatermarkTracker.startInputPipeWatermark(index);
+          lambdaWatermarkTracker.setWatermark(index, watermark);
+          lambdaWatermarkTracker.updateAndGetCurrentWatermark().ifPresent(wm -> {
+            dataFetcherWatermarkMap.put(lambdaPathEdgeId, wm);
           });
-      }
+        } else {
+          LOG.warn("Lambda edge " + index + "/" + edgeId + " started in "
+            + taskId + " but try to start again");
+        }
+      } else {
+        // start vm path
+        // stop lambda path path
+        LOG.info("Start vm path watermark  {} index in task {}/{}/{}, vm: {}, lambda: {}, map: {}"
+          ,watermark
+          , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+        vmPathAllStopped = false;
 
-      LOG.info("After Start lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
-        + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
-    } else {
-      // start vm path
-      // stop lambda path path
-      LOG.info("Before Start vm path watermark index in task {}/{}/{}, vm: {}, lambda: {}, map: {}"
-        , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
-
-      vmPathAllStopped = false;
-
-      if (vmWatermarkTracker.isStopped(index)) {
-        vmWatermarkTracker.startInputPipeWatermark(index,
-          lambdaWatermarkTracker.getWatermark(index));
-
-        vmWatermarkTracker.updateAndGetCurrentWatermark()
-          .ifPresent(watermark -> {
-            dataFetcherWatermarkMap.put(vmPathEdgeId, watermark);
+        if (vmWatermarkTracker.isStopped(index)) {
+          vmWatermarkTracker.startInputPipeWatermark(index);
+          vmWatermarkTracker.setWatermark(index, watermark);
+          vmWatermarkTracker.updateAndGetCurrentWatermark().ifPresent(wm -> {
+            dataFetcherWatermarkMap.put(vmPathEdgeId, wm);
           });
-      }
+        } else {
+          LOG.warn("VM edge " + index + "/" + edgeId + " started in "
+            + taskId + " but try to start again");
+        }
 
-      LOG.info("After Start vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
-        + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+        LOG.info("After Start vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
+          + "VM tracker: {}, Lambda tracker: {}, map: {}", vmWatermarkTracker, lambdaWatermarkTracker, dataFetcherWatermarkMap);
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception in starting edge index at " + taskId + " / edge " + edgeId + "/" + taskIndex);
     }
 
     setWatermarkTrackerAndPrevWatermark();
@@ -197,7 +208,14 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
                                                final int taskIndex,
                                                final long watermark) {
 
-    return watermarkTracker.trackAndEmitWatermarks(taskId, edgeId, taskIndex, watermark);
+    try {
+      return watermarkTracker.trackAndEmitWatermarks(taskId, edgeId, taskIndex, watermark);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception while processing watermark "
+        + taskId + "/" + edgeId + "/" + taskIndex + " watermark " + watermark
+      + " logging " + toString());
+    }
   }
 
   @Override
@@ -205,7 +223,9 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     return "LambdaPathAllStopped: " + lambdaPathAllStopped + ", "  +
       "VMPathAllStopped: " + vmPathAllStopped + ", " +
       "DataFetcherWatermarkMap: " + dataFetcherWatermarkMap + ", " +
-      "PrevW: " + prevWatermark;
+      "PrevW: " + prevWatermark
+      + "LambdaEdge: " + lambdaPathEdgeId
+      + " VMEdge: " + vmPathEdgeId;
   }
 
   final class LambdaWatermarkTracker implements WatermarkTracker {

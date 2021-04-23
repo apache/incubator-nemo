@@ -20,20 +20,17 @@ package org.apache.nemo.runtime.master;
 
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Task;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.common.HDFSUtils;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.*;
@@ -749,6 +746,29 @@ public final class RuntimeMaster {
       LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
       lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
     });
+
+    // Waiting for redirection done
+    if (evalConf.optimizationPolicy.contains("R3")) {
+      executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+        while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      });
+    } else {
+      executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+        while (!lambdaExecutor.isAllTaskActivated()) {
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      });
+    }
   }
 
   public void redirectionDoneToLambda(final int num,
@@ -909,6 +929,9 @@ public final class RuntimeMaster {
   private final long st = System.currentTimeMillis();
   private final ExecutorService pool = Executors.newCachedThreadPool();
 
+  private long prevSourceSleepSendTime = System.currentTimeMillis();
+  private long prevSourceSleepDelay = 0;
+
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
@@ -989,11 +1012,23 @@ public final class RuntimeMaster {
 
         break;
       }
+      case R2Init:
       case GetStateSignal: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
         final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+
+        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
+        if (executorId.contains("Lambda")) {
+          LOG.info("Deactivation done of {}", reroutingTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
+          lambdaExecutor.deactivationDoneSignal(reroutingTask);
+        }  else {
+          final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
+          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
+          lambdaExecutor.activationDoneSignal(pairTask);
+        }
 
         pool.execute(() -> {
           while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
@@ -1012,7 +1047,7 @@ public final class RuntimeMaster {
           executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.GetStateSignal)
+            .setType(message.getType())
             .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
               .setTaskId(pairTask)
               .build())
@@ -1021,35 +1056,96 @@ public final class RuntimeMaster {
 
         break;
       }
-      case R2Init: {
-        final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
-        final String reroutingTask = m.getTaskId();
-        // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+      case SourceSleep: {
+        synchronized (this) {
 
-        pool.execute(() -> {
-          while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(pairTask)) {
-            LOG.info("Waiting for scheduling {} for R2Init", pairTask);
-            try {
-              Thread.sleep(200);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
+          /*
+          final long curr = System.currentTimeMillis();
+          if (curr - prevSourceSleepSendTime >= Util.THROTTLE_WINDOW / 2) {
+            executorRegistry.viewExecutors(executors -> {
+              executors.stream().filter(executor -> executor.getContainerType().equals(ResourcePriorityProperty.SOURCE))
+                .forEach(executor -> {
+                  executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                    .setType(ControlMessage.MessageType.SourceSleep)
+                    .setSetNum(message.getSetNum())
+                    .build());
+                });
+            });
+            LOG.info("Send master throttle ");
+            prevSourceSleepSendTime = curr;
           }
-          LOG.info("Send R2Init from {} to {}", reroutingTask, pairTask);
-          final ExecutorRepresenter executorRepresenter = executorRegistry
-            .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
+          */
 
-          executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.R2Init)
-            .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-              .setTaskId(pairTask)
-              .build())
-            .build());
-        });
+          /*
+          final long curr = System.currentTimeMillis();
+          final long sleepElapsed = curr - prevSourceSleepSendTime;
+          // if (sleepElapsed >= prevSourceSleepDelay / 2) {
+            final long sleepRemain = Math.max(0, prevSourceSleepDelay - sleepElapsed);
+            final long sleepDelay = message.getSetNum();
+            final long delayToAdd = sleepDelay - sleepRemain;
 
+          if (delayToAdd > 0) {
+            executorRegistry.viewExecutors(executors -> {
+              executors.stream().filter(executor -> executor.getContainerType().equals(ResourcePriorityProperty.SOURCE))
+                .forEach(executor -> {
+                  executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                    .setType(ControlMessage.MessageType.SourceSleep)
+                    .setSetNum(message.getSetNum())
+                    .build());
+                });
+            });
+            LOG.info("Send master throttle {}", delayToAdd);
+
+            prevSourceSleepSendTime = curr;
+            prevSourceSleepDelay = sleepDelay;
+          } else {
+            LOG.info("Source sleep ignored, sleepElapsed: {}, sleepRemain: {}, sleepDelay: {}, delayToAdd: {}",
+              sleepElapsed, sleepRemain, sleepDelay, delayToAdd);
+          }
+          */
+
+          /*
+            if (sleepElapsed >= Util.THROTTLE_WINDOW * 0.9) {
+              executorRegistry.viewExecutors(executors -> {
+                executors.stream().filter(executor -> executor.getContainerType().equals(ResourcePriorityProperty.SOURCE))
+                  .forEach(executor -> {
+                    executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                      .setId(RuntimeIdManager.generateMessageId())
+                      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                      .setType(ControlMessage.MessageType.SourceSleep)
+                      .setSetNum(message.getSetNum())
+                      .build());
+                  });
+              });
+
+              LOG.info("Send master throttle {}", message.getSetNum());
+              prevSourceSleepSendTime = System.currentTimeMillis();
+              prevSourceSleepDelay = message.getSetNum();
+            } else if (message.getSetNum() > prevSourceSleepDelay) {
+              // deactivate pre sleep and activate this sleep
+              executorRegistry.viewExecutors(executors -> {
+                executors.stream().filter(executor -> executor.getContainerType().equals(ResourcePriorityProperty.SOURCE))
+                  .forEach(executor -> {
+                    executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                      .setId(RuntimeIdManager.generateMessageId())
+                      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                      .setType(ControlMessage.MessageType.CancelAndSourceSleep)
+                      .setSetNum(message.getSetNum())
+                      .build());
+                  });
+              });
+              prevSourceSleepSendTime = System.currentTimeMillis();
+              prevSourceSleepDelay = message.getSetNum();
+            } else {
+              LOG.info("Source sleep ignored, sleepElapsed: {}", sleepElapsed);
+            }
+            */
+          // }
+        }
         break;
       }
       case R3PairInputOutputStart: {

@@ -43,6 +43,8 @@ public final class Util {
   public static final long WATERMARK_PROGRESS = 50; // ms
 
   public static final String TRANSIENT_PATH = "TPATH";
+
+  public static final int THROTTLE_WINDOW = 1000;
   /**
    * Private constructor for utility class.
    */

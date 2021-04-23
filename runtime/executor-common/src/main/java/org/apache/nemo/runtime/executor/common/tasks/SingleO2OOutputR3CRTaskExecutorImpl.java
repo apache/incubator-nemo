@@ -36,9 +36,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.StateStore;
@@ -56,9 +53,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
+/**
+ * Executes a task.
+ * Should be accessed by a single thread.
+ * TODO: Watermark tracker로 인해 hop이 커지면 latency가 증가함. 그냥 watermark progress input에서만?
+ * TODO: 아니면 shuffle edge만!
+ */
 @NotThreadSafe
-public final class MergerTaskExecutorImpl implements CRTaskExecutor {
-  private static final Logger LOG = LoggerFactory.getLogger(MergerTaskExecutorImpl.class.getName());
+public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleO2OOutputR3CRTaskExecutorImpl.class.getName());
 
   // Essential information
   private final Task task;
@@ -93,6 +96,8 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final AtomicBoolean prepared = new AtomicBoolean(false);
 
+  private List<Transform> statefulTransforms;
+
   private final TaskMetrics taskMetrics;
 
   private final StateStore stateStore;
@@ -110,9 +115,10 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final boolean offloaded;
 
-  private final List<ConditionalRouterVertex> crVertices;
-
   private final Transform.ConditionalRouting conditionalRouting;
+
+  private final boolean singleOneToOneInput;
+  private final boolean singleOneToOneOutput;
 
   final Map<String, List<OutputWriter>> externalAdditionalOutputMap;
 
@@ -120,14 +126,10 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   // THIS TASK SHOULD NOT BE MOVED !!
   // THIS TASK SHOULD NOT BE MOVED !!
 
-  private final RuntimeEdge transientOutputPathEdge;
-  private final RuntimeEdge transientInputPathEdge;
-  private final List<String> transientPathDstTasks;
+  private final RuntimeEdge transientPathEdge;
   private final Serializer transientPathSerializer;
 
-  private final RuntimeEdge vmOutputPathEdge;
-  private final RuntimeEdge vmInputPathEdge;
-  private final List<String> vmPathDstTasks;
+  private final RuntimeEdge vmPathEdge;
   private final Serializer vmPathSerializer;
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
@@ -136,40 +138,41 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final int taskIndex;
 
-  private final Transform mergerTransform;
-
-  private final OutputCollector outputCollector;
-
   private final String vmPathDstTask;
   private final String transientPathDstTask;
+  private boolean dataRerouting;
+  private boolean watermarkRerouting;
   private DataRouter dataRouter;
-  private DataHandler dataHandler;
-  private boolean receiveFinal = true;
+  private DataRouter watermarkRouter;
+  private final DataHandler dataHandler;
 
   /**
-   * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
-   * Output: single o2o (normal) - o2o (transient)
+   * Constructor.
+   *
+   * @param task                   Task with information needed during execution.
+   * @param irVertexDag            A DAG of vertices.
+   * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    */
-  public MergerTaskExecutorImpl(final long threadId,
-                                final String executorId,
-                                final Task task,
-                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                final IntermediateDataIOFactory intermediateDataIOFactory,
-                                final SerializerManager serializerManager,
-                                final ServerlessExecutorProvider serverlessExecutorProvider,
-                                final Map<String, Double> samplingMap,
-                                final boolean isLocalSource,
-                                final ExecutorService prepareService,
-                                final ExecutorThreadQueue executorThreadQueue,
-                                final InputPipeRegister inputPipeRegister,
-                                final StateStore stateStore,
-                                //  final OffloadingManager offloadingManager,
-                                final PipeManagerWorker pipeManagerWorker,
-                                final OutputCollectorGenerator outputCollectorGenerator,
-                                final byte[] bytes,
-                                final Transform.ConditionalRouting conditionalRouting,
-                                // final OffloadingPreparer offloadingPreparer,
-                                final boolean offloaded) {
+  public SingleO2OOutputR3CRTaskExecutorImpl(final long threadId,
+                                             final String executorId,
+                                             final Task task,
+                                             final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                             final IntermediateDataIOFactory intermediateDataIOFactory,
+                                             final SerializerManager serializerManager,
+                                             final ServerlessExecutorProvider serverlessExecutorProvider,
+                                             final Map<String, Double> samplingMap,
+                                             final boolean isLocalSource,
+                                             final ExecutorService prepareService,
+                                             final ExecutorThreadQueue executorThreadQueue,
+                                             final InputPipeRegister inputPipeRegister,
+                                             final StateStore stateStore,
+                                             //  final OffloadingManager offloadingManager,
+                                             final PipeManagerWorker pipeManagerWorker,
+                                             final OutputCollectorGenerator outputCollectorGenerator,
+                                             final byte[] bytes,
+                                             final Transform.ConditionalRouting conditionalRouting,
+                                             // final OffloadingPreparer offloadingPreparer,
+                                             final boolean offloaded) {
     // Essential information
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
@@ -179,7 +182,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
-    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -190,7 +192,22 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     this.externalAdditionalOutputMap = new HashMap<>();
 
+    this.statefulTransforms = new ArrayList<>();
+
     final long restoresSt = System.currentTimeMillis();
+
+    this.singleOneToOneInput = task.getTaskIncomingEdges().size() == 1
+      && (task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.OneToOne) ||
+      task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.TransientOneToOne));
+
+    this.singleOneToOneOutput = task.getTaskOutgoingEdges().get(0)
+      .getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.OneToOne) ||
+      task.getTaskOutgoingEdges().get(0)
+      .getDataCommunicationPattern()
+      .equals(CommunicationPatternProperty.Value.TransientOneToOne);
 
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
@@ -208,28 +225,25 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     this.serializerManager = serializerManager;
 
-    this.transientOutputPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
+    this.transientPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
       edge.isTransientPath())
       .findFirst().get();
 
-    this.transientInputPathEdge = task.getTaskIncomingEdges().stream().filter(edge ->
-      edge.isTransientPath())
-      .findFirst().get();
+    final List<String> transientDsts = getDstTaskIds(taskId, transientPathEdge);
+    if (transientDsts.size() > 1) {
+      throw new RuntimeException("Invalid dst size " + transientDsts + " in " + taskId);
+    }
 
+    this.transientPathDstTask = transientDsts.get(0);
+    this.transientPathSerializer = serializerManager.getSerializer(transientPathEdge.getId());
 
-    this.transientPathDstTasks = getDstTaskIds(taskId, transientOutputPathEdge);
-    this.transientPathSerializer = serializerManager.getSerializer(transientOutputPathEdge.getId());
-
-    this.vmOutputPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
+    this.vmPathEdge = task.getTaskOutgoingEdges().stream().filter(edge ->
       !edge.isTransientPath())
       .findFirst().get();
 
-     this.vmInputPathEdge = task.getTaskIncomingEdges().stream().filter(edge ->
-      !edge.isTransientPath())
-      .findFirst().get();
-
-    this.vmPathDstTasks = getDstTaskIds(taskId, vmOutputPathEdge);
-    this.vmPathSerializer = serializerManager.getSerializer(vmOutputPathEdge.getId());
+    final List<String> dstTasks = getDstTaskIds(taskId, vmPathEdge);
+    this.vmPathDstTask = dstTasks.get(0);
+    this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
     if (task.getTaskIncomingEdges().size() > 2) {
       this.taskWatermarkManager = new R2MultiPairWatermarkManager(taskId);
@@ -237,14 +251,11 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
       this.taskWatermarkManager = new R2SinglePairWatermarkManager(taskId);
     }
 
-    if (vmPathDstTasks.size() > 1) {
-      throw new RuntimeException("Not supported multiple dstTAsks in merger task "
-        + vmPathDstTasks + " , " + taskId);
-    }
     this.getDstTaskId = new O2oDstTaskId();
-
-    this.vmPathDstTask = vmPathDstTasks.get(0);
-    this.transientPathDstTask = transientPathDstTasks.get(0);
+    this.dataRerouting = false;
+    this.watermarkRerouting = false;
+    this.dataRouter = new VMDataRouter(vmPathDstTask);
+    this.watermarkRouter = new VMDataRouter(vmPathDstTask);
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
@@ -252,45 +263,10 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
       this.adjustTime = 0;
     }
 
-    this.dataRouter = new VMDataRouter(vmPathDstTask);
-    this.dataHandler = new BypassDataHandler();
-
-    this.mergerTransform = ((OperatorVertex)irVertexDag.getVertices().get(0)).getTransform();
-
-    this.outputCollector = new OutputCollector() {
-      private long ts;
-      @Override
-      public void setInputTimestamp(long timestamp) {
-        ts = timestamp;
-      }
-
-      @Override
-      public long getInputTimestamp() {
-        return ts;
-      }
-
-      @Override
-      public void emit(Object output) {
-        taskMetrics.incrementOutputElement();
-        final long timestamp = ts;
-        dataRouter.writeData(new TimestampAndValue<>(timestamp, output));
-      }
-
-      @Override
-      public void emitWatermark(Watermark watermark) {
-        // LOG.info("SM vertex {} emits watermark {}", taskId, watermark.getTimestamp());
-        dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
-      }
-
-      @Override
-      public void emit(String dstVertexId, Object output) {
-        throw new RuntimeException("Not support additional output in merger task " + taskId + ", " + dstVertexId);
-      }
-    };
+    this.dataHandler = new MultiInputSingleOutputDataHandler();
 
     prepare();
   }
-
 
   @Override
   public boolean isSourceAvailable() {
@@ -324,7 +300,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public int getNumKeys() {
-    return mergerTransform.getNumKeys();
+    return 0;
   }
 
   @Override
@@ -358,50 +334,20 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
-  private boolean allPathStopped = true;
-  private boolean lambdaPathStopped = true;
-  private boolean vmPathStopped = false;
-
   @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
+    LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    // taskWatermarkManager.stopIndex(taskIndex, edgeId);
-    if (edgeId.equals(transientInputPathEdge.getId())) {
-      lambdaPathStopped = taskWatermarkManager.stopIndex(taskIndex, edgeId);
-    } else {
-      vmPathStopped = taskWatermarkManager.stopIndex(taskIndex, edgeId);
-    }
-
-    allPathStopped = lambdaPathStopped || vmPathStopped;
-    LOG.info("Stop input pipe index in {}, lambdaStop: {}, vmStop: {}, allStop: {} , {}",
-      taskId, lambdaPathStopped, vmPathStopped, allPathStopped, triple);
+    taskWatermarkManager.stopIndex(taskIndex, edgeId);
   }
 
   @Override
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
-    try {
-      final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
-      final String edgeId = triple.getMiddle();
-
-      if (edgeId.equals(transientInputPathEdge.getId())) {
-        lambdaPathStopped = false;
-      } else {
-        vmPathStopped = false;
-      }
-      allPathStopped = lambdaPathStopped || vmPathStopped;
-
-      LOG.info("Start input pipe index in {}, lambdaStop: {}, vmStop: {}, allStop: {} , {}",
-        taskId, lambdaPathStopped, vmPathStopped, allPathStopped, triple);
-
-      taskWatermarkManager.startIndex(taskIndex, edgeId);
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException("Exception in " + taskId +
-        ", vmEdgEId: " + vmInputPathEdge.getId()
-      + ", lambdaEdgeId: " + transientInputPathEdge.getId()
-      + " triple: " + triple);
-    }
+    LOG.info("Start input pipe index {}", triple);
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+    final String edgeId = triple.getMiddle();
+    taskWatermarkManager.startIndex(taskIndex, edgeId);
   }
 
   // R2
@@ -411,25 +357,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
     taskWatermarkManager.startAndStopPairIndex(taskIndex, edgeId);
-  }
-
-  public void receivePartialFinal(final boolean finalResult) {
-    if (!allPathStopped && finalResult) {
-      throw new RuntimeException("All path not stopped, but merger receices final result " + taskId);
-    }
-
-    if (allPathStopped && !finalResult) {
-      throw new RuntimeException("All path stopped, but merger receices partial result " + taskId);
-    }
-
-    LOG.info("Receive set partial/final {} in {}", finalResult, taskId);
-
-    receiveFinal = finalResult;
-    if (receiveFinal) {
-      dataHandler = new BypassDataHandler();
-    } else {
-      dataHandler = new ToMergerDataHandler();
-    }
   }
 
   private void prepare() {
@@ -494,12 +421,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
+          statefulTransforms.add(ov.getTransform());
           LOG.info("Set GBK final transform");
         }
-      }
-
-      if (childVertex instanceof ConditionalRouterVertex) {
-        crVertices.add((ConditionalRouterVertex)childVertex);
       }
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
@@ -519,6 +443,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     // serializedDag = SerializationUtils.serialize(irVertexDag);
 
+    final Map<String, OutputCollector> outputCollectorMap = new HashMap<>();
 
     // Create a harness for each vertex
     reverseTopologicallySorted.forEach(irVertex -> {
@@ -533,6 +458,21 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         TaskExecutorUtil.getExternalAdditionalOutputMap(
           irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId,
           taskMetrics));
+
+        final OutputCollector outputCollector = outputCollectorGenerator
+          .generate(irVertex,
+            taskId,
+            irVertexDag,
+            this,
+            serializerManager,
+            samplingMap,
+            vertexIdAndCollectorMap,
+            taskMetrics,
+            task.getTaskOutgoingEdges(),
+            operatorInfoMap,
+            externalAdditionalOutputMap);
+
+        outputCollectorMap.put(irVertex.getId(), outputCollector);
 
         // Create VERTEX HARNESS
         final Transform.Context context = new TransformContextImpl(
@@ -614,7 +554,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
-                outputCollector, taskId);
+                outputCollectorMap.get(irVertex.getId()), taskId);
 
             final int parallelism = edge
               .getSrcIRVertex().getPropertyValue(ParallelismProperty.class).get();
@@ -687,7 +627,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
 
-
     // For latency logging
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {
@@ -700,42 +639,52 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
                            final String pairTaskId,
                            final String pairEdgeId,
                            final ReroutingState state) {
-    if (pairEdgeId.equals(transientOutputPathEdge.getId())) {
+
+    if (pairEdgeId.equals(transientPathEdge.getId())) {
       // rerouting from VM to Lambda
+      dataRerouting = true;
       dataRouter = new LambdaDataRouter(transientPathDstTask);
+      if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
+        watermarkRerouting = true;
+      } else {
+        watermarkRerouting = false;
+      }
+      watermarkRouter = createWatermarkRouter();
+
     } else {
       // rerouting from Lambda to VM
+      dataRerouting = false;
       dataRouter = new VMDataRouter(vmPathDstTask);
+      if (state.equals(ReroutingState.DATA_WATERMARK_BOTH)) {
+        watermarkRerouting = false;
+      } else {
+        watermarkRerouting = true;
+      }
+      watermarkRouter = createWatermarkRouter();
     }
   }
 
+  private DataRouter createWatermarkRouter() {
 
-  /*****************************************************************
-   ************************ WATERMARK HANDLING *********************
-   *****************************************************************
-   * 현재 문제점:
-   *  - TaskWatermarkHandler는 static하게 edge를 받아서, 모든 edge로부터 watermark를 기다림.
-   *  - 만약 transient path로 data가 안가고 있다면, 이쪽으로 watermark도 보내지지 않을 것.
-   *  - 따라서, data가 안가는 incoming edge를 판단해서 (stopped edge), 이 edge로는 watermark tracking X
-   *    - a) input stop 시키고, state가 0이될 때까지 output은 stop시키지 않음.
-   *    - b) state가 0이 되면, downstream task로 output stop signal 보냄.
-   *    - c) taskWatermarkManager에서 input pipe stop되면 tracking하지 않음.
-   */
+    if (dataRerouting && watermarkRerouting) {
+      return new LambdaDataRouter(transientPathDstTask);
+    } else if (!dataRerouting && !watermarkRerouting) {
+      return new VMDataRouter(vmPathDstTask);
+    } else {
+      return new VMLambdaBothRouter(transientPathDstTask, vmPathDstTask);
+    }
+  }
 
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
-    try {
-      if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-        final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-        dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
-      } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
-        final Object data = taskHandlingEvent.getData();
-        dataHandler.handleLocalData(data, taskHandlingEvent);
-      }
-    } catch (final Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException("Exception while hanlding data in " + taskId + ", from " + edgeId + ", data " + taskHandlingEvent.getClass());
+    // watermark handling
+    if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+      final ByteBuf data = taskHandlingEvent.getDataByteBuf();
+      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
+    } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+      final Object data = taskHandlingEvent.getData();
+      dataHandler.handleLocalData(data, taskHandlingEvent);
     }
   }
 
@@ -769,7 +718,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public void restore() {
-    throw new RuntimeException("SMTask not support restore " + taskId);
+    throw new RuntimeException("CRTask not support restore " + taskId);
     // stateRestore(taskId);
   }
 
@@ -808,7 +757,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   @Override
   public boolean checkpoint(final boolean checkpointSource,
                             final String checkpointId) {
-    throw new RuntimeException("SMTask not support checkpoint " + taskId);
+    throw new RuntimeException("CRTask not support checkpoint " + taskId);
     // stateMigration(checkpointId);
     // return true;
   }
@@ -816,6 +765,10 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   @Override
   public String toString() {
     return taskId;
+  }
+
+  interface GetDstTaskId {
+    int getDstTaskIdIndex();
   }
 
 
@@ -832,75 +785,24 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
                              TaskHandlingEvent event);
   }
 
-  final class BypassDataHandler implements DataHandler {
+  final class MultiInputSingleOutputDataHandler implements DataHandler {
+
     @Override
     public void handleLocalData(Object data,
                                 TaskHandlingEvent event) {
       if (data instanceof WatermarkWithIndex) {
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), event.getEdgeId());
-        taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            if (getNumKeys() > 0) {
-              mergerTransform.onWatermark(watermark);
-            } else {
-              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
-              dataHandler = new BypassOptimizeDataHandler();
-            }
-          });
-      } else {
-        dataRouter.writeData(data);
-      }
-    }
-
-    @Override
-    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
-      final ByteBuf byteBuf = data;
-      byteBuf.markReaderIndex();
-      final Byte b = byteBuf.readByte();
-      byteBuf.resetReaderIndex();
-
-      if (b == 0x01) {
         // watermark!
         // we should manage the watermark
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
-        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            if (getNumKeys() > 0) {
-              mergerTransform.onWatermark(watermark);
-            } else {
-              dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
-              dataHandler = new BypassOptimizeDataHandler();
-            }
-          });
-      } else {
-        // data
-        dataRouter.writeByteBuf(data);
-      }
-    }
-  }
-
-  final class BypassOptimizeDataHandler implements DataHandler {
-    @Override
-    public void handleLocalData(Object data,
-                                TaskHandlingEvent event) {
-      if (data instanceof WatermarkWithIndex) {
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), event.getEdgeId());
-
+        // LOG.info("Receive R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
-            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+            watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
-      } else {
 
+      } else {
         // final long start = System.nanoTime();
         dataRouter.writeData(data);
         // final long et = System.nanoTime();
@@ -919,92 +821,67 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
-
+        // LOG.info("Receive R3 CR watermark in {} {}", taskId, watermarkWithIndex.getWatermark().getTimestamp());
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
-            dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
+            watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
         // data
         // final long start = System.nanoTime();
         dataRouter.writeByteBuf(data);
         // final long et = System.nanoTime();
-        // taskMetrics.incrementComputation(et - start);
+        //taskMetrics.incrementComputation(et - start);
       }
     }
   }
 
-  final class ToMergerDataHandler implements DataHandler {
-
-    @Override
-    public void handleLocalData(Object data, TaskHandlingEvent taskHandlingEvent) {
-      if (data instanceof WatermarkWithIndex) {
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
-
-        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-            mergerTransform.onWatermark(watermark);
-          });
-      } else {
-        // LOG.info("Emit SM data to merger in {} {}", taskId);
-        final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
-        // final long ns = System.nanoTime();
-        taskMetrics.incrementInputProcessElement();
-
-        outputCollector.setInputTimestamp(event.timestamp);
-        mergerTransform.onData(event.value);
-
-        // final long endNs = System.nanoTime();
-        // taskMetrics.incrementComputation(endNs - ns);
-      }
-    }
-
-    @Override
-    public void handleRemoteByteBuf(ByteBuf data, TaskHandlingEvent taskHandlingEvent) {
-      final ByteBuf byteBuf = data;
-      byteBuf.markReaderIndex();
-      final Byte b = byteBuf.readByte();
-      byteBuf.resetReaderIndex();
-
-      if (b == 0x01) {
-        // watermark!
-        // we should manage the watermark
-        final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
-        // LOG.info("SM vertex receive watermark {} in {} from {}/{}", watermarkWithIndex.getWatermark(), taskId,
-        //  watermarkWithIndex.getIndex(), taskHandlingEvent.getEdgeId());
-
-        taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
-          watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark -> {
-            // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-            mergerTransform.onWatermark(watermark);
-          });
-      } else {
-        // data
-        // LOG.info("Emit SM data to merger in {} {}", taskId);
-        final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
-        // final long ns = System.nanoTime();
-        taskMetrics.incrementInputProcessElement();
-
-        outputCollector.setInputTimestamp(event.timestamp);
-        mergerTransform.onData(event.value);
-
-        // final long endNs = System.nanoTime();
-        // taskMetrics.incrementComputation(endNs - ns);
-      }
-    }
-  }
 
   interface DataRouter {
     void writeData(Object data);
     void writeByteBuf(ByteBuf data);
+  }
+
+
+  final class VMLambdaBothRouter implements DataRouter {
+
+    private final String lambdaId;
+    private final String vmId;
+
+    public VMLambdaBothRouter(final String lambdaId,
+                                final String vmId) {
+      this.lambdaId = lambdaId;
+      this.vmId = vmId;
+    }
+
+    @Override
+    public void writeByteBuf(final ByteBuf data) {
+      // LOG.info("Emit both R3 CR watermark in {}->{}", taskId, lambdaId);
+      // Lambda path
+      pipeManagerWorker.writeByteBufData(taskId,
+        transientPathEdge.getId(), lambdaId, data);
+
+      // VM path
+      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(),
+        vmId, data);
+    }
+
+    @Override
+    public void writeData(Object watermark) {
+      // final WatermarkWithIndex w = new WatermarkWithIndex((Watermark) watermark, taskIndex);
+
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        lambdaId,
+        transientPathSerializer,
+        watermark);
+
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmId,
+        vmPathSerializer,
+        watermark);
+    }
   }
 
   final class LambdaDataRouter implements DataRouter {
@@ -1016,7 +893,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     @Override
     public void writeData(Object data) {
-      pipeManagerWorker.writeData(taskId, transientOutputPathEdge.getId(),
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
         lambdaTaskId,
         transientPathSerializer,
         data);
@@ -1025,7 +902,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     @Override
     public void writeByteBuf(ByteBuf data) {
       pipeManagerWorker.writeByteBufData(taskId,
-        transientOutputPathEdge.getId(), lambdaTaskId, data);
+        transientPathEdge.getId(), lambdaTaskId, data);
     }
   }
 
@@ -1038,7 +915,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     @Override
     public void writeData(Object data) {
-      pipeManagerWorker.writeData(taskId, vmOutputPathEdge.getId(),
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
         vmTaskId,
         vmPathSerializer,
         data);
@@ -1046,13 +923,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     @Override
     public void writeByteBuf(ByteBuf data) {
-      pipeManagerWorker.writeByteBufData(taskId, vmOutputPathEdge.getId(),
+      pipeManagerWorker.writeByteBufData(taskId, vmPathEdge.getId(),
         vmTaskId, data);
     }
-  }
-
-  interface GetDstTaskId {
-    int getDstTaskIdIndex();
   }
 
   final class O2oDstTaskId implements GetDstTaskId {

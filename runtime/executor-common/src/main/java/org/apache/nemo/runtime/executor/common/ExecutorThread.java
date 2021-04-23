@@ -1,8 +1,8 @@
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskState;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
@@ -43,11 +42,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final Map<String, ExecutorThreadTask> taskIdExecutorMap = new ConcurrentHashMap<>();
 
+  private final List<String> tasks;
+
   private ConcurrentLinkedQueue<TaskHandlingEvent> controlShortcutQueue;
 
   private final ControlEventHandler controlEventHandler;
 
-  private final long throttleRate;
+  // events per sec
+  private long throttleRate = 1000;
 
   private final boolean testing;
 
@@ -88,13 +90,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     this.pendingSourceTasks = new ArrayList<>();
     this.executorId = executorId;
     this.controlEventHandler = controlEventHandler;
-    this.throttleRate = throttleRate;
+    this.throttleRate = 10000;
     this.testing = testing;
     this.executorMetrics = executorMetrics;
     this.unInitializedTasks = new LinkedBlockingQueue<>();
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
     this.taskScheduledMapSender = taskScheduledMapSender;
+    this.tasks = new LinkedList<>();
 
     final AtomicLong l = new AtomicLong(System.currentTimeMillis());
 
@@ -130,6 +133,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           }
         }
 
+        synchronized (tasks) {
+          tasks.remove(task.getId());
+        }
         taskIdExecutorMap.remove(task.getId());
       }
     } catch (final Exception e) {
@@ -146,6 +152,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     synchronized (unInitializedTasks) {
       unInitializedTasks.add(task);
     }
+
+    synchronized (tasks) {
+      tasks.add(task.getId());
+    }
     LOG.info("Add task to unInitializedTasks {} / {}", task.getId(), unInitializedTasks);
   }
 
@@ -156,9 +166,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   @Override
   public void addEvent(TaskHandlingEvent event) {
-    if (!event.isControlMessage() && !event.isOffloadingMessage()) {
-      executorMetrics.taskInputProcessRateMap
-        .get(event.getTaskId()).left().incrementAndGet();
+    if (!event.isControlMessage()) {
+      // taskExecutorMapWrapper.getTaskExecutor(event.getTaskId())
+      //  .getTaskMetrics().incrementInputReceiveElement();
+      executorMetrics.inputReceiveCntMap.get(this).getAndIncrement();
     }
 
     queue.add(event);
@@ -193,28 +204,102 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   long currProcessedCnt = 0;
   long elapsedTime = 0L;
+  long prevSleepTime = System.currentTimeMillis();
+  long prevThrottleRateAdjustTime = System.currentTimeMillis();
+  long backPressureReceiveTime = System.currentTimeMillis();
+  long sleepTime = 0;
+
+  private final long adjustPeriod = Util.THROTTLE_WINDOW;
 
   private void throttling() {
-    if (testing) {
-      // throttling
-      // nano to sec
-      final long elapsedTimeMs = TimeUnit.NANOSECONDS.toMillis(elapsedTime);
-      if (elapsedTimeMs >= 1) {
-        final long desiredElapsedTime = (long) (currProcessedCnt * 1000 / throttleRate);
-        if (desiredElapsedTime > elapsedTimeMs) {
-          LOG.info("Throttling.. current processed cnt: {}/elapsed: {} ms, throttleRate: {}, sleep {} ms",
-            currProcessedCnt, elapsedTimeMs, throttleRate, desiredElapsedTime - elapsedTimeMs);
-          try {
-            Thread.sleep(desiredElapsedTime - elapsedTimeMs);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
+
+    /*
+    // throttling
+    // nano to sec
+    final long elapsedTimeMs = TimeUnit.NANOSECONDS.toMillis(elapsedTime);
+    final long curr = System.currentTimeMillis();
+    long sleepTime = 0;
+    if (elapsedTimeMs >= 2) {
+      final long desiredElapsedTime = (long) (currProcessedCnt * 1000 / throttleRate);
+      if (desiredElapsedTime > elapsedTimeMs) {
+        // LOG.info("Throttling.. current processed cnt: {}/elapsed: {} ms, throttleRate: {}, sleep {} ms, " +
+        //    "triggerCnt: {}",
+        //  currProcessedCnt, elapsedTimeMs, throttleRate, desiredElapsedTime - elapsedTimeMs);
+        sleepTime += desiredElapsedTime - elapsedTimeMs;
+        try {
+          Thread.sleep(desiredElapsedTime - elapsedTimeMs);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
 
-        elapsedTime = 0;
-        currProcessedCnt = 0;
+      }
+
+      elapsedTime = 0;
+      currProcessedCnt = 0;
+    }
+    */
+
+     // throttling
+    // nano to sec
+    /*
+    final long curr = System.currentTimeMillis();
+    final long period = 2;
+    if (curr - prevSleepTime >= period) {
+      final long currRate = currProcessedCnt * (1000 / period);
+      final long desiredElapsedTime = Math.min(1000,
+        Math.max(0, (long) ((currRate / (double) throttleRate) * period - period)));
+      sleepTime += desiredElapsedTime;
+
+      if (desiredElapsedTime > 0) {
+        // LOG.info("Throttling.. current processed cnt: {}, currRate: {}, throttleRate: {}, sleep {} ms, ",
+        //  currProcessedCnt, currRate, throttleRate, desiredElapsedTime);
+
+        try {
+          Thread.sleep(desiredElapsedTime);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      currProcessedCnt = 0;
+      prevSleepTime = System.currentTimeMillis();
+    }
+
+    // Adjustment throttle rate
+    if (curr - prevThrottleRateAdjustTime >= adjustPeriod) {
+      synchronized (this) {
+        if (curr - backPressureReceiveTime >= adjustPeriod) {
+          // adjust throttle rate if it does not receive backpressure within the period
+          if (sleepTime > adjustPeriod / 2) {
+            // increase throttle rate
+            LOG.info("Increase throttle rate from {} to {}", throttleRate, (long) (throttleRate * 1.2));
+            throttleRate = (long) (throttleRate * 1.2);
+          }
+          prevThrottleRateAdjustTime = curr;
+        } else {
+          prevThrottleRateAdjustTime = backPressureReceiveTime;
+        }
+        sleepTime = 0;
       }
     }
+    */
+  }
+
+  public void backpressure() {
+    /*
+    synchronized (tasks) {
+      if (tasks.isEmpty()) {
+        return;
+      }
+    }
+
+    synchronized (this) {
+      LOG.info("Backpressure throttle rate from {} to {}", throttleRate, Math.max(1000, (long) (throttleRate * 0.8)));
+      throttleRate = Math.max(1000, (long) (throttleRate * 0.8));
+      backPressureReceiveTime = System.currentTimeMillis();
+      sleepTime = 0;
+    }
+    */
   }
 
   public void start() {
@@ -233,20 +318,16 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                 while (iterator.hasNext()) {
                   final ExecutorThreadTask sourceTask = iterator.next();
 
+                  handlingControlEvent();
                   throttling();
 
                   if (sourceTask.hasData()) {
-                    if (testing) {
-                      currProcessedCnt += 1;
-                      long st = System.nanoTime();
-                      sourceTask.handleSourceData();
-                      // executorMetrics.eventProcessed.incrementAndGet();
-                      long et = System.nanoTime();
-                      elapsedTime += (et - st);
-                    } else {
-                      sourceTask.handleSourceData();
-                      // executorMetrics.eventProcessed.incrementAndGet();
-                    }
+                    currProcessedCnt += 1;
+                    long st = System.nanoTime();
+                    sourceTask.handleSourceData();
+                    // executorMetrics.eventProcessed.incrementAndGet();
+                    long et = System.nanoTime();
+                    elapsedTime += (et - st);
                     processed = true;
                   } else {
                     iterator.remove();
@@ -340,14 +421,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
               if (testing) {
                 long st = System.nanoTime();
                 taskExecutor.handleData(event.getEdgeId(), event);
-                executorMetrics.taskInputProcessRateMap
-                  .get(event.getTaskId()).right().incrementAndGet();
                 long et = System.nanoTime();
                 elapsedTime += (et - st);
               } else {
                 taskExecutor.handleData(event.getEdgeId(), event);
-                executorMetrics.taskInputProcessRateMap
-                  .get(event.getTaskId()).right().incrementAndGet();
+                final long cnt = executorMetrics.inputProcessCntMap.get(this);
+                executorMetrics.inputProcessCntMap.put(this, cnt + 1);
               }
 
               processed = true;

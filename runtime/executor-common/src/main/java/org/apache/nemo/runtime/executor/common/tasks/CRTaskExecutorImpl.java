@@ -22,7 +22,6 @@ import io.netty.buffer.ByteBuf;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -41,19 +40,14 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
@@ -106,7 +100,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
 
   private final StateStore stateStore;
 
-  private R2WatermarkManager taskWatermarkManager;
+  private R2MultiPairWatermarkManager taskWatermarkManager;
   private final InputPipeRegister inputPipeRegister;
 
   // private final OffloadingManager offloadingManager;
@@ -249,7 +243,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
     this.vmPathDstTasks = getDstTaskIds(taskId, vmPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
-    this.taskWatermarkManager = new R2WatermarkManager(taskId);
+    this.taskWatermarkManager = new R2MultiPairWatermarkManager(taskId);
 
     if (vmPathDstTasks.size() > 1) {
       this.getDstTaskId = new RRDstTAskId();
@@ -345,7 +339,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
     LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    taskWatermarkManager.stopIndex(taskIndex, edgeId);
   }
 
   @Override
@@ -354,6 +348,15 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
     taskWatermarkManager.startIndex(taskIndex, edgeId);
+  }
+
+  // R2
+  @Override
+  public void startAndStopInputPipeIndex(final Triple<String, String, String> triple) {
+    LOG.info("Start and stop input pipe index {}", triple);
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+    final String edgeId = triple.getMiddle();
+    taskWatermarkManager.startAndStopPairIndex(taskIndex, edgeId);
   }
 
   private void prepare() {

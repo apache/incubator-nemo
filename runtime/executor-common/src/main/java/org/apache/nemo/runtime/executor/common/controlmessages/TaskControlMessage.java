@@ -47,12 +47,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
    *    - b) Master: RoutingDataToLambdaDone control message (to the "pair" Lambda task)
    *    - c) Executor: receive RoutingDataToLambdaDone control message
    * ----------- (done) -----------
-   * 2) VM (Lambda) task -> CR task: R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING
+   * 2) VM (Lambda) task -> CR task: R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR
    *    - send: (originTaskId, pairTaskId, pairEdge)
    * 3) CR task: set redirection to Lambda/VM
    *    - a) add originTaksId, pairTaskId to rerouting table
    *    - b) redirect when data is sent to originTaskId;
-   * 4) CR task -> VM/Lambda task: R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING // done
+   * 4) CR task -> VM/Lambda task: R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK // done
    *    - Here, input pipe state becomes STOPPED,
    *       we should change it to RUNNING when the data goes back to the task again
    *    - stop output pipe of CR task -> VM/Lambda task
@@ -62,7 +62,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
    *              b) find pair task id
    *              c) send R2_GET_STATE_SIGNAL_BY_PAIR to the pair task id
    *    - After sending the message, the VM/Lambda task sends stop signal to output pipes
-    *       -- (R2_TASK_OUTPUT_DONE_FROM_UPSTREAM) signal; VM/Lambda task -> downstream tasks
+    *       -- (R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN) signal; VM/Lambda task -> downstream tasks
     *       -- downstream tasks set their input pipe to STOPPED
    *        -- this is because of watermark handling of transient path
    * 6) Lambda/VM task (target task):
@@ -92,12 +92,12 @@ public final class TaskControlMessage implements TaskHandlingEvent {
 
     // For R2
     R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER,
-    R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
-    R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING,
+    R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR,
+    R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK,
     R2_GET_STATE_SIGNAL_BY_PAIR,
     R2_START_OUTPUT_FROM_DOWNSTREAM,
-    R2_TASK_OUTPUT_DONE_FROM_UPSTREAM,
-    R2_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+    R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN,
+    R2_TASK_OUTPUT_DONE_ACK_FROM_DOWN_TO_UP,
     R2_TASK_OUTPUT_START_BY_PAIR,
     R2_TASK_INPUT_START_FROM_UPSTREAM,
     R2_INPUT_START_BY_PAIR,
@@ -112,11 +112,15 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R3_DATA_WATERMARK_STOP_FROM_P_TO_CR,
     R3_DATA_STOP_FROM_P_TO_CR,
     R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P,
+    R3_ACK_DATA_STOP_FROM_CR_TO_P,
     R3_TASK_OUTPUT_DONE_FROM_P_TO_M,
     R3_ACK_TASK_OUTPUT_DONE_ACK_FROM_M_TO_P,
     R3_INPUT_OUTPUT_START_BY_PAIR,
     R3_START_OUTPUT_FROM_P_TO_CR,
     R3_TASK_INPUT_START_FROM_P_TO_M,
+    R3_TASK_DATA_DONE_FROM_P_TO_M,
+    R3_ACK_TASK_DATA_DONE_FROM_M_TO_P,
+
 
     // For R3 optimization: partial/final bypass
     R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR,
@@ -132,6 +136,10 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     OFFLOAD_TASK_STOP,
     OFFLOAD_CONTROL,
     DEACTIVATE_LAMBDA,
+
+    // For throttle
+    THROTTLE,
+    SOURCE_SLEEP,
 
     // Not used
     BACKPRESSURE,
@@ -166,9 +174,10 @@ public final class TaskControlMessage implements TaskHandlingEvent {
       case TASK_STOP_SIGNAL_BY_MASTER:
       case PIPE_INIT:
       case R2_TASK_OUTPUT_START_BY_PAIR:
+      case R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR:
       case R2_INPUT_START_BY_PAIR:
       case R2_START_OUTPUT_FROM_DOWNSTREAM:
-      case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
+      case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWN_TO_UP:
       case PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK:
       case R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
       case R3_TASK_STATE_CHECK:
@@ -181,12 +190,16 @@ public final class TaskControlMessage implements TaskHandlingEvent {
       case R3_AC_OPT_SEND_PARTIAL_RESULT_FROM_M_TO_P:
       case R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
       case R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
+      case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P:
+      case THROTTLE:
         {
         return true;
       }
       case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M:
       case R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P:
+      case R3_ACK_DATA_STOP_FROM_CR_TO_P:
       case R3_TASK_OUTPUT_DONE_FROM_P_TO_M:
+      case R3_TASK_DATA_DONE_FROM_P_TO_M:
       case R3_OPT_SEND_PARTIAL_RESULT_FROM_P_TO_M:
         default: {
         return false;
@@ -252,16 +265,21 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         }
         case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
         case R3_DATA_STOP_FROM_P_TO_CR:
-        case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
+        case R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR: {
           ((RedirectionMessage) event).encode(bos);
           break;
         }
-        case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
+        case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK: {
           bos.writeBoolean((Boolean)event);
           break;
         }
+        case R3_TASK_DATA_DONE_FROM_P_TO_M:
         case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           bos.writeUTF((String)event);
+          break;
+        }
+        case THROTTLE: {
+          bos.writeInt((Integer) event);
           break;
         }
         case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK:
@@ -294,16 +312,17 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         }
         case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
         case R3_DATA_STOP_FROM_P_TO_CR:
-        case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING: {
+        case R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             RedirectionMessage.decode(bis));
           break;
         }
-        case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING: {
+        case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             bis.readBoolean());
           break;
         }
+        case R3_TASK_DATA_DONE_FROM_P_TO_M:
         case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             bis.readUTF());
@@ -312,6 +331,11 @@ public final class TaskControlMessage implements TaskHandlingEvent {
         case REGISTER_EXECUTOR: {
           msg = new TaskControlMessage(type, inputPipeIndex,
             targetPipeIndex, targetTaskId, bis.readUTF());
+          break;
+        }
+        case THROTTLE: {
+          msg = new TaskControlMessage(type, inputPipeIndex,
+            targetPipeIndex, targetTaskId, bis.readInt());
           break;
         }
         case OFFLOAD_TASK_STOP:

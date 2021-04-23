@@ -45,7 +45,9 @@ public final class TaskEventRateCalculator {
       sb.append("METRICLOG/" + executorId + "\t");
       sb.append(taskExecutor.getId());
       sb.append("\t");
-      sb.append("input:");
+      sb.append("inputR: ");
+      sb.append(taskMetrics.inputReceiveElement);
+      sb.append("\tinputP:");
       sb.append(taskMetrics.inputElement);
       sb.append("\toutput:");
       sb.append(taskMetrics.outputElement);

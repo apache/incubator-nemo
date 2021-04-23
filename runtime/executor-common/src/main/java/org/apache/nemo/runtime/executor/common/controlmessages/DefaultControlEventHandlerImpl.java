@@ -1,16 +1,15 @@
 package org.apache.nemo.runtime.executor.common.controlmessages;
 
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.executor.common.ControlEventHandler;
-import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
-import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.annotations.Parameter;
@@ -42,6 +41,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final R3ControlEventHandler r3ControlEventHandler;
   private final TaskToBeStoppedMap taskToBeStopped;
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
+  private final Map<ExecutorThread, Long> executorthreadThrottleTime;
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -55,6 +55,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final TaskToBeStoppedMap taskToBeStoppedMap,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
+    this.executorthreadThrottleTime = new ConcurrentHashMap<>();
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
     this.pipeManagerWorker = pipeManagerWorker;
     this.toMaster = toMaster;
@@ -72,6 +73,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
     switch (control.type) {
       // For optimization of R3 state merger
+      case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P:
+      case R3_TASK_DATA_DONE_FROM_P_TO_M:
+      case R3_ACK_DATA_STOP_FROM_CR_TO_P:
       case R3_AC_OPT_SEND_PARTIAL_RESULT_FROM_M_TO_P:
       case R3_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
       case R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
@@ -96,16 +100,105 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       }
       case R2_INIT:
       case R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER:
-      case R2_PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK_FOR_REROUTING:
-      case R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING:
-      case R2_TASK_OUTPUT_DONE_FROM_UPSTREAM:
+      case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK:
+      case R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR:
+      case R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN:
       case R2_GET_STATE_SIGNAL_BY_PAIR:
       case R2_TASK_INPUT_START_FROM_UPSTREAM:
-      case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
+      case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWN_TO_UP:
       case R2_TASK_OUTPUT_START_BY_PAIR:
       case R2_INPUT_START_BY_PAIR:
       case R2_START_OUTPUT_FROM_DOWNSTREAM: {
         r2ControlEventHandler.handleControlEvent(event);
+        break;
+      }
+      case SOURCE_SLEEP: {
+        /*
+        final BackpressureSleepAlarm alarm = (BackpressureSleepAlarm) control.event;
+        try {
+          Thread.sleep(1);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+
+        alarm.triggerNextSleep();
+        */
+
+        final long sleepTime = (long) control.event;
+        // LOG.info("Throttling source executor {}, sleep {}",
+        //  executorId,
+        //  sleepTime);
+        try {
+          Thread.sleep(sleepTime);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+
+        /*
+        if (executorthreadThrottleTime.containsKey(executorThread)) {
+          if (System.currentTimeMillis() - executorthreadThrottleTime.get(executorThread) < TaskExecutorUtil.THROTTLE_WINDOW) {
+            // skip
+          } else {
+            LOG.info("Throttling source executor {}, sleep {}",
+              executorId,
+              sleepTime);
+            try {
+              Thread.sleep(sleepTime);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            executorthreadThrottleTime.put(executorThread, System.currentTimeMillis());
+          }
+        } else {
+          LOG.info("Throttling source executor {}, sleep {}",
+            executorId,
+            sleepTime);
+          try {
+            Thread.sleep(sleepTime);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          executorthreadThrottleTime.put(executorThread, System.currentTimeMillis());
+        }
+        */
+        break;
+      }
+      case THROTTLE: {
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(control.getTaskId());
+
+        if (executorThread == null) {
+          return;
+        }
+
+        final int sleepTime = (Integer) control.event;
+        final int throttleWindow = 500;
+
+        if (executorthreadThrottleTime.containsKey(executorThread)) {
+          // if (System.currentTimeMillis() - executorthreadThrottleTime.get(executorThread) < TaskExecutorUtil.THROTTLE_WINDOW) {
+          // skip
+          // } else {
+          LOG.info("Throttling task {} in executor {}, sleep {}", control.getTaskId(),
+            executorId,
+            sleepTime);
+          try {
+            Thread.sleep(sleepTime);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          executorthreadThrottleTime.put(executorThread, System.currentTimeMillis());
+          // }
+        } else {
+          LOG.info("Throttling task {} in executor {}, sleep {}", control.getTaskId(),
+            executorId,
+            sleepTime);
+          try {
+            Thread.sleep(sleepTime);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          executorthreadThrottleTime.put(executorThread, System.currentTimeMillis());
+        }
         break;
       }
 

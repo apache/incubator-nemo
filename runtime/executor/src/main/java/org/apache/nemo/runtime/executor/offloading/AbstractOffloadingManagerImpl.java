@@ -234,10 +234,10 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
                 case EXECUTOR_METRICS: {
                   final ByteBufInputStream bis = new ByteBufInputStream(oe.getByteBuf());
                   final DataInputStream dis = new DataInputStream(bis);
-                  final ExecutorMetrics executorMetrics = ExecutorMetrics.decode(dis);
+                  // final ExecutorMetrics executorMetrics = ExecutorMetrics.decode(dis);
 
-                  LOG.info("Executor metrics recieved for worker {}: {}", myWorker.getId(), executorMetrics);
-                  myWorker.setMetric(executorMetrics);
+                  // LOG.info("Executor metrics recieved for worker {}: {}", myWorker.getId(), executorMetrics);
+                  // myWorker.setMetric(executorMetrics);
                   break;
                 }
                 default: {
@@ -410,13 +410,6 @@ public abstract class AbstractOffloadingManagerImpl implements OffloadingManager
   }
 
   private final Map<String, Queue<TaskHandlingEvent>> intermediateQueueMap = new ConcurrentHashMap<>();
-
-  private long totalProcessedDataInWorker(final ExecutorMetrics em) {
-    return em.taskInputProcessRateMap.values().stream()
-      .map(pair -> pair.right().get())
-      .reduce((x, y) -> x + y)
-      .get();
-  }
 
 
   private int PARTIAL_CNT_THRESHOLD = 2000;

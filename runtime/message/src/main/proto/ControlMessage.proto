@@ -196,6 +196,9 @@ enum MessageType {
     R3OptSignalFinalCombine = 75;
     R3PairTaskInitiateProtocol = 76;
     R3AckPairTaskInitiateProtocol = 77;
+
+    SourceSleep = 78;
+    CancelAndSourceSleep = 79;
 }
 
 message LambdaEndMessage {
@@ -645,6 +648,8 @@ message LookupSerializerMesssage {
 
 message StopTaskMessage {
   required string taskId = 1;
+  optional bytes b = 2;
+  optional bool checkpoint = 3;
 }
 
 message StopTaskDoneMessage {

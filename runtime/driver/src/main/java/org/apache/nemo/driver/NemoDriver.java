@@ -231,6 +231,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               runtimeMaster.redirectionToLambda(num, stages);
+
             }  else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
@@ -248,6 +249,10 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
+
+             //  runtimeMaster.throttleSource(10);
+              jobScaler.sendTaskStopSignal(num, true, stages);
+              /*
               for (int i = stages.size() - 1; i >= 0; i--) {
                 jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));
                 try {
@@ -256,6 +261,10 @@ public final class NemoDriver {
                   e.printStackTrace();
                 }
               }
+              */
+
+              // runtimeMaster.throttleSource(1000000);
+
             } else if (decision.equals("move-task")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
@@ -284,7 +293,12 @@ public final class NemoDriver {
             } else if (decision.equals("throttle-source")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
-              runtimeMaster.throttleSource(num);
+              runtimeMaster.throttleSource(num / evalConf.sourceParallelism);
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
             } else {
               throw new RuntimeException("Invalid scaling decision " + decision);
             }

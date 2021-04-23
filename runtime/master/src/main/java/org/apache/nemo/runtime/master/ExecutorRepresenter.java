@@ -105,4 +105,6 @@ public interface ExecutorRepresenter {
                                    final TaskScheduledMapMaster taskScheduledMapMaster,
                                    final ExecutorRegistry executorRegistry,
                                    final PairStageTaskManager pairStageTaskManager);
+  boolean isAllTaskActivated();
+  boolean isAllTaskActivatedExceptPartial();
 }

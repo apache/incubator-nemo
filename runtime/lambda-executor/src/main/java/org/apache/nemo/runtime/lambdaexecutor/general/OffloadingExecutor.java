@@ -225,9 +225,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       long inputSum = 0L;
       long processSum = 0L;
 
-      for (final String key : executorMetrics.taskInputProcessRateMap.keySet()) {
-        inputSum += executorMetrics.taskInputProcessRateMap.get(key).left().get();
-        processSum += executorMetrics.taskInputProcessRateMap.get(key).right().get();
+      for (final String key : executorMetrics.taskInputReceiveRateMap.keySet()) {
+        inputSum += executorMetrics.taskInputReceiveRateMap.get(key).left().get();
+        processSum += executorMetrics.taskInputReceiveRateMap.get(key).right().get();
       }
 
 
@@ -431,9 +431,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         // final DataInputStream diss = new DataInputStream(new ByteArrayInputStream(task.getSerializedIRDag()));
         // final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
         //  DAG.decode(diss);
-
-        executorMetrics.taskInputProcessRateMap
-          .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
         throw new RuntimeException("TODO: launchTask");
         // launchTask(task, task.getIrDag(), e.offloaded);

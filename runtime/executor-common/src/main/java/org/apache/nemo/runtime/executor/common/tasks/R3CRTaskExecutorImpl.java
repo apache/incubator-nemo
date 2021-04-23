@@ -245,7 +245,11 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
 
     this.vmPathSerializer = serializerManager.getSerializer(vmPathEdge.getId());
 
-    this.taskWatermarkManager = new R2WatermarkManager(taskId);
+    if (task.getTaskIncomingEdges().size() > 2) {
+      this.taskWatermarkManager = new R2MultiPairWatermarkManager(taskId);
+    } else {
+      this.taskWatermarkManager = new R2SinglePairWatermarkManager(taskId);
+    }
 
     if (vmPathDstTasks.length > 1) {
       this.getDstTaskId = new RRDstTAskId();
@@ -358,20 +362,31 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
+  // R3
   @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Stop input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
-    taskWatermarkManager.stopAndToggleIndex(taskIndex, edgeId);
+    taskWatermarkManager.stopIndex(taskIndex, edgeId);
   }
 
+  // R3
   @Override
   public void startInputPipeIndex(final Triple<String, String, String> triple) {
     LOG.info("Start input pipe index {}", triple);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
     final String edgeId = triple.getMiddle();
     taskWatermarkManager.startIndex(taskIndex, edgeId);
+  }
+
+  // R2
+  @Override
+  public void startAndStopInputPipeIndex(final Triple<String, String, String> triple) {
+    LOG.info("Start and stop input pipe index {}", triple);
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(triple.getLeft());
+    final String edgeId = triple.getMiddle();
+    taskWatermarkManager.startAndStopPairIndex(taskIndex, edgeId);
   }
 
   private void prepare() {
@@ -828,7 +843,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           watermarkRouters[i].writeData(data);
         }
       } else {
+        // final long start = System.nanoTime();
         dataRouters[getDstTaskId.getDstTaskIdIndex()].writeData(data);
+        // final long et = System.nanoTime();
+        //taskMetrics.incrementComputation(et - start);
       }
     }
 
@@ -846,7 +864,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         }
       } else {
         // data
+        // final long start = System.nanoTime();
         dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
+        // final long et = System.nanoTime();
+        // taskMetrics.incrementComputation(et - start);
       }
     }
   }
@@ -865,7 +886,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
         watermarkRouters[0].writeData(data);
       } else {
+        // final long start = System.nanoTime();
         dataRouters[0].writeData(data);
+        // final long et = System.nanoTime();
+        // taskMetrics.incrementComputation(et - start);
       }
     }
 
@@ -881,7 +905,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         watermarkRouters[0].writeByteBuf(data);
       } else {
         // data
+       //  final long start = System.nanoTime();
         dataRouters[0].writeByteBuf(data);
+       // final long et = System.nanoTime();
+       // taskMetrics.incrementComputation(et - start);
       }
     }
   }
@@ -905,7 +932,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           });
 
       } else {
+        // final long start = System.nanoTime();
         dataRouters[getDstTaskId.getDstTaskIdIndex()].writeData(data);
+        // final long et = System.nanoTime();
+        // taskMetrics.incrementComputation(et - start);
       }
     }
 
@@ -930,7 +960,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           });
       } else {
         // data
+        // final long start = System.nanoTime();
         dataRouters[getDstTaskId.getDstTaskIdIndex()].writeByteBuf(data);
+        // final long et = System.nanoTime();
+        // taskMetrics.incrementComputation(et - start);
       }
     }
   }
@@ -954,7 +987,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           });
 
       } else {
+        final long start = System.nanoTime();
         dataRouters[0].writeData(data);
+        final long et = System.nanoTime();
+        taskMetrics.incrementComputation(et - start);
       }
     }
 
@@ -978,7 +1014,10 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
           });
       } else {
         // data
+        // final long start = System.nanoTime();
         dataRouters[0].writeByteBuf(data);
+        // final long et = System.nanoTime();
+        // taskMetrics.incrementComputation(et - start);
       }
     }
   }

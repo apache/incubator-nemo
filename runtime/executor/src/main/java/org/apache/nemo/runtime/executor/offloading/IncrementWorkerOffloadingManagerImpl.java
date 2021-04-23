@@ -40,20 +40,7 @@ public final class IncrementWorkerOffloadingManagerImpl extends AbstractOffloadi
     if (!worker.getExecutorMetrics().isPresent()) {
       return false;
     }
-
-    final ExecutorMetrics executorMetrics = (ExecutorMetrics) worker.getExecutorMetrics().get();
-    long inSum = 0L;
-    long outSum = 0L;
-    for (final String key : executorMetrics.taskInputProcessRateMap.keySet()) {
-      inSum += executorMetrics.taskInputProcessRateMap.get(key).left().get();
-      outSum += executorMetrics.taskInputProcessRateMap.get(key).right().get();
-    }
-
-    if (outSum == 0) {
-      return false;
-    } else {
-      return (inSum / (double) outSum) > 1.5;
-    }
+    return true;
   }
 
   @Override

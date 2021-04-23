@@ -77,7 +77,23 @@ public final class HDFStateStore implements StateStore {
           fileSystem.delete(path, true);
         }
 
-        return fileSystem.create(path);
+        final FSDataOutputStream os = fileSystem.create(path);
+        return new OutputStream() {
+          @Override
+          public void write(int b) throws IOException {
+            os.write(b);
+          }
+          @Override
+          public void close() {
+            try {
+              os.hflush();
+              os.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          }
+        };
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -102,6 +118,7 @@ public final class HDFStateStore implements StateStore {
 
         final FSDataOutputStream out = fileSystem.create(path);
         out.write(bytes);
+        out.hflush();
         out.close();
       } catch (IOException e) {
         e.printStackTrace();

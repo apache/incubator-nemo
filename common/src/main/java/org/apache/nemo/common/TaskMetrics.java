@@ -1,15 +1,14 @@
 package org.apache.nemo.common;
 
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 public final class TaskMetrics {
 
   private final int window = 20;
   private long updatedTime;
 
-  private long inputElement;
+  private long inputReceiveElement;
+  private long inputProcessElement;
   private long outputElement;
   private long computation;
   private long inbytes;
@@ -18,7 +17,8 @@ public final class TaskMetrics {
   private long serializedTime;
 
   public TaskMetrics() {
-    this.inputElement = 0;
+    this.inputReceiveElement = 0;
+    this.inputProcessElement = 0;
     this.outputElement = 0;
     this.computation = 0;
     this.inbytes = 0;
@@ -28,8 +28,24 @@ public final class TaskMetrics {
     this.updatedTime = 0;
   }
 
-  public void incrementInputElement() {
-    inputElement += 1;
+  public long getComputation() {
+    return computation;
+  }
+
+  public void incrementInputReceiveElement() {
+    inputReceiveElement += 1;
+  }
+
+  public Pair<Long, Long> getInputReceiveProcessElement() {
+    return Pair.of(inputReceiveElement, inputProcessElement);
+  }
+
+  public long getInputProcessElement() {
+    return inputProcessElement;
+  }
+
+  public void incrementInputProcessElement() {
+    inputProcessElement += 1;
   }
 
   public void incrementOutputElement() {
@@ -56,10 +72,11 @@ public final class TaskMetrics {
     serializedTime += (updated / 1000);
   }
 
-  private RetrievedMetrics prevMetric = new RetrievedMetrics(0, 0, 0, 0, 0, 0, 0);
+  private RetrievedMetrics prevMetric = new RetrievedMetrics(0, 0, 0, 0, 0, 0, 0, 0);
 
   public RetrievedMetrics retrieve() {
-    final long ie = inputElement;
+    final long ir = inputReceiveElement;
+    final long ie = inputProcessElement;
     final long oe = outputElement;
     final long c = computation;
     final long ib = inbytes;
@@ -67,7 +84,7 @@ public final class TaskMetrics {
     final long ob = outbytes;
     final long st = serializedTime;
 
-    final RetrievedMetrics newMetric = new RetrievedMetrics(ie, oe, c, ib, st, ob, dst);
+    final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst);
 
     final RetrievedMetrics delta = delta(newMetric, prevMetric);
     prevMetric = newMetric;
@@ -86,7 +103,7 @@ public final class TaskMetrics {
       long updateOe = oe / window * (elapsed / 1000);
       long updateComp = c / window * (elapsed / 1000);
 
-      inputElement.getAndAdd(-updateIe);
+      inputProcessElement.getAndAdd(-updateIe);
       outputElement.getAndAdd(-updateOe);
       computation.getAndAdd(-updateComp);
     }
@@ -94,7 +111,8 @@ public final class TaskMetrics {
   }
 
   public static RetrievedMetrics delta(RetrievedMetrics newMetric, RetrievedMetrics oldMetric) {
-    return new RetrievedMetrics(newMetric.inputElement - oldMetric.inputElement,
+    return new RetrievedMetrics(newMetric.inputReceiveElement - oldMetric.inputReceiveElement,
+      newMetric.inputElement - oldMetric.inputElement,
       newMetric.outputElement - oldMetric.outputElement,
       newMetric.computation - oldMetric.computation,
       newMetric.inbytes - oldMetric.inbytes,
@@ -108,6 +126,7 @@ public final class TaskMetrics {
   }
 
   public static final class RetrievedMetrics {
+    public final long inputReceiveElement;
     public final long inputElement;
     public final long outputElement;
     public final long computation;
@@ -116,13 +135,15 @@ public final class TaskMetrics {
     public final long outbytes;
     public final long deserTime;
 
-    public RetrievedMetrics(final long inputElement,
+    public RetrievedMetrics(final long inputReceiveElement,
+                            final long inputElement,
                             final long outputElement,
                             final long computation,
                             final long inbytes,
                             final long serializedTime,
                             final long outbytes,
                             final long deserTime) {
+      this.inputReceiveElement = inputReceiveElement;
       this.inputElement = inputElement;
       this.outputElement = outputElement;
       this.computation = computation;

@@ -776,11 +776,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                        final String taskId) {
     if (taskStoppedOutputPipeIndicesMap.containsKey(taskId)
       && taskStoppedOutputPipeIndicesMap.get(taskId).contains((Integer) index)) {
-      throw new RuntimeException("Output pipe already stopped " + index + " " + taskId);
+      LOG.warn("Output pipe already stopped " + index + " " + taskId);
     }
 
     if (pendingOutputPipeMap.containsKey(index)) {
-      throw new RuntimeException("Output pipe already stopped " + index + " " + taskId);
+      LOG.warn("Output pipe already stopped " + index + " " + taskId);
     }
 
     // send control message

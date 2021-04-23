@@ -7,6 +7,7 @@ public interface  CRTaskExecutor extends TaskExecutor {
   // src -> edge -> dst
   void stopInputPipeIndex(Triple<String, String, String> triple);
   void startInputPipeIndex(Triple<String, String, String> triple);
+  void startAndStopInputPipeIndex(Triple<String, String, String> triple);
 
   void setRerouting(final String originTask,
                     final String pairTaskId,

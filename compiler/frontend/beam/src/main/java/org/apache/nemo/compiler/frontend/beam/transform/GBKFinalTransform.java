@@ -148,13 +148,17 @@ public final class GBKFinalTransform<K, InputT>
       cos.close();
 
       final long et = System.currentTimeMillis();
-      LOG.info("State encoding byte {}, time {} Checkpoint timer state size {}, {} for {} in {}",
+      LOG.info("State encoding byte {}, time {} Checkpoint timer state size {}, {} for {} in {}, " +
+          "coder: {} / {} / {}",
         cos.getCount(),
         et - st,
         inMemoryTimerInternalsFactory.getNumKey(),
         inMemoryStateInternalsFactory.stateInternalMap.size(),
         getContext().getTaskId(),
-        getContext().getExecutorId());
+        getContext().getExecutorId(),
+        inputCoder,
+        keyCoder,
+        windowCoder);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -355,7 +359,7 @@ public final class GBKFinalTransform<K, InputT>
     }
 
     // drop late data
-    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().getMillis() >= inputWatermark.getTimestamp()) {
 
       //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
@@ -713,8 +717,8 @@ public final class GBKFinalTransform<K, InputT>
         keyAndWatermarkHoldMap.put(key,
           // adds the output timestamp to the watermark hold of each key
           // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-          new Watermark(output.getTimestamp().getMillis()));
-        timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis()));
+          new Watermark(output.getTimestamp().getMillis() + 1));
+        timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
       // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());

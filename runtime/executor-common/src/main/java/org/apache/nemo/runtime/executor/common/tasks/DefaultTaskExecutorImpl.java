@@ -30,7 +30,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.punctuation.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
@@ -704,7 +703,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // This MUST BE generated from remote source
-      taskMetrics.incrementInputElement();
+      taskMetrics.incrementInputProcessElement();
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalids event type " + event);
@@ -785,6 +784,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   @Override
   public void restore() {
+    final long st = System.currentTimeMillis();
     try {
       final DataInputStream is = new DataInputStream(stateStore.getStateStream(taskId + "-taskWatermarkManager"));
       if (task.getTaskIncomingEdges().size() == 0) {
@@ -814,11 +814,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     if (!isStateless) {
       statefulTransforms.forEach(transform -> transform.restore(taskId));
     }
+
+    final long et = System.currentTimeMillis();
+    LOG.info("Restore state time of {}: {}", taskId, et - st);
   }
 
   @Override
   public boolean checkpoint(final boolean checkpointSource,
                             final String checkpointId) {
+    final long st = System.currentTimeMillis();
     boolean hasChekpoint = false;
 
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
@@ -875,6 +879,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     if (!isStateless) {
       statefulTransforms.forEach(transform -> transform.checkpoint(checkpointId));
     }
+
+    final long et = System.currentTimeMillis();
+    LOG.info("Checkpoint elapsed time of {}: {}", taskId, et - st);
 
     return true;
   }

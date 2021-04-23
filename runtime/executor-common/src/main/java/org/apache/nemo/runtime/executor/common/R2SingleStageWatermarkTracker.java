@@ -98,14 +98,27 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     return stoppedWatermarks[edgeIndex];
   }
 
-  public void startInputPipeWatermark(final int edgeIndex,
-                                      final long watermark) {
+  public void startInputPipeWatermark(final int edgeIndex) {
+    if (!stoppedWatermarks[edgeIndex]) {
+      throw new RuntimeException("Edge index " + edgeIndex + " already started.. but try to restart again");
+    }
+
     stoppedWatermarks[edgeIndex] = false;
+    /*
     if (watermarks[edgeIndex] < watermark) {
       watermarks[edgeIndex] = watermark;
     }
+    */
     allStopped = false;
     currWatermarkTracker = watermarkTracker;
+  }
+
+  public void setWatermark(final int index,
+                           final long watermark) {
+    if (watermarks[index] > watermark) {
+      LOG.warn("Curr Watermark is smaller than prev watermark " + index + ", " + watermark + ", prev " + watermarks[index]);
+    }
+    watermarks[index] = watermark;
   }
 
   public Optional<Long> updateAndGetCurrentWatermark() {
@@ -233,11 +246,16 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         // The recent watermark timestamp cannot be less than the previous one
         // because watermark is monotonically increasing.
         if (watermarks[edgeIndex] > watermark) {
+          final StringBuilder sb = new StringBuilder();
+          buildArray(sb, stoppedWatermarks);
+          final StringBuilder sb2 = new StringBuilder();
+          buildArray(sb, watermarks);
+
           throw new RuntimeException("task " + taskId + " edge " + edgeId + " watermarks.get(edgeIndex) > watermark" +
             watermarks[edgeIndex] + " > " + watermark + ", "
             + "edgeIndex: " + edgeIndex + ", " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-            " stopped: " + stoppedWatermarks);
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2 +
+            " stopped: " + sb);
 
           // LOG.warn("Warning pre watermark {} is larger than current {}, index {}",
           //  new Instant(watermarks.get(edgeIndex)), new Instant(watermark), edgeIndex);

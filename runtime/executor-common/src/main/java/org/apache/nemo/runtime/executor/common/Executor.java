@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
@@ -34,6 +36,8 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.common.monitoring.AlarmManager;
+import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
 import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
@@ -304,6 +308,233 @@ public final class Executor {
 
     }, 1, 1, TimeUnit.SECONDS);
 
+    final long windowSize = 1000;
+    final long delay = Util.THROTTLE_WINDOW;
+    final long period = Util.THROTTLE_WINDOW;
+    final AtomicLong prevSendTime = new AtomicLong(System.currentTimeMillis());
+    final Map<String, Pair<Long, Long>> prevCountMap = new HashMap<>();
+    final Map<String, List<Long>> processingCntHistory = new HashMap<>();
+    final AtomicLong prevReceiveCnt = new AtomicLong(0);
+    final AtomicLong prevProcessingCnt = new AtomicLong(0);
+    final AtomicLong prevProcessingTime = new AtomicLong(0);
+
+    final List<Pair<Long, Long>> processingCntHistory2 = new LinkedList<>();
+
+    final AtomicLong throttleDelay = new AtomicLong((long) (delay * 0.7));
+
+    if (!resourceType.equals(ResourcePriorityProperty.SOURCE)) {
+      scheduledExecutorService.scheduleAtFixedRate(() -> {
+        try {
+          // Send signal to source executor
+          final long processCnt = executorMetrics.inputProcessCntMap.values().stream().reduce((x, y) -> x + y).get();
+          final long receiveCnt = executorMetrics.inputReceiveCntMap.values().stream()
+            .map(l -> l.get()).reduce((x, y) ->
+              x + y).get();
+
+          final long queueLength = receiveCnt - processCnt;
+          final long prevQueueLength = prevReceiveCnt.get() - prevProcessingCnt.get();
+
+          LOG.info("Send throttle event 2 from {} to source, delay {}, " +
+                "queueLength: {} " +
+                "input: {}, process: {}", executorId, 400,
+              queueLength,
+              receiveCnt, processCnt);
+
+          /*
+          if (queueLength > 30000) {
+
+            LOG.info("Send throttle event 2 from {} to source, delay {}, " +
+                "queueLength: {} " +
+                "input: {}, process: {}", executorId, 400,
+              queueLength,
+              receiveCnt, processCnt);
+            persistentConnectionToMasterMap
+              .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.SourceSleep)
+                .setSetNum(400)
+                .build());
+          }
+          */
+
+          prevSendTime.set(System.currentTimeMillis());
+          prevReceiveCnt.set(receiveCnt);
+          prevProcessingCnt.set(processCnt);
+
+
+          /*
+          final long processCnt = executorMetrics.inputProcessCntMap.values().stream().reduce((x, y) -> x + y).get();
+          final long receiveCnt = executorMetrics.inputReceiveCntMap.values().stream()
+            .map(l -> l.get()).reduce((x, y) ->
+              x + y).get();
+
+          final Optional<Long> processingTimeMsOpt = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
+            .stream().map(executor -> executor.getTaskMetrics().getComputation())
+            .reduce((x, y) -> x / 1000 + y / 1000);
+
+          if (!processingTimeMsOpt.isPresent() || processCnt  > receiveCnt) {
+            LOG.info("No throttle receive cnt: {}, process cnt: {}", receiveCnt, processCnt);
+            return;
+          }
+
+          if (processingCntHistory2.size() > 0) {
+            final long processingTimeMs = processingTimeMsOpt.get();
+
+            final double elapsed = (processingTimeMs - processingCntHistory2.get(0).left()) * 0.001;
+            final double processRate;
+            if (elapsed > 0) {
+              processRate = (processCnt - processingCntHistory2.get(0).right()) / elapsed;
+            } else {
+              processRate = 0;
+            }
+
+            final long queueLength = receiveCnt - processCnt;
+            final long prevQueueLength = prevReceiveCnt.get() - prevProcessingCnt.get();
+
+            final double timeToProcessRemain;
+            if (processRate == 0) {
+              timeToProcessRemain = 0;
+            } else {
+              timeToProcessRemain = queueLength / (double) processRate;
+            }
+
+            if (timeToProcessRemain > 0.1) {
+              // final int throttleDelay = (int) (delay * 5);
+              // final int throttleDelay = (int) (0.8 * timeToProcessRemain * 1000);
+              LOG.info("Send throttle event 11 from {} to source, delay {}, " +
+                  "processRate: {}, queueLength: {}, processingTime: {}, elapsed: {}, " +
+                  "input: {}, process: {}", executorId, throttleDelay,
+                processRate, queueLength, processingTimeMs, elapsed,
+                receiveCnt, processCnt);
+
+              persistentConnectionToMasterMap
+                .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                  .setType(ControlMessage.MessageType.SourceSleep)
+                  .setSetNum(throttleDelay)
+                  .build());
+            } else if (queueLength > 10000) {
+              LOG.info("Send throttle event 2 from {} to source, delay {}, " +
+                  "processRate: {}, queueLength: {}, processingTime: {}, elapsed: {}, " +
+                  "input: {}, process: {}", executorId, throttleDelay,
+                processRate, queueLength, processingTimeMs, elapsed,
+                receiveCnt, processCnt);
+              persistentConnectionToMasterMap
+                .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                  .setType(ControlMessage.MessageType.SourceSleep)
+                  .setSetNum(throttleDelay)
+                  .build());
+            } else {
+              LOG.info("No throttle event from {} to source, delay {}, " +
+                  "processRate: {}, queueLength: {}, prevQueueLength: {}, processTime: {}, elapsed: {}," +
+                  "input: {}, process: {}", executorId, throttleDelay,
+                processRate, queueLength, prevQueueLength, processingTimeMs, elapsed,
+                receiveCnt, processCnt);
+            }
+          }
+
+          prevSendTime.set(System.currentTimeMillis());
+          prevReceiveCnt.set(receiveCnt);
+          prevProcessingCnt.set(processCnt);
+          prevProcessingTime.set(processingTimeMsOpt.get());
+          processingCntHistory2.add(Pair.of(processingTimeMsOpt.get(), processCnt));
+
+          if (delay * processingCntHistory2.size() >= windowSize) {
+            processingCntHistory2.remove(0);
+          }
+          */
+
+        /*
+
+        final Map<String, Integer> throttleDstTaskMaxDelayMap = new HashMap<>();
+        final Map<String, Triple<String, String, String>> throttleDstTaskMap = new HashMap<>();
+
+        taskExecutorMapWrapper.forEach(taskExecutor -> {
+          final Pair<Long, Long> input = taskExecutor.getTaskMetrics().getInputReceiveProcessElement();
+
+
+          if (prevCountMap.containsKey(taskExecutor.getId())) {
+            final Pair<Long, Long> prevInput = prevCountMap.get(taskExecutor.getId());
+            final long elapsed = System.currentTimeMillis() - prevFlush;
+            final long receiveRate = input.left() - prevInput.left();
+            final long processRate = input.right() - processingCntHistory.get(taskExecutor.getId()).get(0);
+            final long queueLength = input.left() - input.right();
+
+            final double timeToProcessRemain;
+            if (processRate == 0) {
+              timeToProcessRemain = 0;
+            } else {
+              timeToProcessRemain = queueLength / (double) processRate;
+            }
+
+            if (timeToProcessRemain > 2) {
+              // if (processRate > 0 && receiveRate > 0 && processRate < 0.9 * receiveRate) {
+              // send throttle signal
+              final double reduceRatio = 1 - (processRate / (double) receiveRate);
+              // final int throttleDelay = (int)(reduceRatio * delay);
+
+              final int throttleDelay = (int) (delay);
+
+              taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
+                final List<String> dstTasks = entry.getValue();
+
+                dstTasks.forEach(dstTask -> {
+                  if (!throttleDstTaskMaxDelayMap.containsKey(dstTask)
+                    || throttleDstTaskMaxDelayMap.get(dstTask) < throttleDelay) {
+                    throttleDstTaskMaxDelayMap.put(dstTask, throttleDelay);
+                    throttleDstTaskMap.put(dstTask, Triple.of(dstTask, entry.getKey().getId(), taskExecutor.getId()));
+                  }
+                });
+              });
+            }
+          }
+
+
+          prevCountMap.put(taskExecutor.getId(), input);
+          final List<Long> l = new LinkedList<>();
+          processingCntHistory.putIfAbsent(taskExecutor.getId(), l);
+          processingCntHistory.get(taskExecutor.getId()).add(input.right());
+
+          if (l.size() == 11) {
+            l.remove(0);
+          }
+        });
+
+        throttleDstTaskMap.entrySet().forEach(entry -> {
+          final String dstTask = entry.getKey();
+          final Triple<String, String, String> val = entry.getValue();
+          final int throttleDelay = throttleDstTaskMaxDelayMap.get(dstTask);
+
+          LOG.info("Send throttle from {}/{}", throttleDelay, val.getRight());
+
+          pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(dstTask),
+            val.getMiddle(), val.getRight(),
+            (triple) -> {
+              return new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType
+                  .THROTTLE,
+                triple.getLeft(), // my output pipe index
+                triple.getMiddle(), // my input pipe index
+                triple.getRight(),  // srct ask id
+                throttleDelay);
+            });
+        });
+        */
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      }, period, period, TimeUnit.MILLISECONDS);
+    }
+
 
     // relayServer address/port 보내기!!
     /*
@@ -494,28 +725,59 @@ public final class Executor {
       } else if (task.isCrTask()) {
         // conditional routing task
         // if (evalConf.optimizationPolicy.contains("R3")) {
-        taskExecutor =
-          new R3CRTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-            // offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // new NoOffloadingPreparer(),
-            false);
+        if (task.getTaskOutgoingEdges().stream()
+          .anyMatch(edge -> !(edge.getDataCommunicationPattern()
+            .equals(CommunicationPatternProperty.Value.OneToOne) ||
+          edge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.TransientOneToOne)))) {
+          taskExecutor =
+            new R3CRTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        } else {
+          taskExecutor =
+            new SingleO2OOutputR3CRTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        }
+
+
       } else if (task.isMerger()) {
         taskExecutor =
           new MergerTaskExecutorImpl(
@@ -635,9 +897,39 @@ public final class Executor {
    */
   private final class ExecutorMessageReceiver implements MessageListener<ControlMessage.Message> {
 
+    private final ScheduledExecutorService throttler = Executors.newSingleThreadScheduledExecutor();
+    private final AlarmManager alarmManager = new AlarmManager();
+
     @Override
     public synchronized void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case CancelAndSourceSleep: {
+          LOG.info("Cancel Throttle prev sleep in {}", message.getSetNum(), executorId);
+          alarmManager.deactivateAlarms();
+        }
+        case SourceSleep: {
+          LOG.info("Throttle source {} sleep in {}", message.getSetNum(), executorId);
+          /*
+          final long sleepDelay = message.getSetNum();
+          final long window = Util.THROTTLE_WINDOW;
+
+          executorThreads.getExecutorThreads().forEach(executorThread -> {
+            final BackpressureSleepAlarm alarm =
+              new BackpressureSleepAlarm(executorThread, throttler, alarmManager, sleepDelay, window);
+            alarm.triggerNextSleep();
+          });
+          */
+
+          executorThreads.getExecutorThreads().forEach(executorThread -> {
+            executorThread.backpressure();
+            /*
+            executorThread.addShortcutEvent(new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType.SOURCE_SLEEP,
+              -1, -1, "", message.getSetNum()));
+              */
+          });
+          break;
+        }
         case ThrottleSource: {
           LOG.info("Throttle source message for {}, rate {}", executorId, message.getSetNum());
           for (final TaskExecutor te : taskExecutorMapWrapper.getTaskExecutorMap().keySet()) {
@@ -969,8 +1261,8 @@ public final class Executor {
             final DataInputStream dis = new DataInputStream(bis);
             final Task task = Task.decode(dis);
 
-            executorMetrics.taskInputProcessRateMap
-              .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
+            // executorMetrics.taskInputReceiveRateMap
+            //  .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
 
             LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
             onTaskReceived(task, bytes);

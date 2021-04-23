@@ -44,6 +44,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
   private final Map<String, Boolean> partialTaskOutputAck;
   private final Map<String, Boolean> partialTaskStopRemaining;
   private final Map<String, Boolean> pairTaskWaitingAck;
+  private final Map<String, AtomicInteger> taskInputStopCounter;
 
   @Inject
   private R3ControlEventHandler(
@@ -64,6 +65,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
     this.partialTaskStopRemaining = new ConcurrentHashMap<>();
     this.taskOutputStopCounter = new ConcurrentHashMap<>();
     this.pairTaskWaitingAck = new ConcurrentHashMap<>();
+    this.taskInputStopCounter = new ConcurrentHashMap<>();
   }
 
   /**
@@ -99,7 +101,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             (triple) -> {
               return new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType
-                  .R2_PIPE_OUTPUT_STOP_SIGNAL_BY_DOWNSTREAM_TASK_FOR_REROUTING,
+                  .R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR,
                 triple.getLeft(), // my output pipe index
                 triple.getMiddle(), // my input pipe index
                 triple.getRight(), // srct ask id
@@ -194,36 +196,127 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
         partialTaskOutputToBeStopped.put(taskExecutor.getId(), true);
 
-        // send signal to downstream task that pair task will start its output
-        final int cnt = taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
-        if (cnt == 0) {
-          throw new RuntimeException("Outgoing edge cannot be 0 for partial task " + taskExecutor.getId());
-        }
+        final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
+        // Stop data send from upstream
+        taskInputStopCounter.put(taskExecutor.getId(), new AtomicInteger(cnt));
 
-        // Set pair task stopped false
-        // This means that the partial task will emit partial result
-        ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(false);
-
-        // Set watermark tracking to the merger
-        // and send that this task will send partial result
-        taskExecutor.getTask().getDownstreamTasks().entrySet().forEach(entry -> {
-          entry.getValue().forEach(dstTaskId -> {
-            pipeManagerWorker.writeControlMessage(
-              control.getTaskId(),
-              entry.getKey().getId(),
-              dstTaskId,
-              R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M,
-              control.getTaskId() + "/" +
-                taskExecutor.getTask().getPairTaskId());
+        taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
+          entry.getValue().forEach(srcTask -> {
+            pipeManagerWorker.writeControlMessage(control.getTaskId(), entry.getKey().getId(), srcTask,
+              R3_DATA_STOP_FROM_P_TO_CR,
+              new RedirectionMessage(
+                control.getTaskId(),
+                taskExecutor.getTask().getPairTaskId(),
+                taskExecutor.getTask().getPairEdgeId(),
+                false));
           });
         });
         break;
       }
-      case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+      case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
+      case R3_DATA_STOP_FROM_P_TO_CR: {
+        // should be handled by cr task
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!taskExecutor.getTask().isCrTask()) {
+          throw new RuntimeException("Non CR TASK receives rerouting stop signal "
+            + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
+        }
+
+        final RedirectionMessage message = (RedirectionMessage) control.event;
+
+        final String originTaskId = message.originTaskId;
+        final String pairTaskId = message.pairTaskId;
+        final String pairEdgeId = message.pairEdgeId;
+        final Triple<String, String, String> key = pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
+
+        if (evalConf.controlLogging) {
+          LOG.info("R3 data stop by downstream task {} for data rerouting to {} in {}," +
+              "type {}, key {}",
+            originTaskId, pairTaskId, control.getTaskId(), control.type, key);
+        }
+
+        if (control.type.equals(R3_DATA_STOP_FROM_P_TO_CR)) {
+          // redirection only data
+          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+          crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
+            ReroutingState.DATA_ONLY);
+
+          // send ack
+          pipeManagerWorker.writeControlMessage(key.getRight(), key.getMiddle(), key.getLeft(),
+            R3_ACK_DATA_STOP_FROM_CR_TO_P,
+            null);
+        } else {
+          // redirection data and watermark
+          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+          crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
+            ReroutingState.DATA_WATERMARK_BOTH);
+
+          // send ack
+          pipeManagerWorker.writeControlMessage(key.getRight(), key.getMiddle(), key.getLeft(),
+            R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P,
+            null);
+
+          if (evalConf.controlLogging) {
+            LOG.info("Write control message for pipe output stop ack {}", key);
+          }
+        }
+        break;
+      }
+      case R3_ACK_DATA_STOP_FROM_CR_TO_P: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (evalConf.controlLogging) {
+          LOG.info("R3 data stop ack from CR to p in {}", control.getTaskId());
+        }
+
+        if (!taskExecutor.getTask().isParitalCombine()) {
+          throw new RuntimeException("Task is not partial combine " + control.getTaskId() + ", "
+          + taskInputStopCounter);
+        }
+
+        final int cnt = taskInputStopCounter.get(control.getTaskId()).decrementAndGet();
+
+        if (cnt == 0) {
+          if (evalConf.controlLogging) {
+            LOG.info("R3 pair input output start in {}", control.getTaskId());
+          }
+
+          taskInputStopCounter.remove(control.getTaskId());
+
+          // output data done ack !!! (to guarantee there is no pending data in network)
+          final int outCnt = TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
+          if (outCnt == 0) {
+            throw new RuntimeException("Partial cannot have zero outgoing edge " + taskExecutor.getId());
+          }
+
+          // Set pair task stopped false
+          // This means that the partial task will emit partial result
+          ((PartialTaskExecutorImpl) taskExecutor).setPairTaskStopped(false);
+
+          taskOutputStopCounter.put(taskExecutor.getId(), new AtomicInteger(outCnt));
+          taskExecutor.getTask().getDownstreamTasks().entrySet().forEach(entry -> {
+            entry.getValue().forEach(dstTaskId -> {
+              pipeManagerWorker.writeControlMessage(
+                control.getTaskId(),
+                entry.getKey().getId(),
+                dstTaskId,
+                R3_TASK_DATA_DONE_FROM_P_TO_M,
+                control.getTaskId() + "/" +
+                  taskExecutor.getTask().getPairTaskId());
+            });
+          });
+        }
+        break;
+      }
+      case R3_TASK_DATA_DONE_FROM_P_TO_M: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
         if (!taskExecutor.getTask().isMerger()) {
-          throw new RuntimeException("Not merger task " + taskExecutor.getId());
+          throw new RuntimeException("It is not merger " + control.getTaskId());
         }
 
         final String msg = (String) control.event;
@@ -232,7 +325,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         final String pairTask = m[1];
 
         final Triple<String, String, String> key =
-          pipeIndexMapWorker.getKey(control.targetPipeIndex);
+          pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
 
         final String pairEdgeId = taskExecutor.getTask().getTaskIncomingEdges()
           .stream().filter(edge -> !edge.getId().equals(key.getMiddle()))
@@ -251,61 +344,34 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         // set the merger will receieve partial result
         ((MergerTaskExecutorImpl) taskExecutor).receivePartialFinal(false);
 
+        // Send ack
         pipeManagerWorker.writeControlMessage(
-            key.getRight(), key.getMiddle(), key.getLeft(),
-            TaskControlMessage.TaskControlMessageType
-              .R3_ACK_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_FROM_M_TO_P,
-            null);
+          key.getRight(), key.getMiddle(), key.getLeft(),
+          TaskControlMessage.TaskControlMessageType
+            .R3_ACK_TASK_DATA_DONE_FROM_M_TO_P,
+          null);
         break;
       }
-      case R3_ACK_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_FROM_M_TO_P: {
+      case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P: {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-        if (!taskExecutor.getTask().isParitalCombine()) {
-          throw new RuntimeException("Task is not partial combine " + taskExecutor.getId());
+        if (taskOutputStopCounter.get(control.getTaskId()).decrementAndGet() == 0) {
+          taskOutputStopCounter.remove(control.getTaskId());
+          // start input and output pipe of pair task !!
+          // Send signal to master
+          partialTaskOutputAck.put(control.getTaskId(), true);
+          toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+            .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.R3PairInputOutputStart)
+              .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                .setExecutorId(executorId)
+                .setTaskId(control.getTaskId())
+                .build())
+              .build());
         }
-
-        partialTaskOutputAck.put(control.getTaskId(), true);
-
-        // Stop data send from upstream
-        taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
-          entry.getValue().forEach(srcTask -> {
-            pipeManagerWorker.writeControlMessage(control.getTaskId(), entry.getKey().getId(), srcTask,
-              R3_DATA_STOP_FROM_P_TO_CR,
-              new RedirectionMessage(
-                control.getTaskId(),
-                taskExecutor.getTask().getPairTaskId(),
-                taskExecutor.getTask().getPairEdgeId(),
-                false));
-          });
-        });
-
-        // Send downstream merger that it will send partial result
-        /*
-        final RuntimeEdge mergerEdge = taskExecutor.getTask().getTaskOutgoingEdges().get(0);
-        final String mergerId =
-          TaskExecutorUtil.getDstTaskIds(control.getTaskId(), mergerEdge).get(0);
-
-        LOG.info("Send partial result signal from {} to {}", control.getTaskId(), mergerId);
-
-        // send signal to the merger that it will send partial result
-        pipeManagerWorker.writeControlMessage(control.getTaskId(), mergerEdge.getId(), mergerId,
-          R3_OPT_SEND_PARTIAL_RESULT_FROM_P_TO_M, null);
-          */
-
-        // start input and output pipe of pair task !!
-        // Send signal to master
-        toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.R3PairInputOutputStart)
-            .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
-              .setExecutorId(executorId)
-              .setTaskId(control.getTaskId())
-              .build())
-            .build());
         break;
       }
       case R3_INPUT_OUTPUT_START_BY_PAIR: {
@@ -344,53 +410,6 @@ public final class R3ControlEventHandler implements ControlEventHandler {
       case R3_START_OUTPUT_FROM_P_TO_CR: {
         LOG.info("Start output at {} / {}", control.getTaskId(), control.targetPipeIndex);
         pipeManagerWorker.startOutputPipe(control.targetPipeIndex, control.getTaskId());
-        break;
-      }
-      case R3_DATA_WATERMARK_STOP_FROM_P_TO_CR:
-      case R3_DATA_STOP_FROM_P_TO_CR: {
-        // should be handled by cr task
-        final TaskExecutor taskExecutor =
-          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-
-        if (!taskExecutor.getTask().isCrTask()) {
-          throw new RuntimeException("Non CR TASK receives rerouting stop signal "
-            + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
-        }
-
-        final RedirectionMessage message = (RedirectionMessage) control.event;
-
-        final String originTaskId = message.originTaskId;
-        final String pairTaskId = message.pairTaskId;
-        final String pairEdgeId = message.pairEdgeId;
-
-        if (evalConf.controlLogging) {
-          LOG.info("R3 data stop by downstream task {} for data rerouting to {} in {}," +
-              "type {}",
-            originTaskId, pairTaskId, control.getTaskId(), control.type);
-        }
-
-        if (control.type.equals(R3_DATA_STOP_FROM_P_TO_CR)) {
-          // redirection only data
-          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
-          crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
-            ReroutingState.DATA_ONLY);
-        } else {
-          // redirection data and watermark
-          final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
-          crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
-            ReroutingState.DATA_WATERMARK_BOTH);
-
-          // send ack
-          final Triple<String, String, String> key = pipeIndexMapWorker.getKey(control.targetPipeIndex);
-          pipeManagerWorker.writeControlMessage(key.getLeft(), key.getMiddle(), key.getRight(),
-            R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P,
-            null);
-
-          if (evalConf.controlLogging) {
-            LOG.info("Write control message for pipe output stop ack {}", key);
-          }
-        }
-
         break;
       }
       case R3_OPT_SIGNAL_FINAL_COMBINE_BY_PAIR: {

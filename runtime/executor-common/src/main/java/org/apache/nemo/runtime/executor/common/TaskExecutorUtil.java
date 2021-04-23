@@ -39,6 +39,25 @@ public final class TaskExecutorUtil {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorUtil.class.getName());
 
 
+  public static int taskIncomingEdgeDoneAckCounter(final Task task) {
+    final AtomicInteger cnt = new AtomicInteger(0);
+
+    task.getTaskIncomingEdges()
+      .forEach(inEdge -> {
+        if (inEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
+          || inEdge.getDataCommunicationPattern()
+          .equals(CommunicationPatternProperty.Value.OneToOne)) {
+          cnt.getAndIncrement();
+        } else {
+          final int parallelism = inEdge.getSrcIRVertex()
+            .getPropertyValue(ParallelismProperty.class).get();
+          cnt.getAndAdd(parallelism);
+        }
+      });
+
+    return cnt.get();
+  }
 
   public static int taskOutgoingEdgeDoneAckCounter(final Task task) {
     final AtomicInteger cnt = new AtomicInteger(0);

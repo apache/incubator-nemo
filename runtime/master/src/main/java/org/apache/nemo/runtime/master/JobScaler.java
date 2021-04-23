@@ -32,6 +32,7 @@ import static org.apache.nemo.common.TaskLoc.SF;
 import static org.apache.nemo.common.TaskLoc.VM;
 import static org.apache.nemo.common.TaskLoc.VM_SCALING;
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
+import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.SCALE_DECISION_MESSAGE_LISTENER_ID;
 
 public final class JobScaler {
@@ -380,16 +381,77 @@ public final class JobScaler {
     return ready;
   }
 
+  private long prevInputRate = 0;
+  private long prevInputIncreaseCnt = 0;
+
+  private final List<Long> throttleRates = new LinkedList<>();
+
+  private long calculateThrottleRate(final long prevInputRate,
+                                     final long currInputRate) {
+    return 0;
+
+    // return (long) (currInputRate * 1.4);
+
+    /*
+    final long delta = currInputRate - prevInputRate;
+
+    if (currInputRate > prevInputRate + 10000) {
+      prevInputIncreaseCnt = Math.min(inputRates.size() + 1, prevInputIncreaseCnt + 1);
+    } else {
+      prevInputIncreaseCnt = Math.max(0, prevInputIncreaseCnt - 1);
+    }
+
+    if (prevInputIncreaseCnt == 0) {
+      return (long) (prevInputRate * 1.3);
+    }
+
+    final double pow = 2;
+    final double b = Math.pow(inputRates.size() - 2, pow);
+
+    return (long) (prevInputRate * 1.4 + delta * (Math.pow(prevInputIncreaseCnt, pow) / b));
+    */
+  }
+
   public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
 
     if (msg.getInfo().startsWith("INPUT")) {
       // input rate
       final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
-      //LOG.info("Input rate {}", inputRate);
+      LOG.info("Input rate {}", inputRate);
+
+      final long prevInputRate;
+      if (inputRates.size() == 0) {
+        prevInputRate = 0;
+      } else {
+        prevInputRate = inputRates.stream().reduce((x, y) -> x + y).orElse(0) / inputRates.size();
+      }
 
       inputRates.add(inputRate);
       if (inputRates.size() > WINDOW_SIZE) {
         inputRates.remove(0);
+      }
+
+      final long currInputRate = inputRates.stream().reduce((x,y) -> x+y).get() / inputRates.size();
+
+      // final long throttleRate = (long) (inputRates.stream().reduce((x,y) -> x+y).get() * 1.3) / inputRates.size();
+
+      final long throttleRate = calculateThrottleRate(prevInputRate, currInputRate);
+
+      if (throttleRate > 0) {
+        LOG.info("Send master throttle rate {} / {} / prev {} curr {} increaseCnt {}", throttleRate,
+          throttleRate / evalConf.sourceParallelism, prevInputRate, currInputRate, prevInputIncreaseCnt);
+
+        executorRegistry.viewExecutors(executors -> {
+          executors.stream().filter(executor -> executor.getContainerType().equals(ResourcePriorityProperty.SOURCE))
+            .forEach(executor -> {
+              executor.sendControlMessage(ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.ThrottleSource)
+                .setSetNum(throttleRate / evalConf.sourceParallelism)
+                .build());
+            });
+        });
       }
 
     } else {
@@ -1237,13 +1299,9 @@ public final class JobScaler {
 
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
-    String prevStageId = null;
-    final List<String> prevStoppedTasks = new LinkedList<>();
     final List<String> stoppedTasks = new LinkedList<>();
 
     for (final String stageId : stageIds) {
-      prevStageId = stageId;
-      prevStoppedTasks.clear();
 
       LOG.info("Start stopping {}", stageId);
       for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
@@ -1262,7 +1320,6 @@ public final class JobScaler {
                 LOG.info("Stop task {}", taskId);
                 taskScheduledMap.stopTask(taskId, lambdaAffinity);
                 prevMovedTask.add(taskId);
-                prevStoppedTasks.add(taskId);
 
                 stoppedTasks.add(taskId);
 
@@ -1275,7 +1332,6 @@ public final class JobScaler {
     }
 
     // waiting
-    /*
     for (final String taskId : stoppedTasks) {
       LOG.info("Waiting for task rescheduling {}", taskId);
       while (!taskScheduledMap.isTaskScheduled(taskId)) {
@@ -1287,7 +1343,6 @@ public final class JobScaler {
         // Waiting for task scheduling
       }
     }
-    */
 
     LOG.info("End of waiting for task rescheduling");
   }

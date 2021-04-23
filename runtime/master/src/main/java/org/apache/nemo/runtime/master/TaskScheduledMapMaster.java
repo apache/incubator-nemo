@@ -70,6 +70,8 @@ public final class TaskScheduledMapMaster {
 
   private boolean copied = false;
 
+  private final List<String> taskToBeStopped = new LinkedList<>();
+
   public synchronized void stopTask(final String taskId, final boolean lambdaAffinity) {
 
     final String executorId = taskExecutorIdMap.get(taskId);
@@ -77,6 +79,8 @@ public final class TaskScheduledMapMaster {
     LOG.info("Send task " + taskId + " stop to executor " + executorId);
 
     prevTaskExecutorIdMap.put(taskId, executorId);
+
+    taskToBeStopped.add(taskId);
 
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
     final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
@@ -104,13 +108,14 @@ public final class TaskScheduledMapMaster {
   }
 
   public boolean isTaskScheduled(final String taskId) {
-    return taskExecutorIdMap.containsKey(taskId);
+    return !taskToBeStopped.contains(taskId) && taskExecutorIdMap.containsKey(taskId);
   }
 
-  public Task removeTask(final String taskId) {
+  public synchronized Task removeTask(final String taskId) {
     taskExecutorIdMap.remove(taskId);
     final Task t = taskIdTaskMap.get(taskId);
     // lambdaTaskMap.remove(taskId);
+    taskToBeStopped.remove(taskId);
     return t;
   }
 

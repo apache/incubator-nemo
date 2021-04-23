@@ -14,6 +14,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
 
@@ -37,11 +38,16 @@ public final class ExecutorThreads {
     this.executorMetrics = executorMetrics;
     this.executorThreads = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
-      executorThreads.add(new ExecutorThread(
+      final ExecutorThread et = new ExecutorThread(
         i, executorId, taskControlEventHandler, Long.MAX_VALUE, executorMetrics,
         persistentConnectionToMasterMap, metricMessageSender,
         taskScheduledMapSender, taskExecutorMapWrapper,
-        taskScheduledMapWorker, false));
+        taskScheduledMapWorker, false);
+
+      executorThreads.add(et);
+      executorMetrics.inputProcessCntMap.put(et, 0L);
+      executorMetrics.inputReceiveCntMap.put(et, new AtomicLong(0L));
+
       executorThreads.get(i).start();
     }
   }
