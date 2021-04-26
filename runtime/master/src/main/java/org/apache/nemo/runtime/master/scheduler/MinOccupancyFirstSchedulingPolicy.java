@@ -58,6 +58,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   @Override
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
+
+
+    // For o2o-aware scheduling
     final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
       .stream().filter(edge -> edge.getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.OneToOne) ||
@@ -65,7 +68,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       .collect(Collectors.toList());
 
     final List<ExecutorRepresenter> candidates =
-      incoming.stream().filter(edge -> {
+      incoming.stream()
+        // check whether the o2o source task is scheduled
+        .filter(edge -> {
       final String srcTaskId = RuntimeIdManager.generateTaskId(edge.getSrc().getId(),
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         LOG.info("Scheduling candidate task for {}: {}", task.getTaskId(), srcTaskId);
@@ -78,7 +83,11 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
           RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId);
         return executorRegistry.getExecutorRepresentor(executorId);
-      }).collect(Collectors.toList());
+      })
+       // filter if the locality-aware executor is in the executors
+        .filter(executorId -> executors.stream().anyMatch(executor ->
+          executor.getExecutorId().equals(executorId)))
+        .collect(Collectors.toList()) ;
 
     LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates.size());
 
