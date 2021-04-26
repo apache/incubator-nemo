@@ -85,11 +85,11 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         return executorRegistry.getExecutorRepresentor(executorId);
       })
        // filter if the locality-aware executor is in the executors
-        .filter(executorId -> executors.stream().anyMatch(executor ->
-          executor.getExecutorId().equals(executorId)))
-        .collect(Collectors.toList()) ;
+        .filter(candidate -> executors.stream().anyMatch(executor ->
+          executor.getExecutorId().equals(candidate.getExecutorId())))
+        .collect(Collectors.toList());
 
-    LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates.size());
+    LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates);
 
     if (candidates.size() > 0) {
         final OptionalInt minOccupancy =
