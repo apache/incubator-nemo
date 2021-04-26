@@ -465,9 +465,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     modifiedDAG.topologicalDo(vertex -> {
        if (vertex instanceof StreamVertex) {
-        // 1. Add conditional router vertex here
-        final IRVertex crVertex = new ConditionalRouterVertex(new CRTransform());
-        change((OperatorVertex) vertex, (OperatorVertex) crVertex);
+         // 1. Add conditional router vertex here
+         LOG.info("Stream vertex id {}", vertex.getId());
+         if (modifiedDAG.getOutgoingEdgesOf(vertex)
+           .stream().anyMatch(edge -> hasGBKInDownstream(edge.getDst()))) {
+           LOG.info("Stream vertex id {} change to cr vertex", vertex.getId());
+           final IRVertex crVertex = new ConditionalRouterVertex(new CRTransform());
+           change((OperatorVertex) vertex, (OperatorVertex) crVertex);
+         }
       }
     });
 
@@ -597,9 +602,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       builder.connectVertices(fromPartialTransientToMerger);
 
       // connect edge merger -> originGBK_out
-      //                     -> transientGBK_out
       final IREdge originGBKOutEdge = modifiedDAG.getOutgoingEdgesOf(originGBK).get(0);
-      final IREdge transientGBKOutEdge = modifiedDAG.getOutgoingEdgesOf(transientGBK).get(0);
 
       final IREdge mergerToOriginGBKOut = new IREdge(
         originGBKOutEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
@@ -608,35 +611,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       originGBKOutEdge.copyExecutionPropertiesTo(mergerToOriginGBKOut);
 
       builder.connectVertices(mergerToOriginGBKOut);
-
-      if (transientGBKOutEdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.OneToOne)) {
-        final IREdge mergerToTransientGBKOut = new IREdge(
-          CommunicationPatternProperty.Value.TransientOneToOne,
-          stateMerger,
-          transientGBKOutEdge.getDst());
-        transientGBKOutEdge.copyExecutionPropertiesTo(mergerToTransientGBKOut);
-        mergerToTransientGBKOut.setPropertyPermanently(
-          CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
-
-        mergerToTransientGBKOut.setProperty(
-          PairEdgeProperty.of(mergerToOriginGBKOut.getId()));
-
-        builder.connectVertices(mergerToTransientGBKOut);
-      } else {
-        final IREdge mergerToTransientGBKOut = new IREdge(
-          CommunicationPatternProperty.Value.TransientShuffle,
-          stateMerger,
-          transientGBKOutEdge.getDst());
-        transientGBKOutEdge.copyExecutionPropertiesTo(mergerToTransientGBKOut);
-        mergerToTransientGBKOut.setPropertyPermanently(
-          CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientShuffle));
-
-        mergerToTransientGBKOut.setProperty(
-          PairEdgeProperty.of(mergerToOriginGBKOut.getId()));
-
-        builder.connectVertices(mergerToTransientGBKOut);
-      }
     }
   }
 
