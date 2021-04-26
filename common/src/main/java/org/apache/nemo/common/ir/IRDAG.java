@@ -941,6 +941,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             edge.copyExecutionPropertiesTo(newEdge);
             builder.connectVertices(newEdge);
           });
+        } else if (isFlatten(edge.getSrc())) {
+          // skip
         } else {
           builder.connectVertices(edge);
         }
