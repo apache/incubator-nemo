@@ -908,7 +908,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   private boolean isFlatten(final IRVertex v) {
-    return ((OperatorVertex)v).getTransform().isFlatten();
+    if (v instanceof OperatorVertex) {
+      return ((OperatorVertex)v).getTransform().isFlatten();
+    } else {
+      return false;
+    }
   }
 
   public void removeFlatten() {
