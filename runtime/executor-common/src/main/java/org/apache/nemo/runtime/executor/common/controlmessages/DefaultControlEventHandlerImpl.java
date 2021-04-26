@@ -311,7 +311,6 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         break;
       }
       case PIPE_INIT: {
-
         if (evalConf.controlLogging) {
           LOG.info("Pipe init message, key: {}, targetTask {}, in executor {}", pipeIndexMapWorker.getKey(control.targetPipeIndex), control.getTaskId(), executorId);
         }
