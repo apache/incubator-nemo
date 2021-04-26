@@ -24,6 +24,7 @@ import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -467,7 +468,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       if (pendingPipes != null) {
         pendingPipes.forEach(pendingIndex -> {
           if (pendingOutputPipeMap.containsKey(pendingIndex)) {
-            pendingOutputPipeMap.get(pendingIndex).add(event);
+            pendingOutputPipeMap.get(pendingIndex).add(new PendingPair(event, serializer));
             // DataFrameEncoder.DataFrame.newInstance(
             //  pendingIndex, byteBuf.retainedDuplicate(), byteBuf.readableBytes(), true));
           } else {
@@ -720,7 +721,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     final int index = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
 
     if (pendingOutputPipeMap.containsKey(index)) {
-      pendingOutputPipeMap.get(index).add(event);
+      pendingOutputPipeMap.get(index).add(new PendingPair(event, serializer));
     } else {
       if (taskExecutorMapWrapper.containsTask(dstTaskId)) {
         sendLocalToLocal(dstTaskId, edgeId, index, event);
@@ -849,6 +850,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     } else {
       if (data instanceof ByteBuf) {
         sendRemoteToLocal(dstTaskid, edgeId, index, (ByteBuf) data);
+      } else if (data instanceof PendingPair) {
+        sendLocalToLocal(dstTaskid, edgeId, index, ((PendingPair)data).event);
       } else {
         sendLocalToLocal(dstTaskid, edgeId, index, data);
       }
@@ -856,16 +859,18 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   }
 
   private void sendPendingDataToChannel(final int index,
-                                        final Serializer serializer,
                                         Object data, Channel channel) {
     if (data instanceof TaskControlMessage) {
       channel.write(data);
     } else {
       if (data instanceof ByteBuf) {
         sendRemoteToRemote(Collections.singletonList(index), (ByteBuf) data, channel);
-      } else {
+      } else if (data instanceof PendingPair) {
+        final PendingPair pendingPair = (PendingPair)data;
         sendLocalToRemote(channel,
-          Collections.singletonList(index), serializer, data);
+          Collections.singletonList(index), pendingPair.serialier, pendingPair.event);
+      } else {
+        throw new RuntimeException("Not supported");
       }
     }
   }
@@ -927,12 +932,10 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           final Channel channel = optional.get();
 
           final List<Object> pendingData = pendingOutputPipeMap.remove(index);
-          final String edgeId = pipeIndexMapWorker.getKey(index).getMiddle();
-          final Serializer serializer = serializerManager.getSerializer(edgeId);
           if (evalConf.controlLogging) {
-            LOG.info("Send pending data to channel {}/{}/{}", key.getRight(), edgeId, index);
+            LOG.info("Send pending data to channel {}/{}/{}", key.getRight());
           }
-          pendingData.forEach(data -> sendPendingDataToChannel(index, serializer, data, channel));
+          pendingData.forEach(data -> sendPendingDataToChannel(index, data, channel));
 
           channel.flush();
         }
@@ -999,4 +1002,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       }
     }
   };
+
+  final class PendingPair {
+    public final Object event;
+    public final Serializer serialier;
+    public PendingPair(final Object event, final Serializer serializer) {
+      this.event = event;
+      this.serialier = serializer;
+    }
+  }
 }
