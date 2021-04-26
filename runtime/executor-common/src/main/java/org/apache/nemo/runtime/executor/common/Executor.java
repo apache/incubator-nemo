@@ -1137,11 +1137,12 @@ public final class Executor {
           LOG.info("Deactivation lambda task in executor {}", executorId);
           taskExecutorMapWrapper.getTaskExecutorMap()
             .keySet().forEach(taskExecutor -> {
-              executorService.execute(() -> {
-                final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
-                executorThread.addEvent(new TaskControlMessage(
-                  TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
-                  taskExecutor.getId(), false));
+              if (taskExecutor.getTask().isTransientTask()) {
+                executorService.execute(() -> {
+                  final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
+                  executorThread.addEvent(new TaskControlMessage(
+                    TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
+                    taskExecutor.getId(), false));
                 /*
                 if (taskExecutor.getTask().isParitalCombine()) {
                    executorThread.addEvent(new TaskControlMessage(
@@ -1153,7 +1154,8 @@ public final class Executor {
                     taskExecutor.getId(), false));
                 }
                 */
-              });
+                });
+              }
             });
           break;
         }
