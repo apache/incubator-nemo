@@ -89,24 +89,28 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
           final List<IRVertex> verticesToAdd = new LinkedList<>();
           final List<IRVertex> stack = new LinkedList<>();
 
-          final IREdge transientEdge = dag.getOutgoingEdgesOf(vertex).stream().filter(edge ->
-            edge.isTransientEdge())
-            .findFirst().get();
+          if (dag.getOutgoingEdgesOf(vertex).stream()
+            .anyMatch(IREdge::isTransientEdge)) {
 
-          stack.add(transientEdge.getDst());
+            final IREdge transientEdge = dag.getOutgoingEdgesOf(vertex).stream()
+              .filter(IREdge::isTransientEdge)
+              .findFirst().get();
 
-          while (!stack.isEmpty()) {
-            final IRVertex s = ((LinkedList<IRVertex>) stack).poll();
-            LOG.info("Resource priority set to Lambda for {}", s);
-            s.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
+            stack.add(transientEdge.getDst());
 
-            final List<IREdge> outEdges = dag.getOutgoingEdgesOf(s);
-            for (final IREdge outEdge : outEdges) {
-              if (!(outEdge.getDst() instanceof ConditionalRouterVertex)
-                && !(outEdge.getDst() instanceof StateMergerVertex)) {
-                if (!verticesToAdd.contains(outEdge.getDst())) {
-                  verticesToAdd.add(outEdge.getDst());
-                  stack.add(outEdge.getDst());
+            while (!stack.isEmpty()) {
+              final IRVertex s = ((LinkedList<IRVertex>) stack).poll();
+              LOG.info("Resource priority set to Lambda for {}", s);
+              s.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
+
+              final List<IREdge> outEdges = dag.getOutgoingEdgesOf(s);
+              for (final IREdge outEdge : outEdges) {
+                if (!(outEdge.getDst() instanceof ConditionalRouterVertex)
+                  && !(outEdge.getDst() instanceof StateMergerVertex)) {
+                  if (!verticesToAdd.contains(outEdge.getDst())) {
+                    verticesToAdd.add(outEdge.getDst());
+                    stack.add(outEdge.getDst());
+                  }
                 }
               }
             }
