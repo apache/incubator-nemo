@@ -92,7 +92,8 @@ public final class ExecutorChannelManagerMap {
     }
 
     if (executorId.contains("Lambda") && remoteExecutorId.contains("Lambda")) {
-      throw new RuntimeException("Cannot connnect " + executorId + "<->" + remoteExecutorId);
+      LOG.warn("Cannot connnect " + executorId + "<->" + remoteExecutorId);
+      return;
     }
 
     if (remoteExecutorId.contains("Lambda")) {
