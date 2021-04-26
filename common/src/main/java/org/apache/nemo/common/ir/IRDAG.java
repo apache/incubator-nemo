@@ -553,6 +553,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
       // connect edge for partial origin
       modifiedDAG.getIncomingEdgesOf(originGBK).forEach(edge -> {
+        // Add CR -> partial origin
         final IREdge toPartialOriginEdge = new IREdge(
           edge.getPropertyValue(CommunicationPatternProperty.class).get(),
           edge.getSrc(),
@@ -561,22 +562,39 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         oldNewEdgeId.put(edge.getId(), toPartialOriginEdge.getId());
         edge.copyExecutionPropertiesTo(toPartialOriginEdge);
         builder.connectVertices(toPartialOriginEdge);
-      });
 
-      // connect edge for partial transient
-      modifiedDAG.getIncomingEdgesOf(transientGBK).forEach(edge -> {
+        // Add CR -> partial transient
         final IREdge toPartialTransientEdge = new IREdge(
           edge.getPropertyValue(CommunicationPatternProperty.class).get(),
           edge.getSrc(),
           partialTransient);
         edge.copyExecutionPropertiesTo(toPartialTransientEdge);
 
+        if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.OneToOne)) {
+          toPartialTransientEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientOneToOne));
+        } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.RoundRobin)) {
+          toPartialTransientEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientRR));
+        } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.Shuffle)) {
+          toPartialTransientEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientShuffle));
+        }
+
+        toPartialTransientEdge.setProperty(
+          PairEdgeProperty.of(toPartialOriginEdge.getId()));
+
         // final String newPairEdgeId =
         //  oldNewEdgeId.get(edge.getPropertyValue(PairEdgeProperty.class).get());
 
         LOG.info("Old new edge id: {} " +
-            "transient edge {} old pair: {}", oldNewEdgeId, toPartialTransientEdge.getId(),
-          edge.getPropertyValue(PairEdgeProperty.class));
+            "transient edge {}", oldNewEdgeId, toPartialTransientEdge.getId());
 
         //toPartialTransientEdge.setProperty(PairEdgeProperty.of(newPairEdgeId));
         builder.connectVertices(toPartialTransientEdge);
