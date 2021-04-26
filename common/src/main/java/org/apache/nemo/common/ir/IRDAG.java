@@ -439,20 +439,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build(); // update the DAG.
   }
 
-  private boolean hasGBKInDownstream(final IRVertex root) {
-    if (root.isStateful) {
-      return true;
-    }
-
-    if (root instanceof StreamVertex) {
-      return false;
-    }
-
-    return modifiedDAG.getOutgoingEdgesOf(root)
-      .stream()
-      .anyMatch(edge -> hasGBKInDownstream(edge.getDst()));
-  }
-
   public void addStateMergerWithoutR2() {
 
     // Find StreamVertex -> GBK path
@@ -465,22 +451,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final List<IRVertex> gbks = new LinkedList<>();
 
     modifiedDAG.topologicalDo(vertex -> {
-       if (vertex instanceof StreamVertex) {
-         // 1. Add conditional router vertex here
-         LOG.info("Stream vertex id {}", vertex.getId());
-         if (modifiedDAG.getOutgoingEdgesOf(vertex)
-           .stream().anyMatch(edge -> hasGBKInDownstream(edge.getDst()))) {
-           LOG.info("Stream vertex id {} change to cr vertex", vertex.getId());
-           final IRVertex crVertex = new ConditionalRouterVertex(new CRTransform());
-           change((OperatorVertex) vertex, (OperatorVertex) crVertex);
-         }
-      }
-
       if (vertex.isStateful) {
          gbks.add(vertex);
       }
     });
-
 
     modifiedDAG.topologicalDo(vertex -> {
       if (!vertex.isStateful) {
@@ -638,6 +612,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
       builder.connectVertices(mergerToOriginGBKOut);
     }
+
+    modifiedDAG = builder.build(); // update the DAG.
   }
 
   public void addStateMerger() {

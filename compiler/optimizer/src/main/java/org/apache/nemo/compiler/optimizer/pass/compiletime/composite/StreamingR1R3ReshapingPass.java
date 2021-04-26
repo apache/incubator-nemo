@@ -19,10 +19,7 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.R1ReshapingPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.R2ReshapingPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.R3NoR2ReshapingPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.R3ReshapingPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.*;
 
 import java.util.Arrays;
 
@@ -39,6 +36,7 @@ public final class StreamingR1R3ReshapingPass extends CompositePass {
     super(Arrays.asList(
       new DefaultParallelismPass(parallelism, 1),
       new R1ReshapingPass(),
+      new SVToCRReshapingPass(),
       new R3NoR2ReshapingPass(),
       new DefaultEdgeEncoderPass(),
       new DefaultEdgeDecoderPass(),
@@ -57,6 +55,7 @@ public final class StreamingR1R3ReshapingPass extends CompositePass {
     super(Arrays.asList(
       new DefaultParallelismPass(),
       new R1ReshapingPass(),
+      new SVToCRReshapingPass(),
       new R3NoR2ReshapingPass(),
         new DefaultEdgeEncoderPass(),
         new DefaultEdgeDecoderPass(),
