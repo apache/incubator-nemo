@@ -255,7 +255,11 @@ public final class NemoDriver {
                 .compareTo(
                   Integer.valueOf(y.split("Stage")[1].split("-")[0])));
 
-              jobScaler.sendTaskStopSignal(num, true, stages);
+              if (args.length > 3) {
+                jobScaler.sendTaskStopSignal(num, true, stages, false);
+              } else {
+                jobScaler.sendTaskStopSignal(num, true, stages, true);
+              }
               /*
               for (int i = stages.size() - 1; i >= 0; i--) {
                 jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));
@@ -277,7 +281,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
-                jobScaler.sendTaskStopSignal(num, false, Collections.singletonList(stages.get(i)));
+                jobScaler.sendTaskStopSignal(num, false, Collections.singletonList(stages.get(i)), true);
                 try {
                   Thread.sleep(150);
                 } catch (InterruptedException e) {

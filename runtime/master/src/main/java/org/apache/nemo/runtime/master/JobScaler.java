@@ -1291,7 +1291,8 @@ public final class JobScaler {
 
   public synchronized void sendTaskStopSignal(final int num,
                                               final boolean lambdaAffinity,
-                                              final List<String> stageIds) {
+                                              final List<String> stageIds,
+                                              final boolean waiting) {
     taskDispatcher.setReclaiming(false);
 
     LOG.info("Send task stop signal for {} / {}", stageIds, num);
@@ -1299,8 +1300,8 @@ public final class JobScaler {
 
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
+    final List<String> stoppedTasks = new LinkedList<>();
     for (final String stageId : stageIds) {
-      final List<String> stoppedTasks = new LinkedList<>();
 
       LOG.info("Start stopping {}", stageId);
       for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
@@ -1328,7 +1329,9 @@ public final class JobScaler {
           }
         }
       }
+    }
 
+    if (waiting) {
       // waiting
       for (final String taskId : stoppedTasks) {
         LOG.info("Waiting for task rescheduling {}", taskId);
