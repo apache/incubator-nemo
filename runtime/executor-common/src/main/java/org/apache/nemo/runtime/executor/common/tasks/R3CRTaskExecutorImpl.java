@@ -925,6 +925,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
             for (int i = 0; i < vmPathDstTasks.length; i++) {
               watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
@@ -953,6 +954,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
             for (int i = 0; i < vmPathDstTasks.length; i++) {
               watermarkRouters[i].writeData(new WatermarkWithIndex(watermark, taskIndex));
@@ -982,6 +984,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
             watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
@@ -1009,6 +1012,7 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
             watermarkRouters[0].writeData(new WatermarkWithIndex(watermark, taskIndex));
           });

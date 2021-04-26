@@ -890,6 +890,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             if (getNumKeys() > 0) {
               mergerTransform.onWatermark(watermark);
             } else {
@@ -918,6 +919,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             if (getNumKeys() > 0) {
               mergerTransform.onWatermark(watermark);
             } else {
@@ -944,6 +946,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
@@ -972,6 +975,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             dataRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
@@ -996,6 +1000,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
             mergerTransform.onWatermark(watermark);
           });
@@ -1030,6 +1035,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
             mergerTransform.onWatermark(watermark);
           });

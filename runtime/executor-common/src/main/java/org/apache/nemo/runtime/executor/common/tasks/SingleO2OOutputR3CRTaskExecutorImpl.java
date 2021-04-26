@@ -798,6 +798,7 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
             watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });
@@ -825,6 +826,7 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         taskWatermarkManager.updateWatermark(taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
             watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
           });

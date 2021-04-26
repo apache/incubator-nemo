@@ -824,9 +824,12 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
         taskWatermarkManager.trackAndEmitWatermarks(
           taskId,
           event.getEdgeId(), watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark().getTimestamp())
-          .ifPresent(watermark ->
+          .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark);
+
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-            watermarkRouter.writeData(new WatermarkWithIndex(new Watermark(watermark), taskIndex)));
+            watermarkRouter.writeData(new WatermarkWithIndex(new Watermark(watermark), taskIndex));
+          });
 
       } else {
         // final long start = System.nanoTime();
@@ -852,6 +855,7 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
           taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
+            taskMetrics.setInputWatermark(watermark);
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
             watermarkRouter.writeData(new WatermarkWithIndex(new Watermark(watermark), taskIndex));
           });

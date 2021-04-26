@@ -16,6 +16,9 @@ public final class TaskMetrics {
   private long deserializedTime;
   private long serializedTime;
 
+  private long inputWatermark;
+  private long outputWatermark;
+
   public TaskMetrics() {
     this.inputReceiveElement = 0;
     this.inputProcessElement = 0;
@@ -26,6 +29,22 @@ public final class TaskMetrics {
     this.deserializedTime = 0;
     this.serializedTime = 0;
     this.updatedTime = 0;
+  }
+
+  public void setInputWatermark(final long watermark) {
+    this.inputWatermark = watermark;
+  }
+
+  public void setOutputWatermark(final long watermark) {
+    this.outputWatermark = outputWatermark;
+  }
+
+  public long getInputWatermark() {
+    return inputWatermark;
+  }
+
+  public long getOutputWatermark() {
+    return outputWatermark;
   }
 
   public long getComputation() {
@@ -72,7 +91,9 @@ public final class TaskMetrics {
     serializedTime += (updated / 1000);
   }
 
-  private RetrievedMetrics prevMetric = new RetrievedMetrics(0, 0, 0, 0, 0, 0, 0, 0);
+  private RetrievedMetrics prevMetric = new RetrievedMetrics(0,
+    0, 0
+    , 0, 0, 0, 0, 0, 0);
 
   public RetrievedMetrics retrieve() {
     final long ir = inputReceiveElement;
@@ -84,7 +105,7 @@ public final class TaskMetrics {
     final long ob = outbytes;
     final long st = serializedTime;
 
-    final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst);
+    final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst, inputWatermark);
 
     final RetrievedMetrics delta = delta(newMetric, prevMetric);
     prevMetric = newMetric;
@@ -118,7 +139,8 @@ public final class TaskMetrics {
       newMetric.inbytes - oldMetric.inbytes,
       newMetric.serializedTime - oldMetric.serializedTime,
       newMetric.outbytes - oldMetric.outbytes,
-      newMetric.deserTime - oldMetric.deserTime);
+      newMetric.deserTime - oldMetric.deserTime,
+      newMetric.watermark);
   }
 
   private long avgCnt(final List<Long> l) {
@@ -134,6 +156,7 @@ public final class TaskMetrics {
     public final long serializedTime;
     public final long outbytes;
     public final long deserTime;
+    public final long watermark;
 
     public RetrievedMetrics(final long inputReceiveElement,
                             final long inputElement,
@@ -142,7 +165,8 @@ public final class TaskMetrics {
                             final long inbytes,
                             final long serializedTime,
                             final long outbytes,
-                            final long deserTime) {
+                            final long deserTime,
+                            final long watermark) {
       this.inputReceiveElement = inputReceiveElement;
       this.inputElement = inputElement;
       this.outputElement = outputElement;
@@ -151,6 +175,7 @@ public final class TaskMetrics {
       this.serializedTime = serializedTime;
       this.outbytes = outbytes;
       this.deserTime = deserTime;
+      this.watermark = watermark;
     }
   }
 }

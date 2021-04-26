@@ -738,6 +738,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     @Override
     public void handleWatermark(DataFetcher dataFetcher, Object event) {
       final WatermarkWithIndex d = (WatermarkWithIndex) event;
+      taskMetrics.setInputWatermark(d.getWatermark().getTimestamp());
       processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
     }
   }
@@ -750,8 +751,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       taskWatermarkManager.trackAndEmitWatermarks(
         taskId,
         dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
-        .ifPresent(watermark ->
-          processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark)));
+        .ifPresent(watermark -> {
+          taskMetrics.setInputWatermark(watermark);
+          processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
+        });
     }
   }
 

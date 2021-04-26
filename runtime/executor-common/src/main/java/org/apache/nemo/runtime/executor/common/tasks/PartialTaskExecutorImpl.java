@@ -720,6 +720,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
         taskId,
         dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
         .ifPresent(watermark -> {
+          taskMetrics.setInputWatermark(watermark);
           processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
         });
     } else if (event instanceof TimestampAndValue) {

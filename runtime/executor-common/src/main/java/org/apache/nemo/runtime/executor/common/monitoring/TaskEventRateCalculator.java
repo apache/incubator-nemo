@@ -51,6 +51,8 @@ public final class TaskEventRateCalculator {
       sb.append(taskMetrics.inputElement);
       sb.append("\toutput:");
       sb.append(taskMetrics.outputElement);
+      sb.append("\twatermark:");
+      sb.append(taskMetrics.watermark);
       sb.append("\tptime:");
       sb.append(taskMetrics.computation);
       sb.append("\tdsertime:");
