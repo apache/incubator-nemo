@@ -728,6 +728,12 @@ public final class RuntimeMaster {
       // find list of tasks that the lambda executor has
         final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
           .filter(lambdaTask -> {
+            if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
+              LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
+                lambdaExecutor.getExecutorId());
+              return false;
+            }
+
             final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
             final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
             if (stageIds.contains(stageId)
