@@ -503,9 +503,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       final IRVertex transientGBK = new OperatorVertex((OperatorVertex) originGBK);
       originGBK.copyExecutionPropertiesTo(transientGBK);
 
-      final OperatorVertex partialOrigin = ((OperatorVertex)originGBK).getPartialCombine();
-      originGBK.getPropertyValue(ParallelismProperty.class)
-        .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
+      final OperatorVertex partialOrigin = ((OperatorVertex) originGBK).getPartialCombine();
+      try {
+        originGBK.getPropertyValue(ParallelismProperty.class)
+          .ifPresent(p -> partialOrigin.setProperty(ParallelismProperty.of(p)));
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("OriginGBK: " + originGBK.getId() + ", " +
+          ((OperatorVertex) originGBK).getTransform() + ", " + ((OperatorVertex) originGBK).getPartialCombine());
+      }
 
       // Get encoder and transform
       // Optimization of R3 !!
