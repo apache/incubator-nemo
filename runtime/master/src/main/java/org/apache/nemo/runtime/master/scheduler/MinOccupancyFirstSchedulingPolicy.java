@@ -59,7 +59,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
     final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
-      .stream().filter(edge -> edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.OneToOne))
+      .stream().filter(edge -> edge.getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
       .collect(Collectors.toList());
 
     final List<ExecutorRepresenter> candidates =
