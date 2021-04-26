@@ -16,9 +16,9 @@ public final class R2MultiPairWatermarkManager implements R2WatermarkManager {
   private static final Logger LOG = LoggerFactory.getLogger(R2MultiPairWatermarkManager.class.getName());
 
   private long prevWatermark = 0L;
+  // pair: vm edge, lambda edge
   private final Map<Pair<String, String>, Long> dataFetcherWatermarkMap;
   private final Map<Pair<String, String>, R2PairEdgeWatermarkTracker> dataFetcherWatermarkTracker;
-
   private final Map<String, Pair<String, String>> pairEdgeMap;
   private final String taskId;
 
@@ -29,17 +29,88 @@ public final class R2MultiPairWatermarkManager implements R2WatermarkManager {
     this.taskId = taskId;
   }
 
+  private R2MultiPairWatermarkManager(final String taskId,
+                                      final long prevWatermark,
+                                      final Map<Pair<String, String>, Long> dataFetcherWatermarkMap,
+                                      final Map<Pair<String, String>, R2PairEdgeWatermarkTracker> dataFetcherWatermarkTracker,
+                                      final Map<String, Pair<String, String>> pairEdgeMap) {
+    this.taskId = taskId;
+    this.prevWatermark = prevWatermark;
+    this.dataFetcherWatermarkMap = dataFetcherWatermarkMap;
+    this.dataFetcherWatermarkTracker = dataFetcherWatermarkTracker;
+    this.pairEdgeMap = pairEdgeMap;
+  }
+
+  public static R2MultiPairWatermarkManager decode(final String taskId,
+                                                   final DataInputStream dis) {
+    try {
+      final long prevWatermark = dis.readLong();
+      final int size = dis.readInt();
+      final Map<Pair<String, String>, Long> dataFetcherWatermarkMap = new HashMap<>(size);
+      final Map<Pair<String, String>, R2PairEdgeWatermarkTracker> dataFetcherWatermarkTracker = new HashMap<>(size);
+      final Map<String, Pair<String, String>> pairEdgeMap = new HashMap<>(size);
+
+      for (int i = 0; i < size; i++) {
+        final String vmEdgeId = dis.readUTF();
+        final String lambdaEdgeId = dis.readUTF();
+        final long watermark = dis.readLong();
+        final R2PairEdgeWatermarkTracker watermarkTracker = R2PairEdgeWatermarkTracker
+          .decode(vmEdgeId, lambdaEdgeId, taskId, dis);
+
+        final Pair<String, String> key = Pair.of(vmEdgeId, lambdaEdgeId);
+        dataFetcherWatermarkMap.put(key, watermark);
+        dataFetcherWatermarkTracker.put(key, watermarkTracker);
+        pairEdgeMap.put(vmEdgeId, key);
+        pairEdgeMap.put(lambdaEdgeId, key);
+      }
+
+      return new R2MultiPairWatermarkManager(taskId,
+        prevWatermark,
+        dataFetcherWatermarkMap,
+        dataFetcherWatermarkTracker,
+        pairEdgeMap);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void encode(final DataOutputStream dos) {
+    try {
+      dos.writeLong(prevWatermark);
+      dos.writeInt(dataFetcherWatermarkMap.size());
+      for (final Map.Entry<Pair<String, String>, Long> entry : dataFetcherWatermarkMap.entrySet()) {
+        dos.writeUTF(entry.getKey().left());
+        dos.writeUTF(entry.getKey().right());
+        dos.writeLong(entry.getValue());
+        // data fetcher watermark tracker
+        final R2PairEdgeWatermarkTracker tracker = dataFetcherWatermarkTracker.get(entry.getKey());
+        tracker.encode(dos);
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public void addDataFetcher(String vmEdgeId, String lambdaEdgeId, int parallelism) {
     LOG.info("Add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
-    final R2PairEdgeWatermarkTracker stageWatermarkTracker =
-      new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
     final Pair<String, String> key = Pair.of(vmEdgeId, lambdaEdgeId);
-    dataFetcherWatermarkMap.put(key, 0L);
-    dataFetcherWatermarkTracker.put(key, stageWatermarkTracker);
 
-    pairEdgeMap.put(vmEdgeId, key);
-    pairEdgeMap.put(lambdaEdgeId, key);
+    if (dataFetcherWatermarkMap.containsKey(key)) {
+      // This means that it is checkpointed and restored
+      LOG.info("Skip add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
+    } else {
+      final R2PairEdgeWatermarkTracker stageWatermarkTracker =
+        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
+      dataFetcherWatermarkMap.put(key, 0L);
+      dataFetcherWatermarkTracker.put(key, stageWatermarkTracker);
+
+      pairEdgeMap.put(vmEdgeId, key);
+      pairEdgeMap.put(lambdaEdgeId, key);
+    }
   }
 
   @Override

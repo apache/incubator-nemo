@@ -49,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -110,10 +111,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final boolean offloaded;
 
-  private final List<ConditionalRouterVertex> crVertices;
-
-  private final Transform.ConditionalRouting conditionalRouting;
-
   final Map<String, List<OutputWriter>> externalAdditionalOutputMap;
 
   // THIS TASK SHOULD NOT BE MOVED !!
@@ -142,6 +139,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private final String vmPathDstTask;
   private final String transientPathDstTask;
+
   private DataRouter dataRouter;
   private DataHandler dataHandler;
   private boolean receiveFinal = true;
@@ -174,12 +172,10 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     //LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.offloaded = offloaded;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
-    this.conditionalRouting = conditionalRouting;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
-    this.crVertices = new ArrayList<>();
     this.taskMetrics = new TaskMetrics();
     this.executorThreadQueue = executorThreadQueue;
     //LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
@@ -215,7 +211,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.transientInputPathEdge = task.getTaskIncomingEdges().stream().filter(edge ->
       edge.isTransientPath())
       .findFirst().get();
-
 
     this.transientPathDstTasks = getDstTaskIds(taskId, transientOutputPathEdge);
     this.transientPathSerializer = serializerManager.getSerializer(transientOutputPathEdge.getId());
@@ -289,6 +284,31 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     };
 
     prepare();
+  }
+
+  private R2WatermarkManager getOrRestoreR2WatermarkManager() {
+    if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
+      try {
+        final DataInputStream is = new DataInputStream(
+          stateStore.getStateStream(taskId + "-taskWatermarkManager"));
+
+        if (task.getTaskIncomingEdges().size() > 2) {
+          return R2MultiPairWatermarkManager.decode(is);
+        } else {
+          return new R2SinglePairWatermarkManager(taskId);
+        }
+
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    } else {
+      if (task.getTaskIncomingEdges().size() > 2) {
+        return new R2MultiPairWatermarkManager(taskId);
+      } else {
+        return new R2SinglePairWatermarkManager(taskId);
+      }
+    }
   }
 
 
@@ -498,10 +518,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         }
       }
 
-      if (childVertex instanceof ConditionalRouterVertex) {
-        crVertices.add((ConditionalRouterVertex)childVertex);
-      }
-
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
 
@@ -537,7 +553,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
         // Create VERTEX HARNESS
         final Transform.Context context = new TransformContextImpl(
           irVertex, serverlessExecutorProvider, taskId, stateStore,
-          conditionalRouting,
+          null,
           executorId);
 
         TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
@@ -769,6 +785,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   @Override
   public void restore() {
+
     throw new RuntimeException("SMTask not support restore " + taskId);
     // stateRestore(taskId);
   }

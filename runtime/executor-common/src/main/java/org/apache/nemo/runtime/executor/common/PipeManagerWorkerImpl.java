@@ -269,14 +269,17 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       final int outputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTask);
       final int myInputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTask, edgeId, dstTaskId);
 
-      if (pendingOutputPipeMap.containsKey(outputPipeIndex) &&
-        pendingOutputPipeMap.remove(outputPipeIndex).size() > 0) {
-        throw new RuntimeException("Pending output pipe size > 0 " + srcTask
-          + "-" + edgeId + "-" + dstTaskId + " , index " + outputPipeIndex);
-      }
-
       final TaskControlMessage controlMessage = messageBuilder
         .apply(Triple.of(outputPipeIndex, myInputPipeIndex, srcTask));
+
+      if (pendingOutputPipeMap.containsKey(outputPipeIndex) &&
+        pendingOutputPipeMap.get(outputPipeIndex).size() > 0) {
+        LOG.warn("Pending output pipe size > 0 " + srcTask
+          + "-" + edgeId + "-" + dstTaskId + " , index " + outputPipeIndex + ", "
+        + pendingOutputPipeMap.get(outputPipeIndex).get(0));
+        pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
+        return;
+      }
 
       taskInputPipeState.put(dstTaskId, InputPipeState.RUNNING);
 

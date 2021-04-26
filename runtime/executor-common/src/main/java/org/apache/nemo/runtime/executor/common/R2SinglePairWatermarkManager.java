@@ -6,6 +6,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,15 +29,68 @@ public final class R2SinglePairWatermarkManager implements R2WatermarkManager {
     this.taskId = taskId;
   }
 
-  @Override
-  public void addDataFetcher(String vmEdgeId, String lambdaEdgeId, int parallelism) {
-    LOG.info("Add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
-    final R2PairEdgeWatermarkTracker stageWatermarkTracker =
-      new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
+  private R2SinglePairWatermarkManager(final long prevWatermark,
+                                       final long dataFetcherWatermark,
+                                       final R2PairEdgeWatermarkTracker dataFetcherWatermarkTracker,
+                                       final String taskId,
+                                       final String vmEdgeId,
+                                       final String lambdaEdgeId) {
+    this.prevWatermark = prevWatermark;
+    this.dataFetcherWatermarkTracker = dataFetcherWatermarkTracker;
+    this.dataFetcherWatermark = dataFetcherWatermark;
+    this.taskId = taskId;
     this.vmEdgeId = vmEdgeId;
     this.lambdaEdgeId = lambdaEdgeId;
-    final Pair<String, String> key = Pair.of(vmEdgeId, lambdaEdgeId);
-    dataFetcherWatermarkTracker = stageWatermarkTracker;
+  }
+
+  public static R2SinglePairWatermarkManager decode(final String taskId,
+                                                    final DataInputStream dis) {
+    try {
+      final long prevWatermark = dis.readLong();
+      final long dataFetcherWatermark = dis.readLong();
+      final String vmEdgeId = dis.readUTF();
+      final String lambdaEdgeId = dis.readUTF();
+
+      final R2PairEdgeWatermarkTracker dataFetcherWatermarkTracker = R2PairEdgeWatermarkTracker
+        .decode(vmEdgeId, lambdaEdgeId, taskId, dis);
+
+      return new R2SinglePairWatermarkManager(prevWatermark,
+        dataFetcherWatermark, dataFetcherWatermarkTracker, taskId,
+        vmEdgeId, lambdaEdgeId);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void encode(final String taskId,
+                     final DataOutputStream dos) {
+    try {
+      dos.writeLong(prevWatermark);
+      dos.writeLong(dataFetcherWatermark);
+      dos.writeUTF(vmEdgeId);
+      dos.writeUTF(lambdaEdgeId);
+      dataFetcherWatermarkTracker.encode(dos);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void addDataFetcher(String vmEdgeId, String lambdaEdgeId, int parallelism) {
+    if (dataFetcherWatermarkTracker != null) {
+      LOG.info("Skip data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
+    } else {
+      LOG.info("Add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
+      final R2PairEdgeWatermarkTracker stageWatermarkTracker =
+        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
+      this.vmEdgeId = vmEdgeId;
+      this.lambdaEdgeId = lambdaEdgeId;
+      final Pair<String, String> key = Pair.of(vmEdgeId, lambdaEdgeId);
+      dataFetcherWatermarkTracker = stageWatermarkTracker;
+    }
   }
 
   @Override
