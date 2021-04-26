@@ -1090,6 +1090,10 @@ public final class Executor {
             .keySet().forEach(taskExecutor -> {
               executorService.execute(() -> {
                 final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
+                executorThread.addEvent(new TaskControlMessage(
+                  TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
+                  taskExecutor.getId(), false));
+                /*
                 if (taskExecutor.getTask().isParitalCombine()) {
                    executorThread.addEvent(new TaskControlMessage(
                     TaskControlMessage.TaskControlMessageType.R3_INIT, -1, -1,
@@ -1099,6 +1103,7 @@ public final class Executor {
                     TaskControlMessage.TaskControlMessageType.R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER, -1, -1,
                     taskExecutor.getId(), false));
                 }
+                */
               });
             });
           break;

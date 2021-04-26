@@ -91,6 +91,8 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
     switch (control.type) {
       case R3_INIT: {
+        throw new RuntimeException("Not supported");
+        /*
         // initial start
         // just use R2 path
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
@@ -113,6 +115,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             });
         });
         break;
+        */
       }
       // (1)
       case R3_INVOKE_REDIRECTION_FOR_CR_BY_MASTER: {
