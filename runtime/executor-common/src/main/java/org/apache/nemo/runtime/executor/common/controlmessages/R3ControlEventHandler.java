@@ -345,7 +345,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           Triple.of(pairTask, pairEdgeId, control.getTaskId()));
 
         // set the merger will receieve partial result
-        ((MergerTaskExecutorImpl) taskExecutor).receivePartialFinal(false);
+        ((MergerTaskExecutor) taskExecutor).receivePartialFinal(false);
 
         // Send ack
         pipeManagerWorker.writeControlMessage(
@@ -452,7 +452,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             + taskExecutor.getId() + ", " + taskExecutor.getTask().getTaskType());
         }
 
-        ((MergerTaskExecutorImpl) taskExecutor).receivePartialFinal(true);
+        ((MergerTaskExecutor) taskExecutor).receivePartialFinal(true);
         break;
       }
       // Periodically check partial combine state

@@ -60,7 +60,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
 @NotThreadSafe
-public final class MergerTaskExecutorImpl implements CRTaskExecutor {
+public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(MergerTaskExecutorImpl.class.getName());
 
   // Essential information
@@ -449,6 +449,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     taskWatermarkManager.startAndStopPairIndex(taskIndex, edgeId);
   }
 
+  @Override
   public void receivePartialFinal(final boolean finalResult) {
     if (!allPathStopped && finalResult) {
       throw new RuntimeException("All path not stopped, but merger receices final result " + taskId);
