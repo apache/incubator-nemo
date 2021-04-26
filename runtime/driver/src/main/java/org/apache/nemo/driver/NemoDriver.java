@@ -250,7 +250,11 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
 
-             //  runtimeMaster.throttleSource(10);
+              //  runtimeMaster.throttleSource(10);
+              stages.sort((x,y) -> Integer.valueOf(x.split("Stage")[1].split("-")[0])
+                .compareTo(
+                  Integer.valueOf(y.split("Stage")[1].split("-")[0])));
+
               jobScaler.sendTaskStopSignal(num, true, stages);
               /*
               for (int i = stages.size() - 1; i >= 0; i--) {
