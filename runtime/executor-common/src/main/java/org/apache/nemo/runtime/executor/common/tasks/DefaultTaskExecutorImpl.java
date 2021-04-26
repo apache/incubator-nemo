@@ -828,21 +828,18 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // final byte[] bytes = FSTSingleton.getInstance().asByteArray(taskWatermarkManager);
     // stateStore.put(taskId + "-taskWatermarkManager", bytes);
 
-    final DataOutputStream os = new DataOutputStream(
-      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"));
-
-    try {
+    try (final DataOutputStream os = new DataOutputStream(
+      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"))) {
       if (task.getTaskIncomingEdges().size() == 0) {
         // do nothing
       } else if (task.getTaskIncomingEdges().size() == 1) {
-        ((SingleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+        ((SingleStageWatermarkTracker) taskWatermarkManager).encode(taskId, os);
       } else if (task.getTaskIncomingEdges().size() == 2) {
-        ((DoubleStageWatermarkTracker)taskWatermarkManager).encode(taskId, os);
+        ((DoubleStageWatermarkTracker) taskWatermarkManager).encode(taskId, os);
       } else {
         throw new RuntimeException("Not supported edge > 2" + taskId);
       }
-      os.close();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }

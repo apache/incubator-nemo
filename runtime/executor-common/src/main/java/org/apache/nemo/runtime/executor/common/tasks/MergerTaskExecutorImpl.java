@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -226,12 +228,11 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.vmPathDstTasks = getDstTaskIds(taskId, vmOutputPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmOutputPathEdge.getId());
 
-    this.taskWatermarkManager = getOrRestoreR2WatermarkManager();
-
     if (vmPathDstTasks.size() > 1) {
       throw new RuntimeException("Not supported multiple dstTAsks in merger task "
         + vmPathDstTasks + " , " + taskId);
     }
+
     this.getDstTaskId = new O2oDstTaskId();
 
     this.vmPathDstTask = vmPathDstTasks.get(0);
@@ -245,6 +246,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
     this.dataRouter = new VMDataRouter(vmPathDstTask);
     this.dataHandler = new BypassDataHandler();
+
+    // Here, we reset data router and data handler
+    this.taskWatermarkManager = getOrRestoreState();
 
     this.mergerTransform = ((OperatorVertex)irVertexDag.getVertices().get(0)).getTransform();
 
@@ -282,18 +286,34 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     prepare();
   }
 
-  private R2WatermarkManager getOrRestoreR2WatermarkManager() {
+  private R2WatermarkManager getOrRestoreState() {
     if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
-      try {
-        final DataInputStream is = new DataInputStream(
-          stateStore.getStateStream(taskId + "-taskWatermarkManager"));
-
+      try (final DataInputStream is = new DataInputStream(
+        stateStore.getStateStream(taskId + "-taskWatermarkManager"))) {
+        final R2WatermarkManager manager;
         if (task.getTaskIncomingEdges().size() > 2) {
-          return R2MultiPairWatermarkManager.decode(taskId, is);
+          manager = R2MultiPairWatermarkManager.decode(taskId, is);
         } else {
-          return R2SinglePairWatermarkManager.decode(taskId, is);
+          manager = R2SinglePairWatermarkManager.decode(taskId, is);
         }
 
+        final boolean isLambdaRouter = is.readBoolean();
+        final boolean isReceiveFinal = is.readBoolean();
+
+        if (isLambdaRouter) {
+          dataRouter = new LambdaDataRouter(transientPathDstTask);
+        } else {
+          dataRouter = new VMDataRouter(vmPathDstTask);
+        }
+
+        receiveFinal = isReceiveFinal;
+        if (receiveFinal) {
+          dataHandler = new BypassDataHandler();
+        } else {
+          dataHandler = new ToMergerDataHandler();
+        }
+
+        return manager;
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -765,20 +785,6 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
 
   private boolean finished = false;
 
-  private Optional<TaskInputWatermarkManager> restoreTaskInputWatermarkManager() {
-    if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
-      try {
-        final InputStream is = stateStore.getStateStream(taskId + "-taskWatermarkManager");
-        final TaskInputWatermarkManager tm = TaskInputWatermarkManager.decode(taskId, is);
-        return Optional.of(tm);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-    return Optional.empty();
-  }
-
   @Override
   public void restore() {
 
@@ -821,9 +827,36 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
   @Override
   public boolean checkpoint(final boolean checkpointSource,
                             final String checkpointId) {
-    throw new RuntimeException("SMTask not support checkpoint " + taskId);
-    // stateMigration(checkpointId);
-    // return true;
+    final long st = System.currentTimeMillis();
+    boolean hasChekpoint = false;
+
+    try (final DataOutputStream os = new DataOutputStream(
+      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"))) {
+
+      if (task.getTaskIncomingEdges().size() > 2) {
+        ((R2MultiPairWatermarkManager) taskWatermarkManager).encode(os);
+      } else {
+        ((R2SinglePairWatermarkManager) taskWatermarkManager).encode(taskId, os);
+      }
+
+      if (dataRouter instanceof LambdaDataRouter) {
+        os.writeBoolean(true);
+      } else {
+        os.writeBoolean(false);
+      }
+      os.writeBoolean(receiveFinal);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    mergerTransform.checkpoint(checkpointId);
+
+    final long et = System.currentTimeMillis();
+    LOG.info("Checkpoint elapsed time of {}: {}", taskId, et - st);
+
+    return true;
   }
 
   @Override
