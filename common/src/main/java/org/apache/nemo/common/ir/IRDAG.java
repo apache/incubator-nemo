@@ -907,6 +907,40 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build(); // update the DAG.
   }
 
+  private boolean isFlatten(final IRVertex v) {
+    return ((OperatorVertex)v).getTransform().isFlatten();
+  }
+
+  public void removeFlatten() {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Build the new DAG to reflect the new topology.
+    modifiedDAG.topologicalDo(v -> {
+      if (!isFlatten(v)) {
+        builder.addVertex(v); // None of the existing vertices are deleted.
+      }
+
+      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
+        if (isFlatten(edge.getDst())) {
+          final IRVertex flatten = edge.getDst();
+          modifiedDAG.getOutgoingEdgesOf(flatten).forEach(outEdge -> {
+            final IREdge newEdge = new IREdge(
+              edge.getPropertyValue(CommunicationPatternProperty.class).get(),
+              edge.getSrc(),
+              outEdge.getDst());
+            edge.copyExecutionPropertiesTo(newEdge);
+            builder.connectVertices(newEdge);
+          });
+        } else {
+          builder.connectVertices(edge);
+        }
+      }
+    });
+
+    modifiedDAG = builder.build(); // update the DAG.
+  }
+
   public void change(final OperatorVertex origin, final OperatorVertex dst) {
 
     // Create a completely new DAG with the vertex inserted.

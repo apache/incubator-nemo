@@ -41,6 +41,11 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
+  public boolean isFlatten() {
+    return true;
+  }
+
+  @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
     cont = context;
     this.outputCollector = oc;

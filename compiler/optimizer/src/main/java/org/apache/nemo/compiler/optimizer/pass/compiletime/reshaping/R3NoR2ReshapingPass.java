@@ -38,6 +38,7 @@ public final class R3NoR2ReshapingPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
+    dag.removeFlatten();
     dag.addStateMergerWithoutR2();
     return dag;
   }

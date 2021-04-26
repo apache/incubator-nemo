@@ -35,6 +35,11 @@ import java.util.Optional;
  * @param <O> output type.
  */
 public interface Transform<I, O> extends Serializable {
+
+  default boolean isFlatten() {
+    return false;
+  }
+
   /**
    * Prepare the transform.
    * @param context of the transform.
