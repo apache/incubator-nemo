@@ -922,9 +922,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Build the new DAG to reflect the new topology.
     modifiedDAG.topologicalDo(v -> {
       if (!isFlatten(v)) {
+        LOG.info("Add vertex for rm flatten: {}", v.getId());
         builder.addVertex(v); // None of the existing vertices are deleted.
       }
+    });
 
+
+    // add edge
+    modifiedDAG.topologicalDo(v -> {
       for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
         if (isFlatten(edge.getDst())) {
           final IRVertex flatten = edge.getDst();
