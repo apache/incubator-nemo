@@ -779,28 +779,53 @@ public final class Executor {
 
 
       } else if (task.isMerger()) {
-        taskExecutor =
-          new MergerTaskExecutorImpl(
-            Thread.currentThread().getId(),
-            executorId,
-            task,
-            irDag,
-            intermediateDataIOFactory,
-            serializerManager,
-            null,
-            evalConf.samplingJson,
-            evalConf.isLocalSource,
-            prepareService,
-            executorThread,
-            pipeManagerWorker,
-            stateStore,
-            // offloadingManager,
-            pipeManagerWorker,
-            outputCollectorGenerator,
-            bytes,
-            condRouting,
-            // new NoOffloadingPreparer(),
-            false);
+        if (evalConf.optimizationPolicy.equals("StreamingR1R3Policy")) {
+          taskExecutor =
+            new R1R3MergerTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        } else {
+          taskExecutor =
+            new MergerTaskExecutorImpl(
+              Thread.currentThread().getId(),
+              executorId,
+              task,
+              irDag,
+              intermediateDataIOFactory,
+              serializerManager,
+              null,
+              evalConf.samplingJson,
+              evalConf.isLocalSource,
+              prepareService,
+              executorThread,
+              pipeManagerWorker,
+              stateStore,
+              // offloadingManager,
+              pipeManagerWorker,
+              outputCollectorGenerator,
+              bytes,
+              condRouting,
+              // new NoOffloadingPreparer(),
+              false);
+        }
       } else {
         if (evalConf.optimizationPolicy.contains("R3")
           && task.isParitalCombine()) {
