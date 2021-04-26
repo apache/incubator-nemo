@@ -468,9 +468,11 @@ public final class R3ControlEventHandler implements ControlEventHandler {
               LOG.info("Try to stop data and watermark of input pipe of {}", taskExecutor.getId());
             }
 
+            final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
+            taskInputStopCounter.put(taskExecutor.getId(), new AtomicInteger(cnt));
             // 1) stop input pipe
             taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
-              pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
+              pipeManagerWorker.sendSignalForInputPipes(entry.getValue(),
                 entry.getKey().getId(), control.getTaskId(),
                 (triple) -> {
                   return new TaskControlMessage(
@@ -502,10 +504,10 @@ public final class R3ControlEventHandler implements ControlEventHandler {
           LOG.info("Receive data watermark stop ack for task {} pipe {}", control.getTaskId(), control.targetPipeIndex);
         }
 
-        pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
 
-        if (pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
+        if (taskInputStopCounter.get(taskExecutor.getId()).decrementAndGet() == 0) {
           // close output
+          taskInputStopCounter.remove(taskExecutor.getId());
 
           if (evalConf.controlLogging) {
             LOG.info("End of Receive ACK for task {} pipe {}", control.getTaskId());

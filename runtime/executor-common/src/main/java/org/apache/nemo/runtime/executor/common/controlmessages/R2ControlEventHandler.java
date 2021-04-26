@@ -44,6 +44,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
   private final Map<String, Boolean> taskInitMap;
+  private final Map<String, AtomicInteger> taskInputDoneAckCounter;
 
   @Inject
   private R2ControlEventHandler(
@@ -61,6 +62,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.taskOutputDoneAckCounter = new ConcurrentHashMap<>();
     this.taskInitMap = new ConcurrentHashMap<>();
+    this.taskInputDoneAckCounter = new ConcurrentHashMap<>();
   }
 
   /**
@@ -94,9 +96,12 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             taskExecutor.getTask().getPairEdgeId());
         }
 
+        final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
+        taskInputDoneAckCounter.put(taskExecutor.getId(), new AtomicInteger(cnt));
+
         // stop pipe input of CR task
         taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
-          pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
+          pipeManagerWorker.sendSignalForInputPipes(entry.getValue(),
             entry.getKey().getId(), control.getTaskId(),
             (triple) -> {
               return new TaskControlMessage(
@@ -176,15 +181,13 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           LOG.info("Receive ACK for task {} pipe {}", control.getTaskId(), control.targetPipeIndex);
         }
 
-        pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
-
         final boolean checkpoint = (Boolean) control.event;
-
         // (2): send state
         final String pairTaskId = taskExecutor.getTask().getPairTaskId();
 
         // (3): close output
-        if (pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
+        if (taskInputDoneAckCounter.get(taskExecutor.getId()).decrementAndGet() == 0) {
+          taskInputDoneAckCounter.remove(taskExecutor.getId());
 
           final int cnt = TaskExecutorUtil
               .taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());

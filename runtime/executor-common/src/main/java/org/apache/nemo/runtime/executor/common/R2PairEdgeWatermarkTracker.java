@@ -321,7 +321,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       if (val.isPresent()) {
         lambdaWatermark = val.get();
-        if (val.get() < prevWatermark) {
+        if (val.get() <= prevWatermark) {
           return Optional.empty();
         } else {
           prevWatermark = val.get();
@@ -341,7 +341,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       if (val.isPresent()) {
         vmWatermark = val.get();
-        if (val.get() < prevWatermark) {
+        if (val.get() <= prevWatermark) {
           return Optional.empty();
         } else {
           prevWatermark = val.get();
@@ -379,7 +379,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       }
 
       final long minWatermark = vmWatermark < lambdaWatermark ? vmWatermark : lambdaWatermark;
-      if (minWatermark < prevWatermark) {
+      if (minWatermark <= prevWatermark) {
         return Optional.empty();
       } else {
         prevWatermark = minWatermark;
