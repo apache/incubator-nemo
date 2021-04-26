@@ -779,7 +779,8 @@ public final class Executor {
 
 
       } else if (task.isMerger()) {
-        if (evalConf.optimizationPolicy.equals("StreamingR1R3Policy")) {
+        LOG.info("optimization policy {}", evalConf.optimizationPolicy);
+        if (evalConf.optimizationPolicy.contains("R1R3")) {
           taskExecutor =
             new R1R3MergerTaskExecutorImpl(
               Thread.currentThread().getId(),
