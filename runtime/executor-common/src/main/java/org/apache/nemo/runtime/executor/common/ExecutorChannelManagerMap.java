@@ -86,6 +86,11 @@ public final class ExecutorChannelManagerMap {
 
   public synchronized void initConnectToExecutor(final String remoteExecutorId) {
 
+    if (executorId.equals(remoteExecutorId)) {
+      LOG.warn("Prevent init connection to same executor {} in {}", executorId, remoteExecutorId);
+      return;
+    }
+
     if (executorId.contains("Lambda") && remoteExecutorId.contains("Lambda")) {
       throw new RuntimeException("Cannot connnect " + executorId + "<->" + remoteExecutorId);
     }
