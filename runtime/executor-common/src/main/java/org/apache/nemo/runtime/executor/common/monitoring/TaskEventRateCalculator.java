@@ -6,6 +6,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.reef.tang.annotations.Parameter;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,7 @@ public final class TaskEventRateCalculator {
       sb.append("\toutput:");
       sb.append(taskMetrics.outputElement);
       sb.append("\twatermark:");
-      sb.append(taskMetrics.watermark);
+      sb.append(new Instant(taskMetrics.watermark));
       sb.append("\tptime:");
       sb.append(taskMetrics.computation);
       sb.append("\tdsertime:");
