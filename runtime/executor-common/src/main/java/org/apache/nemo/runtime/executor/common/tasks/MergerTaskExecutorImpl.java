@@ -226,11 +226,7 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
     this.vmPathDstTasks = getDstTaskIds(taskId, vmOutputPathEdge);
     this.vmPathSerializer = serializerManager.getSerializer(vmOutputPathEdge.getId());
 
-    if (task.getTaskIncomingEdges().size() > 2) {
-      this.taskWatermarkManager = new R2MultiPairWatermarkManager(taskId);
-    } else {
-      this.taskWatermarkManager = new R2SinglePairWatermarkManager(taskId);
-    }
+    this.taskWatermarkManager = getOrRestoreR2WatermarkManager();
 
     if (vmPathDstTasks.size() > 1) {
       throw new RuntimeException("Not supported multiple dstTAsks in merger task "
@@ -293,9 +289,9 @@ public final class MergerTaskExecutorImpl implements CRTaskExecutor {
           stateStore.getStateStream(taskId + "-taskWatermarkManager"));
 
         if (task.getTaskIncomingEdges().size() > 2) {
-          return R2MultiPairWatermarkManager.decode(is);
+          return R2MultiPairWatermarkManager.decode(taskId, is);
         } else {
-          return new R2SinglePairWatermarkManager(taskId);
+          return R2SinglePairWatermarkManager.decode(taskId, is);
         }
 
       } catch (Exception e) {
