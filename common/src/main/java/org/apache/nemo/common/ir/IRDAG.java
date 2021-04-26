@@ -462,6 +462,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    final List<IRVertex> gbks = new LinkedList<>();
 
     modifiedDAG.topologicalDo(vertex -> {
        if (vertex instanceof StreamVertex) {
@@ -474,9 +475,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
            change((OperatorVertex) vertex, (OperatorVertex) crVertex);
          }
       }
+
+      if (vertex.isStateful) {
+         gbks.add(vertex);
+      }
     });
 
-    final List<IRVertex> gbks = new LinkedList<>();
 
     modifiedDAG.topologicalDo(vertex -> {
       if (!vertex.isStateful) {
@@ -487,8 +491,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           if (!incomingEdge.getSrc().isStateful) {
             // Add edge if src is not stateful
             builder.connectVertices(incomingEdge);
-          } else {
-            gbks.add(vertex);
           }
         });
       }
