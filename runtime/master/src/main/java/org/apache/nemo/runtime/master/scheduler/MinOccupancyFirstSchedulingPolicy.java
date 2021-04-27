@@ -60,6 +60,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
 
 
+    LOG.info("Candidate executors for scheudling task {}: {}",
+      task.getTaskId(), executors);
+
     // For o2o-aware scheduling
     final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
       .stream().filter(edge -> edge.getDataCommunicationPattern()
@@ -73,7 +76,12 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .filter(edge -> {
       final String srcTaskId = RuntimeIdManager.generateTaskId(edge.getSrc().getId(),
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
-        LOG.info("Scheduling candidate task for {}: {}", task.getTaskId(), srcTaskId);
+        LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
+          "prevExecutorId: {}", task.getTaskId(), srcTaskId,
+          taskScheduledMap.isTaskScheduled(srcTaskId),
+          taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId),
+          taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId()));
+
       return (taskScheduledMap.isTaskScheduled(srcTaskId)
       && !taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId).equals(
         taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId())));

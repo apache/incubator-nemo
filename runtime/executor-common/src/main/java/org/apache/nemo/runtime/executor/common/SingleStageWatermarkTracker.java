@@ -96,9 +96,9 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
 
       if (nextMinWatermark < prevEmitWatermark) {
         // it is possible
-        throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark" +
-          nextMinWatermark + " <= " + new Instant(prevEmitWatermark) + ", "
-          + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
+        throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark " +
+          new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
+          + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
           " prevEmitWatermark: " + new Instant(prevEmitWatermark));
 
         // return Optional.empty();
@@ -133,8 +133,8 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
 
         if (nextMinWatermark < prevEmitWatermark) {
           // it is possible
-          throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark" +
-            nextMinWatermark + " <= " + new Instant(prevEmitWatermark) + ", "
+          throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark " +
+            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
             + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
             " prevEmitWatermark: " + new Instant(prevEmitWatermark));
           // minWatermarkIndex = nextMinWatermarkIndex;
@@ -156,7 +156,7 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
         // because watermark is monotonically increasing.
         if (watermarks[edgeIndex] > watermark) {
           throw new RuntimeException(taskId + " watermarks.get(edgeIndex) > watermark" +
-            watermarks[edgeIndex] + " > " + watermark + ", "
+            new Instant(watermarks[edgeIndex]) + " > " + new Instant(watermark) + ", "
             + "edgeIndex: " + edgeIndex  + ", " +
             new Instant(prevEmitWatermark) + ", "
             + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " +
