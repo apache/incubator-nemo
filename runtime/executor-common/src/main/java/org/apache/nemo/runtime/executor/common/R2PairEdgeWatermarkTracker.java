@@ -174,11 +174,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         vmPathAllStopped = false;
 
         // Set watermark
-        vmWatermarkTracker.setWatermark(index, lambdaWatermarkTracker.getWatermark(index));
-        vmWatermarkTracker.updateAndGetCurrentWatermark()
-          .ifPresent(watermark -> {
-            vmWatermark = watermark;
-          });
+        // vmWatermarkTracker.setWatermark(index, lambdaWatermarkTracker.getWatermark(index));
+        // vmWatermarkTracker.updateAndGetCurrentWatermark()
+        //  .ifPresent(watermark -> {
+        //    vmWatermark = watermark;
+        //  });
       }
 
       setWatermarkTrackerAndPrevWatermark();
@@ -213,11 +213,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         lambdaPathAllStopped = false;
 
         // Set watermark
-        lambdaWatermarkTracker.setWatermark(index, vmWatermarkTracker.getWatermark(index));
-        lambdaWatermarkTracker.updateAndGetCurrentWatermark()
-          .ifPresent(watermark -> {
-            lambdaWatermark = watermark;
-          });
+//        lambdaWatermarkTracker.setWatermark(index, vmWatermarkTracker.getWatermark(index));
+//        lambdaWatermarkTracker.updateAndGetCurrentWatermark()
+//          .ifPresent(watermark -> {
+//            lambdaWatermark = watermark;
+//          });
 
       }
 
