@@ -148,8 +148,9 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         return Optional.of(nextMinWatermark);
       } else {
         LOG.warn("NextMinWatermark <= PrevEmitWatermark {} / {} / {} / {}",
-          new Instant(nextMinWatermark), new Instant(prevEmitWatermark), watermarks,
-          new Instant(stoppedWatermarks));
+          new Instant(nextMinWatermark), new Instant(prevEmitWatermark),
+          printWatermark(watermarks),
+          buildArray(stoppedWatermarks));
         minWatermarkIndex = nextMinWatermarkIndex;
         prevEmitWatermark = nextMinWatermark;
         return Optional.of(nextMinWatermark);
