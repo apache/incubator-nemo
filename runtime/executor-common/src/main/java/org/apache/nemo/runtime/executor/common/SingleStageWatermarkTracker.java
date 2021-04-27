@@ -97,9 +97,9 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
       if (nextMinWatermark < prevEmitWatermark) {
         // it is possible
         throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark" +
-          nextMinWatermark + " <= " + prevEmitWatermark + ", "
+          nextMinWatermark + " <= " + new Instant(prevEmitWatermark) + ", "
           + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-          " prevEmitWatermark: " + prevEmitWatermark);
+          " prevEmitWatermark: " + new Instant(prevEmitWatermark));
 
         // return Optional.empty();
 

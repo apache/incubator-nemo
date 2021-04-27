@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,7 +152,8 @@ public final class R2MultiPairWatermarkManager implements R2WatermarkManager {
         // update output watermark!
         final long outputW = dataFetcherWatermarkMap.get(key);
         if (outputW > val.get()) {
-          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", " + val.get());
+          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " +
+            new Instant(outputW) + ", " + new Instant(val.get()));
         }
 
         dataFetcherWatermarkMap.put(key, val.get());
@@ -168,11 +170,25 @@ public final class R2MultiPairWatermarkManager implements R2WatermarkManager {
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Watermark update failed ... edgeId " + edgeId + ", taskIndex " + taskIndex
-        + "prevWatermark: " + prevWatermark + ", watermark " + watermark + ", " + " pairEdgeMap: " + pairEdgeMap +
+        + "prevWatermark: " + new Instant(prevWatermark) + ", watermark " +
+        new Instant(watermark) + ", " + " pairEdgeMap: " + pairEdgeMap +
         ", dataFetcherWatermarkTracker key: " + dataFetcherWatermarkTracker.keySet() +
-      ", watermark map: " + dataFetcherWatermarkMap + ", "
+      ", watermark map: " + printDataFetcherWatermarkMap() + ", "
       + "R2PairEdgeTracker: " + dataFetcherWatermarkTracker.values());
     }
+  }
+
+  private String printDataFetcherWatermarkMap() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{");
+    dataFetcherWatermarkMap.forEach((key, val) -> {
+      sb.append(key);
+      sb.append(":");
+      sb.append(new Instant(val));
+      sb.append(",");
+    });
+    sb.append("}");
+    return sb.toString();
   }
 
 }

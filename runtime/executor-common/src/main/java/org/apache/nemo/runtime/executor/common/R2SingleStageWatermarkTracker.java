@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Util;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +117,8 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
   public void setWatermark(final int index,
                            final long watermark) {
     if (watermarks[index] > watermark) {
-      LOG.warn("Curr Watermark is smaller than prev watermark " + index + ", " + watermark + ", prev " + watermarks[index]);
+      LOG.warn("Curr Watermark is smaller than prev watermark " + index + ", " + new Instant(watermark) + ", prev " +
+        new Instant(watermarks[index]));
     }
     watermarks[index] = watermark;
   }
@@ -146,7 +148,8 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         return Optional.of(nextMinWatermark);
       } else {
         LOG.warn("NextMinWatermark <= PrevEmitWatermark {} / {} / {} / {}",
-          nextMinWatermark, prevEmitWatermark, watermarks, stoppedWatermarks);
+          new Instant(nextMinWatermark), new Instant(prevEmitWatermark), watermarks,
+          new Instant(stoppedWatermarks));
         minWatermarkIndex = nextMinWatermarkIndex;
         prevEmitWatermark = nextMinWatermark;
         return Optional.of(nextMinWatermark);
@@ -174,14 +177,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       final Long nextMinWatermark = watermarks[0];
 
       if (nextMinWatermark < prevEmitWatermark) {
-        final StringBuilder sb = new StringBuilder();
-        buildArray(sb,stoppedWatermarks);
-        final StringBuilder sb2 = new StringBuilder();
-        buildArray(sb2, watermarks);
         LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
-          nextMinWatermark + " <= " + prevEmitWatermark + ", "
-          + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2.toString() +
-          " stopped: " + sb.toString());
+            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+            " stopped: " + buildArray(stoppedWatermarks));
         return Optional.empty();
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
@@ -218,14 +217,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
 
         if (nextMinWatermark < prevEmitWatermark) {
           // it is possible
-          final StringBuilder sb = new StringBuilder();
-          buildArray(sb,stoppedWatermarks);
-          final StringBuilder sb2 = new StringBuilder();
-          buildArray(sb2, watermarks);
           LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
-            nextMinWatermark + " <= " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2.toString() +
-            " stopped: " + sb.toString());
+            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+            " stopped: " + buildArray(stoppedWatermarks));
           // minWatermarkIndex = nextMinWatermarkIndex;
           //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
           //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
@@ -246,16 +241,13 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         // The recent watermark timestamp cannot be less than the previous one
         // because watermark is monotonically increasing.
         if (watermarks[edgeIndex] > watermark) {
-          final StringBuilder sb = new StringBuilder();
-          buildArray(sb, stoppedWatermarks);
-          final StringBuilder sb2 = new StringBuilder();
-          buildArray(sb, watermarks);
 
           throw new RuntimeException("task " + taskId + " edge " + edgeId + " watermarks.get(edgeIndex) > watermark" +
-            watermarks[edgeIndex] + " > " + watermark + ", "
-            + "edgeIndex: " + edgeIndex + ", " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + sb2 +
-            " stopped: " + sb);
+            watermarks[edgeIndex] + " > " +
+            new Instant(watermark) + ", "
+            + "edgeIndex: " + edgeIndex + ", " + new Instant(prevEmitWatermark) + ", "
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+            " stopped: " + buildArray(stoppedWatermarks));
 
           // LOG.warn("Warning pre watermark {} is larger than current {}, index {}",
           //  new Instant(watermarks.get(edgeIndex)), new Instant(watermark), edgeIndex);
@@ -267,25 +259,38 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     }
   }
 
-  private void buildArray(StringBuilder sb, Object[] array) {
+  private static String printWatermark(Long[] array) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < array.length; i++) {
+      sb.append(new Instant(array[i]));
+      sb.append(",");
+    }
+    sb.append("]");
+    return sb.toString();
+  }
+
+  private static String buildArray(Object[] array) {
+    final StringBuilder sb = new StringBuilder();
     sb.append("[");
     for (int i = 0; i < array.length; i++) {
       sb.append(array[i]);
       sb.append(",");
     }
     sb.append("]");
+    return sb.toString();
   }
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("watermarks: ");
-    buildArray(sb, watermarks);
+    printWatermark(watermarks);
     sb.append(", stopped: ");
-    buildArray(sb, stoppedWatermarks);
+    buildArray(stoppedWatermarks);
     sb.append(", prevEmitWatermark: ");
-    sb.append(prevEmitWatermark);
+    sb.append(new Instant(prevEmitWatermark));
     sb.append(", minWatermarkIndex: ");
-    sb.append(minWatermarkIndex);
+    sb.append(new Instant(minWatermarkIndex));
 
     return sb.toString();
   }
@@ -304,7 +309,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       LOG.info("Encoding single stage watermark tracker in {} watermarks: {} ," +
         "stoppedWmarks: {}, " +
         "minWatermarkIndex: {}," +
-        "prevEmitWatermark: {}", taskId, watermarks, stoppedWatermarks, minWatermarkIndex, prevEmitWatermark);
+        "prevEmitWatermark: {}", taskId,
+        printWatermark(watermarks),
+        buildArray(stoppedWatermarks), minWatermarkIndex,
+        new Instant(prevEmitWatermark));
 
     } catch (final Exception e) {
       e.printStackTrace();
@@ -329,7 +337,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       LOG.info("Decoding single stage watermark tracker in {} watermarks: {} ," +
         "stoppedWmarks: {}, " +
         "minWatermarkIndex: {}," +
-        "prevEmitWatermark: {}", taskId, watermarks, stoppedWatermarks, minWatermarkIndex, prevEmitWatermark);
+        "prevEmitWatermark: {}", taskId,
+        printWatermark((Long[])watermarks.toArray()),
+        buildArray(stoppedWatermarks.toArray()), minWatermarkIndex,
+        new Instant(prevEmitWatermark));
 
       return new R2SingleStageWatermarkTracker(watermarks,
         stoppedWatermarks, minWatermarkIndex, prevEmitWatermark);

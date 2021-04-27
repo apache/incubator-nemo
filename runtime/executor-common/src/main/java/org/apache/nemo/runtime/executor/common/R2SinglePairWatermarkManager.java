@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,8 +128,10 @@ public final class R2SinglePairWatermarkManager implements R2WatermarkManager {
         // update output watermark!
         final long outputW = dataFetcherWatermark;
         if (outputW > val.get()) {
-          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + outputW + ", "
-            + val.get() + ", index: " + taskIndex + " watermark " + watermark + ", " + taskId);
+          throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " +
+            new Instant(outputW) + ", "
+            + new Instant(val.get()) + ", index: " + taskIndex + " watermark " +
+            new Instant(watermark) + ", " + taskId);
         }
 
         dataFetcherWatermark = val.get();
@@ -145,7 +148,7 @@ public final class R2SinglePairWatermarkManager implements R2WatermarkManager {
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Watermark update failed ... edgeId " + edgeId + ", taskIndex " + taskIndex
-        + " watermark " + watermark + ", " + " single pair "
+        + " watermark " + new Instant(watermark) + ", " + " single pair "
       + "R2PairEdgeTracker: " + dataFetcherWatermarkTracker);
     }
   }

@@ -313,6 +313,9 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
           dataHandler = new ToMergerDataHandler();
         }
 
+        LOG.info("Restore merger {}, toLambda: {}, receiveFinal: {}",
+          taskId, isLambdaRouter, receiveFinal);
+
         return manager;
       } catch (Exception e) {
         e.printStackTrace();
@@ -846,6 +849,9 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         os.writeBoolean(false);
       }
       os.writeBoolean(receiveFinal);
+
+      LOG.info("Checkpoint merger {}, toLambda: {}, receiveFinal: {}",
+        taskId, dataRouter instanceof LambdaDataRouter, receiveFinal);
 
     } catch (final Exception e) {
       e.printStackTrace();

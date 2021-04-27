@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.Util;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +155,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       // stop lambda path path
       LOG.info("Before Stop lambda path watermark index in task {}/{}/{}, vm: {}, lambda: {}, vm watermark: {}, " +
           "lambda watermark {}"
-        , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+        , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
+        new Instant(vmWatermark), new Instant(lambdaWatermark));
 
       // Stop lambda path
       if (lambdaWatermarkTracker.isStopped(index)) {
@@ -185,13 +187,16 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       LOG.info("After Stop lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, vm watermark: {}, " +
-        "lambda watermark: {}", vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+        "lambda watermark: {}", vmWatermarkTracker, lambdaWatermarkTracker, new Instant(vmWatermark),
+        new Instant(lambdaWatermark));
       return lambdaPathAllStopped;
 
     } else {
       LOG.info("Before Stop vm path watermark index in task {}/{}/{}, vm: {}, lambda: {}, vm Watermark: {}, " +
           "lambda Watermark: {}",
-        taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+        taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
+        new Instant(vmWatermark),
+        new Instant(lambdaWatermark));
 
       // Stop vm path path
       if (vmWatermarkTracker.isStopped(index)) {
@@ -224,7 +229,9 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       setWatermarkTrackerAndPrevWatermark();
 
       LOG.info("After Stop vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
-        + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}", vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+        + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}", vmWatermarkTracker, lambdaWatermarkTracker,
+        new Instant(vmWatermark),
+        new Instant(lambdaWatermark));
       return vmPathAllStopped;
     }
   }
@@ -241,7 +248,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         // stop vm path path
         LOG.info("Start lambda path watermark {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}",
           watermark,
-          taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+          taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
+          new Instant(vmWatermark), new Instant(lambdaWatermark));
         lambdaPathAllStopped = false;
 
         if (lambdaWatermarkTracker.isStopped(index)) {
@@ -259,7 +267,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         // stop lambda path path
         LOG.info("Start vm path watermark  {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}"
           ,watermark
-          , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+          , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
+          new Instant(vmWatermark), new Instant(lambdaWatermark));
         vmPathAllStopped = false;
 
         if (vmWatermarkTracker.isStopped(index)) {
@@ -275,7 +284,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         LOG.info("After Start vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
           + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}", vmWatermarkTracker,
-          lambdaWatermarkTracker, vmWatermark, lambdaWatermark);
+          lambdaWatermarkTracker, new Instant(vmWatermark), new Instant(lambdaWatermark));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -296,7 +305,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Exception while processing watermark "
-        + taskId + "/" + edgeId + "/" + taskIndex + " watermark " + watermark
+        + taskId + "/" + edgeId + "/" + taskIndex + " watermark " + new Instant(watermark)
       + " logging " + toString());
     }
   }
@@ -305,9 +314,9 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
   public String toString() {
     return "LambdaPathAllStopped: " + lambdaPathAllStopped + ", "  +
       "VMPathAllStopped: " + vmPathAllStopped + ", " +
-      "VMWatermark: " + vmWatermark + ", " +
-      "LambdaWatermark: " + lambdaWatermark + ", " +
-      "PrevW: " + prevWatermark
+      "VMWatermark: " + new Instant(vmWatermark) + ", " +
+      "LambdaWatermark: " + new Instant(lambdaWatermark) + ", " +
+      "PrevW: " + new Instant(prevWatermark)
       + "LambdaEdge: " + lambdaPathEdgeId
       + " VMEdge: " + vmPathEdgeId;
   }
@@ -363,7 +372,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         if (val.isPresent()) {
           if (lambdaWatermark > val.get()) {
-            throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + lambdaWatermark + ", " + val.get());
+            throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " +
+              new Instant(lambdaWatermark) + ", " + new Instant(val.get()));
           }
           lambdaWatermark = val.get();
         }
@@ -372,7 +382,8 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         if (val.isPresent()) {
           if (vmWatermark > val.get()) {
-            throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " + vmWatermark + ", " + val.get());
+            throw new RuntimeException("Output watermark of " + edgeId + " is greater than the emitted watermark " +
+              new Instant(vmWatermark) + ", " + new Instant(val.get()));
           }
           vmWatermark = val.get();
         }
