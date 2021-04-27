@@ -1275,6 +1275,7 @@ public final class JobScaler {
           }
           // Waiting for task scheduling
         }
+        prevMovedTask.remove(taskId);
         LOG.info("End of waiting for task reclaiming {}", taskId);
       }
 
@@ -1285,8 +1286,6 @@ public final class JobScaler {
       }
 
     }
-
-    prevMovedTask.clear();
   }
 
   public synchronized void sendTaskStopSignal(final int num,
