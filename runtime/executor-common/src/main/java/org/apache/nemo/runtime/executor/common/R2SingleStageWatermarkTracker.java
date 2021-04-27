@@ -334,12 +334,14 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       }
       final int minWatermarkIndex = is.readInt();
       final long prevEmitWatermark = is.readLong();
+      final Long[] arr = new Long[watermarks.size()];
+      watermarks.toArray(arr);
 
       LOG.info("Decoding single stage watermark tracker in {} watermarks: {} ," +
         "stoppedWmarks: {}, " +
         "minWatermarkIndex: {}," +
         "prevEmitWatermark: {}", taskId,
-        printWatermark((Long[])watermarks.toArray()),
+        printWatermark(arr),
         buildArray(stoppedWatermarks.toArray()), minWatermarkIndex,
         new Instant(prevEmitWatermark));
 
