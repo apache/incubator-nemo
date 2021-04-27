@@ -1299,8 +1299,8 @@ public final class JobScaler {
 
     final Map<String, Integer> stageStoppedCnt = new HashMap<>();
 
-    final List<String> stoppedTasks = new LinkedList<>();
     for (final String stageId : stageIds) {
+      final List<String> stoppedTasks = new LinkedList<>();
 
       LOG.info("Start stopping {}", stageId);
       for (final Map.Entry<String, String> entry : taskExecutorIdMap.entrySet()) {
@@ -1328,22 +1328,23 @@ public final class JobScaler {
           }
         }
       }
-    }
 
-    if (waiting) {
-      // waiting
-      for (final String taskId : stoppedTasks) {
-        LOG.info("Waiting for task rescheduling {}", taskId);
-        while (!taskScheduledMap.isTaskScheduled(taskId)) {
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+      if (waiting) {
+        // waiting
+        for (final String taskId : stoppedTasks) {
+          LOG.info("Waiting for task rescheduling {}", taskId);
+          while (!taskScheduledMap.isTaskScheduled(taskId)) {
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            // Waiting for task scheduling
           }
-          // Waiting for task scheduling
         }
       }
     }
+
 
     LOG.info("End of waiting for task rescheduling");
   }
