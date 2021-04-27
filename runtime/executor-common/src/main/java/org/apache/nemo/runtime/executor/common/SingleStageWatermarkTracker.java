@@ -134,9 +134,9 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
         if (nextMinWatermark < prevEmitWatermark) {
           // it is possible
           throw new RuntimeException(taskId + " NexMinWatermar < CurrMinWatermark" +
-            nextMinWatermark + " <= " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-            " prevEmitWatermark: " + prevEmitWatermark);
+            nextMinWatermark + " <= " + new Instant(prevEmitWatermark) + ", "
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+            " prevEmitWatermark: " + new Instant(prevEmitWatermark));
           // minWatermarkIndex = nextMinWatermarkIndex;
           //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
           //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
@@ -157,9 +157,11 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
         if (watermarks[edgeIndex] > watermark) {
           throw new RuntimeException(taskId + " watermarks.get(edgeIndex) > watermark" +
             watermarks[edgeIndex] + " > " + watermark + ", "
-            + "edgeIndex: " + edgeIndex  + ", " + prevEmitWatermark + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + watermarks +
-            "prevEmitWatermark: " + prevEmitWatermark);
+            + "edgeIndex: " + edgeIndex  + ", " +
+            new Instant(prevEmitWatermark) + ", "
+            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " +
+             printWatermark(watermarks) +
+            "prevEmitWatermark: " + new Instant(prevEmitWatermark));
 
           // LOG.warn("Warning pre watermark {} is larger than current {}, index {}",
           //  new Instant(watermarks.get(edgeIndex)), new Instant(watermark), edgeIndex);
@@ -169,6 +171,29 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
         }
       }
     }
+  }
+
+
+  private static String printWatermark(Long[] array) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < array.length; i++) {
+      sb.append(new Instant(array[i]));
+      sb.append(",");
+    }
+    sb.append("]");
+    return sb.toString();
+  }
+
+  private static String buildArray(Object[] array) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < array.length; i++) {
+      sb.append(array[i]);
+      sb.append(",");
+    }
+    sb.append("]");
+    return sb.toString();
   }
 
   public void encode(final String taskId,
