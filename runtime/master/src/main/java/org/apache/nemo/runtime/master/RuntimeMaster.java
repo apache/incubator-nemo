@@ -719,6 +719,13 @@ public final class RuntimeMaster {
 
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
+  public boolean isPartial(final String stageId) {
+    return taskScheduledMap.getTaskIdTaskMap().values()
+      .stream().filter(task -> task.isParitalCombine() &&
+        RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()).equals(stageId)
+      ).findFirst().isPresent();
+  }
+
   public void redirectionToLambda(final int num,
                                   final List<String> stageIds,
                                   final boolean waiting) {

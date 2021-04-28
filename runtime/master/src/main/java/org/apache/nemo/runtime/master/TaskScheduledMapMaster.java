@@ -68,6 +68,10 @@ public final class TaskScheduledMapMaster {
       new TaskScheduleMapReceiver());
   }
 
+  public Map<String, Task> getTaskIdTaskMap() {
+    return taskIdTaskMap;
+  }
+
   private boolean copied = false;
 
   private final List<String> taskToBeStopped = new LinkedList<>();

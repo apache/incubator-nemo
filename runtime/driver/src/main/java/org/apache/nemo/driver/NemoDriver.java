@@ -232,11 +232,25 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
 
+              stages.sort((x,y) -> Integer.valueOf(x.split("Stage")[1].split("-")[0])
+                .compareTo(
+                  Integer.valueOf(y.split("Stage")[1].split("-")[0])));
+
+              final boolean waiting;
               if (args.length > 3) {
-                final boolean waiting = new Boolean(args[3]);
-                runtimeMaster.redirectionToLambda(num, stages, waiting);
+                waiting = new Boolean(args[3]);
               } else {
-                runtimeMaster.redirectionToLambda(num, stages, true);
+                waiting = true;
+              }
+
+              for (final String stage : stages) {
+                if (runtimeMaster.isPartial(stage)) {
+                  LOG.info("redirection-partial stage {}", stage);
+                  runtimeMaster.redirectionToLambda(num, Collections.singletonList(stage), waiting);
+                } else {
+                  LOG.info("redirection-move setage {}", stage);
+                  jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stage), waiting);
+                }
               }
 
               final long et = System.currentTimeMillis();
@@ -252,9 +266,21 @@ public final class NemoDriver {
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              runtimeMaster.redirectionDoneToLambda(num, stages);
+
+              for (final String stage : stages) {
+                if (runtimeMaster.isPartial(stage)) {
+                  LOG.info("redirection-done-partial stage {}", stage);
+                  runtimeMaster.redirectionDoneToLambda(num, stages);
+                } else {
+                  LOG.info("redirection-done-move stage {}", stage);
+                  jobScaler.sendPrevMovedTaskStopSignal(num, stages);
+                }
+              }
+
               final long et = System.currentTimeMillis();
+
               LOG.info("End of redirection-done elapsed time {}/{}", et - st, num, stages);
+
             } else if (decision.equals("move-task-lambda")) {
               final long st = System.currentTimeMillis();
 
@@ -279,16 +305,6 @@ public final class NemoDriver {
 
               final long et = System.currentTimeMillis();
               LOG.info("End of move-task-lambda elapsed time {} {}/{}", et - st, num, stages);
-              /*
-              for (int i = stages.size() - 1; i >= 0; i--) {
-                jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));
-                try {
-                  Thread.sleep(150);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-              }
-              */
 
               // runtimeMaster.throttleSource(1000000);
 
