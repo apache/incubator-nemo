@@ -270,10 +270,10 @@ public final class NemoDriver {
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
                   LOG.info("redirection-done-partial stage {}", stage);
-                  runtimeMaster.redirectionDoneToLambda(num, stages);
+                  runtimeMaster.redirectionDoneToLambda(num, Collections.singletonList(stage));
                 } else {
                   LOG.info("redirection-done-move stage {}", stage);
-                  jobScaler.sendPrevMovedTaskStopSignal(num, stages);
+                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(stage));
                 }
               }
 
