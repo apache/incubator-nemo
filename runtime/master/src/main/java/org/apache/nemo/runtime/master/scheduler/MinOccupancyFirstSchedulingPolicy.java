@@ -55,6 +55,22 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     this.executorRegistry = executorRegistry;
   }
 
+  private void getO2OUpstreams(final String stageId, final Set<StageEdge> l) {
+    final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
+      .stream().filter(edge -> edge.getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
+      .collect(Collectors.toList());
+
+    l.addAll(incoming);
+
+    incoming.forEach(edge -> {
+      if (!l.contains(edge)) {
+        getO2OUpstreams(edge.getSrc().getId(), l);
+      }
+    });
+  }
+
   @Override
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(task.getTaskId());
@@ -64,11 +80,8 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       task.getTaskId(), executors);
 
     // For o2o-aware scheduling
-    final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
-      .stream().filter(edge -> edge.getDataCommunicationPattern()
-        .equals(CommunicationPatternProperty.Value.OneToOne) ||
-        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
-      .collect(Collectors.toList());
+    final Set<StageEdge> incoming = new HashSet<>();
+    getO2OUpstreams(stageId, incoming);
 
     final List<ExecutorRepresenter> candidates =
       incoming.stream()
