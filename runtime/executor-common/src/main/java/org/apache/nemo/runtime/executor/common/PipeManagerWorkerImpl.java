@@ -489,7 +489,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
               final String remote = taskScheduledMapWorker.getRemoteExecutorId(key.getRight(), true);
               final Channel channel = executorChannelManagerMap
                 .getExecutorChannel(remote);
-              sendLocalToRemote(channel, Collections.singletonList(index), serializer, event);
+              sendLocalToRemote(channel, index, serializer, event);
             }
           }
         } else {
@@ -500,6 +500,33 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
         }
 
       }
+    }
+  }
+
+  private void sendLocalToRemote(final Channel channel,
+                                 final int pipeIndex,
+                                 final Serializer serializer,
+                                 final Object event) {
+    final ByteBuf byteBuf = channel.alloc().ioBuffer();
+    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+
+    // a -> local stream vertex -> remote vertex
+    // we should encode the data with the a-> edge serializer
+    try {
+      final OutputStream wrapped = byteBufOutputStream;
+      //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+
+      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+      //LOG.info("Element encoder: {}", encoder);
+      encoder.encode(event);
+      wrapped.close();
+
+      channel.write(DataFrameEncoder.DataFrame.newInstance(
+        pipeIndex, byteBuf, byteBuf.readableBytes(), true))
+        .addListener(listener);
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
@@ -627,19 +654,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           serializerManager.getSerializer(edgeId).getDecoderFactory()));
   }
 
-  private void sendRemoteToRemote(final List<Integer> pipeIndices,
+  private void sendRemoteToRemote(final int pipeIndex,
                                   final ByteBuf event,
                                   final Channel channel) {
     try {
-      if (pipeIndices.size() > 1) {
-        channel.write(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices, event, event.readableBytes(), true))
-          .addListener(listener);
-      } else {
-        channel.write(DataFrameEncoder.DataFrame.newInstance(
-          pipeIndices.get(0), event, event.readableBytes(), true))
-          .addListener(listener);
-      }
+      channel.write(DataFrameEncoder.DataFrame.newInstance(
+        pipeIndex, event, event.readableBytes(), true))
+        .addListener(listener);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -731,7 +752,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           throw new RuntimeException("Remote task does not scheduled for sending data message " +
             srcTaskId + " ->" + dstTaskId + ", " + index + ", in executor " + executorId);
         } else {
-          sendLocalToRemote(optional.get(), Collections.singletonList(index), serializer, event);
+          sendLocalToRemote(optional.get(), index, serializer, event);
         }
       }
     }
@@ -753,7 +774,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
           throw new RuntimeException("Remote task does not scheduled for sending bytebuf message " +
             srcTaskId + " ->" + dstTaskId + ", " + index + ", in executor " + executorId);
         } else {
-          sendRemoteToRemote(Collections.singletonList(index), byteBuf, optional.get());
+          sendRemoteToRemote(index, byteBuf, optional.get());
         }
       }
     }
@@ -864,11 +885,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       channel.write(data);
     } else {
       if (data instanceof ByteBuf) {
-        sendRemoteToRemote(Collections.singletonList(index), (ByteBuf) data, channel);
+        sendRemoteToRemote(index, (ByteBuf) data, channel);
       } else if (data instanceof PendingPair) {
         final PendingPair pendingPair = (PendingPair)data;
         sendLocalToRemote(channel,
-          Collections.singletonList(index), pendingPair.serialier, pendingPair.event);
+          index, pendingPair.serialier, pendingPair.event);
       } else {
         throw new RuntimeException("Not supported");
       }

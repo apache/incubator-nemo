@@ -93,7 +93,7 @@ public final class TaskMetrics {
 
   private RetrievedMetrics prevMetric = new RetrievedMetrics(0,
     0, 0
-    , 0, 0, 0, 0, 0, 0);
+    , 0, 0, 0, 0, 0, 0, 0);
 
   public RetrievedMetrics retrieve() {
     final long ir = inputReceiveElement;
@@ -105,7 +105,8 @@ public final class TaskMetrics {
     final long ob = outbytes;
     final long st = serializedTime;
 
-    final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst, inputWatermark);
+    final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst,
+      inputWatermark, outputWatermark);
 
     final RetrievedMetrics delta = delta(newMetric, prevMetric);
     prevMetric = newMetric;
@@ -140,7 +141,8 @@ public final class TaskMetrics {
       newMetric.serializedTime - oldMetric.serializedTime,
       newMetric.outbytes - oldMetric.outbytes,
       newMetric.deserTime - oldMetric.deserTime,
-      newMetric.watermark);
+      newMetric.watermark,
+      newMetric.outWatermark);
   }
 
   private long avgCnt(final List<Long> l) {
@@ -157,6 +159,7 @@ public final class TaskMetrics {
     public final long outbytes;
     public final long deserTime;
     public final long watermark;
+    public final long outWatermark;
 
     public RetrievedMetrics(final long inputReceiveElement,
                             final long inputElement,
@@ -166,7 +169,8 @@ public final class TaskMetrics {
                             final long serializedTime,
                             final long outbytes,
                             final long deserTime,
-                            final long watermark) {
+                            final long watermark,
+                            final long outWatermark) {
       this.inputReceiveElement = inputReceiveElement;
       this.inputElement = inputElement;
       this.outputElement = outputElement;
@@ -176,6 +180,7 @@ public final class TaskMetrics {
       this.outbytes = outbytes;
       this.deserTime = deserTime;
       this.watermark = watermark;
+      this.outWatermark = outWatermark;
     }
   }
 }

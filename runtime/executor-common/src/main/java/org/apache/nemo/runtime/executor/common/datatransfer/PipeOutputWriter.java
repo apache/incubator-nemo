@@ -135,6 +135,9 @@ public final class PipeOutputWriter implements OutputWriter {
   @Override
   public void writeWatermark(final Watermark watermark) {
     // LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
+
+    taskMetrics.setOutputWatermark(watermark.getTimestamp());
+
     pipeManagerWorker.broadcast(srcTaskId,
       runtimeEdge.getId(),
       dstTaskIds, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));

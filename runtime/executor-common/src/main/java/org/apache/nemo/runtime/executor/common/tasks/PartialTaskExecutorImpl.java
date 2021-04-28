@@ -791,6 +791,8 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 //        LOG.info("Partial output watermark remote (partial) for {}: ts: {} {}", taskId,
 //          new Instant(watermark.getTimestamp()));
 //      }
+      taskMetrics.setOutputWatermark(watermark.getTimestamp());
+
       pipeManagerWorker.writeData(taskId,
         mergerEdgeId, mergerTaskId, serializer, new WatermarkWithIndex(watermark, taskIndex));
     }
