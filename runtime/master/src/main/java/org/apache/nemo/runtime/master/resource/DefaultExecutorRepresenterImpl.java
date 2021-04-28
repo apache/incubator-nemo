@@ -391,7 +391,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.ScheduleTask)
+            .setType(ControlMessage.MessageType.ScheduleCachedTask)
             .setStopTaskMsg(ControlMessage.StopTaskMessage
               .newBuilder()
               .setTaskId(task.getTaskId())
