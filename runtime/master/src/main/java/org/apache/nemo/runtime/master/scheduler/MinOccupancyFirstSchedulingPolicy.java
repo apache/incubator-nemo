@@ -55,18 +55,36 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     this.executorRegistry = executorRegistry;
   }
 
-  private void getO2OUpstreams(final String stageId, final Set<StageEdge> l) {
-    final List<StageEdge> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
+  private void getO2ODownstreams(final String stageId, final Set<String> l) {
+    final List<String> outgoing = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageId)
       .stream().filter(edge -> edge.getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.OneToOne) ||
         edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
+      .map(edge -> edge.getDst().getId())
+      .collect(Collectors.toList());
+
+    l.addAll(outgoing);
+
+    outgoing.forEach(edge -> {
+      if (!l.contains(edge)) {
+        getO2ODownstreams(edge, l);
+      }
+    });
+  }
+
+  private void getO2OUpstreams(final String stageId, final Set<String> l) {
+    final List<String> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
+      .stream().filter(edge -> edge.getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
+      .map(edge -> edge.getSrc().getId())
       .collect(Collectors.toList());
 
     l.addAll(incoming);
 
-    incoming.forEach(edge -> {
-      if (!l.contains(edge)) {
-        getO2OUpstreams(edge.getSrc().getId(), l);
+    incoming.forEach(stage -> {
+      if (!l.contains(stage)) {
+        getO2OUpstreams(stage, l);
       }
     });
   }
@@ -80,14 +98,15 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       task.getTaskId(), executors);
 
     // For o2o-aware scheduling
-    final Set<StageEdge> incoming = new HashSet<>();
-    getO2OUpstreams(stageId, incoming);
+    final Set<String> o2oEdges = new HashSet<>();
+    getO2OUpstreams(stageId, o2oEdges);
+    getO2ODownstreams(stageId, o2oEdges);
 
     final List<ExecutorRepresenter> candidates =
-      incoming.stream()
+      o2oEdges.stream()
         // check whether the o2o source task is scheduled
         .filter(edge -> {
-      final String srcTaskId = RuntimeIdManager.generateTaskId(edge.getSrc().getId(),
+      final String srcTaskId = RuntimeIdManager.generateTaskId(edge,
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
           "prevExecutorId: {}", task.getTaskId(), srcTaskId,
@@ -100,7 +119,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId())));
     })
       .map(edge -> {
-        final String srcTaskId = RuntimeIdManager.generateTaskId(edge.getSrc().getId(),
+        final String srcTaskId = RuntimeIdManager.generateTaskId(edge,
           RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId);
         return executorRegistry.getExecutorRepresentor(executorId);

@@ -278,7 +278,7 @@ public final class NemoDriver {
               }
 
               final long et = System.currentTimeMillis();
-              LOG.info("End of move-task-lambda elapsed time {}/{}", et - st, num, stages);
+              LOG.info("End of move-task-lambda elapsed time {} {}/{}", et - st, num, stages);
               /*
               for (int i = stages.size() - 1; i >= 0; i--) {
                 jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));
