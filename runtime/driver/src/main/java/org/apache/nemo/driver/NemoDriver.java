@@ -224,17 +224,28 @@ public final class NemoDriver {
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
               // VM -> Lambda
+              final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               final String[] stageIds = args[2].split(",");
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
-              runtimeMaster.redirectionToLambda(num, stages);
+
+              if (args.length > 3) {
+                final boolean waiting = new Boolean(args[3]);
+                runtimeMaster.redirectionToLambda(num, stages, waiting);
+              } else {
+                runtimeMaster.redirectionToLambda(num, stages, true);
+              }
+
+              final long et = System.currentTimeMillis();
+              LOG.info("End of redirection elapsed time {} {}/{}", et - st, num, stages);
 
             }  else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
+              final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               final String[] stageIds = args[2].split(",");
@@ -242,7 +253,11 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               runtimeMaster.redirectionDoneToLambda(num, stages);
+              final long et = System.currentTimeMillis();
+              LOG.info("End of redirection-done elapsed time {}/{}", et - st, num, stages);
             } else if (decision.equals("move-task-lambda")) {
+              final long st = System.currentTimeMillis();
+
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               final String[] stageIds = args[2].split(",");
@@ -256,10 +271,14 @@ public final class NemoDriver {
                   Integer.valueOf(y.split("Stage")[1].split("-")[0])));
 
               if (args.length > 3) {
-                jobScaler.sendTaskStopSignal(num, true, stages, false);
+                final boolean waiting = new Boolean(args[3]);
+                jobScaler.sendTaskStopSignal(num, true, stages, waiting);
               } else {
                 jobScaler.sendTaskStopSignal(num, true, stages, true);
               }
+
+              final long et = System.currentTimeMillis();
+              LOG.info("End of move-task-lambda elapsed time {}/{}", et - st, num, stages);
               /*
               for (int i = stages.size() - 1; i >= 0; i--) {
                 jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stages.get(i)));

@@ -720,11 +720,13 @@ public final class RuntimeMaster {
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
   public void redirectionToLambda(final int num,
-                                  final List<String> stageIds) {
+                                  final List<String> stageIds,
+                                  final boolean waiting) {
     final Map<String, Integer> stageCnt = new HashMap<>();
     stageIds.forEach(sid -> stageCnt.put(sid, 0));
 
-    executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+    final List<Future> futures =
+      executorRegistry.getLambdaExecutors().stream().map(lambdaExecutor -> {
       // find list of tasks that the lambda executor has
         final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
           .filter(lambdaTask -> {
@@ -750,30 +752,42 @@ public final class RuntimeMaster {
           .collect(Collectors.toSet());
 
       LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
-      lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
-    });
+      return lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
+    }).collect(Collectors.toList());
 
-    // Waiting for redirection done
-    if (evalConf.optimizationPolicy.contains("R3")) {
-      executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
-        while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
+    if (waiting) {
+      // Waiting for redirection done
+      for (final Future future : futures) {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
         }
-      });
-    } else {
-      executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
-        while (!lambdaExecutor.isAllTaskActivated()) {
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
+      }
+
+      if (evalConf.optimizationPolicy.contains("R3")) {
+        executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+          while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
-        }
-      });
+        });
+      } else {
+        executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+          while (!lambdaExecutor.isAllTaskActivated()) {
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+        });
+      }
     }
   }
 

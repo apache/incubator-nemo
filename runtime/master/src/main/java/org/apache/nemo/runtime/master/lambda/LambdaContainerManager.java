@@ -198,13 +198,13 @@ public final class LambdaContainerManager {
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
-  public void redirectionToLambda(final Collection<String> lambdaTasks,
+  public Future redirectionToLambda(final Collection<String> lambdaTasks,
                                   final ExecutorRepresenter lambdaExecutor) {
     if (lambdaTasks.isEmpty()) {
-      return;
+      return CompletableFuture.completedFuture(0);
     }
 
-    executorService.execute(() -> {
+    return executorService.submit(() -> {
       // redirection signal to the origin task
       lambdaTasks.forEach(lambdaTaskId -> {
         final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(lambdaTaskId).left();
