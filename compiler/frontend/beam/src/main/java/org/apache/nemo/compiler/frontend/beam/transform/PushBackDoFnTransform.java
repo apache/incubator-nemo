@@ -300,9 +300,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       }
     }
 
-
-
-
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
     return cnt;

@@ -200,6 +200,8 @@ enum MessageType {
     SourceSleep = 78;
     CancelAndSourceSleep = 79;
     ScheduleCachedTask = 80;
+
+    ExecutorMetric = 81;
 }
 
 message LambdaEndMessage {
@@ -303,6 +305,14 @@ message Message {
     optional LatencyCollectionMessage latencyMsg = 60;
 
     optional ConditionalRoutingMessage conditionalRoutingMsg = 61;
+
+    optional ExecutorMetricMsg executorMetricMsg = 62;
+}
+
+message ExecutorMetricMsg {
+  required string executorId = 1;
+  required int64 receiveEvent = 2;
+  required int64 processEvent = 3;
 }
 
 message LatencyCollectionMessage {
@@ -374,7 +384,6 @@ message RunTimePassMessageEntry {
     required string key = 1;
     required int64 value = 2;
 }
-
 
 message RequestBlockLocationMsg {
     required string executorId = 1;

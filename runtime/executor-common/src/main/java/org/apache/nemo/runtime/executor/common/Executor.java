@@ -343,6 +343,20 @@ public final class Executor {
               queueLength,
               receiveCnt, processCnt);
 
+
+          persistentConnectionToMasterMap
+            .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
+              .setType(ControlMessage.MessageType.ExecutorMetric)
+              .setExecutorMetricMsg(ControlMessage.ExecutorMetricMsg.newBuilder()
+              .setExecutorId(executorId)
+                .setReceiveEvent(receiveCnt)
+                .setProcessEvent(processCnt)
+              .build())
+              .build());
+
           /*
           if (queueLength > 30000) {
 

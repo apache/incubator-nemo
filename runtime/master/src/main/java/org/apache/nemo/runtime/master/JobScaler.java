@@ -3,7 +3,6 @@ package org.apache.nemo.runtime.master;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.FSTSingleton;
 import org.apache.nemo.common.exception.IllegalMessageException;
@@ -11,6 +10,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
+import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
@@ -109,6 +110,10 @@ public final class JobScaler {
 
   private final ExecutorRegistry executorRegistry;
 
+  private final ExecutorMetricMap executorMetricMap;
+
+
+
   @Inject
   private JobScaler(final TaskScheduledMapMaster taskScheduledMap,
                     final MessageEnvironment messageEnvironment,
@@ -121,10 +126,12 @@ public final class JobScaler {
                     final ExecutorRegistry executorRegistry,
                     final TaskDispatcher taskDispatcher,
                     final PlanStateManager planStateManager,
+                    final ExecutorMetricMap executorMetricMap,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
     this.taskScheduledMap = taskScheduledMap;
+    this.executorMetricMap = executorMetricMap;
     this.prevScalingCountMap = new HashMap<>();
     this.executorTaskStatMap = new HashMap<>();
     this.executorCpuUseMap = m.getExecutorCpuUseMap();
@@ -1379,6 +1386,12 @@ public final class JobScaler {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case ExecutorMetric: {
+          final ControlMessage.ExecutorMetricMsg msg = message.getExecutorMetricMsg();
+          executorMetricMap.setInfo(msg.getExecutorId(),
+            new ExecutorMetricInfo(msg.getReceiveEvent(), msg.getProcessEvent()));
+          break;
+        }
         case LocalScalingReadyDone: {
           final ControlMessage.LocalScalingDoneMessage localScalingDoneMessage = message.getLocalScalingDoneMsg();
           final String executorId = localScalingDoneMessage.getExecutorId();
