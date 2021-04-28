@@ -131,6 +131,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates);
 
     if (candidates.size() > 0) {
+      // O2O locality-aware
         final OptionalInt minOccupancy =
         candidates.stream()
         .map(executor -> executor.getNumOfRunningTasks())
@@ -141,11 +142,25 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
     } else {
+      // avoid allocating same stage tasks in the same executor as much as possible.
 
-      final OptionalInt minOccupancy =
-        executors.stream()
+      final List<ExecutorRepresenter> nonConflictExecutors = executors.stream()
+        .filter(executor -> executor.getRunningTasks()
+          .stream().map(t -> RuntimeIdManager.getStageIdFromTaskId(t.getTaskId()))
+          .noneMatch(sid -> sid.equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()))))
+        .collect(Collectors.toList());
+
+      final OptionalInt minOccupancy;
+      if (nonConflictExecutors.size() > 0) {
+        minOccupancy = nonConflictExecutors.stream()
           .map(executor -> executor.getNumOfRunningTasks())
           .mapToInt(i -> i).min();
+      } else {
+        minOccupancy =
+          executors.stream()
+            .map(executor -> executor.getNumOfRunningTasks())
+            .mapToInt(i -> i).min();
+      }
 
       if (!minOccupancy.isPresent()) {
         throw new RuntimeException("Cannot find min occupancy");
