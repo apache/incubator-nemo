@@ -36,7 +36,7 @@ public final class TaskMetrics {
   }
 
   public void setOutputWatermark(final long watermark) {
-    this.outputWatermark = outputWatermark;
+    this.outputWatermark = watermark;
   }
 
   public long getInputWatermark() {
