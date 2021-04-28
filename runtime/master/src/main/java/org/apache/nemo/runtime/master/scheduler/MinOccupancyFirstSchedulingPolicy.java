@@ -166,7 +166,14 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         throw new RuntimeException("Cannot find min occupancy");
       }
 
-      return executors.stream()
+      final Collection<ExecutorRepresenter> finalExecutors;
+      if (nonConflictExecutors.size() > 0) {
+        finalExecutors = nonConflictExecutors;
+      } else {
+        finalExecutors = executors;
+      }
+
+      return finalExecutors.stream()
         .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
