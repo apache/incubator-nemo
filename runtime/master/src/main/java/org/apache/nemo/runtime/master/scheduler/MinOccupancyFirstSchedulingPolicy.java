@@ -63,10 +63,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       .map(edge -> edge.getDst().getId())
       .collect(Collectors.toList());
 
-    l.addAll(outgoing);
-
     outgoing.forEach(edge -> {
       if (!l.contains(edge)) {
+        l.add(edge);
         getO2ODownstreams(edge, l);
       }
     });
