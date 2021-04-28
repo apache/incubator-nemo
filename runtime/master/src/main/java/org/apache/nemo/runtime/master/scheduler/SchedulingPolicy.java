@@ -25,6 +25,8 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A function to select an executor from collection of available executors.
@@ -42,5 +44,6 @@ public interface SchedulingPolicy {
    * @param task The task to schedule
    * @return The selected executor. It must be a member of {@code executors}.
    */
-  ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task);
+  ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors,
+                                     final Task task);
 }

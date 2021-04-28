@@ -23,6 +23,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
@@ -37,10 +38,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -156,6 +154,11 @@ public final class StreamingScheduler implements Scheduler {
 
           final Pair<String, String> pairTaskEdgeId = pairStageTaskManager.getPairTaskEdgeId(taskId);
 
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+          final Set<String> o2oEdges = new HashSet<>();
+          getO2ODownstreams(stageId, o2oEdges);
+          getO2OUpstreams(stageId, o2oEdges);
+
           if (pairTaskEdgeId == null) {
             return new Task(
               taskId,
@@ -166,7 +169,8 @@ public final class StreamingScheduler implements Scheduler {
               vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
               null,
               null,
-              taskType);
+              taskType,
+              o2oEdges);
           } else {
             return new Task(
               taskId,
@@ -177,7 +181,8 @@ public final class StreamingScheduler implements Scheduler {
               vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
               pairTaskEdgeId.left(),
               pairTaskEdgeId.right(),
-              taskType);
+              taskType,
+              o2oEdges);
           }
         })
           .collect(Collectors.toList()));
@@ -209,6 +214,38 @@ public final class StreamingScheduler implements Scheduler {
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
+  private void getO2ODownstreams(final String stageId, final Set<String> l) {
+    final List<String> outgoing = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageId)
+      .stream().filter(edge -> edge.getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
+      .map(edge -> edge.getDst().getId())
+      .collect(Collectors.toList());
+
+    outgoing.forEach(edge -> {
+      if (!l.contains(edge)) {
+        l.add(edge);
+        getO2ODownstreams(edge, l);
+      }
+    });
+  }
+
+  private void getO2OUpstreams(final String stageId, final Set<String> l) {
+    final List<String> incoming = planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageId)
+      .stream().filter(edge -> edge.getDataCommunicationPattern()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ||
+        edge.getDataCommunicationPattern().equals(CommunicationPatternProperty.Value.TransientOneToOne))
+      .map(edge -> edge.getSrc().getId())
+      .collect(Collectors.toList());
+
+
+    incoming.forEach(stage -> {
+      if (!l.contains(stage)) {
+        l.add(stage);
+        getO2OUpstreams(stage, l);
+      }
+    });
+  }
   @Override
   public void updatePlan(final PhysicalPlan newPhysicalPlan) {
     // TODO #227: StreamingScheduler Dynamic Optimization

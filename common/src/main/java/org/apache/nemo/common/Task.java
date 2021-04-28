@@ -74,6 +74,7 @@ public final class Task implements Serializable {
   private final TaskType taskType;
   private final boolean isPartial;
   private final boolean isStateful;
+  private final Set<String> o2oEdgeIds;
 
   /**
    *
@@ -93,7 +94,8 @@ public final class Task implements Serializable {
               final Map<String, Readable> irVertexIdToReadable,
               final String pairTaskId,
               final String pairEdgeId,
-              final TaskType taskType) {
+              final TaskType taskType,
+              final Set<String> o2oEdgeIds) {
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
@@ -111,6 +113,7 @@ public final class Task implements Serializable {
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
     this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK || vertex.isPushback);
+    this.o2oEdgeIds = o2oEdgeIds;
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
@@ -158,6 +161,10 @@ public final class Task implements Serializable {
 
   public TaskType getTaskType() {
     return taskType;
+  }
+
+  public Set<String> getO2oEdgeIds() {
+    return o2oEdgeIds;
   }
 
   public static Task decode(DataInputStream dis,
@@ -225,6 +232,11 @@ public final class Task implements Serializable {
       }
 
       final TaskType taskType = TaskType.values()[dis.readByte()];
+      s = dis.readInt();
+      final Set<String> o2oEdges = new HashSet<>(s);
+      for (int i = 0; i < s; i++) {
+        o2oEdges.add(dis.readUTF());
+      }
 
       return new Task(taskId,
         null,
@@ -234,7 +246,8 @@ public final class Task implements Serializable {
         irVertexIdToReadable,
         pairStageId,
         pairEdgeId,
-        taskType);
+        taskType,
+        o2oEdges);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -278,6 +291,12 @@ public final class Task implements Serializable {
       }
 
       dos.writeByte(taskType.ordinal());
+
+      dos.writeInt(o2oEdgeIds.size());
+      for (final String edgeId : o2oEdgeIds) {
+        dos.writeUTF(edgeId);
+      }
+
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);

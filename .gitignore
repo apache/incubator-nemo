@@ -78,3 +78,5 @@ offloading/workers/lambda/serverless.yml
 *.zip
 
 .gradle
+
+q*.json

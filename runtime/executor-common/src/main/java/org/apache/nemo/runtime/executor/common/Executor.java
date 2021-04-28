@@ -629,8 +629,8 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskReceived(final Task task,
-                                           final byte[] bytes) {
+  private void onTaskReceived(final Task task,
+                              final byte[] bytes) {
     LOG.info("Executor [{}] received Task [{}] to execute.",
         new Object[]{executorId, task.getTaskId()});
 
@@ -746,65 +746,143 @@ public final class Executor {
     */
 
     try {
-      final int numTask = numReceivedTasks.getAndIncrement();
-      final int index = numTask % evalConf.executorThreadNum;
-      final ExecutorThread executorThread = executorThreads.getExecutorThreads().get(index);
+      synchronized (this) {
+        // locality-aware scheduling in executor
+        final Set<String> o2oEdges = task.getO2oEdgeIds();
 
-      TaskExecutor taskExecutor;
+        final Optional<ExecutorThread> o2oThread = o2oEdges.stream()
+          .map(o2oStageId -> {
+            final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStageId,
+              RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
+            return srcTaskId;
+          })
+          .filter(o2oTaskId -> taskExecutorMapWrapper.containsTask(o2oTaskId))
+          .map(o2oScheduleTaskId -> taskExecutorMapWrapper.getTaskExecutorThread(o2oScheduleTaskId))
+          .findFirst();
 
-      if (irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex) {
-       //  taskExecutor = new StreamTaskExecutorImpl(
-        taskExecutor = new StreamTaskExecutorImpl(
-          Thread.currentThread().getId(),
-          executorId,
-          task,
-          irDag,
-          intermediateDataIOFactory,
-          serializerManager,
-          evalConf.samplingJson,
-          prepareService,
-          executorThread,
-          pipeManagerWorker,
-          stateStore,
-          pipeManagerWorker,
-          outputCollectorGenerator,
-          bytes,
-          // new NoOffloadingPreparer(),
-          false);
-      } else if (task.isCrTask()) {
-        // conditional routing task
-        // if (evalConf.optimizationPolicy.contains("R3")) {
-        if (evalConf.optimizationPolicy.contains("R1R3")) {
-          taskExecutor =
-            new R1R3CRTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
+        final ExecutorThread executorThread;
+        if (o2oThread.isPresent()) {
+          executorThread = o2oThread.get();
         } else {
-          if (task.getTaskOutgoingEdges().stream()
-            .anyMatch(edge -> !(edge.getDataCommunicationPattern()
-              .equals(CommunicationPatternProperty.Value.OneToOne) ||
-              edge.getDataCommunicationPattern()
-                .equals(CommunicationPatternProperty.Value.TransientOneToOne)))) {
+          // find min alloc executor
+          final int numTask = numReceivedTasks.getAndIncrement();
+          final OptionalInt minOccupancy =
+          executorThreads.getExecutorThreads().stream()
+            .map(et -> et.getNumTasks())
+            .mapToInt(i -> i).min();
+
+          executorThread = executorThreads.getExecutorThreads()
+            .stream()
+            .filter(et -> et.getNumTasks() == minOccupancy.getAsInt())
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("No such executor"));
+        }
+
+        TaskExecutor taskExecutor;
+
+        if (irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex) {
+          //  taskExecutor = new StreamTaskExecutorImpl(
+          taskExecutor = new StreamTaskExecutorImpl(
+            Thread.currentThread().getId(),
+            executorId,
+            task,
+            irDag,
+            intermediateDataIOFactory,
+            serializerManager,
+            evalConf.samplingJson,
+            prepareService,
+            executorThread,
+            pipeManagerWorker,
+            stateStore,
+            pipeManagerWorker,
+            outputCollectorGenerator,
+            bytes,
+            // new NoOffloadingPreparer(),
+            false);
+        } else if (task.isCrTask()) {
+          // conditional routing task
+          // if (evalConf.optimizationPolicy.contains("R3")) {
+          if (evalConf.optimizationPolicy.contains("R1R3")) {
             taskExecutor =
-              new R3CRTaskExecutorImpl(
+              new R1R3CRTaskExecutorImpl(
+                Thread.currentThread().getId(),
+                executorId,
+                task,
+                irDag,
+                intermediateDataIOFactory,
+                serializerManager,
+                null,
+                evalConf.samplingJson,
+                evalConf.isLocalSource,
+                prepareService,
+                executorThread,
+                pipeManagerWorker,
+                stateStore,
+                // offloadingManager,
+                pipeManagerWorker,
+                outputCollectorGenerator,
+                bytes,
+                condRouting,
+                // new NoOffloadingPreparer(),
+                false);
+          } else {
+            if (task.getTaskOutgoingEdges().stream()
+              .anyMatch(edge -> !(edge.getDataCommunicationPattern()
+                .equals(CommunicationPatternProperty.Value.OneToOne) ||
+                edge.getDataCommunicationPattern()
+                  .equals(CommunicationPatternProperty.Value.TransientOneToOne)))) {
+              taskExecutor =
+                new R3CRTaskExecutorImpl(
+                  Thread.currentThread().getId(),
+                  executorId,
+                  task,
+                  irDag,
+                  intermediateDataIOFactory,
+                  serializerManager,
+                  null,
+                  evalConf.samplingJson,
+                  evalConf.isLocalSource,
+                  prepareService,
+                  executorThread,
+                  pipeManagerWorker,
+                  stateStore,
+                  // offloadingManager,
+                  pipeManagerWorker,
+                  outputCollectorGenerator,
+                  bytes,
+                  condRouting,
+                  // new NoOffloadingPreparer(),
+                  false);
+            } else {
+              taskExecutor =
+                new SingleO2OOutputR3CRTaskExecutorImpl(
+                  Thread.currentThread().getId(),
+                  executorId,
+                  task,
+                  irDag,
+                  intermediateDataIOFactory,
+                  serializerManager,
+                  null,
+                  evalConf.samplingJson,
+                  evalConf.isLocalSource,
+                  prepareService,
+                  executorThread,
+                  pipeManagerWorker,
+                  stateStore,
+                  // offloadingManager,
+                  pipeManagerWorker,
+                  outputCollectorGenerator,
+                  bytes,
+                  condRouting,
+                  // new NoOffloadingPreparer(),
+                  false);
+            }
+          }
+        } else if (task.isMerger()) {
+          LOG.info("optimization policy {}", evalConf.optimizationPolicy);
+          if (evalConf.optimizationPolicy.contains("R1R3")) {
+            taskExecutor =
+              new R1R3MergerTaskExecutorImpl(
                 Thread.currentThread().getId(),
                 executorId,
                 task,
@@ -827,7 +905,57 @@ public final class Executor {
                 false);
           } else {
             taskExecutor =
-              new SingleO2OOutputR3CRTaskExecutorImpl(
+              new MergerTaskExecutorImpl(
+                Thread.currentThread().getId(),
+                executorId,
+                task,
+                irDag,
+                intermediateDataIOFactory,
+                serializerManager,
+                null,
+                evalConf.samplingJson,
+                evalConf.isLocalSource,
+                prepareService,
+                executorThread,
+                pipeManagerWorker,
+                stateStore,
+                // offloadingManager,
+                pipeManagerWorker,
+                outputCollectorGenerator,
+                bytes,
+                condRouting,
+                // new NoOffloadingPreparer(),
+                false);
+          }
+        } else {
+          if (evalConf.optimizationPolicy.contains("R3")
+            && task.isParitalCombine()) {
+            taskExecutor =
+              new PartialTaskExecutorImpl(
+                Thread.currentThread().getId(),
+                executorId,
+                task,
+                irDag,
+                intermediateDataIOFactory,
+                serializerManager,
+                null,
+                evalConf.samplingJson,
+                evalConf.isLocalSource,
+                prepareService,
+                executorThread,
+                pipeManagerWorker,
+                stateStore,
+                // offloadingManager,
+                pipeManagerWorker,
+                outputCollectorGenerator,
+                bytes,
+                condRouting,
+                // new NoOffloadingPreparer(),
+                false);
+          } else {
+            LOG.info("DefaultTaskExecutor for {}", task.getTaskId());
+            taskExecutor =
+              new DefaultTaskExecutorImpl(
                 Thread.currentThread().getId(),
                 executorId,
                 task,
@@ -850,115 +978,15 @@ public final class Executor {
                 false);
           }
         }
-      } else if (task.isMerger()) {
-        LOG.info("optimization policy {}", evalConf.optimizationPolicy);
-        if (evalConf.optimizationPolicy.contains("R1R3")) {
-          taskExecutor =
-            new R1R3MergerTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        } else {
-          taskExecutor =
-            new MergerTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        }
-      } else {
-        if (evalConf.optimizationPolicy.contains("R3")
-          && task.isParitalCombine()) {
-          taskExecutor =
-            new PartialTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        } else {
-          LOG.info("DefaultTaskExecutor for {}", task.getTaskId());
-          taskExecutor =
-            new DefaultTaskExecutorImpl(
-              Thread.currentThread().getId(),
-              executorId,
-              task,
-              irDag,
-              intermediateDataIOFactory,
-              serializerManager,
-              null,
-              evalConf.samplingJson,
-              evalConf.isLocalSource,
-              prepareService,
-              executorThread,
-              pipeManagerWorker,
-              stateStore,
-              // offloadingManager,
-              pipeManagerWorker,
-              outputCollectorGenerator,
-              bytes,
-              condRouting,
-              // new NoOffloadingPreparer(),
-              false);
-        }
+
+        LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), executorThread, executorId,
+          System.currentTimeMillis() - st);
+
+        executorThread.addNewTask(taskExecutor);
+
+        LOG.info("Put Task time {} to {} thread of {}, time {}", taskExecutor.getId(), executorThread, executorId,
+          System.currentTimeMillis() - st);
       }
-
-      LOG.info("Add Task {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
-        System.currentTimeMillis() - st);
-
-      executorThread.addNewTask(taskExecutor);
-
-      LOG.info("Put Task time {} to {} thread of {}, time {}", taskExecutor.getId(), index, executorId,
-        System.currentTimeMillis() - st);
-
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);

@@ -159,6 +159,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     LOG.info("Add task to unInitializedTasks {} / {}", task.getId(), unInitializedTasks);
   }
 
+  public int getNumTasks() {
+    synchronized (tasks) {
+      return tasks.size();
+    }
+  }
+
   @Override
   public void addShortcutEvent(final TaskHandlingEvent event) {
     controlShortcutQueue.add(event);
@@ -173,6 +179,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     }
 
     queue.add(event);
+  }
+
+  public void handlingControlEvent(final TaskHandlingEvent event) {
+    if (Thread.currentThread().equals(currThread)) {
+      controlEventHandler.handleControlEvent(event);
+    } else {
+      queue.add(event);
+    }
   }
 
   @Override
@@ -191,13 +205,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     while (controlIterator.hasNext()) {
       // Handling control event
       final TaskHandlingEvent event = controlIterator.next();
-      if (event.isOffloadingMessage()) {
-        final String taskId = event.getTaskId();
-        final ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-        taskExecutor.handleData(event.getEdgeId(), event);
-      } else {
-        controlEventHandler.handleControlEvent(event);
-      }
+      controlEventHandler.handleControlEvent(event);
       controlIterator.remove();
     }
   }
@@ -302,9 +310,69 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     */
   }
 
+  private Thread currThread;
+
+  public Thread getCurrThread() {
+    return currThread;
+  }
+
+  public void handlingDataEvent(final TaskHandlingEvent event) {
+    // Handling data
+    if (Thread.currentThread().equals(currThread)) {
+      final String taskId = event.getTaskId();
+      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+
+      while (taskExecutor == null) {
+        taskExecutor = taskIdExecutorMap.get(taskId);
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      taskExecutor.handleData(event.getEdgeId(), event);
+      final long cnt = executorMetrics.inputProcessCntMap.get(this);
+      executorMetrics.inputProcessCntMap.put(this, cnt + 1);
+      currProcessedCnt += 1;
+    } else {
+      addEvent(event);
+    }
+  }
+
+  private void handlingEvent(final TaskHandlingEvent event) {
+    // check control message
+    handlingControlEvent();
+
+    if (event.isControlMessage()) {
+      controlEventHandler.handleControlEvent(event);
+    } else {
+      // Handling data
+      final String taskId = event.getTaskId();
+      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+
+      while (taskExecutor == null) {
+        taskExecutor = taskIdExecutorMap.get(taskId);
+        try {
+          Thread.sleep(5);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      // throttling();
+      taskExecutor.handleData(event.getEdgeId(), event);
+      final long cnt = executorMetrics.inputProcessCntMap.get(this);
+      executorMetrics.inputProcessCntMap.put(this, cnt + 1);
+      currProcessedCnt += 1;
+    }
+  }
+
   public void start() {
 
     executorService.execute(() -> {
+      currThread = Thread.currentThread();
+
       try {
         while (!finished) {
 
@@ -397,42 +465,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           // process intermediate data
           final Iterator<TaskHandlingEvent> iterator = queue.iterator();
           while (iterator.hasNext()) {
-            // check control message
-            handlingControlEvent();
-
             //LOG.info("Polling queue");
             final TaskHandlingEvent event = iterator.next();
-
-
-            if (event.isControlMessage()) {
-              controlEventHandler.handleControlEvent(event);
-            } else {
-              // Handling data
-              final String taskId = event.getTaskId();
-              ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-
-              while (taskExecutor == null) {
-                taskExecutor = taskIdExecutorMap.get(taskId);
-                Thread.sleep(5);
-              }
-
-              // throttling();
-
-              if (testing) {
-                long st = System.nanoTime();
-                taskExecutor.handleData(event.getEdgeId(), event);
-                long et = System.nanoTime();
-                elapsedTime += (et - st);
-              } else {
-                taskExecutor.handleData(event.getEdgeId(), event);
-                final long cnt = executorMetrics.inputProcessCntMap.get(this);
-                executorMetrics.inputProcessCntMap.put(this, cnt + 1);
-              }
-
-              processed = true;
-              currProcessedCnt += 1;
-            }
-
+            handlingEvent(event);
             iterator.remove();
           }
 
@@ -448,6 +483,11 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  @Override
+  public String toString() {
+    return "ExecutorThread" + index;
   }
 
   public void close() {

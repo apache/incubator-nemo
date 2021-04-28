@@ -24,7 +24,6 @@ import io.netty.channel.Channel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -562,7 +561,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                 final int index,
                                 final Object event) {
     taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-      .addEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
+      .handlingDataEvent(new TaskLocalDataEvent(dstTaskId, edgeId, index, event));
   }
 
   private final Map<String, List<BroadcastPending>> broadcastPendingMap = new ConcurrentHashMap<>();
@@ -640,12 +639,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                  final int index,
                                  final ByteBuf event) {
     taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-      .addEvent(
-        new TaskHandlingDataEvent(dstTaskId,
-          edgeId,
-          index,
-          event,
-          serializerManager.getSerializer(edgeId).getDecoderFactory()));
+      .handlingDataEvent(new TaskHandlingDataEvent(dstTaskId,
+        edgeId,
+        index,
+        event,
+        serializerManager.getSerializer(edgeId).getDecoderFactory()));
   }
 
   private void sendRemoteToRemote(final int pipeIndex,
@@ -664,7 +662,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
   private void sendControlToLocal(final String dstTaskId,
                                   final TaskControlMessage msg) {
     taskExecutorMapWrapper.getTaskExecutorThread(dstTaskId)
-      .addEvent(msg);
+      .handlingControlEvent(msg);
   }
 
   private void sendControlToRemote(final Channel channel,
@@ -861,7 +859,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     int index, Object data) {
     if (data instanceof TaskControlMessage) {
       taskExecutorMapWrapper.getTaskExecutorThread(dstTaskid)
-        .addEvent((TaskControlMessage) data);
+        .handlingControlEvent((TaskControlMessage) data);
     } else {
       if (data instanceof ByteBuf) {
         sendRemoteToLocal(dstTaskid, edgeId, index, (ByteBuf) data);

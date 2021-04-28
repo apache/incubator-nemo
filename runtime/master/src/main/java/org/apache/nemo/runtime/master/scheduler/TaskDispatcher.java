@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
@@ -337,6 +338,7 @@ public final class TaskDispatcher {
 
               if (!finalCandidates.isEmpty()) {
                 // Select executor
+                // For o2o-aware scheduling
                 final ExecutorRepresenter selectedExecutor
                   = schedulingPolicy.selectExecutor(finalCandidates, task);
 
@@ -369,6 +371,7 @@ public final class TaskDispatcher {
         return;
       }
   }
+
 
   /**
    * Signals to the condition on executor slot availability.

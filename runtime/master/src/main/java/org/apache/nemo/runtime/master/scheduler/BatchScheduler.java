@@ -441,7 +441,8 @@ public final class BatchScheduler implements Scheduler {
         stageIncomingEdges,
         stageOutgoingEdges,
         vertexIdToReadables.get(taskIdx),
-        null, null, null));
+        null, null, null,
+        Collections.emptySet()));
     });
     return tasks;
   }
