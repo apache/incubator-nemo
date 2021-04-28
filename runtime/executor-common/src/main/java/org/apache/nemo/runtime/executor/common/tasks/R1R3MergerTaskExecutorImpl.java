@@ -730,6 +730,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
   @Override
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
+    taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
     try {
       if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
         final ByteBuf data = taskHandlingEvent.getDataByteBuf();
@@ -864,6 +865,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
             }
           });
       } else {
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeData(data);
       }
     }
@@ -894,6 +896,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
           });
       } else {
         // data
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeByteBuf(data);
       }
     }
@@ -917,6 +920,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
       } else {
 
         // final long start = System.nanoTime();
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeData(data);
         // final long et = System.nanoTime();
         // taskMetrics.incrementComputation(et - start);
@@ -946,6 +950,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
       } else {
         // data
         // final long start = System.nanoTime();
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeByteBuf(data);
         // final long et = System.nanoTime();
         // taskMetrics.incrementComputation(et - start);
@@ -974,7 +979,6 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
         final TimestampAndValue event = (TimestampAndValue) taskHandlingEvent.getData();
         // final long ns = System.nanoTime();
         taskMetrics.incrementInputProcessElement();
-
         outputCollector.setInputTimestamp(event.timestamp);
         mergerTransform.onData(event.value);
 
