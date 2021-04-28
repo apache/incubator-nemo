@@ -132,6 +132,8 @@ public final class Executor {
 
   private final TaskScheduledMapWorker taskScheduledMapWorker;
 
+  private final Map<String, Task> prevScheduledTaskCacheMap;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -167,6 +169,7 @@ public final class Executor {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
 
+    this.prevScheduledTaskCacheMap = new ConcurrentHashMap<>();
     this.onLambda = onLambda;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.messageEnvironment = messageEnvironment;
@@ -1308,6 +1311,18 @@ public final class Executor {
 
           LOG.info("{} Setting global relay server info {}", executorId, m);
           break;
+        case ScheduleCachedTask:
+          executorService.execute(() -> {
+            final long st = System.currentTimeMillis();
+            final Task task = prevScheduledTaskCacheMap.get(message.getStopTaskMsg().getTaskId());
+
+            // executorMetrics.taskInputReceiveRateMap
+            //  .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
+
+            LOG.info("Task {} received in executor {}, serialized time {}", task.getTaskId(), executorId, System.currentTimeMillis() - st);
+            onTaskReceived(task, null);
+          });
+          break;
         case ScheduleTask:
           executorService.execute(() -> {
             final long st = System.currentTimeMillis();
@@ -1316,6 +1331,7 @@ public final class Executor {
             final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
             final DataInputStream dis = new DataInputStream(bis);
             final Task task = Task.decode(dis);
+            prevScheduledTaskCacheMap.put(task.getTaskId(), task);
 
             // executorMetrics.taskInputReceiveRateMap
             //  .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));

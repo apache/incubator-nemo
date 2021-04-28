@@ -356,6 +356,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     return taskIds;
   }
 
+  private Set<Task> prevScheduledTasks = new HashSet<>();
+
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
    * @param task the task to run
@@ -384,16 +386,31 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
       serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
 
-      sendControlMessage(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.ScheduleTask)
-          .setScheduleTaskMsg(
-            ControlMessage.ScheduleTaskMsg.newBuilder()
-              .setTask(ByteString.copyFrom(bos.toByteArray()))
+      if (prevScheduledTasks.contains(task)) {
+        sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.ScheduleTask)
+            .setStopTaskMsg(ControlMessage.StopTaskMessage
+              .newBuilder()
+              .setTaskId(task.getTaskId())
               .build())
-          .build());
+            .build());
+      } else {
+        prevScheduledTasks.add(task);
+
+        sendControlMessage(
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.ScheduleTask)
+            .setScheduleTaskMsg(
+              ControlMessage.ScheduleTaskMsg.newBuilder()
+                .setTask(ByteString.copyFrom(bos.toByteArray()))
+                .build())
+            .build());
+      }
     });
   }
 

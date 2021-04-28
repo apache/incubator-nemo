@@ -199,6 +199,7 @@ enum MessageType {
 
     SourceSleep = 78;
     CancelAndSourceSleep = 79;
+    ScheduleCachedTask = 80;
 }
 
 message LambdaEndMessage {
