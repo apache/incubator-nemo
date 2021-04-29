@@ -16,7 +16,7 @@ public final class ExecutorMetricMap {
   }
 
   public synchronized ExecutorMetricInfo getAggregated() {
-    return map.values().stream().reduce((info1, info2) -> {
+    final ExecutorMetricInfo result = map.values().stream().reduce((info1, info2) -> {
       final long p = info1.processEvent + info2.processEvent;
       final long r = info1.receiveEvent + info2.receiveEvent;
       return new ExecutorMetricInfo(p, r,
@@ -24,6 +24,10 @@ public final class ExecutorMetricMap {
         info1.numExecutor + info2.numExecutor);
     })
     .orElse(new ExecutorMetricInfo(0,0,0,0));
+
+    map.clear();
+
+    return result;
   }
 
   public synchronized void setInfo(final String executorId,
