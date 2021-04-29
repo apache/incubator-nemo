@@ -223,6 +223,7 @@ final class PipelineTranslator {
 
     if (doFnTransform instanceof PushBackDoFnTransform) {
       vertex.isPushback = true;
+      LOG.info("Set isPushback true for {}", vertex.getId());
     }
 
     ctx.addVertex(vertex);

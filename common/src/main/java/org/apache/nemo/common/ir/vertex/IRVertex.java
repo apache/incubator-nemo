@@ -70,6 +70,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
     thatVertex.isGBK = isGBK;
     thatVertex.isSink = isSink;
+    thatVertex.isPushback = isPushback;
     this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
   }
 
