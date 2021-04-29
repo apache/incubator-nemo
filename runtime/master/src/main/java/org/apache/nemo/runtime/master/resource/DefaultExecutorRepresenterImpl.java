@@ -301,8 +301,17 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     activatedTasks.remove(taskId);
     LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
 
-    if (activatedTasks.isEmpty()) {
-      // deactivation of the worker
+
+    checkAndDeactivate();
+  }
+
+  private void checkAndDeactivate() {
+    if (activatedTasks.isEmpty() &&
+      getRunningTasks().stream().allMatch(task -> task.isParitalCombine())) {
+      // If all partial task is deactivated
+      // and other tasks are not scheduled in the lambda executor,
+      // then deactivation of the worker
+      LOG.info("Deactivate lambda worker {}", executorId);
       lambdaControlProxy.deactivate();
     }
   }
@@ -457,9 +466,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param taskId id of the completed task
    */
   @Override
-  public void onTaskExecutionStop(final String taskId) {
+  public synchronized void onTaskExecutionStop(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(completedTask);
+
+    if (lambdaControlProxy != null) {
+      // this is lambda executor
+      checkAndDeactivate();
+    }
   }
 
   /**
@@ -486,8 +500,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   @Override
   public synchronized Set<Task> getRunningTasks() {
-    return Stream.concat(runningComplyingTasks.values().stream(),
-        runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
+    return runningTaskToAttempt.keySet();
   }
 
   /**
