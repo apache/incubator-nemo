@@ -36,7 +36,7 @@ public final class ExecutorMetricMap {
         final long p = info1.processEvent + info2.processEvent;
         final long r = info1.receiveEvent + info2.receiveEvent;
         return Pair.of(Math.max(pair1.left(), pair2.left()),
-          new ExecutorMetricInfo(p, r,
+          new ExecutorMetricInfo(r, p,
             info1.cpuUse + info2.cpuUse,
             info1.numExecutor + info2.numExecutor));
       }
