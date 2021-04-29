@@ -172,9 +172,6 @@ public final class EvalConf {
   @NamedParameter(short_name = "partial_warmup", default_value = "false")
   public static final class PartialWarmup implements Name<Boolean> {}
 
-  @NamedParameter(short_name = "backpressure_queue_size", default_value = "10000")
-  public static final class BPQueueSize implements Name<Long> {}
-
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int flushBytes;
@@ -221,7 +218,6 @@ public final class EvalConf {
   public final int numMaxLambda;
   public final int partialWarmupPeriod;
   public final boolean partialWarmup;
-  public final long bpQueueSize;
 
   // LEGACY
   // NOT USED
@@ -268,11 +264,9 @@ public final class EvalConf {
                    @Parameter(AWSProfileName.class) final String awsProfileName,
                    @Parameter(HandlerTimeout.class) final int handlerTimeout,
                    @Parameter(NumInitLambda.class) final int numInitLambda,
-                   @Parameter(BPQueueSize.class) final long bpQueueSize,
                    @Parameter(MaxLambda.class) final int numMaxLambda,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
-    this.bpQueueSize = bpQueueSize;
     this.offloadingdebug = offloadingdebug;
     this.flushBytes = flushBytes;
     this.scalingType = scalingType;
@@ -366,7 +360,6 @@ public final class EvalConf {
     jcb.bindNamedParameter(MaxLambda.class, Integer.toString(numMaxLambda));
     jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     jcb.bindNamedParameter(PartialWarmupPeriod.class, Integer.toString(partialWarmupPeriod));
-    jcb.bindNamedParameter(BPQueueSize.class, Long.toString(bpQueueSize));
     return jcb.build();
   }
 
@@ -412,7 +405,6 @@ public final class EvalConf {
     cl.registerShortNameOfClass(MaxLambda.class);
     cl.registerShortNameOfClass(PartialWarmup.class);
     cl.registerShortNameOfClass(PartialWarmupPeriod.class);
-    cl.registerShortNameOfClass(BPQueueSize.class);
   }
 
   @Override
@@ -459,7 +451,6 @@ public final class EvalConf {
     sb.append("maxLambda: "); sb.append(numMaxLambda); sb.append("\n");
     sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("partialWarmupPeriod: "); sb.append(partialWarmupPeriod); sb.append("\n");
-    sb.append("bpQueueSize: "); sb.append(bpQueueSize); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

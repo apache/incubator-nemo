@@ -19,7 +19,10 @@ public final class ExecutorMetricMap {
     return map.values().stream().reduce((info1, info2) -> {
       final long p = info1.processEvent + info2.processEvent;
       final long r = info1.receiveEvent + info2.receiveEvent;
-      return new ExecutorMetricInfo(p, r);
+      return new ExecutorMetricInfo(p, r,
+        info1.sourceEvent + info2.sourceEvent,
+        info1.cpuUse + info2.cpuUse,
+        info1.numExecutor + info2.numExecutor);
     })
     .get();
   }

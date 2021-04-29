@@ -27,7 +27,6 @@ import org.apache.nemo.runtime.executor.common.OutputWriterFlusher;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
-import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,15 +147,11 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
         break;
       }
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
-        final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        context.receiveStopSignalFromParent(message, sendDataTo);
+
         break;
       }
       case ACK_FROM_PARENT_STOP_OUTPUT: {
-        final StreamRemoteByteInputContext context =
-          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        //LOG.info("ACK_FOR_STOP_OUTPUT: {}", transferIndex);
-        context.receivePendingAck();
+
         break;
       }
       case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
@@ -167,13 +162,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
       }
       // For restart
       case SETTING_INPUT_CONTEXT: {
-        // restart 할때 받는것
-        final StreamRemoteByteInputContext context =
-          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        // why we do this? when the downstream move from SF -> VM,
-        // the upstream should connect with the VM channel
-        // we set the channel here between SF <=> VM
-        context.setupRestartChannel(channel, message);
+
         break;
       }
       case SETTING_OUTPUT_CONTEXT: {
@@ -183,9 +172,7 @@ public final class DefaultContextManagerImpl extends SimpleChannelInboundHandler
         break;
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
-        //LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
-        final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        inputContext.receiveRestartSignalFromParent(channel, message);
+
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {

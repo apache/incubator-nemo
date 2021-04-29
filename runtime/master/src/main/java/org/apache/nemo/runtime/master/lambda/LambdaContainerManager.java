@@ -375,6 +375,7 @@ public final class LambdaContainerManager {
           evalConf.flushPeriod,
           evalConf.controlLogging,
           evalConf.latencyLimit,
+          evalConf.ec2,
           evalConf.optimizationPolicy);
 
 

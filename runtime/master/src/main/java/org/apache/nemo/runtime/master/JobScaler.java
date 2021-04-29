@@ -10,6 +10,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
@@ -112,6 +113,7 @@ public final class JobScaler {
 
   private final ExecutorMetricMap executorMetricMap;
 
+  private final Backpressure backpressure;
 
 
   @Inject
@@ -127,6 +129,7 @@ public final class JobScaler {
                     final TaskDispatcher taskDispatcher,
                     final PlanStateManager planStateManager,
                     final ExecutorMetricMap executorMetricMap,
+                    final Backpressure backpressure,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -143,6 +146,7 @@ public final class JobScaler {
     this.taskDispatcher = taskDispatcher;
     this.planStateManager = planStateManager;
     this.executorRegistry = executorRegistry;
+    this.backpressure = backpressure;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -425,7 +429,8 @@ public final class JobScaler {
       // input rate
       final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
       LOG.info("Input rate {}", inputRate);
-
+      backpressure.addCurrentInput(inputRate);
+      /*
       final long prevInputRate;
       if (inputRates.size() == 0) {
         prevInputRate = 0;
@@ -460,6 +465,7 @@ public final class JobScaler {
             });
         });
       }
+      */
 
     } else {
       LOG.info("Broadcast info {}", msg.getInfo());
@@ -1389,7 +1395,8 @@ public final class JobScaler {
         case ExecutorMetric: {
           final ControlMessage.ExecutorMetricMsg msg = message.getExecutorMetricMsg();
           executorMetricMap.setInfo(msg.getExecutorId(),
-            new ExecutorMetricInfo(msg.getReceiveEvent(), msg.getProcessEvent()));
+            new ExecutorMetricInfo(msg.getReceiveEvent(), msg.getProcessEvent(),
+              msg.getSourceEvent(), msg.getCpuUse()));
           break;
         }
         case LocalScalingReadyDone: {

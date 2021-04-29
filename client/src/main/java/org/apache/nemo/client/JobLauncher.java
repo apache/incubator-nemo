@@ -27,6 +27,7 @@ import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.EvalConf.SamplingPath;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.PolicyConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.commons.lang3.SerializationUtils;
@@ -754,6 +755,8 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.NumExecutor.class);
 
     EvalConf.registerCommandLineArgument(cl);
+
+    PolicyConf.registerCommandLineArgument(cl);
 
     cl.processCommandLine(args);
 

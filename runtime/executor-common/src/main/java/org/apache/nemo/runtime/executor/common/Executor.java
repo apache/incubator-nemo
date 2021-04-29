@@ -38,6 +38,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.monitoring.AlarmManager;
 import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
+import org.apache.nemo.runtime.executor.common.monitoring.SystemLoadProfiler;
 import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
@@ -134,6 +135,7 @@ public final class Executor {
 
   private final Map<String, Task> prevScheduledTaskCacheMap;
 
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
@@ -146,25 +148,19 @@ public final class Executor {
                    final CpuBottleneckDetector bottleneckDetector,
                    final EvalConf evalConf,
                    @Parameter(EvalConf.ExecutorOnLambda.class) final boolean onLambda,
-                   // final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
                    final PipeIndexMapWorker pipeIndexMapWorker,
                    final StageExecutorThreadMap stageExecutorThreadMap,
-                   // final JobScalingHandlerWorker jobScalingHandlerWorker,
                    final ExecutorThreads executorThreads,
                    final StreamVertexSerializerManager streamVertexSerializerManager,
-                   // final ExecutorMetrics executorMetrics,
-                   // final ScalingOutCounter scalingOutCounter,
-                   // final SFTaskMetrics sfTaskMetrics,
                    final StateStore stateStore,
                    // final NettyStateStore nettyStateStore,
                    final ExecutorChannelManagerMap executorChannelManagerMap,
                    final TaskScheduledMapWorker taskScheduledMapWorker,
                    final CyclicDependencyHandler cyclicDependencyHandler,
                    final DefaultCondRouting condRouting,
-                   // final OffloadingWorkerFactory workerFactory,
-                   // final OffloadingManager offloadingManager,
+                   final SystemLoadProfiler profiler,
                    final OutputCollectorGenerator outputCollectorGenerator) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
@@ -202,7 +198,7 @@ public final class Executor {
    //  this.workerFactory = workerFactory;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      if (resourceType.equals("Compute")) {
+      if (!resourceType.equals("Source")) {
         CpuInfoExtractor.printNetworkStat(-1);
       }
 
@@ -343,6 +339,16 @@ public final class Executor {
               queueLength,
               receiveCnt, processCnt);
 
+          final double cpuUse = profiler.getCpuLoad();
+
+
+          // source event
+          final long sourceEvent = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
+            .stream()
+            .filter(te -> te.getTask().isSourceTask())
+            .map(te -> te.getTaskMetrics().getInputProcessElement())
+            .reduce((x,y) -> x + y)
+            .orElse(0L);
 
           persistentConnectionToMasterMap
             .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
@@ -354,6 +360,8 @@ public final class Executor {
               .setExecutorId(executorId)
                 .setReceiveEvent(receiveCnt)
                 .setProcessEvent(processCnt)
+                .setCpuUse(cpuUse)
+                .setSourceEvent(sourceEvent)
               .build())
               .build());
 

@@ -86,6 +86,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final boolean controlLogging;
   private final long latencyLimit;
   private final String optimizationPolicy;
+  private final boolean ec2;
 
 
   public OffloadingExecutor(final int executorThreadNum,
@@ -98,10 +99,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final int flushPeriod,
                             final boolean controlLogging,
                             final long latencyLimit,
+                            final boolean ec2,
                             final String optimizationPolicy) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource);
+    this.ec2 = ec2;
     this.stateStorePort = stateStorePort;
     this.executorThreadNum = executorThreadNum;
     this.channels = new ConcurrentHashMap<>();
@@ -140,6 +143,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
       dos.writeBoolean(controlLogging);
       dos.writeLong(latencyLimit);
+      dos.writeBoolean(ec2);
 
       dos.writeUTF(optimizationPolicy);
 
@@ -168,6 +172,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final int flushPeriod = dis.readInt();
       final boolean controlLogging = dis.readBoolean();
       final long latencyLimit = dis.readLong();
+      final boolean ec2 = dis.readBoolean();
       final String optimizationPolicy = dis.readUTF();
 
 
@@ -175,6 +180,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         stateStorePort,
         nameServerAddr, nameServerPort, executorId, flushPeriod, controlLogging,
         latencyLimit,
+        ec2,
         optimizationPolicy);
     } catch (IOException e) {
       e.printStackTrace();
@@ -270,7 +276,11 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void prepare(OffloadingContext c, OffloadingOutputCollector outputCollector) {
     context = (LambdaRuntimeContext)c;
 
-    this.monitoringThread = new MonitoringThread(1000, 1.0);
+    if (ec2) {
+      this.monitoringThread = new MonitoringThread(1000);
+    } else {
+      this.monitoringThread = new MonitoringThread(1000, 1.0);
+    }
 
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(true));
@@ -284,7 +294,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       throw new RuntimeException(e);
     }
 
-    jcb.bindNamedParameter(EvalConf.Ec2.class, Boolean.toString(true));
+    jcb.bindNamedParameter(EvalConf.Ec2.class, Boolean.toString(ec2));
 
     jcb.bindNamedParameter(MessageParameters.NameServerAddr.class, nameServerAddr);
     jcb.bindNamedParameter(MessageParameters.NameServerPort.class, Integer.toString(nameServerPort));
