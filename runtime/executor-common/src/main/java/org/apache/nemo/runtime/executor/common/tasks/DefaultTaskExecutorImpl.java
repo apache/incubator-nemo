@@ -423,12 +423,13 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     reverseTopologicallySorted.forEach(childVertex -> {
 
-      LOG.info("Vertex {} isGBK {} isPushback {}", childVertex.getId(),
+      LOG.info("Vertex {} isGBK {} isPushback {}, [}", childVertex.getId(),
         childVertex.isGBK, childVertex.isPushback);
       if (childVertex.isGBK && childVertex.isPushback) {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
+          LOG.info("Vertex {} transform {}", ov.getTransform());
           statefulTransforms.add(ov.getTransform());
           LOG.info("Set final transform {}", ov.getTransform());
         }
