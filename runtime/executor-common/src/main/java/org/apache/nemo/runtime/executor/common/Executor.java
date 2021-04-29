@@ -362,7 +362,7 @@ public final class Executor {
               queueLength,
               receiveCnt, processCnt);
 
-          final double cpuUse = profiler.getCpuLoad();
+          final double cpuUse = profiler.getAvgCpuLoad();
 
           persistentConnectionToMasterMap
             .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
