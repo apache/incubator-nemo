@@ -61,7 +61,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
   }
 
   @Override
-  public LambdaActivator createRequest(String address, int port,
+  public synchronized LambdaActivator createRequest(String address, int port,
                                               final int requestId,
                                               final String executorId,
                                               String containerType,
