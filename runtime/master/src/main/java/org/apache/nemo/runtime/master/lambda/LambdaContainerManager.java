@@ -365,7 +365,7 @@ public final class LambdaContainerManager {
         requestIdActivatorMap.put(rid, activator);
 
         final OffloadingExecutor offloadingExecutor = new OffloadingExecutor(
-          evalConf.executorThreadNum,
+          evalConf.offExecutorThreadNum,
           evalConf.samplingJson,
           evalConf.isLocalSource,
           stateStore.getPort(),
