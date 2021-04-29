@@ -41,6 +41,10 @@ public final class SystemLoadProfiler {
     }
   }
 
+  public double getAvgCpuLoad() {
+    return monitoringThread.getAvarageUsagePerCPU();
+  }
+
   public double getCpuLoad() {
     // return operatingSystemMXBean.getSystemCpuLoad();
     LOG.info("Average CPU Load: {} in {}", monitoringThread.getAvarageUsagePerCPU(), executorId);
