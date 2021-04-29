@@ -87,6 +87,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.curOutputWatermark = Long.MIN_VALUE;
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
+    LOG.info("Create pushback transform");
+  }
+
+  @Override
+  public boolean isPushback() {
+    return true;
   }
 
   @Override

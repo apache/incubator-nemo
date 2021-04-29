@@ -55,6 +55,8 @@ public interface Transform<I, O> extends Serializable {
 
   }
 
+  default boolean isPushback() {return false;}
+
   /**
    * On data received.
    * @param element data received.

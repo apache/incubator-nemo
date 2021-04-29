@@ -221,7 +221,7 @@ final class PipelineTranslator {
     final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
 
-    if (doFnTransform instanceof PushBackDoFnTransform) {
+    if (doFnTransform.isPushback()) {
       vertex.isPushback = true;
       LOG.info("Set isPushback true for {}", vertex.getId());
     }
