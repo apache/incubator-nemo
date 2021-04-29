@@ -315,7 +315,6 @@ message ExecutorMetricMsg {
   required int64 receiveEvent = 2;
   required int64 processEvent = 3;
   required double cpuUse = 4;
-  required int64 sourceEvent = 5;
 }
 
 message LatencyCollectionMessage {
