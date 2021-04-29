@@ -115,7 +115,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       getSideInputReader().checkpoint(dos, sideCoder);
 
       final long et = System.currentTimeMillis();
-      LOG.info("Pushback encoding time of {}: {}", taskId, et - st);
+      LOG.info("Pushback encoding time of {}: {}, byte {}", taskId, et - st, cos.getCount());
 
     } catch (final Exception e) {
       e.printStackTrace();
@@ -127,7 +127,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   public void restore(final String id) {
 
     if (stateStore.containsState(getContext().getTaskId() + "-pushback")) {
+
       try (final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-pushback")) {
+        LOG.info("Restoring pushback in restore {}", taskId);
+        final long st = System.currentTimeMillis();
+
         final CountingInputStream countingInputStream = new CountingInputStream(is);
         final DataInputStream dis = new DataInputStream(countingInputStream);
         curPushedBackWatermark = dis.readLong();
@@ -143,6 +147,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         // decoding side input reader
         final InMemorySideInputReader newReader = InMemorySideInputReader.decode(getSideInputReader(), sideCoder, dis);
         getSideInputReader().restoreSideInput(newReader);
+
+        final long et = System.currentTimeMillis();
+        LOG.info("Decoding decoding pushback in restore {}: {} ms, byte {}", taskId, et - st, countingInputStream.getCount());
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -157,6 +164,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     stateStore = getContext().getStateStore();
 
     if (stateStore.containsState(getContext().getTaskId() + "-pushback")) {
+      final long st = System.currentTimeMillis();
+
+      LOG.info("Restoring pushback in wrapDoFn {}", taskId);
       try (final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-pushback")) {
         final CountingInputStream countingInputStream = new CountingInputStream(is);
         final DataInputStream dis = new DataInputStream(countingInputStream);
@@ -173,6 +183,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         // decoding side input reader
         final InMemorySideInputReader newReader = InMemorySideInputReader.decode(getSideInputReader(), sideCoder, dis);
         getSideInputReader().restoreSideInput(newReader);
+
+
+      final long et = System.currentTimeMillis();
+      LOG.info("Decoding decoding pushback {}: {} ms, byte {}", taskId, et - st, countingInputStream.getCount());
+
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -180,6 +195,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     } else {
       curPushedBacks = new LinkedList<>();
     }
+
 
     return initDoFn;
   }
