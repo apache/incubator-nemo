@@ -380,25 +380,15 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
       LOG.info("Registering pipe for output edges in {}, parallelism {}", taskId, parallelism);
-
-      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+      final List<String> dstTaskIds = TaskExecutorUtil.getDstTaskIds(taskId, edge);
+      dstTaskIds.forEach(dstTaskId -> {
         inputPipeRegister.registerInputPipe(
-          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
+          dstTaskId,
           edge.getId(),
           task.getTaskId(),
           new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
-          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
-      } else {
-        for (int i = 0; i < parallelism; i++) {
-          inputPipeRegister.registerInputPipe(
-            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
-            edge.getId(),
-            task.getTaskId(),
-            new PipeInputReader(edge.getDstIRVertex(), taskId, (RuntimeEdge) edge,
-          serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
-        }
-      }
+            serializerManager.getSerializer(((RuntimeEdge)edge).getId()), executorThreadQueue));
+      });
 
       LOG.info("End of task outgoing edge for {} {}", taskId, edge);
     });
@@ -575,14 +565,16 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
 
             LOG.info("Registering pipe for input edges in {}, parallelism {}", taskId, parallelism);
 
-            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-              || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+            TaskExecutorUtil.getSrcTaskIds(taskId, edge).forEach(srcTaskId -> {
               inputPipeRegister.registerInputPipe(
-                RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+                srcTaskId,
                 edge.getId(),
                 task.getTaskId(),
                 parentTaskReader);
+            });
 
+            if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
+              || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
               // LOG.info("Adding data fetcher 33 for {} / {}", taskId, irVertex.getId());
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
@@ -594,13 +586,6 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
               }
 
             } else {
-              for (int i = 0; i < parallelism; i++) {
-                inputPipeRegister.registerInputPipe(
-                  RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
-                  edge.getId(),
-                  task.getTaskId(),
-                  parentTaskReader);
-              }
 
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
