@@ -29,7 +29,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private final ScheduledExecutorService scheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor();
 
-  private long currRate = 1000000000;
+  private long currRate = Long.MAX_VALUE;
 
   private final DescriptiveStatistics avgCpuUse;
   private final DescriptiveStatistics avgInputRate;
@@ -51,6 +51,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     this.avgInputRate = new DescriptiveStatistics(windowSize);
     this.avgProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgQueueSize = new DescriptiveStatistics(windowSize);
+    this.currRate = policyConf.bpMinEvent;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       try {
