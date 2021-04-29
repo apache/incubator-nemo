@@ -68,7 +68,8 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
             if (currRate > avgInputRate.getMean()) {
               currRate = (long) (avgInputRate.getMean() * policyConf.bpDecreaseRatio);
             } else {
-              currRate *= policyConf.bpDecreaseRatio;
+              currRate = Math.max(policyConf.bpMinEvent,
+                (long) (currRate * policyConf.bpDecreaseRatio));
             }
 
             LOG.info("Decrease backpressure rate to {}", currRate);
