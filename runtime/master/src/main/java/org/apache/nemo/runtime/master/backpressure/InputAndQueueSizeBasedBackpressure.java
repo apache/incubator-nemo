@@ -79,7 +79,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
             if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
               // TODO: when to stop increasing rate?
               if (currSourceEvent > aggInput.get() * 0.9 &&
-                currRate > avgInputRate.getMean()) {
+                currRate > avgInputRate.getMean() || currSourceEvent == 0) {
                 // This means that we fully consume the event. Stop increasing rate
               } else {
                 // Increase rate
@@ -104,8 +104,9 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
   @Override
   public synchronized void addCurrentInput(final long rate) {
-      avgInputRate.addValue(rate);
-      aggInput.getAndAdd(rate);
+    // Observed that the actual event is the half
+    avgInputRate.addValue(rate / 2);
+    aggInput.getAndAdd(rate / 2);
   }
 
   public synchronized void setCurrInput(final long rate) {
