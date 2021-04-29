@@ -59,9 +59,9 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
         synchronized (this) {
           LOG.info("Total queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
-              "aggInput: {}, sourceEvent: {}",
+              "aggInput: {}, sourceEvent: {}, numExecutor: {}",
             queue, avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
-            aggInput, currSourceEvent);
+            aggInput, currSourceEvent, info.numExecutor);
 
           if (queue > policyConf.bpQueueUpperBound) {
             // Back pressure
