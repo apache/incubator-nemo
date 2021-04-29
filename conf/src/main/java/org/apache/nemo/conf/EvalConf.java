@@ -16,7 +16,7 @@ import java.util.*;
 
 public final class EvalConf {
 
-  public static final String AWS_REGION = "ap-northeast-2";
+  public static final String AWS_REGION = "ap-northeast-1";
 
   @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading", default_value = "false")
   public final class EnableOffloading implements Name<Boolean> {
@@ -140,7 +140,7 @@ public final class EvalConf {
   @NamedParameter(short_name = "sf_to_vm", default_value = "false")
   public static final class SftoVm implements Name<Boolean> {}
 
-  @NamedParameter(short_name = "aws_region", default_value = "ap-northeast-2")
+  @NamedParameter(short_name = "aws_region", default_value = "ap-northeast-1")
   public static final class AWSRegion implements Name<String> {}
 
   // Throttling vm worker for testing !!
