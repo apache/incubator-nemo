@@ -48,6 +48,8 @@ public class OperatorVertex extends IRVertex {
   public OperatorVertex(final Transform t) {
     super();
     this.transform = t;
+    this.isPushback = t.isPushback();
+    LOG.info("isPushback of {}: {}. {}", getId(), isPushback. t);
   }
 
   public void setPartialCombine(final OperatorVertex pc) {

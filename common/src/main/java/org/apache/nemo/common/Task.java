@@ -110,7 +110,7 @@ public final class Task implements Serializable {
     // find pair task
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
-    this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK && vertex.isPushback);
+    this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK || vertex.isPushback);
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
