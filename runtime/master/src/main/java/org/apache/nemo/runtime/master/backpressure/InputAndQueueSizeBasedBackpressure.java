@@ -33,7 +33,9 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
   private final DescriptiveStatistics avgCpuUse;
   private final DescriptiveStatistics avgInputRate;
+  private final DescriptiveStatistics avgProcessingRate;
   private long currSourceEvent = 0;
+  private long prevProcessingEvent = 0;
 
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
@@ -44,6 +46,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     this.executorRegistry = executorRegistry;
     this.avgCpuUse = new DescriptiveStatistics(5);
     this.avgInputRate = new DescriptiveStatistics(5);
+    this.avgProcessingRate = new DescriptiveStatistics(5);
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       try {
@@ -53,23 +56,27 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
         // Calculate queue size
         final long queue = info.receiveEvent - info.processEvent;
+
+        // Update processing rate
+        avgProcessingRate.addValue(info.processEvent - prevProcessingEvent);
+        prevProcessingEvent = info.processEvent;
+
         if (info.numExecutor > 0) {
           avgCpuUse.addValue(info.cpuUse / info.numExecutor);
         }
 
         synchronized (this) {
           LOG.info("Total queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
-              "aggInput: {}, sourceEvent: {}, numExecutor: {}",
+              "aggInput: {}, sourceEvent: {}, processingRate: {}, numExecutor: {}",
             queue, avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
-            aggInput, currSourceEvent, info.numExecutor);
+            aggInput, currSourceEvent, avgProcessingRate.getMean(), info.numExecutor);
 
           if (queue > policyConf.bpQueueUpperBound) {
             // Back pressure
             if (currRate > avgInputRate.getMean()) {
               currRate = (long) (avgInputRate.getMean() * policyConf.bpDecreaseRatio);
             } else {
-              currRate = Math.max(policyConf.bpMinEvent,
-                (long) (currRate * policyConf.bpDecreaseRatio));
+              currRate *= currRate * policyConf.bpDecreaseRatio;
             }
 
             LOG.info("Decrease backpressure rate to {}", currRate);
