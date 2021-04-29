@@ -20,10 +20,10 @@ public final class PolicyConf {
   @NamedParameter(short_name = "bp_queue_lower_bound", default_value = "10000")
   public static final class BPQueueLowerBound implements Name<Long> {}
 
-  @NamedParameter(short_name = "bp_increase_ratio", default_value = "2.0")
+  @NamedParameter(short_name = "bp_increase_ratio", default_value = "1.5")
   public static final class BPIncreaseRatio implements Name<Double> {}
 
-  @NamedParameter(short_name = "bp_decrease_ratio", default_value = "0.7")
+  @NamedParameter(short_name = "bp_decrease_ratio", default_value = "0.8")
   public static final class BPDecreaseRatio implements Name<Double> {}
 
   @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.7")
