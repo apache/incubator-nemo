@@ -45,56 +45,61 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     this.avgInputRate = new DescriptiveStatistics(5);
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      LOG.info("Current backpressure rate {}", currRate);
+      try {
+        LOG.info("Current backpressure rate {}", currRate);
 
-      synchronized (this) {
         final ExecutorMetricInfo info = executorMetricMap.getAggregated();
 
         // Calculate queue size
         final long queue = info.receiveEvent - info.processEvent;
-        avgCpuUse.addValue(info.cpuUse / info.numExecutor);
+        if (info.numExecutor > 0) {
+          avgCpuUse.addValue(info.cpuUse / info.numExecutor);
+        }
 
-        LOG.info("Total queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
-                  "aggInput: {}, sourceEvent: {}",
-                queue, avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
-                aggInput, info.sourceEvent);
+        synchronized (this) {
+          LOG.info("Total queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
+              "aggInput: {}, sourceEvent: {}",
+            queue, avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
+            aggInput, info.sourceEvent);
 
-        if (queue > policyConf.bpQueueUpperBound) {
-          // Back pressure
-          if (currRate > avgInputRate.getMean()) {
-            currRate = (long) (avgInputRate.getMean() / policyConf.bpDecreaseRatio);
-          } else {
-            currRate /= policyConf.bpDecreaseRatio;
-          }
-
-          LOG.info("Decrease backpressure rate to {}", currRate);
-
-          sendBackpressure(executorRegistry, currRate);
-
-        } else if (queue < policyConf.bpQueueLowerBound) {
-          if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
-            // TODO: when to stop increasing rate?
-            if (info.sourceEvent > aggInput.get() * 0.9 &&
-              currRate > avgInputRate.getMean()) {
-              // This means that we fully consume the event. Stop increasing rate
+          if (queue > policyConf.bpQueueUpperBound) {
+            // Back pressure
+            if (currRate > avgInputRate.getMean()) {
+              currRate = (long) (avgInputRate.getMean() / policyConf.bpDecreaseRatio);
             } else {
-              // Increase rate
-              currRate *= policyConf.bpIncreaseRatio;
-              LOG.info("Increase backpressure rate to {}", currRate);
-              sendBackpressure(executorRegistry, currRate);
+              currRate /= policyConf.bpDecreaseRatio;
+            }
+
+            LOG.info("Decrease backpressure rate to {}", currRate);
+
+            sendBackpressure(executorRegistry, currRate);
+
+          } else if (queue < policyConf.bpQueueLowerBound) {
+            if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
+              // TODO: when to stop increasing rate?
+              if (info.sourceEvent > aggInput.get() * 0.9 &&
+                currRate > avgInputRate.getMean()) {
+                // This means that we fully consume the event. Stop increasing rate
+              } else {
+                // Increase rate
+                currRate *= policyConf.bpIncreaseRatio;
+                LOG.info("Increase backpressure rate to {}", currRate);
+                sendBackpressure(executorRegistry, currRate);
+              }
             }
           }
         }
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }, Util.THROTTLE_WINDOW, Util.THROTTLE_WINDOW, TimeUnit.MILLISECONDS);
   }
 
   @Override
   public synchronized void addCurrentInput(final long rate) {
-    synchronized (this) {
       avgInputRate.addValue(rate);
       aggInput.getAndAdd(rate);
-    }
   }
 
   public synchronized void setCurrInput(final long rate) {

@@ -24,7 +24,7 @@ public final class ExecutorMetricMap {
         info1.cpuUse + info2.cpuUse,
         info1.numExecutor + info2.numExecutor);
     })
-    .get();
+    .orElse(new ExecutorMetricInfo(0,0,0,0,0));
   }
 
   public synchronized void setInfo(final String executorId,
