@@ -321,7 +321,25 @@ public final class Executor {
 
     final AtomicLong throttleDelay = new AtomicLong((long) (delay * 0.7));
 
-    if (!resourceType.equals(ResourcePriorityProperty.SOURCE)) {
+    if (resourceType.equals(ResourcePriorityProperty.SOURCE)) {
+      // source event
+      final long sourceEvent = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
+        .stream()
+        .filter(te -> te.getTask().isSourceTask())
+        .map(te -> te.getTaskMetrics().getInputProcessElement())
+        .reduce((x,y) -> x + y)
+        .orElse(0L);
+
+      persistentConnectionToMasterMap
+        .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.SourceEvent)
+          .setSetNum(sourceEvent)
+          .build());
+
+    } else {
       scheduledExecutorService.scheduleAtFixedRate(() -> {
         try {
           // Send signal to source executor
@@ -341,15 +359,6 @@ public final class Executor {
 
           final double cpuUse = profiler.getCpuLoad();
 
-
-          // source event
-          final long sourceEvent = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
-            .stream()
-            .filter(te -> te.getTask().isSourceTask())
-            .map(te -> te.getTaskMetrics().getInputProcessElement())
-            .reduce((x,y) -> x + y)
-            .orElse(0L);
-
           persistentConnectionToMasterMap
             .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
@@ -361,7 +370,6 @@ public final class Executor {
                 .setReceiveEvent(receiveCnt)
                 .setProcessEvent(processCnt)
                 .setCpuUse(cpuUse)
-                .setSourceEvent(sourceEvent)
               .build())
               .build());
 

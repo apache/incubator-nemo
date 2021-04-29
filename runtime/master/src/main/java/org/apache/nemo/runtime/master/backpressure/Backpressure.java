@@ -11,6 +11,7 @@ import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EX
 @DefaultImplementation(InputAndQueueSizeBasedBackpressure.class)
 public interface Backpressure {
 
+  void addSourceEvent(final long sourceEvent);
   void addCurrentInput(final long rate);
 
   default void sendBackpressure(final ExecutorRegistry executorRegistry,

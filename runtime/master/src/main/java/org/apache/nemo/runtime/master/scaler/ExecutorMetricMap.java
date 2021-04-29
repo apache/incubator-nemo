@@ -20,11 +20,10 @@ public final class ExecutorMetricMap {
       final long p = info1.processEvent + info2.processEvent;
       final long r = info1.receiveEvent + info2.receiveEvent;
       return new ExecutorMetricInfo(p, r,
-        info1.sourceEvent + info2.sourceEvent,
         info1.cpuUse + info2.cpuUse,
         info1.numExecutor + info2.numExecutor);
     })
-    .orElse(new ExecutorMetricInfo(0,0,0,0,0));
+    .orElse(new ExecutorMetricInfo(0,0,0,0));
   }
 
   public synchronized void setInfo(final String executorId,

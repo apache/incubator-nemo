@@ -33,6 +33,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
   private final DescriptiveStatistics avgCpuUse;
   private final DescriptiveStatistics avgInputRate;
+  private long currSourceEvent = 0;
 
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
@@ -60,7 +61,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
           LOG.info("Total queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
               "aggInput: {}, sourceEvent: {}",
             queue, avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
-            aggInput, info.sourceEvent);
+            aggInput, currSourceEvent);
 
           if (queue > policyConf.bpQueueUpperBound) {
             // Back pressure
@@ -77,7 +78,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
           } else if (queue < policyConf.bpQueueLowerBound) {
             if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
               // TODO: when to stop increasing rate?
-              if (info.sourceEvent > aggInput.get() * 0.9 &&
+              if (currSourceEvent > aggInput.get() * 0.9 &&
                 currRate > avgInputRate.getMean()) {
                 // This means that we fully consume the event. Stop increasing rate
               } else {
@@ -97,6 +98,11 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   }
 
   @Override
+  public synchronized void addSourceEvent(final long sourceEvent) {
+    currSourceEvent = sourceEvent;
+  }
+
+  @Override
   public synchronized void addCurrentInput(final long rate) {
       avgInputRate.addValue(rate);
       aggInput.getAndAdd(rate);
@@ -105,7 +111,5 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   public synchronized void setCurrInput(final long rate) {
     currEmitInput = rate;
   }
-
-
 
 }

@@ -202,6 +202,7 @@ enum MessageType {
     ScheduleCachedTask = 80;
 
     ExecutorMetric = 81;
+    SourceEvent = 82;
 }
 
 message LambdaEndMessage {

@@ -1392,11 +1392,15 @@ public final class JobScaler {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
+        case SourceEvent: {
+          backpressure.addSourceEvent(message.getSetNum());
+          break;
+        }
         case ExecutorMetric: {
           final ControlMessage.ExecutorMetricMsg msg = message.getExecutorMetricMsg();
           executorMetricMap.setInfo(msg.getExecutorId(),
             new ExecutorMetricInfo(msg.getReceiveEvent(), msg.getProcessEvent(),
-              msg.getSourceEvent(), msg.getCpuUse()));
+              msg.getCpuUse()));
           break;
         }
         case LocalScalingReadyDone: {
