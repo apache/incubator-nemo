@@ -11,10 +11,6 @@
 
   <artifactId>offloading-workers</artifactId>
   <packaging>pom</packaging>
-  <modules>
-    <module>lambda</module>
-    <module>vm</module>
-  </modules>
 
 
 </project>

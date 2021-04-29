@@ -119,8 +119,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final Set<String> activatedTasks = new HashSet<>();
   private final Set<String> activatedPendingTasks = new HashSet<>();
 
-  private void sendRoutingSignal(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
-    // waiting
+  private void waitForActivation() {
     while (!lambdaControlProxy.isActive()) {
       try {
         Thread.sleep(50);
@@ -128,6 +127,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         e.printStackTrace();
       }
     }
+  }
+
+  private void sendRoutingSignal(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
+    // waiting
+    waitForActivation();
 
     activatedPendingTasks.add(taskId);
 
@@ -373,6 +377,15 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       activatedTasks.add(task.getTaskId());
     }
 
+    if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
+      // just send task
+    } else {
+      // activate signal
+      LOG.info("Activate lambda before scheduling tasks");
+      lambdaControlProxy.activate();
+      waitForActivation();
+    }
+
     serializationExecutorService.execute(() -> {
       final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       final DataOutputStream dos = new DataOutputStream(bos);
@@ -385,6 +398,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       }
 
       serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
+
+      if (lambdaControlProxy != null) {
+        // this is lambda container .. we should activate it first
+
+      }
 
       if (prevScheduledTasks.contains(task)) {
         sendControlMessage(
