@@ -42,19 +42,7 @@ public final class TaskExecutorUtil {
   public static int taskIncomingEdgeDoneAckCounter(final Task task) {
     final AtomicInteger cnt = new AtomicInteger(0);
 
-    task.getTaskIncomingEdges()
-      .forEach(inEdge -> {
-        if (inEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
-          || inEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.OneToOne)) {
-          cnt.getAndIncrement();
-        } else {
-          final int parallelism = inEdge.getSrcIRVertex()
-            .getPropertyValue(ParallelismProperty.class).get();
-          cnt.getAndAdd(parallelism);
-        }
-      });
+    task.getUpstreamTasks().forEach((e,t) -> cnt.getAndAdd(t.size()));
 
     return cnt.get();
   }
@@ -62,19 +50,7 @@ public final class TaskExecutorUtil {
   public static int taskOutgoingEdgeDoneAckCounter(final Task task) {
     final AtomicInteger cnt = new AtomicInteger(0);
 
-    task.getTaskOutgoingEdges()
-      .forEach(outgoingEdge -> {
-        if (outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
-          || outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.OneToOne)) {
-          cnt.getAndIncrement();
-        } else {
-          final int parallelism = outgoingEdge.getSrcIRVertex()
-            .getPropertyValue(ParallelismProperty.class).get();
-          cnt.getAndAdd(parallelism);
-        }
-      });
+    task.getDownstreamTasks().forEach((e,t) -> cnt.getAndAdd(t.size()));
 
     return cnt.get();
   }
@@ -86,39 +62,13 @@ public final class TaskExecutorUtil {
     final String srcTask = task.getTaskId();
     final int index = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
-    task.getTaskOutgoingEdges()
-      .forEach(outgoingEdge -> {
-        if (outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.TransientOneToOne)
-          || outgoingEdge.getDataCommunicationPattern()
-          .equals(CommunicationPatternProperty.Value.OneToOne)) {
-
-          final String dstTaskId =
-            RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), index, 0);
-          pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
-            type,
-            null);
-
-          LOG.info("Send task output done signal from {} to {}", srcTask,
-            dstTaskId);
-
-        } else {
-          final int parallelism = outgoingEdge.getSrcIRVertex()
-            .getPropertyValue(ParallelismProperty.class).get();
-
-          for (int i = 0; i < parallelism; i++) {
-            final String dstTaskId =
-              RuntimeIdManager.generateTaskId(outgoingEdge.getDst().getId(), i, 0);
-            pipeManagerWorker.writeControlMessage(srcTask, outgoingEdge.getId(), dstTaskId,
-              type,
-              null);
-
-            LOG.info("Send task output done signal from {} to {}", srcTask,
-              dstTaskId);
-          }
-        }
+    task.getDownstreamTasks().forEach((edge, dstTasks) -> {
+      dstTasks.forEach(dstTask -> {
+      pipeManagerWorker.writeControlMessage(srcTask, edge.getId(), dstTask,
+        type,
+        null);
       });
-
+    });
   }
 
 
