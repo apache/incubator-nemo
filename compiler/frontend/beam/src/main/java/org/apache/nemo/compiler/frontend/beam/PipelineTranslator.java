@@ -404,7 +404,7 @@ final class PipelineTranslator {
                                                       final TransformHierarchy.Node beamNode,
                                                       final View.CreatePCollectionView<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView().getViewFn()));
-    vertex.isGBK = true;
+    vertex.isGBK = false;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     ctx.registerMainOutputFrom(beamNode, vertex, transform.getView());
