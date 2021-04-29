@@ -132,12 +132,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     */
   }
 
-  public void registerPipeIndex(final String srcTaskId,
-                                final String edgeId,
-                                final String dstTaskId) {
-    final int inputPipeIndex = pipeIndexMapWorker.getPipeIndex(srcTaskId, edgeId, dstTaskId);
-    final int outputPipeIndex = pipeIndexMapWorker.getPipeIndex(dstTaskId, edgeId, srcTaskId);
-  }
 
   @Override
   public void sendPipeInitMessage(final String srcTaskId,

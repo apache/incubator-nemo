@@ -199,20 +199,13 @@ public final class TaskExecutorUtil {
       final CommunicationPatternProperty.Value comm =
         edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-      if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-        || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
-        inputPipeRegister.sendPipeInitMessage(
-          RuntimeIdManager.generateTaskId(edge.getDst().getId(), taskIndex, 0),
+      final List<String> dstTaskIds = TaskExecutorUtil.getDstTaskIds(task.getTaskId(), edge);
+        dstTaskIds.forEach(dstTaskId -> {
+          inputPipeRegister.sendPipeInitMessage(
+            dstTaskId,
           edge.getId(),
           task.getTaskId());
-      } else {
-        for (int i = 0; i < parallelism; i++) {
-          inputPipeRegister.sendPipeInitMessage(
-            RuntimeIdManager.generateTaskId(edge.getDst().getId(), i, 0),
-            edge.getId(),
-            task.getTaskId());
-        }
-      }
+        });
     });
 
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
@@ -230,20 +223,12 @@ public final class TaskExecutorUtil {
         final CommunicationPatternProperty.Value comm =
           edge.getPropertyValue(CommunicationPatternProperty.class).get();
 
-        if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
-          || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
+        TaskExecutorUtil.getSrcTaskIds(task.getTaskId(), edge).forEach(srcTaskId -> {
           inputPipeRegister.sendPipeInitMessage(
-            RuntimeIdManager.generateTaskId(edge.getSrc().getId(), taskIndex, 0),
+            srcTaskId,
             edge.getId(),
             task.getTaskId());
-        } else {
-          for (int i = 0; i < parallelism; i++) {
-            inputPipeRegister.sendPipeInitMessage(
-              RuntimeIdManager.generateTaskId(edge.getSrc().getId(), i, 0),
-              edge.getId(),
-              task.getTaskId());
-          }
-        }
+          });
       });
   }
 
