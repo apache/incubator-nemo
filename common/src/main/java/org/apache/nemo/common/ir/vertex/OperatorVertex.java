@@ -101,7 +101,8 @@ public class OperatorVertex extends IRVertex {
     this.partialToFinalTransform = that.partialToFinalTransform;
     this.partialToFinalEdge = that.partialToFinalEdge;
     this.originEncoderFactory = that.originEncoderFactory;
-    this.isStateful = that.isStateful;
+    this.isGBK = that.isGBK;
+    this.isPushback = that.isPushback;
   }
 
   @Override

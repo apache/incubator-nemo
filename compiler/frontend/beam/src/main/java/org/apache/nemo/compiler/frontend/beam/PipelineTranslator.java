@@ -30,8 +30,6 @@ import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.util.AppliedCombineFn;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.CreateViewTransform;
@@ -224,7 +222,7 @@ final class PipelineTranslator {
     final IRVertex vertex = new OperatorVertex(doFnTransform);
 
     if (doFnTransform instanceof PushBackDoFnTransform) {
-      vertex.isStateful = true;
+      vertex.isPushback = true;
     }
 
     ctx.addVertex(vertex);
@@ -341,11 +339,11 @@ final class PipelineTranslator {
         SystemReduceFn.buffering(mainInput.getCoder())));
 
     final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
-    partialCombine.isStateful = true;
+    partialCombine.isGBK = true;
     partialCombine.setPartialToFinalTransform(new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
 
     final OperatorVertex finalCombine = new OperatorVertex(finalCombineStreamTransform);
-    finalCombine.isStateful = true;
+    finalCombine.isGBK = true;
 
 
     // (Step 1) Partial Combine
@@ -366,7 +364,7 @@ final class PipelineTranslator {
     ((OperatorVertex) vertex).setFinalCombine(finalCombine);
     ((OperatorVertex) vertex).setPartialToFinalEdge(edge);
 
-    vertex.isStateful = true;
+    vertex.isGBK = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -406,7 +404,7 @@ final class PipelineTranslator {
                                                       final TransformHierarchy.Node beamNode,
                                                       final View.CreatePCollectionView<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView().getViewFn()));
-    vertex.isStateful = true;
+    vertex.isGBK = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     ctx.registerMainOutputFrom(beamNode, vertex, transform.getView());
@@ -423,7 +421,7 @@ final class PipelineTranslator {
                                         final TransformHierarchy.Node beamNode,
                                         final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
-    //vertex.isStateful = true;
+    //vertex.isGBK = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -495,7 +493,7 @@ final class PipelineTranslator {
       // (Stage 2) final combine
 
       final IRVertex finalCombine = new OperatorVertex(gbkFinal);
-      finalCombine.isStateful = true;
+      finalCombine.isGBK = true;
 
       ctx.addVertex(finalCombine);
       beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(finalCombine, input));
@@ -547,12 +545,12 @@ final class PipelineTranslator {
           false);
 
       final OperatorVertex partialCombineVertex = new OperatorVertex(partialCombineStreamTransform);
-      partialCombineVertex.isStateful = true;
+      partialCombineVertex.isGBK = true;
       partialCombineVertex.setPartialToFinalTransform(
         new PartialToFinalTransform((Combine.CombineFn) finalCombineFn));
 
       final OperatorVertex finalCombineVertex = new OperatorVertex(finalCombineStreamTransform);
-      finalCombine.isStateful = true;
+      finalCombine.isGBK = true;
 
       // (Step 1) Partial Combine
       // ctx.addVertex(partialCombineVertex);

@@ -23,13 +23,11 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.offloading.common.TaskCaching;
@@ -111,7 +109,7 @@ public final class Task implements Serializable {
     // find pair task
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
-    this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isStateful);
+    this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK && vertex.isPushback);
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);

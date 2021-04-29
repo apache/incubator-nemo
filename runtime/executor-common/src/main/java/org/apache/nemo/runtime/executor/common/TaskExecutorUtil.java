@@ -243,7 +243,7 @@ public final class TaskExecutorUtil {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     reverseTopologicallySorted.forEach(childVertex -> {
 
-      if (childVertex.isStateful) {
+      if (childVertex.isGBK) {
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
           statefulTransforms.add(ov.getTransform());

@@ -417,7 +417,7 @@ public final class CRTaskExecutorImpl implements CRTaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     reverseTopologicallySorted.forEach(childVertex -> {
 
-      if (childVertex.isStateful) {
+      if (childVertex.isGBK && childVertex.isPushback) {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;

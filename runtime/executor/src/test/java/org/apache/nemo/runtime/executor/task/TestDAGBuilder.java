@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
@@ -90,11 +89,11 @@ public final class TestDAGBuilder {
     v1.setProperty(ParallelismProperty.of(parallelism));
 
     final IRVertex v2 = new OperatorVertex(new TestGBKListTransform());
-    v2.isStateful = true;
+    v2.isGBK = true;
     v2.setProperty(ParallelismProperty.of(parallelism));
 
     final IRVertex v3 = new OperatorVertex(new TestGBKListAggTransform());
-    v3.isStateful = true;
+    v3.isGBK = true;
     v3.setProperty(ParallelismProperty.of(parallelism));
     v3.isSink = true;
 
@@ -123,7 +122,7 @@ public final class TestDAGBuilder {
     v1.setProperty(ParallelismProperty.of(parallelism));
 
     final IRVertex v2 = new OperatorVertex(new TestGBKTransform());
-    v2.isStateful = true;
+    v2.isGBK = true;
     v2.setProperty(ParallelismProperty.of(parallelism));
 
     return new IRDAG(dagBuilder.addVertex(src)

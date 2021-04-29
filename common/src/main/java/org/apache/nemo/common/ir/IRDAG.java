@@ -451,18 +451,18 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final List<IRVertex> gbks = new LinkedList<>();
 
     modifiedDAG.topologicalDo(vertex -> {
-      if (vertex.isStateful) {
+      if (vertex.isGBK) {
          gbks.add(vertex);
       }
     });
 
     modifiedDAG.topologicalDo(vertex -> {
-      if (!vertex.isStateful) {
+      if (!vertex.isGBK) {
         // Add origin vertex if it is not stateful
         LOG.info("Add vertex in R3 {}", vertex.getId());
         builder.addVertex(vertex);
         modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
-          if (!incomingEdge.getSrc().isStateful) {
+          if (!incomingEdge.getSrc().isGBK) {
             // Add edge if src is not stateful
             builder.connectVertices(incomingEdge);
           }
@@ -496,14 +496,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       partialOrigin.setOriginEncoderFactory(ef);
 
       LOG.info("Set final transform to partial origin {}", partialOrigin.getId());
-      partialOrigin.isStateful = true;
+      partialOrigin.isGBK = true;
 
       final OperatorVertex partialTransient =
         new OperatorVertex(((OperatorVertex)originGBK).getPartialCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialTransient.setProperty(ParallelismProperty.of(p)));
 
-      partialTransient.isStateful = true;
+      partialTransient.isGBK = true;
 
       // Get encoder and transform
       // Optimization of R3 !!
@@ -515,7 +515,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));
 
-      stateMerger.isStateful = true;
+      stateMerger.isGBK = true;
 
       // Add partial origin and transient vertex
       builder.addVertex(partialOrigin);
@@ -623,18 +623,18 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Find gbk finals
     // We should change its vertex to partial -> final combine
     final List<IRVertex> gbks = PassSharedData.originVertexToTransientVertexMap.keySet()
-      .stream().filter(vertex -> vertex.isStateful).collect(Collectors.toList());
+      .stream().filter(vertex -> vertex.isGBK).collect(Collectors.toList());
 
     final List<IRVertex> gbkTransientPaths = gbks.stream()
       .map(gbk -> PassSharedData.originVertexToTransientVertexMap.get(gbk)).collect(Collectors.toList());
 
     modifiedDAG.topologicalDo(vertex -> {
-      if (!vertex.isStateful) {
+      if (!vertex.isGBK) {
         // Add origin vertex if it is not stateful
         LOG.info("Add vertex in R3 {}", vertex.getId());
         builder.addVertex(vertex);
         modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
-          if (!incomingEdge.getSrc().isStateful) {
+          if (!incomingEdge.getSrc().isGBK) {
             // Add edge if src is not stateful
             builder.connectVertices(incomingEdge);
           }
@@ -657,14 +657,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       partialOrigin.setOriginEncoderFactory(ef);
 
       LOG.info("Set final transform to partial origin {}", partialOrigin.getId());
-      partialOrigin.isStateful = true;
+      partialOrigin.isGBK = true;
 
       final OperatorVertex partialTransient =
         new OperatorVertex(((OperatorVertex)originGBK).getPartialCombine());
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> partialTransient.setProperty(ParallelismProperty.of(p)));
 
-      partialTransient.isStateful = true;
+      partialTransient.isGBK = true;
 
       // Get encoder and transform
       // Optimization of R3 !!
@@ -676,7 +676,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       originGBK.getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> stateMerger.setProperty(ParallelismProperty.of(p)));
 
-      stateMerger.isStateful = true;
+      stateMerger.isGBK = true;
 
       // Add partial origin and transient vertex
       builder.addVertex(partialOrigin);
@@ -821,7 +821,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final IRVertex vertexToInsert = new ConditionalRouterVertex(new CRTransform());
     final IRVertex partialCombine = new OperatorVertex(
       ((OperatorVertex)edgeToAdd.getDst()).getTransform());
-    partialCombine.isStateful = true;
+    partialCombine.isGBK = true;
 
     builder.addVertex(vertexToInsert);
     builder.addVertex(partialCombine);

@@ -214,7 +214,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     }
 
     final OperatorVertex gbkVertex = (OperatorVertex)irVertexDag.getVertices().stream()
-      .filter(vertex -> vertex.isStateful).findFirst().get();
+      .filter(vertex -> vertex.isGBK).findFirst().get();
 
     this.pToFinalTransform = gbkVertex.getPartialToFinalTransform();
 
@@ -449,7 +449,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     reverseTopologicallySorted.forEach(childVertex -> {
 
-      if (childVertex.isStateful) {
+      if (childVertex.isGBK) {
         isStateless = false;
         if (childVertex instanceof OperatorVertex) {
           final OperatorVertex ov = (OperatorVertex) childVertex;
@@ -487,7 +487,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
         }
 
         final OutputCollector outputCollector;
-        if (irVertex.isStateful) {
+        if (irVertex.isGBK) {
           outputCollector = partialOutputCollector;
           vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(null, outputCollector));
         } else {

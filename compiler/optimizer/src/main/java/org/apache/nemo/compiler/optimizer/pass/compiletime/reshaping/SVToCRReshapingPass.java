@@ -19,18 +19,13 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.CRTransform;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
-import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
-
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Inserts the StreamVertex for each shuffle edge.
@@ -49,7 +44,7 @@ public final class SVToCRReshapingPass extends ReshapingPass {
 
   private boolean hasGBKInDownstream(final IRVertex root,
                                      final IRDAG dag) {
-    if (root.isStateful) {
+    if (root.isGBK) {
       return true;
     }
 

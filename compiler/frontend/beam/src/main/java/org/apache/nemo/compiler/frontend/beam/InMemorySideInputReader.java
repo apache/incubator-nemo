@@ -18,17 +18,25 @@
  */
 package org.apache.nemo.compiler.frontend.beam;
 
+import org.apache.beam.model.pipeline.v1.RunnerApi;
 import org.apache.beam.runners.core.ReadyCheckingSideInputReader;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.CreateViewTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,14 +52,75 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   private long curWatermark = Long.MIN_VALUE;
 
   private final Collection<PCollectionView<?>> sideInputsToRead;
-  private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
+  private final WindowingStrategy windowingStrategy;
+  private final Map<Pair<PCollectionView<?>, BoundedWindow>, WindowedValue<SideInputElement>> inMemorySideInputs;
 
   /**
    * @param sideInputsToRead side inputs to read.
    */
-  public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
+  public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead,
+                                 final WindowingStrategy windowingStrategy) {
     this.sideInputsToRead = sideInputsToRead;
+    this.windowingStrategy = windowingStrategy;
     this.inMemorySideInputs = new HashMap<>();
+  }
+
+  public void restoreSideInput(final InMemorySideInputReader reader) {
+    curWatermark = reader.curWatermark;
+    inMemorySideInputs.putAll(reader.inMemorySideInputs);
+  }
+
+  private InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead,
+                                 final WindowingStrategy windowingStrategy,
+                                 final Coder sideCoder,
+                                  final long curWatermark,
+                                  final Map<Pair<PCollectionView<?>, BoundedWindow>, WindowedValue<SideInputElement>> inMemorySideInputs) {
+    this.sideInputsToRead = sideInputsToRead;
+    this.windowingStrategy = windowingStrategy;
+    this.inMemorySideInputs = inMemorySideInputs;
+    this.curWatermark = curWatermark;
+  }
+
+  public void checkpoint(final DataOutputStream dos,
+                         final Coder sideCoder) {
+    try {
+      dos.writeLong(curWatermark);
+      dos.writeInt(inMemorySideInputs.size());
+      for (final Map.Entry<Pair<PCollectionView<?>, BoundedWindow>, WindowedValue<SideInputElement>> entry :
+        inMemorySideInputs.entrySet())  {
+
+        SerializationUtils.serialize(entry.getKey().left(), dos);
+        windowingStrategy.getWindowFn().windowCoder().encode(entry.getKey().right(), dos);
+
+        sideCoder.encode(entry.getValue(), dos);
+
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static InMemorySideInputReader decode(final InMemorySideInputReader initReader,
+                                               final Coder sideCoder,
+                                               final DataInputStream dis) {
+    try {
+      final WindowingStrategy windowingStrategy = initReader.windowingStrategy;
+      final long curWatermark = dis.readLong();
+      final int size = dis.readInt();
+      final Map<Pair<PCollectionView<?>, BoundedWindow>, WindowedValue<SideInputElement>> map = new HashMap<>();
+      for (int i = 0; i < size; i++) {
+        final PCollectionView<?> view = (PCollectionView<?>) SerializationUtils.deserialize(dis);
+        final BoundedWindow window = (BoundedWindow) windowingStrategy.getWindowFn().windowCoder().decode(dis);
+        final WindowedValue<SideInputElement> sideInput = (WindowedValue<SideInputElement>) sideCoder.decode(dis);
+        map.put(Pair.of(view, window), sideInput);
+      }
+
+      return new InMemorySideInputReader(initReader.sideInputsToRead, windowingStrategy, sideCoder, curWatermark, map);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -64,12 +133,14 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
     // This gets called after isReady()
-    final T sideInputData = (T) inMemorySideInputs.get(Pair.of(view, window));
+    final WindowedValue<SideInputElement> sideInputData =
+       inMemorySideInputs.get(Pair.of(view, window));
+
     return sideInputData == null
       // The upstream gave us an empty sideInput
       ? ((ViewFn<Object, T>) view.getViewFn()).apply(new CreateViewTransform.MultiView<T>(Collections.emptyList()))
       // The upstream gave us a concrete sideInput
-      : sideInputData;
+      : (T) sideInputData.getValue().getSideInputValue();
   }
 
   @Override
@@ -88,9 +159,9 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
    * @param sideInputElement to add.
    */
   public void addSideInputElement(final PCollectionView<?> view,
-                                  final WindowedValue<SideInputElement<?>> sideInputElement) {
+                                  final WindowedValue<SideInputElement> sideInputElement) {
     for (final BoundedWindow bw : sideInputElement.getWindows()) {
-      inMemorySideInputs.put(Pair.of(view, bw), sideInputElement.getValue().getSideInputValue());
+      inMemorySideInputs.put(Pair.of(view, bw), sideInputElement);
     }
   }
 

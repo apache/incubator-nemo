@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import com.google.common.io.CountingInputStream;
+import com.google.common.io.CountingOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -32,6 +34,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.compiler.frontend.beam.InMemorySideInputReader;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
@@ -39,7 +42,7 @@ import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -51,26 +54,17 @@ import java.util.*;
 public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
   private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
 
-  private transient List<WindowedValue<InputT>> curPushedBacks;
-  private transient List<ByteBufOutputStream> byteBufList;
-
-  private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
-  private long curInputWatermark;
-  private long curOutputWatermark;
-
-  private boolean offloading = false; // TODO: fix
-
-  private PushBackOffloadingTransform offloadingTransform;
 
   private final Coder mainCoder;
   private final Coder sideCoder;
 
-  private boolean initialized = false;
-  private transient EventHandler<WindowedValue<OutputT>> eventHandler;
-  private transient OffloadingSerializer<
-    Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> offloadingSerializer;
+  private StateStore stateStore;
+  private String taskId;
 
-  private ServerlessExecutorProvider slsProvider;
+  private transient List<WindowedValue<InputT>> curPushedBacks;
+  private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
+  private long curInputWatermark;
+  private long curOutputWatermark;
 
   /**
    * PushBackDoFnTransform Constructor.
@@ -91,73 +85,117 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
-    this.offloadingTransform = new PushBackOffloadingTransform(
-      doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
 
   @Override
+  public void checkpoint(String checkpointId) {
+    final StateStore stateStore = getContext().getStateStore();
+    final long st = System.currentTimeMillis();
+    try (final OutputStream os = stateStore.getOutputStream(checkpointId + "-pushback")) {
+      LOG.info("Checkpointing pushback {}", taskId);
+      final CountingOutputStream cos = new CountingOutputStream(os);
+      final DataOutputStream dos = new DataOutputStream(cos);
+      dos.writeLong(curPushedBackWatermark);
+      dos.writeLong(curInputWatermark);
+      dos.writeLong(curOutputWatermark);
+
+      // push back data
+      if (curPushedBacks != null) {
+        dos.writeInt(curPushedBacks.size());
+        for (final WindowedValue<InputT> elem : curPushedBacks) {
+          mainCoder.encode(elem, dos);
+        }
+      } else {
+        dos.writeInt(0);
+      }
+
+      // side input data
+      getSideInputReader().checkpoint(dos, sideCoder);
+
+      final long et = System.currentTimeMillis();
+      LOG.info("Pushback encoding time of {}: {}", taskId, et - st);
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Pushback checkpoint in " + checkpointId);
+    }
+  }
+
+  @Override
+  public void restore(final String id) {
+
+    if (stateStore.containsState(getContext().getTaskId() + "-pushback")) {
+      try (final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-pushback")) {
+        final CountingInputStream countingInputStream = new CountingInputStream(is);
+        final DataInputStream dis = new DataInputStream(countingInputStream);
+        curPushedBackWatermark = dis.readLong();
+        curInputWatermark = dis.readLong();
+        curOutputWatermark = dis.readLong();
+
+        final int size = dis.readInt();
+        curPushedBacks = new LinkedList<>();
+        for (int i = 0; i < size; i++) {
+          curPushedBacks.add((WindowedValue<InputT>) mainCoder.decode(dis));
+        }
+
+        // decoding side input reader
+        final InMemorySideInputReader newReader = InMemorySideInputReader.decode(getSideInputReader(), sideCoder, dis);
+        getSideInputReader().restoreSideInput(newReader);
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
   protected DoFn wrapDoFn(final DoFn initDoFn) {
+
+    taskId = getContext().getTaskId();
+    stateStore = getContext().getStateStore();
+
+    if (stateStore.containsState(getContext().getTaskId() + "-pushback")) {
+      try (final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-pushback")) {
+        final CountingInputStream countingInputStream = new CountingInputStream(is);
+        final DataInputStream dis = new DataInputStream(countingInputStream);
+        curPushedBackWatermark = dis.readLong();
+        curInputWatermark = dis.readLong();
+        curOutputWatermark = dis.readLong();
+
+        final int size = dis.readInt();
+         curPushedBacks = new LinkedList<>();
+        for (int i = 0; i < size; i++) {
+          curPushedBacks.add((WindowedValue<InputT>) mainCoder.decode(dis));
+        }
+
+        // decoding side input reader
+        final InMemorySideInputReader newReader = InMemorySideInputReader.decode(getSideInputReader(), sideCoder, dis);
+        getSideInputReader().restoreSideInput(newReader);
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
     return initDoFn;
   }
 
   public void setOffloading(boolean offload) {
-    offloading = offload;
   }
 
   @Override
   public void onData(final WindowedValue data) {
-    if (!initialized) {
-      byteBufList = new ArrayList<>();
-      curPushedBacks = new ArrayList<>();
-
-      eventHandler = new EventHandler<WindowedValue<OutputT>>() {
-        @Override
-        public void onNext(WindowedValue<OutputT> msg) {
-
-          getOutputCollector().emit(msg);
-        }
-      };
-
-
-      final OffloadingCoderWrapper<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>>
-        inputCoder = new OffloadingCoderWrapper(new PushBackCoder(sideCoder ,mainCoder));
-      final OffloadingCoderWrapper outputCoder = new OffloadingCoderWrapper(mainCoder);
-
-      offloadingSerializer =
-        new OffloadingSerializer<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>>() {
-          @Override
-          public OffloadingEncoder<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputEncoder() {
-            return inputCoder;
-          }
-          @Override
-          public OffloadingDecoder<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputDecoder() {
-            return inputCoder;
-          }
-          @Override
-          public OffloadingEncoder<WindowedValue<OutputT>> getOutputEncoder() {
-            return outputCoder;
-          }
-          @Override
-          public OffloadingDecoder<WindowedValue<OutputT>> getOutputDecoder() {
-            return outputCoder;
-          }
-        };
-
-      initialized = true;
-
-      slsProvider = getContext().getServerlessExecutorProvider();
-    }
 
     // Need to distinguish side/main inputs and push-back main inputs.
     if (data.getValue() instanceof SideInputElement) {
       // This element is a Side Input
       final long st = System.currentTimeMillis();
-      LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
-      System.out.println("Side input start time: " + System.currentTimeMillis() + " " + data);
-      //System.out.println("Receive Side input at " + data);
+      // LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
+
+      LOG.info("Side input start time: " + System.currentTimeMillis() + " " + data);
+
       // TODO #287: Consider Explicit Multi-Input IR Transform
       final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
@@ -166,17 +204,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       //LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
       int cnt;
-      if (offloading) {
-        cnt = handlePushBacksWithSideInput(sideInputElement);
-      } else {
-        cnt = handlePushBacks();
-      }
+      cnt = handlePushBacks();
 
-      System.out.println("Timestamp of pushback last " + System.currentTimeMillis());
-
-      LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
-        cnt, this.hashCode(), data);
-      //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
+      // System.out.println("Timestamp of pushback last " + System.currentTimeMillis());
+      // LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
+      //  cnt, this.hashCode(), data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
@@ -194,85 +226,10 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         cnt += 1;
         curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);
-
-        if (offloading) {
-          if (byteBufList.isEmpty()) {
-            final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-            byteBufList.add(new ByteBufOutputStream(byteBuf));
-          }
-
-          final int lastIndex = byteBufList.size() - 1;
-          if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
-            final ByteBuf byteBuf = Unpooled.buffer();
-            byteBufList.add(new ByteBufOutputStream(byteBuf));
-          }
-
-          final ByteBufOutputStream bos = byteBufList.get(byteBufList.size() - 1);
-          try {
-            bos.writeBoolean(true);
-            mainCoder.encode(wv, bos);
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
       }
       //System.out.println("pushback count: " + cnt);
       checkAndFinishBundle();
     }
-  }
-
-
-  private int handlePushBacksWithSideInput(final WindowedValue<SideInputElement> sideInput) {
-    forceFinishBundle(); // forced
-
-
-    checkAndInvokeBundle();
-    long pushedBackAgainWatermark = Long.MAX_VALUE;
-    final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
-    int cnt = 0;
-
-
-    LOG.info("Start to offloading");
-    final long st = System.currentTimeMillis();
-
-    final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> slsExecutor =
-      slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
-
-    // encode side input
-    for (final ByteBufOutputStream bos : byteBufList) {
-      try {
-        bos.writeBoolean(false);
-        sideCoder.encode(sideInput, bos);
-        bos.close();
-
-        slsExecutor.execute(bos.buffer());
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
-
-
-    LOG.info("# of partition: {}, partitionSize: {}, execute latency: {}",
-      byteBufList.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
-
-    final long st1 = System.currentTimeMillis();
-
-    slsExecutor.shutdown();
-
-    LOG.info("Time to wait shutdown {}, timestamp: {}", System.currentTimeMillis() - st1,
-      System.currentTimeMillis());
-
-    // TODO: fix
-    //offloading = false;
-    checkAndFinishBundle();
-
-    // TODO: need to guarantee correctness
-    byteBufList.clear();
-    curPushedBacks = pushedBackAgain;
-    curPushedBackWatermark = pushedBackAgainWatermark;
-    return cnt;
   }
 
   private int handlePushBacks() {

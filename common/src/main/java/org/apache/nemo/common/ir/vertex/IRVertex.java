@@ -21,15 +21,12 @@ package org.apache.nemo.common.ir.vertex;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.IdManager;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.Cloneable;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -40,7 +37,8 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   public boolean isSink = false;
   public boolean isOffloading = false;
-  public boolean isStateful = false;
+  public boolean isGBK = false;
+  public boolean isPushback = false;
 
   /**
    * Constructor of IRVertex.
@@ -70,7 +68,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
-    thatVertex.isStateful = isStateful;
+    thatVertex.isGBK = isGBK;
     thatVertex.isSink = isSink;
     this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
   }

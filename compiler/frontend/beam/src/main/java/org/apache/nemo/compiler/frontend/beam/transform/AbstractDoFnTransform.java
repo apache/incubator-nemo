@@ -258,7 +258,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
 
     // create side input reader
-    sideInputReader = new InMemorySideInputReader(new ArrayList<>(sideInputs.values()));
+    sideInputReader = new InMemorySideInputReader(new ArrayList<>(sideInputs.values()), windowingStrategy);
 
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
