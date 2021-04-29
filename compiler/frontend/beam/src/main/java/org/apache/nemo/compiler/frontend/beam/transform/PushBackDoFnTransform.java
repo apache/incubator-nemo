@@ -85,7 +85,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
-    this.curPushedBacks = new LinkedList<>();
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
@@ -178,6 +177,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+    } else {
+      curPushedBacks = new LinkedList<>();
     }
 
     return initDoFn;
