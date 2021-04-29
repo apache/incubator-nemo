@@ -71,7 +71,7 @@ public final class PipeIndexMapWorker {
 
     if (!map.containsKey(key)) {
 
-      // LOG.info("Request pipe index for {}/{}/{}", srcTaskId, edgeId, dstTaskId);
+      LOG.info("Request pipe index for {}/{}/{} in {}", srcTaskId, edgeId, dstTaskId);
 
       final CompletableFuture<ControlMessage.Message> future = toMaster
         .getMessageSender(TASK_INDEX_MESSAGE_LISTENER_ID)
