@@ -386,13 +386,15 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       activatedTasks.add(task.getTaskId());
     }
 
-    if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
-      // just send task
-    } else {
-      // activate signal
-      LOG.info("Activate lambda before scheduling tasks");
-      lambdaControlProxy.activate();
-      waitForActivation();
+    if (lambdaControlProxy != null) {
+      if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
+        // just send task
+      } else {
+        // activate signal
+        LOG.info("Activate lambda before scheduling tasks");
+        lambdaControlProxy.activate();
+        waitForActivation();
+      }
     }
 
     serializationExecutorService.execute(() -> {
@@ -407,11 +409,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       }
 
       serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
-
-      if (lambdaControlProxy != null) {
-        // this is lambda container .. we should activate it first
-
-      }
 
       if (prevScheduledTasks.contains(task)) {
         sendControlMessage(

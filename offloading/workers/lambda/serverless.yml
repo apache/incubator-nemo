@@ -3,10 +3,12 @@ service: nemo # NOTE: update this with your service name
 provider:
   name: aws
   runtime: java8
-  profile: taegeonum
-  region: ap-northeast-2
+  profile: default
+  region: ap-northeast-1
+  memorySize: 1536 # Overwrite the default memory size. Default is 1024
+  timeout: 100
   layers:
-    - arn:aws:lambda:ap-northeast-2:243787491444:layer:layer-0420:1
+    - arn:aws:lambda:ap-northeast-1:835596193924:layer:sponge-layer:1
 
 package:
   artifact: build/distributions/lambda.zip
@@ -15,8 +17,4 @@ functions:
   lambda-executor1:
     handler: org.apache.nemo.runtime.lambdaexecutor.LambdaWorker
   lambda-executor2:
-    handler: org.apache.nemo.runtime.lambdaexecutor.LambdaWorker
-  lambda-executor3:
-    handler: org.apache.nemo.runtime.lambdaexecutor.LambdaWorker
-  lambda-executor4:
     handler: org.apache.nemo.runtime.lambdaexecutor.LambdaWorker
