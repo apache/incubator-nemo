@@ -135,6 +135,7 @@ public final class Executor {
 
   private final Map<String, Task> prevScheduledTaskCacheMap;
 
+  private boolean activated = true;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -198,12 +199,14 @@ public final class Executor {
    //  this.workerFactory = workerFactory;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      if (!resourceType.equals("Source")) {
-        CpuInfoExtractor.printNetworkStat(-1);
-      }
+      if (activated) {
+        if (!resourceType.equals("Source")) {
+          CpuInfoExtractor.printNetworkStat(-1);
+        }
 
-      // Add R3 task state checker
-      taskExecutorMapWrapper.addR3StateCheckEvent();
+        // Add R3 task state checker
+        taskExecutorMapWrapper.addR3StateCheckEvent();
+      }
 
       // final double load = profiler.getCpuLoad();
       // LOG.info("Cpu load: {}", load);
@@ -323,7 +326,6 @@ public final class Executor {
 
     if (resourceType.equals(ResourcePriorityProperty.SOURCE)) {
       // source event
-
       scheduledExecutorService.scheduleAtFixedRate(() -> {
         final long sourceEvent = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
           .stream()
@@ -348,35 +350,37 @@ public final class Executor {
       scheduledExecutorService.scheduleAtFixedRate(() -> {
         try {
           // Send signal to source executor
-          final long processCnt = executorMetrics.inputProcessCntMap.values().stream().reduce((x, y) -> x + y).get();
-          final long receiveCnt = executorMetrics.inputReceiveCntMap.values().stream()
-            .map(l -> l.get()).reduce((x, y) ->
-              x + y).get();
+            final long processCnt = executorMetrics.inputProcessCntMap.values().stream().reduce((x, y) -> x + y).get();
+            final long receiveCnt = executorMetrics.inputReceiveCntMap.values().stream()
+              .map(l -> l.get()).reduce((x, y) ->
+                x + y).get();
 
-          final long queueLength = receiveCnt - processCnt;
-          final long prevQueueLength = prevReceiveCnt.get() - prevProcessingCnt.get();
+            final long queueLength = receiveCnt - processCnt;
+            final long prevQueueLength = prevReceiveCnt.get() - prevProcessingCnt.get();
 
-          LOG.info("Send throttle event 2 from {} to source, delay {}, " +
+            LOG.info("Send throttle event 2 from {} to source, delay {}, " +
                 "queueLength: {} " +
                 "input: {}, process: {}", executorId, 400,
               queueLength,
               receiveCnt, processCnt);
 
-          final double cpuUse = profiler.getAvgCpuLoad();
+          if (activated) {
+            final double cpuUse = profiler.getAvgCpuLoad();
 
-          persistentConnectionToMasterMap
-            .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
-            ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
-              .setType(ControlMessage.MessageType.ExecutorMetric)
-              .setExecutorMetricMsg(ControlMessage.ExecutorMetricMsg.newBuilder()
-              .setExecutorId(executorId)
-                .setReceiveEvent(receiveCnt)
-                .setProcessEvent(processCnt)
-                .setCpuUse(cpuUse)
-              .build())
-              .build());
+            persistentConnectionToMasterMap
+              .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
+              ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdManager.generateMessageId())
+                .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
+                .setType(ControlMessage.MessageType.ExecutorMetric)
+                .setExecutorMetricMsg(ControlMessage.ExecutorMetricMsg.newBuilder()
+                  .setExecutorId(executorId)
+                  .setReceiveEvent(receiveCnt)
+                  .setProcessEvent(processCnt)
+                  .setCpuUse(cpuUse)
+                  .build())
+                .build());
+          }
 
           /*
           if (queueLength > 30000) {
@@ -400,6 +404,7 @@ public final class Executor {
           prevSendTime.set(System.currentTimeMillis());
           prevReceiveCnt.set(receiveCnt);
           prevProcessingCnt.set(processCnt);
+
 
 
           /*
@@ -690,6 +695,15 @@ public final class Executor {
       throw new RuntimeException(e);
     }
   }
+
+  public void activate() {
+    activated = true;
+  }
+
+  public void deactivate() {
+    activated = false;
+  }
+
 
   /**
    * Launches the Task, and keeps track of the execution state with taskStateManager.

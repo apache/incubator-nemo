@@ -205,11 +205,14 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void shutdownSchedule() {
     scheduledService.shutdown();
+    executor.deactivate();
   }
 
   @Override
   public void schedule() {
     this.scheduledService = Executors.newSingleThreadScheduledExecutor();
+    executor.activate();
+
     /*
     this.scheduledService.scheduleAtFixedRate(() -> {
       if (parentExecutorChannel != null && parentExecutorChannel.isOpen()) {
