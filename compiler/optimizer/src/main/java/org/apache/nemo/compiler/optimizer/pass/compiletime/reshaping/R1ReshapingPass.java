@@ -50,7 +50,7 @@ public final class R1ReshapingPass extends ReshapingPass {
         .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .count();
 
-      if (edges.size() > 1) {
+      if (o2ocount > 1)  {
         dag.insert(new StreamVertex(), edges);
         //for (final IREdge edge : edges) {
         //  dag.insert(new StreamVertex(), edge);
