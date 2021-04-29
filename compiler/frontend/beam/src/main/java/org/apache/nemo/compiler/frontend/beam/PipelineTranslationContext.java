@@ -315,6 +315,10 @@ final class PipelineTranslationContext {
     if (srcTransform instanceof FlattenTransform) {
       return CommunicationPatternProperty.Value.OneToOne;
     }
+    if (dstTransform instanceof FlattenTransform) {
+      return CommunicationPatternProperty.Value.Shuffle;
+    }
+
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform
       || dstTransform instanceof GBKFinalTransform) {
