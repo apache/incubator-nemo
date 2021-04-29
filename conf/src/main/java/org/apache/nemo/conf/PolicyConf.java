@@ -17,7 +17,7 @@ public final class PolicyConf {
   @NamedParameter(short_name = "bp_queue_upper_bound", default_value = "20000")
   public static final class BPQueueUpperBound implements Name<Long> {}
 
-  @NamedParameter(short_name = "bp_queue_lower_bound", default_value = "5000")
+  @NamedParameter(short_name = "bp_queue_lower_bound", default_value = "10000")
   public static final class BPQueueLowerBound implements Name<Long> {}
 
   @NamedParameter(short_name = "bp_increase_ratio", default_value = "2.0")
@@ -29,11 +29,15 @@ public final class PolicyConf {
   @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.7")
   public static final class BPIncraseLowerCpu implements Name<Double> {}
 
+  @NamedParameter(short_name = "bp_min_event", default_value = "5000")
+  public static final class BPMinEvent implements Name<Long> {}
+
   public final long bpQueueUpperBound;
   public final long bpQueueLowerBound;
   public final double bpIncreaseRatio;
   public final double bpDecreaseRatio;
   public final double bpIncreaseLowerCpu;
+  public final long bpMinEvent;
   // End of backpressure
 
   // Scaling policy parameters
@@ -44,12 +48,14 @@ public final class PolicyConf {
                      @Parameter(BPQueueLowerBound.class) final long bpQueueLowerBound,
                      @Parameter(BPIncreaseRatio.class) final double bpIncreaseRatio,
                      @Parameter(BPDecreaseRatio.class) final double bpDecreaseRatio,
-                     @Parameter(BPIncraseLowerCpu.class) final double bpIncreaseLowerCpu) throws IOException {
+                     @Parameter(BPIncraseLowerCpu.class) final double bpIncreaseLowerCpu,
+                     @Parameter(BPMinEvent.class) final long bpMinEvent) throws IOException {
     this.bpQueueUpperBound = bpQueueSize;
     this.bpQueueLowerBound = bpQueueLowerBound;
     this.bpIncreaseRatio = bpIncreaseRatio;
     this.bpDecreaseRatio = bpDecreaseRatio;
     this.bpIncreaseLowerCpu = bpIncreaseLowerCpu;
+    this.bpMinEvent = bpMinEvent;
   }
 
   public Configuration getConfiguration() {
@@ -59,6 +65,7 @@ public final class PolicyConf {
     jcb.bindNamedParameter(BPIncreaseRatio.class, Double.toString(bpIncreaseRatio));
     jcb.bindNamedParameter(BPDecreaseRatio.class, Double.toString(bpDecreaseRatio));
     jcb.bindNamedParameter(BPIncraseLowerCpu.class, Double.toString(bpIncreaseLowerCpu));
+    jcb.bindNamedParameter(BPMinEvent.class, Double.toString(bpMinEvent));
     return jcb.build();
   }
 
@@ -69,6 +76,7 @@ public final class PolicyConf {
     cl.registerShortNameOfClass(BPIncreaseRatio.class);
     cl.registerShortNameOfClass(BPDecreaseRatio.class);
     cl.registerShortNameOfClass(BPIncraseLowerCpu.class);
+    cl.registerShortNameOfClass(BPMinEvent.class);
   }
 
   @Override
@@ -80,6 +88,7 @@ public final class PolicyConf {
     sb.append("bpIncreaseRatio: "); sb.append(bpIncreaseRatio); sb.append("\n");
     sb.append("bpDecreaseRatio: "); sb.append(bpDecreaseRatio); sb.append("\n");
     sb.append("bpIncreaseLowerCPu: "); sb.append(bpIncreaseLowerCpu); sb.append("\n");
+    sb.append("bpMinEvent: "); sb.append(bpMinEvent); sb.append("\n");
     sb.append("-----------PolicyConf end----------\n");
 
     return sb.toString();
