@@ -332,9 +332,12 @@ public final class ExecutorThread implements ExecutorThreadQueue {
       }
 
       taskExecutor.handleData(event.getEdgeId(), event);
+
+      /*
       final long cnt = executorMetrics.inputProcessCntMap.get(this);
       executorMetrics.inputProcessCntMap.put(this, cnt + 1);
       currProcessedCnt += 1;
+      */
     } else {
       addEvent(event);
     }
