@@ -107,6 +107,10 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
                    currRate *= policyConf.bpIncreaseRatio * 0.9;
                   LOG.info("Increase backpressure rate to {}", currRate);
                   sendBackpressure(executorRegistry, currRate);
+                } else {
+                  currRate = Math.max(currRate, (long) (currRate * policyConf.bpIncreaseRatio * 0.8));
+                  LOG.info("Increase backpressure rate to {}", currRate);
+                  sendBackpressure(executorRegistry, currRate);
                 }
               }
             }
