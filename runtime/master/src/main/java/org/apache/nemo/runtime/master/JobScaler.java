@@ -423,7 +423,7 @@ public final class JobScaler {
     */
   }
 
-  public void broadcastInfo(final ControlMessage.ScalingMessage msg) {
+  public synchronized void broadcastInfo(final ControlMessage.ScalingMessage msg) {
 
     if (msg.getInfo().startsWith("INPUT")) {
       // input rate

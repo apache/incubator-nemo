@@ -930,12 +930,17 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
           Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
           long prevLog = System.currentTimeMillis();
+          final long st = System.currentTimeMillis();
           while (!optional.isPresent()) {
             Thread.sleep(100);
             optional = getChannelForDstTask(key.getRight(), true);
             if (System.currentTimeMillis() - prevLog >= 1000) {
               LOG.warn("Waiting for get channel of task {}....", key.getRight());
               prevLog = System.currentTimeMillis();
+            }
+
+            if (System.currentTimeMillis() - st >= 15000) {
+              throw new RuntimeException("Cannot connect to task " + key.getRight());
             }
           }
 

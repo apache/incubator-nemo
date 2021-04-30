@@ -203,9 +203,6 @@ public final class Executor {
         if (!resourceType.equals("Source")) {
           CpuInfoExtractor.printNetworkStat(-1);
         }
-
-        // Add R3 task state checker
-        taskExecutorMapWrapper.addR3StateCheckEvent();
       }
 
       // final double load = profiler.getCpuLoad();

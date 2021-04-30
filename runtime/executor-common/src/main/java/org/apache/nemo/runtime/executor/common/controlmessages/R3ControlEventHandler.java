@@ -10,10 +10,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.executor.common.ControlEventHandler;
-import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
-import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
-import org.apache.nemo.runtime.executor.common.TaskExecutorUtil;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
@@ -45,6 +42,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
   private final Map<String, Boolean> partialTaskStopRemaining;
   private final Map<String, Boolean> pairTaskWaitingAck;
   private final Map<String, AtomicInteger> taskInputStopCounter;
+  private final PartialTaskDoneChecker partialTaskDoneChecker;
 
   @Inject
   private R3ControlEventHandler(
@@ -53,6 +51,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
     final TaskExecutorMapWrapper taskExecutorMapWrapper,
     final PipeManagerWorker pipeManagerWorker,
     final EvalConf evalConf,
+    final PartialTaskDoneChecker partialTaskDoneChecker,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.taskExecutorMapWrapper = taskExecutorMapWrapper;
@@ -60,6 +59,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
     this.toMaster = toMaster;
     this.evalConf = evalConf;
     this.pipeIndexMapWorker = pipeIndexMapWorker;
+    this.partialTaskDoneChecker = partialTaskDoneChecker;
     this.partialTaskOutputToBeStopped = new ConcurrentHashMap<>();
     this.partialTaskOutputAck = new ConcurrentHashMap<>();
     this.partialTaskStopRemaining = new ConcurrentHashMap<>();
@@ -130,6 +130,8 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             control.getTaskId(), taskExecutor.getTask().getPairTaskId(),
             taskExecutor.getTask().getPairEdgeId());
         }
+
+        partialTaskDoneChecker.registerPartialDoneReadyTask(taskExecutor.getId());
 
         // PING PONG BTW PAIR TASK TO SYNC AND GUARANTEE PARTIAL OFFLOADING
         toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
@@ -243,6 +245,12 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         if (control.type.equals(R3_DATA_STOP_FROM_P_TO_CR)) {
           // redirection only data
           final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+          // Stop the output pipe of pair task
+          // to pending the data until we send the input/output start signal to the pair task
+          final int pairTaskIndex = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
+            pairEdgeId, pairTaskId);
+
+          pipeManagerWorker.stopOutputPipeForRouting(pairTaskIndex, control.getTaskId());
           crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
             ReroutingState.DATA_ONLY);
 
@@ -469,6 +477,9 @@ public final class R3ControlEventHandler implements ControlEventHandler {
             partialTaskOutputToBeStopped.remove(taskExecutor.getId());
 
             partialTaskStopRemaining.put(taskExecutor.getId(), true);
+
+            // Deregister state checker
+            partialTaskDoneChecker.deregisterPartialDoneTask(taskExecutor.getId());
 
             if (evalConf.controlLogging) {
               LOG.info("Try to stop data and watermark of input pipe of {}", taskExecutor.getId());

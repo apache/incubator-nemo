@@ -56,6 +56,7 @@ public final class LambdaTaskContainerEventHandler {
             e.printStackTrace();
           }
 
+          /*
           executorRegistry.viewExecutors(executors -> {
             executors.forEach(executor -> {
               if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
@@ -69,6 +70,7 @@ public final class LambdaTaskContainerEventHandler {
               }
             });
           });
+          */
 
           LOG.info("Done of task init ... deactivate workers that have no rerouting task");
           // lambdaContainerManager.get().deactivateAllWorkers();

@@ -96,6 +96,25 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     LOG.info("Candidate executors for scheudling task {}: {}",
       task.getTaskId(), executors);
 
+    final Set<String> scheduledTasks = executors.stream()
+      .map(e -> e.getRunningTasks())
+      .reduce((s1, s2) -> {
+        final Set<Task> s = new HashSet<Task>(s1);
+        s.addAll(s2);
+        return s;
+      }).get()
+      .stream()
+      .map(t -> t.getTaskId())
+      .collect(Collectors.toSet());
+
+    final Map<String, ExecutorRepresenter> scheduledExecutors = new HashMap<>();
+    executors.forEach(executor -> {
+      executor.getRunningTasks().forEach(t -> {
+        scheduledExecutors.put(t.getTaskId(), executor);
+      });
+    });
+
+
     // For o2o-aware scheduling
     final Set<String> o2oEdges = new HashSet<>();
     getO2OUpstreams(stageId, o2oEdges);
@@ -109,18 +128,19 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
           "prevExecutorId: {}", task.getTaskId(), srcTaskId,
-          taskScheduledMap.isTaskScheduled(srcTaskId),
-          taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId),
+          scheduledTasks.contains(srcTaskId),
+          scheduledExecutors.get(srcTaskId).getExecutorId(),
           taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId()));
 
-      return (taskScheduledMap.isTaskScheduled(srcTaskId)
-      && !taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId).equals(
+
+      return (scheduledTasks.contains(srcTaskId)
+      && !scheduledExecutors.get(srcTaskId).getExecutorId().equals(
         taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId())));
     })
       .map(edge -> {
         final String srcTaskId = RuntimeIdManager.generateTaskId(edge,
           RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
-        final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(srcTaskId);
+        final String executorId = scheduledExecutors.get(srcTaskId).getExecutorId();
         return executorRegistry.getExecutorRepresentor(executorId);
       })
        // filter if the locality-aware executor is in the executors

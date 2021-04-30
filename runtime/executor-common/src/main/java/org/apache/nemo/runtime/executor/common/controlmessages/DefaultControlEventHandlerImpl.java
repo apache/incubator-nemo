@@ -344,7 +344,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
   private void stopAndCheckpointTask(final String taskId) {
     // flush pipes
-    pipeManagerWorker.flush();
+    // pipeManagerWorker.flush();
 
     taskToBeStopped.taskToBeStopped.remove(taskId);
 

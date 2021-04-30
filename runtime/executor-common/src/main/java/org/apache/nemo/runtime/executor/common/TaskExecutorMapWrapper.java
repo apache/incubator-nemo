@@ -71,19 +71,6 @@ public final class TaskExecutorMapWrapper {
     return taskIdExecutorMap.get(taskId);
   }
 
-  public synchronized void addR3StateCheckEvent() {
-    taskExecutorMap.keySet().stream()
-      .filter(taskExecutor -> taskExecutor.getTask().isParitalCombine()
-        && !taskToBeStoppedMap.taskToBeStopped.containsKey(taskExecutor.getId()))
-      .forEach(partialTask -> {
-        taskExecutorThreadMap.get(partialTask)
-          .addShortcutEvent(new TaskControlMessage(
-            TaskControlMessage.TaskControlMessageType.R3_TASK_STATE_CHECK,
-            -1, -1,
-            partialTask.getId(), null));
-      });
-  }
-
   public synchronized void removeTask(String taskId) {
     final TaskExecutor e = taskIdExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(e);

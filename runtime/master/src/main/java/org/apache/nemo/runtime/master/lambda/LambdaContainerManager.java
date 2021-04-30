@@ -455,6 +455,8 @@ public final class LambdaContainerManager {
 
         // proxy.setRepresentor(er);
         er.setLambdaControlProxy(proxy);
+        // DEACTIVATE IMMEDIATELY !!!
+        proxy.deactivate();
 
         if (evalConf.partialWarmup) {
           LOG.info("Setup partial warmup");

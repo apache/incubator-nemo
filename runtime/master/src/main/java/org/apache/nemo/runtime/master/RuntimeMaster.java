@@ -726,6 +726,10 @@ public final class RuntimeMaster {
       ).findFirst().isPresent();
   }
 
+  public String getPairStage(String stageId) {
+    return pairStageTaskManager.getPairStageId(stageId);
+  }
+
   public void redirectionToLambda(final int num,
                                   final List<String> stageIds,
                                   final boolean waiting) {

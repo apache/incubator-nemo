@@ -46,6 +46,16 @@ public final class PairStageTaskManager {
     return pairTaskEdgeMap.get(taskId);
   }
 
+  public String getPairStageId(final String stageId) {
+    final String stageTaskId = pairTaskEdgeMap.keySet()
+      .stream()
+      .filter(taskId -> RuntimeIdManager.getStageIdFromTaskId(taskId).equals(stageId))
+      .findFirst()
+      .get();
+
+    return RuntimeIdManager.getStageIdFromTaskId(pairTaskEdgeMap.get(stageTaskId).left());
+  }
+
   public Task.TaskType registerPairTask(final List<StageEdge> taskIncomingEdges,
                                         final List<StageEdge> taskOutgoingEdges,
                                         final String taskId,

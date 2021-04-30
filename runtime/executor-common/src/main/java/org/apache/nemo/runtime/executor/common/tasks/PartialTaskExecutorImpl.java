@@ -48,6 +48,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,7 +128,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
   private boolean pairTaskStopped = true;
 
-  private final Map<String, Object> sharedObject;
 
   private final OutputCollector partialOutputCollector;
   private final Serializer serializer;
@@ -165,7 +166,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.outputCollectorGenerator = outputCollectorGenerator;
     this.pipeManagerWorker = pipeManagerWorker;
-    this.sharedObject = new HashMap<>();
     // this.offloadingManager = offloadingManager;
     this.stateStore = stateStore;
     this.taskMetrics = new TaskMetrics();
@@ -181,7 +181,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.statefulTransforms = new ArrayList<>();
 
     final long restoresSt = System.currentTimeMillis();
-
 
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
@@ -205,7 +204,17 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.mergerEdgeId = mergerEdge.getId();
     this.mergerTaskId = getDstTaskIds(taskId, mergerEdge).get(0);
 
-    this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(getTaskWatermarkManager());
+    // TODO: preserve this value when migratrion
+    this.pToLocalCombiner = new PartialOutputEmitToLocalFinal();
+    this.pToRemoteEmitter = new PartialOutputEmitToRemoteMerger();
+    if (task.isTransientTask()) {
+      setPairTaskStopped(false);
+    } else {
+      setPairTaskStopped(true);
+    }
+
+    this.taskWatermarkManager = restoreTaskInputWatermarkManagerAndState()
+      .orElse(getTaskWatermarkManager());
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
@@ -269,15 +278,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     };
 
     this.serializer = serializerManager.getSerializer(mergerEdgeId);
-    this.pToLocalCombiner = new PartialOutputEmitToLocalFinal();
-    this.pToRemoteEmitter = new PartialOutputEmitToRemoteMerger();
-
-    // TODO: preserve this value when migratrion
-    if (task.isTransientTask()) {
-      setPairTaskStopped(false);
-    } else {
-      setPairTaskStopped(true);
-    }
 
 
     this.partialOutputCollector = new OutputCollector() {
@@ -311,8 +311,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     LOG.info("Preparing {}", taskId);
     pToFinalTransform.prepare(new TransformContextImpl(
       null, null, taskId, stateStore,
-        null, executorId,
-        sharedObject),
+        null, executorId),
       finalOutputCollector);
 
     prepare();
@@ -504,8 +503,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
         final Transform.Context context = new TransformContextImpl(
           irVertex, serverlessExecutorProvider, taskId, stateStore,
           null,
-          executorId,
-          sharedObject);
+          executorId);
 
         TaskExecutorUtil.prepareTransform(irVertex, context, outputCollector, taskId);
 
@@ -655,12 +653,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     } else {
       partialOutputEmitter = pToRemoteEmitter;
     }
-  }
-
-  public void clearState() {
-    // TODO
-    LOG.info("Clear state of {}", taskId);
-    statefulTransforms.forEach(transform -> transform.clearState());
   }
 
   @Override
@@ -826,11 +818,14 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     }
   }
 
-  private Optional<WatermarkTracker> restoreTaskInputWatermarkManager() {
+  private Optional<WatermarkTracker> restoreTaskInputWatermarkManagerAndState() {
    if (stateStore.containsState(taskId + "-taskWatermarkManager")) {
       try {
         final DataInputStream is = new DataInputStream(
           stateStore.getStateStream(taskId + "-taskWatermarkManager"));
+
+        final boolean pairTaskStopped = is.readBoolean();
+        setPairTaskStopped(pairTaskStopped);
 
         if (task.getTaskIncomingEdges().size() == 0) {
           return Optional.empty();
@@ -841,6 +836,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
         } else {
           throw new RuntimeException("Not supported edge > 2" + taskId);
         }
+
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -858,9 +854,33 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   @Override
   public boolean checkpoint(final boolean checkpointSource,
                             final String checkpointId) {
-    throw new RuntimeException("SMTask not support checkpoint " + taskId);
-    // stateMigration(checkpointId);
-    // return true;
+    final long st = System.currentTimeMillis();
+
+    try (final DataOutputStream os = new DataOutputStream(
+      stateStore.getOutputStream(checkpointId + "-taskWatermarkManager"))) {
+
+      os.writeBoolean(pairTaskStopped);
+
+      if (task.getTaskIncomingEdges().size() == 0) {
+        // do nothing
+      } else if (task.getTaskIncomingEdges().size() == 1) {
+        ((SingleStageWatermarkTracker) taskWatermarkManager).encode(taskId, os);
+      } else if (task.getTaskIncomingEdges().size() == 2) {
+        ((DoubleStageWatermarkTracker) taskWatermarkManager).encode(taskId, os);
+      } else {
+        throw new RuntimeException("Not supported edge > 2" + taskId);
+      }
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    statefulTransforms.forEach(transform -> transform.checkpoint(checkpointId));
+
+    final long et = System.currentTimeMillis();
+    LOG.info("Checkpoint elapsed time of {}: {}", taskId, et - st);
+
+    return true;
   }
 
   @Override

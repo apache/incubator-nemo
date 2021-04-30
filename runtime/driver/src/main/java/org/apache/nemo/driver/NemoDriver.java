@@ -115,6 +115,7 @@ public final class NemoDriver {
   private final JobScaler jobScaler;
 
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+  private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
@@ -149,8 +150,14 @@ public final class NemoDriver {
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
 
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Scaling, message -> {
+      final String decision = message.getScalingMsg().getDecision();
+
+      if (decision.equals("info")) {
+        jobScaler.broadcastInfo(message.getScalingMsg());
+        return;
+      }
+
       singleThread.execute(() -> {
-        final String decision = message.getScalingMsg().getDecision();
 
         if (evalConf.enableOffloading) {
           synchronized (this) {
@@ -163,9 +170,6 @@ public final class NemoDriver {
               jobScaler.scalingIn();
             } else if (decision.equals("pa")) {
               jobScaler.proactive(message.getScalingMsg());
-            } else if (decision.equals("info")) {
-              jobScaler.broadcastInfo(message.getScalingMsg());
-
             } else if (decision.equals("add-yarn")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
@@ -246,7 +250,13 @@ public final class NemoDriver {
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
                   LOG.info("redirection-partial stage {}", stage);
-                  runtimeMaster.redirectionToLambda(num, Collections.singletonList(stage), waiting);
+                  threadPool.execute(() -> {
+                    // 1. first, we move partial
+                    // 2. second, we activate partial
+                    jobScaler.sendTaskStopSignal(num, true,
+                      Collections.singletonList(runtimeMaster.getPairStage(stage)), true);
+                    runtimeMaster.redirectionToLambda(num, Collections.singletonList(stage), waiting);
+                  });
                 } else {
                   LOG.info("redirection-move setage {}", stage);
                   jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stage), waiting);
@@ -270,7 +280,10 @@ public final class NemoDriver {
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
                   LOG.info("redirection-done-partial stage {}", stage);
-                  runtimeMaster.redirectionDoneToLambda(num, Collections.singletonList(stage));
+                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(
+                    runtimeMaster.getPairStage(stage)));
+                  runtimeMaster.redirectionDoneToLambda(num, Collections.singletonList(
+                    stage));
                 } else {
                   LOG.info("redirection-done-move stage {}", stage);
                   jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(stage));
