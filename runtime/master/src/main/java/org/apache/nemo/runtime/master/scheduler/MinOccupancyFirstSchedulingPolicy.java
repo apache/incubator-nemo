@@ -90,7 +90,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
           "prevExecutorId: {}", task.getTaskId(), srcTaskId,
           scheduledTasks.contains(srcTaskId),
-          scheduledExecutors.get(srcTaskId).getExecutorId(),
+          scheduledTasks.contains(srcTaskId) ? scheduledExecutors.get(srcTaskId).getExecutorId() : "null",
           taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId()));
 
       return (scheduledTasks.contains(srcTaskId)
