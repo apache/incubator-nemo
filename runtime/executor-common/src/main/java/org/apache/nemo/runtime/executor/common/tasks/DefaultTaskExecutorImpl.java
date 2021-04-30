@@ -662,7 +662,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       e.printStackTrace();
       throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
         edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-        " event " + data.getClass() + ", ");
+        " event " + data.getClass() + ", " + "data " + taskHandlingEvent.getData());
     }
   }
 

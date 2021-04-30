@@ -311,6 +311,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
                   taskExecutor.getTask().getPairTaskId());
             });
           });
+
         }
         break;
       }
