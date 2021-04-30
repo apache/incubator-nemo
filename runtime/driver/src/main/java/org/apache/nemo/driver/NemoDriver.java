@@ -249,7 +249,7 @@ public final class NemoDriver {
 
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
-                  LOG.info("redirection-partial stage {}", stage);
+                  LOG.info("redirection-partial stage {}, waiting {}", stage, waiting);
                   threadPool.execute(() -> {
                     // 1. first, we move partial
                     // 2. second, we activate partial
@@ -257,9 +257,11 @@ public final class NemoDriver {
                       Collections.singletonList(runtimeMaster.getPairStage(stage)), true);
                     runtimeMaster.redirectionToLambda(num, Collections.singletonList(stage), waiting);
                   });
+                  LOG.info("redirection-partial finish stage {}, waiting {}", stage, waiting);
                 } else {
-                  LOG.info("redirection-move setage {}", stage);
+                  LOG.info("redirection-move setage {}, waiting {}", stage, waiting);
                   jobScaler.sendTaskStopSignal(num, true, Collections.singletonList(stage), waiting);
+                  LOG.info("redirection-move finish setage {}, waiting {}", stage, waiting);
                 }
               }
 

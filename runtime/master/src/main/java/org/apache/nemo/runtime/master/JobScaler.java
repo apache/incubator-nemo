@@ -1217,8 +1217,8 @@ public final class JobScaler {
 
   private final Set<String> prevMovedTask = new HashSet<>();
 
-  public synchronized void sendPrevMovedTaskStopSignal(final int num,
-                                                       final List<String> stageIds) {
+  public void sendPrevMovedTaskStopSignal(final int num,
+                                          final List<String> stageIds) {
 
     taskDispatcher.setReclaiming(true);
 
@@ -1301,10 +1301,10 @@ public final class JobScaler {
     }
   }
 
-  public synchronized void sendTaskStopSignal(final int num,
-                                              final boolean lambdaAffinity,
-                                              final List<String> stageIds,
-                                              final boolean waiting) {
+  public void sendTaskStopSignal(final int num,
+                                 final boolean lambdaAffinity,
+                                 final List<String> stageIds,
+                                 final boolean waiting) {
     taskDispatcher.setReclaiming(false);
 
     LOG.info("Send task stop signal for {} / {}", stageIds, num);
