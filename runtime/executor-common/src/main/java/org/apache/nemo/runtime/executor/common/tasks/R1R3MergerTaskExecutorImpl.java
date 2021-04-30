@@ -437,7 +437,7 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
       throw new RuntimeException("All path stopped, but merger receices partial result " + taskId);
     }
 
-    LOG.info("Receive set partial/final {} in {}", finalResult, taskId);
+    LOG.info("Receive set partial/final from {} to {} in {}", receiveFinal, finalResult, taskId);
 
     receiveFinal = finalResult;
     if (receiveFinal) {
@@ -959,8 +959,12 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
             taskMetrics.setInputWatermark(watermark.getTimestamp());
+            if (getNumKeys() > 0) {
+              mergerTransform.onWatermark(watermark);
+            } else {
+              mergerTransform.onWatermark(watermark);
+            }
             // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-            mergerTransform.onWatermark(watermark);
           });
       } else {
         // LOG.info("Emit SM data to merger in {} {}", taskId);
@@ -993,8 +997,12 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
             taskMetrics.setInputWatermark(watermark.getTimestamp());
+            if (getNumKeys() > 0) {
+              mergerTransform.onWatermark(watermark);
+            } else {
+              mergerTransform.onWatermark(watermark);
+            }
             // LOG.info("Emit SM watermark to merger in {} {}", taskId, watermark.getTimestamp());
-            mergerTransform.onWatermark(watermark);
           });
       } else {
         // data
