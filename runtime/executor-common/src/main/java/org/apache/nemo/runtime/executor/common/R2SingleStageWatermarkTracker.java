@@ -140,7 +140,7 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
 
       final Long nextMinWatermark = watermarks[nextMinWatermarkIndex];
 
-      if (nextMinWatermark >= prevEmitWatermark) {
+      if (nextMinWatermark > prevEmitWatermark) {
         // Watermark timestamp progress!
         // Emit the min watermark
         minWatermarkIndex = nextMinWatermarkIndex;
@@ -285,9 +285,9 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("watermarks: ");
-    printWatermark(watermarks);
+    sb.append(printWatermark(watermarks));
     sb.append(", stopped: ");
-    buildArray(stoppedWatermarks);
+    sb.append(buildArray(stoppedWatermarks));
     sb.append(", prevEmitWatermark: ");
     sb.append(new Instant(prevEmitWatermark));
     sb.append(", minWatermarkIndex: ");

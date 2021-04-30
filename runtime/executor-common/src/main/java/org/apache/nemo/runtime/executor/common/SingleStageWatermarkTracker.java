@@ -208,7 +208,7 @@ public final class SingleStageWatermarkTracker implements WatermarkTracker {
 
       LOG.info("Encoding single stage watermark tracker in {} watermarks: {} ," +
         "minWatermarkIndex: {}," +
-        "prevEmitWatermark: {}, ", taskId, watermarks, minWatermarkIndex,
+        "prevEmitWatermark: {}, ", taskId, printWatermark(watermarks), minWatermarkIndex,
         prevEmitWatermark);
 
     } catch (final Exception e) {

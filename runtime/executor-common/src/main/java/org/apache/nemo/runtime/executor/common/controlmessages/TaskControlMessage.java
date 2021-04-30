@@ -171,6 +171,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
 
   public boolean canShortcut() {
     switch (type) {
+      case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM:
       case TASK_STOP_SIGNAL_BY_MASTER:
       case PIPE_INIT:
       case R2_TASK_OUTPUT_START_BY_PAIR:

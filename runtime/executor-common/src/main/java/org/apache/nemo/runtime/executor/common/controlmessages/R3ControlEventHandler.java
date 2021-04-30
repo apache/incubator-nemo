@@ -359,6 +359,8 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         final TaskExecutor taskExecutor =
           taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
+        LOG.info("Receive R3 ack task data done from m to p in {}", control.getTaskId());
+
         if (taskOutputStopCounter.get(control.getTaskId()).decrementAndGet() == 0) {
           taskOutputStopCounter.remove(control.getTaskId());
           // start input and output pipe of pair task !!

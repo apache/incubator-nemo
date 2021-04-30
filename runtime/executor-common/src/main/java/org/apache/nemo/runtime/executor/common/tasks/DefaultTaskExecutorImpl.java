@@ -122,8 +122,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
 
-  private final WatermarkHandler watermarkHandler;
-
   /**
    * Constructor.
    *
@@ -179,9 +177,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       .equals(CommunicationPatternProperty.Value.OneToOne) ||
       task.getTaskIncomingEdges().get(0).getDataCommunicationPattern()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne));
-
-    this.watermarkHandler = singleOneToOneInput ?
-      new SingleWatermarkHandler() : new MultiWatermarkHandler();
 
     LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
@@ -676,7 +671,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       // We've consumed all the data from this data fetcher.
     } else if (event instanceof WatermarkWithIndex) {
       // Watermark
-      watermarkHandler.handleWatermark(dataFetcher, event);
+      final WatermarkWithIndex d = (WatermarkWithIndex) event;
+      taskWatermarkManager.trackAndEmitWatermarks(
+        taskId,
+        dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
+        .ifPresent(watermark -> {
+          taskMetrics.setInputWatermark(watermark);
+          processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
+        });
     } else if (event instanceof Watermark) {
       // This MUST BE generated from input source
       if (!isSource()) {
@@ -711,35 +713,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
 
   ////////////////////////////////////////////// Transform-specific helper methods
-  interface WatermarkHandler {
-    void handleWatermark(final DataFetcher dataFetcher, Object event);
-  }
-
-  final class SingleWatermarkHandler implements WatermarkHandler {
-
-    @Override
-    public void handleWatermark(DataFetcher dataFetcher, Object event) {
-      final WatermarkWithIndex d = (WatermarkWithIndex) event;
-      taskMetrics.setInputWatermark(d.getWatermark().getTimestamp());
-      processWatermark(dataFetcher.getOutputCollector(), d.getWatermark());
-    }
-  }
-
-  final class MultiWatermarkHandler implements WatermarkHandler {
-
-    @Override
-    public void handleWatermark(DataFetcher dataFetcher, Object event) {
-      final WatermarkWithIndex d = (WatermarkWithIndex) event;
-      taskWatermarkManager.trackAndEmitWatermarks(
-        taskId,
-        dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
-        .ifPresent(watermark -> {
-          taskMetrics.setInputWatermark(watermark);
-          processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
-        });
-    }
-  }
-
 
   public void setIRVertexPutOnHold(final IRVertex irVertex) {
   }

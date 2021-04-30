@@ -154,9 +154,10 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       // start vm path
       // stop lambda path path
       LOG.info("Before Stop lambda path watermark index in task {}/{}/{}, vm: {}, lambda: {}, vm watermark: {}, " +
-          "lambda watermark {}"
+          "lambda watermark {}, prevEmitWatermark: {}"
         , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
-        new Instant(vmWatermark), new Instant(lambdaWatermark));
+        new Instant(vmWatermark), new Instant(lambdaWatermark),
+        new Instant(prevWatermark));
 
       // Stop lambda path
       if (lambdaWatermarkTracker.isStopped(index)) {
@@ -187,16 +188,19 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
       LOG.info("After Stop lambda path in task " + taskId + "/" + taskIndex + "/" + edgeId
         + "VM tracker: {}, Lambda tracker: {}, vm watermark: {}, " +
-        "lambda watermark: {}", vmWatermarkTracker, lambdaWatermarkTracker, new Instant(vmWatermark),
-        new Instant(lambdaWatermark));
+        "lambda watermark: {}, prevEmitWatermark: {}",
+        vmWatermarkTracker, lambdaWatermarkTracker, new Instant(vmWatermark),
+        new Instant(lambdaWatermark),
+        new Instant(prevWatermark));
       return lambdaPathAllStopped;
 
     } else {
       LOG.info("Before Stop vm path watermark index in task {}/{}/{}, vm: {}, lambda: {}, vm Watermark: {}, " +
-          "lambda Watermark: {}",
+          "lambda Watermark: {}, prevEmitWatermark: {}",
         taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
         new Instant(vmWatermark),
-        new Instant(lambdaWatermark));
+        new Instant(lambdaWatermark),
+        new Instant(prevWatermark));
 
       // Stop vm path path
       if (vmWatermarkTracker.isStopped(index)) {
@@ -229,9 +233,11 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       setWatermarkTrackerAndPrevWatermark();
 
       LOG.info("After Stop vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
-        + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}", vmWatermarkTracker, lambdaWatermarkTracker,
+        + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}, prevEmitWatermark: {}",
+        vmWatermarkTracker, lambdaWatermarkTracker,
         new Instant(vmWatermark),
-        new Instant(lambdaWatermark));
+        new Instant(lambdaWatermark),
+        new Instant(prevWatermark));
       return vmPathAllStopped;
     }
   }
@@ -246,10 +252,12 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       if (edgeId.equals(lambdaPathEdgeId)) {
         // start lambda path
         // stop vm path path
-        LOG.info("Start lambda path watermark {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}",
-          watermark,
+        LOG.info("Start lambda path watermark {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}," +
+            "prevEmitWatermark: {}",
+          new Instant(watermark),
           taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
-          new Instant(vmWatermark), new Instant(lambdaWatermark));
+          new Instant(vmWatermark), new Instant(lambdaWatermark),
+          new Instant(prevWatermark));
         lambdaPathAllStopped = false;
 
         if (lambdaWatermarkTracker.isStopped(index)) {
@@ -265,10 +273,12 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
       } else {
         // start vm path
         // stop lambda path path
-        LOG.info("Start vm path watermark  {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}"
+        LOG.info("Start vm path watermark  {} index in task {}/{}/{}, vm: {}, lambda: {}, vmw: {}, lw: {}, " +
+            "prevEmitWatermark: {}"
           ,watermark
           , taskId, taskIndex, edgeId, vmWatermarkTracker, lambdaWatermarkTracker,
-          new Instant(vmWatermark), new Instant(lambdaWatermark));
+          new Instant(vmWatermark), new Instant(lambdaWatermark),
+          new Instant(prevWatermark));
         vmPathAllStopped = false;
 
         if (vmWatermarkTracker.isStopped(index)) {
@@ -283,8 +293,9 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
         }
 
         LOG.info("After Start vm path in task " + taskId + "/" + taskIndex + "/" + edgeId
-          + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}", vmWatermarkTracker,
-          lambdaWatermarkTracker, new Instant(vmWatermark), new Instant(lambdaWatermark));
+          + "VM tracker: {}, Lambda tracker: {}, vmw: {}, lw: {}, prevEmitWatermark: {}", vmWatermarkTracker,
+          lambdaWatermarkTracker, new Instant(vmWatermark), new Instant(lambdaWatermark),
+          new Instant(prevWatermark));
       }
     } catch (final Exception e) {
       e.printStackTrace();

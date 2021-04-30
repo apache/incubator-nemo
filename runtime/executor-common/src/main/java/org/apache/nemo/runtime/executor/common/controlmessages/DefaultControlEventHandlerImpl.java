@@ -288,11 +288,13 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         break;
       }
       case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
-        LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
-          taskOutputDoneAckCounter);
 
         final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
           .decrementAndGet();
+
+        LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+          cnt);
+
 
         // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
