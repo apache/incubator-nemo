@@ -1393,14 +1393,11 @@ public final class JobScaler {
   }
 
   public final class ScaleDecisionMessageReceiver implements MessageListener<ControlMessage.Message> {
+    final Map<String, Long> sourceEventMap = new ConcurrentHashMap<>();
+
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-        case SourceEvent: {
-          backpressure.addSourceEvent(message.getSetNum());
-          scaler.addSourceEvent(message.getSetNum());
-          break;
-        }
         case ExecutorMetric: {
           final ControlMessage.ExecutorMetricMsg msg = message.getExecutorMetricMsg();
           executorMetricMap.setInfo(msg.getExecutorId(),
