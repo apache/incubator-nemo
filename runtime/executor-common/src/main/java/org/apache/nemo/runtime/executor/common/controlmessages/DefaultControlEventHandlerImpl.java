@@ -251,13 +251,13 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       }
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
 
-        final int cnt = taskInputdoneAckCounter.get(control.getTaskId()).decrementAndGet();
+        final int inCnt = taskInputdoneAckCounter.get(control.getTaskId()).decrementAndGet();
 
         if (evalConf.controlLogging) {
-          LOG.info("Receive output stop ack from upstream of {}: cnt {}", control.getTaskId(), cnt);
+          LOG.info("Receive output stop ack from upstream of {}: cnt {}", control.getTaskId(), inCnt);
         }
 
-        if (cnt == 0) {
+        if (inCnt == 0) {
           final TaskExecutor taskExecutor =
             taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
@@ -270,7 +270,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             taskOutputDoneAckCounter.remove(control.getTaskId());
             stopAndCheckpointTask(control.getTaskId());
           } else {
-            taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
+            taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(outCnt));
             // stop output pipe
             TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
               TASK_OUTPUT_DONE_FROM_UPSTREAM);
