@@ -225,6 +225,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     LOG.info("End of waiting for deactivation of {} after partial warmup", executorId);
   }
 
+  @Override
+  public synchronized void onTaskExecutionStarted(final String taksId) {
+    runningTasks.add(runningComplyingTasks.get(taksId));
+  }
 
   @Override
   public synchronized void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {

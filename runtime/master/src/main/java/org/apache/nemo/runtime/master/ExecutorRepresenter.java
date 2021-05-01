@@ -52,6 +52,8 @@ public interface ExecutorRepresenter {
    */
   void onTaskExecutionFailed(final String taskId);
 
+  void onTaskExecutionStarted(final String taskId);
+
   /**
    * @return how many Tasks can this executor simultaneously run
    */

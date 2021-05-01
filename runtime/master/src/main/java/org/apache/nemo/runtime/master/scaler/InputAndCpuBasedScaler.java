@@ -93,8 +93,12 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         observation += 1;
 
-
+        // Skip in initial
         if (observation < 10) {
+          return;
+        }
+
+        if (System.currentTimeMillis() - sourceHandlingStartTime <= 30) {
           return;
         }
 
@@ -152,10 +156,16 @@ public final class InputAndCpuBasedScaler implements Scaler {
     }, 80, 1, TimeUnit.SECONDS);
   }
 
+  private long sourceHandlingStartTime = 0;
+
   @Override
   public synchronized void addSourceEvent(final long sourceEvent) {
     avgSrcProcessingRate.addValue(sourceEvent - currSourceEvent);
     currSourceEvent = sourceEvent;
+
+    if (sourceHandlingStartTime == 0) {
+      sourceHandlingStartTime = System.currentTimeMillis();
+    }
   }
 
   @Override
