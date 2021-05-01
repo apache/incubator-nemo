@@ -484,6 +484,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   @Override
   public synchronized void onTaskExecutionStop(final String taskId) {
+    LOG.info("Intro: onTaskExecutionStop: {}", taskId);
     final Task completedTask = removeFromRunningTasks(taskId);
     if (!tasksToBeStopped.remove(taskId)) {
       throw new RuntimeException("Task " + taskId + " is not stopped, but got stop message");
@@ -493,6 +494,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       // this is lambda executor
       checkAndDeactivate();
     }
+    LOG.info("Outro: onTaskExecutionStop: {}", taskId);
   }
 
   /**

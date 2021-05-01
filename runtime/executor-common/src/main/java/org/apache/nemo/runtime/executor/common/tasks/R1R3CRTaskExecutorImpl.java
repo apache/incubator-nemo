@@ -655,6 +655,12 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
       }
       watermarkRouter = createWatermarkRouter();
     }
+
+    LOG.info("Set rerouting from {} to {} in {}, {}: {} for pair edge {}," +
+        "watermarkRouter: {}, dataRouter: {}:", originTask, pairTaskId, taskId,
+      dataRerouting, watermarkRerouting, pairEdgeId,
+      watermarkRouter,
+      dataRouter);
   }
 
   private DataRouter createWatermarkRouter() {

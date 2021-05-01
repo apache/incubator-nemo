@@ -1278,6 +1278,7 @@ public final class RuntimeMaster {
             final ExecutorRepresenter executorRepresenter =
               executorRegistry.getExecutorRepresentor(stopTaskDone.getExecutorId());
             executorRepresenter.onTaskExecutionStop(stopTaskDone.getTaskId());
+            LOG.info("On task stop done message " + stopTaskDone.getTaskId() + ", " + stopTaskDone.getExecutorId());
             final Task task = taskScheduledMap.removeTask(stopTaskDone.getTaskId());
             LOG.info("Change task state to READY " + stopTaskDone.getTaskId());
             planStateManager.onTaskStateChanged(stopTaskDone.getTaskId(), TaskState.State.READY);
