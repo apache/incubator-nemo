@@ -6,6 +6,8 @@ import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Map;
@@ -15,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public final class SourceEventAggregator {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceEventAggregator.class.getName());
 
   private final Backpressure backpressure;
   private final Scaler scaler;
@@ -35,11 +38,14 @@ public final class SourceEventAggregator {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
 
-      final long count = sourceEventMap.values().stream().reduce((x, y) -> x + y).orElse(0L);
+      synchronized (sourceEventMap) {
+        final long count = sourceEventMap.values().stream().reduce((x, y) -> x + y).orElse(0L);
 
-      if (count > 0) {
-        backpressure.addSourceEvent(count);
-        scaler.addSourceEvent(count);
+        if (count > 0) {
+          LOG.info("Set source count {} / {}", count, sourceEventMap);
+          backpressure.addSourceEvent(count);
+          scaler.addSourceEvent(count);
+        }
       }
 
     }, 1, 1, TimeUnit.SECONDS);
@@ -52,7 +58,9 @@ public final class SourceEventAggregator {
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
         case SourceEvent: {
-          sourceEventMap.put(message.getRegisteredExecutor(), message.getSetNum());
+          synchronized (sourceEventMap) {
+            sourceEventMap.put(message.getRegisteredExecutor(), message.getSetNum());
+          }
           break;
         }
         default: {

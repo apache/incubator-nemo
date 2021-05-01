@@ -332,7 +332,7 @@ public final class Executor {
           .reduce((x, y) -> x + y)
           .orElse(0L);
 
-        LOG.info("Source event {}", executorMetrics.sourceReceiveCnt);
+        LOG.info("Source event {}", sourceEvent);
 
         persistentConnectionToMasterMap
           .getMessageSender(SOURCE_EVENT_HANDLER_ID).send(
@@ -341,7 +341,7 @@ public final class Executor {
             .setListenerId(SOURCE_EVENT_HANDLER_ID.ordinal())
             .setType(ControlMessage.MessageType.SourceEvent)
             .setRegisteredExecutor(executorId)
-            .setSetNum(executorMetrics.sourceReceiveCnt.get())
+            .setSetNum(sourceEvent)
             .build());
       }, 1, 1, TimeUnit.SECONDS);
 
