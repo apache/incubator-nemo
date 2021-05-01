@@ -364,6 +364,8 @@ final class PipelineTranslator {
     ((OperatorVertex) vertex).setPartialCombine(partialCombine);
     ((OperatorVertex) vertex).setFinalCombine(finalCombine);
     ((OperatorVertex) vertex).setPartialToFinalEdge(edge);
+    ((OperatorVertex) vertex).setIsGlobalWindow(mainInput.getWindowingStrategy()
+    .getWindowFn() instanceof GlobalWindows);
 
     vertex.isGBK = true;
     ctx.addVertex(vertex);

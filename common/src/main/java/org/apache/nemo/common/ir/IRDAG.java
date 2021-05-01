@@ -452,7 +452,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     modifiedDAG.topologicalDo(vertex -> {
       if (vertex.isGBK) {
-         gbks.add(vertex);
+        if (!((OperatorVertex)vertex).getIsGlobalWindow()) {
+          gbks.add(vertex);
+        } else {
+          LOG.info("Skipping partial agg for global window");
+        }
       }
     });
 
@@ -467,6 +471,17 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             builder.connectVertices(incomingEdge);
           }
         });
+      } else {
+        if (((OperatorVertex)vertex).getIsGlobalWindow()) {
+          LOG.info("Add global window vertex in R3 {}", vertex.getId());
+          builder.addVertex(vertex);
+          modifiedDAG.getIncomingEdgesOf(vertex).forEach(incomingEdge -> {
+            if (!incomingEdge.getSrc().isGBK) {
+              // Add edge if src is not stateful
+              builder.connectVertices(incomingEdge);
+            }
+          });
+        }
       }
     });
 

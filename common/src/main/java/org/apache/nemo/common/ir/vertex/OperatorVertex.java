@@ -105,6 +105,7 @@ public class OperatorVertex extends IRVertex {
     this.originEncoderFactory = that.originEncoderFactory;
     this.isGBK = that.isGBK;
     this.isPushback = that.isPushback;
+    this.isGlobalWindow = that.isGlobalWindow;
   }
 
   @Override
@@ -112,6 +113,15 @@ public class OperatorVertex extends IRVertex {
     return new OperatorVertex(this);
   }
 
+  private boolean isGlobalWindow = false;
+
+  public void setIsGlobalWindow(final boolean b) {
+    this.isGlobalWindow = b;
+  }
+
+  public boolean getIsGlobalWindow() {
+    return this.isGlobalWindow;
+  }
 
   public void setTransform(final Transform tf) {
     this.transform = tf;
