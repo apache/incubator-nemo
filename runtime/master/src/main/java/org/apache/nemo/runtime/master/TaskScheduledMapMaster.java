@@ -19,8 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -90,13 +92,26 @@ public final class TaskScheduledMapMaster {
 
   private final Map<String, Boolean> deactivateTaskLambdaAffinityMap = new HashMap<>();
 
-  public synchronized void deactivateAndStopTask(final String taskId,
+  public synchronized Future<String> deactivateAndStopTask(final String taskId,
                                                  final boolean lambdaAffinity) {
     final String executorId = taskExecutorIdMap.get(taskId);
     LOG.info("Deactivate task " + taskId + " to executor " + executorId);
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
     deactivateTaskLambdaAffinityMap.put(taskId, lambdaAffinity);
     representer.deactivateLambdaTask(taskId);
+    return CompletableFuture.supplyAsync(() -> {
+      synchronized (this) {
+        while (deactivateTaskLambdaAffinityMap.containsKey(taskId) ||
+          !isTaskScheduled(taskId)) {
+          try {
+            wait(20);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+      return taskId;
+    });
   }
 
   public synchronized void stopDeactivatedTask(final String taskId) {
@@ -109,7 +124,7 @@ public final class TaskScheduledMapMaster {
     stopTask(taskId, lambdaAffinity);
   }
 
-  public synchronized void stopTask(final String taskId, final boolean lambdaAffinity) {
+  public synchronized Future<String> stopTask(final String taskId, final boolean lambdaAffinity) {
 
     final String executorId = taskExecutorIdMap.get(taskId);
 
@@ -135,6 +150,19 @@ public final class TaskScheduledMapMaster {
       final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
       stageTasks.removeIf(task -> task.equals(taskId));
     }
+
+    return CompletableFuture.supplyAsync(() -> {
+      synchronized (this) {
+        while (!isTaskScheduled(taskId)) {
+          try {
+            wait(20);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+      return taskId;
+    });
   }
 
   public boolean isTaskScheduled(final String taskId) {

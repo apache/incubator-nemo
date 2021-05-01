@@ -9,7 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class InputAndCpuBasedScaler implements Scaler {
@@ -36,6 +39,10 @@ public final class InputAndCpuBasedScaler implements Scaler {
   private final ScaleInOutManager scaleInOutManager;
   private final ExecutorRegistry executorRegistry;
 
+  private final AtomicBoolean prevFutureCompleted = new AtomicBoolean(true);
+  private long prevFutureCompleteTime = System.currentTimeMillis();
+
+  private final ExecutorService prevFutureChecker = Executors.newSingleThreadExecutor();
   @Inject
   private InputAndCpuBasedScaler(final ExecutorMetricMap executorMetricMap,
                                  final ScaleInOutManager scaleInOutManager,
@@ -73,15 +80,27 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         final double avgExpectedCpuVal = avgExpectedCpu.getMean();
 
+        LOG.info("Scaler avg cpu: {}, avg expected cpu: {}, target cpu: {}, " +
+            "avg input: {}, avg src input: {}, numExecutor: {}",
+          avgCpu,
+          avgExpectedCpuVal,
+          policyConf.scalerTargetCpu,
+          avgInput,
+          avgProcess,
+          info.numExecutor);
+
+        if (!prevFutureCompleted.get()) {
+          LOG.info("Prev future is not finished ... skip current decision");
+          return;
+        }
+
+        if (System.currentTimeMillis() - prevFutureCompleteTime < policyConf.scalerSlackTime) {
+          LOG.info("Elapsed time is less than slack time... skip current decision {}/ {}",
+            System.currentTimeMillis() - prevFutureCompleteTime, policyConf.scalerSlackTime);
+          return;
+        }
+
         synchronized (this) {
-          LOG.info("Scaler avg cpu: {}, avg expected cpu: {}, target cpu: {}, " +
-              "avg input: {}, avg src input: {}, numExecutor: {}",
-            avgCpu,
-            avgExpectedCpuVal,
-            policyConf.scalerTargetCpu,
-            avgInput,
-            avgProcess,
-            info.numExecutor);
 
           if (avgExpectedCpuVal > policyConf.scalerUpperCpu) {
             // Scale out !!
@@ -92,10 +111,28 @@ public final class InputAndCpuBasedScaler implements Scaler {
             // move ratioToScaleout % of computations to Lambda
             LOG.info("Move {} percent of tasks in all vm executors", ratioToScaleout);
 
-            scaleInOutManager.sendMigrationAllStages(
-              ratioToScaleout,
-              executorRegistry.getVMComputeExecutors(),
-              true);
+            prevFutureCompleted.set(false);
+
+            prevFutureChecker.execute(() -> {
+              final long st = System.currentTimeMillis();
+              LOG.info("Waiting for scale out decision");
+              scaleInOutManager.sendMigrationAllStages(
+                ratioToScaleout,
+                executorRegistry.getVMComputeExecutors(),
+                true).forEach(future -> {
+                try {
+                  future.get();
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                } catch (ExecutionException e) {
+                  e.printStackTrace();
+                }
+              });
+              final long et = System.currentTimeMillis();
+              prevFutureCompleted.set(true);
+              prevFutureCompleteTime = et;
+              LOG.info("End of waiting for scale out decision {}", et - st);
+            });
           }
         }
       } catch (final Exception e) {

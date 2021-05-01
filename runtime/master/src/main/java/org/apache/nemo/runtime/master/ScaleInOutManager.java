@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public final class ScaleInOutManager {
@@ -19,6 +21,8 @@ public final class ScaleInOutManager {
   private final TaskDispatcher taskDispatcher;
   private final ExecutorRegistry executorRegistry;
   private final PairStageTaskManager pairStageTaskManager;
+
+
 
   @Inject
   private ScaleInOutManager(final TaskDispatcher taskDispatcher,
@@ -31,14 +35,16 @@ public final class ScaleInOutManager {
     this.pairStageTaskManager = pairStageTaskManager;
   }
 
-  public synchronized void sendMigration(final double ratio,
-                                         final Collection<ExecutorRepresenter> executors,
-                                         final Collection<String> stages,
-                                         final boolean lambdaAffinity) {
+  public synchronized List<Future<String>> sendMigration(final double ratio,
+                                                 final Collection<ExecutorRepresenter> executors,
+                                                 final Collection<String> stages,
+                                                 final boolean lambdaAffinity) {
 
     // Set filtered out executors to task dispatcher
     taskDispatcher.setFilteredOutExecutors(executors.stream()
       .map(e -> e.getExecutorId()).collect(Collectors.toSet()));
+
+    final List<Future<String>> futures = new LinkedList<>();
 
     executors.stream().forEach(executor -> {
       // find list of tasks that the lambda executor has
@@ -78,10 +84,10 @@ public final class ScaleInOutManager {
               && executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
               // Deactivation task if possible
               LOG.info("Deactivate lambda task {} in {}", task.getTaskId(), executor.getExecutorId());
-              taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false);
+              futures.add(taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false));
             } else {
               LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
-              taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity);
+              futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
             }
 
             stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
@@ -89,6 +95,8 @@ public final class ScaleInOutManager {
           }
         });
     });
+
+    return futures;
   }
 
   private void checkTaskMoveValidation(final Task task, final ExecutorRepresenter ep) {
@@ -97,9 +105,9 @@ public final class ScaleInOutManager {
     }
   }
 
-  public synchronized void sendMigrationAllStages(final double ratio,
-                                                  final Collection<ExecutorRepresenter> executors,
-                                                  final boolean lambdaAffinity) {
+  public synchronized List<Future<String>> sendMigrationAllStages(final double ratio,
+                                                            final Collection<ExecutorRepresenter> executors,
+                                                            final boolean lambdaAffinity) {
     // For each executor, move ratio * num tasks of each stage;
     final Set<String> stages =  executors.stream()
       .map(vmExecutor -> vmExecutor.getRunningTasks())
@@ -108,6 +116,6 @@ public final class ScaleInOutManager {
         .map(t -> t.getStageId()))
       .collect(Collectors.toSet());
 
-    sendMigration(ratio, executors, stages, lambdaAffinity);
+    return sendMigration(ratio, executors, stages, lambdaAffinity);
   }
 }

@@ -50,9 +50,14 @@ public final class PolicyConf {
   @NamedParameter(short_name = "scaler_trigger_window", default_value = "3")
   public static final class ScalerTriggerWindow implements Name<Integer> {}
 
+  // sec
+  @NamedParameter(short_name = "scaler_slack_time", default_value = "5")
+  public static final class ScalerSlackTime implements Name<Integer> {}
+
   public final double scalerUpperCpu;
   public final double scalerTargetCpu;
   public final int scalerTriggerWindow;
+  public final int scalerSlackTime;
 
 
   @Inject
@@ -64,7 +69,8 @@ public final class PolicyConf {
                      @Parameter(BPMinEvent.class) final long bpMinEvent,
                      @Parameter(ScalerUpperCPU.class) final double scalerUpperCpu,
                      @Parameter(ScalerTargetScaleoutCPU.class) final double scalerTargetCpu,
-                     @Parameter(ScalerTriggerWindow.class) final int scalerTriggerWindow) throws IOException {
+                     @Parameter(ScalerTriggerWindow.class) final int scalerTriggerWindow,
+                     @Parameter(ScalerSlackTime.class) final int scalerSlackTime) throws IOException {
     this.bpQueueUpperBound = bpQueueSize;
     this.bpQueueLowerBound = bpQueueLowerBound;
     this.bpIncreaseRatio = bpIncreaseRatio;
@@ -75,6 +81,7 @@ public final class PolicyConf {
     this.scalerUpperCpu = scalerUpperCpu;
     this.scalerTargetCpu = scalerTargetCpu;
     this.scalerTriggerWindow = scalerTriggerWindow;
+    this.scalerSlackTime = scalerSlackTime;
   }
 
   public Configuration getConfiguration() {
@@ -89,6 +96,7 @@ public final class PolicyConf {
     jcb.bindNamedParameter(ScalerUpperCPU.class, Double.toString(scalerUpperCpu));
     jcb.bindNamedParameter(ScalerTargetScaleoutCPU.class, Double.toString(scalerTargetCpu));
     jcb.bindNamedParameter(ScalerTriggerWindow.class, Integer.toString(scalerTriggerWindow));
+    jcb.bindNamedParameter(ScalerSlackTime.class, Integer.toString(scalerSlackTime));
     return jcb.build();
   }
 
@@ -104,6 +112,7 @@ public final class PolicyConf {
     cl.registerShortNameOfClass(ScalerUpperCPU.class);
     cl.registerShortNameOfClass(ScalerTargetScaleoutCPU.class);
     cl.registerShortNameOfClass(ScalerTriggerWindow.class);
+    cl.registerShortNameOfClass(ScalerSlackTime.class);
   }
 
   @Override
@@ -120,6 +129,7 @@ public final class PolicyConf {
     sb.append("scalerUpperCPU: "); sb.append(scalerUpperCpu); sb.append("\n");
     sb.append("scalerTargerCPU: "); sb.append(scalerTargetCpu); sb.append("\n");
     sb.append("scalerTriggerWindow: "); sb.append(scalerTriggerWindow); sb.append("\n");
+    sb.append("scalerSlackTime: "); sb.append(scalerSlackTime); sb.append("\n");
     sb.append("-----------PolicyConf end----------\n");
 
     return sb.toString();
