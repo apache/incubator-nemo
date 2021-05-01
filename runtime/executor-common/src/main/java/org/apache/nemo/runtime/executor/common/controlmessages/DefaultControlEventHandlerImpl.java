@@ -76,6 +76,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
     switch (control.type) {
       // For optimization of R3 state merger
+      case R3_TASK_SET_PARTIAL_FROM_P_TO_M:
+      case R3_ACK_TASK_SET_PARTIAL_FROM_M_TO_P:
       case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P:
       case R3_TASK_DATA_DONE_FROM_P_TO_M:
       case R3_ACK_DATA_STOP_FROM_CR_TO_P:
@@ -214,6 +216,10 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             // there is no pending event
             pipeManagerWorker.setTaskStop(taskExecutor.getId());
           }
+        } else if (!taskExecutor.getTask().isParitalCombine() &&
+          taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+          LOG.info("Skip task stop of {}, assuming upstream task is stopped {}",
+            taskExecutor.getId(), taskExecutor.getTask().getUpstreamTaskSet());
         } else {
           // Stop input pipe
           final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
@@ -255,7 +261,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         final int inCnt = taskInputdoneAckCounter.get(control.getTaskId()).decrementAndGet();
 
         if (evalConf.controlLogging) {
-          LOG.info("Receive output stop ack from upstream of {}: cnt {}", control.getTaskId(), inCnt);
+          LOG.info("Receive output stop ack from upstream of {}: {}, cnt {}", control.getTaskId(),
+           pipeIndexMapWorker.getKey(control.remoteInputPipeIndex),
+            inCnt);
         }
 
         if (inCnt == 0) {
@@ -289,16 +297,28 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
         final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-        if (taskExecutor.getTask().isMerger() ||
+        final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
+          key.getMiddle(),
+          key.getLeft());
+
+        if (!taskExecutor.getTask().isCrTask() &&
           taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
           // Check if this task is o2o connection with the parent
           // If it is, we stop the upstream and this task together
-          final int outCnt = TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
-          taskOutputDoneAckCounter.put(taskExecutor.getId(), new AtomicInteger(outCnt));
 
-          // stop output pipe
-          TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
-            TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          final int outCnt = TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
+          if (outCnt == 0) {
+            // sink task, we just remove this task
+            // send ack to the upstream
+            sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
+            taskOutputDoneAckCounter.remove(control.getTaskId());
+            stopAndCheckpointTask(control.getTaskId());
+          } else {
+            taskOutputDoneAckCounter.put(taskExecutor.getId(), new AtomicInteger(outCnt));
+            // stop output pipe
+            TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
+              TASK_OUTPUT_DONE_FROM_UPSTREAM);
+          }
         } else {
           // Otherwise, just send ack
           pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
@@ -314,9 +334,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
                 null);
             });
 
-          final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
-            key.getMiddle(),
-            key.getLeft());
+
 
           // stop input pipe
           if (evalConf.controlLogging) {
@@ -330,32 +348,38 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       }
       case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
 
-        final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
-          .decrementAndGet();
+        try {
+          final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
+            .decrementAndGet();
 
-        if (evalConf.controlLogging) {
-          LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
-            cnt);
-        }
-
-        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
-
-        // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
-
-        if (cnt == 0) {
-          // (5): start pair task output pipe
           if (evalConf.controlLogging) {
-            LOG.info("Receive all task output done ack {}", control.getTaskId());
+            LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+              cnt);
           }
 
-          if (taskExecutor.getTask().isMerger() ||
-            taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
-            // send ack to the upstream
-            sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
-          }
+          final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-          taskOutputDoneAckCounter.remove(control.getTaskId());
-          stopAndCheckpointTask(control.getTaskId());
+          // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
+
+          if (cnt == 0) {
+            // (5): start pair task output pipe
+            if (evalConf.controlLogging) {
+              LOG.info("Receive all task output done ack {}", control.getTaskId());
+            }
+
+            if (!taskExecutor.getTask().isParitalCombine() &&
+              taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+              // send ack to the upstream
+              sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
+            }
+
+            taskOutputDoneAckCounter.remove(control.getTaskId());
+            stopAndCheckpointTask(control.getTaskId());
+          }
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException("Exception for handling task output done ack from downstream in " +
+            control.getTaskId() + ", " + pipeIndexMapWorker.getKey(control.remoteInputPipeIndex));
         }
         break;
       }
@@ -421,7 +445,6 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
       pipeManagerWorker.stopOutputPipeForRouting(index, task.getTaskId());
     });
-
   }
 
   private void stopAndCheckpointTask(final String taskId) {

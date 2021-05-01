@@ -124,36 +124,57 @@ public final class TaskScheduledMapMaster {
     stopTask(taskId, lambdaAffinity);
   }
 
-  public synchronized Future<String> stopTask(final String taskId, final boolean lambdaAffinity) {
+  private void getDescendant(final String taskId, final List<String> l) {
+    taskIdTaskMap.get(taskId).getDownstreamTasks().forEach((edge, downtasks) -> {
+      downtasks.forEach(downstream -> {
+        if (taskIdTaskMap.get(downstream).getUpstreamTaskSet().size() == 1) {
+          if (!l.contains(downstream)) {
+            l.add(downstream);
+            getDescendant(downstream, l);
+          }
+        }
+      });
+    });
+  }
 
-    final String executorId = taskExecutorIdMap.get(taskId);
+  public synchronized Future<String> stopTask(final String parent, final boolean lambdaAffinity) {
 
-    LOG.info("Send task " + taskId + " stop to executor " + executorId);
+    final String executorId = taskExecutorIdMap.get(parent);
 
-    prevTaskExecutorIdMap.put(taskId, executorId);
+    final List<String> descendants = new LinkedList<>();
+    descendants.add(parent);
+    getDescendant(parent, descendants);
 
-    taskToBeStopped.add(taskId);
+    LOG.info("O2O descendant of {}: {}", parent, descendants);
 
-    final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
-    final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
+    for (int i = descendants.size() - 1; i >= 0; i--) {
+      final String taskId = descendants.get(i);
+      LOG.info("Send task " + taskId + " stop to executor " + executorId  + ", parent " + parent);
 
-    if (lambdaAffinity) {
-      taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
-    } else {
-      taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
-    }
+      prevTaskExecutorIdMap.put(taskId, executorId);
+      taskToBeStopped.add(taskId);
 
-    representer.stopTask(taskId);
+      final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
+      final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
 
-    synchronized (stageTaskMap) {
-      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-      final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
-      stageTasks.removeIf(task -> task.equals(taskId));
+      if (lambdaAffinity) {
+        taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
+      } else {
+        taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
+      }
+
+      representer.stopTask(taskId);
+
+      synchronized (stageTaskMap) {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+        final List<String> stageTasks = stageTaskMap.getOrDefault(stageId, new ArrayList<>());
+        stageTasks.removeIf(task -> task.equals(taskId));
+      }
     }
 
     return CompletableFuture.supplyAsync(() -> {
       synchronized (this) {
-        while (!isTaskScheduled(taskId)) {
+        while (!descendants.stream().allMatch(tid -> isTaskScheduled(tid))) {
           try {
             wait(20);
           } catch (InterruptedException e) {
@@ -161,7 +182,7 @@ public final class TaskScheduledMapMaster {
           }
         }
       }
-      return taskId;
+      return parent;
     });
   }
 

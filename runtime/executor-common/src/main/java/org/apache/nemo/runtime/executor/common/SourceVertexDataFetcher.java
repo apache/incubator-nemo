@@ -241,7 +241,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   private Object retrieveElement() {
     // Emit watermark
     final long watermarkTimestamp = readable.readWatermark();
-    LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
+    // LOG.info("prev watermark: {}, Curr watermark: {}", prevWatermarkTimestamp, watermarkTimestamp);
     if (prevWatermarkTimestamp + WATERMARK_PROGRESS <= watermarkTimestamp) {
       // LOG.info("Watermark progressed at {} {}", taskId, watermarkTimestamp);
       prevWatermarkTimestamp = watermarkTimestamp;

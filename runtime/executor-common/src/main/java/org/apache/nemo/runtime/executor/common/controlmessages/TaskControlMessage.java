@@ -119,6 +119,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R3_START_OUTPUT_FROM_P_TO_CR,
     R3_TASK_INPUT_START_FROM_P_TO_M,
     R3_TASK_DATA_DONE_FROM_P_TO_M,
+    R3_TASK_SET_PARTIAL_FROM_P_TO_M,
+    R3_ACK_TASK_SET_PARTIAL_FROM_M_TO_P,
     R3_ACK_TASK_DATA_DONE_FROM_M_TO_P,
 
 
@@ -193,9 +195,11 @@ public final class TaskControlMessage implements TaskHandlingEvent {
       case R3_ACK_PAIR_TASK_INITIATE_REROUTING_PROTOCOL:
       case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P:
       case THROTTLE:
+      case R3_ACK_TASK_SET_PARTIAL_FROM_M_TO_P:
         {
         return true;
       }
+      case R3_TASK_SET_PARTIAL_FROM_P_TO_M:
       case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M:
       case R3_ACK_DATA_WATERMARK_STOP_FROM_CR_TO_P:
       case R3_ACK_DATA_STOP_FROM_CR_TO_P:

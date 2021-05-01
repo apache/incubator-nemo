@@ -182,7 +182,6 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     final long restoresSt = System.currentTimeMillis();
 
-    LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -215,6 +214,8 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     this.taskWatermarkManager = restoreTaskInputWatermarkManagerAndState()
       .orElse(getTaskWatermarkManager());
+
+    LOG.info("Task {} watermark manager restore time {}", taskId, System.currentTimeMillis() - restoresSt);
 
     if (isLocalSource) {
       this.adjustTime = System.currentTimeMillis() - 1436918400000L;
