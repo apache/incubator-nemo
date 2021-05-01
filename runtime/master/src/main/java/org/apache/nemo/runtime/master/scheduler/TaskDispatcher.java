@@ -242,7 +242,7 @@ public final class TaskDispatcher {
 
               final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
                 .stream().filter(executor ->
-                  !filteredOutExecutors.contains(executor)).collect(Collectors.toSet());
+                  !filteredOutExecutors.contains(executor.getExecutorId())).collect(Collectors.toSet());
 //                  return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
 //                    && taskScheduledMap.getPrevTaskExecutorIdMap()
 //                    .get(task.getTaskId()).equals(executor.getExecutorId()));
