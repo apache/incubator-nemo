@@ -248,7 +248,7 @@ public final class TaskDispatcher {
 //                    .get(task.getTaskId()).equals(executor.getExecutorId()));
 //                }).collect(Collectors.toSet());
 
-              LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
+              // LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
 
               if (!finalCandidates.isEmpty()) {
                 // Select executor

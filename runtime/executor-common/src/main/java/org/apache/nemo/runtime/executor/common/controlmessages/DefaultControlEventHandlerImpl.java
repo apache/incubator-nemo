@@ -39,9 +39,10 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final PipeIndexMapWorker pipeIndexMapWorker;
   private final R2ControlEventHandler r2ControlEventHandler;
   private final R3ControlEventHandler r3ControlEventHandler;
-  private final TaskToBeStoppedMap taskToBeStopped;
+  // private final TaskToBeStoppedMap taskToBeStopped;
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
   private final Map<ExecutorThread, Long> executorthreadThrottleTime;
+  private final Map<String, AtomicInteger> taskInputdoneAckCounter;
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -52,7 +53,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final EvalConf evalConf,
     final R2ControlEventHandler r2ControlEventHandler,
     final R3ControlEventHandler r3ControlEventHandler,
-    final TaskToBeStoppedMap taskToBeStoppedMap,
+    // final TaskToBeStoppedMap taskToBeStoppedMap,
     final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.executorthreadThrottleTime = new ConcurrentHashMap<>();
@@ -63,8 +64,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     this.pipeIndexMapWorker = pipeIndexMapWorker;
     this.r2ControlEventHandler = r2ControlEventHandler;
     this.r3ControlEventHandler = r3ControlEventHandler;
-    this.taskToBeStopped = taskToBeStoppedMap;
+    // this.taskToBeStopped = taskToBeStoppedMap;
     this.taskOutputDoneAckCounter = new ConcurrentHashMap<>();
+    this.taskInputdoneAckCounter = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -210,13 +212,19 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             // stop and remove task now
             // there is no pending event
             pipeManagerWorker.setTaskStop(taskExecutor.getId());
-            stopAndCheckpointTask(taskExecutor.getId());
           }
         } else {
           // Stop input pipe
-          taskToBeStopped.taskToBeStopped.put(taskExecutor.getId(), true);
+          final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
+
+          if (evalConf.controlLogging) {
+            LOG.info("Task stop signal by master {}, ack counter {}", taskExecutor.getId(), cnt);
+          }
+
+          taskInputdoneAckCounter.put(taskExecutor.getId(), new AtomicInteger(cnt));
+
           taskExecutor.getTask().getUpstreamTasks().entrySet().forEach(entry -> {
-            pipeManagerWorker.sendStopSignalForInputPipes(entry.getValue(),
+            pipeManagerWorker.sendSignalForInputPipes(entry.getValue(),
               entry.getKey().getId(), control.getTaskId(),
               (triple) -> {
                 return new TaskControlMessage(
@@ -242,16 +250,22 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         break;
       }
       case PIPE_OUTPUT_STOP_ACK_FROM_UPSTREAM_TASK: {
-        pipeManagerWorker.receiveAckInputStopSignal(control.getTaskId(), control.targetPipeIndex);
 
-        if (taskToBeStopped.taskToBeStopped.containsKey(control.getTaskId()) &&
-          pipeManagerWorker.isInputPipeStopped(control.getTaskId())) {
+        final int cnt = taskInputdoneAckCounter.get(control.getTaskId()).decrementAndGet();
+
+        if (evalConf.controlLogging) {
+          LOG.info("Receive output stop ack from upstream of {}: cnt {}", control.getTaskId(), cnt);
+        }
+
+        if (cnt == 0) {
           final TaskExecutor taskExecutor =
             taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-          final int cnt = taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
+          LOG.info("Receive all task input done ack {}", control.getTaskId());
 
-          if (cnt == 0) {
+          final int outCnt = taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
+
+          if (outCnt == 0) {
             LOG.info("Receive all task output done ack {}", control.getTaskId());
             taskOutputDoneAckCounter.remove(control.getTaskId());
             stopAndCheckpointTask(control.getTaskId());
@@ -287,6 +301,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           });
 
         final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), key.getMiddle(), key.getLeft());
+
+        // stop input pipe
         pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         break;
       }
@@ -295,15 +311,18 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
         final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
           .decrementAndGet();
 
-        LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
-          cnt);
-
+        if (evalConf.controlLogging) {
+          LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+            cnt);
+        }
 
         // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
         if (cnt == 0) {
           // (5): start pair task output pipe
-          LOG.info("Receive all task output done ack {}", control.getTaskId());
+          if (evalConf.controlLogging) {
+            LOG.info("Receive all task output done ack {}", control.getTaskId());
+          }
           taskOutputDoneAckCounter.remove(control.getTaskId());
           stopAndCheckpointTask(control.getTaskId());
         }
@@ -338,18 +357,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     }
   }
 
-  private boolean canTaskMoved(final String taskId) {
-    // output stopped means that it is waiting for moving downstream task
-    return taskToBeStopped.taskToBeStopped.containsKey(taskId) &&
-      pipeManagerWorker.isInputPipeStopped(taskId)
-      && !pipeManagerWorker.isOutputPipeStopped(taskId);
-  }
-
   private void stopAndCheckpointTask(final String taskId) {
     // flush pipes
     // pipeManagerWorker.flush();
-
-    taskToBeStopped.taskToBeStopped.remove(taskId);
 
     // stop and remove task
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
