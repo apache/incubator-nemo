@@ -124,6 +124,7 @@ public final class RuntimeMaster {
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
+                        final SourceEventAggregator,
    //                     final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
