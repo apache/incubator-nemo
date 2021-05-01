@@ -266,11 +266,9 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       final TaskControlMessage controlMessage = messageBuilder
         .apply(Triple.of(outputPipeIndex, myInputPipeIndex, srcTask));
 
-      if (pendingOutputPipeMap.containsKey(outputPipeIndex) &&
-        pendingOutputPipeMap.get(outputPipeIndex).size() > 0) {
-        LOG.warn("Pending output pipe size > 0 " + srcTask
-          + "-" + edgeId + "-" + dstTaskId + " , index " + outputPipeIndex + ", "
-        + pendingOutputPipeMap.get(outputPipeIndex).get(0));
+      if (pendingOutputPipeMap.containsKey(outputPipeIndex)) {
+        LOG.warn("Pending output pipe  " + srcTask
+          + "-" + edgeId + "-" + dstTaskId + " , index " + outputPipeIndex);
         pendingOutputPipeMap.get(outputPipeIndex).add(controlMessage);
         return;
       }
@@ -804,6 +802,8 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
     // stop output pipe
     stopOutputPipe(index, taskId, key.getRight());
+
+    LOG.info("Stop output pipe {}", key);
 
     taskStoppedOutputPipeIndicesMap.putIfAbsent(taskId, new HashSet<>());
     taskStoppedOutputPipeIndicesMap.get(taskId).add(index);

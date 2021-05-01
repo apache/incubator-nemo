@@ -300,9 +300,16 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
               null);
           });
 
-        final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), key.getMiddle(), key.getLeft());
+        final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
+          key.getMiddle(),
+          key.getLeft());
 
         // stop input pipe
+        if (evalConf.controlLogging) {
+          LOG.info("Stop input pipe {} index {} for {}", control.getTaskId(),
+           index,
+           key.getLeft());
+        }
         pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         break;
       }
