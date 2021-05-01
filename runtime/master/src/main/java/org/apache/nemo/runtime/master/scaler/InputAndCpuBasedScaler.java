@@ -71,11 +71,9 @@ public final class InputAndCpuBasedScaler implements Scaler {
           avgExpectedCpu.addValue((avgInput * avgCpu) / avgProcess);
         }
 
-
         final double avgExpectedCpuVal = avgExpectedCpu.getMean();
 
         synchronized (this) {
-
           LOG.info("Scaler avg cpu: {}, avg expected cpu: {}, target cpu: {}, " +
               "avg input: {}, avg src input: {}, numExecutor: {}",
             avgCpu,

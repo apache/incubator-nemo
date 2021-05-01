@@ -434,7 +434,7 @@ public final class JobScaler {
       final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
       LOG.info("Input rate {}", inputRate);
       backpressure.addCurrentInput(inputRate);
-      // scaler.addCurrentInput(inputRate);
+      scaler.addCurrentInput(inputRate);
 
       /*
       final long prevInputRate;
