@@ -172,7 +172,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
   @Override
   public synchronized void addCurrentInput(final long rate) {
     // Observed that the actual event is the half
-    avgInputRate.addValue(rate / 2);
-    aggInput.getAndAdd(rate / 2);
+    avgInputRate.addValue(rate);
+    aggInput.getAndAdd(rate);
   }
 }
