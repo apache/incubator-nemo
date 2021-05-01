@@ -324,14 +324,17 @@ public final class Executor {
     if (resourceType.equals(ResourcePriorityProperty.SOURCE)) {
       // source event
       scheduledExecutorService.scheduleAtFixedRate(() -> {
+
+        /*
         final long sourceEvent = taskExecutorMapWrapper.getTaskExecutorMap().keySet()
           .stream()
           .filter(te -> te.getTask().isSourceTask())
           .map(te -> te.getTaskMetrics().getInputProcessElement())
           .reduce((x, y) -> x + y)
           .orElse(0L);
+          */
 
-        LOG.info("Source event {}", sourceEvent);
+        LOG.info("Source event {}", executorMetrics.sourceReceiveCnt);
 
         persistentConnectionToMasterMap
           .getMessageSender(SCALE_DECISION_MESSAGE_LISTENER_ID).send(
@@ -339,7 +342,7 @@ public final class Executor {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(SCALE_DECISION_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.SourceEvent)
-            .setSetNum(sourceEvent)
+            .setSetNum(executorMetrics.sourceReceiveCnt.get())
             .build());
       }, 1, 1, TimeUnit.SECONDS);
 

@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ExecutorMetrics implements Serializable {
 
   public final Map<ExecutorThread, AtomicLong> inputReceiveCntMap = new ConcurrentHashMap<>();
+  public final AtomicLong sourceReceiveCnt = new AtomicLong();
   public final Map<ExecutorThread, Long> inputProcessCntMap = new ConcurrentHashMap<>();
   public final Map<ExecutorThread, Long> inputProcessTimeMap = new ConcurrentHashMap<>();
   public double load;

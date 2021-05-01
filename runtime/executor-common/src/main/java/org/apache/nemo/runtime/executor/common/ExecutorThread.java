@@ -393,7 +393,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                   throttling();
 
                   if (sourceTask.hasData()) {
-                    currProcessedCnt += 1;
+                    executorMetrics.sourceReceiveCnt.incrementAndGet();
                     long st = System.nanoTime();
                     sourceTask.handleSourceData();
                     // executorMetrics.eventProcessed.incrementAndGet();
