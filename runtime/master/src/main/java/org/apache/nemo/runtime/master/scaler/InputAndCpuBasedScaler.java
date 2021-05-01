@@ -98,7 +98,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
           return;
         }
 
-        if (System.currentTimeMillis() - sourceHandlingStartTime <= 30) {
+        if (System.currentTimeMillis() - sourceHandlingStartTime <= TimeUnit.SECONDS.toMillis(30)) {
           return;
         }
 
@@ -107,7 +107,8 @@ public final class InputAndCpuBasedScaler implements Scaler {
           return;
         }
 
-        if (System.currentTimeMillis() - prevFutureCompleteTime < policyConf.scalerSlackTime) {
+        if (System.currentTimeMillis() - prevFutureCompleteTime < TimeUnit.SECONDS
+          .toMillis(policyConf.scalerSlackTime)) {
           LOG.info("Elapsed time is less than slack time... skip current decision {}/ {}",
             System.currentTimeMillis() - prevFutureCompleteTime, policyConf.scalerSlackTime);
           return;
