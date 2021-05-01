@@ -149,7 +149,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-    }, 30, 1, TimeUnit.SECONDS);
+    }, 80, 1, TimeUnit.SECONDS);
   }
 
   @Override
