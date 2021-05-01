@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common.controlmessages;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.Task;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -286,31 +287,45 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             control.targetPipeIndex, key);
         }
 
-        // Send ack
-        pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
-          key.getMiddle(),
-          control.getTaskId(),
-          (triple) -> {
-            return new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType
-                .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
-              triple.getLeft(), // my output pipe index
-              triple.getMiddle(), // my input pipe index
-              triple.getRight(),  // srct ask id
-              null);
-          });
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
 
-        final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
-          key.getMiddle(),
-          key.getLeft());
+        if (taskExecutor.getTask().isMerger() ||
+          taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+          // Check if this task is o2o connection with the parent
+          // If it is, we stop the upstream and this task together
+          final int outCnt = TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter(taskExecutor.getTask());
+          taskOutputDoneAckCounter.put(taskExecutor.getId(), new AtomicInteger(outCnt));
 
-        // stop input pipe
-        if (evalConf.controlLogging) {
-          LOG.info("Stop input pipe {} index {} for {}", control.getTaskId(),
-           index,
-           key.getLeft());
+          // stop output pipe
+          TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
+            TASK_OUTPUT_DONE_FROM_UPSTREAM);
+        } else {
+          // Otherwise, just send ack
+          pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
+            key.getMiddle(),
+            control.getTaskId(),
+            (triple) -> {
+              return new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType
+                  .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+                triple.getLeft(), // my output pipe index
+                triple.getMiddle(), // my input pipe index
+                triple.getRight(),  // srct ask id
+                null);
+            });
+
+          final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(),
+            key.getMiddle(),
+            key.getLeft());
+
+          // stop input pipe
+          if (evalConf.controlLogging) {
+            LOG.info("Stop input pipe {} index {} for {}", control.getTaskId(),
+              index,
+              key.getLeft());
+          }
+          pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         }
-        pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         break;
       }
       case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
@@ -323,6 +338,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             cnt);
         }
 
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
         // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
         if (cnt == 0) {
@@ -330,6 +347,13 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           if (evalConf.controlLogging) {
             LOG.info("Receive all task output done ack {}", control.getTaskId());
           }
+
+          if (taskExecutor.getTask().isMerger() ||
+            taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+            // send ack to the upstream
+            sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
+          }
+
           taskOutputDoneAckCounter.remove(control.getTaskId());
           stopAndCheckpointTask(control.getTaskId());
         }
@@ -362,6 +386,42 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       default:
         throw new RuntimeException("Invalid control message type " + control.type);
     }
+  }
+
+  private void sendOutputStopAckToSingleUpstream(final Task task) {
+    // Otherwise, just send ack
+    if (task.getUpstreamTasks().size() > 1) {
+      throw new RuntimeException("Upstream task > 1 " + task.getTaskId());
+    }
+
+    task.getUpstreamTasks().forEach((edge, tasks) -> {
+      pipeManagerWorker.sendSignalForInputPipes(tasks,
+        edge.getId(),
+        task.getTaskId(),
+        (triple) -> {
+          return new TaskControlMessage(
+            TaskControlMessage.TaskControlMessageType
+              .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+            triple.getLeft(), // my output pipe index
+            triple.getMiddle(), // my input pipe index
+            triple.getRight(),  // srct ask id
+            null);
+        });
+
+      final int index = pipeIndexMapWorker.getPipeIndex(task.getTaskId(),
+        edge.getId(),
+        tasks.get(0));
+
+      // stop input pipe
+      if (evalConf.controlLogging) {
+        LOG.info("Stop input pipe {} index {} for {}", task.getTaskId(),
+          index,
+          tasks);
+      }
+
+      pipeManagerWorker.stopOutputPipeForRouting(index, task.getTaskId());
+    });
+
   }
 
   private void stopAndCheckpointTask(final String taskId) {

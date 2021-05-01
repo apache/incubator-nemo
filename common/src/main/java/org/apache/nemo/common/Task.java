@@ -361,6 +361,10 @@ public final class Task implements Serializable {
     return upstreamTasks;
   }
 
+  public Set<String> getUpstreamTaskSet() {
+    return upstreamTasks.values().stream().flatMap(l -> l.stream()).collect(Collectors.toSet());
+  }
+
   private Map<RuntimeEdge, List<String>> calculateDownstreamTasks() {
     return taskOutgoingEdges.stream().map(edge -> {
       final int parallelism = edge

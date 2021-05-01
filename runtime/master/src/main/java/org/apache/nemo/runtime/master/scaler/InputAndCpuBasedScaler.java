@@ -45,6 +45,9 @@ public final class InputAndCpuBasedScaler implements Scaler {
   private final ExecutorService prevFutureChecker = Executors.newSingleThreadExecutor();
 
   private int observation = 0;
+
+  private boolean started = false;
+
   @Inject
   private InputAndCpuBasedScaler(final ExecutorMetricMap executorMetricMap,
                                  final ScaleInOutManager scaleInOutManager,
@@ -91,6 +94,10 @@ public final class InputAndCpuBasedScaler implements Scaler {
           avgProcess,
           info.numExecutor);
 
+        if (!started) {
+          return;
+        }
+
         observation += 1;
 
         // Skip in initial
@@ -116,7 +123,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         synchronized (this) {
 
-          if (avgCpu > policyConf.scalerTargetCpu + 0.1
+          if (avgCpu > policyConf.scalerScaleoutTriggerCPU
             && avgExpectedCpuVal > policyConf.scalerUpperCpu) {
             // Scale out !!
             // ex) expected cpu val: 2.0, target cpu: 0.6
@@ -158,6 +165,12 @@ public final class InputAndCpuBasedScaler implements Scaler {
   }
 
   private long sourceHandlingStartTime = 0;
+
+  @Override
+  public void start() {
+    LOG.info("Start scaler");
+    started = true;
+  }
 
   @Override
   public synchronized void addSourceEvent(final long sourceEvent) {

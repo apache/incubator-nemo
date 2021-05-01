@@ -45,6 +45,7 @@ import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.common.ByteTransport;
+import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.NemoNameServer;
@@ -117,6 +118,7 @@ public final class NemoDriver {
 
   private final ScaleInOutManager scaleInOutManager;
   private final ExecutorRegistry executorRegistry;
+  private final Scaler scaler;
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
@@ -126,6 +128,7 @@ public final class NemoDriver {
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
                      final EvalConf evalConf,
+                     final Scaler scaler,
                      final ExecutorRegistry executorRegistry,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
@@ -142,6 +145,7 @@ public final class NemoDriver {
     this.nameServer = nameServer;
     this.evalConf = evalConf;
     this.executorRegistry = executorRegistry;
+    this.scaler = scaler;
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
@@ -230,6 +234,8 @@ public final class NemoDriver {
               final boolean partial = new Boolean(args[1]);
               final double percent = new Double(args[2]);
               runtimeMaster.triggerConditionalRouting(partial, percent);
+            } else if (decision.equals("start-scaler")) {
+              scaler.start();
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
               // VM -> Lambda

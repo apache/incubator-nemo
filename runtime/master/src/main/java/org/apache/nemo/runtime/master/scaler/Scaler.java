@@ -12,6 +12,7 @@ import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EX
 @DefaultImplementation(InputAndCpuBasedScaler.class)
 public interface Scaler {
 
+  void start();
   void addSourceEvent(final long sourceEvent);
   void addCurrentInput(final long rate);
 }

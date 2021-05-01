@@ -53,7 +53,6 @@ public final class ScaleInOutManager {
       final List<Task> tasksToBeMoved = new LinkedList<>();
 
       executor.getRunningTasks().stream()
-        .filter(task -> !task.isCrTask())
         .filter(task -> stages.contains(task.getStageId()))
         .map(task -> {
           checkTaskMoveValidation(task, executor);
@@ -101,17 +100,38 @@ public final class ScaleInOutManager {
   private void checkTaskMoveValidation(final Task task, final ExecutorRepresenter ep) {
     if (task.isParitalCombine() && task.isVMTask())  {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
+    } else if (task.isCrTask()) {
+      throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
+    } else if (task.isMerger()) {
+      throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
     }
   }
 
-  public synchronized List<Future<String>> sendMigrationAllStages(final double ratio,
-                                                            final Collection<ExecutorRepresenter> executors,
-                                                            final boolean lambdaAffinity) {
+  public synchronized List<Future<String>> sendMigrationAllStages(
+    final double ratio,
+    final Collection<ExecutorRepresenter> executors,
+    final boolean lambdaAffinity) {
+
     // For each executor, move ratio * num tasks of each stage;
+    final Set<String> mergerTasks = executors.stream()
+      .map(executor -> executor.getRunningTasks())
+      .flatMap(l -> l.stream()
+        .filter(task -> task.isMerger())
+        .map(t -> t.getTaskId()))
+      .collect(Collectors.toSet());
+
     final Set<String> stages =  executors.stream()
       .map(vmExecutor -> vmExecutor.getRunningTasks())
       .flatMap(l -> l.stream()
+        .filter(task -> !task.isCrTask())
         .filter(task -> !(task.isParitalCombine() && task.isVMTask()))
+        .filter(task -> !task.isMerger())
+        .filter(task -> {
+          //  merger -> task  (this is always o2o, so optimize task migration by grouping)
+          final Set<String> intersection = new HashSet<>(task.getUpstreamTaskSet());
+          intersection.retainAll(mergerTasks);
+          return intersection.isEmpty();
+        })
         .map(t -> t.getStageId()))
       .collect(Collectors.toSet());
 
