@@ -41,13 +41,11 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.common.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
-import org.apache.nemo.runtime.master.ClientRPC;
-import org.apache.nemo.runtime.master.BroadcastManagerMaster;
-import org.apache.nemo.runtime.master.JobScaler;
-import org.apache.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.common.ByteTransport;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -117,6 +115,9 @@ public final class NemoDriver {
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
+  private final ScaleInOutManager scaleInOutManager;
+  private final ExecutorRegistry executorRegistry;
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -125,18 +126,22 @@ public final class NemoDriver {
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
                      final EvalConf evalConf,
+                     final ExecutorRegistry executorRegistry,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
                      final JVMProcessFactory jvmProcessFactory,
+                     final ScaleInOutManager scaleInOutManager,
                      final JobScaler jobScaler) {
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
+    this.scaleInOutManager = scaleInOutManager;
     this.runtimeMaster = runtimeMaster;
     this.nameServer = nameServer;
     this.evalConf = evalConf;
+    this.executorRegistry = executorRegistry;
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
@@ -230,7 +235,7 @@ public final class NemoDriver {
               // VM -> Lambda
               final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              final int num = new Integer(args[1]);
+              final double ratio = new Double(args[1]);
               final String[] stageIds = args[2].split(",");
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
@@ -247,6 +252,13 @@ public final class NemoDriver {
                 waiting = true;
               }
 
+              LOG.info("move and redirection stages double {} {}", ratio, stages);
+
+              scaleInOutManager.sendMigration(ratio,
+                executorRegistry.getVMComputeExecutors(),
+                stages, true);
+
+              /*
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
                   LOG.info("redirection-partial stage {}, waiting {}", stage, waiting);
@@ -264,37 +276,42 @@ public final class NemoDriver {
                   LOG.info("redirection-move finish setage {}, waiting {}", stage, waiting);
                 }
               }
+              */
 
               final long et = System.currentTimeMillis();
-              LOG.info("End of redirection elapsed time {} {}/{}", et - st, num, stages);
+              LOG.info("End of redirection elapsed time {} {}/{}", et - st, ratio, stages);
 
             }  else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
               final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              final int num = new Integer(args[1]);
+              final double ratio = new Double(args[1]);
               final String[] stageIds = args[2].split(",");
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
 
-              for (final String stage : stages) {
-                if (runtimeMaster.isPartial(stage)) {
-                  LOG.info("redirection-done-partial stage {}", stage);
-                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(
-                    runtimeMaster.getPairStage(stage)));
-                  runtimeMaster.redirectionDoneToLambda(num, Collections.singletonList(
-                    stage));
-                } else {
-                  LOG.info("redirection-done-move stage {}", stage);
-                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(stage));
-                }
-              }
+              scaleInOutManager.sendMigration(ratio,
+                executorRegistry.getLambdaExecutors(),
+                stages, false);
+
+//              for (final String stage : stages) {
+//                if (runtimeMaster.isPartial(stage)) {
+//                  LOG.info("redirection-done-partial stage {}", stage);
+//                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(
+//                    runtimeMaster.getPairStage(stage)));
+//                  runtimeMaster.redirectionDoneToLambda(num, Collections.singletonList(
+//                    stage));
+//                } else {
+//                  LOG.info("redirection-done-move stage {}", stage);
+//                  jobScaler.sendPrevMovedTaskStopSignal(num, Collections.singletonList(stage));
+//                }
+//              }
 
               final long et = System.currentTimeMillis();
 
-              LOG.info("End of redirection-done elapsed time {}/{}", et - st, num, stages);
+              LOG.info("End of redirection-done elapsed time {}/{}", et - st, ratio, stages);
 
             } else if (decision.equals("move-task-lambda")) {
               final long st = System.currentTimeMillis();

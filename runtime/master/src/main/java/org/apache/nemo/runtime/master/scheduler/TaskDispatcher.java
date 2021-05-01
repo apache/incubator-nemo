@@ -70,6 +70,8 @@ public final class TaskDispatcher {
 
   private boolean reclaiming;
 
+  private final Set<String> filteredOutExecutors;
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
@@ -92,8 +94,14 @@ public final class TaskDispatcher {
     this.taskScheduledMap = taskScheduledMap;
     this.rendevousServer = rendevousServer;
     this.reclaiming = false;
+    this.filteredOutExecutors = new HashSet<>();
   }
 
+  public void setFilteredOutExecutors(final Set<String> filteredOutExecutors) {
+    LOG.info("Set filtered out executors {}", filteredOutExecutors);
+    this.filteredOutExecutors.clear();
+    this.filteredOutExecutors.addAll(filteredOutExecutors);
+  }
 
   public void setReclaiming(boolean rec) {
     this.reclaiming = rec;
@@ -153,104 +161,6 @@ public final class TaskDispatcher {
     return stageTasks;
   }
 
-
-  private void initialSetup() {
-      // send global message
-      while (!taskScheduledMap.isAllExecutorAddressReceived()) {
-        LOG.info("Waiting executor address info...");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      final List<ControlMessage.LocalExecutorAddressInfoMessage> entries1 =
-        taskScheduledMap.getExecutorAddressMap().entrySet()
-          .stream().map(entry -> {
-          return ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-            .setExecutorId(entry.getKey())
-            .setAddress(entry.getValue().left())
-            .setPort(entry.getValue().right())
-            .build();
-        }).collect(Collectors.toList());
-
-      // send global executor address map
-      executorRegistry.viewExecutors(executors -> {
-
-        int index = 0;
-        final List<String> vmAddresses = VMScalingAddresses.VM_ADDRESSES;
-        final List<String> vmIds = VMScalingAddresses.INSTANCE_IDS;
-
-        final int hop = vmAddresses.size() / executors.size();
-
-        for (final ExecutorRepresenter executor : executors) {
-          LOG.info("Send global executor address to executor {}", executor.getExecutorId());
-          // TODO: send vm scaling addresses
-          final int startindex = index * hop;
-          final int endindex = (index + 1) == executors.size()
-            ? vmAddresses.size() : (index + 1) * hop ;
-
-          final List<String> addr = vmAddresses.subList(startindex, endindex);
-          final List<String> ids = vmIds.subList(startindex, endindex);
-
-          LOG.info("index {}, Vm addr: {}, ids: {}", index, addr, ids);
-
-          final long id = RuntimeIdManager.generateMessageId();
-          executor.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(id)
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.GlobalExecutorAddressInfo)
-            .setGlobalExecutorAddressInfoMsg(ControlMessage.GlobalExecutorAddressInfoMessage.newBuilder()
-              .addAllInfos(entries1)
-              .addAllVmAddresses(addr)
-              .addAllVmIds(ids)
-              .build())
-            .build());
-
-          index += 1;
-        }
-      });
-
-      // send global message
-      while (!taskScheduledMap.isAllRelayServerInfoReceived()) {
-        LOG.info("Waiting relay server info...");
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      final List<ControlMessage.LocalRelayServerInfoMessage> entries =
-        taskScheduledMap.getExecutorRelayServerInfoMap().entrySet()
-          .stream().map(entry -> {
-          return ControlMessage.LocalRelayServerInfoMessage.newBuilder()
-            .setExecutorId(entry.getKey())
-            .setAddress(entry.getValue().left())
-            .setPort(entry.getValue().right())
-            .build();
-        }).collect(Collectors.toList());
-
-      // send global info
-      executorRegistry.viewExecutors(executors -> {
-        for (final ExecutorRepresenter executor : executors) {
-          LOG.info("Send global relay info to executor {}", executor.getExecutorId());
-
-          final long id = RuntimeIdManager.generateMessageId();
-          executor.sendControlMessage(ControlMessage.Message.newBuilder()
-            .setId(id)
-            .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.GlobalRelayServerInfo)
-            .setGlobalRelayServerInfoMsg(ControlMessage.GlobalRelayServerInfoMessage.newBuilder()
-              .addAllInfos(entries)
-              .setRendevousAddress(rendevousServer.getPublicAddress())
-              .setRendevousPort(rendevousServer.getPort())
-              .build())
-            .build());
-        }
-      });
-  }
 
   private void doScheduleTaskList() {
       final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
@@ -313,6 +223,9 @@ public final class TaskDispatcher {
             });
 
             if (reclaiming) {
+              // DEPRECATED !!!!
+              // DEPRECATED !!!!
+              // DEPRECATED !!!!
               final ExecutorRepresenter selectedExecutor =
                 executorRegistry.getExecutorRepresentor(
                   taskScheduledMap.getTaskOriginalExecutorId(task.getTaskId()));
@@ -325,14 +238,15 @@ public final class TaskDispatcher {
               LOG.info("{} scheduled to {} for origin", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
               selectedExecutor.onTaskScheduled(task);
-
             } else {
+
               final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
-                .stream().filter(executor -> {
-                  return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
-                    && taskScheduledMap.getPrevTaskExecutorIdMap()
-                    .get(task.getTaskId()).equals(executor.getExecutorId()));
-                }).collect(Collectors.toSet());
+                .stream().filter(executor ->
+                  !filteredOutExecutors.contains(executor)).collect(Collectors.toSet());
+//                  return !(taskScheduledMap.getPrevTaskExecutorIdMap().containsKey(task.getTaskId())
+//                    && taskScheduledMap.getPrevTaskExecutorIdMap()
+//                    .get(task.getTaskId()).equals(executor.getExecutorId()));
+//                }).collect(Collectors.toSet());
 
               LOG.info("Candidate executor for {}: {}", task.getTaskId(), finalCandidates);
 

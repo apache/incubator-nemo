@@ -64,6 +64,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final Map<String, Task> runningComplyingTasks;
   private final Map<String, Task> runningNonComplyingTasks;
   private final Map<Task, Integer> runningTaskToAttempt;
+  private final Set<String> tasksToBeStopped;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
   private final MessageSender<ControlMessage.Message> messageSender;
@@ -97,6 +98,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.runningComplyingTasks = new ConcurrentHashMap<>();
     this.runningNonComplyingTasks = new ConcurrentHashMap<>();
     this.runningTaskToAttempt = new ConcurrentHashMap<>();
+    this.tasksToBeStopped = new HashSet<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
     this.executorShutdownHandler = executorShutdownHandler;
@@ -301,19 +303,22 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     activatedTasks.remove(taskId);
     LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
 
-
+    // Move lambda task
     checkAndDeactivate();
   }
 
   private void checkAndDeactivate() {
     if (activatedTasks.isEmpty() &&
-      getRunningTasks().stream().allMatch(task -> task.isParitalCombine())) {
-      // If all partial task is deactivated
-      // and other tasks are not scheduled in the lambda executor,
-      // then deactivation of the worker
+      getRunningTasks().isEmpty()) {
       LOG.info("Deactivate lambda worker {}", executorId);
       lambdaControlProxy.deactivate();
     }
+
+    //  getRunningTasks().stream().allMatch(task -> task.isParitalCombine())) {
+    // If all partial task is deactivated
+    // and other tasks are not scheduled in the lambda executor,
+    // then deactivation of the worker
+    //   }
   }
 
   @Override
@@ -438,6 +443,21 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     });
   }
 
+  @Override
+  public synchronized void stopTask(final String taskId) {
+    runningTaskToAttempt.remove(runningComplyingTasks.get(taskId));
+    tasksToBeStopped.add(taskId);
+
+    sendControlMessage(ControlMessage.Message.newBuilder()
+      .setId(RuntimeIdManager.generateMessageId())
+      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+      .setType(ControlMessage.MessageType.StopTask)
+      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+        .setTaskId(taskId)
+        .build())
+      .build());
+  }
+
   /**
    * Sends control message to the executor.
    * @param message Message object to send
@@ -454,7 +474,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public synchronized void onTaskExecutionComplete(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
-    runningTaskToAttempt.remove(completedTask);
     completeTasks.add(completedTask);
   }
 
@@ -465,7 +484,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public synchronized void onTaskExecutionStop(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
-    runningTaskToAttempt.remove(completedTask);
+    if (!tasksToBeStopped.remove(taskId)) {
+      throw new RuntimeException("Task " + taskId + " is not stopped, but got stop message");
+    }
 
     if (lambdaControlProxy != null) {
       // this is lambda executor
@@ -480,7 +501,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public synchronized void onTaskExecutionFailed(final String taskId) {
     final Task failedTask = removeFromRunningTasks(taskId);
-    runningTaskToAttempt.remove(failedTask);
     failedTasks.add(failedTask);
   }
 
@@ -574,6 +594,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   private Task removeFromRunningTasks(final String taskId) {
     final Task task;
+    runningTaskToAttempt.remove(taskId);
     if (runningComplyingTasks.containsKey(taskId)) {
       task = runningComplyingTasks.remove(taskId);
     } else if (runningNonComplyingTasks.containsKey(taskId)) {

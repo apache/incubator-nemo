@@ -20,6 +20,8 @@ public interface ExecutorRepresenter {
    */
   Set<String> onExecutorFailed();
 
+  void stopTask(final String taskId);
+
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
    * @param task the task to run

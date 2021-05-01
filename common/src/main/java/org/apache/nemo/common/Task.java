@@ -499,6 +499,10 @@ public final class Task implements Serializable {
     return irVertexIdToReadable;
   }
 
+  public String getStageId() {
+    return RuntimeIdManager.getStageIdFromTaskId(taskId);
+  }
+
   @Override
   public String toString() {
     return taskId;

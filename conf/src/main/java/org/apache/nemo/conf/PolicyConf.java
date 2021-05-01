@@ -26,7 +26,7 @@ public final class PolicyConf {
   @NamedParameter(short_name = "bp_decrease_ratio", default_value = "0.8")
   public static final class BPDecreaseRatio implements Name<Double> {}
 
-  @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.9")
+  @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.8")
   public static final class BPIncraseLowerCpu implements Name<Double> {}
 
   @NamedParameter(short_name = "bp_min_event", default_value = "5000")
@@ -41,6 +41,18 @@ public final class PolicyConf {
   // End of backpressure
 
   // Scaling policy parameters
+  @NamedParameter(short_name = "scaler_upper_cpu", default_value = "1.0")
+  public static final class ScalerUpperCPU implements Name<Double> {}
+
+  @NamedParameter(short_name = "scaler_target_cpu", default_value = "0.6")
+  public static final class ScalerTargetScaleoutCPU implements Name<Double> {}
+
+  @NamedParameter(short_name = "scaler_trigger_window", default_value = "3")
+  public static final class ScalerTriggerWindow implements Name<Integer> {}
+
+  public final double scalerUpperCpu;
+  public final double scalerTargetCpu;
+  public final int scalerTriggerWindow;
 
 
   @Inject
@@ -49,13 +61,20 @@ public final class PolicyConf {
                      @Parameter(BPIncreaseRatio.class) final double bpIncreaseRatio,
                      @Parameter(BPDecreaseRatio.class) final double bpDecreaseRatio,
                      @Parameter(BPIncraseLowerCpu.class) final double bpIncreaseLowerCpu,
-                     @Parameter(BPMinEvent.class) final long bpMinEvent) throws IOException {
+                     @Parameter(BPMinEvent.class) final long bpMinEvent,
+                     @Parameter(ScalerUpperCPU.class) final double scalerUpperCpu,
+                     @Parameter(ScalerTargetScaleoutCPU.class) final double scalerTargetCpu,
+                     @Parameter(ScalerTriggerWindow.class) final int scalerTriggerWindow) throws IOException {
     this.bpQueueUpperBound = bpQueueSize;
     this.bpQueueLowerBound = bpQueueLowerBound;
     this.bpIncreaseRatio = bpIncreaseRatio;
     this.bpDecreaseRatio = bpDecreaseRatio;
     this.bpIncreaseLowerCpu = bpIncreaseLowerCpu;
     this.bpMinEvent = bpMinEvent;
+
+    this.scalerUpperCpu = scalerUpperCpu;
+    this.scalerTargetCpu = scalerTargetCpu;
+    this.scalerTriggerWindow = scalerTriggerWindow;
   }
 
   public Configuration getConfiguration() {
@@ -66,6 +85,10 @@ public final class PolicyConf {
     jcb.bindNamedParameter(BPDecreaseRatio.class, Double.toString(bpDecreaseRatio));
     jcb.bindNamedParameter(BPIncraseLowerCpu.class, Double.toString(bpIncreaseLowerCpu));
     jcb.bindNamedParameter(BPMinEvent.class, Double.toString(bpMinEvent));
+
+    jcb.bindNamedParameter(ScalerUpperCPU.class, Double.toString(scalerUpperCpu));
+    jcb.bindNamedParameter(ScalerTargetScaleoutCPU.class, Double.toString(scalerTargetCpu));
+    jcb.bindNamedParameter(ScalerTriggerWindow.class, Integer.toString(scalerTriggerWindow));
     return jcb.build();
   }
 
@@ -77,6 +100,10 @@ public final class PolicyConf {
     cl.registerShortNameOfClass(BPDecreaseRatio.class);
     cl.registerShortNameOfClass(BPIncraseLowerCpu.class);
     cl.registerShortNameOfClass(BPMinEvent.class);
+
+    cl.registerShortNameOfClass(ScalerUpperCPU.class);
+    cl.registerShortNameOfClass(ScalerTargetScaleoutCPU.class);
+    cl.registerShortNameOfClass(ScalerTriggerWindow.class);
   }
 
   @Override
@@ -89,6 +116,10 @@ public final class PolicyConf {
     sb.append("bpDecreaseRatio: "); sb.append(bpDecreaseRatio); sb.append("\n");
     sb.append("bpIncreaseLowerCPu: "); sb.append(bpIncreaseLowerCpu); sb.append("\n");
     sb.append("bpMinEvent: "); sb.append(bpMinEvent); sb.append("\n");
+
+    sb.append("scalerUpperCPU: "); sb.append(scalerUpperCpu); sb.append("\n");
+    sb.append("scalerTargerCPU: "); sb.append(scalerTargetCpu); sb.append("\n");
+    sb.append("scalerTriggerWindow: "); sb.append(scalerTriggerWindow); sb.append("\n");
     sb.append("-----------PolicyConf end----------\n");
 
     return sb.toString();

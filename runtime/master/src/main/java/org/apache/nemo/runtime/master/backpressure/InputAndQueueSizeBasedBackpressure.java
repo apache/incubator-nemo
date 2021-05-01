@@ -134,9 +134,4 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     avgInputRate.addValue(rate / 2);
     aggInput.getAndAdd(rate / 2);
   }
-
-  public synchronized void setCurrInput(final long rate) {
-    currEmitInput = rate;
-  }
-
 }

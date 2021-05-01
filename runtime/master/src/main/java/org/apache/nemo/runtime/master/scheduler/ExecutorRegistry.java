@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.master.scheduler;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
@@ -59,12 +60,14 @@ public final class ExecutorRegistry {
 
   private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
   private final Set<String> lambdaExecutors;
+  private final Set<String> vmComputeExecutors;
   private final Set<String> activatedLambdaTasks;
 
   @Inject
   private ExecutorRegistry() {
     this.executors = new ConcurrentHashMap<>();
     this.lambdaExecutors = new ConcurrentSkipListSet<>();
+    this.vmComputeExecutors = new ConcurrentSkipListSet<>();
     this.activatedLambdaTasks = new ConcurrentSkipListSet<>();
   }
 
@@ -112,8 +115,10 @@ public final class ExecutorRegistry {
       }
 
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
-      if (executor.getExecutorId().contains("Lambda")) {
+      if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
         lambdaExecutors.add(executorId);
+      } else if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
+        vmComputeExecutors.add(executorId);
       }
     }
   }
@@ -128,6 +133,7 @@ public final class ExecutorRegistry {
 
     final ExecutorRepresenter executorRepresenter = executors.remove(executor).left();
     lambdaExecutors.remove(executor);
+    vmComputeExecutors.remove(executor);
     executorRepresenter.shutDown();
 
     // broadcast executors
@@ -183,6 +189,12 @@ public final class ExecutorRegistry {
       }
     }
     return Optional.empty();
+  }
+
+  public Set<ExecutorRepresenter> getVMComputeExecutors() {
+    return vmComputeExecutors.stream()
+      .map(executorId -> executors.get(executorId).left())
+      .collect(Collectors.toSet());
   }
 
   public Set<ExecutorRepresenter> getLambdaExecutors() {

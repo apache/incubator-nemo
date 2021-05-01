@@ -208,7 +208,7 @@ public final class LambdaContainerManager {
       // redirection signal to the origin task
       lambdaTasks.forEach(lambdaTaskId -> {
         final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(lambdaTaskId).left();
-        final String vmExecutorId = taskScheduledMapMaster.getTaskOriginalExecutorId(vmTaskId);
+        final String vmExecutorId = taskScheduledMapMaster.getTaskExecutorIdMap().get(vmTaskId);
         final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
         lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
       });

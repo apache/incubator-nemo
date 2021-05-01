@@ -10,6 +10,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.lambda.LambdaTaskContainerEventHandler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
@@ -39,8 +40,6 @@ public final class TaskScheduledMapMaster {
 
   private final ExecutorRegistry executorRegistry;
 
-  private final TaskLocationMap taskLocationMap;
-
   private final Map<String, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   private Map<String, String> prevTaskExecutorIdMap = new ConcurrentHashMap<>();
@@ -53,19 +52,25 @@ public final class TaskScheduledMapMaster {
 
   private final LambdaTaskContainerEventHandler lambdaEventHandler;
 
+  private final PairStageTaskManager pairStageTaskManager;
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final MessageEnvironment messageEnvironment,
-                                 final TaskLocationMap taskLocationMap,
+                                 final PairStageTaskManager pairStageTaskManager,
                                  final LambdaTaskContainerEventHandler lambdaEventHandler) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.lambdaEventHandler = lambdaEventHandler;
-    this.taskLocationMap = taskLocationMap;
+    this.pairStageTaskManager = pairStageTaskManager;
     messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
       new TaskScheduleMapReceiver());
+  }
+
+  public Task getTask(final String taskId) {
+    return taskIdTaskMap.get(taskId);
   }
 
   public Map<String, Task> getTaskIdTaskMap() {
@@ -75,6 +80,34 @@ public final class TaskScheduledMapMaster {
   private boolean copied = false;
 
   private final List<String> taskToBeStopped = new LinkedList<>();
+
+  public boolean isPartial(final String stageId) {
+    return taskIdTaskMap.values()
+      .stream().filter(task -> task.isParitalCombine() &&
+        RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()).equals(stageId)
+      ).findFirst().isPresent();
+  }
+
+  private final Map<String, Boolean> deactivateTaskLambdaAffinityMap = new HashMap<>();
+
+  public synchronized void deactivateAndStopTask(final String taskId,
+                                                 final boolean lambdaAffinity) {
+    final String executorId = taskExecutorIdMap.get(taskId);
+    LOG.info("Deactivate task " + taskId + " to executor " + executorId);
+    final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
+    deactivateTaskLambdaAffinityMap.put(taskId, lambdaAffinity);
+    representer.deactivateLambdaTask(taskId);
+  }
+
+  public synchronized void stopDeactivatedTask(final String taskId) {
+    if (deactivateTaskLambdaAffinityMap.containsKey(taskId)) {
+      throw new RuntimeException("Task is not deactivated,, but try to move from lambda to vm " + taskId);
+    }
+
+    final boolean lambdaAffinity = deactivateTaskLambdaAffinityMap.get(taskId);
+    deactivateTaskLambdaAffinityMap.remove(taskId);
+    stopTask(taskId, lambdaAffinity);
+  }
 
   public synchronized void stopTask(final String taskId, final boolean lambdaAffinity) {
 
@@ -95,14 +128,7 @@ public final class TaskScheduledMapMaster {
       taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     }
 
-    representer.sendControlMessage(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.StopTask)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-            .setTaskId(taskId)
-            .build())
-          .build());
+    representer.stopTask(taskId);
 
     synchronized (stageTaskMap) {
       final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
@@ -177,9 +203,6 @@ public final class TaskScheduledMapMaster {
       taskExecutorIdMap.put(taskId, representer.getExecutorId());
     }
 
-    // Add task location to VM
-    taskLocationMap.locationMap.put(taskId, TaskLoc.VM);
-
     final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
 
     synchronized (stageTaskMap) {
@@ -201,6 +224,16 @@ public final class TaskScheduledMapMaster {
           .build());
       });
     });
+
+    // Redirect task if it is partial and transient and it is moved from VM to LAMBDA
+    if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
+      && representer.getExecutorId().equals(ResourcePriorityProperty.LAMBDA)) {
+      final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
+      final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
+      LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
+      final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
+      vmExecutor.activateLambdaTask(taskId, vmTaskId, vmExecutor);
+    }
   }
 
   public synchronized void setExecutorAddressInfo(final String executorId,

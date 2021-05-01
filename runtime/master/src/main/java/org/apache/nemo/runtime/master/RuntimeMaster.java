@@ -719,13 +719,6 @@ public final class RuntimeMaster {
 
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
-  public boolean isPartial(final String stageId) {
-    return taskScheduledMap.getTaskIdTaskMap().values()
-      .stream().filter(task -> task.isParitalCombine() &&
-        RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()).equals(stageId)
-      ).findFirst().isPresent();
-  }
-
   public String getPairStage(String stageId) {
     return pairStageTaskManager.getPairStageId(stageId);
   }
@@ -1017,7 +1010,7 @@ public final class RuntimeMaster {
           LOG.info("Deactivation done of {}", reroutingTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
           lambdaExecutor.deactivationDoneSignal(reroutingTask);
-        }  else {
+        } else {
           final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
           lambdaExecutor.activationDoneSignal(pairTask);
@@ -1219,6 +1212,7 @@ public final class RuntimeMaster {
           LOG.info("Deactivation done of {}", reroutingTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
           lambdaExecutor.deactivationDoneSignal(reroutingTask);
+          taskScheduledMap.stopDeactivatedTask(reroutingTask);
         } else {
           final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);

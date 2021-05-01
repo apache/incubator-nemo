@@ -13,6 +13,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;
+import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
@@ -115,6 +116,7 @@ public final class JobScaler {
 
   private final Backpressure backpressure;
 
+  private final Scaler scaler;
 
   @Inject
   private JobScaler(final TaskScheduledMapMaster taskScheduledMap,
@@ -130,6 +132,7 @@ public final class JobScaler {
                     final PlanStateManager planStateManager,
                     final ExecutorMetricMap executorMetricMap,
                     final Backpressure backpressure,
+                    final Scaler scaler,
                     final ExecutorCpuUseMap m) {
     messageEnvironment.setupListener(SCALE_DECISION_MESSAGE_LISTENER_ID,
       new ScaleDecisionMessageReceiver());
@@ -147,6 +150,7 @@ public final class JobScaler {
     this.planStateManager = planStateManager;
     this.executorRegistry = executorRegistry;
     this.backpressure = backpressure;
+    this.scaler = scaler;
 
     this.evalConf = evalConf;
     this.taskOffloadingManager = taskOffloadingManager;
@@ -430,6 +434,8 @@ public final class JobScaler {
       final Integer inputRate = Integer.valueOf(msg.getInfo().split("INPUT ")[1]);
       LOG.info("Input rate {}", inputRate);
       backpressure.addCurrentInput(inputRate);
+      // scaler.addCurrentInput(inputRate);
+
       /*
       final long prevInputRate;
       if (inputRates.size() == 0) {
@@ -1272,8 +1278,6 @@ public final class JobScaler {
             prevStoppedTasks.add(taskId);
 
             stageStoppedCnt.put(stageId, stageStoppedCnt.get(stageId) + 1);
-
-
           }
         }
       }
@@ -1394,6 +1398,7 @@ public final class JobScaler {
       switch (message.getType()) {
         case SourceEvent: {
           backpressure.addSourceEvent(message.getSetNum());
+          scaler.addSourceEvent(message.getSetNum());
           break;
         }
         case ExecutorMetric: {
