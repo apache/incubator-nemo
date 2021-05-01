@@ -43,6 +43,8 @@ public final class InputAndCpuBasedScaler implements Scaler {
   private long prevFutureCompleteTime = System.currentTimeMillis();
 
   private final ExecutorService prevFutureChecker = Executors.newSingleThreadExecutor();
+
+  private int observation = 0;
   @Inject
   private InputAndCpuBasedScaler(final ExecutorMetricMap executorMetricMap,
                                  final ScaleInOutManager scaleInOutManager,
@@ -81,13 +83,20 @@ public final class InputAndCpuBasedScaler implements Scaler {
         final double avgExpectedCpuVal = avgExpectedCpu.getMean();
 
         LOG.info("Scaler avg cpu: {}, avg expected cpu: {}, target cpu: {}, " +
-            "avg input: {}, avg src input: {}, numExecutor: {}",
+            "avg input: {}, avg process input: {}, numExecutor: {}",
           avgCpu,
           avgExpectedCpuVal,
           policyConf.scalerTargetCpu,
           avgInput,
           avgProcess,
           info.numExecutor);
+
+        observation += 1;
+
+
+        if (observation < 10) {
+          return;
+        }
 
         if (!prevFutureCompleted.get()) {
           LOG.info("Prev future is not finished ... skip current decision");
@@ -102,7 +111,8 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         synchronized (this) {
 
-          if (avgExpectedCpuVal > policyConf.scalerUpperCpu) {
+          if (avgCpu > policyConf.scalerTargetCpu + 0.1
+            && avgExpectedCpuVal > policyConf.scalerUpperCpu) {
             // Scale out !!
             // ex) expected cpu val: 2.0, target cpu: 0.6
             // then, we should reduce the current load of cluster down to 0.3 (2.0 * 0.3 = 0.6),
@@ -139,7 +149,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-    }, 100, 1, TimeUnit.SECONDS);
+    }, 30, 1, TimeUnit.SECONDS);
   }
 
   @Override
