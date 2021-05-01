@@ -100,7 +100,7 @@ public final class TaskScheduledMapMaster {
   }
 
   public synchronized void stopDeactivatedTask(final String taskId) {
-    if (deactivateTaskLambdaAffinityMap.containsKey(taskId)) {
+    if (!deactivateTaskLambdaAffinityMap.containsKey(taskId)) {
       throw new RuntimeException("Task is not deactivated,, but try to move from lambda to vm " + taskId);
     }
 
@@ -227,12 +227,12 @@ public final class TaskScheduledMapMaster {
 
     // Redirect task if it is partial and transient and it is moved from VM to LAMBDA
     if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
-      && representer.getExecutorId().equals(ResourcePriorityProperty.LAMBDA)) {
+      && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
       final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
       final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
       LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
       final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
-      vmExecutor.activateLambdaTask(taskId, vmTaskId, vmExecutor);
+      representer.activateLambdaTask(taskId, vmTaskId, vmExecutor);
     }
   }
 

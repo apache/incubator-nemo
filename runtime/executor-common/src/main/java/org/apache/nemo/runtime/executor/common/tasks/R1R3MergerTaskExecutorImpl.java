@@ -139,6 +139,10 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
   private DataHandler dataHandler;
   private boolean receiveFinal = true;
 
+  private boolean allPathStopped = true;
+  private boolean lambdaPathStopped = true;
+  private boolean vmPathStopped = false;
+
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
    * Output: single o2o (normal) - o2o (transient)
@@ -283,7 +287,13 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
         }
 
         final boolean isReceiveFinal = is.readBoolean();
+        allPathStopped  = is.readBoolean();
+        lambdaPathStopped = is.readBoolean();
+        vmPathStopped = is.readBoolean();
 
+        LOG.info("Restore merger task {}: all path stoopped {}/ lambda path stooped {}/ vm path stopped {}" +
+            "receive final /{}", taskId,
+          allPathStopped, lambdaPathStopped, vmPathStopped, receiveFinal);
         receiveFinal = isReceiveFinal;
         if (receiveFinal) {
           dataHandler = new BypassDataHandler();
@@ -372,9 +382,6 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
     TaskExecutorUtil.sendInitMessage(task, inputPipeRegister);
   }
 
-  private boolean allPathStopped = true;
-  private boolean lambdaPathStopped = true;
-  private boolean vmPathStopped = false;
 
   @Override
   public void stopInputPipeIndex(final Triple<String, String, String> triple) {
@@ -801,6 +808,9 @@ public final class R1R3MergerTaskExecutorImpl implements MergerTaskExecutor {
         ((R2SinglePairWatermarkManager) taskWatermarkManager).encode(taskId, os);
       }
       os.writeBoolean(receiveFinal);
+      os.writeBoolean(allPathStopped);
+      os.writeBoolean(lambdaPathStopped);
+      os.writeBoolean(vmPathStopped);
 
     } catch (final Exception e) {
       e.printStackTrace();

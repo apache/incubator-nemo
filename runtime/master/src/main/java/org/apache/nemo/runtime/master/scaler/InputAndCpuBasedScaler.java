@@ -63,13 +63,14 @@ public final class InputAndCpuBasedScaler implements Scaler {
         final double avgProcess = avgSrcProcessingRate.getMean();
         final double avgInput = avgInputRate.getMean();
 
-        if (info.numExecutor > 0) {
-          if (avgProcess == 0) {
-            avgExpectedCpu.addValue(avgCpu);
-          } else {
-            avgExpectedCpu.addValue((avgInput * avgCpu) / avgProcess);
-          }
+        if (avgProcess == 0 || info.numExecutor == 0) {
+          return;
         }
+
+        if (info.numExecutor > 0) {
+          avgExpectedCpu.addValue((avgInput * avgCpu) / avgProcess);
+        }
+
 
         final double avgExpectedCpuVal = avgExpectedCpu.getMean();
 
@@ -103,7 +104,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-    }, 1, 1, TimeUnit.MILLISECONDS);
+    }, 100, 1, TimeUnit.SECONDS);
   }
 
   @Override

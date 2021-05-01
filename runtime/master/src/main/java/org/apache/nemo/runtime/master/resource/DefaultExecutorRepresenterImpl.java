@@ -309,7 +309,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private void checkAndDeactivate() {
     if (activatedTasks.isEmpty() &&
-      getRunningTasks().isEmpty()) {
+      getRunningTasks().isEmpty() &&
+      lambdaControlProxy.isActive()) {
       LOG.info("Deactivate lambda worker {}", executorId);
       lambdaControlProxy.deactivate();
     }

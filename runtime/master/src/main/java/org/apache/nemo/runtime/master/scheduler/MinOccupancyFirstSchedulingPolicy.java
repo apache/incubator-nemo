@@ -117,46 +117,47 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .map(executor -> executor.getNumOfRunningTasks())
         .mapToInt(i -> i).min();
 
+      LOG.info("O2o-aware scheduling task {} to {}", task.getTaskId(), candidates);
+
       return candidates.stream()
         .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
     } else {
       // avoid allocating same stage tasks in the same executor as much as possible.
-
       final List<ExecutorRepresenter> nonConflictExecutors = executors.stream()
         .filter(executor -> executor.getRunningTasks()
           .stream().map(t -> RuntimeIdManager.getStageIdFromTaskId(t.getTaskId()))
           .noneMatch(sid -> sid.equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()))))
         .collect(Collectors.toList());
 
-      final OptionalInt minOccupancy;
       if (nonConflictExecutors.size() > 0) {
-        minOccupancy = nonConflictExecutors.stream()
+        // No executor has the same stage id tasks
+        // Select min occupancy
+        final OptionalLong minOccupancy = nonConflictExecutors.stream()
           .map(executor -> executor.getNumOfRunningTasks())
-          .mapToInt(i -> i).min();
+          .mapToLong(i -> i).min();
+
+        return nonConflictExecutors.stream()
+          .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsLong())
+          .findFirst()
+          .orElseThrow(() -> new RuntimeException("No such executor"));
+
       } else {
-        minOccupancy =
-          executors.stream()
-            .map(executor -> executor.getNumOfRunningTasks())
-            .mapToInt(i -> i).min();
-      }
+        // Avoid allocating same stage tasks in the same executor as much as possible.
+        final OptionalLong minOccupancy = executors.stream()
+          .map(executor ->
+            executor.getRunningTasks().stream()
+              .filter(t -> t.getStageId().equals(task.getStageId()))
+              .count())
+          .mapToLong(i -> i).min();
 
-      if (!minOccupancy.isPresent()) {
-        throw new RuntimeException("Cannot find min occupancy");
-      }
-
-      final Collection<ExecutorRepresenter> finalExecutors;
-      if (nonConflictExecutors.size() > 0) {
-        finalExecutors = nonConflictExecutors;
-      } else {
-        finalExecutors = executors;
-      }
-
-      return finalExecutors.stream()
-        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
+        return executors.stream()
+        .filter(executor -> (executor.getRunningTasks().stream()
+          .filter(t -> t.getStageId().equals(task.getStageId())).count()) == minOccupancy.getAsLong())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
+      }
     }
   }
 }

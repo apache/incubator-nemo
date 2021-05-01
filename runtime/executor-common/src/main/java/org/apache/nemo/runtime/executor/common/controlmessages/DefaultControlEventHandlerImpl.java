@@ -285,6 +285,9 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
               triple.getRight(),  // srct ask id
               null);
           });
+
+        final int index = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), key.getMiddle(), key.getLeft());
+        pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         break;
       }
       case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {

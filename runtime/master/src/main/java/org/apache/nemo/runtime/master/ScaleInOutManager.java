@@ -45,10 +45,16 @@ public final class ScaleInOutManager {
       // executor 마다 정해진 number의 task들을 옮김.
       final Map<String, Integer> stageIdCounterMap = new HashMap<>();
       final Map<String, Integer> stageIdMoveCounterMap = new HashMap<>();
+      final List<Task> tasksToBeMoved = new LinkedList<>();
 
       executor.getRunningTasks().stream()
+        .filter(task -> !task.isCrTask())
         .filter(task -> stages.contains(task.getStageId()))
-        .map(task -> task.getStageId())
+        .map(task -> {
+          checkTaskMoveValidation(task, executor);
+          tasksToBeMoved.add(task);
+          return task.getStageId();
+        })
         .forEach(stageId -> {
           stageIdCounterMap.putIfAbsent(stageId, 0);
           stageIdCounterMap.put(stageId, stageIdCounterMap.get(stageId) + 1);
@@ -62,17 +68,14 @@ public final class ScaleInOutManager {
       LOG.info("Number of tasks to move in {}: stages {}, {}", executor.getExecutorId(),
         stages, stageIdCounterMap);
 
-      executor.getRunningTasks().stream()
-        .filter(task -> !task.isCrTask())
+      tasksToBeMoved.stream()
         .forEach(task -> {
           // check validation
-          checkTaskMoveValidation(task, executor);
-
           final int maxCnt = stageIdCounterMap.get(task.getStageId());
           if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
 
             if ((task.isParitalCombine() && task.isTransientTask())
-              && executor.getExecutorId().equals(ResourcePriorityProperty.LAMBDA)) {
+              && executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
               // Deactivation task if possible
               LOG.info("Deactivate lambda task {} in {}", task.getTaskId(), executor.getExecutorId());
               taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false);

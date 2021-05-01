@@ -303,7 +303,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
                                                        final String edgeId,
                                                        final String dstTaskId,
                                                        final Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
-
     inputStopSignalPipes.putIfAbsent(dstTaskId, new ArrayList<>(srcTasks.size()));
 
     for (final String srcTask : srcTasks) {
