@@ -61,7 +61,7 @@ public final class LambdaTaskContainerEventHandler {
             executors.forEach(executor -> {
               if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
                 LOG.info("Deactivate lambda task for executor {} / {}", executor.getExecutorId(),
-                  executor.getRunningTasks());
+                  executor.getScheduledTasks());
                 executor.sendControlMessage(ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
                   .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())

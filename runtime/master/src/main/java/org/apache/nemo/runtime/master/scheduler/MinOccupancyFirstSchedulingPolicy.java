@@ -20,8 +20,6 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
@@ -64,7 +62,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       task.getTaskId(), executors);
 
     final Set<String> scheduledTasks = executors.stream()
-      .map(e -> e.getRunningTasks())
+      .map(e -> e.getScheduledTasks())
       .reduce((s1, s2) -> {
         final Set<Task> s = new HashSet<Task>(s1);
         s.addAll(s2);
@@ -76,7 +74,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
 
     final Map<String, ExecutorRepresenter> scheduledExecutors = new HashMap<>();
     executors.forEach(executor -> {
-      executor.getRunningTasks().forEach(t -> {
+      executor.getScheduledTasks().forEach(t -> {
         scheduledExecutors.put(t.getTaskId(), executor);
       });
     });
@@ -126,7 +124,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     } else {
       // avoid allocating same stage tasks in the same executor as much as possible.
       final List<ExecutorRepresenter> nonConflictExecutors = executors.stream()
-        .filter(executor -> executor.getRunningTasks()
+        .filter(executor -> executor.getScheduledTasks()
           .stream().map(t -> RuntimeIdManager.getStageIdFromTaskId(t.getTaskId()))
           .noneMatch(sid -> sid.equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()))))
         .collect(Collectors.toList());
@@ -147,13 +145,13 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         // Avoid allocating same stage tasks in the same executor as much as possible.
         final OptionalLong minOccupancy = executors.stream()
           .map(executor ->
-            executor.getRunningTasks().stream()
+            executor.getScheduledTasks().stream()
               .filter(t -> t.getStageId().equals(task.getStageId()))
               .count())
           .mapToLong(i -> i).min();
 
         return executors.stream()
-        .filter(executor -> (executor.getRunningTasks().stream()
+        .filter(executor -> (executor.getScheduledTasks().stream()
           .filter(t -> t.getStageId().equals(task.getStageId())).count()) == minOccupancy.getAsLong())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));

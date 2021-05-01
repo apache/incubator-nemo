@@ -50,7 +50,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
     final DefaultExecutorRepresenterImpl executorRepresenter = mock(DefaultExecutorRepresenterImpl.class);
     final Set<Task> runningTasks = new HashSet<>();
     IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(mockTask(String.valueOf(i))));
-    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    when(executorRepresenter.getScheduledTasks()).thenReturn(runningTasks);
     return executorRepresenter;
   }
 

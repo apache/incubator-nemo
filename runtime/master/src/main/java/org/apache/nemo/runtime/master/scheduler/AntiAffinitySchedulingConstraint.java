@@ -45,7 +45,7 @@ public final class AntiAffinitySchedulingConstraint implements SchedulingConstra
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    for (final Task runningTask : executor.getRunningTasks()) {
+    for (final Task runningTask : executor.getScheduledTasks()) {
       if (isInAntiAffinityGroup(runningTask) && isInAntiAffinityGroup(task)) {
         return false;
       }

@@ -29,7 +29,6 @@ import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.message.MessageSender;
-import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +62,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
   private final Map<String, Task> runningNonComplyingTasks;
-  private final Map<Task, Integer> runningTaskToAttempt;
+  private final Map<Task, Integer> scheduledTaskToAttempt;
   private final Set<String> tasksToBeStopped;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
@@ -72,6 +71,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final ExecutorService serializationExecutorService;
   private final String nodeName;
   private final SerializedTaskMap serializedTaskMap;
+  private final Set<Task> runningTasks;
 
   private WorkerControlProxy lambdaControlProxy;
 
@@ -97,10 +97,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.messageSender = messageSender;
     this.runningComplyingTasks = new ConcurrentHashMap<>();
     this.runningNonComplyingTasks = new ConcurrentHashMap<>();
-    this.runningTaskToAttempt = new ConcurrentHashMap<>();
+    this.scheduledTaskToAttempt = new ConcurrentHashMap<>();
     this.tasksToBeStopped = new HashSet<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
+    this.runningTasks = new HashSet<>();
     this.executorShutdownHandler = executorShutdownHandler;
     this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
@@ -258,7 +259,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   private Task findTask(final String taskId) {
-    for (final Task t : runningTaskToAttempt.keySet()) {
+    for (final Task t : scheduledTaskToAttempt.keySet()) {
       if (t.getTaskId().equals(taskId)) {
         return t;
       }
@@ -309,13 +310,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private void checkAndDeactivate() {
     if (activatedTasks.isEmpty() &&
+      getScheduledTasks().isEmpty() &&
       getRunningTasks().isEmpty() &&
       lambdaControlProxy.isActive()) {
       LOG.info("Deactivate lambda worker {}", executorId);
       lambdaControlProxy.deactivate();
     }
 
-    //  getRunningTasks().stream().allMatch(task -> task.isParitalCombine())) {
+    //  getScheduledTasks().stream().allMatch(task -> task.isParitalCombine())) {
     // If all partial task is deactivated
     // and other tasks are not scheduled in the lambda executor,
     // then deactivation of the worker
@@ -385,7 +387,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   public synchronized void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
-    runningTaskToAttempt.put(task, task.getAttemptIdx());
+    scheduledTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
 
     if (task.isTransientTask()) {
@@ -446,7 +448,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   @Override
   public synchronized void stopTask(final String taskId) {
-    runningTaskToAttempt.remove(runningComplyingTasks.get(taskId));
+    scheduledTaskToAttempt.remove(runningComplyingTasks.get(taskId));
+    runningTasks.remove(runningComplyingTasks.get(taskId));
+
     tasksToBeStopped.add(taskId);
 
     sendControlMessage(ControlMessage.Message.newBuilder()
@@ -519,8 +523,13 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @return the current snapshot of set of Tasks that are running in this executor.
    */
   @Override
+  public synchronized Set<Task> getScheduledTasks() {
+    return scheduledTaskToAttempt.keySet();
+  }
+
+  @Override
   public synchronized Set<Task> getRunningTasks() {
-    return runningTaskToAttempt.keySet();
+    return runningTasks;
   }
 
   /**
@@ -584,6 +593,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     final ObjectMapper mapper = new ObjectMapper();
     final ObjectNode node = mapper.createObjectNode();
     node.put("executorId", executorId);
+    node.put("scheduledTasks", getScheduledTasks().toString());
     node.put("runningTasks", getRunningTasks().toString());
     node.put("failedTasks", failedTasks.toString());
     return node.toString();
@@ -597,7 +607,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   private Task removeFromRunningTasks(final String taskId) {
     final Task task;
-    runningTaskToAttempt.remove(taskId);
+    scheduledTaskToAttempt.remove(taskId);
     if (runningComplyingTasks.containsKey(taskId)) {
       task = runningComplyingTasks.remove(taskId);
     } else if (runningNonComplyingTasks.containsKey(taskId)) {

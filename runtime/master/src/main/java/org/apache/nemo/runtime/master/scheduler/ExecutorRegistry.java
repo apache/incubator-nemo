@@ -182,7 +182,7 @@ public final class ExecutorRegistry {
   @VisibleForTesting
   synchronized Optional<ExecutorRepresenter> findExecutorForTask(final String taskId) {
     for (final ExecutorRepresenter executor : getRunningExecutors()) {
-      for (final Task runningTask : executor.getRunningTasks()) {
+      for (final Task runningTask : executor.getScheduledTasks()) {
         if (runningTask.getTaskId().equals(taskId)) {
           return Optional.of(executor);
         }

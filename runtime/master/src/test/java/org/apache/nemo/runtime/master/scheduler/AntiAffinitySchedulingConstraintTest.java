@@ -56,7 +56,7 @@ public final class AntiAffinitySchedulingConstraintTest {
     final DefaultExecutorRepresenterImpl executorRepresenter = mock(DefaultExecutorRepresenterImpl.class);
     final Set<Task> runningTasks = new HashSet<>();
     runningTasks.add(task);
-    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    when(executorRepresenter.getScheduledTasks()).thenReturn(runningTasks);
     return executorRepresenter;
   }
 

@@ -60,6 +60,8 @@ public interface ExecutorRepresenter {
   /**
    * @return the current snapshot of set of Tasks that are running in this executor.
    */
+  Set<Task> getScheduledTasks();
+
   Set<Task> getRunningTasks();
 
   /**
