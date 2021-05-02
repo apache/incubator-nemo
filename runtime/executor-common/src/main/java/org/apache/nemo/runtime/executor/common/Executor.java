@@ -376,7 +376,7 @@ public final class Executor {
                   .setExecutorId(executorId)
                   .setReceiveEvent(receiveCnt)
                   .setProcessEvent(processCnt)
-                  .setCpuUse(cpuUse)
+                  .setCpuUse(Math.min(1.0, cpuUse))
                   .build())
                 .build());
           }

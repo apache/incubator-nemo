@@ -104,17 +104,19 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
     if (avgCpu < policyConf.bpDecreaseTriggerCpu
       && backpressureRate > avgInputRate.getMean()) {
-      backpressureRate = (long) avgInputRate.getMean();
+      backpressureRate = (long) (avgInputRate.getMean() * 1.2);
     }
 
     if (avgCpu > policyConf.bpDecreaseTriggerCpu) {
       // Back pressure
-      final double decreaseRatio = Math.min(1, policyConf.bpDecreaseTriggerCpu / avgCpu);
-      backpressureRate = (long) (backpressureRate * decreaseRatio);
-      LOG.info("Decrease backpressure rate to {}, ratio: {}",
-        backpressureRate, policyConf.bpDecreaseTriggerCpu / avgCpu);
+      if (currSourceEvent < aggInput.get() * 0.9) {
+        final double decreaseRatio = Math.min(1, policyConf.bpDecreaseTriggerCpu / avgCpu);
+        backpressureRate = (long) (backpressureRate * decreaseRatio);
+        LOG.info("Decrease backpressure rate to {}, ratio: {}",
+          backpressureRate, policyConf.bpDecreaseTriggerCpu / avgCpu);
 
-      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+        sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+      }
 
     } else if (avgCpu < policyConf.bpIncreaseLowerCpu) {
       // TODO: when to stop increasing rate?
