@@ -106,6 +106,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
       && backpressureRate > avgInputRate.getMean() && avgInputRate.getMean() > 0
       && currSourceEvent > 0) {
       backpressureRate = Math.max(1000, (long) (avgInputRate.getMean() * 1.2));
+      LOG.info("Set backpressure rate to {}", backpressureRate);
       sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     }
 
