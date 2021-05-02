@@ -107,7 +107,8 @@ public final class InputAndCpuBasedScaler implements Scaler {
           return;
         }
 
-        if System.currentTimeMillis() - sourceHandlingStartTime <= TimeUnit.SECONDS.toMillis(30)) {
+        if (System.currentTimeMillis() - sourceHandlingStartTime
+          <= TimeUnit.SECONDS.toMillis(30)) {
           return;
         }
 
