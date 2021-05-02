@@ -109,7 +109,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
     if (avgCpu > policyConf.bpDecreaseTriggerCpu) {
       // Back pressure
-      if (currSourceEvent < aggInput.get() * 0.9) {
+      if (currSourceEvent > aggInput.get() * 0.9 || backpressureRate > avgInputRate.getMean()) {
         final double decreaseRatio = Math.min(1, policyConf.bpDecreaseTriggerCpu / avgCpu);
         backpressureRate = (long) (backpressureRate * decreaseRatio);
         LOG.info("Decrease backpressure rate to {}, ratio: {}",
