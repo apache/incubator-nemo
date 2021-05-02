@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -75,7 +76,9 @@ public final class ScaleInOutManager {
       LOG.info("Number of tasks to move in {}: stages {}, {}", executor.getExecutorId(),
         stages, stageIdCounterMap);
 
+      // without partial first
       tasksToBeMoved.stream()
+        .filter(task -> !task.isParitalCombine())
         .forEach(task -> {
           // check validation
           final int maxCnt = stageIdCounterMap.get(task.getStageId());
@@ -95,7 +98,43 @@ public final class ScaleInOutManager {
             stageIdMoveCounterMap.put(task.getStageId(), stageIdMoveCounterMap.get(task.getStageId()) + 1);
           }
         });
+
+      // Waiting for merger and stateless (without partial)
+      futures.stream().forEach(future -> {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+        }
+      });
+
+      tasksToBeMoved.stream()
+        .filter(task -> task.isParitalCombine())
+        .forEach(task -> {
+          // check validation
+          final int maxCnt = stageIdCounterMap.get(task.getStageId());
+          if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
+
+            if ((task.isParitalCombine() && task.isTransientTask())
+              && executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+              // Deactivation task if possible
+              LOG.info("Deactivate lambda task {} in {}", task.getTaskId(), executor.getExecutorId());
+              futures.add(taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false));
+            } else {
+              LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
+              futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
+            }
+
+            stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
+            stageIdMoveCounterMap.put(task.getStageId(), stageIdMoveCounterMap.get(task.getStageId()) + 1);
+          }
+        });
+
     });
+
+    backpressure.
 
     return futures;
   }

@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.master.scaler;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.conf.PolicyConf;
 import org.apache.nemo.runtime.master.ScaleInOutManager;
+import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.slf4j.Logger;
@@ -49,10 +50,13 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
   private boolean started = false;
 
+  private final Backpressure backpressure;
+
   @Inject
   private InputAndCpuBasedScaler(final ExecutorMetricMap executorMetricMap,
                                  final ScaleInOutManager scaleInOutManager,
                                  final ExecutorRegistry executorRegistry,
+                                 final Backpressure backpressure,
                                  final PolicyConf policyConf) {
     this.executorMetricMap = executorMetricMap;
     this.policyConf = policyConf;
@@ -63,6 +67,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     this.avgSrcProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgExpectedCpu = new DescriptiveStatistics(windowSize);
     this.currRate = policyConf.bpMinEvent;
+    this.backpressure = backpressure;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       try {
@@ -201,6 +206,10 @@ public final class InputAndCpuBasedScaler implements Scaler {
       final long et = System.currentTimeMillis();
       prevFutureCompleted.set(true);
       prevFutureCompleteTime = et;
+
+      // send hints to the backpressure
+      backpressure.setHintForScaling(ratioToScaleout);
+
       LOG.info("End of waiting for scale out decision {}", et - st);
     });
   }

@@ -13,6 +13,7 @@ public interface Backpressure {
 
   void addSourceEvent(final long sourceEvent);
   void addCurrentInput(final long rate);
+  void setHintForScaling(final double scalingRatio);
 
   default void sendBackpressure(final ExecutorRegistry executorRegistry,
                                 final long rate,

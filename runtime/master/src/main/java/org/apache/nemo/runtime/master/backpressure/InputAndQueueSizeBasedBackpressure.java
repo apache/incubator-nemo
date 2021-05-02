@@ -43,6 +43,8 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private final int windowSize = 5;
   private final int sourceParallelism;
 
+  private long scalingHintSetTime = System.currentTimeMillis();
+
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
                                              final ExecutorRegistry executorRegistry,
@@ -106,8 +108,9 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
       && backpressureRate > avgInputRate.getMean() && avgInputRate.getMean() > 0
       && currSourceEvent > 0) {
       backpressureRate = Math.max(1000, (long) (avgInputRate.getMean() * 1.2));
+
       LOG.info("Set backpressure rate to {}", backpressureRate);
-      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+      sendBackpressureWrapper();
     }
 
     if (avgCpu > policyConf.bpDecreaseTriggerCpu) {
@@ -117,8 +120,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
         backpressureRate = Math.max(1000, (long) (backpressureRate * decreaseRatio));
         LOG.info("Decrease backpressure rate to {}, ratio: {}",
           backpressureRate, policyConf.bpDecreaseTriggerCpu / avgCpu);
-
-        sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+        sendBackpressureWrapper();
       }
 
     } else if (avgCpu < policyConf.bpIncreaseLowerCpu) {
@@ -131,7 +133,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
         final double increaseRatio = Math.max(1, (policyConf.bpDecreaseTriggerCpu / avgCpu) * 0.9);
         backpressureRate *= increaseRatio;
         LOG.info("Increase backpressure rate to {} with ratio {}", backpressureRate, increaseRatio);
-        sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+        sendBackpressureWrapper();
 
         /*
         if (avgCpuUse.getMean() < 0.5) {
@@ -149,6 +151,14 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
         }
         */
       }
+    }
+  }
+
+  private void sendBackpressureWrapper() {
+    if (System.currentTimeMillis() - scalingHintSetTime >= 5000) {
+      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+    } else {
+      LOG.info("Skip setting backpressure due to the scaling hint set time");
     }
   }
 
@@ -202,5 +212,17 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     // Observed that the actual event is the half
     avgInputRate.addValue(rate);
     aggInput.getAndAdd(rate);
+  }
+
+  @Override
+  public synchronized void setHintForScaling(double scalingRatio) {
+    final long prevRate = backpressureRate;
+    backpressureRate = Math.max(backpressureRate,  (long)((backpressureRate / (1 - scalingRatio)) * 1.1));
+
+    if (backpressureRate > prevRate) {
+      scalingHintSetTime = System.currentTimeMillis();
+      LOG.info("Set hint for scaling {} and increase backpressure rate to {}", scalingRatio, backpressureRate);
+      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+    }
   }
 }
