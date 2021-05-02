@@ -27,7 +27,7 @@ public final class ExecutorMetricMap {
         System.currentTimeMillis() - pair2.left() > 3000) {
 
         return Pair.of(System.currentTimeMillis(),
-          new ExecutorMetricInfo(0,0,0,0));
+          new ExecutorMetricInfo(0,0,0,0, 0));
 
       } else if (System.currentTimeMillis() - pair2.left() > 3000) {
         // stale data
@@ -40,11 +40,12 @@ public final class ExecutorMetricMap {
         return Pair.of(Math.max(pair1.left(), pair2.left()),
           new ExecutorMetricInfo(r, p,
             info1.cpuUse + info2.cpuUse,
+            Math.max(info1.cpuUse, info2.cpuUse),
             info1.numExecutor + info2.numExecutor));
       }
     })
     .orElse(Pair.of(System.currentTimeMillis(),
-      new ExecutorMetricInfo(0,0,0,0))).right();
+      new ExecutorMetricInfo(0,0,0,0,0))).right();
 
     return result;
   }

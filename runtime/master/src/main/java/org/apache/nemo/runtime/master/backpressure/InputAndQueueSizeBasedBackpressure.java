@@ -33,6 +33,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private long backpressureRate = Long.MAX_VALUE;
 
   private final DescriptiveStatistics avgCpuUse;
+  private final DescriptiveStatistics avgMaxCpuUse;
   private final DescriptiveStatistics avgInputRate;
   private final DescriptiveStatistics avgProcessingRate;
   private final DescriptiveStatistics avgQueueSize;
@@ -52,6 +53,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     this.executorRegistry = executorRegistry;
     this.sourceParallelism = sourceParallelism;
     this.avgCpuUse = new DescriptiveStatistics(windowSize);
+    this.avgMaxCpuUse = new DescriptiveStatistics(windowSize);
     this.avgInputRate = new DescriptiveStatistics(windowSize);
     this.avgProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgQueueSize = new DescriptiveStatistics(windowSize);
@@ -73,14 +75,16 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
         if (info.numExecutor > 0) {
           avgCpuUse.addValue(info.cpuUse / info.numExecutor);
+          avgMaxCpuUse.addValue(info.maxCpuUse);
         }
 
         synchronized (this) {
           LOG.info("Total queue: {}, avg queue: {}, avg cpu: {}, backpressureRate: {}, avgInputRate: {}," +
-              "aggInput: {}, sourceEvent: {}, processingRate: {}, numExecutor: {}",
+              "aggInput: {}, sourceEvent: {}, processingRate: {}, maxCPU: {} numExecutor: {}",
             queue, avgQueueSize.getMean(),
             avgCpuUse.getMean(), backpressureRate, avgInputRate.getMean(),
-            aggInput, currSourceEvent, avgProcessingRate.getMean(), info.numExecutor);
+            aggInput, currSourceEvent, avgProcessingRate.getMean(),
+            info.maxCpuUse, info.numExecutor);
 
           cpuBasedBackpressure();
         }
@@ -92,7 +96,8 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   }
 
   private void cpuBasedBackpressure() {
-    final double avgCpu = avgCpuUse.getMean();
+    // final double avgCpu = avgCpuUse.getMean();
+    final double avgCpu = avgMaxCpuUse.getMean();
     if (currSourceEvent == 0) {
       return;
     }
