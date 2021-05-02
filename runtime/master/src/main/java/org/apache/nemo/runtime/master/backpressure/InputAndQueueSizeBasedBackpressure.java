@@ -105,6 +105,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     if (avgCpu < policyConf.bpDecreaseTriggerCpu
       && backpressureRate > avgInputRate.getMean()) {
       backpressureRate = (long) (avgInputRate.getMean() * 1.2);
+      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     }
 
     if (avgCpu > policyConf.bpDecreaseTriggerCpu) {
