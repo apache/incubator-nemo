@@ -102,9 +102,11 @@ public final class ScaleInOutManager {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
     } else if (task.isCrTask() || task.isStreamTask()) {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
-    } else if (!(task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)) {
-      throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
     }
+//
+//    else if (!(task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)) {
+//      throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
+//    }
   }
 
   public synchronized List<Future<String>> sendMigrationAllStages(
