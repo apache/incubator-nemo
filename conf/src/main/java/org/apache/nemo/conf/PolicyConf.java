@@ -26,7 +26,7 @@ public final class PolicyConf {
   @NamedParameter(short_name = "bp_decrease_ratio", default_value = "0.85")
   public static final class BPDecreaseRatio implements Name<Double> {}
 
-  @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.65")
+  @NamedParameter(short_name = "bp_increase_lower_cpu", default_value = "0.7")
   public static final class BPIncraseLowerCpu implements Name<Double> {}
 
   @NamedParameter(short_name = "bp_decrase_trigger_cpu", default_value = "0.85")
