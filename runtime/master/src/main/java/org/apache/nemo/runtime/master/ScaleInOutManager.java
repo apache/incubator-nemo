@@ -100,7 +100,7 @@ public final class ScaleInOutManager {
   private void checkTaskMoveValidation(final Task task, final ExecutorRepresenter ep) {
     if (task.isParitalCombine() && task.isVMTask())  {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
-    } else if (task.isCrTask()) {
+    } else if (task.isCrTask() || task.isStreamTask()) {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
     } else if (!(task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)) {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
@@ -124,6 +124,7 @@ public final class ScaleInOutManager {
       .map(vmExecutor -> vmExecutor.getRunningTasks())
       .flatMap(l -> l.stream()
         .filter(task -> !task.isCrTask())
+        .filter(task -> !task.isStreamTask())
         .filter(task -> !(task.isParitalCombine() && task.isVMTask()))
         .filter(task -> task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)
         .map(t -> t.getStageId()))

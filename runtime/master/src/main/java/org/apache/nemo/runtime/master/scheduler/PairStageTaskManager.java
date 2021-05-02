@@ -13,6 +13,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +71,9 @@ public final class PairStageTaskManager {
     final boolean transientTask = isTransientTask(taskIncomingEdges, irDag);
     final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
 
+    if (isStreamTask(irDag)) {
+      return Task.TaskType.StreamTask;
+    }
     if (smTask) {
       return Task.TaskType.MergerTask;
     }if (crTask) {
@@ -161,6 +165,11 @@ public final class PairStageTaskManager {
     } else {
       return null;
     }
+  }
+
+  public static boolean isStreamTask(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+    return
+      irDag.getRootVertices().stream().anyMatch(vertex -> vertex instanceof StreamVertex);
   }
 
   public static boolean isCrTask(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {

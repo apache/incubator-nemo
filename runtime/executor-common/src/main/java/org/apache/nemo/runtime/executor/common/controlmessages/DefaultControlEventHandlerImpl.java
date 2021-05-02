@@ -302,6 +302,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           key.getLeft());
 
         if (!taskExecutor.getTask().isCrTask() &&
+          !taskExecutor.getTask().isStreamTask() &&
           taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
           // Check if this task is o2o connection with the parent
           // If it is, we stop the upstream and this task together

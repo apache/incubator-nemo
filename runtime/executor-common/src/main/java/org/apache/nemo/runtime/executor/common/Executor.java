@@ -797,7 +797,7 @@ public final class Executor {
 
         TaskExecutor taskExecutor;
 
-        if (irDag.getVertices().size() == 1 && irDag.getVertices().get(0) instanceof StreamVertex) {
+        if (task.isStreamTask()) {
           //  taskExecutor = new StreamTaskExecutorImpl(
           taskExecutor = new StreamTaskExecutorImpl(
             Thread.currentThread().getId(),

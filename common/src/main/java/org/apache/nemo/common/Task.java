@@ -65,6 +65,7 @@ public final class Task implements Serializable {
 
   public enum TaskType {
     CRTask,
+    StreamTask,
     MergerTask,
     TransientTask,
     VMTask,
@@ -301,6 +302,10 @@ public final class Task implements Serializable {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  public boolean isStreamTask() {
+    return taskType.equals(TaskType.StreamTask);
   }
 
   public boolean isCrTask() {
