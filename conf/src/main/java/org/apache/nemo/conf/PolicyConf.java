@@ -61,18 +61,22 @@ public final class PolicyConf {
   public static final class ScalerTriggerWindow implements Name<Integer> {}
 
   // sec
-  @NamedParameter(short_name = "scaler_slack_time", default_value = "5")
+  @NamedParameter(short_name = "scaler_slack_time", default_value = "10")
   public static final class ScalerSlackTime implements Name<Integer> {}
 
-  @NamedParameter(short_name = "scaler_trigger_queue_delay", default_value = "2")
-  public static final class ScalerTriggerQueueDelay implements Name<Integer> {}
+  @NamedParameter(short_name = "scaler_trigger_queue_delay", default_value = "1.5")
+  public static final class ScalerTriggerQueueDelay implements Name<Double> {}
+
+  @NamedParameter(short_name = "scaler_relay_overhead", default_value = "0.1")
+  public static final class ScalerRelayOverhead implements Name<Double> {}
 
   public final double scalerUpperCpu;
   public final double scalerTargetCpu;
   public final double scalerScaleoutTriggerCPU;
   public final int scalerTriggerWindow;
   public final int scalerSlackTime;
-  public final int scalerTriggerQueueDelay;
+  public final double scalerTriggerQueueDelay;
+  public final double scalerRelayOverhead;
 
 
   @Inject
@@ -88,7 +92,8 @@ public final class PolicyConf {
                      @Parameter(ScalerScaleoutTriggerCPU.class) final double scalerScaleoutTriggerCpu,
                      @Parameter(ScalerTriggerWindow.class) final int scalerTriggerWindow,
                      @Parameter(ScalerSlackTime.class) final int scalerSlackTime,
-                     @Parameter(ScalerTriggerQueueDelay.class) final int scalerTriggerQueueDelay) throws IOException {
+                     @Parameter(ScalerTriggerQueueDelay.class) final double scalerTriggerQueueDelay,
+                     @Parameter(ScalerRelayOverhead.class) double scalerRelayOverhead) throws IOException {
     this.bpQueueUpperBound = bpQueueSize;
     this.bpQueueLowerBound = bpQueueLowerBound;
     this.bpIncreaseRatio = bpIncreaseRatio;
@@ -103,6 +108,7 @@ public final class PolicyConf {
     this.scalerTriggerWindow = scalerTriggerWindow;
     this.scalerSlackTime = scalerSlackTime;
     this.scalerTriggerQueueDelay = scalerTriggerQueueDelay;
+    this.scalerRelayOverhead = scalerRelayOverhead;
   }
 
   public Configuration getConfiguration() {
@@ -120,7 +126,8 @@ public final class PolicyConf {
     jcb.bindNamedParameter(ScalerTriggerWindow.class, Integer.toString(scalerTriggerWindow));
     jcb.bindNamedParameter(ScalerSlackTime.class, Integer.toString(scalerSlackTime));
     jcb.bindNamedParameter(ScalerScaleoutTriggerCPU.class, Double.toString(scalerScaleoutTriggerCPU));
-    jcb.bindNamedParameter(ScalerTriggerQueueDelay.class, Integer.toString(scalerTriggerQueueDelay));
+    jcb.bindNamedParameter(ScalerTriggerQueueDelay.class, Double.toString(scalerTriggerQueueDelay));
+    jcb.bindNamedParameter(ScalerRelayOverhead.class, Double.toString(scalerRelayOverhead));
     return jcb.build();
   }
 
@@ -140,6 +147,7 @@ public final class PolicyConf {
     cl.registerShortNameOfClass(ScalerSlackTime.class);
     cl.registerShortNameOfClass(ScalerScaleoutTriggerCPU.class);
     cl.registerShortNameOfClass(ScalerTriggerQueueDelay.class);
+    cl.registerShortNameOfClass(ScalerRelayOverhead.class);
   }
 
   @Override
@@ -160,6 +168,7 @@ public final class PolicyConf {
     sb.append("scalerTriggerWindow: "); sb.append(scalerTriggerWindow); sb.append("\n");
     sb.append("scalerSlackTime: "); sb.append(scalerSlackTime); sb.append("\n");
     sb.append("scalerTriggerQueueDelay: "); sb.append(scalerTriggerQueueDelay); sb.append("\n");
+    sb.append("scalerRelayOverhead: "); sb.append(scalerRelayOverhead); sb.append("\n");
     sb.append("-----------PolicyConf end----------\n");
 
     return sb.toString();
