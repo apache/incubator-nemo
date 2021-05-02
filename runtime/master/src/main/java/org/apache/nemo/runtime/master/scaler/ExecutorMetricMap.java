@@ -40,7 +40,7 @@ public final class ExecutorMetricMap {
         return Pair.of(Math.max(pair1.left(), pair2.left()),
           new ExecutorMetricInfo(r, p,
             info1.cpuUse + info2.cpuUse,
-            Math.max(info1.cpuUse, info2.cpuUse),
+            Math.max(info1.maxCpuUse, info2.maxCpuUse),
             info1.numExecutor + info2.numExecutor));
       }
     })
@@ -53,5 +53,35 @@ public final class ExecutorMetricMap {
   public synchronized void setInfo(final String executorId,
                                    final ExecutorMetricInfo info) {
     map.put(executorId, Pair.of(System.currentTimeMillis(), info));
+  }
+
+
+
+  final class AggInfo {
+    public final double cpuUse;
+    public final int numExecutor;
+    public final long processEvent;
+    public final long receiveEvent;
+    public final double maxCpuUse;
+
+    public AggInfo(final double cpuUse,
+                   final int numExecutor,
+                   final long processEvent,
+                   final long receiveEvent,
+                   final double maxCpuUse) {
+      this.cpuUse = cpuUse;
+      this.numExecutor = numExecutor;
+      this.processEvent = processEvent;
+      this.receiveEvent = receiveEvent;
+      this.maxCpuUse = maxCpuUse;
+    }
+
+    public AggInfo concat(final AggInfo info) {
+      return new AggInfo(this.cpuUse + info.cpuUse,
+        this.numExecutor + info.numExecutor,
+        this.processEvent + info.processEvent,
+        this.receiveEvent + info.receiveEvent,
+        Math.max(this.maxCpuUse, info.maxCpuUse));
+    }
   }
 }
