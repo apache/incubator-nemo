@@ -91,7 +91,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     }, Util.THROTTLE_WINDOW, Util.THROTTLE_WINDOW, TimeUnit.MILLISECONDS);
   }
 
-  private void cpuBasedBackpressure(final long queue) {
+  private void cpuBasedBackpressure() {
     final double avgCpu = avgCpuUse.getMean();
     if (currSourceEvent == 0) {
       return;
