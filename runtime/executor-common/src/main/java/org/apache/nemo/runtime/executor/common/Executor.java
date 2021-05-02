@@ -18,11 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.common;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -37,7 +35,6 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.monitoring.AlarmManager;
-import org.apache.nemo.runtime.executor.common.monitoring.BackpressureSleepAlarm;
 import org.apache.nemo.runtime.executor.common.monitoring.SystemLoadProfiler;
 import org.apache.nemo.runtime.executor.common.tasks.*;
 import org.apache.nemo.runtime.message.*;
@@ -764,10 +761,10 @@ public final class Executor {
             .findFirst()
             .orElseThrow(() -> new RuntimeException("No such executor"));
         } else {
-          final Set<String> o2oEdges = task.getO2oEdgeIds();
+          final Set<String> o2oStages = task.getO2oStages();
 
           // locality-aware scheduling in executor
-          final Optional<ExecutorThread> o2oThread = o2oEdges.stream()
+          final Optional<ExecutorThread> o2oThread = o2oStages.stream()
             .map(o2oStageId -> {
               final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStageId,
                 RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);

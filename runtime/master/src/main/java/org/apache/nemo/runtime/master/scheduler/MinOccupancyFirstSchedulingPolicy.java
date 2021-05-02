@@ -80,10 +80,10 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     });
 
     final List<ExecutorRepresenter> candidates =
-      task.getO2oEdgeIds().stream()
+      task.getO2oStages().stream()
         // check whether the o2o source task is scheduled
-        .filter(edge -> {
-      final String srcTaskId = RuntimeIdManager.generateTaskId(edge,
+        .filter(o2oStage -> {
+      final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStage,
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
         LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
           "prevExecutorId: {}", task.getTaskId(), srcTaskId,
@@ -126,11 +126,13 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       final List<ExecutorRepresenter> nonConflictExecutors = executors.stream()
         .filter(executor -> executor.getScheduledTasks()
           .stream().map(t -> RuntimeIdManager.getStageIdFromTaskId(t.getTaskId()))
-          .noneMatch(sid -> sid.equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()))))
+          .noneMatch(sid ->
+            task.getO2oStages().contains(sid) ||
+            sid.equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId()))))
         .collect(Collectors.toList());
 
       if (nonConflictExecutors.size() > 0) {
-        // No executor has the same stage id tasks
+        // There are executors that have no conflicting stages (o2o stages)
         // Select min occupancy
         final OptionalLong minOccupancy = nonConflictExecutors.stream()
           .map(executor -> executor.getNumOfRunningTasks())

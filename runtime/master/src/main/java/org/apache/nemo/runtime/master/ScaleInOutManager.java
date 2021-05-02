@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.master.scheduler.TaskDispatcher;
@@ -20,24 +21,26 @@ public final class ScaleInOutManager {
   private final TaskDispatcher taskDispatcher;
   private final ExecutorRegistry executorRegistry;
   private final PairStageTaskManager pairStageTaskManager;
-
+  private final Backpressure backpressure;
 
 
   @Inject
   private ScaleInOutManager(final TaskDispatcher taskDispatcher,
                             final ExecutorRegistry executorRegistry,
                             final PairStageTaskManager pairStageTaskManager,
+                            final Backpressure backpressure,
                             final TaskScheduledMapMaster taskScheduledMapMaster) {
     this.taskDispatcher = taskDispatcher;
     this.executorRegistry = executorRegistry;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
     this.pairStageTaskManager = pairStageTaskManager;
+    this.backpressure = backpressure;
   }
 
   public synchronized List<Future<String>> sendMigration(final double ratio,
-                                                 final Collection<ExecutorRepresenter> executors,
-                                                 final Collection<String> stages,
-                                                 final boolean lambdaAffinity) {
+                                                         final Collection<ExecutorRepresenter> executors,
+                                                         final Collection<String> stages,
+                                                         final boolean lambdaAffinity) {
 
     // Set filtered out executors to task dispatcher
     taskDispatcher.setFilteredOutExecutors(executors.stream()

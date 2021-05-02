@@ -40,7 +40,6 @@ import java.io.DataOutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
@@ -75,7 +74,7 @@ public final class Task implements Serializable {
   private final TaskType taskType;
   private final boolean isPartial;
   private final boolean isStateful;
-  private final Set<String> o2oEdgeIds;
+  private final Set<String> o2oStages;
 
   /**
    *
@@ -96,7 +95,7 @@ public final class Task implements Serializable {
               final String pairTaskId,
               final String pairEdgeId,
               final TaskType taskType,
-              final Set<String> o2oEdgeIds) {
+              final Set<String> o2oStages) {
     this.taskId = taskId;
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     this.executionProperties = executionProperties;
@@ -114,7 +113,7 @@ public final class Task implements Serializable {
     this.pairTaskId = pairTaskId;
     this.pairEdgeId = pairEdgeId;
     this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK || vertex.isPushback);
-    this.o2oEdgeIds = o2oEdgeIds;
+    this.o2oStages = o2oStages;
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
@@ -164,8 +163,8 @@ public final class Task implements Serializable {
     return taskType;
   }
 
-  public Set<String> getO2oEdgeIds() {
-    return o2oEdgeIds;
+  public Set<String> getO2oStages() {
+    return o2oStages;
   }
 
   public static Task decode(DataInputStream dis,
@@ -293,8 +292,8 @@ public final class Task implements Serializable {
 
       dos.writeByte(taskType.ordinal());
 
-      dos.writeInt(o2oEdgeIds.size());
-      for (final String edgeId : o2oEdgeIds) {
+      dos.writeInt(o2oStages.size());
+      for (final String edgeId : o2oStages) {
         dos.writeUTF(edgeId);
       }
 
