@@ -77,6 +77,8 @@ public final class ScaleInOutManager {
         stages, stageIdCounterMap);
 
       // without partial first
+      final List<Future<String>> mergerFutures = new LinkedList<>();
+
       tasksToBeMoved.stream()
         .filter(task -> !task.isParitalCombine())
         .forEach(task -> {
@@ -84,13 +86,10 @@ public final class ScaleInOutManager {
           final int maxCnt = stageIdCounterMap.get(task.getStageId());
           if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
 
-            if ((task.isParitalCombine() && task.isTransientTask())
-              && executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
-              // Deactivation task if possible
-              LOG.info("Deactivate lambda task {} in {}", task.getTaskId(), executor.getExecutorId());
-              futures.add(taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false));
+            LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
+            if (task.isMerger()) {
+              mergerFutures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
             } else {
-              LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
               futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
             }
 
@@ -99,8 +98,8 @@ public final class ScaleInOutManager {
           }
         });
 
-      // Waiting for merger and stateless (without partial)
-      futures.stream().forEach(future -> {
+      // Waiting for merger because partial is dependent on merger
+      mergerFutures.stream().forEach(future -> {
         try {
           future.get();
         } catch (InterruptedException e) {
@@ -133,8 +132,6 @@ public final class ScaleInOutManager {
         });
 
     });
-
-    backpressure.
 
     return futures;
   }
