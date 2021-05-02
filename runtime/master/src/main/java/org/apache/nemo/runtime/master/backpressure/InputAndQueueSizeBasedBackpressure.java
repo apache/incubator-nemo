@@ -219,9 +219,10 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     final long prevRate = backpressureRate;
     backpressureRate = Math.max(backpressureRate,  (long)((backpressureRate / (1 - scalingRatio)) * 1.1));
 
+    LOG.info("Set hint for scaling {} and increase backpressure rate to {}, prev {}", scalingRatio, backpressureRate, prevRate);
+
     if (backpressureRate > prevRate) {
       scalingHintSetTime = System.currentTimeMillis();
-      LOG.info("Set hint for scaling {} and increase backpressure rate to {}", scalingRatio, backpressureRate);
       sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     }
   }
