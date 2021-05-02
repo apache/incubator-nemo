@@ -216,8 +216,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             // there is no pending event
             pipeManagerWorker.setTaskStop(taskExecutor.getId());
           }
-        } else if (!taskExecutor.getTask().isParitalCombine() &&
-          taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+        } else if (isStatelessAfterMerger(taskExecutor.getTask())) {
           LOG.info("Skip task stop of {}, assuming upstream task is stopped {}",
             taskExecutor.getId(), taskExecutor.getTask().getUpstreamTaskSet());
         } else {
@@ -368,8 +367,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
               LOG.info("Receive all task output done ack {}", control.getTaskId());
             }
 
-            if (!taskExecutor.getTask().isParitalCombine() &&
-              taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
+            if (isStatelessAfterMerger(taskExecutor.getTask())) {
               // send ack to the upstream
               sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
             }
@@ -446,6 +444,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
 
       pipeManagerWorker.stopOutputPipeForRouting(index, task.getTaskId());
     });
+  }
+
+  private boolean isStatelessAfterMerger(final Task task) {
+    return evalConf.optimizationPolicy.contains("R3") &&
+      !task.isParitalCombine() &&
+      task.getUpstreamTaskSet().size() == 1;
   }
 
   private void stopAndCheckpointTask(final String taskId) {

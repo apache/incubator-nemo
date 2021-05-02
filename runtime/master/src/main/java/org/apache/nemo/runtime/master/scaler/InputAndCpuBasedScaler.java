@@ -124,7 +124,11 @@ public final class InputAndCpuBasedScaler implements Scaler {
         }
 
         synchronized (this) {
-          queueSizeBasedScalingRatio().ifPresent(ratio -> scalingWithRatio(ratio));
+          queueSizeBasedScalingRatio().ifPresent(ratio -> {
+            if (ratio > 0.1) {
+              scalingWithRatio(ratio);
+            }
+          });
         }
 
       } catch (final Exception e) {
