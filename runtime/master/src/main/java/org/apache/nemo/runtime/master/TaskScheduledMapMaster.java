@@ -163,7 +163,8 @@ public final class TaskScheduledMapMaster {
         taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
       }
 
-      representer.stopTask(taskId);
+      LOG.info("Send stop signal {} to task {}", taskId.equals(parent), taskId);
+      representer.stopTask(taskId, taskId.equals(parent));
 
       synchronized (stageTaskMap) {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);

@@ -20,7 +20,7 @@ public interface ExecutorRepresenter {
    */
   Set<String> onExecutorFailed();
 
-  void stopTask(final String taskId);
+  void stopTask(final String taskId, boolean sendSignal);
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.

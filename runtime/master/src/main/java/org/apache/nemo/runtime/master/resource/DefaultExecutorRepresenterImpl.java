@@ -451,20 +451,22 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
-  public synchronized void stopTask(final String taskId) {
+  public synchronized void stopTask(final String taskId, final boolean sendSignal) {
     scheduledTaskToAttempt.remove(runningComplyingTasks.get(taskId));
     runningTasks.remove(runningComplyingTasks.get(taskId));
 
     tasksToBeStopped.add(taskId);
 
-    sendControlMessage(ControlMessage.Message.newBuilder()
-      .setId(RuntimeIdManager.generateMessageId())
-      .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-      .setType(ControlMessage.MessageType.StopTask)
-      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
-        .setTaskId(taskId)
-        .build())
-      .build());
+    if (sendSignal) {
+      sendControlMessage(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
+        .setType(ControlMessage.MessageType.StopTask)
+        .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+          .setTaskId(taskId)
+          .build())
+        .build());
+    }
   }
 
   /**
