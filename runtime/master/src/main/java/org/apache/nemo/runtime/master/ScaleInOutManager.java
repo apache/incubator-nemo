@@ -112,12 +112,12 @@ public final class ScaleInOutManager {
     final Collection<ExecutorRepresenter> executors,
     final boolean lambdaAffinity) {
 
-//    final Set<String> mergerTasks = executors.stream()
-//      .map(executor -> executor.getRunningTasks())
-//      .flatMap(l -> l.stream()
-//        .filter(task -> task.isMerger())
-//        .map(t -> t.getTaskId()))
-//      .collect(Collectors.toSet());
+    final Set<String> mergerTasks = executors.stream()
+      .map(executor -> executor.getRunningTasks())
+      .flatMap(l -> l.stream()
+        .filter(task -> task.isMerger())
+        .map(t -> t.getTaskId()))
+      .collect(Collectors.toSet());
 
     // For each executor, move ratio * num tasks of each stage;
     final Set<String> stages =  executors.stream()
@@ -126,7 +126,13 @@ public final class ScaleInOutManager {
         .filter(task -> !task.isCrTask())
         .filter(task -> !task.isStreamTask())
         .filter(task -> !(task.isParitalCombine() && task.isVMTask()))
-        .filter(task -> task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)
+        .filter(task -> {
+          // Filter out stateless task in merger->stateless task
+          // Because we will grouping them and stop together in R3
+          final Set<String> intersection = new HashSet<>(mergerTasks);
+          intersection.retainAll(task.getUpstreamTaskSet());
+          return intersection.isEmpty();
+        })
         .map(t -> t.getStageId()))
       .collect(Collectors.toSet());
 
