@@ -261,12 +261,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   // per second
   private final AtomicLong throttleSourceRate =  new AtomicLong(1000000);
-  private long processedSourceData = 0;
+  private static final long throttleTimeWindow = 100; // ms
+  private long processedSourceDataInWindow = 0;
   private long prevSourceTrackTime = System.currentTimeMillis();
 
   @Override
   public void setThrottleSourceRate(final long num) {
-    throttleSourceRate.set(num);
+    // this should emit this amount of data during the throttle time window
+    throttleSourceRate.set((long)(num * throttleTimeWindow / 1000.0));
   }
 
   @Override
@@ -279,15 +281,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public boolean hasData() {
 
     final long curr = System.currentTimeMillis();
-    if (curr - prevSourceTrackTime >= 5) {
-      final long elapsed = curr - prevSourceTrackTime;
-      if (processedSourceData * (1000 / (double)elapsed) > throttleSourceRate.get()) {
-        // Throttle !!
-        return false;
-      } else {
-        prevSourceTrackTime = curr;
-        processedSourceData = 0;
-      }
+    // 10 us
+    if (curr - prevSourceTrackTime >= throttleTimeWindow) {
+      // end of the window, reset
+      //LOG.info("Processed data in window: {}, throttle rate: {}", processedSourceDataInWindow,
+      //  throttleSourceRate);
+      prevSourceTrackTime = curr;
+      processedSourceDataInWindow = 0;
+    } else if (processedSourceDataInWindow >= throttleSourceRate.get()) {
+      return false;
     }
 
     for (final SourceVertexDataFetcher sourceVertexDataFetcher : sourceVertexDataFetchers) {
@@ -687,6 +689,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       processWatermark(sourceVertexDataFetchers.get(0).getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // This MUST BE generated from remote source
+      processedSourceDataInWindow += 1;
       taskMetrics.incrementInputProcessElement();
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
@@ -700,7 +703,6 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     boolean processed = false;
     for (final SourceVertexDataFetcher dataFetcher : sourceVertexDataFetchers) {
       final Object event = dataFetcher.fetchDataElement();
-      processedSourceData += 1;
       if (!event.equals(EmptyElement.getInstance())) {
         handleInternalData(dataFetcher, event);
         processed = true;

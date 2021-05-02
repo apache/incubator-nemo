@@ -7,6 +7,7 @@ import org.apache.nemo.conf.PolicyConf;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private final ScheduledExecutorService scheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor();
 
-  private long currRate = Long.MAX_VALUE;
+  private long backpressureRate = Long.MAX_VALUE;
 
   private final DescriptiveStatistics avgCpuUse;
   private final DescriptiveStatistics avgInputRate;
@@ -39,23 +40,26 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private long prevProcessingEvent = 0;
 
   private final int windowSize = 5;
+  private final int sourceParallelism;
 
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
                                              final ExecutorRegistry executorRegistry,
+                                             @Parameter(EvalConf.SourceParallelism.class) final int sourceParallelism,
                                              final PolicyConf policyConf) {
     this.executorMetricMap = executorMetricMap;
     this.policyConf = policyConf;
     this.executorRegistry = executorRegistry;
+    this.sourceParallelism = sourceParallelism;
     this.avgCpuUse = new DescriptiveStatistics(windowSize);
     this.avgInputRate = new DescriptiveStatistics(windowSize);
     this.avgProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgQueueSize = new DescriptiveStatistics(windowSize);
-    this.currRate = policyConf.bpMinEvent;
+    this.backpressureRate = policyConf.bpMinEvent;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       try {
-        LOG.info("Current backpressure rate {}", currRate);
+        LOG.info("Current backpressure rate {}", backpressureRate);
 
         final ExecutorMetricInfo info = executorMetricMap.getAggregated();
 
@@ -72,55 +76,106 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
         }
 
         synchronized (this) {
-          LOG.info("Total queue: {}, avg queue: {}, avg cpu: {}, currRate: {}, avgInputRate: {}," +
+          LOG.info("Total queue: {}, avg queue: {}, avg cpu: {}, backpressureRate: {}, avgInputRate: {}," +
               "aggInput: {}, sourceEvent: {}, processingRate: {}, numExecutor: {}",
             queue, avgQueueSize.getMean(),
-            avgCpuUse.getMean(), currRate, avgInputRate.getMean(),
+            avgCpuUse.getMean(), backpressureRate, avgInputRate.getMean(),
             aggInput, currSourceEvent, avgProcessingRate.getMean(), info.numExecutor);
 
-          if (queue > policyConf.bpQueueUpperBound) {
-            // Back pressure
-            if (queue > avgQueueSize.getMean()) {
-              if (currRate > avgInputRate.getMean() && avgInputRate.getMean() > 1000) {
-                currRate = (long) (avgInputRate.getMean() * policyConf.bpDecreaseRatio);
-              } else {
-                currRate *= policyConf.bpDecreaseRatio;
-              }
-
-              LOG.info("Decrease backpressure rate to {}", currRate);
-
-              sendBackpressure(executorRegistry, currRate);
-            }
-          } else if (queue < policyConf.bpQueueLowerBound) {
-            if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
-              // TODO: when to stop increasing rate?
-              if (currSourceEvent > aggInput.get() * 0.9 &&
-                currRate > avgInputRate.getMean() || currSourceEvent == 0) {
-                // This means that we fully consume the event. Stop increasing rate
-              } else {
-                // Increase rate
-                if (avgCpuUse.getMean() < 0.5) {
-                  currRate *= policyConf.bpIncreaseRatio;
-                  LOG.info("Increase backpressure rate to {}", currRate);
-                  sendBackpressure(executorRegistry, currRate);
-                } else if (avgCpuUse.getMean() < 0.7) {
-                   currRate *= policyConf.bpIncreaseRatio * 0.9;
-                  LOG.info("Increase backpressure rate to {}", currRate);
-                  sendBackpressure(executorRegistry, currRate);
-                } else {
-                  currRate = Math.max(currRate, (long) (currRate * policyConf.bpIncreaseRatio * 0.8));
-                  LOG.info("Increase backpressure rate to {}", currRate);
-                  sendBackpressure(executorRegistry, currRate);
-                }
-              }
-            }
-          }
+          cpuBasedBackpressure();
         }
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
     }, Util.THROTTLE_WINDOW, Util.THROTTLE_WINDOW, TimeUnit.MILLISECONDS);
+  }
+
+  private void cpuBasedBackpressure() {
+    final double avgCpu = avgCpuUse.getMean();
+    if (currSourceEvent == 0) {
+      return;
+    }
+
+    if (avgCpu > policyConf.bpDecreaseTriggerCpu) {
+      // Back pressure
+      if (backpressureRate > avgInputRate.getMean() && avgInputRate.getMean() > 1000) {
+        backpressureRate = (long) (avgInputRate.getMean() * policyConf.bpDecreaseRatio);
+      } else {
+        backpressureRate *= policyConf.bpDecreaseRatio;
+      }
+      LOG.info("Decrease backpressure rate to {}", backpressureRate);
+      sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+
+    } else if (avgCpu < policyConf.bpIncreaseLowerCpu) {
+      // TODO: when to stop increasing rate?
+      if (currSourceEvent > aggInput.get() * 0.9 &&
+        backpressureRate > avgInputRate.getMean() || currSourceEvent == 0) {
+        // This means that we fully consume the event. Stop increasing rate
+      } else {
+        // Increase rate
+        final double increaseRatio = Math.max(1, (policyConf.bpDecreaseTriggerCpu / avgCpu) * 0.9);
+        backpressureRate *= increaseRatio;
+        LOG.info("Increase backpressure rate to {} with ratio {}", backpressureRate, increaseRatio);
+        sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+
+        /*
+        if (avgCpuUse.getMean() < 0.5) {
+          backpressureRate *= policyConf.bpIncreaseRatio;
+          LOG.info("Increase backpressure rate to {} with ratio {}", backpressureRate, increaseRatio);
+          sendBackpressure(executorRegistry, backpressureRate);
+        } else if (avgCpuUse.getMean() < 0.6) {
+          backpressureRate = Math.max(backpressureRate, (long) (backpressureRate * policyConf.bpIncreaseRatio * 0.9));
+          LOG.info("Increase backpressure rate to {}", backpressureRate);
+          sendBackpressure(executorRegistry, backpressureRate);
+        } else {
+          backpressureRate = Math.max(backpressureRate, (long) (backpressureRate * policyConf.bpIncreaseRatio * 0.8));
+          LOG.info("Increase backpressure rate to {}", backpressureRate);
+          sendBackpressure(executorRegistry, backpressureRate);
+        }
+        */
+      }
+    }
+  }
+
+  private void queueBasedBackpressure(final long queue) {
+    if (queue > policyConf.bpQueueUpperBound) {
+      // Back pressure
+      if (queue > avgQueueSize.getMean()) {
+        if (backpressureRate > avgInputRate.getMean() && avgInputRate.getMean() > 1000) {
+          backpressureRate = (long) (avgInputRate.getMean() * policyConf.bpDecreaseRatio);
+        } else {
+          backpressureRate *= policyConf.bpDecreaseRatio;
+        }
+
+        LOG.info("Decrease backpressure rate to {}", backpressureRate);
+
+        sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+      }
+    } else if (queue < policyConf.bpQueueLowerBound) {
+      if (avgCpuUse.getMean() < policyConf.bpIncreaseLowerCpu) {
+        // TODO: when to stop increasing rate?
+        if (currSourceEvent > aggInput.get() * 0.9 &&
+          backpressureRate > avgInputRate.getMean() || currSourceEvent == 0) {
+          // This means that we fully consume the event. Stop increasing rate
+        } else {
+          // Increase rate
+          if (avgCpuUse.getMean() < 0.5) {
+            backpressureRate *= policyConf.bpIncreaseRatio;
+            LOG.info("Increase backpressure rate to {}", backpressureRate);
+            sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+          } else if (avgCpuUse.getMean() < 0.7) {
+            backpressureRate *= policyConf.bpIncreaseRatio * 0.9;
+            LOG.info("Increase backpressure rate to {}", backpressureRate);
+            sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+          } else {
+            backpressureRate = Math.max(backpressureRate, (long) (backpressureRate * policyConf.bpIncreaseRatio * 0.8));
+            LOG.info("Increase backpressure rate to {}", backpressureRate);
+            sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
+          }
+        }
+      }
+    }
   }
 
   @Override

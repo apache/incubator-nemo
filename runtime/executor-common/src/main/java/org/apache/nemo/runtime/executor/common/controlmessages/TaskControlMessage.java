@@ -278,6 +278,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           bos.writeBoolean((Boolean)event);
           break;
         }
+        case R3_TASK_SET_PARTIAL_FROM_P_TO_M:
         case R3_TASK_DATA_DONE_FROM_P_TO_M:
         case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           bos.writeUTF((String)event);
@@ -327,6 +328,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             bis.readBoolean());
           break;
         }
+        case R3_TASK_SET_PARTIAL_FROM_P_TO_M:
         case R3_TASK_DATA_DONE_FROM_P_TO_M:
         case R3_OPEN_PAIR_TASK_INPUT_PIPE_SIGNAL_AND_PARTIAL_RESULT_BY_FROM_P_TO_M: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,

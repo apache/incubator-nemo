@@ -15,7 +15,8 @@ public interface Backpressure {
   void addCurrentInput(final long rate);
 
   default void sendBackpressure(final ExecutorRegistry executorRegistry,
-                                final long rate) {
+                                final long rate,
+                                final int sourceParallelism) {
     executorRegistry.viewExecutors(executors -> {
       executors.forEach(executor -> {
         if (executor.getContainerType().equals(ResourcePriorityProperty.SOURCE)) {
@@ -23,7 +24,7 @@ public interface Backpressure {
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
             .setType(ControlMessage.MessageType.ThrottleSource)
-            .setSetNum(rate)
+            .setSetNum(rate / sourceParallelism)
             .build());
         }
       });

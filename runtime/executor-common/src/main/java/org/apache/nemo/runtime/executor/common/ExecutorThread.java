@@ -219,80 +219,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   private final long adjustPeriod = Util.THROTTLE_WINDOW;
 
-  private void throttling() {
-
-    /*
-    // throttling
-    // nano to sec
-    final long elapsedTimeMs = TimeUnit.NANOSECONDS.toMillis(elapsedTime);
-    final long curr = System.currentTimeMillis();
-    long sleepTime = 0;
-    if (elapsedTimeMs >= 2) {
-      final long desiredElapsedTime = (long) (currProcessedCnt * 1000 / throttleRate);
-      if (desiredElapsedTime > elapsedTimeMs) {
-        // LOG.info("Throttling.. current processed cnt: {}/elapsed: {} ms, throttleRate: {}, sleep {} ms, " +
-        //    "triggerCnt: {}",
-        //  currProcessedCnt, elapsedTimeMs, throttleRate, desiredElapsedTime - elapsedTimeMs);
-        sleepTime += desiredElapsedTime - elapsedTimeMs;
-        try {
-          Thread.sleep(desiredElapsedTime - elapsedTimeMs);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-
-      }
-
-      elapsedTime = 0;
-      currProcessedCnt = 0;
-    }
-    */
-
-     // throttling
-    // nano to sec
-    /*
-    final long curr = System.currentTimeMillis();
-    final long period = 2;
-    if (curr - prevSleepTime >= period) {
-      final long currRate = currProcessedCnt * (1000 / period);
-      final long desiredElapsedTime = Math.min(1000,
-        Math.max(0, (long) ((currRate / (double) throttleRate) * period - period)));
-      sleepTime += desiredElapsedTime;
-
-      if (desiredElapsedTime > 0) {
-        // LOG.info("Throttling.. current processed cnt: {}, currRate: {}, throttleRate: {}, sleep {} ms, ",
-        //  currProcessedCnt, currRate, throttleRate, desiredElapsedTime);
-
-        try {
-          Thread.sleep(desiredElapsedTime);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      currProcessedCnt = 0;
-      prevSleepTime = System.currentTimeMillis();
-    }
-
-    // Adjustment throttle rate
-    if (curr - prevThrottleRateAdjustTime >= adjustPeriod) {
-      synchronized (this) {
-        if (curr - backPressureReceiveTime >= adjustPeriod) {
-          // adjust throttle rate if it does not receive backpressure within the period
-          if (sleepTime > adjustPeriod / 2) {
-            // increase throttle rate
-            LOG.info("Increase throttle rate from {} to {}", throttleRate, (long) (throttleRate * 1.2));
-            throttleRate = (long) (throttleRate * 1.2);
-          }
-          prevThrottleRateAdjustTime = curr;
-        } else {
-          prevThrottleRateAdjustTime = backPressureReceiveTime;
-        }
-        sleepTime = 0;
-      }
-    }
-    */
-  }
-
   public void backpressure() {
     /*
     synchronized (tasks) {
@@ -367,7 +293,6 @@ public final class ExecutorThread implements ExecutorThreadQueue {
       taskExecutor.handleData(event.getEdgeId(), event);
       final long cnt = executorMetrics.inputProcessCntMap.get(this);
       executorMetrics.inputProcessCntMap.put(this, cnt + 1);
-      currProcessedCnt += 1;
     }
   }
 
@@ -390,15 +315,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                   final ExecutorThreadTask sourceTask = iterator.next();
 
                   handlingControlEvent();
-                  throttling();
 
                   if (sourceTask.hasData()) {
-                    currProcessedCnt += 1;
-                    long st = System.nanoTime();
                     sourceTask.handleSourceData();
                     // executorMetrics.eventProcessed.incrementAndGet();
-                    long et = System.nanoTime();
-                    elapsedTime += (et - st);
                     processed = true;
                   } else {
                     iterator.remove();
@@ -475,7 +395,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           }
 
           if (!processed || (sourceTasks.isEmpty() && queue.isEmpty())) {
-            Thread.sleep(5);
+            Thread.sleep(1);
           }
         }
         // Done event while loop

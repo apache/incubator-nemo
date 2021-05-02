@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,7 +59,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     this.scaleInOutManager = scaleInOutManager;
     this.executorRegistry = executorRegistry;
     this.avgCpuUse = new DescriptiveStatistics(windowSize);
-    this.avgInputRate = new DescriptiveStatistics(windowSize);
+    this.avgInputRate = new DescriptiveStatistics(1);
     this.avgSrcProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgExpectedCpu = new DescriptiveStatistics(windowSize);
     this.currRate = policyConf.bpMinEvent;
@@ -75,9 +76,6 @@ public final class InputAndCpuBasedScaler implements Scaler {
         final double avgProcess = avgSrcProcessingRate.getMean();
         final double avgInput = avgInputRate.getMean();
 
-        if (avgProcess == 0 || info.numExecutor == 0) {
-          return;
-        }
 
         if (info.numExecutor > 0) {
           avgExpectedCpu.addValue((avgInput * avgCpu) / avgProcess);
@@ -93,6 +91,10 @@ public final class InputAndCpuBasedScaler implements Scaler {
           avgInput,
           avgProcess,
           info.numExecutor);
+
+        if (avgProcess == 0 || info.numExecutor == 0) {
+          return;
+        }
 
         if (!started) {
           return;
@@ -122,46 +124,77 @@ public final class InputAndCpuBasedScaler implements Scaler {
         }
 
         synchronized (this) {
-
-          if (avgCpu > policyConf.scalerScaleoutTriggerCPU
-            && avgExpectedCpuVal > policyConf.scalerUpperCpu) {
-            // Scale out !!
-            // ex) expected cpu val: 2.0, target cpu: 0.6
-            // then, we should reduce the current load of cluster down to 0.3 (2.0 * 0.3 = 0.6),
-            // which means that we should scale out 70 % of tasks to Lambda (1 - 0.3)
-            final double ratioToScaleout = 1 - policyConf.scalerTargetCpu / avgExpectedCpuVal;
-            // move ratioToScaleout % of computations to Lambda
-            LOG.info("Move {} percent of tasks in all vm executors", ratioToScaleout);
-
-            prevFutureCompleted.set(false);
-
-            prevFutureChecker.execute(() -> {
-              final long st = System.currentTimeMillis();
-              LOG.info("Waiting for scale out decision");
-              scaleInOutManager.sendMigrationAllStages(
-                ratioToScaleout,
-                executorRegistry.getVMComputeExecutors(),
-                true).forEach(future -> {
-                try {
-                  future.get();
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                } catch (ExecutionException e) {
-                  e.printStackTrace();
-                }
-              });
-              final long et = System.currentTimeMillis();
-              prevFutureCompleted.set(true);
-              prevFutureCompleteTime = et;
-              LOG.info("End of waiting for scale out decision {}", et - st);
-            });
-          }
+          queueSizeBasedScalingRatio().ifPresent(ratio -> scalingWithRatio(ratio));
         }
+
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
     }, 80, 1, TimeUnit.SECONDS);
+  }
+
+  private Optional<Double> queueSizeBasedScalingRatio() {
+    final long queue = aggInput.get() - currSourceEvent;
+    final double processingRate = avgSrcProcessingRate.getMean();
+
+    LOG.info("Scaler queue: {}, processingRate: {}, avgInputRate: {}, delay: {}",
+      queue, processingRate, avgInputRate.getMean(), queue / processingRate);
+
+    if (processingRate == 0 || queue < 0) {
+      return Optional.empty();
+    }
+
+    if (queue / processingRate > policyConf.scalerTriggerQueueDelay) {
+
+      final double ratioToScaleout = 1 - (processingRate / avgInputRate.getMean());
+      return Optional.of(ratioToScaleout);
+    }
+
+    return Optional.empty();
+  }
+
+  private Optional<Double> cpuBasedScalingRatio(final double avgCpu, final double avgExpectedCpuVal) {
+    if (avgCpu > policyConf.scalerScaleoutTriggerCPU
+      && avgExpectedCpuVal > policyConf.scalerUpperCpu) {
+      // Scale out !!
+      // ex) expected cpu val: 2.0, target cpu: 0.6
+      // then, we should reduce the current load of cluster down to 0.3 (2.0 * 0.3 = 0.6),
+      // which means that we should scale out 70 % of tasks to Lambda (1 - 0.3)
+      final double ratioToScaleout = 1 - policyConf.scalerTargetCpu / avgExpectedCpuVal;
+      // move ratioToScaleout % of computations to Lambda
+      return Optional.of(ratioToScaleout);
+    }
+
+    return Optional.empty();
+  }
+
+  private void scalingWithRatio(final double ratioToScaleout) {
+    // move ratioToScaleout % of computations to Lambda
+    LOG.info("Move {} percent of tasks in all vm executors", ratioToScaleout);
+
+    prevFutureCompleted.set(false);
+
+    prevFutureChecker.execute(() -> {
+      final long st = System.currentTimeMillis();
+      LOG.info("Waiting for scale out decision");
+      scaleInOutManager.sendMigrationAllStages(
+        ratioToScaleout,
+        executorRegistry.getVMComputeExecutors(),
+        true).forEach(future -> {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+        }
+      });
+      final long et = System.currentTimeMillis();
+      prevFutureCompleted.set(true);
+      prevFutureCompleteTime = et;
+      LOG.info("End of waiting for scale out decision {}", et - st);
+    });
   }
 
   private long sourceHandlingStartTime = 0;

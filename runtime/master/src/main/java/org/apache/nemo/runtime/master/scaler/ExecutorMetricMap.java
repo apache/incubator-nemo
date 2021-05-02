@@ -17,7 +17,9 @@ public final class ExecutorMetricMap {
   }
 
   public synchronized ExecutorMetricInfo getAggregated() {
-    final ExecutorMetricInfo result = map.values().stream().reduce((pair1, pair2) -> {
+    final ExecutorMetricInfo result = map.values().stream()
+      // .filter(info -> info.right().cpuUse > 0.05)
+      .reduce((pair1, pair2) -> {
       final ExecutorMetricInfo info1 = pair1.right();
       final ExecutorMetricInfo info2 = pair2.right();
 

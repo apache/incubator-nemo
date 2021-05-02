@@ -236,6 +236,14 @@ public final class NemoDriver {
               runtimeMaster.triggerConditionalRouting(partial, percent);
             } else if (decision.equals("start-scaler")) {
               scaler.start();
+            } else if (decision.equals("warmup")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final double percent = new Double(args[1]);
+              scaleInOutManager
+                .sendMigrationAllStages(percent, executorRegistry.getVMComputeExecutors(), true);
+            } else if (decision.equals("warmup-done")) {
+              scaleInOutManager
+                .sendMigrationAllStages(1, executorRegistry.getLambdaExecutors(), false);
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
               // VM -> Lambda
