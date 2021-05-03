@@ -234,7 +234,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
   }
 
   @Override
-  public synchronized void addSourceEvent(final long sourceEvent) {
+  public void addSourceEvent(final long sourceEvent) {
     avgSrcProcessingRate.addValue(sourceEvent - currSourceEvent);
     currSourceEvent = sourceEvent;
 
@@ -244,7 +244,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
   }
 
   @Override
-  public synchronized void addCurrentInput(final long rate) {
+  public void addCurrentInput(final long rate) {
     // Observed that the actual event is the half
     avgInputRate.addValue(rate);
     aggInput.getAndAdd(rate);

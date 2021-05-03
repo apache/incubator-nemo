@@ -214,12 +214,12 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   }
 
   @Override
-  public synchronized void addSourceEvent(final long sourceEvent) {
+  public void addSourceEvent(final long sourceEvent) {
     currSourceEvent = sourceEvent;
   }
 
   @Override
-  public synchronized void addCurrentInput(final long rate) {
+  public void addCurrentInput(final long rate) {
     // Observed that the actual event is the half
     avgInputRate.addValue(rate);
     aggInput.getAndAdd(rate);
