@@ -58,6 +58,7 @@ enum DriverToClientMessageType {
     ExecutionDone = 3;
     DriverShutdowned = 4;
     KillAll = 5;
+    PrintLog = 6;
 }
 
 message NameLookupMessage {
@@ -76,6 +77,7 @@ message NameLookupResponse {
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
+    optional string printStr = 3;
 }
 
 message ConditionalRoutingMessage {

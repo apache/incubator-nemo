@@ -177,6 +177,9 @@ public final class JobLauncher {
           throw new RuntimeException(e);
         }
       })
+      .registerHandler(ControlMessage.DriverToClientMessageType.PrintLog, event -> {
+        LOG.info(event.getPrintStr());
+      })
       .registerHandler(ControlMessage.DriverToClientMessageType.DriverReady, event -> driverReadyLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(

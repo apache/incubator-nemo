@@ -1256,6 +1256,11 @@ public final class RuntimeMaster {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
         LOG.info("Latency in Master in {}: {}", msg.getExecutorId(), msg.getLatency());
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+          .setPrintStr(String.format("Event Latency %s in %s",
+            String.valueOf(msg.getLatency()), msg.getExecutorId())).build());
+
         if (curr - st >= 180000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
           requestContainerThread.execute(() -> {
