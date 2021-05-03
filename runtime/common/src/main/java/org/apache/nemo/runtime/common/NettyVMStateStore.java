@@ -15,22 +15,30 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.common.nettyvm.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class NettyVMStateStore implements StateStore {
+  private static final Logger LOG = LoggerFactory.getLogger(NettyVMStateStore.class.getName());
 
   private final String publicAddress;
   private int bindingPort;
   private final NettyServerTransport nettyServerTransport;
-  private final HDFStateStore stateStore;
+  //private final HDFStateStore stateStore;
+
+  private final Map<String, byte[]> inMemoryStore;
 
   @Inject
   private NettyVMStateStore(final TcpPortProvider tcpPortProvider,
-                            final HDFStateStore stateStore,
+                       //     final HDFStateStore stateStore,
                             @Parameter(EvalConf.Ec2.class) final boolean ec2) {
+    this.inMemoryStore = new ConcurrentHashMap<>();
     this.nettyServerTransport = new NettyServerTransport(tcpPortProvider,
       new VMStatestoreChannelInitializer(),
       new NioEventLoopGroup(3,
@@ -38,8 +46,7 @@ public final class NettyVMStateStore implements StateStore {
       ec2);
     this.publicAddress = nettyServerTransport.getPublicAddress();
     this.bindingPort = nettyServerTransport.getPort();
-    this.stateStore = stateStore;
-
+    //this.stateStore = stateStore;
   }
 
   @Override
@@ -49,27 +56,27 @@ public final class NettyVMStateStore implements StateStore {
 
   @Override
   public InputStream getStateStream(String taskId) {
-    return stateStore.getStateStream(taskId);
+    throw new RuntimeException("Not supported");
   }
 
   @Override
   public byte[] getBytes(String taskId) {
-    return stateStore.getBytes(taskId);
+    throw new RuntimeException("Not supported");
   }
 
   @Override
   public OutputStream getOutputStream(String taskId) {
-    return stateStore.getOutputStream(taskId);
+    throw new RuntimeException("Not supported");
   }
 
   @Override
   public void put(String taskId, byte[] bytes) {
-    stateStore.put(taskId, bytes);
+    throw new RuntimeException("Not supported");
   }
 
   @Override
   public boolean containsState(String taskId) {
-    return stateStore.containsState(taskId);
+    throw new RuntimeException("Not supported");
   }
 
   @Override
@@ -95,14 +102,16 @@ public final class NettyVMStateStore implements StateStore {
       if (msg instanceof ContainsState) {
         final ContainsState cs = (ContainsState) msg;
         ctx.channel().writeAndFlush(
-          new ContainsStateResponse(cs.taskId, stateStore.containsState(cs.taskId)));
+          new ContainsStateResponse(cs.taskId, inMemoryStore.containsKey(cs.taskId)));
       } else if (msg instanceof GetState) {
         final GetState cs = (GetState) msg;
+        LOG.info("Get state of {}", cs.taskId);
         ctx.channel().writeAndFlush(
-          new GetStateResponse(cs.taskId, stateStore.getBytes(cs.taskId)));
+          new GetStateResponse(cs.taskId, inMemoryStore.get(cs.taskId)));
       } else if (msg instanceof PutState) {
         final PutState m = (PutState) msg;
-        stateStore.put(m.taskId, m.bytes);
+        LOG.info("Put state of {} byte size {}", m.taskId, m.bytes.length);
+        inMemoryStore.put(m.taskId, m.bytes);
         ctx.channel().writeAndFlush(
           new PutStateResponse(m.taskId));
       }

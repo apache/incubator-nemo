@@ -26,7 +26,6 @@ import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.NettyVMStateStore;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.bytetransfer.DefaultByteTransportImpl;
@@ -41,6 +40,7 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.runtime.executor.common.PipeManagerWorkerImpl;
 import org.apache.nemo.runtime.executor.common.DefaltIntermediateDataIOFactoryImpl;
 import org.apache.nemo.runtime.executor.common.datatransfer.DefaultOutputCollectorGeneratorImpl;
+import org.apache.nemo.runtime.lambdaexecutor.NettyVMStateStoreClient;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -589,7 +589,7 @@ public final class NemoDriver {
     final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
-      .bindImplementation(StateStore.class, NettyVMStateStore.class)
+      .bindImplementation(StateStore.class, NettyVMStateStoreClient.class)
       // .bindImplementation(OffloadingManager.class, getOffloadingManager())
       .bindImplementation(ControlEventHandler.class, DefaultControlEventHandlerImpl.class)
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
