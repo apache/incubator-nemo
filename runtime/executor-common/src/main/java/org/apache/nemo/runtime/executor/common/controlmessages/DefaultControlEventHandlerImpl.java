@@ -460,6 +460,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
     taskExecutor.checkpoint(true, taskId);
 
+    LOG.info("End of checkpointing task {}", taskId);
+
     try {
       Thread.sleep(10);
     } catch (InterruptedException e) {
@@ -467,6 +469,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     }
 
     taskExecutorMapWrapper.removeTask(taskId);
+
+    LOG.info("Remove task from wrapper {}", taskId);
 
     toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()

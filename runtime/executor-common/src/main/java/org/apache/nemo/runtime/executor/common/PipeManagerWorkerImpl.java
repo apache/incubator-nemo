@@ -924,6 +924,11 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to "
               , taskId, key, executorId);
           }
+          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+
+          if (pendingData.isEmpty()) {
+            return;
+          }
 
           Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
           long prevLog = System.currentTimeMillis();
@@ -948,7 +953,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
 
           final Channel channel = optional.get();
 
-          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
           if (evalConf.controlLogging) {
             LOG.info("Send pending data to channel {}/{}/{}", key.getRight());
           }

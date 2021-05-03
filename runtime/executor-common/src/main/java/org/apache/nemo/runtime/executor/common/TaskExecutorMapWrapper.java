@@ -41,7 +41,7 @@ public final class TaskExecutorMapWrapper {
     this.taskToBeStoppedMap = taskToBeStoppedMap;
   }
 
-  public synchronized void putTaskExecutor(final TaskExecutor taskExecutor,
+  public void putTaskExecutor(final TaskExecutor taskExecutor,
                               ExecutorThread thread) {
     taskExecutorMap.put(taskExecutor, true);
     taskIdExecutorMap.put(taskExecutor.getId(), taskExecutor);
@@ -60,7 +60,7 @@ public final class TaskExecutorMapWrapper {
   }
 
   // for testing
-  public synchronized boolean containsTask(final String taskId) {
+  public boolean containsTask(final String taskId) {
     return taskIdExecutorMap.containsKey(taskId);
   }
 
@@ -71,7 +71,7 @@ public final class TaskExecutorMapWrapper {
     return taskIdExecutorMap.get(taskId);
   }
 
-  public synchronized void removeTask(String taskId) {
+  public void removeTask(String taskId) {
     final TaskExecutor e = taskIdExecutorMap.remove(taskId);
     final ExecutorThread et = taskExecutorThreadMap.remove(e);
     et.deleteTask(e);
@@ -86,7 +86,7 @@ public final class TaskExecutorMapWrapper {
     });
   }
 
-  public synchronized void forEach(EventHandler<TaskExecutor> handler) {
+  public void forEach(EventHandler<TaskExecutor> handler) {
     taskExecutorMap.keySet().forEach(taskExecutor -> handler.onNext(taskExecutor));
   }
 
