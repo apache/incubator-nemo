@@ -314,6 +314,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private void checkAndDeactivate() {
     if (activatedTasks.isEmpty() &&
+      tasksToBeStopped.isEmpty() &&
       getScheduledTasks().isEmpty() &&
       getRunningTasks().isEmpty() &&
       lambdaControlProxy.isActive()) {
