@@ -158,7 +158,6 @@ public final class InputAndCpuBasedScaler implements Scaler {
     if (queue / processingRate > policyConf.scalerTriggerQueueDelay) {
 
       final double ratioToScaleout = Math.min(0.95, 1 - (processingRate / avgInputRate.getMean())
-        + 0.1
         + policyConf.scalerRelayOverhead);
 
       return Optional.of(ratioToScaleout);

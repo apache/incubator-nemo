@@ -64,7 +64,7 @@ public final class PolicyConf {
   @NamedParameter(short_name = "scaler_slack_time", default_value = "10")
   public static final class ScalerSlackTime implements Name<Integer> {}
 
-  @NamedParameter(short_name = "scaler_trigger_queue_delay", default_value = "1.5")
+  @NamedParameter(short_name = "scaler_trigger_queue_delay", default_value = "2")
   public static final class ScalerTriggerQueueDelay implements Name<Double> {}
 
   @NamedParameter(short_name = "scaler_relay_overhead", default_value = "0.1")
