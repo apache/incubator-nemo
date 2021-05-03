@@ -340,13 +340,14 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                   final TaskStateManager taskStateManager =
                     new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
 
+                  taskExecutorMapWrapper.putTaskExecutor(t, this);
+
                   //taskExecutor.execute();
                   taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
                   LOG.info("Task message send time {} to {} thread of {}, time {}", t.getId(), index, executorId,
                     System.currentTimeMillis() - st);
 
-                  taskExecutorMapWrapper.putTaskExecutor(t, this);
                   taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
                     .setId(RuntimeIdManager.generateMessageId())
                     .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
