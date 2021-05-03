@@ -11,6 +11,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.NettyServerTransport;
+import org.apache.nemo.common.PublicAddressProvider;
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -79,7 +80,6 @@ public final class LambdaContainerManager {
   private final Set<WorkerControlProxy> pendingActivationWorkers = new HashSet<>();
 
   private final NemoNameServer nameServer;
-  private final LocalAddressProvider localAddressProvider;
 
   private final NettyVMStateStore stateStore;
 
@@ -93,6 +93,8 @@ public final class LambdaContainerManager {
 
   private final ScheduledExecutorService scheduledExecutorService;
 
+  private final PublicAddressProvider publicAddressProvider;
+
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                                  final TcpPortProvider tcpPortProvider,
@@ -105,12 +107,12 @@ public final class LambdaContainerManager {
                                  final LambdaContainerRequester requester,
                                  final MessageEnvironment messageEnvironment,
                                  final NemoNameServer nameServer,
+                                 final PublicAddressProvider publicAddressProvider,
                                  final NettyVMStateStore stateStore,
                                  @Parameter(EvalConf.Ec2.class) final boolean ec2,
                                  final LocalAddressProvider localAddressProvider) {
     this.nameServer = nameServer;
     this.stateStore = stateStore;
-    this.localAddressProvider = localAddressProvider;
     this.evalConf = evalConf;
     this.pairStageTaskManager = pairStageTaskManager;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
@@ -123,6 +125,7 @@ public final class LambdaContainerManager {
 
     this.scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
+    this.publicAddressProvider = publicAddressProvider;
     this.messageEnvironment = messageEnvironment;
     this.channelThread = Executors.newSingleThreadExecutor();
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
@@ -370,7 +373,7 @@ public final class LambdaContainerManager {
           evalConf.samplingJson,
           evalConf.isLocalSource,
           stateStore.getPort(),
-          localAddressProvider.getLocalAddress(),
+          publicAddressProvider.getLocalAddress(),
           nameServer.getPort(),
           lambdaExecutorId,
           evalConf.flushPeriod,

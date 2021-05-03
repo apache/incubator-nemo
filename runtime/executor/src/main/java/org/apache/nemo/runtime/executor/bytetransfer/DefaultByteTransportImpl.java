@@ -170,6 +170,9 @@ public final class DefaultByteTransportImpl implements ByteTransport {
       this.publicBindingPort = publicChannelPort.right();
     }
 
+    nameResolver.register(localExecutorId + "-Public", new InetSocketAddress(publicAddress, publicBindingPort));
+    nameResolver.register(localExecutorId, new InetSocketAddress(localAddress, localBindingPort));
+
     LOG.info("DefaultByteTransportImpl server in {} is listening at {}/{}", localExecutorId,
       serverLocalListeningChannel, serverPublicListeningChannel);
   }
@@ -217,45 +220,21 @@ public final class DefaultByteTransportImpl implements ByteTransport {
 
     LOG.info("address: {}, port: {}, executorId: {}", address, bindingPort, localExecutorId);
 
-    if (!publicAddress) {
-      persistentConnectionToMasterMap
-        .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
-          .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
-            .setExecutorId(localExecutorId)
-            .setAddress(address)
-            .setPort(bindingPort)
-            .build())
-          .build());
-    }
+//    if (!publicAddress) {
+//      persistentConnectionToMasterMap
+//        .getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+//        ControlMessage.Message.newBuilder()
+//          .setId(RuntimeIdManager.generateMessageId())
+//          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+//          .setType(ControlMessage.MessageType.LocalExecutorAddressInfo)
+//          .setLocalExecutorAddressInfoMsg(ControlMessage.LocalExecutorAddressInfoMessage.newBuilder()
+//            .setExecutorId(localExecutorId)
+//            .setAddress(address)
+//            .setPort(bindingPort)
+//            .build())
+//          .build());
+//    }
 
-    try {
-      if (publicAddress) {
-        nameResolver.register(localExecutorId + "-Public", new InetSocketAddress(address, bindingPort));
-      } else {
-        nameResolver.register(localExecutorId, new InetSocketAddress(address, bindingPort));
-      }
-
-      /*
-      LOG.info("Send name server register {} to {}/{}", localExecutorId ,address, bindingPort);
-
-      persistentConnectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-        .send(ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdManager.generateMessageId())
-          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.ExecutorRegistered)
-          .setRegisteredExecutor(localExecutorId)
-          .build());
-          */
-
-      //executorAddressMap.put(localExecutorId, new InetSocketAddress(publicAddress, bindingPort));
-    } catch (final Exception e) {
-      LOG.error("Cannot register DefaultByteTransportImpl listening address to the naming registry", e);
-      throw new RuntimeException(e);
-    }
 
     return Pair.of(listeningChannel, bindingPort);
   }
