@@ -70,7 +70,7 @@ public final class ScaleInOutManager {
 
       for (final String key : stageIdCounterMap.keySet()) {
         stageIdCounterMap.put(key, Math.min(stageIdCounterMap.get(key),
-          (int) (stageIdCounterMap.get(key) * ratio + 1)));
+          (int) (stageIdCounterMap.get(key) * ratio)));
       }
 
       LOG.info("Number of tasks to move in {}: stages {}, {}", executor.getExecutorId(),
@@ -87,17 +87,14 @@ public final class ScaleInOutManager {
           if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
 
             LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
-            if (task.isMerger()) {
-              mergerFutures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
-            } else {
-              futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
-            }
+            futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
 
             stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
             stageIdMoveCounterMap.put(task.getStageId(), stageIdMoveCounterMap.get(task.getStageId()) + 1);
           }
         });
 
+      /*
       // Waiting for merger because partial is dependent on merger
       mergerFutures.stream().forEach(future -> {
         try {
@@ -108,6 +105,7 @@ public final class ScaleInOutManager {
           e.printStackTrace();
         }
       });
+      */
 
       tasksToBeMoved.stream()
         .filter(task -> task.isParitalCombine())

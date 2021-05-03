@@ -54,6 +54,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
     for (int i = 0; i < maxLambda; i++) {
       if (!lambdaCreated[i]) {
+        lambdaCreated[i] = true;
         return i;
       }
     }
