@@ -213,7 +213,7 @@ public final class Task implements Serializable {
           taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
         }
 
-        LOG.info("Put task caching element of {}", taskId);
+        // LOG.info("Put task caching element of {}", taskId);
 
         map.put(RuntimeIdManager.getStageIdFromTaskId(taskId),
           new TaskCachingElement(irDag, taskIncomingEdges, taskOutgoingEdges));
@@ -221,13 +221,13 @@ public final class Task implements Serializable {
       } else {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
 
-        LOG.info("Waiting for get task caching element for {}", taskId);
+        // LOG.info("Waiting for get task caching element for {}", taskId);
 
         while (!map.containsKey(stageId)) {
           Thread.sleep(50);
         }
 
-        LOG.info("End of Waiting for get task caching element for {}", taskId);
+        // LOG.info("End of Waiting for get task caching element for {}", taskId);
 
         final TaskCachingElement taskCachingElement = map.get(stageId);
         irDag = taskCachingElement.irDag;
