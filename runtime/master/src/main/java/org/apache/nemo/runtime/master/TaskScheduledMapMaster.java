@@ -92,7 +92,7 @@ public final class TaskScheduledMapMaster {
 
   private final Map<String, Boolean> deactivateTaskLambdaAffinityMap = new HashMap<>();
 
-  public synchronized Future<String> deactivateAndStopTask(final String taskId,
+  public Future<String> deactivateAndStopTask(final String taskId,
                                                  final boolean lambdaAffinity) {
     final String executorId = taskExecutorIdMap.get(taskId);
     LOG.info("Deactivate task " + taskId + " to executor " + executorId);
@@ -100,7 +100,7 @@ public final class TaskScheduledMapMaster {
     deactivateTaskLambdaAffinityMap.put(taskId, lambdaAffinity);
     representer.deactivateLambdaTask(taskId);
     return CompletableFuture.supplyAsync(() -> {
-      synchronized (this) {
+      synchronized (deactivateTaskLambdaAffinityMap) {
         while (deactivateTaskLambdaAffinityMap.containsKey(taskId) ||
           !isTaskScheduled(taskId)) {
           try {
@@ -114,14 +114,16 @@ public final class TaskScheduledMapMaster {
     });
   }
 
-  public synchronized void stopDeactivatedTask(final String taskId) {
+  public void stopDeactivatedTask(final String taskId) {
     if (!deactivateTaskLambdaAffinityMap.containsKey(taskId)) {
       throw new RuntimeException("Task is not deactivated,, but try to move from lambda to vm " + taskId);
     }
 
-    final boolean lambdaAffinity = deactivateTaskLambdaAffinityMap.get(taskId);
-    deactivateTaskLambdaAffinityMap.remove(taskId);
-    stopTask(taskId, lambdaAffinity);
+    synchronized (deactivateTaskLambdaAffinityMap) {
+      final boolean lambdaAffinity = deactivateTaskLambdaAffinityMap.get(taskId);
+      deactivateTaskLambdaAffinityMap.remove(taskId);
+      stopTask(taskId, lambdaAffinity);
+    }
   }
 
   private void getDescendant(final String taskId, final List<String> l) {
@@ -137,7 +139,7 @@ public final class TaskScheduledMapMaster {
     });
   }
 
-  public synchronized Future<String> stopTask(final String parent, final boolean lambdaAffinity) {
+  public Future<String> stopTask(final String parent, final boolean lambdaAffinity) {
 
     final String executorId = taskExecutorIdMap.get(parent);
 
@@ -174,13 +176,11 @@ public final class TaskScheduledMapMaster {
     }
 
     return CompletableFuture.supplyAsync(() -> {
-      synchronized (this) {
-        while (!descendants.stream().allMatch(tid -> isTaskScheduled(tid))) {
-          try {
-            wait(20);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
+      while (!descendants.stream().allMatch(tid -> isTaskScheduled(tid))) {
+        try {
+          wait(20);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
       }
       return parent;
@@ -191,7 +191,7 @@ public final class TaskScheduledMapMaster {
     return !taskToBeStopped.contains(taskId) && taskExecutorIdMap.containsKey(taskId);
   }
 
-  public synchronized Task removeTask(final String taskId) {
+  public Task removeTask(final String taskId) {
     taskExecutorIdMap.remove(taskId);
     final Task t = taskIdTaskMap.get(taskId);
     // lambdaTaskMap.remove(taskId);
@@ -199,13 +199,17 @@ public final class TaskScheduledMapMaster {
     return t;
   }
 
-  public synchronized void keepOnceCurrentTaskExecutorIdMap() {
-    if (copied) {
-      return;
+  // NOt used
+  @Deprecated
+  public void keepOnceCurrentTaskExecutorIdMap() {
+    synchronized (prevTaskExecutorIdMap) {
+      if (copied) {
+        return;
+      }
+      copied = true;
+      prevTaskExecutorIdMap.clear();
+      prevTaskExecutorIdMap.putAll(taskExecutorIdMap);
     }
-    copied = true;
-    prevTaskExecutorIdMap.clear();
-    prevTaskExecutorIdMap.putAll(taskExecutorIdMap);
   }
 
   public String getTaskOriginalExecutorId(final String taskId) {
@@ -238,7 +242,7 @@ public final class TaskScheduledMapMaster {
     return true;
   }
 
-  private synchronized void executingTask(final String executorId, final String taskId) {
+  private void executingTask(final String executorId, final String taskId) {
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
 
     scheduledStageTasks.putIfAbsent(representer, new HashMap<>());
@@ -251,9 +255,7 @@ public final class TaskScheduledMapMaster {
     representer.onTaskExecutionStarted(taskId);
 
     taskOriginalExecutorIdMap.putIfAbsent(taskId, representer.getExecutorId());
-    synchronized (taskExecutorIdMap) {
-      taskExecutorIdMap.put(taskId, representer.getExecutorId());
-    }
+    taskExecutorIdMap.put(taskId, representer.getExecutorId());
 
     final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
 
@@ -288,42 +290,19 @@ public final class TaskScheduledMapMaster {
     }
   }
 
-  public synchronized void setExecutorAddressInfo(final String executorId,
+  public void setExecutorAddressInfo(final String executorId,
                                                   final String address, final int port) {
     executorAddressMap.put(executorId, Pair.of(address, port));
   }
 
-  public synchronized boolean isAllExecutorAddressReceived() {
-    final AtomicBoolean b = new AtomicBoolean(false);
-    executorRegistry.viewExecutors(c -> {
-      b.set(c.size() == executorAddressMap.size());
-    });
-
-    return b.get();
-  }
-
-  public synchronized void setRelayServerInfo(final String executorId,
+  public void setRelayServerInfo(final String executorId,
                                          final String address, final int port) {
     executorRelayServerInfoMap.put(executorId, Pair.of(address, port));
   }
 
-  public synchronized boolean isAllRelayServerInfoReceived() {
-    final AtomicBoolean b = new AtomicBoolean(false);
-    executorRegistry.viewExecutors(c -> {
-      b.set(c.size() == executorRelayServerInfoMap.size());
-    });
-
-    return b.get();
-  }
-
-  public synchronized Map<String, Pair<String, Integer>> getExecutorAddressMap() {
+  public Map<String, Pair<String, Integer>> getExecutorAddressMap() {
     return executorAddressMap;
   }
-
-  public synchronized Map<String, Pair<String, Integer>> getExecutorRelayServerInfoMap() {
-    return executorRelayServerInfoMap;
-  }
-
 
   public Map<String, String> getTaskExecutorIdMap() {
     return taskExecutorIdMap;
