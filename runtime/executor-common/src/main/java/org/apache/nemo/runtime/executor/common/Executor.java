@@ -130,7 +130,8 @@ public final class Executor {
 
   private final TaskScheduledMapWorker taskScheduledMapWorker;
 
-  private final Map<String, Task> prevScheduledTaskCacheMap;
+  private final Map<String, Task> dagCacheMap;
+  private final Map<String, TaskCachingElement> taskCachingElementMap;
 
   private boolean activated = true;
 
@@ -163,7 +164,8 @@ public final class Executor {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
 
-    this.prevScheduledTaskCacheMap = new ConcurrentHashMap<>();
+    this.taskCachingElementMap = new ConcurrentHashMap<>();
+    this.dagCacheMap = new ConcurrentHashMap<>();
     this.onLambda = onLambda;
     this.taskScheduledMapWorker = taskScheduledMapWorker;
     this.messageEnvironment = messageEnvironment;
@@ -1402,7 +1404,7 @@ public final class Executor {
         case ScheduleCachedTask:
           executorService.execute(() -> {
             final long st = System.currentTimeMillis();
-            final Task task = prevScheduledTaskCacheMap.get(message.getStopTaskMsg().getTaskId());
+            final Task task = dagCacheMap.get(message.getStopTaskMsg().getTaskId());
 
             // executorMetrics.taskInputReceiveRateMap
             //  .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));
@@ -1418,8 +1420,8 @@ public final class Executor {
             final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
             final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
             final DataInputStream dis = new DataInputStream(bis);
-            final Task task = Task.decode(dis);
-            prevScheduledTaskCacheMap.put(task.getTaskId(), task);
+            final Task task = Task.decode(dis, taskCachingElementMap);
+            dagCacheMap.put(task.getTaskId(), task);
 
             // executorMetrics.taskInputReceiveRateMap
             //  .put(task.getTaskId(), Pair.of(new AtomicLong(), new AtomicLong()));

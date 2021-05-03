@@ -190,24 +190,54 @@ public final class Task implements Serializable {
     }
   }
 
-  public static Task decode(DataInputStream dis) {
+  public static Task decode(DataInputStream dis,
+                            final Map<String, TaskCachingElement> map) {
     try {
       final String taskId = dis.readUTF();
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = DAG.decode(dis);
+      final boolean taskCaching = dis.readBoolean();
 
-      int s = dis.readInt();
-      final List<StageEdge> taskIncomingEdges = new ArrayList<>(s);
-      for (int i = 0; i < s; i++) {
-        taskIncomingEdges.add(SerializationUtils.deserialize(dis));
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+      final List<StageEdge> taskIncomingEdges;
+      final List<StageEdge> taskOutgoingEdges;
+
+      if (!taskCaching){
+        irDag = DAG.decode(dis);
+        int s = dis.readInt();
+        taskIncomingEdges = new ArrayList<>(s);
+        for (int i = 0; i < s; i++) {
+          taskIncomingEdges.add(SerializationUtils.deserialize(dis));
+        }
+        s = dis.readInt();
+        taskOutgoingEdges = new ArrayList<>(s);
+        for (int i = 0; i < s; i++) {
+          taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
+        }
+
+        LOG.info("Put task caching element of {}", taskId);
+
+        map.put(RuntimeIdManager.getStageIdFromTaskId(taskId),
+          new TaskCachingElement(irDag, taskIncomingEdges, taskOutgoingEdges));
+
+      } else {
+        final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+
+        LOG.info("Waiting for get task caching element for {}", taskId);
+
+        while (!map.containsKey(stageId)) {
+          Thread.sleep(50);
+        }
+
+        LOG.info("End of Waiting for get task caching element for {}", taskId);
+
+        final TaskCachingElement taskCachingElement = map.get(stageId);
+        irDag = taskCachingElement.irDag;
+        taskIncomingEdges = taskCachingElement.taskIncomingEdges;
+        taskOutgoingEdges = taskCachingElement.taskOutgoingEdges;
       }
-      s = dis.readInt();
-      final List<StageEdge> taskOutgoingEdges = new ArrayList<>(s);
-      for (int i = 0; i < s; i++) {
-        taskOutgoingEdges.add(SerializationUtils.deserialize(dis));
-      }
+
       // final byte[] serializedIRDag = new byte[dis.readInt()];
       // dis.read(serializedIRDag);
-      s = dis.readInt();
+      int s = dis.readInt();
       final Map<String, Readable> irVertexIdToReadable = new HashMap<>(s);
       for (int i = 0; i < s; i++) {
         final String key = dis.readUTF();
@@ -254,20 +284,23 @@ public final class Task implements Serializable {
     }
   }
 
-  public void encode(final DataOutputStream dos) {
+  public void encode(final DataOutputStream dos,
+                     final boolean taskCaching) {
     try {
       dos.writeUTF(taskId);
+      dos.writeBoolean(taskCaching);
 
-      irDag.encode(dos);
-
-      dos.writeInt(taskIncomingEdges.size());
-      taskIncomingEdges.forEach(edge -> {
-        SerializationUtils.serialize(edge, dos);
-      });
-      dos.writeInt(taskOutgoingEdges.size());
-      taskOutgoingEdges.forEach(edge -> {
-        SerializationUtils.serialize(edge, dos);
-      });
+      if (!taskCaching) {
+        irDag.encode(dos);
+        dos.writeInt(taskIncomingEdges.size());
+        taskIncomingEdges.forEach(edge -> {
+          SerializationUtils.serialize(edge, dos);
+        });
+        dos.writeInt(taskOutgoingEdges.size());
+        taskOutgoingEdges.forEach(edge -> {
+          SerializationUtils.serialize(edge, dos);
+        });
+      }
       // dos.writeInt(serializedIRDag.length);
       // dos.write(serializedIRDag);
       dos.writeInt(irVertexIdToReadable.size());

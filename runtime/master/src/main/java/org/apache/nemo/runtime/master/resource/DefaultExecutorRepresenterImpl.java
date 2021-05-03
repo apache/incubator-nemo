@@ -381,7 +381,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     return taskIds;
   }
 
-  private Set<Task> prevScheduledTasks = new HashSet<>();
+  private final Set<Task> prevScheduledTasks = new HashSet<>();
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
@@ -409,10 +409,20 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       }
     }
 
+    final boolean prevScheduled = prevScheduledTasks.contains(task);
+    final boolean hasSameStageScheduled = prevScheduledTasks.stream()
+      .anyMatch(t -> RuntimeIdManager.getStageIdFromTaskId(t.getTaskId())
+        .equals(RuntimeIdManager.getStageIdFromTaskId(task.getTaskId())));
+
+    prevScheduledTasks.add(task);
+
+    LOG.info("Task scheduling to {}, prevScheduled {}, hasSameTaskScheduled {}", task.getTaskId(),
+      prevScheduled, hasSameStageScheduled);
+
     serializationExecutorService.execute(() -> {
       final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
       final DataOutputStream dos = new DataOutputStream(bos);
-      task.encode(dos);
+      task.encode(dos, hasSameStageScheduled);
       try {
         dos.close();
       } catch (IOException e) {
@@ -422,7 +432,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
       serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
 
-      if (prevScheduledTasks.contains(task)) {
+      if (prevScheduled) {
         sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
@@ -434,8 +444,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
               .build())
             .build());
       } else {
-        prevScheduledTasks.add(task);
-
         sendControlMessage(
           ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
