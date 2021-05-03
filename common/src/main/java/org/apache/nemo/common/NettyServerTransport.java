@@ -24,7 +24,7 @@ public final class NettyServerTransport {
 
   private int port;
   private String localAddress;
-  private final String publicAddress;
+  // private final String publicAddress;
   private final boolean bindingLocalAddress;
 
   public NettyServerTransport(final TcpPortProvider tcpPortProvider,
@@ -46,7 +46,7 @@ public final class NettyServerTransport {
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-    this.publicAddress = NetworkUtils.getPublicIP();
+    // this.publicAddress = NetworkUtils.getPublicIP();
     try {
       this.localAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {
@@ -55,7 +55,7 @@ public final class NettyServerTransport {
     }
 
     this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
-    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
+    // LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
   }
 
@@ -68,10 +68,6 @@ public final class NettyServerTransport {
     return port;
   }
 
-  public String getPublicAddress() {
-    return publicAddress;
-  }
-
   public String getLocalAddress() {
     return localAddress;
   }
@@ -79,7 +75,8 @@ public final class NettyServerTransport {
   private int setUpRandomPortNettyServer(final ServerBootstrap serverBootstrap,
                                          final TcpPortProvider tcpPortProvider) {
     try {
-      final String address = bindingLocalAddress ? localAddress : publicAddress;
+      // final String address = bindingLocalAddress ? localAddress : publicAddress;
+      final String address = localAddress;
       final Iterator<Integer> portIterator = tcpPortProvider.iterator();
       while (true) {
         try {

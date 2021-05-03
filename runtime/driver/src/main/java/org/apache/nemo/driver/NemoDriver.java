@@ -19,7 +19,6 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.PublicAddressProvider;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -122,19 +121,17 @@ public final class NemoDriver {
   private final ExecutorRegistry executorRegistry;
   private final Scaler scaler;
   private final NettyVMStateStore nettyVMStateStore;
-  private final PublicAddressProvider publicAddressProvider;
+
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
                      final NemoNameServer nameServer,
-                     final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
                      final EvalConf evalConf,
                      final Scaler scaler,
                      final ExecutorRegistry executorRegistry,
-                     final PublicAddressProvider publicAddressProvider,
                      final NettyVMStateStore nettyVMStateStore,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
@@ -142,19 +139,19 @@ public final class NemoDriver {
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
                      final JVMProcessFactory jvmProcessFactory,
+                     final LocalAddressProvider localAddressProvider,
                      final ScaleInOutManager scaleInOutManager,
                      final JobScaler jobScaler) {
     IdManager.setInDriver();
     this.nettyVMStateStore = nettyVMStateStore;
-    this.publicAddressProvider = publicAddressProvider;
     this.userApplicationRunner = userApplicationRunner;
     this.scaleInOutManager = scaleInOutManager;
+    this.localAddressProvider = localAddressProvider;
     this.runtimeMaster = runtimeMaster;
     this.nameServer = nameServer;
     this.evalConf = evalConf;
     this.executorRegistry = executorRegistry;
     this.scaler = scaler;
-    this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
     this.jobScaler = jobScaler;
@@ -598,7 +595,7 @@ public final class NemoDriver {
       .bindImplementation(PipeManagerWorker.class, PipeManagerWorkerImpl.class)
       .bindImplementation(InputPipeRegister.class, PipeManagerWorkerImpl.class)
       .bindImplementation(StateStore.class, NettyVMStateStoreClient.class)
-      .bindNamedParameter(NettyVMStateStoreClient.NettyVMStoreAddr.class, publicAddressProvider.getLocalAddress())
+      .bindNamedParameter(NettyVMStateStoreClient.NettyVMStoreAddr.class, localAddressProvider.getLocalAddress())
       .bindNamedParameter(NettyVMStateStoreClient.NettyVMStorePort.class,
         Integer.toString(nettyVMStateStore.getPort()))
       // .bindImplementation(OffloadingManager.class, getOffloadingManager())

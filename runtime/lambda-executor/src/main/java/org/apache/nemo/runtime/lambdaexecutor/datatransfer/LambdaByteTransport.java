@@ -92,7 +92,8 @@ public final class LambdaByteTransport implements ByteTransport {//implements Au
   public InetSocketAddress getAndPutInetAddress(final String remoteExecutorId) {
     final InetSocketAddress address;
     try {
-      address = nameResolver.lookup(remoteExecutorId + "-Public");
+      address = nameResolver.lookup(remoteExecutorId);
+      // address = nameResolver.lookup(remoteExecutorId + "-Public");
       LOG.info("Address of {}: {}", remoteExecutorId, address);
       //executorAddressMap.put(remoteExecutorId, address);
       return address;

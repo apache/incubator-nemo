@@ -69,11 +69,11 @@ public final class DefaultByteTransportImpl implements ByteTransport {
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
   private final Channel serverLocalListeningChannel;
-  private final Channel serverPublicListeningChannel;
-  private final String publicAddress;
+  // private final Channel serverPublicListeningChannel;
+ //  private final String publicAddress;
   private final String localAddress;
   private int localBindingPort;
-  private int publicBindingPort;
+  // private int publicBindingPort;
   private final String localExecutorId;
   private final NemoNameResolver nameResolver;
   private final ExecutorChannelMap executorChannelMap;
@@ -121,7 +121,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
 
     final String host;
     try {
-      this.publicAddress = NetworkUtils.getPublicIP();
+      // this.publicAddress = NetworkUtils.getPublicIP();
       this.localAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
       host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
     } catch (UnknownHostException e) {
@@ -154,6 +154,7 @@ public final class DefaultByteTransportImpl implements ByteTransport {
     this.serverLocalListeningChannel = localChannelPort.left();
     this.localBindingPort = localChannelPort.right();
 
+    /*
     if (ec2) {
       this.serverPublicListeningChannel = localChannelPort.left();
       this.publicBindingPort = localChannelPort.right();
@@ -169,12 +170,12 @@ public final class DefaultByteTransportImpl implements ByteTransport {
       this.serverPublicListeningChannel = publicChannelPort.left();
       this.publicBindingPort = publicChannelPort.right();
     }
-
     nameResolver.register(localExecutorId + "-Public", new InetSocketAddress(publicAddress, publicBindingPort));
+    */
     nameResolver.register(localExecutorId, new InetSocketAddress(localAddress, localBindingPort));
 
-    LOG.info("DefaultByteTransportImpl server in {} is listening at {}/{}", localExecutorId,
-      serverLocalListeningChannel, serverPublicListeningChannel);
+    // LOG.info("DefaultByteTransportImpl server in {} is listening at {}/{}", localExecutorId,
+    //  serverLocalListeningChannel, serverPublicListeningChannel);
   }
 
   public Pair<Channel, Integer> getServerChannelAndPort(final String address,
@@ -247,14 +248,14 @@ public final class DefaultByteTransportImpl implements ByteTransport {
     LOG.info("Stopping listening at {} and closing", serverLocalListeningChannel.localAddress());
 
     final ChannelFuture closeListeningChannelFuture = serverLocalListeningChannel.close();
-    final ChannelFuture closePublic = serverPublicListeningChannel.close();
+   //  final ChannelFuture closePublic = serverPublicListeningChannel.close();
     final ChannelGroupFuture channelGroupCloseFuture = channelGroup.close();
     final Future serverListeningGroupCloseFuture = serverListeningGroup.shutdownGracefully();
     final Future serverWorkingGroupCloseFuture = serverWorkingGroup.shutdownGracefully();
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
 
     closeListeningChannelFuture.awaitUninterruptibly();
-    closePublic.awaitUninterruptibly();
+    // closePublic.awaitUninterruptibly();
     channelGroupCloseFuture.awaitUninterruptibly();
     serverListeningGroupCloseFuture.awaitUninterruptibly();
     serverWorkingGroupCloseFuture.awaitUninterruptibly();

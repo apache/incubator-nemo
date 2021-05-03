@@ -10,6 +10,11 @@ provider:
   role: arn:aws:iam::835596193924:role/nemo-dev-ap-northeast-1-lambdaRole
   layers:
     - arn:aws:lambda:ap-northeast-1:835596193924:layer:sponge-layer:1
+  vpc: # Optional VPC. But if you use VPC then both subproperties (securityGroupIds and subnetIds) are required
+    securityGroupIds:
+      - sg-388f4641
+    subnetIds:
+      - subnet-5bcae603
 
 package:
   artifact: build/distributions/lambda.zip

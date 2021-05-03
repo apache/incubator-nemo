@@ -201,7 +201,7 @@ public final class OffloadingWorkerManager {
         if (!worker.isActive()) {
           initService.execute(() -> {
             LOG.info("Activating worker {}", worker.getId());
-            offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
+            offloadingRequester.createChannelRequest(workerControlTransport.getLocalAddress(),
               workerControlTransport.getPort(), worker.getId(), worker.getExecutorId());
           });
         }
@@ -304,7 +304,7 @@ public final class OffloadingWorkerManager {
   }
 
   public String getAddress() {
-    return this.workerControlTransport.getPublicAddress();
+    return this.workerControlTransport.getLocalAddress();
   }
 
   public int getPort() {
@@ -374,7 +374,7 @@ public final class OffloadingWorkerManager {
               requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
 
               executorService.execute(() -> {
-                offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
+                offloadingRequester.createChannelRequest(workerControlTransport.getLocalAddress(),
                   workerControlTransport.getPort(), rid, m.getExecutorId());
               });
             }
@@ -502,7 +502,7 @@ public final class OffloadingWorkerManager {
             requestWorkerInitMap.put(rid, offloadExecutorByteBuf);
 
             executorService.execute(() -> {
-              offloadingRequester.createChannelRequest(workerControlTransport.getPublicAddress(),
+              offloadingRequester.createChannelRequest(workerControlTransport.getLocalAddress(),
                 workerControlTransport.getPort(), rid, m.getExecutorId());
 
             });

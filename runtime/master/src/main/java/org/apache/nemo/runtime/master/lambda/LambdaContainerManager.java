@@ -11,10 +11,6 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.NettyServerTransport;
-import org.apache.nemo.common.PublicAddressProvider;
-import org.apache.nemo.common.ResourceSpecBuilder;
-import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
@@ -93,7 +89,8 @@ public final class LambdaContainerManager {
 
   private final ScheduledExecutorService scheduledExecutorService;
 
-  private final PublicAddressProvider publicAddressProvider;
+  private final LocalAddressProvider localAddressProvider;
+
 
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
@@ -107,7 +104,6 @@ public final class LambdaContainerManager {
                                  final LambdaContainerRequester requester,
                                  final MessageEnvironment messageEnvironment,
                                  final NemoNameServer nameServer,
-                                 final PublicAddressProvider publicAddressProvider,
                                  final NettyVMStateStore stateStore,
                                  @Parameter(EvalConf.Ec2.class) final boolean ec2,
                                  final LocalAddressProvider localAddressProvider) {
@@ -120,12 +116,12 @@ public final class LambdaContainerManager {
     this.executorRegistry = executorRegistry;
     this.pipeIndexMaster = pipeIndexMaster;
     this.requester = requester;
+    this.localAddressProvider = localAddressProvider;
 
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
 
     this.scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
-    this.publicAddressProvider = publicAddressProvider;
     this.messageEnvironment = messageEnvironment;
     this.channelThread = Executors.newSingleThreadExecutor();
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
@@ -327,10 +323,6 @@ public final class LambdaContainerManager {
     channelThread.shutdownNow();
   }
 
-  public String getAddress() {
-    return this.workerControlTransport.getPublicAddress();
-  }
-
   public int getPort() {
     return this.workerControlTransport.getPort();
   }
@@ -362,7 +354,7 @@ public final class LambdaContainerManager {
         requestIdExecutorMap.put(rid, lambdaExecutorId);
 
         final LambdaContainerRequester.LambdaActivator activator =
-          requester.createRequest(workerControlTransport.getPublicAddress(),
+          requester.createRequest(workerControlTransport.getLocalAddress(),
             workerControlTransport.getPort(), rid, lambdaExecutorId,
             resourceType, capacity, slot, memory);
 
@@ -373,7 +365,7 @@ public final class LambdaContainerManager {
           evalConf.samplingJson,
           evalConf.isLocalSource,
           stateStore.getPort(),
-          publicAddressProvider.getLocalAddress(),
+          localAddressProvider.getLocalAddress(),
           nameServer.getPort(),
           lambdaExecutorId,
           evalConf.flushPeriod,

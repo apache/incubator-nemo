@@ -20,7 +20,6 @@ package org.apache.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.PublicAddressProvider;
 import org.apache.nemo.common.ResourceSpecBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
@@ -780,7 +779,7 @@ public final class JobLauncher {
         .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
         .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
         .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
-        .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
+        // .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
         .build();
       return Configurations.merge(conf, c);
     }
