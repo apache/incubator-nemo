@@ -460,8 +460,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   @Override
   public void close() {
     scheduledService.shutdown();
-    stateStore.close();
-    clientTransport.close();
+    if (stateStore != null) {
+      stateStore.close();
+    }
+    if (clientTransport != null) {
+      clientTransport.close();
+    }
   }
 
 
