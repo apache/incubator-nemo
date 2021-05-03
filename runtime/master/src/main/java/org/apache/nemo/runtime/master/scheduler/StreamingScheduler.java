@@ -92,6 +92,7 @@ public final class StreamingScheduler implements Scheduler {
                            final int maxScheduleAttempt) {
     // Housekeeping stuff
     taskDispatcher.run();
+    LOG.info("Task dispatcher run");
     planStateManager.updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
     planStateManager.storeJSON("submitted");
 

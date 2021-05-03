@@ -249,6 +249,7 @@ public final class RuntimeMaster {
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
+        LOG.info("Schedule plan");
         scheduler.schedulePlan(plan, maxScheduleAttempt);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
         return Pair.of(planStateManager, dagLoggingExecutor);
@@ -433,8 +434,9 @@ public final class RuntimeMaster {
           map.put(type, resourceNode);
         }
 
-        int executorNum = createTypeContainer(map.get(COMPUTE), name, num);
-        executorNum += createTypeContainer(map.get(SOURCE), name, num);
+        // Source first !!
+        int executorNum = createTypeContainer(map.get(SOURCE), name, num);
+        executorNum += createTypeContainer(map.get(COMPUTE), name, num);
 
         // lambda later
         if (createWithLambda && map.containsKey(LAMBDA)) {

@@ -398,6 +398,7 @@ public final class NemoDriver {
     });
 
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
+      LOG.info("Start scheduling user dag");
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
         SerializationUtils.deserialize(message.getLaunchDAG().getBroadcastVars().toByteArray());
@@ -497,6 +498,7 @@ public final class NemoDriver {
     public void onNext(final ActiveContext activeContext) {
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
+      LOG.info("Executor launched {} / final {}", activeContext.getEvaluatorId(), finalExecutorLaunched);
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
             .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());

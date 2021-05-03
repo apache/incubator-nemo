@@ -150,6 +150,7 @@ public final class ContainerManager {
       // Wait for request container
       LOG.info("Waiting for container allocation");
       waitForContainer(currContainer + numToRequest);
+      LOG.info("End of waiting for container allocation");
 
     } else {
       LOG.info("Request {} containers", numToRequest);
