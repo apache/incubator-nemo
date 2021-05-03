@@ -411,46 +411,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void onData(Object event, OffloadingOutputCollector a) {
     if (event instanceof SendToOffloadingWorker) {
       // prepareOffloading task
-      final SendToOffloadingWorker e = (SendToOffloadingWorker) event;
-      LOG.info("IndexMap: {}", e.indexMap);
-      final ByteArrayInputStream bis = new ByteArrayInputStream(e.taskByte);
-      final DataInputStream dis = new DataInputStream(bis);
-      final long st = System.currentTimeMillis();
-      try {
-        final Task task;
-        final String stageId = RuntimeIdManager.getStageIdFromTaskId(e.taskId);
-
-        if (context.stageTaskMap.containsKey(stageId)) {
-          task = Task.decode(dis, context.stageTaskMap.get(stageId));
-          LOG.info("Decode task from task caching");
-        } else {
-          task = Task.decode(dis);
-          context.stageTaskMap.put(stageId,
-            new TaskCaching(task.getTaskIncomingEdges(),
-              task.getTaskOutgoingEdges(),
-              task.getExecutionProperties()));
-        }
-
-        indexMap.putAll(e.indexMap);
-        e.indexMap.forEach((key, index) -> {
-          indexTaskMap.put(index, key.getRight());
-        });
-
-        final long et = System.currentTimeMillis();
-
-        LOG.info("Offload Executor [{}] received Task [{}] to execute. time {}",
-          new Object[]{executorId, task.getTaskId(), et - st});
-
-        // final DataInputStream diss = new DataInputStream(new ByteArrayInputStream(task.getSerializedIRDag()));
-        // final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-        //  DAG.decode(diss);
 
         throw new RuntimeException("TODO: launchTask");
-        // launchTask(task, task.getIrDag(), e.offloaded);
-      } catch (Exception e1) {
-        e1.printStackTrace();
-        throw new RuntimeException(e1);
-      }
 
     } else {
       throw new RuntimeException("invalid event " + event);
