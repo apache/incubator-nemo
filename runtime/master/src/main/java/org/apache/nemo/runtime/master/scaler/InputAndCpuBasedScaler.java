@@ -2,6 +2,8 @@ package org.apache.nemo.runtime.master.scaler;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.conf.PolicyConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.ScaleInOutManager;
 import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
@@ -52,11 +54,14 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
   private final Backpressure backpressure;
 
+  private final ClientRPC clientRPC;
+
   @Inject
   private InputAndCpuBasedScaler(final ExecutorMetricMap executorMetricMap,
                                  final ScaleInOutManager scaleInOutManager,
                                  final ExecutorRegistry executorRegistry,
                                  final Backpressure backpressure,
+                                 final ClientRPC clientRPC,
                                  final PolicyConf policyConf) {
     this.executorMetricMap = executorMetricMap;
     this.policyConf = policyConf;
@@ -68,6 +73,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     this.avgExpectedCpu = new DescriptiveStatistics(windowSize);
     this.currRate = policyConf.bpMinEvent;
     this.backpressure = backpressure;
+    this.clientRPC = clientRPC;
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       try {
@@ -150,6 +156,11 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
     LOG.info("Scaler queue: {}, processingRate: {}, avgInputRate: {}, delay: {}",
       queue, processingRate, avgInputRate.getMean(), queue / processingRate);
+
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+      .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+      .setPrintStr(String.format("Scaler queue %s, processing rate %f, avgInputRate: %f",
+        String.valueOf(queue), processingRate, avgInputRate.getMean())).build());
 
     if (processingRate == 0 || queue < 0) {
       return Optional.empty();

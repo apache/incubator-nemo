@@ -87,19 +87,17 @@ public final class OperatorMetricCollector {
         executorId,
         taskId);
 
-      if (latency > latencyLimit) {
-        persistentConnectionToMasterMap
-          .getMessageSender(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.LatencyCollection)
-            .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
-              .setExecutorId(executorId)
-              .setLatency(latency)
-              .build())
-            .build());
-      }
+      persistentConnectionToMasterMap
+        .getMessageSender(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+          .setType(ControlMessage.MessageType.LatencyCollection)
+          .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
+            .setExecutorId(executorId)
+            .setLatency(latency)
+            .build())
+          .build());
     }
   }
 

@@ -4,6 +4,8 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.PolicyConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
@@ -44,12 +46,15 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private final int sourceParallelism;
 
   private long scalingHintSetTime = System.currentTimeMillis();
+  private final ClientRPC clientRPC;
 
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
                                              final ExecutorRegistry executorRegistry,
+                                             final ClientRPC clientRPC,
                                              @Parameter(EvalConf.SourceParallelism.class) final int sourceParallelism,
                                              final PolicyConf policyConf) {
+    this.clientRPC = clientRPC;
     this.executorMetricMap = executorMetricMap;
     this.policyConf = policyConf;
     this.executorRegistry = executorRegistry;
@@ -156,6 +161,12 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
   private void sendBackpressureWrapper() {
     if (System.currentTimeMillis() - scalingHintSetTime >= 5000) {
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+        .setPrintStr(String.format("Current backpressure %s, input %f, avg cpu: %f , avg max cpu: %f",
+          String.valueOf(backpressureRate), avgInputRate.getMean(),
+          avgCpuUse.getMean(), avgMaxCpuUse.getMean())).build());
+
       sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     } else {
       LOG.info("Skip setting backpressure due to the scaling hint set time");
