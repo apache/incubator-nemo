@@ -13,9 +13,9 @@ import java.util.Map;
 public class TaskCachingElement {
   public final List<StageEdge> taskIncomingEdges;
   public final List<StageEdge> taskOutgoingEdges;
-  public final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+  public final byte[] irDag;
 
-  public TaskCachingElement(DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+  public TaskCachingElement(byte[] irDag,
                             final List<StageEdge> taskIncomingEdges,
                             final List<StageEdge> taskOutgoingEdges) {
     this.taskIncomingEdges = taskIncomingEdges;

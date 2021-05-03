@@ -35,9 +35,7 @@ import org.apache.nemo.offloading.common.TaskCaching;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -215,8 +213,11 @@ public final class Task implements Serializable {
 
         // LOG.info("Put task caching element of {}", taskId);
 
+        final ByteArrayOutputStream dagBytes = new ByteArrayOutputStream(2000);
+        irDag.encode(new DataOutputStream(dagBytes));
+        dagBytes.close();
         map.put(RuntimeIdManager.getStageIdFromTaskId(taskId),
-          new TaskCachingElement(irDag, taskIncomingEdges, taskOutgoingEdges));
+          new TaskCachingElement(dagBytes.toByteArray(), taskIncomingEdges, taskOutgoingEdges));
 
       } else {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
@@ -230,7 +231,12 @@ public final class Task implements Serializable {
         // LOG.info("End of Waiting for get task caching element for {}", taskId);
 
         final TaskCachingElement taskCachingElement = map.get(stageId);
-        irDag = taskCachingElement.irDag;
+
+        final DataInputStream dagIs = new DataInputStream(
+          new ByteArrayInputStream(taskCachingElement.irDag));
+        irDag = DAG.decode(dagIs);
+        dagIs.close();
+
         taskIncomingEdges = taskCachingElement.taskIncomingEdges;
         taskOutgoingEdges = taskCachingElement.taskOutgoingEdges;
       }
