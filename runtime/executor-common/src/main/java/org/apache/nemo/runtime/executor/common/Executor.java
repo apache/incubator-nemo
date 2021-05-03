@@ -1179,8 +1179,9 @@ public final class Executor {
 
             scheduledMapWorker.registerTask(split[0], split[1]);
 
-            taskExecutorMapWrapper.forEach(taskExecutor -> {
-              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(taskExecutor.getId());
+            taskExecutorMapWrapper.getTaskExecutorThreadMap().entrySet().forEach(entry -> {
+              final TaskExecutor taskExecutor = entry.getKey();
+              final ExecutorThread executorThread = entry.getValue();
               executorThread.addEvent(new TaskControlMessage(
                 TaskControlMessage.TaskControlMessageType.TASK_SCHEDULED, -1, -1,
                 taskExecutor.getId(), scheduledTaskId));

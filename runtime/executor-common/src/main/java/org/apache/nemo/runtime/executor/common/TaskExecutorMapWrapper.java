@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -39,6 +40,10 @@ public final class TaskExecutorMapWrapper {
     this.taskExecutorThreadMap = new ConcurrentHashMap<>();
     this.taskExecutorStateMap = new ConcurrentHashMap<>();
     this.taskToBeStoppedMap = taskToBeStoppedMap;
+  }
+
+  public Map<TaskExecutor, ExecutorThread> getTaskExecutorThreadMap() {
+    return taskExecutorThreadMap;
   }
 
   public void putTaskExecutor(final TaskExecutor taskExecutor,
@@ -86,9 +91,6 @@ public final class TaskExecutorMapWrapper {
     });
   }
 
-  public void forEach(EventHandler<TaskExecutor> handler) {
-    taskExecutorMap.keySet().forEach(taskExecutor -> handler.onNext(taskExecutor));
-  }
 
   public ExecutorThread getTaskExecutorThread(final String taskId) {
     return taskExecutorThreadMap.get(taskIdExecutorMap.get(taskId));
