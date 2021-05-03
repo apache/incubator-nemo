@@ -506,7 +506,7 @@ public final class JobLauncher {
             final Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
               final String inputRateStr = matcher.group();
-              LOG.info("Input rate {}", inputRateStr);
+              // LOG.info("Input rate {}", inputRateStr);
               final String[] s = inputRateStr.split(" events");
               final String inputRateCmd = "INPUT " + s[0];
               driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
