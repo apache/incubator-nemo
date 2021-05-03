@@ -63,7 +63,6 @@ public final class StreamingScheduler implements Scheduler {
   private final TaskOffloadingManager taskOffloadingManager;
   private final PairStageTaskManager pairStageTaskManager;
   private final TaskScheduledMapMaster taskScheduledMapMaster;
-  private final StageDAGCache stageDAGCache;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -74,7 +73,6 @@ public final class StreamingScheduler implements Scheduler {
                      final PipeIndexMaster pipeIndexMaster,
                      final TransferIndexMaster transferIndexMaster,
                      final PairStageTaskManager pairStageTaskManager,
-                     final StageDAGCache stageDAGCache,
                      final TaskScheduledMapMaster taskScheduledMapMaster,
                      final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
@@ -87,7 +85,6 @@ public final class StreamingScheduler implements Scheduler {
     this.taskOffloadingManager = taskOffloadingManager;
     this.pairStageTaskManager = pairStageTaskManager;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
-    this.stageDAGCache = stageDAGCache;
   }
 
   @Override
