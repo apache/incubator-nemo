@@ -104,7 +104,7 @@ public final class TaskScheduledMapMaster {
         while (deactivateTaskLambdaAffinityMap.containsKey(taskId) ||
           !isTaskScheduled(taskId)) {
           try {
-            wait(20);
+            deactivateTaskLambdaAffinityMap.wait(20);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
@@ -178,7 +178,7 @@ public final class TaskScheduledMapMaster {
     return CompletableFuture.supplyAsync(() -> {
       while (!descendants.stream().allMatch(tid -> isTaskScheduled(tid))) {
         try {
-          wait(20);
+          Thread.sleep(20);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
