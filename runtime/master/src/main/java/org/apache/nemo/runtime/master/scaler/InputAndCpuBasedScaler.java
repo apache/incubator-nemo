@@ -136,7 +136,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
         }
 
         synchronized (this) {
-          queueSizeBasedScalingRatio().ifPresent(ratio -> {
+          queueSizeBasedScalingRatio(info.numExecutor).ifPresent(ratio -> {
             if (ratio > 0.1) {
               scalingWithRatio(ratio);
             }
@@ -150,7 +150,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     }, 80, 1, TimeUnit.SECONDS);
   }
 
-  private Optional<Double> queueSizeBasedScalingRatio() {
+  private Optional<Double> queueSizeBasedScalingRatio(final int numExecutors) {
     final long queue = aggInput.get() - currSourceEvent;
     final double processingRate = avgSrcProcessingRate.getMean();
 
@@ -159,8 +159,9 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
       .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-      .setPrintStr(String.format("Scaler queue %s, processing rate %f, avgInputRate: %f",
-        String.valueOf(queue), processingRate, avgInputRate.getMean())).build());
+      .setPrintStr(String.format("Scaler queue %s, processing rate %f, avgInputRate: %f, " +
+          "numExecutor: %d",
+        String.valueOf(queue), processingRate, avgInputRate.getMean(), numExecutors)).build());
 
     if (processingRate == 0 || queue < 0) {
       return Optional.empty();
