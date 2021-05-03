@@ -154,16 +154,21 @@ public final class DefaultByteTransportImpl implements ByteTransport {
     this.serverLocalListeningChannel = localChannelPort.left();
     this.localBindingPort = localChannelPort.right();
 
-    final Pair<Channel, Integer> publicChannelPort = getServerChannelAndPort(
-      publicAddress,
-      channelImplSelector,
-      channelInitializer,
-      tcpPortProvider,
-      persistentConnectionToMasterMap,
-      true);
+    if (ec2) {
+      this.serverPublicListeningChannel = localChannelPort.left();
+      this.publicBindingPort = localChannelPort.right();
+    } else {
+      final Pair<Channel, Integer> publicChannelPort = getServerChannelAndPort(
+        publicAddress,
+        channelImplSelector,
+        channelInitializer,
+        tcpPortProvider,
+        persistentConnectionToMasterMap,
+        true);
 
-    this.serverPublicListeningChannel = publicChannelPort.left();
-    this.publicBindingPort = publicChannelPort.right();
+      this.serverPublicListeningChannel = publicChannelPort.left();
+      this.publicBindingPort = publicChannelPort.right();
+    }
 
     LOG.info("DefaultByteTransportImpl server in {} is listening at {}/{}", localExecutorId,
       serverLocalListeningChannel, serverPublicListeningChannel);

@@ -106,6 +106,7 @@ public final class LambdaContainerManager {
                                  final MessageEnvironment messageEnvironment,
                                  final NemoNameServer nameServer,
                                  final NettyVMStateStore stateStore,
+                                 @Parameter(EvalConf.Ec2.class) final boolean ec2,
                                  final LocalAddressProvider localAddressProvider) {
     this.nameServer = nameServer;
     this.stateStore = stateStore;
@@ -131,7 +132,7 @@ public final class LambdaContainerManager {
       new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
       new NioEventLoopGroup(30,
         new DefaultThreadFactory("WorkerControlTransport")),
-      false);
+      ec2);
 
     messageEnvironment
       .setupListener(LAMBDA_OFFLOADING_REQUEST_ID,

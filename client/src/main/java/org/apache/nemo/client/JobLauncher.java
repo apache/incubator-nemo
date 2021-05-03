@@ -762,14 +762,25 @@ public final class JobLauncher {
 
     final Configuration conf = confBuilder.build();
     final String offloadingType = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.OffloadingType.class);
-    final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
-      .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
-      .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
-      .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
-      .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
-      .build();
+    final Boolean ec2 = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.Ec2.class);
 
-    return Configurations.merge(conf, c);
+    if (ec2) {
+      final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
+        .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
+        .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
+        .build();
+      return Configurations.merge(conf, c);
+    } else {
+
+      final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
+        .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
+        .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
+        .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
+        .build();
+      return Configurations.merge(conf, c);
+    }
   }
 
   /**

@@ -35,7 +35,7 @@ public final class NettyVMStateStore implements StateStore {
       new VMStatestoreChannelInitializer(),
       new NioEventLoopGroup(3,
       new DefaultThreadFactory("VMStateStore")),
-      false);
+      ec2);
     this.publicAddress = nettyServerTransport.getPublicAddress();
     this.bindingPort = nettyServerTransport.getPort();
     this.stateStore = stateStore;

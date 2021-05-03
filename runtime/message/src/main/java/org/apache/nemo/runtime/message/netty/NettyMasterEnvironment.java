@@ -26,6 +26,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.NettyServerTransport;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.Pair;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.message.*;
@@ -59,14 +60,15 @@ public final class NettyMasterEnvironment implements MessageEnvironment {
   private NettyMasterEnvironment(
     final TcpPortProvider tcpPortProvider,
     final IdentifierFactory idFactory,
-    @Parameter(MessageParameters.SenderId.class) final String senderId) throws Exception {
+    @Parameter(MessageParameters.SenderId.class) final String senderId,
+    @Parameter(EvalConf.Ec2.class) final boolean ec2) throws Exception {
 
     this.transport = new NettyServerTransport(
       tcpPortProvider,
       new NettyChannelInitializer(),
       new NioEventLoopGroup(5,
         new DefaultThreadFactory("NettyMessageEnvironment")),
-      false);
+      ec2);
 
     this.senderId = senderId;
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
