@@ -138,9 +138,16 @@ public final class PipeOutputWriter implements OutputWriter {
 
     taskMetrics.setOutputWatermark(watermark.getTimestamp());
 
+    dstTaskIds.forEach(dstTaskId-> {
+      pipeManagerWorker.writeData(srcTaskId, runtimeEdge.getId(), dstTaskId, serializer,
+        new WatermarkWithIndex(watermark, srcTaskIndex));
+    });
+
+    /*
     pipeManagerWorker.broadcast(srcTaskId,
       runtimeEdge.getId(),
       dstTaskIds, serializer, new WatermarkWithIndex(watermark, srcTaskIndex));
+      */
 
     // offloadIntermediateData(new WatermarkWithIndex(watermark, srcTaskIndex), pipes, false);
 

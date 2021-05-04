@@ -207,9 +207,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
             // Checkpoint
             if (checkpoint) {
-              if (!task.isParitalCombine()) {
-                taskExecutor.checkpoint(false, pairTaskId);
-              }
+              taskExecutor.checkpoint(false, pairTaskId);
             } else {
               taskInitMap.put(control.getTaskId(), true);
             }
@@ -356,9 +354,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         if (evalConf.controlLogging) {
           LOG.info("Get checkpointed state in {}", control.getTaskId());
         }
-        if (!taskExecutor.getTask().isParitalCombine()) {
-          taskExecutor.restore();
-        }
+        taskExecutor.restore();
       }
       case R2_INIT: {
         final TaskExecutor taskExecutor =
