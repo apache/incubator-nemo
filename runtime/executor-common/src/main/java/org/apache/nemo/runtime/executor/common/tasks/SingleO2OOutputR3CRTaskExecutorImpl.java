@@ -789,7 +789,8 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         if (taskId.contains("Stage4")) {
           LOG.info("Receive R3 CR watermark from {}/{} in {} {}",
             event.getEdgeId(), watermarkWithIndex.getIndex(), taskId,
-            new Instant(((WatermarkWithIndex) data).getWatermark().getTimestamp()));
+            new Instant(((WatermarkWithIndex) data).getWatermark().getTimestamp()),
+            Thread.currentThread());
         }
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
@@ -819,9 +820,10 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) taskHandlingEvent.getData();
         if (taskId.contains("Stage4")) {
-          LOG.info("Receive R3 CR watermark from {}/{} in {} {}",
+          LOG.info("Receive R3 CR watermark from {}/{} in {} {} {}",
             taskHandlingEvent.getEdgeId(), watermarkWithIndex.getIndex(), taskId,
-            new Instant(watermarkWithIndex.getWatermark().getTimestamp()));
+            new Instant(watermarkWithIndex.getWatermark().getTimestamp()),
+            Thread.currentThread());
         }
 
         // LOG.info("Receive R3 CR watermark in {} {}", taskId, watermarkWithIndex.getWatermark().getTimestamp());

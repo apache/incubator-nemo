@@ -681,7 +681,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         .ifPresent(watermark -> {
           taskMetrics.setInputWatermark(watermark);
           if (taskId.contains("Stage2") || taskId.contains("Stage3")) {
-            LOG.info("Emit watermark {} in {}", new Instant(watermark), taskId);
+            LOG.info("Emit watermark {} in {} {}", new Instant(watermark), taskId,
+              Thread.currentThread());
           }
           processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
 
