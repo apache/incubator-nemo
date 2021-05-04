@@ -1215,7 +1215,9 @@ public final class RuntimeMaster {
           LOG.info("Deactivation done of {}", reroutingTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
           lambdaExecutor.deactivationDoneSignal(reroutingTask);
-          taskScheduledMap.stopDeactivatedTask(reroutingTask);
+          if (!evalConf.optimizationPolicy.contains("R2")) {
+            taskScheduledMap.stopDeactivatedTask(reroutingTask);
+          }
         } else {
           final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
           final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
