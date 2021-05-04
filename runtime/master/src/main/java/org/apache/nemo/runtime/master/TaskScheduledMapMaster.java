@@ -6,6 +6,7 @@ import org.apache.nemo.common.TaskLoc;
 import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.lambda.LambdaTaskContainerEventHandler;
@@ -14,6 +15,7 @@ import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,17 +58,21 @@ public final class TaskScheduledMapMaster {
 
   private final PairStageTaskManager pairStageTaskManager;
 
+  private final String optPolicy;
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final MessageEnvironment messageEnvironment,
                                  final PairStageTaskManager pairStageTaskManager,
-                                 final LambdaTaskContainerEventHandler lambdaEventHandler) {
+                                 final LambdaTaskContainerEventHandler lambdaEventHandler,
+                                 @Parameter(JobConf.OptimizationPolicy.class) final String optPolicy) {
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.lambdaEventHandler = lambdaEventHandler;
     this.pairStageTaskManager = pairStageTaskManager;
+    this.optPolicy= optPolicy;
     messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
       new TaskScheduleMapReceiver());
   }
@@ -279,15 +285,17 @@ public final class TaskScheduledMapMaster {
       });
     });
 
-    // Redirect task if it is partial and transient and it is moved from VM to LAMBDA
-//    if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
-//      && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
-//      final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
-//      final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
-//      LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
-//      final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
-//      representer.activateLambdaTask(taskId, vmTaskId, vmExecutor);
-//    }
+    if (optPolicy.contains("R1R3")) {
+      //  Redirect task if it is partial and transient and it is moved from VM to LAMBDA
+      if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
+        && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+        final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
+        final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
+        LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
+        final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
+        representer.activateLambdaTask(taskId, vmTaskId, vmExecutor);
+      }
+    }
   }
 
   public void setExecutorAddressInfo(final String executorId,

@@ -91,9 +91,11 @@ public final class LambdaContainerManager {
 
   private final LocalAddressProvider localAddressProvider;
 
+  private final String optPolicy;
 
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                                 @Parameter(JobConf.OptimizationPolicy.class) final String optPolicy,
                                  final TcpPortProvider tcpPortProvider,
                                  final EvalConf evalConf,
                                  final ExecutorRegistry executorRegistry,
@@ -107,6 +109,7 @@ public final class LambdaContainerManager {
                                  final NettyVMStateStore stateStore,
                                  @Parameter(EvalConf.Ec2.class) final boolean ec2,
                                  final LocalAddressProvider localAddressProvider) {
+    this.optPolicy = optPolicy;
     this.nameServer = nameServer;
     this.stateStore = stateStore;
     this.evalConf = evalConf;
@@ -447,7 +450,8 @@ public final class LambdaContainerManager {
           () -> {proxy.deactivate();},
           serializationExecutorService,
           lambdaExecutorId,
-          serializedTaskMap);
+          serializedTaskMap,
+          optPolicy);
 
         // proxy.setRepresentor(er);
         er.setLambdaControlProxy(proxy);

@@ -44,7 +44,7 @@ public final class LambdaTaskContainerEventHandler {
   }
 
   public void onAllLambdaTaskScheduled() {
-    if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
+    if (evalConf.optimizationPolicy.contains("R2")) {
       singleThread.execute(() -> {
         // deactivate tasks
 
@@ -73,7 +73,7 @@ public final class LambdaTaskContainerEventHandler {
           */
 
           LOG.info("Done of task init ... deactivate workers that have no rerouting task");
-          // lambdaContainerManager.get().deactivateAllWorkers();
+          lambdaContainerManager.get().deactivateAllWorkers();
         }
       });
     }

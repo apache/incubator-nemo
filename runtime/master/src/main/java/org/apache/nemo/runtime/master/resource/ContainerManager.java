@@ -84,11 +84,14 @@ public final class ContainerManager {
 
   private final SerializedTaskMap serializedTaskMap;
 
+  private final String optPolicy;
+
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment,
                            final JVMProcessFactory jvmProcessFactory,
+                           @Parameter(JobConf.OptimizationPolicy.class) final String optPolicy,
                            final SerializedTaskMap serializedTaskMap) {
     this.isTerminated = false;
     this.serializedTaskMap = serializedTaskMap;
@@ -100,6 +103,7 @@ public final class ContainerManager {
     this.requestLatchByResourceSpecId = new ConcurrentHashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
     this.jvmProcessFactory = jvmProcessFactory;
+    this.optPolicy = optPolicy;
   }
 
   public void requestContainer(final int numToRequest,
@@ -266,7 +270,8 @@ public final class ContainerManager {
           () -> { activeContext.close(); },
           serializationExecutorService,
             activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName(),
-          serializedTaskMap);
+          serializedTaskMap,
+          optPolicy);
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 

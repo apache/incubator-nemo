@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.R2_TASK_INPUT_START_FROM_UPSTREAM;
 import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
@@ -168,6 +169,31 @@ public final class R2OptControlEventHandler implements ControlEventHandler {
 
         break;
       }
+      case R2_CR_SEND_REDIRECT_DATA: {
+        final TaskExecutor taskExecutor =
+          taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+
+        if (!(taskExecutor.getTask().isVMTask()
+          || taskExecutor.getTask().isTransientTask())) {
+          throw new RuntimeException("Invalid task receive " +
+            "R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK " + control.getTaskId());
+        }
+
+        if (evalConf.controlLogging) {
+          LOG.info("Receive R2_CR_SEND_REDIRECT_DATA in task {} pipe {}", control.getTaskId(), control.targetPipeIndex);
+        }
+
+        // send to downstream CR that I will send data
+        taskExecutor.getTask().getDownstreamTasks().forEach((edge, val) -> {
+          final String edgeId = edge.getId();
+          val.forEach(dstTask -> {
+            pipeManagerWorker.writeControlMessage(control.getTaskId(), edgeId, dstTask,
+              R2_TASK_INPUT_START_FROM_UPSTREAM, null);
+          });
+        });
+
+        break;
+      }
       // (1): stop input pipe
       case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK: {
         final TaskExecutor taskExecutor =
@@ -202,13 +228,6 @@ public final class R2OptControlEventHandler implements ControlEventHandler {
 
           // And we should send all of the pending
           if (cnt > 0) {
-            // Checkpoint
-            if (checkpoint) {
-              taskExecutor.checkpoint(false, pairTaskId);
-            } else {
-              taskInitMap.put(control.getTaskId(), true);
-            }
-
             LOG.info("Send task output done from upstream signal in {}", control.getTaskId());
 
             taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));

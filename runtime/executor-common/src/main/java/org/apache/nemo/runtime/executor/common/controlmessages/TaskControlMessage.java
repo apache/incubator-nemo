@@ -277,6 +277,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
           ((RedirectionMessage) event).encode(bos);
           break;
         }
+        case R2_CR_SEND_REDIRECT_DATA:
         case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK: {
           bos.writeBoolean((Boolean)event);
           break;
@@ -326,6 +327,7 @@ public final class TaskControlMessage implements TaskHandlingEvent {
             RedirectionMessage.decode(bis));
           break;
         }
+        case R2_CR_SEND_REDIRECT_DATA:
         case R2_ACK_PIPE_OUTPUT_STOP_FROM_CR_TO_TASK: {
           msg = new TaskControlMessage(type, inputPipeIndex, targetPipeIndex, targetTaskId,
             bis.readBoolean());

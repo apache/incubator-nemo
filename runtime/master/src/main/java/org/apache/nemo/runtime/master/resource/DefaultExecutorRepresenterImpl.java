@@ -77,6 +77,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private final ScheduledExecutorService scheduledService;
 
+  private final String optPolicy;
   /**
    * Creates a reference to the specified executor.
    * @param executorId the executor id
@@ -91,7 +92,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
                                         final ExecutorShutdownHandler executorShutdownHandler,
                                         final ExecutorService serializationExecutorService,
                                         final String nodeName,
-                                        final SerializedTaskMap serializedTaskMap) {
+                                        final SerializedTaskMap serializedTaskMap,
+                                        final String optPolicy) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
@@ -107,6 +109,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.nodeName = nodeName;
     this.serializedTaskMap = serializedTaskMap;
     this.scheduledService = Executors.newScheduledThreadPool(10);
+    this.optPolicy = optPolicy;
   }
 
   @Override
@@ -313,14 +316,25 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   private void checkAndDeactivate() {
-    if (activatedTasks.isEmpty() &&
-      tasksToBeStopped.isEmpty() &&
-     // getScheduledTasks().isEmpty() &&
-     //  getRunningTasks().isEmpty() &&
-      lambdaControlProxy.isActive()) {
-      LOG.info("Deactivate lambda worker {}", executorId);
-      lambdaControlProxy.deactivate();
+    if (optPolicy.contains("R2")) {
+      if (activatedTasks.isEmpty() &&
+        tasksToBeStopped.isEmpty() &&
+        lambdaControlProxy.isActive()) {
+        LOG.info("Deactivate lambda worker {}", executorId);
+        lambdaControlProxy.deactivate();
+      }
+    } else {
+      // We move tasks from vm to lambda
+      if (activatedTasks.isEmpty() &&
+        tasksToBeStopped.isEmpty() &&
+        getScheduledTasks().isEmpty() &&
+        getRunningTasks().isEmpty() &&
+        lambdaControlProxy.isActive()) {
+        LOG.info("Deactivate lambda worker {}", executorId);
+        lambdaControlProxy.deactivate();
+      }
     }
+
 
     //  getScheduledTasks().stream().allMatch(task -> task.isParitalCombine())) {
     // If all partial task is deactivated

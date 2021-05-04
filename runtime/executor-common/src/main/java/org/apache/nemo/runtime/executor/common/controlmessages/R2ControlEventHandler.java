@@ -156,6 +156,10 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         // Here, we should stop output pipe
         pipeManagerWorker.stopOutputPipeForRouting(originIndex, control.getTaskId());
 
+        // We also stop the pair output pipe
+        final int pairIndex = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), pairEdgeId, pairTaskId);
+        pipeManagerWorker.stopOutputPipeForRouting(pairIndex, control.getTaskId());
+
         // redirection
         final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
         crTaskExecutor.setRerouting(originTaskId, pairTaskId, pairEdgeId,
@@ -266,10 +270,15 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             control.targetPipeIndex, key);
         }
 
-        // final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+        final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+
         final Triple<String, String, String> t =
           pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
-        // crTaskExecutor.stopInputPipeIndex(t);
+
+        if (evalConf.controlLogging) {
+          LOG.info("Stop input pipe of task {}, {}", taskExecutor.getId(), t);
+        }
+         crTaskExecutor.stopInputPipeIndex(t);
 
         // Send ack
         pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
@@ -400,7 +409,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
           final Triple<String, String, String> triple =
             pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
-          crTaskExecutor.startAndStopInputPipeIndex(triple);
+          crTaskExecutor.startInputPipeIndex(triple);
         }
         break;
       }
