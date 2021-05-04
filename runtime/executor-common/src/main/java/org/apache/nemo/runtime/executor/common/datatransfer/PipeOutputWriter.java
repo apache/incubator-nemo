@@ -139,7 +139,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
     taskMetrics.setOutputWatermark(watermark.getTimestamp());
 
-    if (srcTaskId.contains("Stage2")) {
+    if (srcTaskId.contains("Stage2") || srcTaskId.contains("Stage3")) {
       LOG.info("Output watermark of {}: {} to {}", srcTaskId,
         new Instant(watermark.getTimestamp()));
     }
