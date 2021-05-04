@@ -28,6 +28,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SyncStage;
+import org.apache.reef.wake.impl.ThreadPoolStage;
 import org.apache.reef.wake.remote.RemoteConfiguration;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.impl.TransportEvent;
@@ -88,7 +89,7 @@ public final class DriverRPCServer {
       injector.bindVolatileParameter(RemoteConfiguration.HostAddress.class, host);
       injector.bindVolatileParameter(RemoteConfiguration.Port.class, 0);
       injector.bindVolatileParameter(RemoteConfiguration.RemoteServerStage.class,
-          new SyncStage<>(new ServerEventHandler()));
+          new ThreadPoolStage(new ServerEventHandler(), 10));
       transport = injector.getInstance(NettyMessagingTransport.class);
       LOG.info("DriverRPCServer running at {}", transport.getListeningPort());
       isRunning = true;
