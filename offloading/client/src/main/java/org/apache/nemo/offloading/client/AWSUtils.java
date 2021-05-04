@@ -28,7 +28,7 @@ public final class AWSUtils {
 
   public static final String S3_BUCKET_NAME = "nemo-serverless";
   public static final String SIDEINPUT_LAMBDA_NAME = "nemo-dev-hello";
-  public static final String LAMBDA_EXECUTOR_PREFIX = "nemo-dev-lambda-executor";
+  public static final String LAMBDA_EXECUTOR_PREFIX = "lambda-dev-lambda-executor";
 
   static {
     //AWS_S3 = AmazonS3ClientBuilder.standard().build();
