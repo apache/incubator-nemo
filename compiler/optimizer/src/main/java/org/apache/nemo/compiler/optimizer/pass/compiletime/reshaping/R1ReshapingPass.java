@@ -34,11 +34,13 @@ import java.util.List;
 @Requires(CommunicationPatternProperty.class)
 public final class R1ReshapingPass extends ReshapingPass {
 
+  private final boolean r2;
   /**
    * Default constructor.
    */
-  public R1ReshapingPass() {
+  public R1ReshapingPass(final boolean r2) {
     super(R1ReshapingPass.class);
+    this.r2 = r2;
   }
 
 
@@ -50,22 +52,42 @@ public final class R1ReshapingPass extends ReshapingPass {
         .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .count();
 
-      if (edges.size() > 1 && o2ocount == 0) {
-        dag.insert(new StreamVertex(), edges);
-        //for (final IREdge edge : edges) {
-        //  dag.insert(new StreamVertex(), edge);
-        // }
-      } else {
-        edges.forEach(edge -> {
-          if (CommunicationPatternProperty.Value.Shuffle
-            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            dag.insert(new StreamVertex(), edge);
-          }
+      if (r2) {
+        if (edges.size() > 1 && o2ocount > 0) {
+          dag.insert(new StreamVertex(), edges);
+          //for (final IREdge edge : edges) {
+          //  dag.insert(new StreamVertex(), edge);
+          // }
+        } else {
+          edges.forEach(edge -> {
+            if (CommunicationPatternProperty.Value.Shuffle
+              .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+              dag.insert(new StreamVertex(), edge);
+            }
 
-          if (edge.getSrc() instanceof SourceVertex) {
-            dag.insert(new SrcStreamVertex(), edge);
-          }
-        });
+            if (edge.getSrc() instanceof SourceVertex) {
+              dag.insert(new SrcStreamVertex(), edge);
+            }
+          });
+        }
+      } else {
+        if (edges.size() > 1 && o2ocount == 0) {
+          dag.insert(new StreamVertex(), edges);
+          //for (final IREdge edge : edges) {
+          //  dag.insert(new StreamVertex(), edge);
+          // }
+        } else {
+          edges.forEach(edge -> {
+            if (CommunicationPatternProperty.Value.Shuffle
+              .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+              dag.insert(new StreamVertex(), edge);
+            }
+
+            if (edge.getSrc() instanceof SourceVertex) {
+              dag.insert(new SrcStreamVertex(), edge);
+            }
+          });
+        }
       }
     });
 

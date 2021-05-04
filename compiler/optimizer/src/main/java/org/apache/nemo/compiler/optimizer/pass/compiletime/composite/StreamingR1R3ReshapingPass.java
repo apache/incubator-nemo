@@ -35,7 +35,7 @@ public final class StreamingR1R3ReshapingPass extends CompositePass {
   public StreamingR1R3ReshapingPass(int parallelism) {
     super(Arrays.asList(
       new DefaultParallelismPass(parallelism, 1),
-      new R1ReshapingPass(),
+      new R1ReshapingPass(false),
       new SVToCRReshapingPass(),
       new R3NoR2ReshapingPass(),
       new DefaultEdgeEncoderPass(),
@@ -54,7 +54,7 @@ public final class StreamingR1R3ReshapingPass extends CompositePass {
   public StreamingR1R3ReshapingPass() {
     super(Arrays.asList(
       new DefaultParallelismPass(),
-      new R1ReshapingPass(),
+      new R1ReshapingPass(false),
       new SVToCRReshapingPass(),
       new R3NoR2ReshapingPass(),
         new DefaultEdgeEncoderPass(),
