@@ -219,7 +219,7 @@ public final class OffloadingHandler {
     return channel;
   }
 
-  private void initialization(Map<String, Object> input) {
+  private boolean initialization(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
 
     this.workerInitLatch = new CountDownLatch(1);
@@ -312,6 +312,12 @@ public final class OffloadingHandler {
       // dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
       //  OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
 
+      return true;
+    } else {
+      map.remove(controlChannel);
+      controlChannel.close();
+      controlChannel = null;
+      return false;
     }
 
     // ready state
@@ -457,6 +463,8 @@ public final class OffloadingHandler {
         +  ", addr " + addr);
     }
 
+    boolean canSchedule = false;
+
 	  if (controlChannel != null
       && controlChannel.isOpen()
       && controlChannel.isActive()
@@ -488,15 +496,18 @@ public final class OffloadingHandler {
       // final ByteBuf buf2 = dataChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
       // dataChannel.writeAndFlush(new OffloadingExecutorControlEvent(
       //  OffloadingExecutorControlEvent.Type.ACTIVATE, buf2));
+      canSchedule = true;
 
     } else {
 	    LOG.info("Init input " + input + "... control channel " + controlChannel);
-	    initialization(input);
+	    canSchedule = initialization(input);
     }
 
-    schedule();
-	  if (offloadingTransform != null) {
-      offloadingTransform.schedule();
+    if (canSchedule) {
+      schedule();
+      if (offloadingTransform != null) {
+        offloadingTransform.schedule();
+      }
     }
 
     final long sst = System.currentTimeMillis();
@@ -506,18 +517,20 @@ public final class OffloadingHandler {
       System.out.println("Wait deactivation");
       final Integer endFlag = endBlockingQueue.take();
 
-      shutdownSchedule();
-      if (offloadingTransform != null) {
-        offloadingTransform.shutdownSchedule();
+      if (canSchedule) {
+        shutdownSchedule();
+        if (offloadingTransform != null) {
+          offloadingTransform.shutdownSchedule();
+        }
       }
 
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
           if (controlChannel.isOpen()) {
-            final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
+            // final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
             controlChannel.writeAndFlush(
-              new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, buf)).get();
+              new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
 
             if (workerInitLatch.getCount() == 0) {
               // dataChannel.writeAndFlush(

@@ -170,7 +170,7 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
           pendingActivationWorkers.remove(this);
 
-          LOG.info("Set lambda worker {} to actviate", requestId);
+          LOG.info("Set lambda worker {} to activate", requestId);
           state.set(State.ACTIVATE);
         }
         break;

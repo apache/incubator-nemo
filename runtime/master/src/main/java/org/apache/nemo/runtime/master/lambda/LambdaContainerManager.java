@@ -9,6 +9,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
@@ -17,6 +18,7 @@ import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.NettyVMStateStore;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.master.*;
@@ -37,8 +39,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.COMPUTE;
 import static org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty.LAMBDA;
+import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.LAMBDA_OFFLOADING_REQUEST_ID;
 
@@ -49,7 +54,7 @@ public final class LambdaContainerManager {
   private final NettyServerTransport workerControlTransport;
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private final OffloadingEventHandler nemoEventHandler;
-  private final ConcurrentMap<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
 
   private final ExecutorService channelThread;
   private volatile boolean finished = false;
@@ -122,8 +127,8 @@ public final class LambdaContainerManager {
 
     this.messageEnvironment = messageEnvironment;
     this.channelThread = Executors.newSingleThreadExecutor();
-    this.requestIdHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new OffloadingEventHandler(requestIdHandlerMap);
+    this.channelEventHandlerMap = new ConcurrentHashMap<>();
+    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.workerControlTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
       new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
@@ -161,7 +166,7 @@ public final class LambdaContainerManager {
               requestIdActivatorMap.get(requestId), pendingActivationWorkers);
 
             requestIdControlChannelMap.put(requestId, proxy);
-            requestIdHandlerMap.put(requestId, proxy);
+            channelEventHandlerMap.put(pair.left(), proxy);
           });
 
           initService.execute(() -> {

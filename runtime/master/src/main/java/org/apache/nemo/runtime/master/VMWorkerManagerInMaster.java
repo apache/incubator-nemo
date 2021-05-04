@@ -32,7 +32,7 @@ public final class VMWorkerManagerInMaster {
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private OffloadingEventHandler nemoEventHandler;
-  private final ConcurrentMap<Integer, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
 
   private final NettyServerTransport nettyServerTransport;
 
