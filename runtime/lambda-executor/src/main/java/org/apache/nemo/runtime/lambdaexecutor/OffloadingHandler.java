@@ -485,13 +485,6 @@ public final class OffloadingHandler {
 
       // TODO: warm up
       final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
-      while (!(controlChannel.isOpen() && controlChannel.isActive())) {
-        try {
-          Thread.sleep(10);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
 
       controlChannel.writeAndFlush(
         new OffloadingMasterEvent(OffloadingMasterEvent.Type.ACTIVATE, buf));

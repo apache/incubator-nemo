@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.ACTIVATE;
+import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.DUPLICATE_REQUEST_TERMIATION;
 import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.END;
 
 public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingMasterEvent>> {
@@ -69,7 +70,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
           if (receivedRequests.contains(requestId)) {
             // duplicate id..
             LOG.info("Duplicate request id {}..., just finish this worker", requestId);
-            nemoEvent.left().writeAndFlush(new OffloadingMasterEvent(END, new byte[0], 0));
+            nemoEvent.left().writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
           } else {
             receivedRequests.add(requestId);
             handshakeQueue.add(Pair.of(requestId, nemoEvent));
