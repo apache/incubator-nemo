@@ -270,7 +270,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             control.targetPipeIndex, key);
         }
 
-        final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
+        //final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
 
         final Triple<String, String, String> t =
           pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
@@ -278,7 +278,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         if (evalConf.controlLogging) {
           LOG.info("Stop input pipe of task {}, {}", taskExecutor.getId(), t);
         }
-         crTaskExecutor.stopInputPipeIndex(t);
+        // crTaskExecutor.stopInputPipeIndex(t);
 
         // Send ack
         pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
@@ -409,7 +409,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           final CRTaskExecutor crTaskExecutor = (CRTaskExecutor) taskExecutor;
           final Triple<String, String, String> triple =
             pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
-          crTaskExecutor.startInputPipeIndex(triple);
+          crTaskExecutor.startAndStopInputPipeIndex(triple);
         }
         break;
       }

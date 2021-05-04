@@ -262,7 +262,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         if (lambdaWatermarkTracker.isStopped(index)) {
           lambdaWatermarkTracker.startInputPipeWatermark(index);
-          lambdaWatermarkTracker.setWatermark(index, watermark);
+          lambdaWatermarkTracker.setWatermark(index, watermark, taskId, edgeId);
           lambdaWatermarkTracker.updateAndGetCurrentWatermark().ifPresent(wm -> {
             lambdaWatermark = wm;
           });
@@ -283,7 +283,7 @@ public final class R2PairEdgeWatermarkTracker implements WatermarkTracker {
 
         if (vmWatermarkTracker.isStopped(index)) {
           vmWatermarkTracker.startInputPipeWatermark(index);
-          vmWatermarkTracker.setWatermark(index, watermark);
+          vmWatermarkTracker.setWatermark(index, watermark, taskId, edgeId);
           vmWatermarkTracker.updateAndGetCurrentWatermark().ifPresent(wm -> {
             vmWatermark = wm;
           });

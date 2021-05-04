@@ -115,11 +115,18 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
   }
 
   public void setWatermark(final int index,
-                           final long watermark) {
+                           final long watermark,
+                           final String taskId,
+                           final String edgeId) {
     if (watermarks[index] > watermark) {
       LOG.warn("Curr Watermark is smaller than prev watermark " + index + ", " + new Instant(watermark) + ", prev " +
         new Instant(watermarks[index]));
     }
+
+    if (taskId.contains("Stage4")) {
+      LOG.info("Set watermark {} in {} for {}/{}", new Instant(watermark), taskId, edgeId, index);
+    }
+
     watermarks[index] = watermark;
   }
 
@@ -208,6 +215,12 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
   final class MultiWatermarkTracker implements WatermarkTracker {
     @Override
     public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
+
+      if (taskId.contains("Stage4")) {
+        LOG.info("Receive watermark {} at {} from {}/{} {}",
+          new Instant(watermark), taskId, edgeId, edgeIndex, Thread.currentThread());
+      }
+
       if (edgeIndex == minWatermarkIndex) {
         // update min watermark
         watermarks[minWatermarkIndex] = watermark;
