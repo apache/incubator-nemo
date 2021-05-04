@@ -36,6 +36,7 @@ import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.offloading.common.StateStore;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -679,7 +680,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         dataFetcher.getEdgeId(), d.getIndex(), d.getWatermark().getTimestamp())
         .ifPresent(watermark -> {
           taskMetrics.setInputWatermark(watermark);
+          if (taskId.contains("Stage2") || taskId.contains("Stage3")) {
+            LOG.info("Emit watermark {} in {}", new Instant(watermark), taskId);
+          }
           processWatermark(dataFetcher.getOutputCollector(), new Watermark(watermark));
+
         });
     } else if (event instanceof Watermark) {
       // This MUST BE generated from input source
