@@ -90,6 +90,9 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     REGISTER_EXECUTOR,
     TASK_SCHEDULED,
 
+    // For R2 Opt
+    R2_CR_SEND_REDIRECT_DATA,
+
     // For R2
     R2_INVOKE_REDIRECTION_FOR_CR_BY_MASTER,
     R2_PIPE_OUTPUT_STOP_SIGNAL_FROM_TASK_TO_CR,

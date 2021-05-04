@@ -134,6 +134,7 @@ public final class Executor {
   private final Map<String, TaskCachingElement> taskCachingElementMap;
 
   private boolean activated = true;
+  private final Map<String, DAG<IRVertex, RuntimeEdge<IRVertex>>> prevTaskIdDagMap = new ConcurrentHashMap<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -1421,7 +1422,7 @@ public final class Executor {
             final byte[] bytes = scheduleTaskMsg.getTask().toByteArray();
             final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
             final DataInputStream dis = new DataInputStream(bis);
-            final Task task = Task.decode(dis, taskCachingElementMap);
+            final Task task = Task.decode(dis, taskCachingElementMap, prevTaskIdDagMap);
             dagCacheMap.put(task.getTaskId(), task);
 
             // executorMetrics.taskInputReceiveRateMap

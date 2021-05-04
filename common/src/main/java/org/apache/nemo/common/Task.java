@@ -189,7 +189,8 @@ public final class Task implements Serializable {
   }
 
   public static Task decode(DataInputStream dis,
-                            final Map<String, TaskCachingElement> map) {
+                            final Map<String, TaskCachingElement> map,
+                            final Map<String, DAG<IRVertex, RuntimeEdge<IRVertex>>> prevTaskIrDagMap) {
     try {
       final String taskId = dis.readUTF();
       final boolean taskCaching = dis.readBoolean();
@@ -219,24 +220,34 @@ public final class Task implements Serializable {
         map.put(RuntimeIdManager.getStageIdFromTaskId(taskId),
           new TaskCachingElement(dagBytes.toByteArray(), taskIncomingEdges, taskOutgoingEdges));
 
+        prevTaskIrDagMap.put(taskId, irDag);
+
       } else {
         final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
 
-        // LOG.info("Waiting for get task caching element for {}", taskId);
+        if (prevTaskIrDagMap.containsKey(taskId)) {
+          irDag = prevTaskIrDagMap.get(taskId);
+          // LOG.info("Waiting for get task caching element for {}", taskId);
+          while (!map.containsKey(stageId)) {
+            Thread.sleep(50);
+          }
+        } else {
+          // LOG.info("Waiting for get task caching element for {}", taskId);
+          while (!map.containsKey(stageId)) {
+            Thread.sleep(50);
+          }
 
-        while (!map.containsKey(stageId)) {
-          Thread.sleep(50);
+          // LOG.info("End of Waiting for get task caching element for {}", taskId);
+
+          final TaskCachingElement taskCachingElement = map.get(stageId);
+
+          final DataInputStream dagIs = new DataInputStream(
+            new ByteArrayInputStream(taskCachingElement.irDag));
+          irDag = DAG.decode(dagIs);
+          dagIs.close();
         }
 
-        // LOG.info("End of Waiting for get task caching element for {}", taskId);
-
         final TaskCachingElement taskCachingElement = map.get(stageId);
-
-        final DataInputStream dagIs = new DataInputStream(
-          new ByteArrayInputStream(taskCachingElement.irDag));
-        irDag = DAG.decode(dagIs);
-        dagIs.close();
-
         taskIncomingEdges = taskCachingElement.taskIncomingEdges;
         taskOutgoingEdges = taskCachingElement.taskOutgoingEdges;
       }

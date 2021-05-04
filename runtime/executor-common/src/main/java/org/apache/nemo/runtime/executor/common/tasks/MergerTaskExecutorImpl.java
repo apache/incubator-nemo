@@ -294,8 +294,24 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
           manager = R2SinglePairWatermarkManager.decode(taskId, is);
         }
 
-        final boolean isLambdaRouter = is.readBoolean();
         final boolean isReceiveFinal = is.readBoolean();
+        allPathStopped  = is.readBoolean();
+        lambdaPathStopped = is.readBoolean();
+        vmPathStopped = is.readBoolean();
+
+        final boolean isLambdaRouter = is.readBoolean();
+
+        LOG.info("Restore merger task {}: all path stoopped {}/ lambda path stooped {}/ vm path stopped {}" +
+            "receive final /{}", taskId,
+          allPathStopped, lambdaPathStopped, vmPathStopped, receiveFinal);
+
+        receiveFinal = isReceiveFinal;
+
+        if (receiveFinal) {
+          dataHandler = new BypassDataHandler();
+        } else {
+          dataHandler = new ToMergerDataHandler();
+        }
 
         if (isLambdaRouter) {
           dataRouter = new LambdaDataRouter(transientPathDstTask);
@@ -303,15 +319,8 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
           dataRouter = new VMDataRouter(vmPathDstTask);
         }
 
-        receiveFinal = isReceiveFinal;
-        if (receiveFinal) {
-          dataHandler = new BypassDataHandler();
-        } else {
-          dataHandler = new ToMergerDataHandler();
-        }
-
-        LOG.info("Restore merger {}, toLambda: {}, receiveFinal: {}",
-          taskId, isLambdaRouter, receiveFinal);
+        LOG.info("Restore merger {}, toLambda: {}, receiveFinal: {}, dataRouter: {}",
+          taskId, isLambdaRouter, receiveFinal, dataRouter);
 
         return manager;
       } catch (Exception e) {
@@ -828,12 +837,16 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
         ((R2SinglePairWatermarkManager) taskWatermarkManager).encode(taskId, os);
       }
 
+      os.writeBoolean(receiveFinal);
+      os.writeBoolean(allPathStopped);
+      os.writeBoolean(lambdaPathStopped);
+      os.writeBoolean(vmPathStopped);
+
       if (dataRouter instanceof LambdaDataRouter) {
         os.writeBoolean(true);
       } else {
         os.writeBoolean(false);
       }
-      os.writeBoolean(receiveFinal);
 
       LOG.info("Checkpoint merger {}, toLambda: {}, receiveFinal: {}",
         taskId, dataRouter instanceof LambdaDataRouter, receiveFinal);
@@ -890,6 +903,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
             }
           });
       } else {
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeData(data);
       }
     }
@@ -920,6 +934,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
           });
       } else {
         // data
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeByteBuf(data);
       }
     }
@@ -943,6 +958,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
       } else {
 
         // final long start = System.nanoTime();
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeData(data);
         // final long et = System.nanoTime();
         // taskMetrics.incrementComputation(et - start);
@@ -972,6 +988,7 @@ public final class MergerTaskExecutorImpl implements MergerTaskExecutor {
       } else {
         // data
         // final long start = System.nanoTime();
+        taskMetrics.incrementInputProcessElement();
         dataRouter.writeByteBuf(data);
         // final long et = System.nanoTime();
         // taskMetrics.incrementComputation(et - start);
