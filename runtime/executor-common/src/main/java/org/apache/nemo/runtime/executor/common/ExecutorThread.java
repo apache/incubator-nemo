@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.TASK_SCHEDULE_MAP_LISTENER_ID;
@@ -66,6 +67,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   private final TaskExecutorMapWrapper taskExecutorMapWrapper;
 
   private final TaskScheduledMapWorker taskScheduledMapWorker;
+
+  private final AtomicInteger initTaskNum = new AtomicInteger(0);
 
   public ExecutorThread(final int executorThreadIndex,
                         final String executorId,
@@ -149,7 +152,9 @@ public final class ExecutorThread implements ExecutorThreadQueue {
     LOG.info("Add task {}", task.getId());
     taskIdExecutorMap.put(task.getId(), task);
 
+
     synchronized (unInitializedTasks) {
+      initTaskNum.getAndIncrement();
       unInitializedTasks.add(task);
     }
 
@@ -330,58 +335,8 @@ public final class ExecutorThread implements ExecutorThreadQueue {
             }
           }
 
-          if (!unInitializedTasks.isEmpty()) {
-            synchronized (unInitializedTasks) {
-              if (!unInitializedTasks.isEmpty()) {
-                unInitializedTasks.forEach(t -> {
-                  final long st = System.currentTimeMillis();
-                  LOG.info("Start initialization of {}", t.getId());
-                  // send task schedule done message
-                  final TaskStateManager taskStateManager =
-                    new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
-
-                  taskExecutorMapWrapper.putTaskExecutor(t, this);
-
-                  //taskExecutor.execute();
-                  taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-
-                  LOG.info("Task message send time {} to {} thread of {}, time {}", t.getId(), index, executorId,
-                    System.currentTimeMillis() - st);
-
-                  taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
-                    .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
-                    .setType(ControlMessage.MessageType.TaskExecuting)
-                    .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
-                      .setExecutorId(executorId)
-                      .setTaskId(t.getId())
-                      .build())
-                    .build());
-
-                  // After putTaskExecutor and scheduling the task, we should send pipe init message
-                  while (taskScheduledMapWorker
-                    .getRemoteExecutorId(t.getId(), true) == null) {
-                    try {
-                      Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                      e.printStackTrace();
-                    }
-                  }
-
-                  LOG.info("Initializing task {}", t.getId());
-                  t.initialize();
-                  LOG.info("Initializing done of task {}", t.getId());
-
-                  if (t.isSource() && !t.isOffloadedTask()) {
-                    synchronized (pendingSourceTasks) {
-                      pendingSourceTasks.add(t);
-                    }
-                  }
-                });
-
-                unInitializedTasks.clear();
-              }
-            }
+          if (initTaskNum.get() > 0) {
+            handlingInitTasks();
           }
 
           handlingControlEvent();
@@ -393,6 +348,10 @@ public final class ExecutorThread implements ExecutorThreadQueue {
             final TaskHandlingEvent event = iterator.next();
             handlingEvent(event);
             iterator.remove();
+
+            if (initTaskNum.get() > 0) {
+              handlingInitTasks();
+            }
           }
 
           if (!processed || (sourceTasks.isEmpty() && queue.isEmpty())) {
@@ -407,6 +366,62 @@ public final class ExecutorThread implements ExecutorThreadQueue {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private void handlingInitTasks() {
+    synchronized (unInitializedTasks) {
+      if (!unInitializedTasks.isEmpty()) {
+        unInitializedTasks.forEach(t -> {
+          final long st = System.currentTimeMillis();
+          LOG.info("Start initialization of {}", t.getId());
+          // send task schedule done message
+          final TaskStateManager taskStateManager =
+            new TaskStateManager(t.getTask(), executorId, persistentConnectionToMasterMap, metricMessageSender);
+
+          taskExecutorMapWrapper.putTaskExecutor(t, this);
+
+          //taskExecutor.execute();
+          taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
+          LOG.info("Task message send time {} to {} thread of {}, time {}", t.getId(), index, executorId,
+            System.currentTimeMillis() - st);
+
+          taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
+            .setType(ControlMessage.MessageType.TaskExecuting)
+            .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setTaskId(t.getId())
+              .build())
+            .build());
+
+          // After putTaskExecutor and scheduling the task, we should send pipe init message
+          while (taskScheduledMapWorker
+            .getRemoteExecutorId(t.getId(), true) == null) {
+            try {
+              Thread.sleep(50);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          initTaskNum.decrementAndGet();
+
+          LOG.info("Initializing task {}", t.getId());
+          t.initialize();
+          LOG.info("Initializing done of task {}", t.getId());
+
+          if (t.isSource() && !t.isOffloadedTask()) {
+            synchronized (pendingSourceTasks) {
+              pendingSourceTasks.add(t);
+            }
+          }
+        });
+
+        unInitializedTasks.clear();
+      }
+    }
   }
 
   @Override
