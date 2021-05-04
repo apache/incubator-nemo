@@ -42,6 +42,7 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -785,7 +786,10 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         // watermark!
         // we should manage the watermark
         final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) data;
-        // LOG.info("Receive R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
+        if (taskId.contains("Stage4")) {
+          LOG.info("Receive R3 CR watermark in {} {}", taskId,
+            new Instant(((WatermarkWithIndex) data).getWatermark().getTimestamp()));
+        }
         taskWatermarkManager.updateWatermark(event.getEdgeId(), watermarkWithIndex.getIndex(),
           watermarkWithIndex.getWatermark().getTimestamp())
           .ifPresent(watermark -> {
