@@ -123,9 +123,9 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         new Instant(watermarks[index]));
     }
 
-    if (taskId.contains("Stage4")) {
-      LOG.info("Set watermark {} in {} for {}/{}", new Instant(watermark), taskId, edgeId, index);
-    }
+//    if (taskId.contains("Stage4")) {
+//      LOG.info("Set watermark {} in {} for {}/{}", new Instant(watermark), taskId, edgeId, index);
+//    }
 
     watermarks[index] = watermark;
   }
@@ -216,10 +216,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
     @Override
     public Optional<Long> trackAndEmitWatermarks(String taskId, String edgeId, int edgeIndex, long watermark) {
 
-      if (taskId.contains("Stage4")) {
-        LOG.info("Receive watermark {} at {} from {}/{} {}",
-          new Instant(watermark), taskId, edgeId, edgeIndex, Thread.currentThread());
-      }
+//      if (taskId.contains("Stage4")) {
+//        LOG.info("Receive watermark {} at {} from {}/{} {}",
+//          new Instant(watermark), taskId, edgeId, edgeIndex, Thread.currentThread());
+//      }
 
       if (edgeIndex == minWatermarkIndex) {
         // update min watermark
