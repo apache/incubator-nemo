@@ -314,10 +314,19 @@ public final class OffloadingHandler {
 
       return true;
     } else {
-      map.remove(controlChannel);
-      controlChannel.close();
-      controlChannel = null;
-      return false;
+
+      final Integer endFlag = endBlockingQueue.poll();
+
+      endBlockingQueue.add(endFlag);
+
+      if (endFlag == 0) {
+        return true;
+      } else {
+        map.remove(controlChannel);
+        controlChannel.close();
+        controlChannel = null;
+        return false;
+      }
     }
 
     // ready state
