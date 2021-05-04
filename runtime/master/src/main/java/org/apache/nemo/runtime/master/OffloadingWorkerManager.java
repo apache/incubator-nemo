@@ -93,7 +93,7 @@ public final class OffloadingWorkerManager {
     this.offloadingRequester = offloadingRequester;
     this.channelThread = Executors.newSingleThreadExecutor();
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
+    this.nemoEventHandler = new OffloadingEventHandler(null);
     this.workerControlTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
       new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),

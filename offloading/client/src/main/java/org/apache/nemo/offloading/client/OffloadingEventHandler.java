@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.ACTIVATE;
 import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.END;
 
 public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingMasterEvent>> {
@@ -19,19 +20,19 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
   private final BlockingQueue<Pair<Channel,OffloadingMasterEvent>> workerReadyQueue;
   private final BlockingQueue<Pair<Channel, OffloadingMasterEvent>> endQueue;
   private final AtomicInteger pendingRequest = new AtomicInteger();
-  private final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
+  private final Map<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap;
   //private final Map<Channel, List<OffloadingMasterEvent>> channelBufferMap;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
   private final Set<Integer> receivedRequests;
 
-  public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap) {
+  public OffloadingEventHandler(final Map<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap) {
     this.handshakeQueue = new LinkedBlockingQueue<>();
     this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
     //this.channelBufferMap = new ConcurrentHashMap<>();
-    this.channelEventHandlerMap = channelEventHandlerMap;
+    this.requestIdHandlerMap =  requestIdHandlerMap;
     this.receivedRequests = new HashSet<>();
   }
 
@@ -39,7 +40,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
     this.handshakeQueue = new LinkedBlockingQueue<>();
     this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
-    this.channelEventHandlerMap = null;
+    this.requestIdHandlerMap = null;
     this.receivedRequests = new HashSet<>();
     //this.channelBufferMap = null;
   }
@@ -60,7 +61,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
   public void onNext(Pair<Channel, OffloadingMasterEvent> nemoEvent) {
     final OffloadingMasterEvent event = (OffloadingMasterEvent) nemoEvent.right();
     switch (event.getType()) {
-      case CLIENT_HANDSHAKE:
+      case CLIENT_HANDSHAKE: {
         final int requestId = nemoEvent.right().getByteBuf().readInt();
         nemoEvent.right().getByteBuf().release();
         LOG.info("Client handshake from {}", nemoEvent.left().remoteAddress());
@@ -74,6 +75,7 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
             handshakeQueue.add(Pair.of(requestId, nemoEvent));
           }
         }
+      }
         //nemoEvent.right().getByteBuf().release();
         break;
       case WORKER_INIT_DONE: {
@@ -82,25 +84,26 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
         break;
       }
       default:
-        if (channelEventHandlerMap != null) {
-          if (channelEventHandlerMap.containsKey(nemoEvent.left())) {
+        if (requestIdHandlerMap != null) {
+          final int requestId = event.getByteBuf().readInt();
+          if (requestIdHandlerMap.containsKey(requestId)) {
 
             /*
             if (channelBufferMap.containsKey(nemoEvent.left())) {
               LOG.info("Flushing buffered data for channel {}", nemoEvent.left());
               for (final OffloadingMasterEvent bufferedEvent : channelBufferMap.get(nemoEvent.left())) {
-                channelEventHandlerMap.get(nemoEvent.left()).onNext(bufferedEvent);
+                requestIdHandlerMap.get(nemoEvent.left()).onNext(bufferedEvent);
               }
               channelBufferMap.remove(nemoEvent.left());
             }
             */
 
             executorService.execute(() -> {
-              channelEventHandlerMap.get(nemoEvent.left()).onNext(event);
+              requestIdHandlerMap.get(requestId).onNext(event);
             });
 
           } else {
-            LOG.info("No channel {} for {} // {}", nemoEvent.left(), event, channelEventHandlerMap.values());
+            LOG.info("No channel{} for {} // {}", nemoEvent.left(), event, requestIdHandlerMap.values());
           }
         }
     }
