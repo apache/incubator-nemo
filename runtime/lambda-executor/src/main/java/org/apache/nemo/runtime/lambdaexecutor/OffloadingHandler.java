@@ -515,8 +515,9 @@ public final class OffloadingHandler {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
           if (controlChannel.isOpen()) {
+            final ByteBuf buf = controlChannel.alloc().ioBuffer(Integer.BYTES).writeInt(requestId);
             controlChannel.writeAndFlush(
-              new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, new byte[0], 0)).get();
+              new OffloadingMasterEvent(OffloadingMasterEvent.Type.END, buf)).get();
 
             if (workerInitLatch.getCount() == 0) {
               // dataChannel.writeAndFlush(
