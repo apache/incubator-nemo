@@ -3,8 +3,10 @@ package org.apache.nemo.runtime.master.lambda;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import org.apache.nemo.conf.EvalConf;
@@ -13,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,13 +24,15 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaAWSResourceRequester.class.getName());
 
-  private final AWSLambdaAsync awsLambda;
+  private final AWSLambda awsLambda;
   private static final String FUNCTION_NAME = "LAMBDA";
 
   private final AtomicInteger numLambdaCreated = new AtomicInteger(0);
 
   private final int maxLambda;
   private final Boolean[] lambdaCreated;
+
+  private final ExecutorService syncService = Executors.newCachedThreadPool();
 
   @Inject
   private LambdaAWSResourceRequester(final EvalConf evalConf) {
@@ -38,7 +44,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       lambdaCreated[i] = false;
     }
 
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
+    this.awsLambda = AWSLambdaClientBuilder.standard()
       .withRegion(evalConf.awsRegion)
       .withCredentials(provider)
       .withClientConfiguration(
@@ -83,7 +89,16 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
     LOG.info("Invoke create lambda request for requestId: {}/{} lambdaName: {}/{}",
       requestId, executorId, lambdaName, request);
-    final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+    // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+
+    syncService.execute(() -> {
+      try {
+        awsLambda.invoke(request);
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    });
 
     return new LambdaActivator() {
       @Override
@@ -95,7 +110,10 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
         LOG.info("Activate request for requestId: {}/{} lambdaName: {}/{}",
           requestId, executorId, lambdaName, request);
-        final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+        syncService.execute(() -> {
+          awsLambda.invoke(request);
+        });
+        // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
       }
     };
   }
