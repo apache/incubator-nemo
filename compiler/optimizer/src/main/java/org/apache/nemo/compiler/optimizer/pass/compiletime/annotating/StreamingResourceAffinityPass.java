@@ -101,7 +101,7 @@ public final class StreamingResourceAffinityPass extends AnnotatingPass {
             while (!stack.isEmpty()) {
               final IRVertex s = ((LinkedList<IRVertex>) stack).poll();
               LOG.info("Resource priority set to Lambda for {}", s);
-              // s.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
+              s.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
 
               final List<IREdge> outEdges = dag.getOutgoingEdgesOf(s);
               for (final IREdge outEdge : outEdges) {

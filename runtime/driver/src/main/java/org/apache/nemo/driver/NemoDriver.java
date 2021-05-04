@@ -249,6 +249,22 @@ public final class NemoDriver {
             } else if (decision.equals("warmup-done")) {
               scaleInOutManager
                 .sendMigrationAllStages(1, executorRegistry.getLambdaExecutors(), false);
+            } else if (decision.equals("redirection-r2")) {
+              final long st = System.currentTimeMillis();
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+
+              stages.sort((x,y) -> Integer.valueOf(x.split("Stage")[1].split("-")[0])
+                .compareTo(
+                  Integer.valueOf(y.split("Stage")[1].split("-")[0])));
+
+              // activate partial
+              runtimeMaster.redirectionToLambda(num, stages, false);
+
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
               // VM -> Lambda
@@ -277,6 +293,7 @@ public final class NemoDriver {
                 executorRegistry.getVMComputeExecutors(),
                 stages, true);
 
+
               /*
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
@@ -300,7 +317,20 @@ public final class NemoDriver {
               final long et = System.currentTimeMillis();
               LOG.info("End of redirection elapsed time {} {}/{}", et - st, ratio, stages);
 
-            }  else if (decision.equals("redirection-done")) {
+            } else if (decision.equals("redirection-done-r2")) {
+              // FOR CR ROUTING!!
+              // Lambda -> VM
+              final long st = System.currentTimeMillis();
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final String[] stageIds = args[2].split(",");
+              final List<String> stages =
+                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
+                  .collect(Collectors.toList());
+              runtimeMaster.redirectionDoneToLambda(num,
+                stages);
+
+            } else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
               final long st = System.currentTimeMillis();
