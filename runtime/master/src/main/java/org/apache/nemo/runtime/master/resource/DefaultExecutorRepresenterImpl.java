@@ -409,7 +409,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     scheduledTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
 
-    if (task.isTransientTask()) {
+    if (!optPolicy.contains("R2") && task.isTransientTask()) {
       activatedTasks.add(task.getTaskId());
     }
 
