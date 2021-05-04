@@ -46,6 +46,8 @@ import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.common.ByteTransport;
+import org.apache.nemo.runtime.master.backpressure.Backpressure;
+import org.apache.nemo.runtime.master.lambda.LambdaContainerManager;
 import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageParameters;
@@ -121,7 +123,9 @@ public final class NemoDriver {
   private final ExecutorRegistry executorRegistry;
   private final Scaler scaler;
   private final NettyVMStateStore nettyVMStateStore;
+  private final Backpressure backpressure;
 
+  private final LambdaContainerManager lambdaContainerManager;
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
@@ -141,9 +145,12 @@ public final class NemoDriver {
                      final JVMProcessFactory jvmProcessFactory,
                      final LocalAddressProvider localAddressProvider,
                      final ScaleInOutManager scaleInOutManager,
+                     final Backpressure backpressure,
+                     final LambdaContainerManager lambdaContainerManager,
                      final JobScaler jobScaler) {
     IdManager.setInDriver();
     this.nettyVMStateStore = nettyVMStateStore;
+    this.backpressure = backpressure;
     this.userApplicationRunner = userApplicationRunner;
     this.scaleInOutManager = scaleInOutManager;
     this.localAddressProvider = localAddressProvider;
@@ -160,6 +167,7 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.jvmProcessFactory = jvmProcessFactory;
     this.clientRPC = clientRPC;
+    this.lambdaContainerManager = lambdaContainerManager;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
 
@@ -241,6 +249,17 @@ public final class NemoDriver {
               runtimeMaster.triggerConditionalRouting(partial, percent);
             } else if (decision.equals("start-scaler")) {
               scaler.start();
+            } else if (decision.equals("start-backpressure")) {
+              backpressure.start();
+            } else if (decision.equals("lambda-warmup"))  {
+              lambdaContainerManager.activateAllWorkers();
+              try {
+                Thread.sleep(50);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+              lambdaContainerManager.deactivateAllWorkers();
+
             } else if (decision.equals("warmup")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final double percent = new Double(args[1]);
@@ -270,7 +289,7 @@ public final class NemoDriver {
               // VM -> Lambda
               final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              final double ratio = new Double(args[1]);
+              final int num = new Integer(args[1]);
               final String[] stageIds = args[2].split(",");
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
@@ -287,12 +306,12 @@ public final class NemoDriver {
                 waiting = true;
               }
 
-              LOG.info("move and redirection stages double {} {}", ratio, stages);
+              LOG.info("move and redirection stages double {} {}", num, stages);
 
+              final double ratio = 1.0 * num / evalConf.sourceParallelism;
               scaleInOutManager.sendMigration(ratio,
                 executorRegistry.getVMComputeExecutors(),
                 stages, true);
-
 
               /*
               for (final String stage : stages) {
@@ -335,11 +354,13 @@ public final class NemoDriver {
               // Lambda -> VM
               final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              final double ratio = new Double(args[1]);
+              final int num = new Integer(args[1]);
               final String[] stageIds = args[2].split(",");
               final List<String> stages =
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
+
+              final double ratio = num / 1.0 * evalConf.sourceParallelism;
 
               scaleInOutManager.sendMigration(ratio,
                 executorRegistry.getLambdaExecutors(),

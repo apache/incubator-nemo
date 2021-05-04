@@ -15,6 +15,8 @@ public interface Backpressure {
   void addCurrentInput(final long rate);
   void setHintForScaling(final double scalingRatio);
 
+  void start();
+
   default void sendBackpressure(final ExecutorRegistry executorRegistry,
                                 final long rate,
                                 final int sourceParallelism) {

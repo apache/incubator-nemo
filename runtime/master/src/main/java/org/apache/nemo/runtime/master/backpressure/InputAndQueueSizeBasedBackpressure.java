@@ -48,6 +48,8 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   private long scalingHintSetTime = System.currentTimeMillis();
   private final ClientRPC clientRPC;
 
+  private boolean started;
+
   @Inject
   private InputAndQueueSizeBasedBackpressure(final ExecutorMetricMap executorMetricMap,
                                              final ExecutorRegistry executorRegistry,
@@ -160,12 +162,22 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
   }
 
   private void sendBackpressureWrapper() {
-    if (System.currentTimeMillis() - scalingHintSetTime >= 5000) {
+
+    if (!started) {
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-        .setPrintStr(String.format("Current backpressure %s, input %f, avg cpu: %f , avg max cpu: %f",
-          String.valueOf(backpressureRate), avgInputRate.getMean(),
+        .setPrintStr(String.format("input %f, avg cpu: %f , avg max cpu: %f",
+          avgInputRate.getMean(),
           avgCpuUse.getMean(), avgMaxCpuUse.getMean())).build());
+      return;
+    }
+
+    if (System.currentTimeMillis() - scalingHintSetTime >= 5000) {
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+      .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+      .setPrintStr(String.format("Current backpressure %s, input %f, avg cpu: %f , avg max cpu: %f",
+        String.valueOf(backpressureRate), avgInputRate.getMean(),
+        avgCpuUse.getMean(), avgMaxCpuUse.getMean())).build());
 
       sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     } else {
@@ -236,5 +248,10 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
       scalingHintSetTime = System.currentTimeMillis();
       sendBackpressure(executorRegistry, backpressureRate, sourceParallelism);
     }
+  }
+
+  @Override
+  public void start() {
+    started = true;
   }
 }
