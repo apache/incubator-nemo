@@ -280,14 +280,14 @@ public final class TaskScheduledMapMaster {
     });
 
     // Redirect task if it is partial and transient and it is moved from VM to LAMBDA
-    if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
-      && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
-      final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
-      final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
-      LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
-      final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
-      representer.activateLambdaTask(taskId, vmTaskId, vmExecutor);
-    }
+//    if ((taskIdTaskMap.get(taskId).isParitalCombine() && taskIdTaskMap.get(taskId).isTransientTask())
+//      && representer.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+//      final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(taskId).left();
+//      final String vmExecutorId = taskExecutorIdMap.get(vmTaskId);
+//      LOG.info("Redirection to partial and transient task from {} to {}", vmTaskId, taskId);
+//      final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
+//      representer.activateLambdaTask(taskId, vmTaskId, vmExecutor);
+//    }
   }
 
   public void setExecutorAddressInfo(final String executorId,

@@ -247,6 +247,12 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
 
     this.taskWatermarkManager = restoreTaskInputWatermarkManager().orElse(getTaskWatermarkManager());
 
+    LOG.info("VM path dst task {} transientPathTask {}, vmEdge {}, transientEdge {} in {}",
+      vmPathDstTask, transientPathDstTask,
+      vmPathEdge.getId(),
+      transientPathEdge.getId(),
+      taskId);
+
     this.getDstTaskId = new O2oDstTaskId();
     this.dataRerouting = false;
     this.watermarkRerouting = false;

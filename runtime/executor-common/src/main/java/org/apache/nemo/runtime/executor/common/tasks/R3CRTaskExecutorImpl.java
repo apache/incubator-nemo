@@ -257,6 +257,12 @@ public final class R3CRTaskExecutorImpl implements CRTaskExecutor {
       this.getDstTaskId = new O2oDstTaskId();
     }
 
+    LOG.info("VM path dst task {} transientPathTask {}, vmEdge {}, transientEdge {} in {}",
+      vmPathDstTasks[0], transientPathDstTasks[0],
+      vmPathEdge.getId(),
+      transientPathEdge.getId(),
+      taskId);
+
     this.dataReroutingTable = new Boolean[vmPathDstTasks.length];
     this.watermarkReroutingTable = new Boolean[vmPathDstTasks.length];
     this.dataRouters = new DataRouter[vmPathDstTasks.length];

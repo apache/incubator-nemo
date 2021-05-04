@@ -251,6 +251,12 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
       this.taskWatermarkManager = new R2SinglePairWatermarkManager(taskId);
     }
 
+    LOG.info("VM path dst task {} transientPathTask {}, vmEdge {}, transientEdge {} in {}",
+      vmPathDstTask, transientPathDstTask,
+      vmPathEdge.getId(),
+      transientPathEdge.getId(),
+      taskId);
+
     this.getDstTaskId = new O2oDstTaskId();
     this.dataRerouting = false;
     this.watermarkRerouting = false;
