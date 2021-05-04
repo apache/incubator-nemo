@@ -187,11 +187,13 @@ public final class ExecutorThread implements ExecutorThreadQueue {
   }
 
   public void handlingControlEvent(final TaskHandlingEvent event) {
-    if (Thread.currentThread().equals(currThread)) {
-      controlEventHandler.handleControlEvent(event);
-    } else {
-      queue.add(event);
-    }
+    queue.add(event);
+
+//    if (Thread.currentThread().equals(currThread)) {
+//      controlEventHandler.handleControlEvent(event);
+//    } else {
+//      queue.add(event);
+//    }
   }
 
   @Override
@@ -249,29 +251,24 @@ public final class ExecutorThread implements ExecutorThreadQueue {
 
   public void handlingDataEvent(final TaskHandlingEvent event) {
     // Handling data
-    if (Thread.currentThread().equals(currThread)) {
-      final String taskId = event.getTaskId();
-      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
-
-      while (taskExecutor == null) {
-        taskExecutor = taskIdExecutorMap.get(taskId);
-        try {
-          Thread.sleep(5);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      taskExecutor.handleData(event.getEdgeId(), event);
-
-      /*
-      final long cnt = executorMetrics.inputProcessCntMap.get(this);
-      executorMetrics.inputProcessCntMap.put(this, cnt + 1);
-      currProcessedCnt += 1;
-      */
-    } else {
-      addEvent(event);
-    }
+    addEvent(event);
+//    if (Thread.currentThread().equals(currThread)) {
+//      final String taskId = event.getTaskId();
+//      ExecutorThreadTask taskExecutor = taskIdExecutorMap.get(taskId);
+//
+//      while (taskExecutor == null) {
+//        taskExecutor = taskIdExecutorMap.get(taskId);
+//        try {
+//          Thread.sleep(5);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
+//      }
+//
+//      taskExecutor.handleData(event.getEdgeId(), event);
+//    } else {
+//      addEvent(event);
+//    }
   }
 
   private void handlingEvent(final TaskHandlingEvent event) {
