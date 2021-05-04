@@ -30,6 +30,7 @@ import org.apache.nemo.common.punctuation.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,9 +135,14 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void writeWatermark(final Watermark watermark) {
-    // LOG.info("Emit watermark of {}: {}",srcTaskId, new Instant(watermark.getTimestamp()));
+
 
     taskMetrics.setOutputWatermark(watermark.getTimestamp());
+
+    if (srcTaskId.contains("Stage2")) {
+      LOG.info("Output watermark of {}: {} to {}", srcTaskId,
+        new Instant(watermark.getTimestamp()));
+    }
 
     dstTaskIds.forEach(dstTaskId-> {
       pipeManagerWorker.writeData(srcTaskId, runtimeEdge.getId(), dstTaskId, serializer,
