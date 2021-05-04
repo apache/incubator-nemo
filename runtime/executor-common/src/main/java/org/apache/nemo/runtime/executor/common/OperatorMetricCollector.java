@@ -69,6 +69,7 @@ public final class OperatorMetricCollector {
 
   int proceseedCnt = 0;
   long prevLogTime = System.currentTimeMillis();
+  long senTime = System.currentTimeMillis();
 
   public void processDone(final long inputTimestamp,
                           final String vertexId,

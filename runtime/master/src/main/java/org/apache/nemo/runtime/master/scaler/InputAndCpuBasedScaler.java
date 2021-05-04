@@ -103,6 +103,17 @@ public final class InputAndCpuBasedScaler implements Scaler {
           avgProcess,
           info.numExecutor);
 
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+          .setPrintStr(String.format("Scaler avg cpu: %f, avg expected cpu: %f, target cpu: %f, " +
+            "avg input: %f, avg process input: %f, numExecutor: %d",
+          avgCpu,
+          avgExpectedCpuVal,
+          policyConf.scalerTargetCpu,
+          avgInput,
+          avgProcess,
+          info.numExecutor)).build());
+
         if (avgProcess == 0 || info.numExecutor == 0) {
           return;
         }
@@ -157,11 +168,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     LOG.info("Scaler queue: {}, processingRate: {}, avgInputRate: {}, delay: {}",
       queue, processingRate, avgInputRate.getMean(), queue / processingRate);
 
-    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-      .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-      .setPrintStr(String.format("Scaler queue %s, processing rate %f, avgInputRate: %f, " +
-          "numExecutor: %d",
-        String.valueOf(queue), processingRate, avgInputRate.getMean(), numExecutors)).build());
+
 
     if (processingRate == 0 || queue < 0) {
       return Optional.empty();

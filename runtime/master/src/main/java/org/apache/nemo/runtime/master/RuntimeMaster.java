@@ -60,6 +60,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.nemo.common.TaskState.State.COMPLETE;
@@ -903,6 +904,8 @@ public final class RuntimeMaster {
     }
   }
 
+  private final AtomicLong sendTime = new AtomicLong(System.currentTimeMillis());
+
   /**
    * Handler for control messages received by Master.
    */
@@ -1258,10 +1261,17 @@ public final class RuntimeMaster {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
         LOG.info("Latency in Master in {}: {}", msg.getExecutorId(), msg.getLatency());
-        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-          .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-          .setPrintStr(String.format("Event Latency %s in %s",
-            String.valueOf(msg.getLatency()), msg.getExecutorId())).build());
+
+        synchronized (sendTime) {
+          if (curr - sendTime.get() >= 1000) {
+            clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+              .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+              .setPrintStr(String.format("Event Latency %s in %s",
+                String.valueOf(msg.getLatency()), msg.getExecutorId())).build());
+            sendTime.set(curr);
+          }
+        }
+
 
         if (curr - st >= 180000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
