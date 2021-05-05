@@ -34,6 +34,7 @@ public final class VMWorkerManagerInMaster {
   private OffloadingEventHandler nemoEventHandler;
   private final ConcurrentMap<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
 
+
   private final NettyServerTransport nettyServerTransport;
 
   private final AtomicBoolean initialized = new AtomicBoolean(false);
@@ -56,7 +57,7 @@ public final class VMWorkerManagerInMaster {
     final TransferIndexMaster transferIndexMaster,
     final ExecutorCpuUseMap cpuMap) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
+    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap, null);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
       new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),

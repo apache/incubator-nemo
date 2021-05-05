@@ -67,6 +67,7 @@ public final class LambdaContainerManager {
   private final Map<Integer, ByteBuf> requestWorkerInitMap = new ConcurrentHashMap<>();
   private final AtomicInteger requestIdCnt = new AtomicInteger();
   private final Map<Integer, WorkerControlProxy> requestIdControlChannelMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap;
   private final Map<Integer, String> requestIdExecutorMap = new ConcurrentHashMap<>();
   private final Map<Integer, LambdaContainerRequester.LambdaActivator> requestIdActivatorMap = new ConcurrentHashMap<>();
 
@@ -120,6 +121,7 @@ public final class LambdaContainerManager {
     this.pipeIndexMaster = pipeIndexMaster;
     this.requester = requester;
     this.localAddressProvider = localAddressProvider;
+    this.requestIdHandlerMap = new ConcurrentHashMap<>();
 
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
 
@@ -128,7 +130,7 @@ public final class LambdaContainerManager {
     this.messageEnvironment = messageEnvironment;
     this.channelThread = Executors.newSingleThreadExecutor();
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
+    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap, requestIdHandlerMap);
     this.workerControlTransport = new NettyServerTransport(
       tcpPortProvider, new NettyChannelInitializer(
       new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)),
@@ -167,6 +169,7 @@ public final class LambdaContainerManager {
 
             requestIdControlChannelMap.put(requestId, proxy);
             channelEventHandlerMap.put(pair.left(), proxy);
+            requestIdHandlerMap.put(requestId, proxy);
           });
 
           initService.execute(() -> {

@@ -1,6 +1,7 @@
 package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 
 import java.io.Serializable;
 
@@ -23,6 +24,7 @@ public final class OffloadingMasterEvent implements Serializable {
     RESULT,
     WARMUP_END,
     END,
+    DUPLICATE_REQUEST,
     DUPLICATE_REQUEST_TERMIATION,
     CPU_LOAD,
 
@@ -44,6 +46,7 @@ public final class OffloadingMasterEvent implements Serializable {
   private final byte[] bytes;
   private final int len;
   private ByteBuf byteBuf;
+  public Channel channel;
 
   public OffloadingMasterEvent(final Type type,
                                final byte[] bytes,
@@ -52,6 +55,15 @@ public final class OffloadingMasterEvent implements Serializable {
     this.bytes = bytes;
     this.byteBuf = null;
     this.len = len;
+  }
+
+  public OffloadingMasterEvent(final Type type,
+                               final Channel channel,
+                               final int dummy) {
+    this.type = type;
+    this.bytes = null;
+    this.len = 0;
+    this.channel = channel;
   }
 
   public OffloadingMasterEvent(final Type type,

@@ -8,11 +8,10 @@ import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.DUPLICATE_REQUEST_TERMIATION;
 import static org.apache.nemo.runtime.master.WorkerControlProxy.State.*;
 
 public final class WorkerControlProxy implements EventHandler<OffloadingMasterEvent> {
@@ -150,10 +149,25 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     controlChannel.writeAndFlush(event);
   }
 
+  private final List<Channel> duplicateRequestChannels = new LinkedList<>();
 
   @Override
   public void onNext(OffloadingMasterEvent msg) {
     switch (msg.getType()) {
+      case DUPLICATE_REQUEST: {
+        LOG.info("Duplicate request worker {}", requestId);
+
+        synchronized (pendingActivationWorkers) {
+          if (isActivating()) {
+            // we should send another message
+            duplicateRequestChannels.add(msg.channel);
+            activator.activate();
+          } else {
+            msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
+          }
+        }
+        break;
+      }
       case ACTIVATE: {
         LOG.info("Activated worker {}", requestId);
 
@@ -163,12 +177,20 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
             LOG.info("This request is already processed.. should terminate the worker {}",
               requestId);
             controlChannel.writeAndFlush(new OffloadingMasterEvent(
-              OffloadingMasterEvent.Type.DUPLICATE_REQUEST_TERMIATION, null));
+              DUPLICATE_REQUEST_TERMIATION, null));
             //throw new RuntimeException("Pending activation worker does not contain " + requestId);
             return;
           }
 
           pendingActivationWorkers.remove(this);
+
+          // flush dup request channels
+          duplicateRequestChannels.forEach(dupChannel -> {
+            dupChannel.writeAndFlush(new OffloadingMasterEvent(
+              DUPLICATE_REQUEST_TERMIATION, null));
+          });
+
+          duplicateRequestChannels.clear();
 
           LOG.info("Set lambda worker {} to activate", requestId);
           state.set(State.ACTIVATE);

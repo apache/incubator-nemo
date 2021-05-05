@@ -11,9 +11,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.ACTIVATE;
-import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.DUPLICATE_REQUEST_TERMIATION;
-import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.END;
+import static org.apache.nemo.offloading.common.OffloadingMasterEvent.Type.*;
 
 public final class OffloadingEventHandler implements EventHandler<Pair<Channel,OffloadingMasterEvent>> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingEventHandler.class.getName());
@@ -22,28 +20,22 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
   private final BlockingQueue<Pair<Channel, OffloadingMasterEvent>> endQueue;
   private final AtomicInteger pendingRequest = new AtomicInteger();
   private final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap;
+  private final Map<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap;
   //private final Map<Channel, List<OffloadingMasterEvent>> channelBufferMap;
 
   private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
   private final Set<Integer> receivedRequests;
 
-  public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap) {
+  public OffloadingEventHandler(final Map<Channel, EventHandler<OffloadingMasterEvent>> channelEventHandlerMap,
+                                final Map<Integer, EventHandler<OffloadingMasterEvent>> requestIdHandlerMap) {
     this.handshakeQueue = new LinkedBlockingQueue<>();
     this.workerReadyQueue = new LinkedBlockingQueue<>();
     this.endQueue = new LinkedBlockingQueue<>();
     //this.channelBufferMap = new ConcurrentHashMap<>();
     this.channelEventHandlerMap = channelEventHandlerMap;
     this.receivedRequests = new HashSet<>();
-  }
-
-  public OffloadingEventHandler() {
-    this.handshakeQueue = new LinkedBlockingQueue<>();
-    this.workerReadyQueue = new LinkedBlockingQueue<>();
-    this.endQueue = new LinkedBlockingQueue<>();
-    this.channelEventHandlerMap = null;
-    this.receivedRequests = new HashSet<>();
-    //this.channelBufferMap = null;
+    this.requestIdHandlerMap = requestIdHandlerMap;
   }
 
   public AtomicInteger getPendingRequest() {
@@ -70,7 +62,8 @@ public final class OffloadingEventHandler implements EventHandler<Pair<Channel,O
           if (receivedRequests.contains(requestId)) {
             // duplicate id..
             LOG.info("Duplicate request id {}..., just finish this worker", requestId);
-            nemoEvent.left().writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
+            requestIdHandlerMap.get(requestId).onNext(new OffloadingMasterEvent(DUPLICATE_REQUEST, nemoEvent.left(), 0));
+            // nemoEvent.left().writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
           } else {
             receivedRequests.add(requestId);
             handshakeQueue.add(Pair.of(requestId, nemoEvent));
