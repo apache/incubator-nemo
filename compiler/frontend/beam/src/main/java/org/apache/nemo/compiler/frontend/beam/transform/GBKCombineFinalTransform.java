@@ -728,7 +728,7 @@ public final class GBKCombineFinalTransform<K, InputT>
       final Object result = combineFn.extractOutput(output.getValue().getValue());
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
-      outputCollector.emit(output.withValue(KV.of(output.getValue().getKey(), result));
+      outputCollector.emit(output.withValue(KV.of(output.getValue().getKey(), result)));
     }
 
     @Override
