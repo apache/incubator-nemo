@@ -80,6 +80,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
@@ -282,7 +283,12 @@ public final class NemoDriver {
                   Integer.valueOf(y.split("Stage")[1].split("-")[0])));
 
               // activate partial
-              runtimeMaster.redirectionToLambda(num, stages, false);
+              threadPool.execute(() -> {
+                LOG.info("Redirection to lambda start {} / {}", num, stages);
+                runtimeMaster.redirectionToLambda(num, stages, true);
+                runtimeMaster.throttleSource(10000000);
+                LOG.info("End of Redirection to lambda start {} / {}", num, stages);
+              });
 
             } else if (decision.equals("redirection")) {
               // FOR CR ROUTING!!
@@ -309,9 +315,24 @@ public final class NemoDriver {
               LOG.info("move and redirection stages double {} {}", num, stages);
 
               final double ratio = 1.0 * num / evalConf.sourceParallelism;
-              scaleInOutManager.sendMigration(ratio,
-                executorRegistry.getVMComputeExecutors(),
-                stages, true);
+
+              threadPool.execute(() -> {
+                LOG.info("Redirection to lambda start {} / {}", num, stages);
+                scaleInOutManager.sendMigration(ratio,
+                  executorRegistry.getVMComputeExecutors(),
+                  stages, true).forEach(future -> {
+                  try {
+                    future.get();
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  } catch (ExecutionException e) {
+                    e.printStackTrace();
+                  }
+                });
+
+                runtimeMaster.throttleSource(10000000);
+                LOG.info("End of Redirection to lambda start {} / {}", num, stages);
+              });
 
               /*
               for (final String stage : stages) {
