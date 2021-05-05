@@ -105,11 +105,9 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-          .setPrintStr(String.format("Scaler avg cpu: %f, avg expected cpu: %f, target cpu: %f, " +
-            "avg input: %f, avg process input: %f, numExecutor: %d",
+          .setPrintStr(String.format("Avg cpu: %f" +
+            "Avg input: %f, Avg process input: %f, NumExecutor: %d",
           avgCpu,
-          avgExpectedCpuVal,
-          policyConf.scalerTargetCpu,
           avgInput,
           avgProcess,
           info.numExecutor)).build());
