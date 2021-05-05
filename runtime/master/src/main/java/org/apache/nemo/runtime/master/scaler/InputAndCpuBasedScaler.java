@@ -105,7 +105,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-          .setPrintStr(String.format("Avg cpu: %f" +
+          .setPrintStr(String.format("Avg cpu: %f " +
             "Avg input: %f, Avg process input: %f, NumExecutor: %d",
           avgCpu,
           avgInput,

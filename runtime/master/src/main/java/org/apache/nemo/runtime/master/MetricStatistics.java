@@ -29,7 +29,7 @@ public final class MetricStatistics {
 
     final long curr =  System.currentTimeMillis();
     if (curr - collectionTime >= TIME_WINDOW) {
-      final String log = String.format("COLLECT_LATENCY" +
+      final String log = String.format("COLLECT_LATENCY\t" +
         "median\t%f\tp95\t%f\tp99\t%f\ttail\t%f",
         latencyStatistics.getPercentile(0.5),
         latencyStatistics.getPercentile(0.95),
