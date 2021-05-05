@@ -736,35 +736,39 @@ public final class RuntimeMaster {
     final Map<String, Integer> stageCnt = new HashMap<>();
     stageIds.forEach(sid -> stageCnt.put(sid, 0));
 
-    final List<Future> futures =
-      executorRegistry.getLambdaExecutors().stream().map(lambdaExecutor -> {
+    final List<ExecutorRepresenter> activatedLambda = new LinkedList<>();
+
+    executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
       // find list of tasks that the lambda executor has
-        final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
-          .filter(lambdaTask -> {
-            if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
-              LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
-                lambdaExecutor.getExecutorId());
-              return false;
-            }
+      final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
+        .filter(lambdaTask -> {
+          if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
+            LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
+              lambdaExecutor.getExecutorId());
+            return false;
+          }
 
-            final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
-            final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
-            if (stageIds.contains(stageId)
-              && !prevRedirectionTasks.contains(vmTaskId)
-              && stageCnt.get(stageId) < num) {
-              prevRedirectionTasks.add(vmTaskId);
-              stageCnt.put(stageId, stageCnt.get(stageId) + 1);
-              return true;
-            } else {
-              return false;
-            }
-          })
-          .map(Task::getTaskId)
-          .collect(Collectors.toSet());
+          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
+          final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+          if (stageIds.contains(stageId)
+            && !prevRedirectionTasks.contains(vmTaskId)
+            && stageCnt.get(stageId) < num) {
+            prevRedirectionTasks.add(vmTaskId);
+            stageCnt.put(stageId, stageCnt.get(stageId) + 1);
+            return true;
+          } else {
+            return false;
+          }
+        })
+        .map(Task::getTaskId)
+        .collect(Collectors.toSet());
 
-      LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
-      return lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
-    }).collect(Collectors.toList());
+      if (!tasksToBeRedirected.isEmpty()) {
+        LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
+        lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
+        activatedLambda.add(lambdaExecutor);
+      }
+    });
 
     if (waiting) {
       // Waiting for redirection done
@@ -780,7 +784,7 @@ public final class RuntimeMaster {
 
       final AtomicLong stt = new AtomicLong(System.currentTimeMillis());
       if (evalConf.optimizationPolicy.contains("R3")) {
-        executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+        activatedLambda.forEach(lambdaExecutor -> {
           while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
             if (System.currentTimeMillis() - stt.get() >= 1000) {
               LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
@@ -794,7 +798,7 @@ public final class RuntimeMaster {
           }
         });
       } else {
-        executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
+        activatedLambda.forEach(lambdaExecutor -> {
           while (!lambdaExecutor.isAllTaskActivated()) {
             if (System.currentTimeMillis() - stt.get() >= 1000) {
               LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
