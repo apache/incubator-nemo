@@ -118,6 +118,7 @@ public final class RuntimeMaster {
   private final EvalConf evalConf;
   private final PairStageTaskManager pairStageTaskManager;
   private final ResourceRequestCounter resourceRequestCounter;
+  private final MetricStatistics metricStatistics;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -125,6 +126,7 @@ public final class RuntimeMaster {
                         final ContainerManager containerManager,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
+                        final MetricStatistics metricStatistics,
                         final SourceEventAggregator sourceEventAggregator,
    //                     final OffloadingWorkerManager offloadingWorkerManager,
                         final PlanStateManager planStateManager,
@@ -146,6 +148,7 @@ public final class RuntimeMaster {
     // this.offloadingWorkerManager = offloadingWorkerManager;
     this.resourceSpecificationString = resourceSpecificationString;
     this.executorRegistry = executorRegistry;
+    this.metricStatistics = metricStatistics;
     this.taskDispatcher = taskDispatcher;
     this.evalConf = evalConf;
     this.pairStageTaskManager = pairStageTaskManager;
@@ -1260,18 +1263,7 @@ public final class RuntimeMaster {
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
-        LOG.info("Latency in Master in {}: {}", msg.getExecutorId(), msg.getLatency());
-
-        synchronized (sendTime) {
-          if (curr - sendTime.get() >= 1000) {
-            clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-              .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-              .setPrintStr(String.format("Event Latency %s in %s",
-                String.valueOf(msg.getLatency()), msg.getExecutorId())).build());
-            sendTime.set(curr);
-          }
-        }
-
+        metricStatistics.collectLatency(msg.getLatency(), msg.getExecutorId());
 
         if (curr - st >= 180000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());
