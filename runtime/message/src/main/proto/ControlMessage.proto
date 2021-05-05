@@ -322,6 +322,7 @@ message ExecutorMetricMsg {
 message LatencyCollectionMessage {
     required string executorId = 1;
     required int64 latency = 2;
+    optional string logStr = 3;
 }
 
 message RequestOffloadingExecutorMessage {

@@ -76,6 +76,7 @@ public final class OperatorMetricCollector {
                           final String executorId,
                           final String taskId,
                           final long latencyLimit,
+                          final Object data,
                           final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
 
     final long currTime = System.currentTimeMillis();
@@ -97,6 +98,7 @@ public final class OperatorMetricCollector {
           .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
             .setExecutorId(executorId)
             .setLatency(latency)
+            .setLogStr(data.toString())
             .build())
           .build());
     }

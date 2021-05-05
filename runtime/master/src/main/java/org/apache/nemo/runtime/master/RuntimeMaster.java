@@ -853,7 +853,7 @@ public final class RuntimeMaster {
         .map(Task::getTaskId)
         .collect(Collectors.toSet());
 
-      LOG.info("Redirection from lambda to vm tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorCapacity());
+      LOG.info("Redirection from lambda to vm tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
       lambdaContainerManager.redirectionDoneLambda(tasksToBeRedirected, lambdaExecutor);
     });
   }
@@ -1284,7 +1284,8 @@ public final class RuntimeMaster {
       case LatencyCollection: {
         final long curr = System.currentTimeMillis();
         final ControlMessage.LatencyCollectionMessage msg = message.getLatencyMsg();
-        metricStatistics.collectLatency(msg.getLatency(), msg.getExecutorId());
+        metricStatistics.collectLatency(msg.getLatency(), msg.getExecutorId(),
+          msg.getLogStr() == null ? "" : msg.getLogStr());
 
         if (curr - st >= 180000 && msg.getLatency() >= evalConf.latencyLimit) {
           LOG.info("Request to kill this test.. latency {}", msg.getLatency());

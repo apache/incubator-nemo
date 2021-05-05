@@ -22,10 +22,11 @@ public final class MetricStatistics {
 
   private long collectionTime = System.currentTimeMillis();
 
-  public synchronized void collectLatency(final long latency, final String executorId) {
+  public synchronized void collectLatency(final long latency, final String executorId,
+                                          final String logStr) {
     latencyStatistics.addValue(latency);
 
-    LOG.info("Latency in Master in {}: {}", executorId, latency);
+    LOG.info("Latency in Master in {}: {} log {}", executorId, latency, logStr);
 
     final long curr =  System.currentTimeMillis();
     if (curr - collectionTime >= TIME_WINDOW) {

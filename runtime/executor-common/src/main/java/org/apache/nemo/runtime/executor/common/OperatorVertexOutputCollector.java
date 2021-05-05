@@ -280,7 +280,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     @Override
     public void emitData(Object data) {
       operatorMetricCollector.processDone(inputTimestamp,
-        irVertex.getId(), executorId, taskId, latencyLimit, persistentConnectionToMasterMap);
+        irVertex.getId(), executorId, taskId, latencyLimit, data, persistentConnectionToMasterMap);
     }
   }
 
