@@ -98,7 +98,6 @@ public final class OperatorMetricCollector {
           .setLatencyMsg(ControlMessage.LatencyCollectionMessage.newBuilder()
             .setExecutorId(executorId)
             .setLatency(latency)
-            .setLogStr(data.toString())
             .build())
           .build());
     }
