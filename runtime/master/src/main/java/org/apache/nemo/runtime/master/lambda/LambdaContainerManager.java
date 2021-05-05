@@ -167,9 +167,9 @@ public final class LambdaContainerManager {
               requestId, requestIdExecutorMap.get(requestId), pair.left(),
               requestIdActivatorMap.get(requestId), pendingActivationWorkers);
 
+            requestIdHandlerMap.put(requestId, proxy);
             requestIdControlChannelMap.put(requestId, proxy);
             channelEventHandlerMap.put(pair.left(), proxy);
-            requestIdHandlerMap.put(requestId, proxy);
           });
 
           initService.execute(() -> {
