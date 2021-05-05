@@ -337,7 +337,8 @@ final class PipelineTranslator {
     // Original vertex
     final IRVertex vertex = new OperatorVertex(
       createGBKTransform(pTransform, mainInput, ctx, beamNode,
-        SystemReduceFn.buffering(mainInput.getCoder())));
+        finalSystemReduceFn));
+        // SystemReduceFn.buffering(mainInput.getCoder())));
 
     final OperatorVertex partialCombine = new OperatorVertex(partialCombineStreamTransform);
     partialCombine.isGBK = true;
