@@ -29,14 +29,16 @@ import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
  * - Context: The translator builds a DAG in the context.
  */
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
-  private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
+  private final PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
   private final PipelineTranslationContext context;
 
   /**
    * @param pipeline to visit.
    * @param pipelineOptions pipeline options.
    */
-  public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
+  public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions,
+                         final String optPolicy) {
+    pipelineTranslator.optimizationPolicy = optPolicy;
     this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
 

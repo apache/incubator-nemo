@@ -64,6 +64,7 @@ import java.util.stream.IntStream;
 final class PipelineTranslator {
   public static final PipelineTranslator INSTANCE = new PipelineTranslator();
   private static final Logger LOG = LoggerFactory.getLogger(PipelineTranslator.class.getName());
+  public static String optimizationPolicy;
 
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
@@ -490,27 +491,44 @@ final class PipelineTranslator {
             null,
             mainInput.getWindowingStrategy()));
 
-//     final SystemReduceFn systemReduceFn =
-//        SystemReduceFn.combining(
-//          inputCoder.getKeyCoder(),
-//          AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
-
-      final GBKCombineFinalTransform gbkFinal =
-        new GBKCombineFinalTransform(
-          mainInput.getCoder(),
+     final SystemReduceFn systemReduceFn =
+        SystemReduceFn.combining(
           inputCoder.getKeyCoder(),
-          getOutputCoders(pTransform),
-          mainOutputTag,
-          mainInput.getWindowingStrategy(),
-          ctx.getPipelineOptions(),
-          partialSystemReduceFn,
-          (Combine.CombineFn) combineFn,
-          DisplayData.from(beamNode.getTransform()),
-          false);
+          AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
 
-      // (Stage 2) final combine
+     final IRVertex finalCombine;
+     if (optimizationPolicy.contains("R3")) {
+       final GBKFinalTransform gbkFinal =
+         new GBKFinalTransform(
+           mainInput.getCoder(),
+           inputCoder.getKeyCoder(),
+           getOutputCoders(pTransform),
+           mainOutputTag,
+           mainInput.getWindowingStrategy(),
+           ctx.getPipelineOptions(),
+           systemReduceFn,
+           DisplayData.from(beamNode.getTransform()),
+           false);
 
-      final IRVertex finalCombine = new OperatorVertex(gbkFinal);
+       finalCombine = new OperatorVertex(gbkFinal);
+
+     } else {
+        final GBKCombineFinalTransform gbkFinal =
+         new GBKCombineFinalTransform(
+           mainInput.getCoder(),
+           inputCoder.getKeyCoder(),
+           getOutputCoders(pTransform),
+           mainOutputTag,
+           mainInput.getWindowingStrategy(),
+           ctx.getPipelineOptions(),
+           partialSystemReduceFn,
+           (Combine.CombineFn) combineFn,
+           DisplayData.from(beamNode.getTransform()),
+           false);
+       // (Stage 2) final combine
+       finalCombine = new OperatorVertex(gbkFinal);
+     }
+
       finalCombine.isGBK = true;
 
       ctx.addVertex(finalCombine);

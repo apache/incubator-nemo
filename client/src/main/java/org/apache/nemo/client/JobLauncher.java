@@ -121,6 +121,8 @@ public final class JobLauncher {
     });
   }
 
+  public static String optimizationPolicy;
+
   /**
    * Main JobLauncher method.
    *
@@ -569,6 +571,8 @@ public final class JobLauncher {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
 
+
+
     final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
     final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     LOG.info("Args are {}", Arrays.toString(args));
@@ -765,6 +769,8 @@ public final class JobLauncher {
     final Configuration conf = confBuilder.build();
     final String offloadingType = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.OffloadingType.class);
     final Boolean ec2 = Tang.Factory.getTang().newInjector(conf).getNamedInstance(EvalConf.Ec2.class);
+
+    optimizationPolicy = Tang.Factory.getTang().newInjector(conf).getNamedInstance(JobConf.OptimizationPolicy.class);
 
     if (ec2) {
       final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
