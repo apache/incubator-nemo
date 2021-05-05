@@ -349,6 +349,7 @@ public final class Executor {
       scheduledExecutorService.scheduleAtFixedRate(() -> {
         try {
           // Send signal to source executor
+          if (activated) {
             final long processCnt = executorMetrics.inputProcessCntMap.values().stream().reduce((x, y) -> x + y).get();
             final long receiveCnt = executorMetrics.inputReceiveCntMap.values().stream()
               .map(l -> l.get()).reduce((x, y) ->
@@ -363,7 +364,6 @@ public final class Executor {
               queueLength,
               receiveCnt, processCnt);
 
-          if (activated) {
             final double cpuUse = profiler.getAvgCpuLoad();
 
             persistentConnectionToMasterMap
@@ -379,7 +379,6 @@ public final class Executor {
                   .setCpuUse(Math.min(1.0, cpuUse))
                   .build())
                 .build());
-          }
 
           /*
           if (queueLength > 30000) {
@@ -400,10 +399,10 @@ public final class Executor {
           }
           */
 
-          prevSendTime.set(System.currentTimeMillis());
-          prevReceiveCnt.set(receiveCnt);
-          prevProcessingCnt.set(processCnt);
-
+            prevSendTime.set(System.currentTimeMillis());
+            prevReceiveCnt.set(receiveCnt);
+            prevProcessingCnt.set(processCnt);
+          }
 
 
           /*
