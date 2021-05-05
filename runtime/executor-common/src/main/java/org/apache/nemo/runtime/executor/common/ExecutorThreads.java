@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.common;
 
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -24,8 +25,9 @@ public final class ExecutorThreads {
   private final ExecutorMetrics executorMetrics;
 
   @Inject
-  private ExecutorThreads(@Parameter(EvalConf.ExecutorThreadNum.class) final int threadNum,
+  private ExecutorThreads(@Parameter(EvalConf.ExecutorThreadNum.class) final int tnum,
                           @Parameter(JobConf.ExecutorId.class) final String executorId,
+                          @Parameter(JobConf.ExecutorResourceType.class) final String resourceType,
                           final ControlEventHandler taskControlEventHandler,
                           final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                           final MetricMessageSender metricMessageSender,
@@ -34,6 +36,13 @@ public final class ExecutorThreads {
                           final ExecutorMetrics executorMetrics) {
     final MessageSender<ControlMessage.Message> taskScheduledMapSender =
       persistentConnectionToMasterMap.getMessageSender(TASK_SCHEDULE_MAP_LISTENER_ID);
+
+    final int threadNum;
+    if (resourceType.equals(ResourcePriorityProperty.SOURCE)) {
+      threadNum = 50;
+    } else {
+      threadNum = tnum;
+    }
 
     this.executorMetrics = executorMetrics;
     this.executorThreads = new ArrayList<>(threadNum);
