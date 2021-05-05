@@ -546,8 +546,13 @@ public final class RuntimeMaster {
                                      final int memory) {
     resourceRequestCounter.resourceRequestCount.getAndAdd(num);
     try {
+
+      LOG.info("Set waiting true for task dispatcher");
+      taskDispatcher.setWaiting(true);
+
       final List<ExecutorRepresenter> executorRepresenters =
         requestContainerThread.submit(() -> {
+
         final List<Future<ExecutorRepresenter>> list =
           lambdaContainerManager.createLambdaContainer(num, capacity, slot, memory);
 
@@ -571,6 +576,9 @@ public final class RuntimeMaster {
 
         return erList;
       }).get();
+
+      LOG.info("Set waiting false for task dispatcher");
+      taskDispatcher.setWaiting(false);
 
       if (evalConf.optimizationPolicy.contains("R2") || evalConf.optimizationPolicy.contains("R3")) {
         LOG.info("Request lambda container waiting for deactivation");

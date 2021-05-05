@@ -161,8 +161,22 @@ public final class TaskDispatcher {
     return stageTasks;
   }
 
+  private boolean waiting = false;
+
+  public void setWaiting(final boolean b) {
+    waiting = b;
+  }
 
   private void doScheduleTaskList() {
+      if (waiting) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return;
+      }
+
       final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
       if (taskList == null) {
         try {
@@ -172,6 +186,7 @@ public final class TaskDispatcher {
         }
         return;
       }
+
       /* final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
       if (!taskListOptional.isPresent()) {
         // Task list is empty
