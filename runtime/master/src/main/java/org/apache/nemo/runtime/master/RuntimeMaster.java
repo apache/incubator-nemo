@@ -768,15 +768,15 @@ public final class RuntimeMaster {
 
     if (waiting) {
       // Waiting for redirection done
-      for (final Future future : futures) {
-        try {
-          future.get();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-        }
-      }
+//      for (final Future future : futures) {
+//        try {
+//          future.get();
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        } catch (ExecutionException e) {
+//          e.printStackTrace();
+//        }
+//      }
 
       if (evalConf.optimizationPolicy.contains("R3")) {
         executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
