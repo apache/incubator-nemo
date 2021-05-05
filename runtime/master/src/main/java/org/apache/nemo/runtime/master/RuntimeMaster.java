@@ -778,9 +778,14 @@ public final class RuntimeMaster {
 //        }
 //      }
 
+      final AtomicLong stt = new AtomicLong(System.currentTimeMillis());
       if (evalConf.optimizationPolicy.contains("R3")) {
         executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
           while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
+            if (System.currentTimeMillis() - stt.get() >= 1000) {
+              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
+              stt.set(System.currentTimeMillis());
+            }
             try {
               Thread.sleep(10);
             } catch (InterruptedException e) {
@@ -791,6 +796,10 @@ public final class RuntimeMaster {
       } else {
         executorRegistry.getLambdaExecutors().forEach(lambdaExecutor -> {
           while (!lambdaExecutor.isAllTaskActivated()) {
+            if (System.currentTimeMillis() - stt.get() >= 1000) {
+              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
+              stt.set(System.currentTimeMillis());
+            }
             try {
               Thread.sleep(10);
             } catch (InterruptedException e) {
