@@ -723,9 +723,12 @@ public final class GBKCombineFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
 
       final Object result = combineFn.extractOutput(output.getValue().getValue());
+
+//      LOG.info("Emitting output at {}: key {}, val {} after extract {}",
+//        getContext().getIRVertex().getId(), output.getValue().getKey(), output.getValue(),
+//        result);
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output.withValue(KV.of(output.getValue().getKey(), result)));

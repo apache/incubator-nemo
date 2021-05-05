@@ -68,6 +68,8 @@ public final class TaskEventRateCalculator {
       sb.append(taskMetrics.outbytes);
       sb.append("\tnumKey:");
       sb.append(taskExecutor.getNumKeys());
+      sb.append("\towc:");
+      sb.append(taskMetrics.outWatermarkCount);
       sb.append("\n");
     }
 

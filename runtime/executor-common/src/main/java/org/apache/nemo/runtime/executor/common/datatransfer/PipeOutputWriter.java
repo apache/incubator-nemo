@@ -83,6 +83,7 @@ public final class PipeOutputWriter implements OutputWriter {
     //this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.partitioner = Partitioner
       .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
+    LOG.info("Partitioner for {}: {}", srcTaskId, partitioner);
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
     // this.serializer = serializerManager.getSerializer(runtimeEdge.getId());
@@ -109,6 +110,11 @@ public final class PipeOutputWriter implements OutputWriter {
    */
   @Override
   public void write(final Object element) {
+
+//    if (srcTaskId.contains("Stage2") || srcTaskId.contains("Stage8")) {
+//      LOG.info("Writing element from {}: {}", srcTaskId,
+//        ((TimestampAndValue)element).value);
+//    }
 
     taskMetrics.incrementOutputElement();
     //executorMetrics.increaseOutputCounter(stageId);
@@ -138,6 +144,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
 
     taskMetrics.setOutputWatermark(watermark.getTimestamp());
+    taskMetrics.incrementOutWatermarkCount();
 
 //    if (srcTaskId.contains("Stage2") || srcTaskId.contains("Stage3")) {
 //      LOG.info("Output watermark of {}: {} to {} / {}", srcTaskId,
@@ -235,12 +242,20 @@ public final class PipeOutputWriter implements OutputWriter {
       // Shuffle
       if (value instanceof TimestampAndValue) {
         final int partitionKey = (int) partitioner.partition(((TimestampAndValue)value).value);
-        //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
-        return Collections.singletonList(dstTaskIds.get(partitionKey));
+        final String dstTask = dstTaskIds.get(partitionKey);
+//        if (srcTaskId.contains("Stage2-") || srcTaskId.contains("Stage8")) {
+//          LOG.info("Partition key {} from {} to {} for {}", partitionKey,
+//            srcTaskId, dstTask, runtimeEdge.getId());
+//        }
+        return Collections.singletonList(dstTask);
       } else {
         final int partitionKey = (int) partitioner.partition(value);
-        //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
-        return Collections.singletonList(dstTaskIds.get(partitionKey));
+        final String dstTask = dstTaskIds.get(partitionKey);
+//        if (srcTaskId.contains("Stage2-") || srcTaskId.contains("Stage8")) {
+//          LOG.info("Partition key {} from {} to {} for {}", partitionKey,
+//            srcTaskId, dstTask, runtimeEdge.getId());
+//        }
+        return Collections.singletonList(dstTask);
       }
     }
   }

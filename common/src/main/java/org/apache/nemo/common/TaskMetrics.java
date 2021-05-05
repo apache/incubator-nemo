@@ -10,6 +10,7 @@ public final class TaskMetrics {
   private long inputReceiveElement;
   private long inputProcessElement;
   private long outputElement;
+  private long outWatermarkCount;
   private long computation;
   private long inbytes;
   private long outbytes;
@@ -71,6 +72,10 @@ public final class TaskMetrics {
     outputElement += 1;
   }
 
+  public void incrementOutWatermarkCount() {
+    outWatermarkCount += 1;
+  }
+
   public void incrementComputation(final long update) {
     computation += (update / 1000);
   }
@@ -93,7 +98,7 @@ public final class TaskMetrics {
 
   private RetrievedMetrics prevMetric = new RetrievedMetrics(0,
     0, 0
-    , 0, 0, 0, 0, 0, 0, 0);
+    , 0, 0, 0, 0, 0, 0, 0, 0);
 
   public RetrievedMetrics retrieve() {
     final long ir = inputReceiveElement;
@@ -104,9 +109,10 @@ public final class TaskMetrics {
     final long dst = deserializedTime;
     final long ob = outbytes;
     final long st = serializedTime;
+    final long owc = outWatermarkCount;
 
     final RetrievedMetrics newMetric = new RetrievedMetrics(ir, ie, oe, c, ib, st, ob, dst,
-      inputWatermark, outputWatermark);
+      inputWatermark, outputWatermark, outWatermarkCount);
 
     final RetrievedMetrics delta = delta(newMetric, prevMetric);
     prevMetric = newMetric;
@@ -142,7 +148,8 @@ public final class TaskMetrics {
       newMetric.outbytes - oldMetric.outbytes,
       newMetric.deserTime - oldMetric.deserTime,
       newMetric.watermark,
-      newMetric.outWatermark);
+      newMetric.outWatermark,
+      newMetric.outWatermarkCount - oldMetric.outWatermarkCount);
   }
 
   private long avgCnt(final List<Long> l) {
@@ -160,6 +167,7 @@ public final class TaskMetrics {
     public final long deserTime;
     public final long watermark;
     public final long outWatermark;
+    public final long outWatermarkCount;
 
     public RetrievedMetrics(final long inputReceiveElement,
                             final long inputElement,
@@ -170,7 +178,8 @@ public final class TaskMetrics {
                             final long outbytes,
                             final long deserTime,
                             final long watermark,
-                            final long outWatermark) {
+                            final long outWatermark,
+                            final long outWatermarkCount) {
       this.inputReceiveElement = inputReceiveElement;
       this.inputElement = inputElement;
       this.outputElement = outputElement;
@@ -181,6 +190,7 @@ public final class TaskMetrics {
       this.deserTime = deserTime;
       this.watermark = watermark;
       this.outWatermark = outWatermark;
+      this.outWatermarkCount = outWatermarkCount;
     }
   }
 }

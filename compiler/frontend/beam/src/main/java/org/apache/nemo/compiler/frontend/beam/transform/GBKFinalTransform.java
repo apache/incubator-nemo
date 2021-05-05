@@ -33,6 +33,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -423,7 +424,7 @@ public final class GBKFinalTransform<K, InputT>
    */
   private void emitOutputWatermark() {
     // Find min watermark hold
- Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+    Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
       ? new Watermark(Long.MAX_VALUE) : Collections.min(keyAndWatermarkHoldMap.values());
 
     Watermark outputWatermarkCandidate = new Watermark(
@@ -446,13 +447,13 @@ public final class GBKFinalTransform<K, InputT>
       */
 
     // keep going if the watermark increases
+    final long prevProcessWatermark = prevOutputWatermark.getTimestamp();
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
 
-      //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
-      getOutputCollector().emitWatermark(outputWatermarkCandidate);
+
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         final long minWatermarkTimestamp = minWatermarkHold.getTimestamp();
@@ -476,6 +477,10 @@ public final class GBKFinalTransform<K, InputT>
         keyAndWatermarkHoldMap,
         getContext().getTaskId());
         */
+    }
+
+    if (outputWatermarkCandidate.getTimestamp() - prevProcessWatermark >= Util.WATERMARK_PROGRESS) {
+      getOutputCollector().emitWatermark(outputWatermarkCandidate);
     }
   }
 
@@ -721,7 +726,8 @@ public final class GBKFinalTransform<K, InputT>
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
 
-      // LOG.info("Emitting output at {}: key {}", getContext().getTaskId(),  output.getValue().getKey());
+      // LOG.info("Emitting output at {}: key {}, val {}", getContext().getIRVertex().getId(), output.getValue().getKey(), output.getValue());
+
 
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);

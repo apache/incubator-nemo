@@ -321,6 +321,7 @@ final class PipelineTranslationContext {
 
     if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
       || dstTransform instanceof GroupByKeyTransform
+      || dstTransform instanceof GBKCombineFinalTransform
       || dstTransform instanceof GBKFinalTransform) {
       return CommunicationPatternProperty.Value.Shuffle;
     }

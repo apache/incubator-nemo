@@ -149,8 +149,21 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     return inputTimestamp;
   }
 
+  private int counter = 0;
+  private long t = System.currentTimeMillis();
+
   @Override
   public void emit(final O output) {
+
+    /*
+    if (System.currentTimeMillis() - t >= 1000) {
+      LOG.info("{} emit count {}", irVertex.getId(), counter);
+      counter = 0;
+      t = System.currentTimeMillis();
+    }
+    */
+
+    counter += 1;
     //LOG.info("{} emits {} to {}", irVertex.getId(), output);
 
     //LOG.info("Offloading {}, Start prepareOffloading {}, End prepareOffloading {}, in {}",

@@ -376,9 +376,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
           }
 
-          newEdge.setPropertyPermanently(
-            AdditionalOutputTagProperty.of(Util.TRANSIENT_PATH));
-
           newEdge.setProperty(
             PairEdgeProperty.of(edge.getId()));
 
@@ -871,9 +868,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
               CommunicationPatternProperty.of(CommunicationPatternProperty.Value.TransientOneToOne));
           }
 
-
-           fromSVRR.setPropertyPermanently(
-             AdditionalOutputTagProperty.of(Util.TRANSIENT_PATH));
 
           final IREdge fromSVShuffle = new IREdge(
             edgeToAdd.getPropertyValue(CommunicationPatternProperty.class).get(),
