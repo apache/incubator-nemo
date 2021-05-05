@@ -477,10 +477,23 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-     final SystemReduceFn systemReduceFn =
+      final CombineFnBase.GlobalCombineFn partialCombineFn = new PartialCombineFn(
+        (Combine.CombineFn) combineFn, accumCoder);
+      final CombineFnBase.GlobalCombineFn finalCombineFn = new FinalCombineFn(
+        (Combine.CombineFn) combineFn, accumCoder);
+
+      final SystemReduceFn partialSystemReduceFn =
         SystemReduceFn.combining(
           inputCoder.getKeyCoder(),
-          AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
+          AppliedCombineFn.withInputCoder(partialCombineFn,
+            ctx.getPipeline().getCoderRegistry(), inputCoder,
+            null,
+            mainInput.getWindowingStrategy()));
+
+//     final SystemReduceFn systemReduceFn =
+//        SystemReduceFn.combining(
+//          inputCoder.getKeyCoder(),
+//          AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
 
       final GBKCombineFinalTransform gbkFinal =
         new GBKCombineFinalTransform(
@@ -490,7 +503,7 @@ final class PipelineTranslator {
           mainOutputTag,
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
-          systemReduceFn,
+          partialSystemReduceFn,
           (Combine.CombineFn) combineFn,
           DisplayData.from(beamNode.getTransform()),
           false);
@@ -507,17 +520,7 @@ final class PipelineTranslator {
       // return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
 
       // Stream data processing, using GBKTransform
-      final CombineFnBase.GlobalCombineFn partialCombineFn = new PartialCombineFn(
-        (Combine.CombineFn) combineFn, accumCoder);
-      final CombineFnBase.GlobalCombineFn finalCombineFn = new FinalCombineFn(
-        (Combine.CombineFn) combineFn, accumCoder);
-      final SystemReduceFn partialSystemReduceFn =
-        SystemReduceFn.combining(
-          inputCoder.getKeyCoder(),
-          AppliedCombineFn.withInputCoder(partialCombineFn,
-            ctx.getPipeline().getCoderRegistry(), inputCoder,
-            null,
-            mainInput.getWindowingStrategy()));
+
       final SystemReduceFn finalSystemReduceFn =
         SystemReduceFn.combining(
           inputCoder.getKeyCoder(),
