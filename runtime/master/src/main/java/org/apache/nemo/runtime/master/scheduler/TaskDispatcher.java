@@ -223,8 +223,8 @@ public final class TaskDispatcher {
             continue;
           }
 
-          LOG.info("Start to scheduling task {}, resource {}", task,
-            task.getExecutionProperties().get(ResourcePriorityProperty.class));
+          // LOG.info("Start to scheduling task {}, resource {}", task,
+          //  task.getExecutionProperties().get(ResourcePriorityProperty.class));
 
           executorRegistry.viewExecutors(executors -> {
             final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);

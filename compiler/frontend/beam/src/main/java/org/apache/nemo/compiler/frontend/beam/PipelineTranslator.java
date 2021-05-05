@@ -482,8 +482,8 @@ final class PipelineTranslator {
           inputCoder.getKeyCoder(),
           AppliedCombineFn.withInputCoder(combineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
 
-      final GBKFinalTransform gbkFinal =
-        new GBKFinalTransform(
+      final GBKCombineFinalTransform gbkFinal =
+        new GBKCombineFinalTransform(
           mainInput.getCoder(),
           inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
@@ -491,6 +491,7 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
           systemReduceFn,
+          (Combine.CombineFn) combineFn,
           DisplayData.from(beamNode.getTransform()),
           false);
 
