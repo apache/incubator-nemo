@@ -216,10 +216,14 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             // there is no pending event
             pipeManagerWorker.setTaskStop(taskExecutor.getId());
           }
-        } else if (isStatelessAfterMerger(taskExecutor.getTask())) {
+        }
+        /* for o2o migration
+        else if (isStatelessAfterMerger(taskExecutor.getTask())) {
           LOG.info("Skip task stop of {}, assuming upstream task is stopped {}",
             taskExecutor.getId(), taskExecutor.getTask().getUpstreamTaskSet());
-        } else {
+        }
+        */
+        else {
           // Stop input pipe
           final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
 
@@ -300,6 +304,7 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
           key.getMiddle(),
           key.getLeft());
 
+        /* for o2o stop
         if (!taskExecutor.getTask().isCrTask() &&
           !taskExecutor.getTask().isStreamTask() &&
           taskExecutor.getTask().getUpstreamTaskSet().size() == 1) {
@@ -319,31 +324,31 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             TaskExecutorUtil.sendOutputDoneMessage(taskExecutor.getTask(), pipeManagerWorker,
               TASK_OUTPUT_DONE_FROM_UPSTREAM);
           }
-        } else {
-          // Otherwise, just send ack
-          pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
-            key.getMiddle(),
-            control.getTaskId(),
-            (triple) -> {
-              return new TaskControlMessage(
-                TaskControlMessage.TaskControlMessageType
-                  .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
-                triple.getLeft(), // my output pipe index
-                triple.getMiddle(), // my input pipe index
-                triple.getRight(),  // srct ask id
-                null);
-            });
-
-
-
-          // stop input pipe
-          if (evalConf.controlLogging) {
-            LOG.info("Stop input pipe {} index {} for {}", control.getTaskId(),
-              index,
-              key.getLeft());
-          }
-          pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         }
+        */
+        // Otherwise, just send ack
+        pipeManagerWorker.sendSignalForInputPipes(Collections.singletonList(key.getLeft()),
+          key.getMiddle(),
+          control.getTaskId(),
+          (triple) -> {
+            return new TaskControlMessage(
+              TaskControlMessage.TaskControlMessageType
+                .TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM,
+              triple.getLeft(), // my output pipe index
+              triple.getMiddle(), // my input pipe index
+              triple.getRight(),  // srct ask id
+              null);
+          });
+
+
+
+        // stop input pipe
+        if (evalConf.controlLogging) {
+          LOG.info("Stop input pipe {} index {} for {}", control.getTaskId(),
+            index,
+            key.getLeft());
+        }
+        pipeManagerWorker.stopOutputPipeForRouting(index, control.getTaskId());
         break;
       }
       case TASK_OUTPUT_DONE_ACK_FROM_DOWNSTREAM: {
@@ -367,10 +372,12 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
               LOG.info("Receive all task output done ack {}", control.getTaskId());
             }
 
+            /* for o2o stop
             if (isStatelessAfterMerger(taskExecutor.getTask())) {
               // send ack to the upstream
               sendOutputStopAckToSingleUpstream(taskExecutor.getTask());
             }
+            */
 
             taskOutputDoneAckCounter.remove(control.getTaskId());
             stopAndCheckpointTask(control.getTaskId());
