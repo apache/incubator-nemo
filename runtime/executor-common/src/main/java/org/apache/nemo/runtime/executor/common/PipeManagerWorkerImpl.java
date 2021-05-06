@@ -678,6 +678,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
       index, index, srcTaskId, dstTaskId, edgeId, event);
 
     if (pendingOutputPipeMap.containsKey(index)) {
+      LOG.info("Added control message to pending output pipe {}/{}/{}", srcTaskId, edgeId, dstTaskId, type);
       pendingOutputPipeMap.get(index).add(msg);
     } else {
       if (taskExecutorMapWrapper.containsTask(dstTaskId)) {

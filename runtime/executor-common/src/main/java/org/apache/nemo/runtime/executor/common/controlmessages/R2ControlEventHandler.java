@@ -154,9 +154,11 @@ public final class R2ControlEventHandler implements ControlEventHandler {
           message.checkpoint);
 
         // Here, we should stop output pipe
-        pipeManagerWorker.stopOutputPipeForRouting(originIndex, control.getTaskId());
+        // DO NOT STOP THIS OUTPUT PIPE BECAUSE WE WILL NOT SEND DATA,
+        // BUT THE TASK CHANNEL IS OPEND
+        // pipeManagerWorker.stopOutputPipeForRouting(originIndex, control.getTaskId());
 
-        // We also stop the pair output pipe
+        // We also stop the pair output pipe for preparation of rerouting
         final int pairIndex = pipeIndexMapWorker.getPipeIndex(control.getTaskId(), pairEdgeId, pairTaskId);
         pipeManagerWorker.stopOutputPipeForRouting(pairIndex, control.getTaskId());
 
@@ -224,7 +226,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
               final String edgeId = edge.getId();
               val.forEach(dstTask -> {
                 final int targetIndex = pipeIndexMapWorker.getPipeIndex(task.getTaskId(), edgeId, dstTask);
-                pipeManagerWorker.stopOutputPipeForRouting(targetIndex, control.getTaskId());
+                // pipeManagerWorker.stopOutputPipeForRouting(targetIndex, control.getTaskId());
               });
             });
           } else {
@@ -307,7 +309,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
          final int cnt = taskOutputDoneAckCounter.get(control.getTaskId())
            .decrementAndGet();
 
-         pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
+         // pipeManagerWorker.stopOutputPipeForRouting(control.targetPipeIndex, control.getTaskId());
 
         if (cnt == 0) {
           // (5): start pair task output pipe
