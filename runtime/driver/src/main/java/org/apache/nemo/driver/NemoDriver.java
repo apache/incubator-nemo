@@ -285,6 +285,7 @@ public final class NemoDriver {
               // activate partial
               threadPool.execute(() -> {
                 LOG.info("Redirection to lambda start {} / {}", num, stages);
+                lambdaContainerManager.activateAllWorkers();
                 runtimeMaster.redirectionToLambda(num, stages, true);
                 runtimeMaster.throttleSource(10000000);
                 LOG.info("End of Redirection to lambda start {} / {}", num, stages);
@@ -318,6 +319,7 @@ public final class NemoDriver {
 
               threadPool.execute(() -> {
                 LOG.info("Redirection to lambda start {} / {}", num, stages);
+                lambdaContainerManager.activateAllWorkers();
                 scaleInOutManager.sendMigration(ratio,
                   executorRegistry.getVMComputeExecutors(),
                   stages, true).forEach(future -> {
