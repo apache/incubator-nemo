@@ -843,9 +843,12 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     } else {
       // Why do not sync with master?
       // Because this should be sent to the downstream task even though it is removed from the master's scheduled map
-      final Optional<Channel> optional = getChannelForDstTask(key.getRight(), false);
+      Optional<Channel> optional = getChannelForDstTask(key.getRight(), false);
       if (!optional.isPresent()) {
-        throw new RuntimeException("Contextmanager should exist for " + key);
+        optional = getChannelForDstTask(key.getRight(), true);
+        if (!optional.isPresent()) {
+          throw new RuntimeException("Contextmanager should exist for " + key);
+        }
       }
       final Channel channel = optional.get();
 
