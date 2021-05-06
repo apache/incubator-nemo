@@ -118,7 +118,7 @@ public final class NemoDriver {
   private final JobScaler jobScaler;
 
   private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
-  private final ExecutorService threadPool = Executors.newCachedThreadPool();
+  private final ExecutorService threadPool = Executors.newSingleThreadExecutor();
 
   private final ScaleInOutManager scaleInOutManager;
   private final ExecutorRegistry executorRegistry;

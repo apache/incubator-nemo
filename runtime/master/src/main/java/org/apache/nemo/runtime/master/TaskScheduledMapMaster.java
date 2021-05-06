@@ -151,9 +151,9 @@ public final class TaskScheduledMapMaster {
 
     final List<String> descendants = new LinkedList<>();
     descendants.add(parent);
-    getDescendant(parent, descendants);
 
-    LOG.info("O2O descendant of {}: {}", parent, descendants);
+    // getDescendant(parent, descendants);
+    // LOG.info("O2O descendant of {}: {}", parent, descendants);
 
     for (int i = descendants.size() - 1; i >= 0; i--) {
       final String taskId = descendants.get(i);
