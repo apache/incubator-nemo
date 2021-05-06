@@ -105,7 +105,7 @@ public final class R2MultiPairWatermarkManager implements R2WatermarkManager {
       LOG.info("Skip add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
     } else {
       final R2PairEdgeWatermarkTracker stageWatermarkTracker =
-        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
+        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, false, parallelism );
       dataFetcherWatermarkMap.put(key, 0L);
       dataFetcherWatermarkTracker.put(key, stageWatermarkTracker);
 

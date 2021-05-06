@@ -154,10 +154,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
         prevEmitWatermark = nextMinWatermark;
         return Optional.of(nextMinWatermark);
       } else {
-        LOG.warn("NextMinWatermark <= PrevEmitWatermark {} / {} / {} / {}",
-          new Instant(nextMinWatermark), new Instant(prevEmitWatermark),
-          printWatermark(watermarks),
-          buildArray(stoppedWatermarks));
+//        LOG.warn("NextMinWatermark <= PrevEmitWatermark {} / {} / {} / {}",
+//          new Instant(nextMinWatermark), new Instant(prevEmitWatermark),
+//          printWatermark(watermarks),
+//          buildArray(stoppedWatermarks));
         minWatermarkIndex = nextMinWatermarkIndex;
         prevEmitWatermark = nextMinWatermark;
         return Optional.of(nextMinWatermark);
@@ -185,10 +185,10 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
       final Long nextMinWatermark = watermarks[0];
 
       if (nextMinWatermark < prevEmitWatermark) {
-        LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
-            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
-            " stopped: " + buildArray(stoppedWatermarks));
+//        LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
+//            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
+//            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+//            " stopped: " + buildArray(stoppedWatermarks));
         return Optional.empty();
         //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
         //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
@@ -231,13 +231,11 @@ public final class R2SingleStageWatermarkTracker implements WatermarkTracker {
 
         if (nextMinWatermark < prevEmitWatermark) {
           // it is possible
-          LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
-            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
-            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
-            " stopped: " + buildArray(stoppedWatermarks));
-          // minWatermarkIndex = nextMinWatermarkIndex;
-          //LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
-          //  vertex.getId(), new Instant(currMinWatermark.getTimestamp()), new Instant(nextMinWatermark.getTimestamp()));
+//          LOG.warn("task " + taskId + " edge " + edgeId + "NexMinWatermar < CurrMinWatermark " +
+//            new Instant(nextMinWatermark) + " <= " + new Instant(prevEmitWatermark) + ", "
+//            + "minWatermarkIndex: " + minWatermarkIndex + ", watermarks: " + printWatermark(watermarks) +
+//            " stopped: " + buildArray(stoppedWatermarks));
+
           return Optional.empty();
         } else {
           // Watermark timestamp progress!

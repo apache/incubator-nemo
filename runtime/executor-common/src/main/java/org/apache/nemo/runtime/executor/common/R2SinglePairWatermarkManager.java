@@ -86,7 +86,7 @@ public final class R2SinglePairWatermarkManager implements R2WatermarkManager {
     } else {
       LOG.info("Add data fetcher for datafetcher {}/{}, parallelism: {}", vmEdgeId, lambdaEdgeId, parallelism);
       final R2PairEdgeWatermarkTracker stageWatermarkTracker =
-        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, parallelism);
+        new R2PairEdgeWatermarkTracker(vmEdgeId, lambdaEdgeId, taskId, false, parallelism);
       this.vmEdgeId = vmEdgeId;
       this.lambdaEdgeId = lambdaEdgeId;
       final Pair<String, String> key = Pair.of(vmEdgeId, lambdaEdgeId);
