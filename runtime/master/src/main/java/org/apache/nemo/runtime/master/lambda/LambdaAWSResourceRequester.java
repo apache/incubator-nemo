@@ -25,7 +25,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaAWSResourceRequester.class.getName());
 
-  private final AWSLambda awsLambda;
+  private final AWSLambdaAsync awsLambda;
   private static final String FUNCTION_NAME = "LAMBDA";
 
   private final AtomicInteger numLambdaCreated = new AtomicInteger(0);
@@ -33,7 +33,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
   private final int maxLambda;
   private final Boolean[] lambdaCreated;
 
-  private final ExecutorService syncService = Executors.newCachedThreadPool();
+  // private final ExecutorService syncService = Executors.newCachedThreadPool();
 
   @Inject
   private LambdaAWSResourceRequester(final EvalConf evalConf) {
@@ -45,7 +45,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       lambdaCreated[i] = false;
     }
 
-    this.awsLambda = AWSLambdaClientBuilder.standard()
+    this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
       .withRegion(evalConf.awsRegion)
       .withCredentials(provider)
       .withClientConfiguration(
@@ -93,14 +93,12 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       nextLambdaIdx, executorId, lambdaName, request);
     // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
 
-    syncService.execute(() -> {
       try {
-        awsLambda.invoke(request);
+        awsLambda.invokeAsync(request);
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
-    });
 
     return new LambdaActivator() {
 
@@ -110,13 +108,10 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
           .withFunctionName(lambdaName)
           .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
             address, port, requestId));
-        request.setInvocationType(InvocationType.RequestResponse);
 
         LOG.info("Activate request for requestId: {}/{} lambdaName: {}/{}",
           requestId, executorId, lambdaName, request);
-        syncService.execute(() -> {
-          awsLambda.invoke(request);
-        });
+          awsLambda.invokeAsync(request);
         // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
       }
 
