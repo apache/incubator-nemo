@@ -205,7 +205,9 @@ public final class NemoDriver {
               final int capacity = new Integer(args[2]);
               final int slot = new Integer(args[3]);
               final int memory = new Integer(args[4]);
-              runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
+              threadPool.execute(() -> {
+                runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
+              });
             } else if (decision.equals("stop-lambda-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);

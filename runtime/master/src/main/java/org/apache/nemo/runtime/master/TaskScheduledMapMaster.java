@@ -12,6 +12,7 @@ import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.lambda.LambdaTaskContainerEventHandler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
+import org.apache.nemo.runtime.master.scheduler.PendingTaskCollectionPointer;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
@@ -60,12 +61,16 @@ public final class TaskScheduledMapMaster {
 
   private final String optPolicy;
 
+  private PendingTaskCollectionPointer pendingTaskCollectionPointer;
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
+                                 final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                                  final MessageEnvironment messageEnvironment,
                                  final PairStageTaskManager pairStageTaskManager,
                                  final LambdaTaskContainerEventHandler lambdaEventHandler,
                                  @Parameter(JobConf.OptimizationPolicy.class) final String optPolicy) {
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.scheduledStageTasks = new ConcurrentHashMap<>();
     this.executorRelayServerInfoMap = new ConcurrentHashMap<>();
     this.executorAddressMap = new ConcurrentHashMap<>();
