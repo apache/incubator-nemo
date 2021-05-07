@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
+import com.amazonaws.services.lambda.model.InvocationType;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import org.apache.nemo.conf.EvalConf;
@@ -24,13 +25,15 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaAWSResourceRequester.class.getName());
 
-  private final AWSLambdaAsync awsLambda;
+  private final AWSLambda awsLambda;
   private static final String FUNCTION_NAME = "LAMBDA";
 
   private final AtomicInteger numLambdaCreated = new AtomicInteger(0);
 
   private final int maxLambda;
   private final Boolean[] lambdaCreated;
+
+  private final ExecutorService syncService = Executors.newCachedThreadPool();
 
   @Inject
   private LambdaAWSResourceRequester(final EvalConf evalConf) {
@@ -42,7 +45,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       lambdaCreated[i] = false;
     }
 
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
+    this.awsLambda = AWSLambdaClientBuilder.standard()
       .withRegion(evalConf.awsRegion)
       .withCredentials(provider)
       .withClientConfiguration(
@@ -89,12 +92,14 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       requestId, executorId, lambdaName, request);
     // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
 
+    syncService.execute(() -> {
       try {
-        awsLambda.invokeAsync(request);
+        awsLambda.invoke(request);
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+    });
 
     return new LambdaActivator() {
       @Override
@@ -103,10 +108,13 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
           .withFunctionName(lambdaName)
           .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
             address, port, requestId));
+        request.setInvocationType(InvocationType.RequestResponse);
 
         LOG.info("Activate request for requestId: {}/{} lambdaName: {}/{}",
           requestId, executorId, lambdaName, request);
-          awsLambda.invokeAsync(request);
+        syncService.execute(() -> {
+          awsLambda.invoke(request);
+        });
         // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
       }
     };
