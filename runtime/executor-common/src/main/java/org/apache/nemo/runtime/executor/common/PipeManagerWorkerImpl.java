@@ -928,11 +928,6 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             LOG.info("Emit pending data from {} when pipe is initiated {} in executor {} to "
               , taskId, key, executorId);
           }
-          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
-
-          if (pendingData.isEmpty()) {
-            return;
-          }
 
           Optional<Channel> optional = getChannelForDstTask(key.getRight(), true);
           long prevLog = System.currentTimeMillis();
@@ -948,6 +943,13 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
             if (System.currentTimeMillis() - st >= 15000) {
               throw new RuntimeException("Cannot connect to task " + key.getRight());
             }
+          }
+
+          final List<Object> pendingData = pendingOutputPipeMap.remove(index);
+
+          if (pendingData.isEmpty()) {
+            LOG.info("No pending data for {} in {}", key, executorId);
+            return;
           }
 
           if (!optional.isPresent()) {
