@@ -353,16 +353,18 @@ public final class LambdaContainerManager {
       numRequestedLambda.getAndIncrement();
 
       list.add(initService.submit(() -> {
-        final int rid = requestIdCnt.getAndIncrement();
-        final String lambdaExecutorId = "Lambda-" + rid;
-        LOG.info("Request lambda executor {}, resource type {}", lambdaExecutorId, resourceType);
-
-        requestIdExecutorMap.put(rid, lambdaExecutorId);
 
         final LambdaContainerRequester.LambdaActivator activator =
           requester.createRequest(workerControlTransport.getLocalAddress(),
-            workerControlTransport.getPort(), rid, lambdaExecutorId,
+            workerControlTransport.getPort(),
             resourceType, capacity, slot, memory);
+
+        final int rid = activator.getRequestId();
+        final String lambdaExecutorId = activator.getExecutorId();
+        LOG.info("Requested lambda executor {}, resource type {}", lambdaExecutorId, resourceType);
+
+        requestIdExecutorMap.put(rid, lambdaExecutorId);
+
 
         requestIdActivatorMap.put(rid, activator);
 

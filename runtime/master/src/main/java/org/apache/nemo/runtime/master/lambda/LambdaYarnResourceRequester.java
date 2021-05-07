@@ -78,13 +78,13 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
   @Override
   public LambdaActivator createRequest(String controlAddr,
                             int controlPort,
-                            int requestId,
-                            final String executorId,
                             final String containerType,
                             final int capacity,
                             final int slot,
                                        final int memory) {
-    final int myPort = port + atomicInteger.getAndIncrement();
+    final int requestId = atomicInteger.getAndIncrement();
+    final int myPort = port + requestId;
+    final String executorId = "Lambda-" + requestId;
 
     LOG.info("Creating VM worker with port for yarn " + myPort);
     final String key = executorId + "-offloading-" + myPort;
@@ -137,6 +137,16 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
         final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
           controlAddr, controlPort, requestId).getBytes();
         channel.writeAndFlush(new OffloadingMasterEvent(OffloadingMasterEvent.Type.SEND_ADDRESS, bytes, bytes.length));
+      }
+
+      @Override
+      public int getRequestId() {
+        return requestId;
+      }
+
+      @Override
+      public String getExecutorId() {
+        return executorId;
       }
     };
   }

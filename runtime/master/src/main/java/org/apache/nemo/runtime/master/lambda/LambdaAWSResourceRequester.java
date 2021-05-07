@@ -70,12 +70,10 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
   @Override
   public synchronized LambdaActivator createRequest(String address, int port,
-                                              final int requestId,
-                                              final String executorId,
-                                              String containerType,
-                                              int capacity,
-                                              int slot,
-                                              int memory) {
+                                                    String containerType,
+                                                    int capacity,
+                                                    int slot,
+                                                    int memory) {
     final int nextLambdaIdx = findNextFreeLambda();
     if (nextLambdaIdx < 0) {
       throw new RuntimeException("Cannot create new lambda ... curr num " + numLambdaCreated + ", max "
@@ -86,10 +84,13 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
     final InvokeRequest request = new InvokeRequest()
       .withFunctionName(lambdaName)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
-        address, port, requestId));
+        address, port, nextLambdaIdx));
+
+    final int requestId = nextLambdaIdx;
+    final String executorId = "Lambda-" + nextLambdaIdx;
 
     LOG.info("Invoke create lambda request for requestId: {}/{} lambdaName: {}/{}",
-      requestId, executorId, lambdaName, request);
+      nextLambdaIdx, executorId, lambdaName, request);
     // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
 
     syncService.execute(() -> {
@@ -102,6 +103,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
     });
 
     return new LambdaActivator() {
+
       @Override
       public void activate() {
         final InvokeRequest request = new InvokeRequest()
@@ -116,6 +118,16 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
           awsLambda.invoke(request);
         });
         // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
+      }
+
+      @Override
+      public int getRequestId() {
+        return requestId;
+      }
+
+      @Override
+      public String getExecutorId() {
+        return executorId;
       }
     };
   }
