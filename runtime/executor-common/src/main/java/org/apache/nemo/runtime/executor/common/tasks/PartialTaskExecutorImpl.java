@@ -352,12 +352,28 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     return taskMetrics;
   }
 
+  private long prevKeyChangeTime = System.currentTimeMillis();
+  private long prevKey = 0;
+
   @Override
   public int getNumKeys() {
+
     //LOG.info("Key {}, {}", num, taskId);
-    return statefulTransforms.stream().map(t -> t.getNumKeys())
+    final int key = statefulTransforms.stream().map(t -> t.getNumKeys())
       .reduce((x, y) -> x + y)
       .get();
+
+    if (key != prevKey) {
+      prevKeyChangeTime = System.currentTimeMillis();
+    }
+
+    if (System.currentTimeMillis() - prevKeyChangeTime >= 30000) {
+      // clear the key
+      statefulTransforms.stream().forEach(t -> t.clearState());
+      prevKeyChangeTime = System.currentTimeMillis();
+    }
+
+    return key;
   }
 
   @Override

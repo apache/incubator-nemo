@@ -38,6 +38,13 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
     public Map<K, NemoTimerInternals> timerInternalsMap;
 
+    public void clear() {
+      watermarkTimers.clear();
+      processingTimers.clear();
+      synchronizedProcessingTimers.clear();
+      timerInternalsMap.clear();
+    }
+
     @Override
     public String toString() {
       return "TimerInternalsMap: " + timerInternalsMap + "\n"

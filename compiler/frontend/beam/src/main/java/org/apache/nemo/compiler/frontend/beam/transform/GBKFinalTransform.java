@@ -129,6 +129,8 @@ public final class GBKFinalTransform<K, InputT>
       keyAndWatermarkHoldMap, inputWatermark, prevOutputWatermark,
       getContext().getTaskId());
     keyAndWatermarkHoldMap.clear();
+    inMemoryTimerInternalsFactory.clear();
+    inMemoryStateInternalsFactory.clear();
   }
 
   @Override

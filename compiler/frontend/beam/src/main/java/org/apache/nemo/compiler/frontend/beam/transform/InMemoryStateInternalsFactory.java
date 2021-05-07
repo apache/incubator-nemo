@@ -34,6 +34,11 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
     this.stateBackendMap = stateBackendMap;
   }
 
+  public void clear() {
+    stateInternalMap.clear();
+    stateBackendMap.clear();
+  }
+
   public void setState(final InMemoryStateInternalsFactory<K> stateFactorty) {
 
     /*

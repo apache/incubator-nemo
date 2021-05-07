@@ -130,6 +130,8 @@ public final class GBKCombineFinalTransform<K, InputT>
       keyAndWatermarkHoldMap, inputWatermark, prevOutputWatermark,
       getContext().getTaskId());
     keyAndWatermarkHoldMap.clear();
+    inMemoryStateInternalsFactory.clear();
+    inMemoryTimerInternalsFactory.clear();
   }
 
   @Override
