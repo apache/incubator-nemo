@@ -76,11 +76,15 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
   }
 
   public boolean isActive() {
-    return state.get().equals(State.ACTIVATE);
+    synchronized (state) {
+      return state.get().equals(State.ACTIVATE);
+    }
   }
 
   public boolean isActivating() {
-    return state.get().equals(State.ACTIVATING);
+    synchronized (state) {
+      return state.get().equals(State.ACTIVATING);
+    }
   }
 
   public int getId() {
