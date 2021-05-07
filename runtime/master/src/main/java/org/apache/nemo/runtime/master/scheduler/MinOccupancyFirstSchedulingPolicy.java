@@ -58,8 +58,8 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors,
                                             final Task task) {
 
-    LOG.info("Candidate executors for scheudling task {}: {}",
-      task.getTaskId(), executors);
+    // LOG.info("Candidate executors for scheudling task {}: {}",
+    //  task.getTaskId(), executors);
 
     final Set<String> scheduledTasks = executors.stream()
       .map(e -> e.getScheduledTasks())
@@ -85,11 +85,11 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .filter(o2oStage -> {
       final String srcTaskId = RuntimeIdManager.generateTaskId(o2oStage,
         RuntimeIdManager.getIndexFromTaskId(task.getTaskId()), 0);
-        LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
-          "prevExecutorId: {}", task.getTaskId(), srcTaskId,
-          scheduledTasks.contains(srcTaskId),
-          scheduledTasks.contains(srcTaskId) ? scheduledExecutors.get(srcTaskId).getExecutorId() : "null",
-          taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId()));
+//        LOG.info("Scheduling candidate task for {}: {}, srcSchedule: {}, srcExecutorId: {}," +
+//          "prevExecutorId: {}", task.getTaskId(), srcTaskId,
+//          scheduledTasks.contains(srcTaskId),
+//          scheduledTasks.contains(srcTaskId) ? scheduledExecutors.get(srcTaskId).getExecutorId() : "null",
+//          taskScheduledMap.getPrevTaskExecutorIdMap().get(task.getTaskId()));
 
       return (scheduledTasks.contains(srcTaskId)
       && !scheduledExecutors.get(srcTaskId).getExecutorId().equals(
@@ -106,7 +106,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
           executor.getExecutorId().equals(candidate.getExecutorId())))
         .collect(Collectors.toList());
 
-    LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates);
+   // LOG.info("Task {} candidates for incoming edges size {}", task.getTaskId(), candidates);
 
     if (candidates.size() > 0) {
       // O2O locality-aware
@@ -115,7 +115,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         .map(executor -> executor.getNumOfRunningTasks())
         .mapToInt(i -> i).min();
 
-      LOG.info("O2o-aware scheduling task {} to {}", task.getTaskId(), candidates);
+   //   LOG.info("O2o-aware scheduling task {} to {}", task.getTaskId(), candidates);
 
       return candidates.stream()
         .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
