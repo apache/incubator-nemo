@@ -365,6 +365,7 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
 
     if (key != prevKey) {
       prevKeyChangeTime = System.currentTimeMillis();
+      prevKey = key;
     }
 
     if (System.currentTimeMillis() - prevKeyChangeTime >= 30000) {
