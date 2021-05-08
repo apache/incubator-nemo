@@ -63,6 +63,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final Map<String, Task> runningComplyingTasks;
   private final Map<String, Task> runningNonComplyingTasks;
   private final Map<Task, Integer> scheduledTaskToAttempt;
+  private final Set<String> pendingTasksToBeStart;
   private final Set<String> tasksToBeStopped;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
@@ -100,6 +101,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     this.runningComplyingTasks = new ConcurrentHashMap<>();
     this.runningNonComplyingTasks = new ConcurrentHashMap<>();
     this.scheduledTaskToAttempt = new ConcurrentHashMap<>();
+    this.pendingTasksToBeStart = new HashSet<>();
     this.tasksToBeStopped = new HashSet<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
@@ -233,6 +235,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public synchronized void onTaskExecutionStarted(final Task task) {
     runningTasks.add(runningComplyingTasks.get(task.getTaskId()));
+    pendingTasksToBeStart.remove(task.getTaskId());
     if (task.isTransientTask()) {
       deactivatedTasks.add(task.getTaskId());
     }
@@ -242,6 +245,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   public synchronized void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor) {
     if (lambdaControlProxy == null) {
       throw new RuntimeException("Lambda control proxy null " + executorId);
+    }
+
+    while (pendingTasksToBeStart.contains(taskId)) {
+      LOG.info("Waiting for task scheduling {}", taskId);
+      try {
+        wait(50);
+      } catch (InterruptedException e) {
+      }
     }
 
     if (getRunningTasks().stream().noneMatch(task -> task.getTaskId().equals(taskId))) {
@@ -431,6 +442,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     scheduledTaskToAttempt.put(task, task.getAttemptIdx());
+    pendingTasksToBeStart.add(task.getTaskId());
     failedTasks.remove(task);
 
     if (!optPolicy.contains("R2") && task.isTransientTask()) {

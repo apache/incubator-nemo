@@ -748,7 +748,7 @@ public final class RuntimeMaster {
 
     executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
       // find list of tasks that the lambda executor has
-      final Set<String> tasksToBeRedirected = lambdaExecutor.getRunningTasks().stream()
+      final Set<String> tasksToBeRedirected = lambdaExecutor.getScheduledTasks().stream()
         .filter(lambdaTask -> {
           if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
             LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
