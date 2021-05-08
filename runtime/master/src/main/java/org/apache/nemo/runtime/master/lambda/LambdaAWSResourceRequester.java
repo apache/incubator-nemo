@@ -25,7 +25,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
 
   private static final Logger LOG = LoggerFactory.getLogger(LambdaAWSResourceRequester.class.getName());
 
-  private final AWSLambdaAsync awsLambda;
+  private final AWSLambda awsLambda;
   private static final String FUNCTION_NAME = "LAMBDA";
 
   private final AtomicInteger numLambdaCreated = new AtomicInteger(0);
@@ -33,7 +33,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
   private final int maxLambda;
   private final Boolean[] lambdaCreated;
 
-  // private final ExecutorService syncService = Executors.newCachedThreadPool();
+  private final ExecutorService syncService = Executors.newCachedThreadPool();
 
   @Inject
   private LambdaAWSResourceRequester(final EvalConf evalConf) {
@@ -45,7 +45,7 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       lambdaCreated[i] = false;
     }
 
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard()
+    this.awsLambda = AWSLambdaClientBuilder.standard()
       .withRegion(evalConf.awsRegion)
       .withCredentials(provider)
       .withClientConfiguration(
@@ -86,6 +86,8 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
         address, port, nextLambdaIdx));
 
+    request.setInvocationType(InvocationType.RequestResponse);
+
     final int requestId = nextLambdaIdx;
     final String executorId = "Lambda-" + nextLambdaIdx;
 
@@ -93,12 +95,15 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
       nextLambdaIdx, executorId, lambdaName, request);
     // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
 
+    syncService.execute(() -> {
       try {
-        awsLambda.invokeAsync(request);
+        awsLambda.invoke(request);
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+    });
+
 
     return new LambdaActivator() {
 
@@ -109,9 +114,18 @@ public final class LambdaAWSResourceRequester implements LambdaContainerRequeste
           .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",
             address, port, requestId));
 
+        request.setInvocationType(InvocationType.RequestResponse);
+
         LOG.info("Activate request for requestId: {}/{} lambdaName: {}/{}",
           requestId, executorId, lambdaName, request);
-          awsLambda.invokeAsync(request);
+        syncService.execute(() -> {
+          try {
+            awsLambda.invoke(request);
+          } catch (final Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        });
         // final Future<InvokeResult> future = awsLambda.invokeAsync(request);
       }
 
