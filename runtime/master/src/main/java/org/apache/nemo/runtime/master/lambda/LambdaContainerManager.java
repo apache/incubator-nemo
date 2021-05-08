@@ -217,6 +217,16 @@ public final class LambdaContainerManager {
         final String vmExecutorId = taskScheduledMapMaster.getTaskExecutorIdMap().get(vmTaskId);
         final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
         lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
+
+        while (lambdaExecutor.getRunningTasks().stream()
+          .map(t -> t.getTaskId())
+          .noneMatch(tid -> tid.equals(lambdaTaskId))) {
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
       });
     });
   }
@@ -336,12 +346,14 @@ public final class LambdaContainerManager {
 
     LOG.info("Starting deactivate workers...");
 
+
     requestIdControlChannelMap.values().forEach(worker -> {
       if (!worker.isActive()) {
         throw new RuntimeException("Worker still active " + worker.getId());
       }
 
-      worker.deactivate();
+      ((DefaultExecutorRepresenterImpl) worker.getExecutorRepresenter()).checkAndDeactivate();
+      // worker.deactivate();
     });
 
 

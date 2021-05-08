@@ -746,6 +746,8 @@ public final class RuntimeMaster {
 
     final List<ExecutorRepresenter> activatedLambda = new LinkedList<>();
 
+    final List<Future> futures = new LinkedList<>();
+
     executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
       // find list of tasks that the lambda executor has
       final Set<String> tasksToBeRedirected = lambdaExecutor.getScheduledTasks().stream()
@@ -773,53 +775,58 @@ public final class RuntimeMaster {
 
       if (!tasksToBeRedirected.isEmpty()) {
         LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
-        lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor);
+        futures.add(lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor));
         activatedLambda.add(lambdaExecutor);
       }
     });
 
     if (waiting) {
-      // Waiting for redirection done
-//      for (final Future future : futures) {
-//        try {
-//          future.get();
-//        } catch (InterruptedException e) {
-//          e.printStackTrace();
-//        } catch (ExecutionException e) {
-//          e.printStackTrace();
-//        }
-//      }
 
-      final AtomicLong stt = new AtomicLong(System.currentTimeMillis());
-      if (evalConf.optimizationPolicy.contains("R3")) {
-        activatedLambda.forEach(lambdaExecutor -> {
-          while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
-            if (System.currentTimeMillis() - stt.get() >= 1000) {
-              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
-              stt.set(System.currentTimeMillis());
-            }
-            try {
-              Thread.sleep(10);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
-        });
-      } else {
-        activatedLambda.forEach(lambdaExecutor -> {
-          while (!lambdaExecutor.isAllTaskActivated()) {
-            if (System.currentTimeMillis() - stt.get() >= 1000) {
-              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
-              stt.set(System.currentTimeMillis());
-            }
-            try {
-              Thread.sleep(10);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
-        });
+
+      // Waiting for redirection done
+      LOG.info("Start Waiting activation");
+      for (final Future future : futures) {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+        }
       }
+
+      LOG.info("Waiting activation done");
+
+//      final AtomicLong stt = new AtomicLong(System.currentTimeMillis());
+//      if (evalConf.optimizationPolicy.contains("R3")) {
+//        activatedLambda.forEach(lambdaExecutor -> {
+//          while (!lambdaExecutor.isAllTaskActivatedExceptPartial()) {
+//            if (System.currentTimeMillis() - stt.get() >= 1000) {
+//              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
+//              stt.set(System.currentTimeMillis());
+//            }
+//            try {
+//              Thread.sleep(10);
+//            } catch (InterruptedException e) {
+//              e.printStackTrace();
+//            }
+//          }
+//        });
+//      } else {
+//        activatedLambda.forEach(lambdaExecutor -> {
+//          while (!lambdaExecutor.isAllTaskActivated()) {
+//            if (System.currentTimeMillis() - stt.get() >= 1000) {
+//              LOG.info("Waiting activation done for {}.. ", lambdaExecutor.getExecutorId());
+//              stt.set(System.currentTimeMillis());
+//            }
+//            try {
+//              Thread.sleep(10);
+//            } catch (InterruptedException e) {
+//              e.printStackTrace();
+//            }
+//          }
+//        });
+//      }
     }
   }
 

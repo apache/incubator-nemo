@@ -338,7 +338,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     checkAndDeactivate();
   }
 
-  private void checkAndDeactivate() {
+  public void checkAndDeactivate() {
     if (optPolicy.contains("R2")) {
       final Set<String> runnings = new HashSet<>();
       runnings.addAll(
@@ -352,6 +352,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         deactivatedTasks);
 
       if (activatedTasks.isEmpty() &&
+        activatedPendingTasks.isEmpty() &&
         tasksToBeStopped.isEmpty() &&
         runnings.isEmpty() &&
         lambdaControlProxy.isActive()) {
