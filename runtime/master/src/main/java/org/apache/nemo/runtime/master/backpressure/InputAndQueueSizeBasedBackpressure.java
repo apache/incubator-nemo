@@ -163,6 +163,8 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
 
   private void sendBackpressureWrapper() {
 
+
+    /*
     if (!started) {
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.PrintLog)
@@ -183,6 +185,7 @@ public final class InputAndQueueSizeBasedBackpressure implements Backpressure {
     } else {
       LOG.info("Skip setting backpressure due to the scaling hint set time");
     }
+    */
   }
 
   private void queueBasedBackpressure(final long queue) {

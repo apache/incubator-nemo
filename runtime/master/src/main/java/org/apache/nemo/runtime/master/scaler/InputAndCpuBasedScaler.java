@@ -35,8 +35,10 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
   private final DescriptiveStatistics avgCpuUse;
   private final DescriptiveStatistics avgInputRate;
+  private long currInputRate;
   private final DescriptiveStatistics avgSrcProcessingRate;
   private final DescriptiveStatistics avgExpectedCpu;
+  private final DescriptiveStatistics avgMaxCpuUse;
   private long currSourceEvent = 0;
   private final int windowSize = 5;
 
@@ -68,6 +70,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
     this.scaleInOutManager = scaleInOutManager;
     this.executorRegistry = executorRegistry;
     this.avgCpuUse = new DescriptiveStatistics(windowSize);
+    this.avgMaxCpuUse = new DescriptiveStatistics(windowSize);
     this.avgInputRate = new DescriptiveStatistics(1);
     this.avgSrcProcessingRate = new DescriptiveStatistics(windowSize);
     this.avgExpectedCpu = new DescriptiveStatistics(windowSize);
@@ -81,12 +84,24 @@ public final class InputAndCpuBasedScaler implements Scaler {
 
         if (info.numExecutor > 0) {
           avgCpuUse.addValue(info.cpuUse / info.numExecutor);
+          avgMaxCpuUse.addValue(info.maxCpuUse);
         }
 
         final double avgCpu = avgCpuUse.getMean();
         final double avgProcess = avgSrcProcessingRate.getMean();
         final double avgInput = avgInputRate.getMean();
 
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+          .setPrintStr(String.format("Avg cpu: %f " +
+            "Max cpu: %f " +
+              "Avg input: %f, Avg process input: %f Curr input: %d, NumExecutor: %d",
+            avgCpu,
+            avgMaxCpuUse.getMean(),
+            avgInput,
+            avgProcess,
+            currInputRate,
+            info.numExecutor)).build());
 
         if (info.numExecutor > 0) {
           avgExpectedCpu.addValue((avgInput * avgCpu) / avgProcess);
@@ -103,14 +118,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
           avgProcess,
           info.numExecutor);
 
-        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-          .setType(ControlMessage.DriverToClientMessageType.PrintLog)
-          .setPrintStr(String.format("Avg cpu: %f " +
-            "Avg input: %f, Avg process input: %f, NumExecutor: %d",
-          avgCpu,
-          avgInput,
-          avgProcess,
-          info.numExecutor)).build());
+
 
         if (avgProcess == 0 || info.numExecutor == 0) {
           return;
@@ -241,6 +249,7 @@ public final class InputAndCpuBasedScaler implements Scaler {
   @Override
   public void addSourceEvent(final long sourceEvent) {
     avgSrcProcessingRate.addValue(sourceEvent - currSourceEvent);
+    currInputRate = sourceEvent - currSourceEvent;
     currSourceEvent = sourceEvent;
 
     if (sourceHandlingStartTime == 0) {
