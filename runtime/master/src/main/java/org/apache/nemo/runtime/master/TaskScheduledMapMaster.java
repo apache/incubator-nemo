@@ -263,7 +263,7 @@ public final class TaskScheduledMapMaster {
       throw new RuntimeException("Executor Id null for putting task scheduled " + executorId + ", " + taskId);
     }
 
-    representer.onTaskExecutionStarted(taskId);
+    representer.onTaskExecutionStarted(taskIdTaskMap.get(taskId));
 
     taskOriginalExecutorIdMap.putIfAbsent(taskId, representer.getExecutorId());
     taskExecutorIdMap.put(taskId, representer.getExecutorId());

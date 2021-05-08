@@ -231,8 +231,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
-  public synchronized void onTaskExecutionStarted(final String taksId) {
-    runningTasks.add(runningComplyingTasks.get(taksId));
+  public synchronized void onTaskExecutionStarted(final Task task) {
+    runningTasks.add(runningComplyingTasks.get(task.getTaskId()));
+    if (task.isTransientTask()) {
+      deactivatedTasks.add(task.getTaskId());
+    }
   }
 
   @Override
