@@ -266,8 +266,8 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
-  public synchronized int getNumOfActivatedTasks() {
-    return activatedTasks.size();
+  public synchronized int getNumOfActivatedAndPendingTasks() {
+    return activatedTasks.size() + activatedPendingTasks.size();
   }
 
   @Override

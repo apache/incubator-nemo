@@ -318,7 +318,7 @@ public final class LambdaContainerManager {
   public void deactivateNoActivateTaskWorkers() {
     LOG.info("Deactivating no activate task workers...");
     requestIdControlChannelMap.values().forEach(worker -> {
-      if (worker.getExecutorRepresenter().getNumOfActivatedTasks() == 0
+      if (worker.getExecutorRepresenter().getNumOfActivatedAndPendingTasks() == 0
         && worker.isActive())
         worker.deactivate();
     });
