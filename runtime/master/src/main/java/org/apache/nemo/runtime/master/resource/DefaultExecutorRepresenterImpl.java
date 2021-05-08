@@ -115,6 +115,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   @Override
   public void setLambdaControlProxy(final WorkerControlProxy workerControlProxy) {
     this.lambdaControlProxy = workerControlProxy;
+    lambdaControlProxy.setRepresentor(this);
   }
 
   @Override
