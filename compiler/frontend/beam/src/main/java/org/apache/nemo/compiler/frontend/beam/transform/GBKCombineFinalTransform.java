@@ -34,6 +34,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -450,18 +451,17 @@ public final class GBKCombineFinalTransform<K, InputT>
       */
 
     // keep going if the watermark increases
+    final long prevProcessWatermark = prevOutputWatermark.getTimestamp();
     while (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
 
-      //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
-      getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         final long minWatermarkTimestamp = minWatermarkHold.getTimestamp();
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkTimestamp);
+          .removeIf(entry -> entry.getValue().getTimestamp() <= minWatermarkTimestamp);
       }
 
       minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
@@ -480,6 +480,10 @@ public final class GBKCombineFinalTransform<K, InputT>
         keyAndWatermarkHoldMap,
         getContext().getTaskId());
         */
+    }
+
+    if (outputWatermarkCandidate.getTimestamp() - prevProcessWatermark >= Util.WATERMARK_PROGRESS) {
+      getOutputCollector().emitWatermark(outputWatermarkCandidate);
     }
   }
 

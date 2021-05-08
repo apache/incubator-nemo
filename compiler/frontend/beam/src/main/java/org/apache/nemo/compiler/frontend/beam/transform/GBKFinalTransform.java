@@ -455,12 +455,11 @@ public final class GBKFinalTransform<K, InputT>
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
 
-
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         final long minWatermarkTimestamp = minWatermarkHold.getTimestamp();
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkTimestamp);
+          .removeIf(entry -> entry.getValue().getTimestamp() <= minWatermarkTimestamp);
       }
 
       minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()

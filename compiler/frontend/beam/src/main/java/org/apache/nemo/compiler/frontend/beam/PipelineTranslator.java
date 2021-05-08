@@ -570,16 +570,15 @@ final class PipelineTranslator {
        beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
      } else {
 
-       final GBKCombineFinalTransform gbkFinal =
-         new GBKCombineFinalTransform(
+       final GBKFinalTransform gbkFinal =
+         new GBKFinalTransform(
            mainInput.getCoder(),
            inputCoder.getKeyCoder(),
            getOutputCoders(pTransform),
            mainOutputTag,
            mainInput.getWindowingStrategy(),
            ctx.getPipelineOptions(),
-           partialSystemReduceFn,
-           (Combine.CombineFn) finalCombineFn,
+           systemReduceFn,
            DisplayData.from(beamNode.getTransform()),
            false);
 

@@ -209,10 +209,12 @@ public final class ContainerManager {
       .addOption("-XX:+PrintGCTimeStamps")
       .addOption("-XX:+PrintGCDateStamps")
       .addOption("-XX:NewRatio=1")
-      // .addOption("-XX:+UseG1GC")
-      .addOption("-XX:InitialHeapSize=" + (resourceSpecification.getMemory() - 100) + "m")
-      .addOption("-XX:MaxHeapSize=" + (resourceSpecification.getMemory() - 100) + "m");
-      //.addOption("-XX:MaxGCPauseMillis=500");
+      // .addOption("-XX:InitialHeapSize=" + (resourceSpecification.getMemory() - 100) + "m")
+      // .addOption("-XX:MaxHeapSize=" + (resourceSpecification.getMemory() - 100) + "m")
+      .addOption("-XX:+UseG1GC")
+      .addOption("-XX:ParallelGCThreads=20")
+      .addOption("-XX:InitiatingHeapOccupancyPercent=70")
+      .addOption("-XX:MaxGCPauseMillis=500");
       //.addOption("-verbosegc");
 
     /*
