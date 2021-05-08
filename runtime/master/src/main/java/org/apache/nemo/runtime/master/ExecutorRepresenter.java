@@ -81,6 +81,8 @@ public interface ExecutorRepresenter {
    */
   int getNumOfNonComplyingRunningTasks();
 
+  int getNumOfActivatedTasks();
+
   /**
    * @return the executor id
    */

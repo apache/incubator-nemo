@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.master.backpressure.Backpressure;
@@ -134,6 +135,7 @@ public final class ScaleInOutManager {
     return futures;
   }
 
+
   private void checkTaskMoveValidation(final Task task, final ExecutorRepresenter ep) {
     if (task.isParitalCombine() && task.isVMTask())  {
       throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
@@ -144,6 +146,20 @@ public final class ScaleInOutManager {
 //    else if (!(task.isParitalCombine() || task.getUpstreamTaskSet().size() > 1)) {
 //      throw new RuntimeException("Cannot move task " + task.getTaskId() + " from " + ep.getExecutorId());
 //    }
+  }
+
+  private void getMergerDescendantTasks(final String taskId, final List<String> l) {
+    taskScheduledMapMaster.getTaskIdTaskMap().
+      get(taskId).getDownstreamTasks().forEach((edge, downtasks) -> {
+      downtasks.forEach(downstream -> {
+        if (taskScheduledMapMaster.getTaskIdTaskMap().get(downstream).getUpstreamTaskSet().size() == 1) {
+          if (!l.contains(downstream)) {
+            l.add(downstream);
+            getMergerDescendantTasks(downstream, l);
+          }
+        }
+      });
+    });
   }
 
   public synchronized List<Future<String>> sendMigrationAllStages(

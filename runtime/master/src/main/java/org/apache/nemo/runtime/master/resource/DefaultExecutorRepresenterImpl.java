@@ -123,6 +123,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   private final Set<String> activatedTasks = new HashSet<>();
+  private final Set<String> deactivatedTasks = new HashSet<>();
   private final Set<String> activatedPendingTasks = new HashSet<>();
 
   private void waitForActivation() {
@@ -261,6 +262,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
+  public synchronized int getNumOfActivatedTasks() {
+    return activatedTasks.size();
+  }
+
+  @Override
   public synchronized boolean isAllTaskActivated() {
     return lambdaControlProxy.isActive() && activatedPendingTasks.isEmpty();
   }
@@ -300,6 +306,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     LOG.info("Activation done lambda task {} in {}", taskId, executorId);
     activatedPendingTasks.remove(taskId);
     activatedTasks.add(taskId);
+    deactivatedTasks.remove(taskId);
   }
 
   @Override
@@ -309,6 +316,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         + ", activatedTasks " + activatedTasks);
     }
     activatedTasks.remove(taskId);
+    deactivatedTasks.add(taskId);
     LOG.info("Deactivation done of lambda task {} in {} / {}", taskId, executorId, activatedTasks);
 
     // Move lambda task
@@ -317,8 +325,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private void checkAndDeactivate() {
     if (optPolicy.contains("R2")) {
+      final Set<String> runnings = new HashSet<>();
+      runnings.addAll(
+        getRunningTasks().stream().map(t -> t.getTaskId()).collect(Collectors.toSet()));
+      runnings.removeAll(deactivatedTasks);
+
       if (activatedTasks.isEmpty() &&
         tasksToBeStopped.isEmpty() &&
+        runnings.isEmpty() &&
         lambdaControlProxy.isActive()) {
         LOG.info("Deactivate lambda worker {}", executorId);
         lambdaControlProxy.deactivate();

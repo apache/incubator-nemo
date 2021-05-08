@@ -218,7 +218,7 @@ public final class NemoDriver {
               runtimeMaster.stopLambdaContainer(num);
             } else if (decision.equals("activate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              runtimeMaster.activateLambda();
+              lambdaContainerManager.activateAllWorkers();
             } else if (decision.equals("deactivate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               runtimeMaster.deactivateLambda();
@@ -271,6 +271,10 @@ public final class NemoDriver {
             } else if (decision.equals("warmup-done")) {
               scaleInOutManager
                 .sendMigrationAllStages(1, executorRegistry.getLambdaExecutors(), false);
+            } else if (decision.equals("deactivate-remain")) {
+              threadPool.execute(() -> {
+                lambdaContainerManager.deactivateNoActivateTaskWorkers();
+              });
             } else if (decision.equals("redirection-r2")) {
               final long st = System.currentTimeMillis();
               final String[] args = message.getScalingMsg().getInfo().split(" ");
