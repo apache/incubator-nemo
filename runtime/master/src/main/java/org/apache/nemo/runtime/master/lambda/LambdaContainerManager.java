@@ -252,11 +252,9 @@ public final class LambdaContainerManager {
       if (!pendingActivationWorkers.isEmpty()) {
         throw new RuntimeException("Still pending activation workers " + pendingActivationWorkers);
       }
-
-      pendingActivationWorkers.addAll(requestIdControlChannelMap.values());
-
       requestIdControlChannelMap.values().forEach(worker -> {
         if (!worker.isActive()) {
+          pendingActivationWorkers.add(worker);
           initService.execute(() -> {
             LOG.info("Activating worker {}", worker.getId());
             worker.activate();
