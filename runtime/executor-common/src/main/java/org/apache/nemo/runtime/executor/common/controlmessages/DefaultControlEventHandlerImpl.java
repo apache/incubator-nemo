@@ -358,7 +358,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
             .decrementAndGet();
 
           if (evalConf.controlLogging) {
-            LOG.info("Receive task output done ack {}, counter: {}", control.getTaskId(),
+            LOG.info("Receive task output done ack {} from {}, counter: {}", control.getTaskId(),
+              pipeIndexMapWorker.getKey(control.remoteInputPipeIndex),
               cnt);
           }
 

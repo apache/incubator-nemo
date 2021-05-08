@@ -683,6 +683,7 @@ public final class PipeManagerWorkerImpl implements PipeManagerWorker {
     } else {
       if (taskExecutorMapWrapper.containsTask(dstTaskId)) {
         // local task
+        LOG.info("Send control to local {}/{}/{}/{}", srcTaskId, edgeId, dstTaskId, type);
         sendControlToLocal(dstTaskId, msg);
       } else {
         final Optional<Channel> optional = getChannelForDstTask(dstTaskId, false);

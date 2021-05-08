@@ -64,6 +64,7 @@ public final class TaskExecutorUtil {
 
     task.getDownstreamTasks().forEach((edge, dstTasks) -> {
       dstTasks.forEach(dstTask -> {
+        LOG.info("Send output done message from {} to {}", srcTask, dstTask);
       pipeManagerWorker.writeControlMessage(srcTask, edge.getId(), dstTask,
         type,
         null);
