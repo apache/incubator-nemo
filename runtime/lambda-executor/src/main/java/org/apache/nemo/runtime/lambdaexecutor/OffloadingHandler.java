@@ -315,6 +315,7 @@ public final class OffloadingHandler {
       return true;
     } else {
 
+
       final Integer endFlag = endBlockingQueue.poll();
 
       endBlockingQueue.add(endFlag);
@@ -322,7 +323,7 @@ public final class OffloadingHandler {
       if (endFlag == 0) {
         return true;
       } else {
-
+        LOG.info("Handler is duplicated, we will close this worker ");
         return false;
       }
     }
@@ -560,7 +561,6 @@ public final class OffloadingHandler {
 //          throw new RuntimeException(e);
 //        }
       }
-
       System.out.println("END of invocation: " + (System.currentTimeMillis() - sst));
     } catch (InterruptedException e) {
       e.printStackTrace();
