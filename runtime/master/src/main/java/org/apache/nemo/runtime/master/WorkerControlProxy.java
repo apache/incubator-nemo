@@ -160,25 +160,21 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
     switch (msg.getType()) {
       case DUPLICATE_REQUEST: {
         LOG.info("Duplicate request worker {}", requestId);
-
         synchronized (pendingActivationWorkers) {
           if (isActivating()) {
             // we should send another message
-
-              duplicateRequestChannels.add(msg.channel);
-              activator.activate();
-          } else {
-            if (duplicateRequestChannels.size() > 4) {
+            if (duplicateRequestChannels.size() > 3) {
               LOG.info("Cannot acquire the same worker {}", requestId);
               duplicateRequestChannels.forEach(c ->
                 c.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0)));
               duplicateRequestChannels.clear();
               msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
-              activator.activate();
-            } else {
-              LOG.info("Send duplicate request termination to {}", requestId);
-              msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
             }
+            duplicateRequestChannels.add(msg.channel);
+            activator.activate();
+          } else {
+            LOG.info("Send duplicate request termination to {}", requestId);
+            msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
           }
         }
         break;
