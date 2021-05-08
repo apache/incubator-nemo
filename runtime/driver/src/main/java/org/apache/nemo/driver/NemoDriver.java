@@ -218,7 +218,9 @@ public final class NemoDriver {
               runtimeMaster.stopLambdaContainer(num);
             } else if (decision.equals("activate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
-              lambdaContainerManager.activateAllWorkers();
+              threadPool.execute(() -> {
+                lambdaContainerManager.activateAllWorkers();
+              });
             } else if (decision.equals("deactivate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               runtimeMaster.deactivateLambda();
