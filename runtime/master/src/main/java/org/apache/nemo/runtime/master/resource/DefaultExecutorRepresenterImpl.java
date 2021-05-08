@@ -334,6 +334,12 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         getRunningTasks().stream().map(t -> t.getTaskId()).collect(Collectors.toSet()));
       runnings.removeAll(deactivatedTasks);
 
+      LOG.info("{} activatedTasks {}, tasksToBeStopped {}, runnings: {}, deactivated {}",
+        activatedTasks,
+        tasksToBeStopped,
+        runnings,
+        deactivatedTasks);
+
       if (activatedTasks.isEmpty() &&
         tasksToBeStopped.isEmpty() &&
         runnings.isEmpty() &&
