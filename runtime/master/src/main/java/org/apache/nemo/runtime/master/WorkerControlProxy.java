@@ -163,12 +163,13 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
         synchronized (pendingActivationWorkers) {
           if (isActivating()) {
             // we should send another message
-            if (duplicateRequestChannels.size() > 3) {
+            if (duplicateRequestChannels.size() > 6) {
               LOG.info("Cannot acquire the same worker {}", requestId);
               duplicateRequestChannels.forEach(c ->
                 c.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0)));
               duplicateRequestChannels.clear();
               msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
+              throw new RuntimeException("Cannot acquire the same worker " + requestId);
             }
             duplicateRequestChannels.add(msg.channel);
             activator.activate();

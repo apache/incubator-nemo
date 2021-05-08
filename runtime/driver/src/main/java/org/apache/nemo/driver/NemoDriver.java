@@ -257,22 +257,17 @@ public final class NemoDriver {
             } else if (decision.equals("start-backpressure")) {
               backpressure.start();
             } else if (decision.equals("lambda-warmup"))  {
-              lambdaContainerManager.activateAllWorkers();
-              try {
-                Thread.sleep(50);
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-              lambdaContainerManager.deactivateAllWorkers();
+              threadPool.execute(() -> {
+                lambdaContainerManager.warmup();
+              });
 
-            } else if (decision.equals("warmup")) {
-              final String[] args = message.getScalingMsg().getInfo().split(" ");
-              final double percent = new Double(args[1]);
-              scaleInOutManager
-                .sendMigrationAllStages(percent, executorRegistry.getVMComputeExecutors(), true);
-            } else if (decision.equals("warmup-done")) {
-              scaleInOutManager
-                .sendMigrationAllStages(1, executorRegistry.getLambdaExecutors(), false);
+//              lambdaContainerManager.activateAllWorkers();
+//              try {
+//                Thread.sleep(50);
+//              } catch (InterruptedException e) {
+//                e.printStackTrace();
+//              }
+//              lambdaContainerManager.deactivateAllWorkers();
             } else if (decision.equals("deactivate-remain")) {
               threadPool.execute(() -> {
                 lambdaContainerManager.deactivateNoActivateTaskWorkers();

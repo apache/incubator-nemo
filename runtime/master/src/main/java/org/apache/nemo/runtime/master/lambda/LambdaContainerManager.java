@@ -246,6 +246,43 @@ public final class LambdaContainerManager {
       .allMatch(worker -> worker.isActive());
   }
 
+  public void warmup() {
+    LOG.info("Activating all workers...");
+    final List<WorkerControlProxy> pending = new LinkedList<>();
+
+    requestIdControlChannelMap.values().forEach(worker -> {
+      if (!worker.isActive()) {
+        pending.add(worker);
+        LOG.info("Activating worker {}", worker.getId());
+        worker.activate();
+      }
+    });
+
+    long st = System.currentTimeMillis();
+
+    while (!pending.isEmpty()) {
+      final Iterator<WorkerControlProxy> iter = pending.iterator();
+      while (iter.hasNext()) {
+        final WorkerControlProxy worker = iter.next();
+        if (worker.isActive()) {
+          worker.deactivate();
+          iter.remove();
+        }
+      }
+
+      if (System.currentTimeMillis() - st >= 10000) {
+        LOG.warn("Worker is not activated now {}", pending);
+        st = System.currentTimeMillis();
+      }
+
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
   public void activateAllWorkers() {
     LOG.info("Activating all workers...");
     synchronized (pendingActivationWorkers) {
