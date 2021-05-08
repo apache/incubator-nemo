@@ -214,6 +214,7 @@ public final class ContainerManager {
       .addOption("-XX:+UseG1GC")
       .addOption("-XX:ParallelGCThreads=20")
       .addOption("-XX:InitiatingHeapOccupancyPercent=70")
+      .addOption("-XX:ConcGCThreads=5")
       .addOption("-XX:MaxGCPauseMillis=500");
       //.addOption("-verbosegc");
 
