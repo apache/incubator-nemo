@@ -322,9 +322,7 @@ public final class OffloadingHandler {
       if (endFlag == 0) {
         return true;
       } else {
-        map.remove(controlChannel);
-        controlChannel.close();
-        controlChannel = null;
+
         return false;
       }
     }
@@ -551,6 +549,9 @@ public final class OffloadingHandler {
       } else if (endFlag == 1) {
         // Duplicate request termination
         LOG.info("Duplicate request termination ... sending data channel deactive");
+        map.remove(controlChannel);
+        controlChannel.close();
+        controlChannel = null;
 //        try {
 //          dataChannel.writeAndFlush(
 //            new OffloadingExecutorControlEvent(OffloadingExecutorControlEvent.Type.DEACTIVATE, null)).get();
