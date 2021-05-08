@@ -167,6 +167,7 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
             duplicateRequestChannels.add(msg.channel);
             activator.activate();
           } else {
+            LOG.info("Send duplicate request termination to {}", requestId);
             msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
           }
         }
