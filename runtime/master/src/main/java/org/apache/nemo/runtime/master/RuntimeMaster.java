@@ -766,10 +766,10 @@ public final class RuntimeMaster {
             final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
             final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
 
-            LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
             if (stageIds.contains(stageId)
               && !prevRedirectionTasks.contains(vmTaskId)
               && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
+              LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
               prevRedirectionTasks.add(vmTaskId);
               stageCnt.put(stageId, stageCnt.get(stageId) + 1);
               return true;
