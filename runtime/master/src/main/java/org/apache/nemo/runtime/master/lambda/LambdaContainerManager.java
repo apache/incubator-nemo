@@ -213,10 +213,16 @@ public final class LambdaContainerManager {
     return executorService.submit(() -> {
       // redirection signal to the origin task
       lambdaTasks.forEach(lambdaTaskId -> {
-        final String vmTaskId =  pairStageTaskManager.getPairTaskEdgeId(lambdaTaskId).get(0).left();
-        final String vmExecutorId = taskScheduledMapMaster.getTaskExecutorIdMap().get(vmTaskId);
-        final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
-        lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
+          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTaskId).get(0).left();
+          final String vmExecutorId = taskScheduledMapMaster.getTaskExecutorIdMap().get(vmTaskId);
+        try {
+          final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
+          lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException("Exception for activating vmTask " + vmTaskId + ", vmExecutorId: "
+            + vmExecutorId + ", lambdaTask: " + lambdaTaskId);
+        }
 
 //        lambdaExecutor.getRunningTasks().stream()
 //          .map(t -> t.getTaskId())
