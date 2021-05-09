@@ -762,6 +762,8 @@ public final class RuntimeMaster {
           (int) (stageIdCounterMap.get(key) * ratio)));
       }
 
+      LOG.info("Stage id counter map {}", stageIdCounterMap);
+
       // tasks to be redirected !
       executor.getScheduledTasks().stream()
         .filter(task -> stageIds.contains(task.getStageId()))
