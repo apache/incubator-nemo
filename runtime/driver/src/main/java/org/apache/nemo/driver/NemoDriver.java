@@ -214,10 +214,14 @@ public final class NemoDriver {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
               runtimeMaster.stopLambdaContainer(num);
-            } else if (decision.equals("activate-lambda")) {
+            } else if (decision.equals("activate-lambda-lock")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               threadPool.execute(() -> {
                 lambdaContainerManager.activateAllWorkers();
+              });
+            } else if (decision.equals("activate-lambda-lock-release")) {
+               threadPool.execute(() -> {
+                lambdaContainerManager.releaseActivateLock();
               });
             } else if (decision.equals("deactivate-lambda")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");

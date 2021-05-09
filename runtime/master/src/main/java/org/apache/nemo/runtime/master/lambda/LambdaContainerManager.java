@@ -38,6 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -307,9 +308,12 @@ public final class LambdaContainerManager {
     }
   }
 
+  private final AtomicBoolean activatedLock = new AtomicBoolean(false);
+
   public void activateAllWorkers() {
     LOG.info("Activating all workers...");
     synchronized (pendingActivationWorkers) {
+      activatedLock.set(true);
       if (!pendingActivationWorkers.isEmpty()) {
         throw new RuntimeException("Still pending activation workers " + pendingActivationWorkers);
       }
@@ -336,6 +340,12 @@ public final class LambdaContainerManager {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
+    }
+  }
+
+  public void releaseActivateLock() {
+    synchronized (pendingActivationWorkers) {
+      activatedLock.set(false);
     }
   }
 
@@ -368,40 +378,20 @@ public final class LambdaContainerManager {
   public void deactivateAllWorkers() {
     LOG.info("Deactivating all workers...");
 
-    while (!isAllWorkerActive()) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
+    synchronized (pendingActivationWorkers) {
+      if (activatedLock.get()) {
+        // skip
+        LOG.info("Activated lock.. deactivate skip...");
+      } else {
+        LOG.info("Starting deactivate workers...");
+        requestIdControlChannelMap.values().forEach(worker -> {
+          if (!worker.isActive()) {
+            throw new RuntimeException("Worker still active " + worker.getId());
+          }
 
-    LOG.info("Starting deactivate workers...");
-
-
-    requestIdControlChannelMap.values().forEach(worker -> {
-      if (!worker.isActive()) {
-        throw new RuntimeException("Worker still active " + worker.getId());
-      }
-
-      ((DefaultExecutorRepresenterImpl) worker.getExecutorRepresenter()).checkAndDeactivate();
-      // worker.deactivate();
-    });
-
-
-    LOG.info("Waiting for deactivation of all workers");
-    long prevLog = System.currentTimeMillis();
-    while (requestIdControlChannelMap.values().stream().anyMatch(proxy -> !proxy.isDeactivated())) {
-      if (System.currentTimeMillis() - prevLog >= 1000) {
-        LOG.info("Waiting for deactivation of all workers {}", requestIdControlChannelMap.values().stream()
-          .filter(proxy -> !proxy.isDeactivated()));
-
-        prevLog = System.currentTimeMillis();
-      }
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+          ((DefaultExecutorRepresenterImpl) worker.getExecutorRepresenter()).checkAndDeactivate();
+          // worker.deactivate();
+        });
       }
     }
   }
