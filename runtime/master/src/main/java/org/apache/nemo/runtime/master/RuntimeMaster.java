@@ -737,90 +737,72 @@ public final class RuntimeMaster {
   public void redirectionToLambda(final List<Integer> nums,
                                   final List<String> stageIds,
                                   final boolean waiting) {
-    final Map<String, Integer> stageCnt = new HashMap<>();
-    stageIds.forEach(sid -> stageCnt.put(sid, 0));
 
-    final Map<String, Integer> stageTargetNum = new HashMap<>();
-    for (int i = 0; i < nums.size(); i++) {
-      stageTargetNum.put(stageIds.get(i), nums.get(i));
-    }
+    final List<Task> vmTasksToBeRedirected = new LinkedList<>();
 
-    LOG.info("StageTargetNum {}", stageIds);
+    executorRegistry.getVMComputeExecutors().forEach(executor -> {
+      // Calcuate # of tasks to move per executor
+      final Map<String, Integer> stageIdCounterMap = new HashMap<>();
 
-    final List<ExecutorRepresenter> activatedLambda = new LinkedList<>();
+      executor.getScheduledTasks().stream()
+        .filter(task -> stageIds.contains(task.getStageId()))
+        .map(task -> {
+          return task.getStageId();
+        })
+        .forEach(stageId -> {
+          stageIdCounterMap.putIfAbsent(stageId, 0);
+          stageIdCounterMap.put(stageId, stageIdCounterMap.get(stageId) + 1);
+        });
 
+      for (final String key : stageIdCounterMap.keySet()) {
+        final int index = stageIds.indexOf(key);
+        final int num = nums.get(index);
+        final double ratio = num / (double) evalConf.sourceParallelism;
+        stageIdCounterMap.put(key, Math.min(stageIdCounterMap.get(key),
+          (int) (stageIdCounterMap.get(key) * ratio)));
+      }
+
+      // tasks to be redirected !
+      executor.getScheduledTasks().stream()
+        .filter(task -> stageIds.contains(task.getStageId()))
+        .forEach(task -> {
+          final int maxCnt = stageIdCounterMap.get(task.getStageId());
+          if (stageIdCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
+            stageIdCounterMap.putIfAbsent(task.getStageId(), 0);
+            stageIdCounterMap.put(task.getStageId(), stageIdCounterMap.get(task.getStageId()) + 1);
+            vmTasksToBeRedirected.add(task);
+          }
+        });
+    });
+
+    // Redircte vmTasksToBeRedircteed!
+    LOG.info("VM tasks to be redirected size: {}", vmTasksToBeRedirected.size());
+    final Map<ExecutorRepresenter, List<String>> lambdaExecutorTaskToMoveMap = new HashMap<>();
     final List<Future> futures = new LinkedList<>();
 
-    while (!stageTargetNum.equals(stageCnt)) {
-      executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
-        // find list of tasks that the lambda executor has
-        // schedule one by one for each executor
-        lambdaExecutor.getScheduledTasks().stream()
-          .filter(lambdaTask -> {
-            if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
-              LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
-                lambdaExecutor.getExecutorId());
-              return false;
-            }
+    vmTasksToBeRedirected.forEach(task -> {
+      if (pairStageTaskManager.getPairTaskEdgeId(task.getTaskId()) == null ||
+        pairStageTaskManager.getPairTaskEdgeId(task.getTaskId()).isEmpty()) {
+        LOG.info("Task {} cannot redirect", task.getTaskId());
+      } else {
+        final String lambdaTaskId = pairStageTaskManager
+          .getPairTaskEdgeId(task.getTaskId()).get(0).left();
 
-            final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
-            final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+        final ExecutorRepresenter lambdaExecutor =
+          executorRegistry.getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(lambdaTaskId));
+        lambdaExecutorTaskToMoveMap.putIfAbsent(lambdaExecutor, new LinkedList<>());
 
-            if (stageIds.contains(stageId)
-              && !prevRedirectionTasks.contains(vmTaskId)
-              && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
-              LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
-              prevRedirectionTasks.add(vmTaskId);
-              stageCnt.put(stageId, stageCnt.get(stageId) + 1);
-              return true;
-            } else {
-              return false;
-            }
-          })
-          .map(Task::getTaskId)
-          .findFirst().ifPresent(taskToMove -> {
-          LOG.info("Redirection to lambda tasks {} / executor {}", taskToMove, lambdaExecutor.getExecutorId());
-          futures.add(lambdaContainerManager.redirectionToLambda(Collections.singleton(taskToMove), lambdaExecutor));
-          activatedLambda.add(lambdaExecutor);
-        });
-      });
-    }
+        lambdaExecutorTaskToMoveMap.get(lambdaExecutor).add(lambdaTaskId);
+      }
+    });
 
-//      final Set<String> tasksToBeRedirected = lambdaExecutor.getScheduledTasks().stream()
-//        .filter(lambdaTask -> {
-//          if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
-//            LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
-//              lambdaExecutor.getExecutorId());
-//            return false;
-//          }
-//
-//          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
-//          final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
-//
-//          LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
-//          if (stageIds.contains(stageId)
-//            && !prevRedirectionTasks.contains(vmTaskId)
-//            && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
-//            prevRedirectionTasks.add(vmTaskId);
-//            stageCnt.put(stageId, stageCnt.get(stageId) + 1);
-//            return true;
-//          } else {
-//            return false;
-//          }
-//        })
-//        .map(Task::getTaskId)
-//        .collect(Collectors.toSet());
-//
-//      if (!tasksToBeRedirected.isEmpty()) {
-//        LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
-//        futures.add(lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor));
-//        activatedLambda.add(lambdaExecutor);
-//      }
-//    });
+    lambdaExecutorTaskToMoveMap.forEach((lambdaExecutor, tasks) -> {
+      LOG.info("Redirection to lambda tasks {} / executor {}",
+        tasks, lambdaExecutor.getExecutorId());
+      futures.add(lambdaContainerManager.redirectionToLambda(tasks, lambdaExecutor));
+    });
 
     if (waiting) {
-
-
       // Waiting for redirection done
       LOG.info("Start Waiting activation");
       for (final Future future : futures) {
