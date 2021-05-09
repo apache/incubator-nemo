@@ -23,7 +23,6 @@ public final class MetricStatistics {
   private long collectionTime = System.currentTimeMillis();
 
   public synchronized void collectLatency(final long latency, final String executorId) {
-    latencyStatistics.addValue(latency);
 
     LOG.info("Latency in Master in {}: {}", executorId, latency);
 
@@ -37,6 +36,7 @@ public final class MetricStatistics {
         latencyStatistics.getMax());
 
       latencyStatistics.clear();
+      latencyStatistics.addValue(latency);
 
       LOG.info(log);
 
@@ -45,6 +45,8 @@ public final class MetricStatistics {
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.PrintLog)
         .setPrintStr(log).build());
+    } else {
+      latencyStatistics.addValue(latency);
     }
   }
 
