@@ -507,13 +507,12 @@ public final class NemoDriver {
   }
 
   private Pair<List<Integer>, List<String>> parseRedirection(final String line) {
-    final String[] args = line.split(" ");
-    final String[] numStages = args[1].split(",");
+    final String[] numStages = line.split(" ")[1].split(",");
     final List<Integer> nums = new ArrayList<>(numStages.length);
     final List<String> stages = new ArrayList<>(numStages.length);
 
     for (int i = 0; i < numStages.length; i++) {
-      final String[] a = args[i].split(":");
+      final String[] a = numStages[i].split(":");
       final int n = new Integer(a[0]);
       nums.add(n);
       stages.add(a[1]);
