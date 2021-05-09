@@ -737,7 +737,21 @@ public final class RuntimeMaster {
   public void redirectionToLambda(final List<Integer> nums,
                                   final List<String> stageIds,
                                   final boolean waiting) {
-    taskScheduledMap.isAllTasksScheduledAtStartTime();
+    long stt = System.currentTimeMillis();
+    while (!taskScheduledMap.isAllTasksScheduledAtStartTime()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      if (System.currentTimeMillis() - stt >= 1000) {
+        LOG.info("Waiting all task scheduling ...");
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.PrintLog)
+        .setPrintStr("Waiting all task scheduling ...").build());
+        stt = System.currentTimeMillis();
+      }
+    }
 
     final List<Task> vmTasksToBeRedirected = new LinkedList<>();
 

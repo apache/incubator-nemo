@@ -45,7 +45,18 @@ public final class ScaleInOutManager {
                                                          final Collection<String> stages,
                                                          final boolean lambdaAffinity) {
 
-    taskScheduledMapMaster.isAllTasksScheduledAtStartTime();
+    long st = System.currentTimeMillis();
+    while (!taskScheduledMapMaster.isAllTasksScheduledAtStartTime()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      if (System.currentTimeMillis() - st >= 1000) {
+        LOG.info("Waiting all task scheduling ...");
+        st = System.currentTimeMillis();
+      }
+    }
 
     // Set filtered out executors to task dispatcher
     taskDispatcher.setFilteredOutExecutors(executors.stream()
