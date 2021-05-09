@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,14 +41,17 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
 
   private final Set<WorkerControlProxy> pendingActivationWorkers;
   private final LambdaContainerRequester.LambdaActivator activator;
+  private final ClientRPC clientRPC;
 
   public WorkerControlProxy(final int requestId,
                             final String executorId,
                             final Channel controlChannel,
+                            final ClientRPC clientRPC,
                             final LambdaContainerRequester.LambdaActivator activator,
                             final Set<WorkerControlProxy> pendingActivationWorkers) {
     this.requestId = requestId;
     this.executorId = executorId;
+    this.clientRPC = clientRPC;
     this.controlChannel = controlChannel;
     this.pendingActivationWorkers = pendingActivationWorkers;
     this.activator = activator;
@@ -169,6 +173,13 @@ public final class WorkerControlProxy implements EventHandler<OffloadingMasterEv
                 c.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0)));
               duplicateRequestChannels.clear();
               msg.channel.writeAndFlush(new OffloadingMasterEvent(DUPLICATE_REQUEST_TERMIATION, new byte[0], 0));
+              clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+                .setType(ControlMessage.DriverToClientMessageType.KillAll).build());
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
               throw new RuntimeException("Cannot acquire the same worker " + requestId);
             }
             duplicateRequestChannels.add(msg.channel);

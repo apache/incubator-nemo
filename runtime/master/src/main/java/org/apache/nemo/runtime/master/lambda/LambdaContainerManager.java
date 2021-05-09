@@ -94,12 +94,15 @@ public final class LambdaContainerManager {
 
   private final String optPolicy;
 
+  private final ClientRPC clientRPC;
+
   @Inject
   private LambdaContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                                  @Parameter(JobConf.OptimizationPolicy.class) final String optPolicy,
                                  final TcpPortProvider tcpPortProvider,
                                  final EvalConf evalConf,
                                  final ExecutorRegistry executorRegistry,
+                                 final ClientRPC clientRPC,
                                  final PipeIndexMaster pipeIndexMaster,
                                  final SerializedTaskMap serializedTaskMap,
                                  final PairStageTaskManager pairStageTaskManager,
@@ -110,6 +113,7 @@ public final class LambdaContainerManager {
                                  final NettyVMStateStore stateStore,
                                  @Parameter(EvalConf.Ec2.class) final boolean ec2,
                                  final LocalAddressProvider localAddressProvider) {
+    this.clientRPC = clientRPC;
     this.optPolicy = optPolicy;
     this.nameServer = nameServer;
     this.stateStore = stateStore;
@@ -165,6 +169,7 @@ public final class LambdaContainerManager {
 
             final WorkerControlProxy proxy = new WorkerControlProxy(
               requestId, requestIdExecutorMap.get(requestId), pair.left(),
+              clientRPC,
               requestIdActivatorMap.get(requestId), pendingActivationWorkers);
 
             requestIdHandlerMap.put(requestId, proxy);

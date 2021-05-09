@@ -171,8 +171,10 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.KillAll, event -> {
         try {
           LOG.info("kill all....");
-          Process p = Runtime.getRuntime().exec("touch signal_kill.txt");
+          Process p = Runtime.getRuntime().exec("echo destroy-lambda >> scaling.txt");
           p.wait();
+          Thread.sleep(5000);
+          Runtime.getRuntime().exec("touch signal_kill.txt").wait();
         } catch (Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);

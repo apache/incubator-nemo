@@ -124,7 +124,7 @@ public final class OffloadingWorkerManager {
 
             LOG.info("Channel for requestId {}: {}", requestId, pair.left());
             final WorkerControlProxy proxy = new WorkerControlProxy(
-              requestId, requestIdExecutorMap.get(requestId), pair.left(), null, pendingActivationWorkers);
+              requestId, requestIdExecutorMap.get(requestId), pair.left(), null, null, pendingActivationWorkers);
 
             requestIdControlChannelMap.put(requestId, proxy);
             channelEventHandlerMap.put(pair.left(), proxy);
