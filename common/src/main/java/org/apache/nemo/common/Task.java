@@ -116,10 +116,11 @@ public final class Task implements Serializable {
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
     });
 
-    this.pairEdges = pairTaskEdgeIds.stream().map(p -> p.right()).collect(Collectors.toList());
-    if (pairTaskEdgeIds.isEmpty()) {
+    if (pairTaskEdgeIds == null || pairTaskEdgeIds.isEmpty()) {
+      this.pairEdges = Collections.emptyList();
       this.pairTaskId = null;
     } else {
+      this.pairEdges = pairTaskEdgeIds.stream().map(p -> p.right()).collect(Collectors.toList());
       this.pairTaskId = pairTaskEdgeIds.get(0).left();
     }
 
