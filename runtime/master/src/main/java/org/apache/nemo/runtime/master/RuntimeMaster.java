@@ -743,6 +743,7 @@ public final class RuntimeMaster {
     executorRegistry.getVMComputeExecutors().forEach(executor -> {
       // Calcuate # of tasks to move per executor
       final Map<String, Integer> stageIdCounterMap = new HashMap<>();
+      final Map<String, Integer> stageToMoveCounterMap = new HashMap<>();
 
       executor.getScheduledTasks().stream()
         .filter(task -> stageIds.contains(task.getStageId()))
@@ -762,17 +763,19 @@ public final class RuntimeMaster {
           (int) (stageIdCounterMap.get(key) * ratio)));
       }
 
-      LOG.info("Stage id counter map {}", stageIdCounterMap);
+      LOG.info("Stage id counter map {} for {}", stageIdCounterMap, executor.getExecutorId());
 
       // tasks to be redirected !
       executor.getScheduledTasks().stream()
         .filter(task -> stageIds.contains(task.getStageId()))
         .forEach(task -> {
           final int maxCnt = stageIdCounterMap.get(task.getStageId());
-          if (stageIdCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
-            stageIdCounterMap.putIfAbsent(task.getStageId(), 0);
-            stageIdCounterMap.put(task.getStageId(), stageIdCounterMap.get(task.getStageId()) + 1);
+          if (stageToMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt
+             && !prevRedirectionTasks.contains(task.getTaskId())) {
+            stageToMoveCounterMap.putIfAbsent(task.getStageId(), 0);
+            stageToMoveCounterMap.put(task.getStageId(), stageToMoveCounterMap.get(task.getStageId()) + 1);
             vmTasksToBeRedirected.add(task);
+            prevRedirectionTasks.add(task.getTaskId());
           }
         });
     });
