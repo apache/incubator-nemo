@@ -245,6 +245,8 @@ public final class NemoDriver {
               final int stageId = new Integer(args[2]);
               runtimeMaster.deoffloadTask(num, stageId);
 
+            } else if (decision.equals("destroy-lambda")) {
+              lambdaContainerManager.destroy();
             } else if (decision.equals("conditional-routing")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final boolean partial = new Boolean(args[1]);

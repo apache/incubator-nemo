@@ -342,6 +342,24 @@ public final class LambdaContainerManager {
         worker.deactivate();
     });
   }
+
+  public void destroy() {
+    requestIdControlChannelMap.values().forEach(worker -> {
+      if (worker.isActive()) {
+        worker.deactivate();
+      }
+    });
+    requestIdControlChannelMap.values().forEach(worker -> {
+      while (!worker.isDeactivated()) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+  }
+
   public void deactivateAllWorkers() {
     LOG.info("Deactivating all workers...");
 
