@@ -515,7 +515,7 @@ public final class NemoDriver {
       final String[] a = numStages[i].split(":");
       final int n = new Integer(a[0]);
       nums.add(n);
-      stages.add(a[1]);
+      stages.add("Stage" + a[1]);
     }
 
     return Pair.of(nums, stages);

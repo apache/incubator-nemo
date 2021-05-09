@@ -745,6 +745,8 @@ public final class RuntimeMaster {
       stageTargetNum.put(stageIds.get(i), nums.get(i));
     }
 
+    LOG.info("StageTargetNum {}", stageIds);
+
     final List<ExecutorRepresenter> activatedLambda = new LinkedList<>();
 
     final List<Future> futures = new LinkedList<>();
@@ -761,6 +763,8 @@ public final class RuntimeMaster {
 
           final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+
+          LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
           if (stageIds.contains(stageId)
             && !prevRedirectionTasks.contains(vmTaskId)
             && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
