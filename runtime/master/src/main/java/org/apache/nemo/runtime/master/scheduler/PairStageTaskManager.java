@@ -165,7 +165,9 @@ public final class PairStageTaskManager {
             Pair.of(RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0),
               stageEdge.getId()))
           .findFirst().orElse(null);
-      }).collect(Collectors.toList());
+      })
+        .filter(a -> a != null)
+        .collect(Collectors.toList());
     } else {
       return null;
     }
