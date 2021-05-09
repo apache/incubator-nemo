@@ -793,6 +793,19 @@ public final class RuntimeMaster {
         final String lambdaTaskId = pairStageTaskManager
           .getPairTaskEdgeId(task.getTaskId()).get(0).left();
 
+        long st = System.currentTimeMillis();
+        while (!taskScheduledMap.getTaskExecutorIdMap().containsKey(lambdaTaskId)) {
+          if (System.currentTimeMillis() - st >= 1000) {
+            LOG.info("Waiting for {} scheduling", lambdaTaskId);
+            st = System.currentTimeMillis();
+          }
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
         final ExecutorRepresenter lambdaExecutor =
           executorRegistry.getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(lambdaTaskId));
         lambdaExecutorTaskToMoveMap.putIfAbsent(lambdaExecutor, new LinkedList<>());
