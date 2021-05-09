@@ -89,6 +89,7 @@ public final class TaskExecutorUtil {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 
@@ -122,6 +123,7 @@ public final class TaskExecutorUtil {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 

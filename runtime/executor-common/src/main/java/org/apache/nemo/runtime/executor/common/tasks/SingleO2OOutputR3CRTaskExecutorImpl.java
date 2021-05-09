@@ -42,7 +42,6 @@ import org.apache.nemo.offloading.common.StateStore;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -593,7 +592,6 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
               }
 
             } else {
-
               if (edge.isTransientPath()) {
                 final String pairVMEdgeId = edge.getPropertyValue(PairEdgeProperty.class).get();
                 taskWatermarkManager.addDataFetcher(pairVMEdgeId, df.getEdgeId(), parallelism);
@@ -671,12 +669,18 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     // watermark handling
-    if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
-      final ByteBuf data = taskHandlingEvent.getDataByteBuf();
-      dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
-    } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
-      final Object data = taskHandlingEvent.getData();
-      dataHandler.handleLocalData(data, taskHandlingEvent);
+    try {
+      if (taskHandlingEvent instanceof TaskHandlingDataEvent) {
+        final ByteBuf data = taskHandlingEvent.getDataByteBuf();
+        dataHandler.handleRemoteByteBuf(data, taskHandlingEvent);
+      } else if (taskHandlingEvent instanceof TaskLocalDataEvent) {
+        final Object data = taskHandlingEvent.getData();
+        dataHandler.handleLocalData(data, taskHandlingEvent);
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException("Exception while processing data in " + taskId +
+        " from " + edgeId + "/" + taskHandlingEvent.getTaskId());
     }
   }
 
@@ -797,12 +801,12 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
           .ifPresent(watermark -> {
             taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, ((WatermarkWithIndex) data).getWatermark().getTimestamp());
-            watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            watermarkRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
           });
 
       } else {
         // final long start = System.nanoTime();
-        dataRouter.writeData(data);
+        dataRouter.writeData(data, serializerManager.getSerializer(event.getEdgeId()));
         // final long et = System.nanoTime();
         // taskMetrics.incrementComputation(et - start);
       }
@@ -832,7 +836,7 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
           .ifPresent(watermark -> {
             taskMetrics.setInputWatermark(watermark.getTimestamp());
             // LOG.info("Emit R3 CR watermark in {} {}", taskId, watermark.getTimestamp());
-            watermarkRouter.writeData(new WatermarkWithIndex(watermark, taskIndex));
+            watermarkRouter.writeWatermark(new WatermarkWithIndex(watermark, taskIndex));
           });
       } else {
         // data
@@ -846,7 +850,8 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
 
 
   interface DataRouter {
-    void writeData(Object data);
+    void writeWatermark(Object data);
+    void writeData(Object data, Serializer serializer);
     void writeByteBuf(ByteBuf data);
   }
 
@@ -875,9 +880,8 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
     }
 
     @Override
-    public void writeData(Object watermark) {
+    public void writeWatermark(Object watermark) {
       // final WatermarkWithIndex w = new WatermarkWithIndex((Watermark) watermark, taskIndex);
-
       pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
         lambdaId,
         transientPathSerializer,
@@ -887,6 +891,19 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
         vmId,
         vmPathSerializer,
         watermark);
+    }
+
+    @Override
+    public void writeData(Object data, Serializer serializer) {
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        lambdaId,
+        serializer,
+        data);
+
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmId,
+        serializer,
+        data);
     }
   }
 
@@ -898,10 +915,22 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
     }
 
     @Override
-    public void writeData(Object data) {
+    public void writeWatermark(Object data) {
       pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
         lambdaTaskId,
         transientPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeData(Object data, Serializer serializer) {
+
+//      LOG.info("Writing data from {} to {}/{}, serializer {}", taskId, transientPathEdge.getId(), lambdaTaskId,
+//        serializer);
+
+      pipeManagerWorker.writeData(taskId, transientPathEdge.getId(),
+        lambdaTaskId,
+        serializer,
         data);
     }
 
@@ -920,10 +949,18 @@ public final class SingleO2OOutputR3CRTaskExecutorImpl implements CRTaskExecutor
     }
 
     @Override
-    public void writeData(Object data) {
+    public void writeWatermark(Object data) {
       pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
         vmTaskId,
         vmPathSerializer,
+        data);
+    }
+
+    @Override
+    public void writeData(Object data, Serializer serializer) {
+      pipeManagerWorker.writeData(taskId, vmPathEdge.getId(),
+        vmTaskId,
+        serializer,
         data);
     }
 

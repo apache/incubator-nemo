@@ -67,6 +67,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
 
     return val.equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
       val.equals(CommunicationPatternProperty.Value.TransientRR) ||
+      val.equals(CommunicationPatternProperty.Value.TransientBroadcast) ||
       val.equals(CommunicationPatternProperty.Value.TransientShuffle);
   }
 

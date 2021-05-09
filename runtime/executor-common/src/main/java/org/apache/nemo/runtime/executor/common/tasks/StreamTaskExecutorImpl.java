@@ -547,7 +547,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
           .ifPresent(watermark -> {
             pipeManagerWorker.writeData(taskId, outputEdge.getId(),
               dstTaskId,
-              serializer,
+              serializerManager.getSerializer(event.getEdgeId()),
               new WatermarkWithIndex(new Watermark(watermark), taskIndex));
           });
 
@@ -576,7 +576,7 @@ public final class StreamTaskExecutorImpl implements TaskExecutor {
 
             pipeManagerWorker.writeData(taskId, outputEdge.getId(),
               dstTaskId,
-              serializer,
+              serializerManager.getSerializer(event.getEdgeId()),
               new WatermarkWithIndex(new Watermark(watermark), taskIndex));
           });
       } else {

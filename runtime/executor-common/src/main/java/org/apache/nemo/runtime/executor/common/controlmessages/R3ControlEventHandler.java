@@ -128,7 +128,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
         if (evalConf.controlLogging) {
           LOG.info("Send redirection message for {}->{} pairEdge {}",
             control.getTaskId(), taskExecutor.getTask().getPairTaskId(),
-            taskExecutor.getTask().getPairEdgeId());
+            taskExecutor.getTask().getPairEdges());
         }
 
         partialTaskDoneChecker.registerPartialDoneReadyTask(taskExecutor.getId());
@@ -286,7 +286,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
               new RedirectionMessage(
                 control.getTaskId(),
                 taskExecutor.getTask().getPairTaskId(),
-                taskExecutor.getTask().getPairEdgeId(),
+                taskExecutor.getTask().getPairEdges(),
                 false));
           });
         });
@@ -308,7 +308,11 @@ public final class R3ControlEventHandler implements ControlEventHandler {
 
         final String originTaskId = message.originTaskId;
         final String pairTaskId = message.pairTaskId;
-        final String pairEdgeId = message.pairEdgeId;
+        final String pairEdgeId =
+          taskExecutor.getTask().getTaskOutgoingEdges().stream()
+            .filter(e -> message.pairEdgeIds.contains(e.getId()))
+            .findFirst().get().getId();
+
         final Triple<String, String, String> key = pipeIndexMapWorker.getKey(control.remoteInputPipeIndex);
 
         if (evalConf.controlLogging) {
@@ -507,7 +511,7 @@ public final class R3ControlEventHandler implements ControlEventHandler {
                     new RedirectionMessage(
                       control.getTaskId(),
                       taskExecutor.getTask().getPairTaskId(),
-                      taskExecutor.getTask().getPairEdgeId(),
+                      taskExecutor.getTask().getPairEdges(),
                       false));
                 });
             });

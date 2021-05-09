@@ -79,6 +79,9 @@ public final class IREdge extends Edge<IRVertex> {
       getPropertyValue(CommunicationPatternProperty.class)
         .get()
         .equals(CommunicationPatternProperty.Value.TransientOneToOne) ||
+       getPropertyValue(CommunicationPatternProperty.class)
+        .get()
+        .equals(CommunicationPatternProperty.Value.TransientBroadcast) ||
       getPropertyValue(CommunicationPatternProperty.class)
         .get()
         .equals(CommunicationPatternProperty.Value.TransientRR);

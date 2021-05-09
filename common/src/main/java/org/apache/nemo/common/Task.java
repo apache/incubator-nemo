@@ -57,8 +57,7 @@ public final class Task implements Serializable {
 
   public final boolean isStreamVertex;
 
-  private final String pairTaskId;
-  private final String pairEdgeId;
+  private final List<Pair<String, String>> pairTaskEdgeIds;
 
   public enum TaskType {
     CRTask,
@@ -73,6 +72,8 @@ public final class Task implements Serializable {
   private final boolean isPartial;
   private final boolean isStateful;
   private final Set<String> o2oStages;
+  private final List<String> pairEdges;
+  private final String pairTaskId;
 
   /**
    *
@@ -90,8 +91,7 @@ public final class Task implements Serializable {
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable,
-              final String pairTaskId,
-              final String pairEdgeId,
+              final List<Pair<String, String>> pairTaskEdgeIds,
               final TaskType taskType,
               final Set<String> o2oStages) {
     this.taskId = taskId;
@@ -108,14 +108,20 @@ public final class Task implements Serializable {
       taskId, upstreamTasks.values());
 
     // find pair task
-    this.pairTaskId = pairTaskId;
-    this.pairEdgeId = pairEdgeId;
+    this.pairTaskEdgeIds = pairTaskEdgeIds;
     this.isStateful = irDag.getVertices().stream().anyMatch(vertex -> vertex.isGBK || vertex.isPushback);
     this.o2oStages = o2oStages;
     this.isPartial = taskOutgoingEdges.stream().anyMatch(edge -> {
       return edge.getDst().getIRDAG().getVertices().stream()
         .anyMatch(vertex -> vertex instanceof StateMergerVertex);
     });
+
+    this.pairEdges = pairTaskEdgeIds.stream().map(p -> p.right()).collect(Collectors.toList());
+    if (pairTaskEdgeIds.isEmpty()) {
+      this.pairTaskId = null;
+    } else {
+      this.pairTaskId = pairTaskEdgeIds.get(0).left();
+    }
 
     /*
     if (pairTaskId != null) {
@@ -153,8 +159,8 @@ public final class Task implements Serializable {
     return pairTaskId;
   }
 
-  public String getPairEdgeId() {
-    return pairEdgeId;
+  public List<String> getPairEdges() {
+    return pairEdges;
   }
 
   public TaskType getTaskType() {
@@ -262,20 +268,11 @@ public final class Task implements Serializable {
         irVertexIdToReadable.put(key, val);
       }
 
-      final boolean hasPairStageId = dis.readBoolean();
-      final String pairStageId;
-      if (hasPairStageId) {
-        pairStageId = dis.readUTF();
-      } else {
-        pairStageId = null;
-      }
+      final int pairTaskSize = dis.readInt();
+      final List<Pair<String, String>> pairtaskEdges = new ArrayList<>(pairTaskSize);
 
-      final boolean hasPairEdgeId = dis.readBoolean();
-      final String pairEdgeId;
-      if (hasPairEdgeId) {
-        pairEdgeId = dis.readUTF();
-      } else {
-        pairEdgeId = null;
+      for (int i = 0; i < pairTaskSize; i++) {
+        pairtaskEdges.add(Pair.of(dis.readUTF(), dis.readUTF()));
       }
 
       final TaskType taskType = TaskType.values()[dis.readByte()];
@@ -291,8 +288,7 @@ public final class Task implements Serializable {
         taskIncomingEdges,
         taskOutgoingEdges,
         irVertexIdToReadable,
-        pairStageId,
-        pairEdgeId,
+        pairtaskEdges,
         taskType,
         o2oEdges);
     } catch (final Exception e) {
@@ -326,18 +322,14 @@ public final class Task implements Serializable {
         SerializationUtils.serialize(entry.getValue(), dos);
       }
 
-      if (pairTaskId != null) {
-        dos.writeBoolean(true);
-        dos.writeUTF(pairTaskId);
+      if (pairTaskEdgeIds == null) {
+        dos.writeInt(0);
       } else {
-        dos.writeBoolean(false);
-      }
-
-      if (pairEdgeId != null) {
-        dos.writeBoolean(true);
-        dos.writeUTF(pairEdgeId);
-      } else {
-        dos.writeBoolean(false);
+        dos.writeInt(pairTaskEdgeIds.size());
+        for (int i = 0; i < pairTaskEdgeIds.size(); i++) {
+          dos.writeUTF(pairTaskEdgeIds.get(i).left());
+          dos.writeUTF(pairTaskEdgeIds.get(i).right());
+        }
       }
 
       dos.writeByte(taskType.ordinal());
@@ -451,6 +443,7 @@ public final class Task implements Serializable {
       dstTaskIds = Collections.singletonList(
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(), index, 0));
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
@@ -504,6 +497,7 @@ public final class Task implements Serializable {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
       || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
 

@@ -140,6 +140,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
+      case TransientBroadcast:
         map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));

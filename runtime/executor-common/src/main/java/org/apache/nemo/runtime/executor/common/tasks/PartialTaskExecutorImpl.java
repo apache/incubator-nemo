@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
@@ -136,6 +137,8 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
   private final PartialOutputEmitter pToRemoteEmitter;
   private final PartialOutputEmitter pToLocalCombiner;
 
+  private final List<StageEdge> inEdges;
+
   /**
    * 무조건 single o2o (normal) - o2o (transient) 를 input으로 받음.
    * Output: single o2o (normal) - o2o (transient)
@@ -175,6 +178,9 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
+    this.inEdges = task.getTaskIncomingEdges()
+      .stream().sorted((e1, e2) -> e1.getSrc().getId().compareTo(e2.getSrc().getId()))
+      .collect(Collectors.toList());
 
     this.externalAdditionalOutputMap = new HashMap<>();
 
@@ -850,7 +856,8 @@ public final class PartialTaskExecutorImpl implements TaskExecutor {
         } else if (task.getTaskIncomingEdges().size() == 1) {
           return Optional.of(SingleStageWatermarkTracker.decode(taskId, is));
         } else if (task.getTaskIncomingEdges().size() == 2) {
-          return Optional.of(DoubleStageWatermarkTracker.decode(taskId, is));
+          return Optional.of(DoubleStageWatermarkTracker.decode(taskId,
+            inEdges.get(0).getId(), inEdges.get(1).getId(), is));
         } else {
           throw new RuntimeException("Not supported edge > 2" + taskId);
         }

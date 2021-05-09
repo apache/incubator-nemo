@@ -714,11 +714,22 @@ public final class Executor {
     streamVertexSerializerManager.register(task);
     final long st = System.currentTimeMillis();
 
-    task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-      getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-      getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-      e.getPropertyValue(CompressionProperty.class).orElse(null),
-      e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+
+    task.getTaskIncomingEdges().forEach(e -> {
+
+      LOG.info("Registering serializer manager in {} edge {}: {}, {}",
+        task.getTaskId(),
+        e.getId(),
+        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()));
+
+      serializerManager.register(e.getId(),
+        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+        e.getPropertyValue(CompressionProperty.class).orElse(null),
+        e.getPropertyValue(DecompressionProperty.class).orElse(null));
+    });
+
     task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
       getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
       getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),

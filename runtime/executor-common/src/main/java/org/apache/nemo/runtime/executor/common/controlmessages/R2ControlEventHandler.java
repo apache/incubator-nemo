@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,9 +92,8 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         }
 
         if (evalConf.controlLogging) {
-          LOG.info("Send redirection message for {}->{} pairEdge {}",
-            control.getTaskId(), taskExecutor.getTask().getPairTaskId(),
-            taskExecutor.getTask().getPairEdgeId());
+          LOG.info("Send redirection message for {}->{} through {}",
+            control.getTaskId(), taskExecutor.getTask().getPairTaskId(), taskExecutor.getTask().getPairEdges());
         }
 
         final int cnt = TaskExecutorUtil.taskIncomingEdgeDoneAckCounter(taskExecutor.getTask());
@@ -113,7 +113,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
                 new RedirectionMessage(
                   control.getTaskId(),
                   taskExecutor.getTask().getPairTaskId(),
-                  taskExecutor.getTask().getPairEdgeId(),
+                  taskExecutor.getTask().getPairEdges(),
                   checkpoint));
             });
         });
@@ -136,7 +136,10 @@ public final class R2ControlEventHandler implements ControlEventHandler {
         final Triple<String, String, String> key = pipeIndexMapWorker.getKey(originIndex);
         final String originTaskId = message.originTaskId;
         final String pairTaskId = message.pairTaskId;
-        final String pairEdgeId = message.pairEdgeId;
+        final String pairEdgeId =
+          taskExecutor.getTask().getTaskOutgoingEdges().stream()
+            .filter(e -> message.pairEdgeIds.contains(e.getId()))
+            .findFirst().get().getId();
 
         // final int redirectIndex = pipeIndexMapWorker.getPipeIndex(key.getLeft(), pairEdgeId, pairTaskId);
 

@@ -151,14 +151,14 @@ public final class StreamingScheduler implements Scheduler {
           final Task.TaskType taskType = pairStageTaskManager.registerPairTask(stageIncomingEdges,
             stageOutgoingEdges, taskId, stageToSchedule.getIRDAG());
 
-          final Pair<String, String> pairTaskEdgeId = pairStageTaskManager.getPairTaskEdgeId(taskId);
+          final List<Pair<String, String>> pairTaskEdgeIds = pairStageTaskManager.getPairTaskEdgeId(taskId);
 
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
           final Set<String> o2oStages = new HashSet<>();
           getO2ODownstreams(stageId, o2oStages);
           getO2OUpstreams(stageId, o2oStages);
 
-          if (pairTaskEdgeId == null) {
+          if (pairTaskEdgeIds == null) {
             return new Task(
               taskId,
               stageToSchedule.getExecutionProperties(),
@@ -166,8 +166,7 @@ public final class StreamingScheduler implements Scheduler {
               stageIncomingEdges,
               stageOutgoingEdges,
               vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
-              null,
-              null,
+              Collections.emptyList(),
               taskType,
               o2oStages);
           } else {
@@ -178,8 +177,7 @@ public final class StreamingScheduler implements Scheduler {
               stageIncomingEdges,
               stageOutgoingEdges,
               vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId)),
-              pairTaskEdgeId.left(),
-              pairTaskEdgeId.right(),
+              pairTaskEdgeIds,
               taskType,
               o2oStages);
           }

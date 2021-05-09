@@ -734,10 +734,6 @@ public final class RuntimeMaster {
 
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
-  public String getPairStage(String stageId) {
-    return pairStageTaskManager.getPairStageId(stageId);
-  }
-
   public void redirectionToLambda(final int num,
                                   final List<String> stageIds,
                                   final boolean waiting) {
@@ -758,7 +754,7 @@ public final class RuntimeMaster {
             return false;
           }
 
-          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
+          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
           if (stageIds.contains(stageId)
             && !prevRedirectionTasks.contains(vmTaskId)
@@ -845,7 +841,7 @@ public final class RuntimeMaster {
             return false;
           }
 
-          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).left();
+          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
           if (stageIds.contains(stageId)
             && prevRedirectionTasks.contains(vmTaskId)
@@ -1006,7 +1002,7 @@ public final class RuntimeMaster {
       case R3AckPairTaskInitiateProtocol: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
 
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
         final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(executorId);
@@ -1039,7 +1035,7 @@ public final class RuntimeMaster {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
         LOG.info("Send task output start to {}", pairTask);
 
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
@@ -1084,7 +1080,7 @@ public final class RuntimeMaster {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
 
         final String executorId = taskScheduledMap.getTaskExecutorIdMap().get(reroutingTask);
         if (executorId.contains("Lambda")) {
@@ -1219,7 +1215,7 @@ public final class RuntimeMaster {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
         LOG.info("Send R3PairInputOutputStart for rerouting data from {} to {}", reroutingTask, pairTask);
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
@@ -1238,7 +1234,7 @@ public final class RuntimeMaster {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
         LOG.info("Send R3OptSignalFinalCombine from {} to {}", reroutingTask, pairTask);
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
@@ -1272,7 +1268,7 @@ public final class RuntimeMaster {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();
         final String reroutingTask = m.getTaskId();
         // find pair task
-        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).left();
+        final String pairTask = pairStageTaskManager.getPairTaskEdgeId(reroutingTask).get(0).left();
         LOG.info("Send GetStateSignal for rerouting data from {} to {}", reroutingTask, pairTask);
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));

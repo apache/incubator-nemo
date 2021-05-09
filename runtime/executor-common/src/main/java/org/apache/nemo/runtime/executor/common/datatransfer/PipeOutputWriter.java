@@ -206,10 +206,11 @@ public final class PipeOutputWriter implements OutputWriter {
         RuntimeIdManager.generateTaskId(stageEdge.getDst().getId(),srcTaskIndex, 0));
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.TransientBroadcast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientShuffle)
       || comValue.get().equals(CommunicationPatternProperty.Value.TransientRR)
-      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin) ) {
+      || comValue.get().equals(CommunicationPatternProperty.Value.RoundRobin)) {
 
       final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
       dstTaskIds =
@@ -219,7 +220,7 @@ public final class PipeOutputWriter implements OutputWriter {
           .collect(Collectors.toList());
       LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, dstIndices);
     } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported " + comValue));
     }
     return dstTaskIds;
   }
@@ -232,7 +233,8 @@ public final class PipeOutputWriter implements OutputWriter {
     if (comm.equals(CommunicationPatternProperty.Value.OneToOne)
       || comm.equals(CommunicationPatternProperty.Value.TransientOneToOne)) {
       return Collections.singletonList(dstTaskIds.get(0));
-    } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
+    } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)
+      || comm.equals(CommunicationPatternProperty.Value.TransientBroadcast)) {
       return dstTaskIds;
     } else if (comm.equals(CommunicationPatternProperty.Value.RoundRobin) ||
       comm.equals(CommunicationPatternProperty.Value.TransientRR) ) {

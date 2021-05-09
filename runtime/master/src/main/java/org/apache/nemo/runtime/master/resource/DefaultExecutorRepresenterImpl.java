@@ -190,7 +190,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       .limit((int)(percent * statelessTasks.size())).collect(Collectors.toSet());
 
     tasks.forEach(tid -> {
-      final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).left();
+      final String pairTid = pairStageTaskManager.getPairTaskEdgeId(tid).get(0).left();
       final ExecutorRepresenter vm = executorRegistry.getExecutorRepresentor(
         taskScheduledMapMaster.getTaskExecutorIdMap().get(pairTid));
       activateLambdaTask(tid, pairTid, vm);

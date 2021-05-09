@@ -50,6 +50,7 @@ import java.io.DataInputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.getDstTaskIds;
 
@@ -146,6 +147,8 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
   private DataRouter watermarkRouter;
   private final DataHandler dataHandler;
 
+  private final List<StageEdge> inEdges;
+
   /**
    * Constructor.
    *
@@ -189,6 +192,10 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
     this.taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
+
+    this.inEdges = task.getTaskIncomingEdges()
+      .stream().sorted((e1, e2) -> e1.getSrc().getId().compareTo(e2.getSrc().getId()))
+      .collect(Collectors.toList());
 
     this.externalAdditionalOutputMap = new HashMap<>();
 
@@ -719,7 +726,8 @@ public final class R1R3CRTaskExecutorImpl implements CRTaskExecutor {
         } else if (task.getTaskIncomingEdges().size() == 1) {
           return Optional.of(SingleStageWatermarkTracker.decode(taskId, is));
         } else if (task.getTaskIncomingEdges().size() == 2) {
-          return Optional.of(DoubleStageWatermarkTracker.decode(taskId, is));
+          return Optional.of(DoubleStageWatermarkTracker.decode(taskId,
+            inEdges.get(0).getId(), inEdges.get(1).getId(), is));
         } else {
           throw new RuntimeException("Not supported edge > 2" + taskId);
         }

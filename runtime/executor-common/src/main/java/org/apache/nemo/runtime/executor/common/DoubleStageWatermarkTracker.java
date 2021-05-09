@@ -118,8 +118,6 @@ public final class DoubleStageWatermarkTracker implements WatermarkTracker {
   public void encode(final String taskId, DataOutputStream dos) {
     try {
       dos.writeLong(prevWatermark);
-      dos.writeUTF(firstEdgeId);
-      dos.writeUTF(secondEdgeId);
       ((SingleStageWatermarkTracker)firstEdgeWTracker).encode(taskId, dos);
       ((SingleStageWatermarkTracker)secondEdgeWTracker).encode(taskId, dos);
       dos.writeLong(firstEdgePrevWatermark);
@@ -132,11 +130,11 @@ public final class DoubleStageWatermarkTracker implements WatermarkTracker {
   }
 
   public static DoubleStageWatermarkTracker decode(final String taskId,
+                                                   final String firstEdgeId,
+                                                   final String secondEdgeId,
                                                    final DataInputStream is) {
     try {
       final long prevWatermark = is.readLong();
-      final String firstEdgeId = is.readUTF();
-      final String secondEdgeId = is.readUTF();
       final SingleStageWatermarkTracker firstEdgeWTracker = SingleStageWatermarkTracker.decode(taskId, is);
       final SingleStageWatermarkTracker secondEdgeWTracker = SingleStageWatermarkTracker.decode(taskId, is);
       final long firstEdgePrevWatermark = is.readLong();

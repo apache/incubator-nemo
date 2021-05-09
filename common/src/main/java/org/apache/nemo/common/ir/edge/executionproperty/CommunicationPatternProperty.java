@@ -50,6 +50,7 @@ public final class CommunicationPatternProperty
     OneToOne,
     TransientOneToOne,
     BroadCast,
+    TransientBroadcast,
     RoundRobin,
     TransientRR,
     Shuffle,

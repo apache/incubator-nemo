@@ -245,7 +245,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     builder.addVertex(vertexToInsert);
 
     edges.forEach(edgeToStreamize -> {
-      edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+      edgeToStreamize.getDst().getPropertyValue(ParallelismProperty.class)
         .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
     });
 
@@ -374,6 +374,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             newEdge.setPropertyPermanently(
               CommunicationPatternProperty
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.BroadCast)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientBroadcast));
           }
 
           newEdge.setProperty(
@@ -418,6 +423,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             newEdge.setPropertyPermanently(
               CommunicationPatternProperty
                 .of(CommunicationPatternProperty.Value.TransientShuffle));
+          } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.BroadCast)) {
+            newEdge.setPropertyPermanently(
+              CommunicationPatternProperty
+                .of(CommunicationPatternProperty.Value.TransientBroadcast));
           }
 
           newEdge.setProperty(
@@ -571,6 +581,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           toPartialTransientEdge.setPropertyPermanently(
             CommunicationPatternProperty
               .of(CommunicationPatternProperty.Value.TransientShuffle));
+        } else if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.BroadCast)) {
+          toPartialTransientEdge.setPropertyPermanently(
+            CommunicationPatternProperty
+              .of(CommunicationPatternProperty.Value.TransientBroadcast));
         }
 
         toPartialTransientEdge.setProperty(
@@ -838,10 +853,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     builder.addVertex(vertexToInsert);
     builder.addVertex(partialCombine);
 
-    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToAdd.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
 
-    edgeToAdd.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToAdd.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> partialCombine.setProperty(ParallelismProperty.of(p)));
 
     // Build the new DAG to reflect the new topology.
@@ -1033,7 +1048,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Insert the vertex.
     final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(streamVertex, edgeToStreamize.getSrc());
     builder.addVertex(vertexToInsert);
-    edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+    edgeToStreamize.getDst().getPropertyValue(ParallelismProperty.class)
       .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
 
     // Build the new DAG to reflect the new topology.

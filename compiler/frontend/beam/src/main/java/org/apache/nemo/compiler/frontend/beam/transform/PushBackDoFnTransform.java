@@ -132,12 +132,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void restore(final String id) {
 
-    if (stateStore.containsState(getContext().getTaskId() + "-pushback")) {
+    if (stateStore.containsState(id + "-pushback")) {
+      final long st = System.currentTimeMillis();
 
+      LOG.info("Restoring pushback in wrapDoFn {}", taskId);
       try (final InputStream is = stateStore.getStateStream(getContext().getTaskId() + "-pushback")) {
-        LOG.info("Restoring pushback in restore {}", taskId);
-        final long st = System.currentTimeMillis();
-
         final CountingInputStream countingInputStream = new CountingInputStream(is);
         final DataInputStream dis = new DataInputStream(countingInputStream);
         curPushedBackWatermark = dis.readLong();
@@ -154,12 +153,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         final InMemorySideInputReader newReader = InMemorySideInputReader.decode(getSideInputReader(), sideCoder, dis);
         getSideInputReader().restoreSideInput(newReader);
 
+
         final long et = System.currentTimeMillis();
-        LOG.info("Decoding decoding pushback in restore {}: {} ms, byte {}", taskId, et - st, countingInputStream.getCount());
+        LOG.info("Decoding decoding pushback {}: {} ms, byte {}", taskId, et - st, countingInputStream.getCount());
+
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+    } else {
+      curPushedBacks = new LinkedList<>();
     }
   }
 

@@ -51,13 +51,22 @@ public final class R1ReshapingPass extends ReshapingPass {
         .count();
 
       if (edges.size() > 1 && o2ocount == 0) {
-        dag.insert(new StreamVertex(), edges);
-        //for (final IREdge edge : edges) {
-        //  dag.insert(new StreamVertex(), edge);
-        // }
+          dag.insert(new StreamVertex(), edges);
+//        } else {
+//          for (final IREdge edge : edges) {
+//            dag.insert(new StreamVertex(), edge);
+//          }
+//        }
+      } else if (edges.size() > 1 && o2ocount > 0) {
+        // Q7: broacast and o2o
+          for (final IREdge edge : edges) {
+            dag.insert(new StreamVertex(), edge);
+          }
       } else {
         edges.forEach(edge -> {
           if (CommunicationPatternProperty.Value.Shuffle
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())
+            || CommunicationPatternProperty.Value.BroadCast
             .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             dag.insert(new StreamVertex(), edge);
           }

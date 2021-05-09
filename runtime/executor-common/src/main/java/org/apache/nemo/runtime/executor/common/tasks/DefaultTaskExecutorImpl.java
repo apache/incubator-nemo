@@ -46,6 +46,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Executes a task.
@@ -122,7 +123,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final boolean singleOneToOneInput;
 
   private final IntermediateDataIOFactory intermediateDataIOFactory;
-
+  final List<StageEdge> inEdges;
   /**
    * Constructor.
    *
@@ -166,6 +167,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.prepareService = prepareService;
     this.inputPipeRegister = inputPipeRegister;
     this.taskId = task.getTaskId();
+
+    this.inEdges = task.getTaskIncomingEdges()
+        .stream().sorted((e1, e2) -> e1.getSrc().getId().compareTo(e2.getSrc().getId()))
+      .collect(Collectors.toList());
 
     this.statefulTransforms = new ArrayList<>();
 
@@ -216,8 +221,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       return new SingleStageWatermarkTracker(getWatermarkParllelism(parallelism, comm));
 
     } else if (task.getTaskIncomingEdges().size() == 2) {
-      final StageEdge firstEdge = task.getTaskIncomingEdges().get(0);
-      final StageEdge secondEdge = task.getTaskIncomingEdges().get(1);
+      final StageEdge firstEdge = inEdges.get(0);
+      final StageEdge secondEdge = inEdges.get(1);
       final int firstParallelism = ((StageEdge) firstEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
         .get();
       final int secondParallelism = ((StageEdge) secondEdge).getSrcIRVertex().getPropertyValue(ParallelismProperty.class)
@@ -649,23 +654,21 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public void handleData(final String edgeId,
                          final TaskHandlingEvent taskHandlingEvent) {
     // input
-    taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
-    final long serializedStart = System.nanoTime();
-    final Object data = taskHandlingEvent.getData();
-    final long serializedEnd = System.nanoTime();
-
-    taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
-
-    // LOG.info("Handling data for task {}, index {}, watermark {}",
-    //  taskId, taskHandlingEvent.getRemoteInputPipeIndex(), data instanceof WatermarkWithIndex);
-
     try {
+      taskMetrics.incrementInBytes(taskHandlingEvent.readableBytes());
+      final long serializedStart = System.nanoTime();
+      final Object data = taskHandlingEvent.getData();
+      final long serializedEnd = System.nanoTime();
+
+      taskMetrics.incrementDeserializedTime(serializedEnd - serializedStart);
+
+      // LOG.info("Handling data for task {}, index {}, watermark {}",
+      //  taskId, taskHandlingEvent.getRemoteInputPipeIndex(), data instanceof WatermarkWithIndex);
       handleInternalData(edgeToDataFetcherMap.get(edgeId), data);
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException("Exception for task " + taskId + " in processing event edge " +
-        edgeId + ", handling event " + taskHandlingEvent.getClass() + ", " +
-        " event " + data.getClass() + ", " + "data " + taskHandlingEvent.getData());
+        edgeId + ", handling event " + taskHandlingEvent.getClass());
     }
   }
 
@@ -736,7 +739,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         } else if (task.getTaskIncomingEdges().size() == 1) {
           return Optional.of(SingleStageWatermarkTracker.decode(taskId, is));
         } else if (task.getTaskIncomingEdges().size() == 2) {
-          return Optional.of(DoubleStageWatermarkTracker.decode(taskId, is));
+          return Optional.of(DoubleStageWatermarkTracker.decode(taskId, inEdges.get(0).getId(), inEdges.get(1).getId(), is));
         } else {
           throw new RuntimeException("Not supported edge > 2" + taskId);
         }
@@ -758,7 +761,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
       } else if (task.getTaskIncomingEdges().size() == 1) {
         taskWatermarkManager = SingleStageWatermarkTracker.decode(taskId, is);
       } else if (task.getTaskIncomingEdges().size() == 2) {
-        taskWatermarkManager = DoubleStageWatermarkTracker.decode(taskId, is);
+        taskWatermarkManager = DoubleStageWatermarkTracker.decode(taskId, inEdges.get(0).getId(), inEdges.get(1).getId(), is);
       } else {
         throw new RuntimeException("Not supported edge > 2" + taskId);
       }
