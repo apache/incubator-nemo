@@ -86,7 +86,7 @@ public final class PipeIndexMaster {
       final int index = atomicInteger.getAndIncrement();
 
       if (evalConf.controlLogging) {
-        LOG.info("Registering pipe {}/{}/{} to {}", srcTaskId, edgeId, dstTaskId, index);
+        // LOG.info("Registering pipe {}/{}/{} to {}", srcTaskId, edgeId, dstTaskId, index);
       }
       pipeKeyIndexMap.putIfAbsent(Triple.of(srcTaskId, edgeId, dstTaskId), index);
       pipeIndexKeyMap.putIfAbsent(index, Triple.of(srcTaskId, edgeId, dstTaskId));
@@ -125,7 +125,7 @@ public final class PipeIndexMaster {
           final Triple<String, String, String> key = Triple.of(srcTaskId, edgeId, dstTaskId);
 
           if (evalConf.controlLogging) {
-            LOG.info("Task index of stage: {}: {}", key, pipeKeyIndexMap.get(key));
+            // LOG.info("Task index of stage: {}: {}", key, pipeKeyIndexMap.get(key));
           }
 
           if (!pipeKeyIndexMap.containsKey(key)) {
@@ -154,7 +154,7 @@ public final class PipeIndexMaster {
           final int index = (int)requestPipeKeyMessage.getPipeIndex();
 
           if (evalConf.controlLogging) {
-            LOG.info("Task key of stage: {}", index, pipeIndexKeyMap.get(index));
+            // LOG.info("Task key of stage: {}", index, pipeIndexKeyMap.get(index));
           }
 
           if (!pipeIndexKeyMap.containsKey(index)) {
