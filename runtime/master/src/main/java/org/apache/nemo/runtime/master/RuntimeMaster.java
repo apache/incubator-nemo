@@ -751,39 +751,72 @@ public final class RuntimeMaster {
 
     final List<Future> futures = new LinkedList<>();
 
-    executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
-      // find list of tasks that the lambda executor has
-      final Set<String> tasksToBeRedirected = lambdaExecutor.getScheduledTasks().stream()
-        .filter(lambdaTask -> {
-          if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
-            LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
-              lambdaExecutor.getExecutorId());
-            return false;
-          }
+    while (!stageTargetNum.equals(stageCnt)) {
+      executorRegistry.getLambdaExecutors().stream().forEach(lambdaExecutor -> {
+        // find list of tasks that the lambda executor has
+        // schedule one by one for each executor
+        lambdaExecutor.getScheduledTasks().stream()
+          .filter(lambdaTask -> {
+            if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
+              LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
+                lambdaExecutor.getExecutorId());
+              return false;
+            }
 
-          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
-          final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+            final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
+            final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
 
-          LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
-          if (stageIds.contains(stageId)
-            && !prevRedirectionTasks.contains(vmTaskId)
-            && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
-            prevRedirectionTasks.add(vmTaskId);
-            stageCnt.put(stageId, stageCnt.get(stageId) + 1);
-            return true;
-          } else {
-            return false;
-          }
-        })
-        .map(Task::getTaskId)
-        .collect(Collectors.toSet());
+            LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
+            if (stageIds.contains(stageId)
+              && !prevRedirectionTasks.contains(vmTaskId)
+              && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
+              prevRedirectionTasks.add(vmTaskId);
+              stageCnt.put(stageId, stageCnt.get(stageId) + 1);
+              return true;
+            } else {
+              return false;
+            }
+          })
+          .map(Task::getTaskId)
+          .findFirst().ifPresent(taskToMove -> {
+          LOG.info("Redirection to lambda tasks {} / executor {}", taskToMove, lambdaExecutor.getExecutorId());
+          futures.add(lambdaContainerManager.redirectionToLambda(Collections.singleton(taskToMove), lambdaExecutor));
+          activatedLambda.add(lambdaExecutor);
+        });
+      });
+    }
 
-      if (!tasksToBeRedirected.isEmpty()) {
-        LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
-        futures.add(lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor));
-        activatedLambda.add(lambdaExecutor);
-      }
-    });
+//      final Set<String> tasksToBeRedirected = lambdaExecutor.getScheduledTasks().stream()
+//        .filter(lambdaTask -> {
+//          if (pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()) == null) {
+//            LOG.info("Task {} running in lambda {} is not transient", lambdaTask.getTaskId(),
+//              lambdaExecutor.getExecutorId());
+//            return false;
+//          }
+//
+//          final String vmTaskId = pairStageTaskManager.getPairTaskEdgeId(lambdaTask.getTaskId()).get(0).left();
+//          final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
+//
+//          LOG.info("StageId: {}, StageCnt: {}, TargetNum: {}", stageId, stageCnt.get(stageId), stageTargetNum.get(stageId));
+//          if (stageIds.contains(stageId)
+//            && !prevRedirectionTasks.contains(vmTaskId)
+//            && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
+//            prevRedirectionTasks.add(vmTaskId);
+//            stageCnt.put(stageId, stageCnt.get(stageId) + 1);
+//            return true;
+//          } else {
+//            return false;
+//          }
+//        })
+//        .map(Task::getTaskId)
+//        .collect(Collectors.toSet());
+//
+//      if (!tasksToBeRedirected.isEmpty()) {
+//        LOG.info("Redirection to lambda tasks {} / executor {}", tasksToBeRedirected, lambdaExecutor.getExecutorId());
+//        futures.add(lambdaContainerManager.redirectionToLambda(tasksToBeRedirected, lambdaExecutor));
+//        activatedLambda.add(lambdaExecutor);
+//      }
+//    });
 
     if (waiting) {
 

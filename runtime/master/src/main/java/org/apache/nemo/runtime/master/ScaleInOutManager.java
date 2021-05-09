@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.master;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -53,26 +54,12 @@ public final class ScaleInOutManager {
     executors.stream().forEach(executor -> {
       // find list of tasks that the lambda executor has
       // executor 마다 정해진 number의 task들을 옮김.
-      final Map<String, Integer> stageIdCounterMap = new HashMap<>();
+      final Pair<Map<String, Integer>, List<Task>> stageIdCntMapAndTasksToBeMoved =
+        MasterUtils.getMaxMigrationCntPerStage(executor, ratio, stages);
+      final Map<String, Integer> stageIdCounterMap = stageIdCntMapAndTasksToBeMoved.left();
+      final List<Task> tasksToBeMoved = stageIdCntMapAndTasksToBeMoved.right();
+
       final Map<String, Integer> stageIdMoveCounterMap = new HashMap<>();
-      final List<Task> tasksToBeMoved = new LinkedList<>();
-
-      executor.getRunningTasks().stream()
-        .filter(task -> stages.contains(task.getStageId()))
-        .map(task -> {
-          checkTaskMoveValidation(task, executor);
-          tasksToBeMoved.add(task);
-          return task.getStageId();
-        })
-        .forEach(stageId -> {
-          stageIdCounterMap.putIfAbsent(stageId, 0);
-          stageIdCounterMap.put(stageId, stageIdCounterMap.get(stageId) + 1);
-        });
-
-      for (final String key : stageIdCounterMap.keySet()) {
-        stageIdCounterMap.put(key, Math.min(stageIdCounterMap.get(key),
-          (int) (stageIdCounterMap.get(key) * ratio)));
-      }
 
       LOG.info("Number of tasks to move in {}: stages {}, {}", executor.getExecutorId(),
         stages, stageIdCounterMap);
