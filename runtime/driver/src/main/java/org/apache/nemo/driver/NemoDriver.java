@@ -404,9 +404,8 @@ public final class NemoDriver {
                 for (int i = 0; i < nums.size(); i++) {
                   final int num = nums.get(i);
                   final String stage = stages.get(i);
-                  final double ratio = 1.0 * num / evalConf.sourceParallelism;
 
-                  futures.addAll(scaleInOutManager.sendMigration(ratio,
+                  futures.addAll(scaleInOutManager.sendMigration(1,
                     executorRegistry.getLambdaExecutors(),
                     stages, false));
                 }
