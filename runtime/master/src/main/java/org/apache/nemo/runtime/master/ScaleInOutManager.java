@@ -45,6 +45,8 @@ public final class ScaleInOutManager {
                                                          final Collection<String> stages,
                                                          final boolean lambdaAffinity) {
 
+    taskScheduledMapMaster.isAllTasksScheduledAtStartTime();
+
     // Set filtered out executors to task dispatcher
     taskDispatcher.setFilteredOutExecutors(executors.stream()
       .map(e -> e.getExecutorId()).collect(Collectors.toSet()));

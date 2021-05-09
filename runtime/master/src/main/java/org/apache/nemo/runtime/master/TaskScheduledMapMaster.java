@@ -202,6 +202,11 @@ public final class TaskScheduledMapMaster {
     return !taskToBeStopped.contains(taskId) && taskExecutorIdMap.containsKey(taskId);
   }
 
+  public boolean isAllTasksScheduledAtStartTime() {
+    return taskIdTaskMap.keySet().stream()
+      .allMatch(t -> taskExecutorIdMap.containsKey(t));
+  }
+
   public Task removeTask(final String taskId) {
     taskExecutorIdMap.remove(taskId);
     final Task t = taskIdTaskMap.get(taskId);

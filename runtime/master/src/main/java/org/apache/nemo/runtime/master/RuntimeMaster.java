@@ -737,6 +737,7 @@ public final class RuntimeMaster {
   public void redirectionToLambda(final List<Integer> nums,
                                   final List<String> stageIds,
                                   final boolean waiting) {
+    taskScheduledMap.isAllTasksScheduledAtStartTime();
 
     final List<Task> vmTasksToBeRedirected = new LinkedList<>();
 
