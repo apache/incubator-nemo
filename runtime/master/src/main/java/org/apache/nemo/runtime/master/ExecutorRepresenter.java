@@ -105,6 +105,7 @@ public interface ExecutorRepresenter {
 
 
   // For activation/ deactivation
+  boolean isActivated(final String taskId);
   void activateLambdaTask(final String taskId, final String pairVmTaskId, ExecutorRepresenter vmExecutor);
   void activationDoneSignal(final String taskId);
   void deactivationDoneSignal(final String taskId);

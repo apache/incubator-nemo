@@ -734,11 +734,16 @@ public final class RuntimeMaster {
 
   private final Set<String> prevRedirectionTasks = new HashSet<>();
 
-  public void redirectionToLambda(final int num,
+  public void redirectionToLambda(final List<Integer> nums,
                                   final List<String> stageIds,
                                   final boolean waiting) {
     final Map<String, Integer> stageCnt = new HashMap<>();
     stageIds.forEach(sid -> stageCnt.put(sid, 0));
+
+    final Map<String, Integer> stageTargetNum = new HashMap<>();
+    for (int i = 0; i < nums.size(); i++) {
+      stageTargetNum.put(stageIds.get(i), nums.get(i));
+    }
 
     final List<ExecutorRepresenter> activatedLambda = new LinkedList<>();
 
@@ -758,7 +763,7 @@ public final class RuntimeMaster {
           final String stageId = RuntimeIdManager.getStageIdFromTaskId(vmTaskId);
           if (stageIds.contains(stageId)
             && !prevRedirectionTasks.contains(vmTaskId)
-            && stageCnt.get(stageId) < num) {
+            && stageCnt.get(stageId) < stageTargetNum.get(stageId)) {
             prevRedirectionTasks.add(vmTaskId);
             stageCnt.put(stageId, stageCnt.get(stageId) + 1);
             return true;
@@ -1220,6 +1225,7 @@ public final class RuntimeMaster {
         final ExecutorRepresenter executorRepresenter = executorRegistry
           .getExecutorRepresentor(taskScheduledMap.getTaskExecutorIdMap().get(pairTask));
 
+
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
@@ -1228,6 +1234,10 @@ public final class RuntimeMaster {
             .setTaskId(pairTask)
             .build())
           .build());
+
+        if (executorRepresenter.getContainerType().equals(LAMBDA)) {
+          executorRepresenter.activationDoneSignal(pairTask);
+        }
         break;
       }
       case R3OptSignalFinalCombine: {
@@ -1248,10 +1258,6 @@ public final class RuntimeMaster {
           if (!evalConf.optimizationPolicy.contains("R2")) {
             taskScheduledMap.stopDeactivatedTask(reroutingTask);
           }
-        } else {
-          final String eid = taskScheduledMap.getTaskExecutorIdMap().get(pairTask);
-          final ExecutorRepresenter lambdaExecutor = executorRegistry.getExecutorRepresentor(eid);
-          lambdaExecutor.activationDoneSignal(pairTask);
         }
 
         executorRepresenter.sendControlMessage(ControlMessage.Message.newBuilder()

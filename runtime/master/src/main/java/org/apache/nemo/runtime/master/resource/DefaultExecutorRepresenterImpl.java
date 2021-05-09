@@ -277,6 +277,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   }
 
   @Override
+  public synchronized boolean isActivated(final String taskId) {
+    return activatedTasks.contains(taskId);
+  }
+
+  @Override
   public synchronized int getNumOfActivatedAndPendingTasks() {
     return activatedTasks.size() + activatedPendingTasks.size();
   }

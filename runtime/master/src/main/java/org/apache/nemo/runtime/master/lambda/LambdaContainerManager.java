@@ -218,9 +218,12 @@ public final class LambdaContainerManager {
         final ExecutorRepresenter vmExecutor = executorRegistry.getExecutorRepresentor(vmExecutorId);
         lambdaExecutor.activateLambdaTask(lambdaTaskId, vmTaskId, vmExecutor);
 
-        while (lambdaExecutor.getRunningTasks().stream()
-          .map(t -> t.getTaskId())
-          .noneMatch(tid -> tid.equals(lambdaTaskId))) {
+//        lambdaExecutor.getRunningTasks().stream()
+//          .map(t -> t.getTaskId())
+//          .noneMatch(tid -> tid.equals(lambdaTaskId))
+//          &&
+
+        while (!lambdaExecutor.isActivated(lambdaTaskId)) {
           try {
             Thread.sleep(50);
           } catch (InterruptedException e) {
