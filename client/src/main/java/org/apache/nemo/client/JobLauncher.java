@@ -172,9 +172,9 @@ public final class JobLauncher {
         try {
           LOG.info("kill all....");
           Process p = Runtime.getRuntime().exec("echo destroy-lambda >> scaling.txt");
-          p.wait();
-          Thread.sleep(5000);
-          Runtime.getRuntime().exec("touch signal_kill.txt").wait();
+          Thread.sleep(1000);
+          Runtime.getRuntime().exec("touch signal_kill.txt");
+          Thread.sleep(1000);
         } catch (Exception e) {
           e.printStackTrace();
           throw new RuntimeException(e);
