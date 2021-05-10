@@ -112,13 +112,13 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
       // O2O locality-aware
         final OptionalInt minOccupancy =
         candidates.stream()
-        .map(executor -> executor.getNumOfRunningTasks())
+        .map(executor -> executor.getScheduledTasks().size())
         .mapToInt(i -> i).min();
 
    //   LOG.info("O2o-aware scheduling task {} to {}", task.getTaskId(), candidates);
 
       return candidates.stream()
-        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
+        .filter(executor -> executor.getScheduledTasks().size() == minOccupancy.getAsInt())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
     } else {
@@ -135,11 +135,11 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
         // There are executors that have no conflicting stages (o2o stages)
         // Select min occupancy
         final OptionalLong minOccupancy = nonConflictExecutors.stream()
-          .map(executor -> executor.getNumOfRunningTasks())
+          .map(executor -> executor.getScheduledTasks().size())
           .mapToLong(i -> i).min();
 
         return nonConflictExecutors.stream()
-          .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsLong())
+          .filter(executor -> executor.getScheduledTasks().size() == minOccupancy.getAsLong())
           .findFirst()
           .orElseThrow(() -> new RuntimeException("No such executor"));
 
