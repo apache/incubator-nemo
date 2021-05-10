@@ -403,6 +403,28 @@ public final class RuntimeMaster {
 
   private TreeNode computeTypeNode;
 
+  public void requestVMContainer(final int num,
+                               final int capacity,
+                               final int slot,
+                               final int memory) {
+    LOG.info("Requesting VM container {}", num);
+    final Future<?> containerRequestEventResult = requestContainerThread.submit(() -> {
+
+      resourceRequestCounter.resourceRequestCount.getAndAdd(num);
+      containerManager.requestContainer(num,
+        new ResourceSpecification(LAMBDA, capacity, slot, memory), "Evaluator");
+      metricCountDownLatch = new CountDownLatch(resourceRequestCounter.resourceRequestCount.get());
+    });
+
+    try {
+      containerRequestEventResult.get();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      LOG.error("Exception while requesting for a container: ", e);
+      throw new ContainerException(e);
+    }
+  }
+
   /**
    * Requests a container with resource specification.
    *
@@ -445,13 +467,14 @@ public final class RuntimeMaster {
 
         // lambda later
         if (createWithLambda && map.containsKey(LAMBDA)) {
-          LOG.info("Waiting for ActiveContext to generate Lambda container");
-          while (executorRegistry.getRunningExecutors().size() < executorNum) {
-            Thread.sleep(100);
-          }
-          LOG.info("Generate Lambda container after 20 seconds");
-          Thread.sleep(20000);
-          createTypeLambda(map.get(LAMBDA), num);
+          throw new RuntimeException("Deprecated");
+//          LOG.info("Waiting for ActiveContext to generate Lambda container");
+//          while (executorRegistry.getRunningExecutors().size() < executorNum) {
+//            Thread.sleep(100);
+//          }
+//          LOG.info("Generate Lambda container after 20 seconds");
+//          Thread.sleep(20000);
+//          createTypeLambda(map.get(LAMBDA), num);
         }
 
         metricCountDownLatch = new CountDownLatch(resourceRequestCounter.resourceRequestCount.get());

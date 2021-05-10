@@ -24,6 +24,7 @@ import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
+import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

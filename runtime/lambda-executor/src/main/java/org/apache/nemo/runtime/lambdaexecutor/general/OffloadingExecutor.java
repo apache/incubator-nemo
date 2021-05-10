@@ -63,7 +63,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private PipeManagerWorker pipeManagerWorker;
   private OutputCollectorGenerator outputCollectorGenerator;
 
-
   // updated whenever task is submitted
   private final SerializerManager serializerManager;
   private final Map<Triple<String, String, String>, Integer> indexMap;
@@ -87,7 +86,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final long latencyLimit;
   private final String optimizationPolicy;
   private final boolean ec2;
-
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
@@ -286,6 +284,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     }
 
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+
     jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(true));
     jcb.bindNamedParameter(MessageParameters.SenderId.class, executorId);
 
@@ -330,63 +329,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     } catch (InjectionException e) {
       e.printStackTrace();
     }
-
-    /*
-    this.executorMetrics = new ExecutorMetrics();
-    this.throttleRate = context.throttleRate;
-    this.prepareService = Executors.newCachedThreadPool();
-
-    LOG.info("Netty state store client before created for connectiong {} / {} ...",
-      parentExecutorAddress, stateStorePort);
-
-    // final LambdaRuntimeContext runtimeContext = (LambdaRuntimeContext) context;
-    this.stateStore = new NettyVMStateStoreClient(parentExecutorAddress, stateStorePort);
-
-    LOG.info("Netty state store client created...");
-
-    pipeManagerWorker =
-      new OffloadingPipeManagerWorkerImpl(executorId, indexMap, indexTaskMap);
-
-    LOG.info("Pipe manager worker created...");
-
-    this.intermediateDataIOFactory = new OffloadingIntermediateDataIOFactory(
-      pipeManagerWorker, serializerManager);
-
-    LOG.info("Intermediate data Io created...");
-
-    this.outputCollectorGenerator =
-      new OffloadingOutputCollectorGeneratorImpl(intermediateDataIOFactory, executorId + "-offloading");
-
-
-    final OffloadingTransportChannelInitializer initializer =
-      new OffloadingTransportChannelInitializer(pipeManagerWorker,
-        ((LambdaRuntimeContext) c).handler);
-
-    LOG.info("OffloadingTransportChannelInitializer...");
-
-    this.clientTransport = new VMScalingClientTransport(initializer);
-
-    this.parentExecutorChannel = clientTransport
-      .connectTo(parentExecutorAddress, parentExecutorDataPort).channel();
-
-    LOG.info("Data channel: {}", parentExecutorAddress);
-
-    final OffloadingTaskControlEventHandlerImpl taskControlEventHandler =
-      new OffloadingTaskControlEventHandlerImpl(executorId, pipeManagerWorker, taskExecutorThreadMap,
-        taskExecutorMap, parentExecutorChannel, context.getControlChannel());
-
-    executorThreads = new ArrayList<>();
-    for (int i = 0; i < executorThreadNum; i++) {
-      executorThreads.add(
-        new ExecutorThread(1,
-          "lambda-" + i,
-          taskControlEventHandler,
-          throttleRate,
-          executorMetrics,
-          context.testing));
-      executorThreads.get(i).start();
-    }
-    */
 
     LOG.info("Executor thread created: {}", executorId);
   }

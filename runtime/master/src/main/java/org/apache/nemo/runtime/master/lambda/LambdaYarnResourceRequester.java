@@ -77,10 +77,10 @@ public final class LambdaYarnResourceRequester implements LambdaContainerRequest
 
   @Override
   public LambdaActivator createRequest(String controlAddr,
-                            int controlPort,
-                            final String containerType,
-                            final int capacity,
-                            final int slot,
+                                       int controlPort,
+                                       final String containerType,
+                                       final int capacity,
+                                       final int slot,
                                        final int memory) {
     final int requestId = atomicInteger.getAndIncrement();
     final int myPort = port + requestId;

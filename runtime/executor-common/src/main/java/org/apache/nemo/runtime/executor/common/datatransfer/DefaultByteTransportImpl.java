@@ -16,18 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import org.apache.log4j.Level;
-import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.NetworkUtils;
 import org.apache.nemo.offloading.common.Pair;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ByteTransportChannelInitializer;
 import org.apache.nemo.runtime.executor.common.ExecutorChannelMap;
-import org.apache.nemo.runtime.executor.common.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -49,8 +45,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -108,8 +102,8 @@ public final class DefaultByteTransportImpl implements ByteTransport {
     @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
     @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
     @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
-    org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
-    org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
+    // org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.internals.Fetcher.class).setLevel(Level.WARN);
+   //  org.apache.log4j.Logger.getLogger(org.apache.kafka.clients.consumer.ConsumerConfig.class).setLevel(Level.WARN);
 
     this.nameResolver = nameResolver;
     this.localExecutorId = localExecutorId;

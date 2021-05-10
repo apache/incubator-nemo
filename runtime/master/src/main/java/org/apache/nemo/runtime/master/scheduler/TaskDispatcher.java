@@ -19,13 +19,11 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskState;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.mutable.MutableObject;
+import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -41,8 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
-
-import static org.apache.nemo.runtime.message.MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID;
 
 /**
  * Dispatches tasks to executors in discrete batches (dispatch iterations).

@@ -64,7 +64,6 @@ public final class VMWorkerExecutor {
         BufferedReader stdError = new BufferedReader(new
           InputStreamReader(p.getErrorStream()));
 
-
         while (!finished) {
           while (in.ready() && (line = in.readLine()) != null) {
             LOG.info("[VMWworker " + port + "]: " + line);

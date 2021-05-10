@@ -29,7 +29,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.NettyVMStateStore;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.*;
-import org.apache.nemo.runtime.executor.bytetransfer.DefaultByteTransportImpl;
+import org.apache.nemo.runtime.executor.common.datatransfer.DefaultByteTransportImpl;
 import org.apache.nemo.runtime.executor.common.controlmessages.DefaultControlEventHandlerImpl;
 import org.apache.nemo.runtime.executor.common.monitoring.CpuBottleneckDetectorImpl;
 import org.apache.nemo.runtime.executor.offloading.*;
@@ -50,6 +50,7 @@ import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerManager;
 import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
+import org.apache.nemo.runtime.master.vmscaling.VMScalingUtils;
 import org.apache.nemo.runtime.message.MessageParameters;
 import org.apache.nemo.runtime.message.NemoNameServer;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -146,6 +147,7 @@ public final class NemoDriver {
                      final ScaleInOutManager scaleInOutManager,
                      final Backpressure backpressure,
                      final LambdaContainerManager lambdaContainerManager,
+                     final VMScalingUtils vmScalingUtils,
                      final JobScaler jobScaler) {
     IdManager.setInDriver();
     this.nettyVMStateStore = nettyVMStateStore;
@@ -205,6 +207,23 @@ public final class NemoDriver {
               final int memory = new Integer(args[4]);
               threadPool.execute(() -> {
                 runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
+              });
+            } else if (decision.equals("add-vm-executor")) {
+              // scaling executor for Lambda
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              final int capacity = new Integer(args[2]);
+              final int slot = new Integer(args[3]);
+              final int memory = new Integer(args[4]);
+              threadPool.execute(() -> {
+                vmScalingUtils.startInstances(num);
+                runtimeMaster.requestVMContainer(num, capacity, slot, memory);
+              });
+            } else if (decision.equals("stop-vm-executor")) {
+              final String[] args = message.getScalingMsg().getInfo().split(" ");
+              final int num = new Integer(args[1]);
+              threadPool.execute(() -> {
+                vmScalingUtils.stopVMs(num);
               });
             } else if (decision.equals("stop-lambda-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
