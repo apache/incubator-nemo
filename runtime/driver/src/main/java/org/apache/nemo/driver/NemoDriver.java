@@ -128,6 +128,8 @@ public final class NemoDriver {
 
   private final LambdaContainerManager lambdaContainerManager;
 
+  private String addedExecutorType;
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -206,6 +208,7 @@ public final class NemoDriver {
               final int capacity = new Integer(args[2]);
               final int slot = new Integer(args[3]);
               final int memory = new Integer(args[4]);
+              addedExecutorType = ResourcePriorityProperty.LAMBDA;
               threadPool.execute(() -> {
                 runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
               });
@@ -216,6 +219,7 @@ public final class NemoDriver {
               final int capacity = new Integer(args[2]);
               final int slot = new Integer(args[3]);
               final int memory = new Integer(args[4]);
+              addedExecutorType = ResourcePriorityProperty.VM;
               threadPool.execute(() -> {
                 vmScalingUtils.startInstances(num);
                 runtimeMaster.requestVMContainer(num, capacity, slot, memory);
@@ -323,10 +327,9 @@ public final class NemoDriver {
                 LOG.info("End of Redirection to lambda start {} / {}", nums, stages);
               });
 
-            } else if (decision.equals("redirection-vm")) {
-              redirection(message.getScalingMsg().getInfo(), ResourcePriorityProperty.VM);
             } else if (decision.equals("redirection")) {
-              redirection(message.getScalingMsg().getInfo(), ResourcePriorityProperty.LAMBDA);
+              LOG.info("redirection for type {}", addedExecutorType);
+              redirection(message.getScalingMsg().getInfo(), addedExecutorType);
               /*
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
