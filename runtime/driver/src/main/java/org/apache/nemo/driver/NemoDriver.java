@@ -539,17 +539,22 @@ public final class NemoDriver {
    */
   private void shutdown() {
     lambdaContainerManager.destroy();
+    LOG.info("Driver shutdown initiated");
+
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+      .setType(ControlMessage.DriverToClientMessageType.KillAll).build());
     try {
-      Thread.sleep(2000);
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    LOG.info("Driver shutdown initiated");
+
     // runnerThread.execute(runtimeMaster::terminate);
-    runnerThread.shutdownNow();
-    runtimeMaster.terminate();
-    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-      .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
+
+//    runnerThread.shutdownNow();
+//    runtimeMaster.terminate();
+//    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+//      .setType(ControlMessage.DriverToClientMessageType.DriverShutdowned).build());
   }
 
   /**
