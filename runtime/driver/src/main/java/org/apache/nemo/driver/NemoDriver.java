@@ -221,8 +221,16 @@ public final class NemoDriver {
               final int memory = new Integer(args[4]);
               addedExecutorType = ResourcePriorityProperty.VM;
               threadPool.execute(() -> {
+                long s = System.currentTimeMillis();
                 vmScalingUtils.startInstances(num);
                 runtimeMaster.requestVMContainer(num, capacity, slot, memory);
+                long et = System.currentTimeMillis();
+                LOG.info("VM request delay {}", et - s);
+                try {
+                  Thread.sleep(2500);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
               });
             } else if (decision.equals("stop-vm-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
