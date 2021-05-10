@@ -808,44 +808,44 @@ public final class Executor {
         TaskExecutor taskExecutor;
 
         if (task.isStreamTask()) {
-//          taskExecutor = new StreamTaskExecutorImpl(
-//            Thread.currentThread().getId(),
-//            executorId,
-//            task,
-//            irDag,
-//            intermediateDataIOFactory,
-//            serializerManager,
-//            evalConf.samplingJson,
-//            prepareService,
-//            executorThread,
-//            pipeManagerWorker,
-//            stateStore,
-//            pipeManagerWorker,
-//            outputCollectorGenerator,
-//            bytes,
-//            // new NoOffloadingPreparer(),
-//            false);
-          taskExecutor = new R3CRTaskExecutorImpl(
+          taskExecutor = new StreamTaskExecutorImpl(
             Thread.currentThread().getId(),
             executorId,
             task,
             irDag,
             intermediateDataIOFactory,
             serializerManager,
-            null,
             evalConf.samplingJson,
-            evalConf.isLocalSource,
             prepareService,
             executorThread,
             pipeManagerWorker,
             stateStore,
-            // offloadingManager,
             pipeManagerWorker,
             outputCollectorGenerator,
             bytes,
-            condRouting,
             // new NoOffloadingPreparer(),
             false);
+//          taskExecutor = new R3CRTaskExecutorImpl(
+//            Thread.currentThread().getId(),
+//            executorId,
+//            task,
+//            irDag,
+//            intermediateDataIOFactory,
+//            serializerManager,
+//            null,
+//            evalConf.samplingJson,
+//            evalConf.isLocalSource,
+//            prepareService,
+//            executorThread,
+//            pipeManagerWorker,
+//            stateStore,
+//            // offloadingManager,
+//            pipeManagerWorker,
+//            outputCollectorGenerator,
+//            bytes,
+//            condRouting,
+//            // new NoOffloadingPreparer(),
+//            false);
         } else if (task.isCrTask()) {
           // conditional routing task
           // if (evalConf.optimizationPolicy.contains("R3")) {
