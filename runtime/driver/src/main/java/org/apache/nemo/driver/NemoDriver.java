@@ -538,6 +538,12 @@ public final class NemoDriver {
    * Trigger shutdown of the driver and the runtime master.
    */
   private void shutdown() {
+    lambdaContainerManager.destroy();
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     LOG.info("Driver shutdown initiated");
     // runnerThread.execute(runtimeMaster::terminate);
     runnerThread.shutdownNow();
@@ -644,6 +650,12 @@ public final class NemoDriver {
   public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
+      lambdaContainerManager.destroy();
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       runtimeMaster.onExecutorFailed(failedEvaluator);
       shutdown();
     }
@@ -655,6 +667,12 @@ public final class NemoDriver {
   public final class FailedContextHandler implements EventHandler<FailedContext> {
     @Override
     public void onNext(final FailedContext failedContext) {
+      lambdaContainerManager.destroy();
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       shutdown();
       throw new RuntimeException(failedContext.getId() + " failed. See driver's log for the stack trace in executor.",
           failedContext.asError());
@@ -667,6 +685,12 @@ public final class NemoDriver {
   public final class DriverStopHandler implements EventHandler<StopTime> {
     @Override
     public void onNext(final StopTime stopTime) {
+          lambdaContainerManager.destroy();
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       handler.close();
       clientRPC.shutdown();
     }
