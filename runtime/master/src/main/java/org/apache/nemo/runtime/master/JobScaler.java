@@ -1273,7 +1273,7 @@ public final class JobScaler {
           if (stageStoppedCnt.get(stageId) < num) {
             LOG.info("Stop task {}", taskId);
             currStageStopped.add(taskId);
-            taskScheduledMap.stopTask(taskId, false);
+            taskScheduledMap.stopTask(taskId, ResourcePriorityProperty.COMPUTE);
             stoppedTasks.add(taskId);
             prevStoppedTasks.add(taskId);
 
@@ -1306,7 +1306,7 @@ public final class JobScaler {
   }
 
   public void sendTaskStopSignal(final int num,
-                                 final boolean lambdaAffinity,
+                                 final String resource,
                                  final List<String> stageIds,
                                  final boolean waiting) {
     taskDispatcher.setReclaiming(false);
@@ -1334,7 +1334,7 @@ public final class JobScaler {
 
               if (stageStoppedCnt.get(stageId) < num) {
                 LOG.info("Stop task {}", taskId);
-                taskScheduledMap.stopTask(taskId, lambdaAffinity);
+                taskScheduledMap.stopTask(taskId, resource);
                 prevMovedTask.add(taskId);
 
                 stoppedTasks.add(taskId);

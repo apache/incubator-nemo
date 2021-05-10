@@ -101,14 +101,15 @@ public final class TaskScheduledMapMaster {
       ).findFirst().isPresent();
   }
 
-  private final Map<String, Boolean> deactivateTaskLambdaAffinityMap = new HashMap<>();
+  private final Map<String, String> deactivateTaskLambdaAffinityMap = new HashMap<>();
 
   public Future<String> deactivateAndStopTask(final String taskId,
-                                                 final boolean lambdaAffinity) {
+                                              final String resource) {
     final String executorId = taskExecutorIdMap.get(taskId);
     LOG.info("Deactivate task " + taskId + " to executor " + executorId);
     final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
-    deactivateTaskLambdaAffinityMap.put(taskId, lambdaAffinity);
+
+    deactivateTaskLambdaAffinityMap.put(taskId, resource);
     representer.deactivateLambdaTask(taskId);
     return CompletableFuture.supplyAsync(() -> {
       synchronized (deactivateTaskLambdaAffinityMap) {
@@ -131,7 +132,7 @@ public final class TaskScheduledMapMaster {
     }
 
     synchronized (deactivateTaskLambdaAffinityMap) {
-      final boolean lambdaAffinity = deactivateTaskLambdaAffinityMap.get(taskId);
+      final String lambdaAffinity = deactivateTaskLambdaAffinityMap.get(taskId);
       deactivateTaskLambdaAffinityMap.remove(taskId);
       stopTask(taskId, lambdaAffinity);
     }
@@ -150,7 +151,7 @@ public final class TaskScheduledMapMaster {
     });
   }
 
-  public Future<String> stopTask(final String parent, final boolean lambdaAffinity) {
+  public Future<String> stopTask(final String parent, final String resourcePriorityProperty) {
 
     final String executorId = taskExecutorIdMap.get(parent);
 
@@ -170,11 +171,8 @@ public final class TaskScheduledMapMaster {
       final ExecutorRepresenter representer = executorRegistry.getExecutorRepresentor(executorId);
       final Map<String, List<String>> stageTaskMap = scheduledStageTasks.get(representer);
 
-      if (lambdaAffinity) {
-        taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.LAMBDA));
-      } else {
-        taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
-      }
+
+      taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(resourcePriorityProperty));
 
       LOG.info("Send stop signal {} to task {}", taskId.equals(parent), taskId);
       representer.stopTask(taskId, taskId.equals(parent));

@@ -409,10 +409,9 @@ public final class RuntimeMaster {
                                final int memory) {
     LOG.info("Requesting VM container {}", num);
     final Future<?> containerRequestEventResult = requestContainerThread.submit(() -> {
-
       resourceRequestCounter.resourceRequestCount.getAndAdd(num);
       containerManager.requestContainer(num,
-        new ResourceSpecification(LAMBDA, capacity, slot, memory), "Evaluator");
+        new ResourceSpecification(VM, capacity, slot, memory), "Evaluator");
       metricCountDownLatch = new CountDownLatch(resourceRequestCounter.resourceRequestCount.get());
     });
 

@@ -115,7 +115,8 @@ public final class ExecutorRegistry {
       }
 
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
-      if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+      if (executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)
+        || executor.getContainerType().equals(ResourcePriorityProperty.VM)) {
         lambdaExecutors.add(executorId);
       } else if (executor.getContainerType().equals(ResourcePriorityProperty.COMPUTE)) {
         vmComputeExecutors.add(executorId);

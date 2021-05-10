@@ -19,6 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
@@ -322,56 +323,10 @@ public final class NemoDriver {
                 LOG.info("End of Redirection to lambda start {} / {}", nums, stages);
               });
 
+            } else if (decision.equals("redirection-vm")) {
+              redirection(message.getScalingMsg().getInfo(), ResourcePriorityProperty.VM);
             } else if (decision.equals("redirection")) {
-              // FOR CR ROUTING!!
-              // VM -> Lambda
-//              final long st = System.currentTimeMillis();
-//              final String[] args = message.getScalingMsg().getInfo().split(" ");
-//              final int num = new Integer(args[1]);
-//              final String[] stageIds = args[2].split(",");
-//              final List<String> stages =
-//                Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
-//                  .collect(Collectors.toList());
-//
-//              stages.sort((x,y) -> Integer.valueOf(x.split("Stage")[1].split("-")[0])
-//                .compareTo(
-//                  Integer.valueOf(y.split("Stage")[1].split("-")[0])));
-
-              final Pair<List<Integer>, List<String>> pair = parseRedirection(message.getScalingMsg().getInfo());
-              final List<Integer> nums = pair.left();
-              final List<String> stages = pair.right();
-              LOG.info("move and redirection stages double {} {}", nums, stages);
-
-              threadPool.execute(() -> {
-                LOG.info("Redirection to lambda start {} / {}", nums, stages);
-                final long st = System.currentTimeMillis();
-                final List<Future> futures = new LinkedList<>();
-                // lambdaContainerManager.activateAllWorkers();
-                for (int i = 0; i < nums.size(); i++) {
-                  final int num = nums.get(i);
-                  final String stage = stages.get(i);
-                  final double ratio = 1.0 * num / evalConf.sourceParallelism;
-
-                  futures.addAll(scaleInOutManager.sendMigration(ratio,
-                    executorRegistry.getVMComputeExecutors(),
-                    stages, true));
-                }
-
-                futures.forEach(f -> {
-                  try {
-                    f.get();
-                  } catch (InterruptedException e) {
-                    e.printStackTrace();
-                  } catch (ExecutionException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                  }
-                });
-
-                // runtimeMaster.throttleSource(10000000);
-                LOG.info("End of Redirection to lambda start {} / {}", nums, stages, System.currentTimeMillis() - st);
-              });
-
+              redirection(message.getScalingMsg().getInfo(), ResourcePriorityProperty.LAMBDA);
               /*
               for (final String stage : stages) {
                 if (runtimeMaster.isPartial(stage)) {
@@ -391,8 +346,6 @@ public final class NemoDriver {
                 }
               }
               */
-
-
             } else if (decision.equals("redirection-done-r2")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
@@ -406,8 +359,6 @@ public final class NemoDriver {
                     Collections.singletonList(stages.get(i)));
                 }
               });
-
-
             } else if (decision.equals("redirection-done")) {
               // FOR CR ROUTING!!
               // Lambda -> VM
@@ -426,7 +377,7 @@ public final class NemoDriver {
 
                   futures.addAll(scaleInOutManager.sendMigration(1,
                     executorRegistry.getLambdaExecutors(),
-                    stages, false));
+                    stages, ResourcePriorityProperty.COMPUTE));
                 }
 
                 futures.forEach(f -> {
@@ -461,9 +412,9 @@ public final class NemoDriver {
 
               if (args.length > 3) {
                 final boolean waiting = new Boolean(args[3]);
-                jobScaler.sendTaskStopSignal(num, true, stages, waiting);
+                jobScaler.sendTaskStopSignal(num, ResourcePriorityProperty.LAMBDA, stages, waiting);
               } else {
-                jobScaler.sendTaskStopSignal(num, true, stages, true);
+                jobScaler.sendTaskStopSignal(num, ResourcePriorityProperty.LAMBDA, stages, true);
               }
 
               final long et = System.currentTimeMillis();
@@ -479,7 +430,7 @@ public final class NemoDriver {
                 Arrays.asList(stageIds).stream().map(sid -> "Stage" + sid)
                   .collect(Collectors.toList());
               for (int i = stages.size() - 1; i >= 0; i--) {
-                jobScaler.sendTaskStopSignal(num, false, Collections.singletonList(stages.get(i)), true);
+                jobScaler.sendTaskStopSignal(num, ResourcePriorityProperty.COMPUTE, Collections.singletonList(stages.get(i)), true);
                 try {
                   Thread.sleep(150);
                 } catch (InterruptedException e) {
@@ -530,6 +481,44 @@ public final class NemoDriver {
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
+  private void redirection(final String l,
+                           final String resource) {
+    final Pair<List<Integer>, List<String>> pair = parseRedirection(l);
+    final List<Integer> nums = pair.left();
+    final List<String> stages = pair.right();
+    LOG.info("move and redirection stages double {} {}", nums, stages);
+
+    threadPool.execute(() -> {
+      LOG.info("Redirection to lambda start {} / {}", nums, stages);
+      final long st = System.currentTimeMillis();
+      final List<Future> futures = new LinkedList<>();
+      // lambdaContainerManager.activateAllWorkers();
+      for (int i = 0; i < nums.size(); i++) {
+        final int num = nums.get(i);
+        final String stage = stages.get(i);
+        final double ratio = 1.0 * num / evalConf.sourceParallelism;
+
+        futures.addAll(scaleInOutManager.sendMigration(ratio,
+          executorRegistry.getVMComputeExecutors(),
+          stages, resource));
+      }
+
+      futures.forEach(f -> {
+        try {
+          f.get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+
+      // runtimeMaster.throttleSource(10000000);
+      LOG.info("End of Redirection to lambda start {} / {}", nums, stages, System.currentTimeMillis() - st);
+    });
+  }
+
   private Pair<List<Integer>, List<String>> parseRedirection(final String line) {
     final String[] numStages = line.split(" ")[1].split(",");
     final List<Integer> nums = new ArrayList<>(numStages.length);
@@ -544,6 +533,7 @@ public final class NemoDriver {
 
     return Pair.of(nums, stages);
   }
+
 
   /**
    * Setup the logger that forwards logging messages to the client.

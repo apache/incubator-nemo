@@ -2,8 +2,11 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public final class MasterUtils {
 

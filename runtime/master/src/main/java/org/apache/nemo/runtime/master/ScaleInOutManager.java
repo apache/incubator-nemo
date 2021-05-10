@@ -43,7 +43,7 @@ public final class ScaleInOutManager {
   public synchronized List<Future<String>> sendMigration(final double ratio,
                                                          final Collection<ExecutorRepresenter> executors,
                                                          final Collection<String> stages,
-                                                         final boolean lambdaAffinity) {
+                                                         final String resourceTyp) {
 
     long st = System.currentTimeMillis();
     while (!taskScheduledMapMaster.isAllTasksScheduledAtStartTime()) {
@@ -88,7 +88,7 @@ public final class ScaleInOutManager {
           if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
 
             LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
-            futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
+            futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), resourceTyp));
 
             stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
             stageIdMoveCounterMap.put(task.getStageId(), stageIdMoveCounterMap.get(task.getStageId()) + 1);
@@ -119,10 +119,11 @@ public final class ScaleInOutManager {
               && executor.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
               // Deactivation task if possible
               LOG.info("Deactivate lambda task {} in {}", task.getTaskId(), executor.getExecutorId());
-              futures.add(taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(), false));
+              futures.add(taskScheduledMapMaster.deactivateAndStopTask(task.getTaskId(),
+                ResourcePriorityProperty.COMPUTE));
             } else {
               LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
-              futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), lambdaAffinity));
+              futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), resourceTyp));
             }
 
             stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
@@ -165,7 +166,7 @@ public final class ScaleInOutManager {
   public synchronized List<Future<String>> sendMigrationAllStages(
     final double ratio,
     final Collection<ExecutorRepresenter> executors,
-    final boolean lambdaAffinity) {
+    final String resourceType) {
 
     final Set<String> mergerTasks = executors.stream()
       .map(executor -> executor.getRunningTasks())
@@ -191,6 +192,6 @@ public final class ScaleInOutManager {
         .map(t -> t.getStageId()))
       .collect(Collectors.toSet());
 
-    return sendMigration(ratio, executors, stages, lambdaAffinity);
+    return sendMigration(ratio, executors, stages, resourceType);
   }
 }
