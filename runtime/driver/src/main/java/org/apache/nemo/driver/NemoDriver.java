@@ -227,7 +227,7 @@ public final class NemoDriver {
                 long et = System.currentTimeMillis();
                 LOG.info("VM request delay {}", et - s);
                 try {
-                  Thread.sleep(2500);
+                  Thread.sleep(700);
                 } catch (InterruptedException e) {
                   e.printStackTrace();
                 }
