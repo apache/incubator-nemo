@@ -581,6 +581,7 @@ public final class RuntimeMaster {
                                      final int slot,
                                      final int memory,
                                      final String resourceType) {
+    LOG.info("Request lambda container num {}", num);
     resourceRequestCounter.resourceRequestCount.getAndAdd(num);
     try {
 

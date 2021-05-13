@@ -91,7 +91,7 @@ public final class VMResourceRequester implements LambdaContainerRequester {
     }
 
     final Channel openChannel = channelFuture.channel();
-    LOG.info("Open channel for VM: {}", openChannel);
+    LOG.info("Open channel for VM-{}: {}", index+1, openChannel);
 
     // send handshake
     final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d, \"requestId\": %d}",

@@ -425,6 +425,7 @@ public final class LambdaContainerManager {
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
 
     for (int i = 0; i < num; i++) {
+      LOG.info("Number of requested resource {}: {}", resourceType, num);
 
       numRequestedLambda.getAndIncrement();
 
@@ -510,6 +511,8 @@ public final class LambdaContainerManager {
             break;
           }
         }
+
+        LOG.info("End of worker init {}", rid);
 
         // Connect to the executor and initiate Master side's executor representation.
         MessageSender messageSender;

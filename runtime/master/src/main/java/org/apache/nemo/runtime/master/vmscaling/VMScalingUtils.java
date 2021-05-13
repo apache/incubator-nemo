@@ -54,6 +54,7 @@ public final class VMScalingUtils {
 
   public synchronized void stopVMs(final int num) {
     stopVM(startedInstances);
+    LOG.info("Stopping ec2 instances {}/{}", startedInstances, System.currentTimeMillis());
     startedInstances.clear();
   }
 

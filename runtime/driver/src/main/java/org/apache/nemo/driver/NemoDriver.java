@@ -237,9 +237,7 @@ public final class NemoDriver {
             } else if (decision.equals("stop-vm-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
-              threadPool.execute(() -> {
-                vmScalingUtils.stopVMs(num);
-              });
+              vmScalingUtils.stopVMs(num);
             } else if (decision.equals("stop-lambda-executor")) {
               final String[] args = message.getScalingMsg().getInfo().split(" ");
               final int num = new Integer(args[1]);
