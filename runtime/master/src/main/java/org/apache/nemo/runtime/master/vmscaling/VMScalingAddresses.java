@@ -49,7 +49,7 @@ public class VMScalingAddresses {
       "172.31.4.18",
       "172.31.11.43",
       "172.31.1.23",
-      "172.31.1.145" // 20);
+      "172.31.1.145"); // 20
 
   public static final List<String> INSTANCE_IDS =
     Arrays.asList(
