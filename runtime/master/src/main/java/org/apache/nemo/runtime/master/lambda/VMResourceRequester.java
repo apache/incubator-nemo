@@ -48,7 +48,7 @@ public final class VMResourceRequester implements LambdaContainerRequester {
                               final VMScalingAddresses vmScalingAddresses) {
     final ProfileCredentialsProvider provider = new ProfileCredentialsProvider(evalConf.awsProfileName);
     this.vmScalingAddresses = vmScalingAddresses;
-    this.clientWorkerGroup = new NioEventLoopGroup(10,
+    this.clientWorkerGroup = new NioEventLoopGroup(30,
       new DefaultThreadFactory("hello" + "-ClientWorker"));
 
     // Registration
@@ -74,6 +74,7 @@ public final class VMResourceRequester implements LambdaContainerRequester {
 
     while (true) {
       final long st = System.currentTimeMillis();
+      LOG.info("Connection to VM-{} {}/{}", index + 1, vmAddress, VM_WORKER_PORT);
       channelFuture = clientBootstrap.connect(new InetSocketAddress(vmAddress, VM_WORKER_PORT));
       channelFuture.awaitUninterruptibly(waitingTime);
       assert channelFuture.isDone();

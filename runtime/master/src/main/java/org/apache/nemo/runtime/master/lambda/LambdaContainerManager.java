@@ -431,6 +431,7 @@ public final class LambdaContainerManager {
 
       list.add(initService.submit(() -> {
 
+        LOG.info("Creating lamdba request {}", resourceType);
         final LambdaContainerRequester.LambdaActivator activator =
           requester.createRequest(workerControlTransport.getLocalAddress(),
             workerControlTransport.getPort(),
