@@ -420,10 +420,9 @@ public final class LambdaContainerManager {
   public List<Future<ExecutorRepresenter>> createLambdaContainer(final int num,
                                                                  final int capacity,
                                                                  final int slot,
-                                                                 final int memory) {
+                                                                 final int memory,
+                                                                 final String resourceType) {
     final List<Future<ExecutorRepresenter>> list = new ArrayList<>(num);
-
-    final String resourceType = LAMBDA;
 
     for (int i = 0; i < num; i++) {
 
@@ -457,7 +456,8 @@ public final class LambdaContainerManager {
           evalConf.controlLogging,
           evalConf.latencyLimit,
           evalConf.ec2,
-          evalConf.optimizationPolicy);
+          evalConf.optimizationPolicy,
+          resourceType);
 
 
         final OffloadingExecutorSerializer ser = new OffloadingExecutorSerializer();
@@ -538,14 +538,18 @@ public final class LambdaContainerManager {
         // proxy.setRepresentor(er);
         er.setLambdaControlProxy(proxy);
         // DEACTIVATE IMMEDIATELY !!!
-        proxy.deactivate();
 
-        if (evalConf.partialWarmup) {
-          LOG.info("Setup partial warmup");
-          scheduledExecutorService.schedule(() -> {
-            partialWarmup(rid, er);
-          }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);
+        if (resourceType.equals(LAMBDA)) {
+          proxy.deactivate();
+
+          if (evalConf.partialWarmup) {
+            LOG.info("Setup partial warmup");
+            scheduledExecutorService.schedule(() -> {
+              partialWarmup(rid, er);
+            }, evalConf.partialWarmupPeriod, TimeUnit.SECONDS);
+          }
         }
+
         return er;
       }));
     }

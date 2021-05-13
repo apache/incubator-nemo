@@ -34,6 +34,7 @@ import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.lambda.LambdaAWSResourceRequester;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
 import org.apache.nemo.runtime.master.lambda.LambdaYarnResourceRequester;
+import org.apache.nemo.runtime.master.lambda.VMResourceRequester;
 import org.apache.nemo.runtime.master.offloading.LambdaOffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.OffloadingRequester;
 import org.apache.nemo.runtime.master.offloading.YarnExecutorOffloadingRequester;
@@ -719,6 +720,8 @@ public final class JobLauncher {
   getLambdaRequesterConf(final String offloadingType) {
     if (offloadingType.equals("lambda")) {
       return LambdaAWSResourceRequester.class;
+    } else if (offloadingType.equals("vm")) {
+      return VMResourceRequester.class;
     } else {
       return LambdaYarnResourceRequester.class;
     }

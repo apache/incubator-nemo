@@ -455,7 +455,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       activatedTasks.add(task.getTaskId());
     }
 
-    if (lambdaControlProxy != null) {
+    if (lambdaControlProxy != null && executorId.contains("Lambda")) {
       if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
         // just send task
       } else {

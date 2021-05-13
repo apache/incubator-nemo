@@ -210,7 +210,7 @@ public final class NemoDriver {
               final int memory = new Integer(args[4]);
               addedExecutorType = ResourcePriorityProperty.LAMBDA;
               threadPool.execute(() -> {
-                runtimeMaster.requestLambdaContainer(num, capacity, slot, memory);
+                runtimeMaster.requestLambdaContainer(num, capacity, slot, memory, ResourcePriorityProperty.LAMBDA);
               });
             } else if (decision.equals("add-vm-executor")) {
               // scaling executor for Lambda
@@ -223,7 +223,8 @@ public final class NemoDriver {
               threadPool.execute(() -> {
                 long s = System.currentTimeMillis();
                 vmScalingUtils.startInstances(num);
-                runtimeMaster.requestVMContainer(num, capacity, slot, memory);
+                runtimeMaster.requestLambdaContainer(num, capacity, slot, memory, ResourcePriorityProperty.VM);
+                // runtimeMaster.requestVMContainer(num, capacity, slot, memory);
                 runtimeMaster.waitForExecutorInit();
                 long et = System.currentTimeMillis();
                 LOG.info("VM request delay {}", et - s);

@@ -8,6 +8,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.log4j.Level;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.*;
@@ -86,6 +87,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private final long latencyLimit;
   private final String optimizationPolicy;
   private final boolean ec2;
+  private final String resourceType;
 
   public OffloadingExecutor(final int executorThreadNum,
                             final Map<String, Double> samplingMap,
@@ -98,7 +100,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final boolean controlLogging,
                             final long latencyLimit,
                             final boolean ec2,
-                            final String optimizationPolicy) {
+                            final String optimizationPolicy,
+                            final String resourceType) {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     LOG.info("Offloading executor started {}/{}/{}/{}/{}/{}",
       executorThreadNum, samplingMap, isLocalSource);
@@ -116,6 +119,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.controlLogging = controlLogging;
     this.latencyLimit = latencyLimit;
     this.optimizationPolicy = optimizationPolicy;
+    this.resourceType = resourceType;
 
     this.nameServerAddr = nameServerAddr;
     this.nameServerPort = nameServerPort;
@@ -144,6 +148,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       dos.writeBoolean(ec2);
 
       dos.writeUTF(optimizationPolicy);
+      dos.writeUTF(resourceType);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -172,6 +177,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       final long latencyLimit = dis.readLong();
       final boolean ec2 = dis.readBoolean();
       final String optimizationPolicy = dis.readUTF();
+      final String resourceType = dis.readUTF();
 
 
       return new OffloadingExecutor(executorThreadNum, samplingMap, isLocalSource,
@@ -179,7 +185,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         nameServerAddr, nameServerPort, executorId, flushPeriod, controlLogging,
         latencyLimit,
         ec2,
-        optimizationPolicy);
+        optimizationPolicy,
+        resourceType);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -285,7 +292,14 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
 
-    jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(true));
+    if (resourceType.equals(ResourcePriorityProperty.LAMBDA)) {
+      jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(true));
+      jcb.bindImplementation(ByteTransport.class, LambdaByteTransport.class);
+    } else {
+      jcb.bindNamedParameter(EvalConf.ExecutorOnLambda.class, Boolean.toString(false));
+      jcb.bindImplementation(ByteTransport.class, DefaultByteTransportImpl.class);
+    }
+
     jcb.bindNamedParameter(MessageParameters.SenderId.class, executorId);
 
     final ObjectMapper objectMapper = new ObjectMapper();
@@ -302,7 +316,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     jcb.bindNamedParameter(MessageParameters.NameServerPort.class, Integer.toString(nameServerPort));
 
     jcb.bindImplementation(MessageEnvironment.class, NettyWorkerEnvironment.class);
-    jcb.bindImplementation(ByteTransport.class, LambdaByteTransport.class);
 
     jcb.bindNamedParameter(JobConf.ExecutorId.class, executorId);
     jcb.bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class);

@@ -398,7 +398,7 @@ public final class RuntimeMaster {
     LOG.info("Creating type {}, mem {}. capa: {}, slot: {}, num: {}",
       type, memory, capacity, slot, executorNum);
 
-    requestLambdaContainer(executorNum, capacity, slot, memory);
+    requestLambdaContainer(executorNum, capacity, slot, memory, LAMBDA);
   }
 
   private TreeNode computeTypeNode;
@@ -579,7 +579,8 @@ public final class RuntimeMaster {
   public void requestLambdaContainer(final int num,
                                      final int capacity,
                                      final int slot,
-                                     final int memory) {
+                                     final int memory,
+                                     final String resourceType) {
     resourceRequestCounter.resourceRequestCount.getAndAdd(num);
     try {
 
@@ -590,7 +591,7 @@ public final class RuntimeMaster {
         requestContainerThread.submit(() -> {
 
         final List<Future<ExecutorRepresenter>> list =
-          lambdaContainerManager.createLambdaContainer(num, capacity, slot, memory);
+          lambdaContainerManager.createLambdaContainer(num, capacity, slot, memory, resourceType);
 
         final List<ExecutorRepresenter> erList = new ArrayList<>(list.size());
         for (final Future<ExecutorRepresenter> future : list) {
