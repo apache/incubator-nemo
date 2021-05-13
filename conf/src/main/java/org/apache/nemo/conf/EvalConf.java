@@ -11,6 +11,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.IOException;
 import java.util.*;
 
@@ -76,6 +77,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "offloading_type", default_value = "local")
   public final class OffloadingType implements Name<String> {
   }
+
+  @NamedParameter
+  public final class VMAddresses implements Name<String> {}
 
   // local, lambda, vm
   @NamedParameter(short_name = "scaling_type", default_value = "migration")

@@ -15,6 +15,7 @@ import org.apache.nemo.offloading.client.*;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
+import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
@@ -55,6 +56,7 @@ public final class VMWorkerManagerInMaster {
     final EvalConf evalConf,
     final TaskScheduledMapMaster taskScheduledMap,
     final TransferIndexMaster transferIndexMaster,
+    final VMScalingAddresses vmScalingAddresses,
     final ExecutorCpuUseMap cpuMap) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
     this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap, null);
@@ -86,7 +88,7 @@ public final class VMWorkerManagerInMaster {
 
     this.requestor = new VMOffloadingRequester(
       nemoEventHandler, nettyServerTransport.getLocalAddress(), nettyServerTransport.getPort(),
-      vmWorkerConf, evalConf, executorCpuUseMap);
+      vmWorkerConf, evalConf, vmScalingAddresses, executorCpuUseMap);
   }
 
   public List<CompletableFuture<VMScalingWorker>> createWorkers(final int num) {

@@ -774,11 +774,34 @@ public final class JobLauncher {
 
     optimizationPolicy = Tang.Factory.getTang().newInjector(conf).getNamedInstance(JobConf.OptimizationPolicy.class);
 
+    // vm scaling
+    final File f = new File("vm_addresses.txt");
+    final String vmAddresses;
+    if (f.exists()) {
+      final FileReader fr = new FileReader(f);
+      BufferedReader br=new BufferedReader(fr);  //creates a buffering character input stream
+      StringBuffer sb=new StringBuffer();    //constructs a string buffer with no characters
+      String line;
+      while((line=br.readLine())!=null)
+      {
+        sb.append(line);      //appends line to string buffer
+        sb.append("\n");     //line feed
+      }
+      fr.close();    //closes the stream and release the resources
+
+      LOG.info("VM scaling addresses {}", sb);
+
+      vmAddresses = sb.toString();
+    } else {
+      vmAddresses = "";
+    }
+
     if (ec2) {
       final Configuration c = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
         .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
         .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
+        .bindNamedParameter(EvalConf.VMAddresses.class, vmAddresses)
         .build();
       return Configurations.merge(conf, c);
     } else {
@@ -787,6 +810,7 @@ public final class JobLauncher {
         .bindImplementation(OffloadingRequester.class, getRequesterConf(offloadingType))
         .bindImplementation(LambdaContainerRequester.class, getLambdaRequesterConf(offloadingType))
         .bindImplementation(MessageEnvironment.class, NettyMasterEnvironment.class)
+        .bindNamedParameter(EvalConf.VMAddresses.class, vmAddresses)
         // .bindImplementation(LocalAddressProvider.class, PublicAddressProvider.class)
         .build();
       return Configurations.merge(conf, c);

@@ -24,13 +24,16 @@ public final class VMScalingUtils {
   private final AmazonEC2 ec2;
   private final AtomicInteger numVMs = new AtomicInteger(0);
 
-  private final List<String> vmAddresses = VMScalingAddresses.VM_ADDRESSES;
-  private final List<String> instanceIds = VMScalingAddresses.INSTANCE_IDS;
+  private final List<String> vmAddresses;
+  private final List<String> instanceIds;
 
   @Inject
-  private VMScalingUtils(final EvalConf evalConf) {
+  private VMScalingUtils(final EvalConf evalConf,
+                         final VMScalingAddresses vmScalingAddresses) {
     this.ec2 = AmazonEC2ClientBuilder.standard()
       .withRegion(evalConf.awsRegion).build();
+    this.vmAddresses = vmScalingAddresses.vmAddresses;
+    this.instanceIds = vmScalingAddresses.vmIds;
   }
 
   private final List<String> startedInstances = new LinkedList<>();

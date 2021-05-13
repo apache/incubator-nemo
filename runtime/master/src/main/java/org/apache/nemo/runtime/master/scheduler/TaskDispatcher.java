@@ -111,8 +111,6 @@ public final class TaskDispatcher {
     @Override
     public void run() {
 
-      VMScalingAddresses.check();
-
       // initialSetup();
 
       while (!isTerminated) {

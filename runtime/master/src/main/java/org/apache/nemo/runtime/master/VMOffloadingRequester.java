@@ -88,8 +88,8 @@ public final class VMOffloadingRequester {
   private final Map<String, String> vmChannelMap = new ConcurrentHashMap<>();
 
 
-  private final List<String> vmAddresses = VMScalingAddresses.VM_ADDRESSES;
-  private final List<String> instanceIds = VMScalingAddresses.INSTANCE_IDS;
+  private final List<String> vmAddresses;
+  private final List<String> instanceIds;
 
   private final AtomicInteger numVMs = new AtomicInteger(0);
 
@@ -104,6 +104,7 @@ public final class VMOffloadingRequester {
                                final int port,
                                final VMWorkerConf vmWorkerConf,
                                final EvalConf evalConf,
+                               final VMScalingAddresses vmScalingAddresses,
                                final Map<String, Pair<Double, Double>> executorCpuUseMap) {
     this.nemoEventHandler = nemoEventHandler;
     this.serverAddress = serverAddress;
@@ -119,6 +120,8 @@ public final class VMOffloadingRequester {
       .option(ChannelOption.SO_REUSEADDR, true)
       .option(ChannelOption.SO_KEEPALIVE, true);
 
+    this.vmAddresses = vmScalingAddresses.vmAddresses;
+    this.instanceIds = vmScalingAddresses.vmIds;
     this.ec2 = AmazonEC2ClientBuilder.standard()
       .withRegion(evalConf.awsRegion).build();
 
