@@ -501,11 +501,25 @@ public final class RuntimeMaster {
    * @param allocatedEvaluator    to be used as the container.
    * @param executorConfiguration to use for the executor to be launched on this container.
    */
+  private final Set<String> nonInitializedExecutor = new HashSet<>();
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-      requestContainerThread.execute(() ->
-        containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+    synchronized (nonInitializedExecutor) {
+      nonInitializedExecutor.add(executorId);
+    }
+    requestContainerThread.execute(() ->
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+  }
+
+  public void waitForExecutorInit() {
+    while (!nonInitializedExecutor.isEmpty()) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   /**
@@ -1077,6 +1091,13 @@ public final class RuntimeMaster {
   private AtomicInteger consecutive = new AtomicInteger(0);
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
+      case ExecutorInitDone: {
+        synchronized (nonInitializedExecutor) {
+          LOG.info("Executor initialized done {}", message.getExecutorInitDoneMsg().getExecutorId());
+          nonInitializedExecutor.remove(message.getExecutorInitDoneMsg().getExecutorId());
+        }
+        break;
+      }
       case R3PairTaskInitiateProtocol:
       case R3AckPairTaskInitiateProtocol: {
         final ControlMessage.StopTaskDoneMessage m = message.getStopTaskDoneMsg();

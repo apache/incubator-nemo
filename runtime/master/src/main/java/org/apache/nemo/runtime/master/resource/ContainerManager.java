@@ -200,7 +200,9 @@ public final class ContainerManager {
     evaluatorIdToResourceSpec.put(allocatedContainer, resourceSpecification);
 
     LOG.info("Container type (" + resourceSpecification.getContainerType()
-      + ") allocated, will be used for [" + executorId + "]");
+      + ") allocated, will be used for [" + executorId + "]" + ", " +
+      allocatedContainer.getEvaluatorDescriptor().getNodeDescriptor().getName());
+
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
     final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()

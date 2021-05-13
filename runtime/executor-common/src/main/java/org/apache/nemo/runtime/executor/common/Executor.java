@@ -619,6 +619,16 @@ public final class Executor {
       throw new RuntimeException(e);
     }
 
+    persistentConnectionToMasterMap.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+      .send(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+        .setType(ControlMessage.MessageType.ExecutorInitDone)
+        .setExecutorInitDoneMsg(ControlMessage.ExecutorInitDoneMessage.newBuilder()
+          .setExecutorId(executorId)
+          .build())
+        .build());
+
     /*
     scheduledExecutorService.schedule(() -> {
       workerFactory.start();

@@ -205,6 +205,12 @@ enum MessageType {
 
     ExecutorMetric = 81;
     SourceEvent = 82;
+
+    ExecutorInitDone = 83;
+}
+
+message ExecutorInitDoneMessage {
+  required string executorId = 1;
 }
 
 message LambdaEndMessage {
@@ -310,6 +316,7 @@ message Message {
     optional ConditionalRoutingMessage conditionalRoutingMsg = 61;
 
     optional ExecutorMetricMsg executorMetricMsg = 62;
+    optional ExecutorInitDoneMessage executorInitDoneMsg = 63;
 }
 
 message ExecutorMetricMsg {
