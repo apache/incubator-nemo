@@ -28,6 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage.TaskControlMessageType.*;
@@ -46,6 +48,7 @@ public final class R2ControlEventHandler implements ControlEventHandler {
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
   private final Map<String, Boolean> taskInitMap;
   private final Map<String, AtomicInteger> taskInputDoneAckCounter;
+  private final ExecutorService checkpointService = Executors.newCachedThreadPool();
 
   @Inject
   private R2ControlEventHandler(
@@ -212,40 +215,48 @@ public final class R2ControlEventHandler implements ControlEventHandler {
 
             // Checkpoint
             if (checkpoint) {
-              taskExecutor.checkpoint(false, pairTaskId);
+              checkpointService.execute(() -> {
+                taskExecutor.checkpoint(false, pairTaskId);
+                taskExecutorMapWrapper.getTaskExecutorThread(control.getTaskId())
+                .addShortcutEvent(new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType.R2_AFTER_CHECKPOINT1, -1, -1,
+                control.getTaskId(), cnt));
+              });
             } else {
               taskInitMap.put(control.getTaskId(), true);
-            }
 
-            LOG.info("Send task output done from upstream signal in {}", control.getTaskId());
+              LOG.info("Send task output done from upstream signal in {}", control.getTaskId());
 
-            taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
-            TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
-              R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN);
-            taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
-              TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
+              taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
+              TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
+                R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN);
+              taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
+                TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
 
-            task.getDownstreamTasks().forEach((edge, val) -> {
-              final String edgeId = edge.getId();
-              val.forEach(dstTask -> {
-                final int targetIndex = pipeIndexMapWorker.getPipeIndex(task.getTaskId(), edgeId, dstTask);
-                // pipeManagerWorker.stopOutputPipeForRouting(targetIndex, control.getTaskId());
+              task.getDownstreamTasks().forEach((edge, val) -> {
+                final String edgeId = edge.getId();
+                val.forEach(dstTask -> {
+                  final int targetIndex = pipeIndexMapWorker.getPipeIndex(task.getTaskId(), edgeId, dstTask);
+                  // pipeManagerWorker.stopOutputPipeForRouting(targetIndex, control.getTaskId());
+                });
               });
-            });
+            }
           } else {
             if (checkpoint) {
-              taskExecutor.checkpoint(false, pairTaskId);
-              // Send signal to the pair task
-              toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                .send(ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
-                  .setType(ControlMessage.MessageType.GetStateSignal)
-                  .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
-                    .setExecutorId(executorId)
-                    .setTaskId(control.getTaskId())
-                    .build())
-                  .build());
+              checkpointService.execute(() -> {
+                taskExecutor.checkpoint(false, pairTaskId);
+                // Send signal to the pair task
+                toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                  .send(ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+                    .setType(ControlMessage.MessageType.GetStateSignal)
+                    .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
+                      .setExecutorId(executorId)
+                      .setTaskId(control.getTaskId())
+                      .build())
+                    .build());
+              });
             } else {
               // This is only at the start of job
               // Lambda task will be stopped without checkpointing
@@ -262,6 +273,27 @@ public final class R2ControlEventHandler implements ControlEventHandler {
             }
           }
         }
+        break;
+      }
+      case R2_AFTER_CHECKPOINT1: {
+        LOG.info("Send task output done from upstream signal in {}", control.getTaskId());
+        final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(control.getTaskId());
+        final Task task = taskExecutor.getTask();
+
+        final int cnt = (Integer) control.event;
+        taskOutputDoneAckCounter.put(control.getTaskId(), new AtomicInteger(cnt));
+        TaskExecutorUtil.sendOutputDoneMessage(task, pipeManagerWorker,
+          R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN);
+        taskExecutorMapWrapper.setTaskExecutorState(taskExecutor,
+          TaskExecutorMapWrapper.TaskExecutorState.DEACTIVATED);
+
+        task.getDownstreamTasks().forEach((edge, val) -> {
+          final String edgeId = edge.getId();
+          val.forEach(dstTask -> {
+            final int targetIndex = pipeIndexMapWorker.getPipeIndex(task.getTaskId(), edgeId, dstTask);
+            // pipeManagerWorker.stopOutputPipeForRouting(targetIndex, control.getTaskId());
+          });
+        });
         break;
       }
       case R2_TASK_OUTPUT_DONE_FROM_UP_TO_DOWN: {

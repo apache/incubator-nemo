@@ -105,6 +105,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
     R2_TASK_INPUT_START_FROM_UPSTREAM,
     R2_INPUT_START_BY_PAIR,
     R2_INIT,
+    R2_AFTER_CHECKPOINT1,
+    R2_AFTER_CHECKPOINT2,
 
     // For R3
     R3_INIT,
@@ -199,6 +201,8 @@ public final class TaskControlMessage implements TaskHandlingEvent {
       case R3_ACK_TASK_DATA_DONE_FROM_M_TO_P:
       case THROTTLE:
       case R3_ACK_TASK_SET_PARTIAL_FROM_M_TO_P:
+      case R2_AFTER_CHECKPOINT1:
+      case R2_AFTER_CHECKPOINT2:
         {
         return true;
       }

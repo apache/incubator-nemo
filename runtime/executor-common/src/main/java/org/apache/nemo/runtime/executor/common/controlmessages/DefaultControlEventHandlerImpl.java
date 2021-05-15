@@ -117,6 +117,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
       case R2_TASK_OUTPUT_DONE_ACK_FROM_DOWN_TO_UP:
       case R2_TASK_OUTPUT_START_BY_PAIR:
       case R2_INPUT_START_BY_PAIR:
+      case R2_AFTER_CHECKPOINT1:
+      case R2_AFTER_CHECKPOINT2:
       case R2_START_OUTPUT_FROM_DOWNSTREAM: {
         r2ControlEventHandler.handleControlEvent(event);
         break;
