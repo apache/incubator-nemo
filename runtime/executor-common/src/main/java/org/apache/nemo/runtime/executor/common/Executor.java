@@ -1401,13 +1401,31 @@ public final class Executor {
         }
         case StopTask: {
           // TODO: receive stop task message
-          executorService.execute(() -> {
-            LOG.info("Stopping task {} in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
-            final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
-            executorThread.addShortcutEvent(new TaskControlMessage(
-              TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
-              message.getStopTaskMsg().getTaskId(), null));
-          });
+          final TaskExecutor te = taskExecutorMapWrapper.getTaskExecutor(message.getStopTaskMsg().getTaskId());
+          if (evalConf.fluidMigration && !te.isStateless()) {
+            executorService.execute(() -> {
+              synchronized (this) {
+                try {
+                  Thread.sleep(evalConf.fluidDelay);
+                } catch (final InterruptedException e) {
+                  e.printStackTrace();
+                }
+                LOG.info("Stopping task {} in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
+                final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+                executorThread.addShortcutEvent(new TaskControlMessage(
+                  TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
+                  message.getStopTaskMsg().getTaskId(), null));
+              }
+            });
+          } else {
+            executorService.execute(() -> {
+              LOG.info("Stopping task {} in executor {}", message.getStopTaskMsg().getTaskId(), executorId);
+              final ExecutorThread executorThread = taskExecutorMapWrapper.getTaskExecutorThread(message.getStopTaskMsg().getTaskId());
+              executorThread.addShortcutEvent(new TaskControlMessage(
+                TaskControlMessage.TaskControlMessageType.TASK_STOP_SIGNAL_BY_MASTER, -1, -1,
+                message.getStopTaskMsg().getTaskId(), null));
+            });
+          }
           break;
         }
         case ExecutorRegistered: {

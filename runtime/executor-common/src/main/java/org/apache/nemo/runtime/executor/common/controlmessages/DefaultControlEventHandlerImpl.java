@@ -22,6 +22,8 @@ import javax.inject.Inject;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.runtime.executor.common.TaskExecutorUtil.taskOutgoingEdgeDoneAckCounter;
@@ -44,6 +46,8 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
   private final Map<String, AtomicInteger> taskOutputDoneAckCounter;
   private final Map<ExecutorThread, Long> executorthreadThrottleTime;
   private final Map<String, AtomicInteger> taskInputdoneAckCounter;
+
+  private final ExecutorService checkpointService = Executors.newCachedThreadPool();
 
   @Inject
   private DefaultControlEventHandlerImpl(
@@ -467,30 +471,25 @@ public final class DefaultControlEventHandlerImpl implements ControlEventHandler
     // pipeManagerWorker.flush();
 
     // stop and remove task
-    final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
-    taskExecutor.checkpoint(true, taskId);
+    checkpointService.execute(() -> {
+      final TaskExecutor taskExecutor = taskExecutorMapWrapper.getTaskExecutor(taskId);
+      taskExecutor.checkpoint(true, taskId);
+      LOG.info("End of checkpointing task {}", taskId);
 
-    LOG.info("End of checkpointing task {}", taskId);
+      taskExecutorMapWrapper.removeTask(taskId);
 
-    try {
-      Thread.sleep(10);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+      LOG.info("Remove task from wrapper {}", taskId);
 
-    taskExecutorMapWrapper.removeTask(taskId);
-
-    LOG.info("Remove task from wrapper {}", taskId);
-
-    toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-      .send(ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdManager.generateMessageId())
-        .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
+      toMaster.getMessageSender(RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(RUNTIME_MASTER_MESSAGE_LISTENER_ID.ordinal())
           .setType(ControlMessage.MessageType.StopTaskDone)
           .setStopTaskDoneMsg(ControlMessage.StopTaskDoneMessage.newBuilder()
             .setExecutorId(executorId)
             .setTaskId(taskId)
             .build())
           .build());
+    });
   }
 }

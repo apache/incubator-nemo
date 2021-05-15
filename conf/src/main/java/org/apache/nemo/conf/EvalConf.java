@@ -23,6 +23,14 @@ public final class EvalConf {
   public final class EnableOffloading implements Name<Boolean> {
   }
 
+  @NamedParameter(short_name = "fluid", default_value = "false")
+  public final class FluidMigration implements Name<Boolean> {
+  }
+
+  @NamedParameter(short_name = "fluid_delay", default_value = "1000")
+  public final class FluidDelay implements Name<Integer> {
+  }
+
   @NamedParameter(short_name = "handler_timeout", default_value = "120")
   public final class HandlerTimeout implements Name<Integer> {}
 
@@ -223,6 +231,9 @@ public final class EvalConf {
   public final int partialWarmupPeriod;
   public final boolean partialWarmup;
 
+  public final boolean fluidMigration;
+  public final int fluidDelay;
+
   // LEGACY
   // NOT USED
   public final int numLambdaPool = 1;
@@ -269,6 +280,8 @@ public final class EvalConf {
                    @Parameter(HandlerTimeout.class) final int handlerTimeout,
                    @Parameter(NumInitLambda.class) final int numInitLambda,
                    @Parameter(MaxLambda.class) final int numMaxLambda,
+                   @Parameter(FluidMigration.class) final boolean fluidMigration,
+                   @Parameter(FluidDelay.class) final int fluidDelay,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -312,6 +325,8 @@ public final class EvalConf {
     this.handlerTimeout = handlerTimeout;
     this.numInitLambda = numInitLambda;
     this.numMaxLambda = numMaxLambda;
+    this.fluidMigration = fluidMigration;
+    this.fluidDelay = fluidDelay;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -364,6 +379,8 @@ public final class EvalConf {
     jcb.bindNamedParameter(MaxLambda.class, Integer.toString(numMaxLambda));
     jcb.bindNamedParameter(PartialWarmup.class, Boolean.toString(partialWarmup));
     jcb.bindNamedParameter(PartialWarmupPeriod.class, Integer.toString(partialWarmupPeriod));
+    jcb.bindNamedParameter(FluidMigration.class, Boolean.toString(fluidMigration));
+    jcb.bindNamedParameter(FluidDelay.class, Integer.toString(fluidDelay));
     return jcb.build();
   }
 
@@ -409,6 +426,8 @@ public final class EvalConf {
     cl.registerShortNameOfClass(MaxLambda.class);
     cl.registerShortNameOfClass(PartialWarmup.class);
     cl.registerShortNameOfClass(PartialWarmupPeriod.class);
+    cl.registerShortNameOfClass(FluidMigration.class);
+    cl.registerShortNameOfClass(FluidDelay.class);
   }
 
   @Override
@@ -455,6 +474,8 @@ public final class EvalConf {
     sb.append("maxLambda: "); sb.append(numMaxLambda); sb.append("\n");
     sb.append("partialWarmup: "); sb.append(partialWarmup); sb.append("\n");
     sb.append("partialWarmupPeriod: "); sb.append(partialWarmupPeriod); sb.append("\n");
+    sb.append("fluidMigration: "); sb.append(fluidMigration); sb.append("\n");
+    sb.append("fluidDelay: "); sb.append(fluidDelay); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
