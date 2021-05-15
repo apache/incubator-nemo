@@ -208,11 +208,13 @@ public final class StreamingScheduler implements Scheduler {
       filteredTasks = allTasks;
     } else {
       filteredTasks = allTasks.stream().filter(t -> t.isVMTask() ||
-        stageToMoves.contains(RuntimeIdManager.getStageIdFromTaskId(t.getTaskId())))
+        stageToMoves.contains(
+          RuntimeIdManager.getStageIdFromTaskId(
+            pairStageTaskManager.getPairTaskEdgeId(t.getTaskId()).get(0).left())))
         .collect(Collectors.toList());
     }
 
-    LOG.info("Filtered tasks: {}", filteredTasks.size());
+    LOG.info("Filtered tasks: {} / {}", filteredTasks.size(), filteredTasks);
 
     // Add pending tasks
     taskScheduledMapMaster.tasksToBeScheduled(filteredTasks);
