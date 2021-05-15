@@ -486,7 +486,7 @@ public final class LambdaContainerManager {
             e.printStackTrace();
           }
 
-          if (System.currentTimeMillis() - st >= 60000) {
+          if (System.currentTimeMillis() - st >= 100000) {
             throw new RuntimeException("Cannot create lambda container " + lambdaExecutorId);
           }
         }

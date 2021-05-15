@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -63,6 +64,7 @@ public final class StreamingScheduler implements Scheduler {
   private final TaskOffloadingManager taskOffloadingManager;
   private final PairStageTaskManager pairStageTaskManager;
   private final TaskScheduledMapMaster taskScheduledMapMaster;
+  private final EvalConf evalConf;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -73,6 +75,7 @@ public final class StreamingScheduler implements Scheduler {
                      final PipeIndexMaster pipeIndexMaster,
                      final TransferIndexMaster transferIndexMaster,
                      final PairStageTaskManager pairStageTaskManager,
+                     final EvalConf evalConf,
                      final TaskScheduledMapMaster taskScheduledMapMaster,
                      final TaskOffloadingManager taskOffloadingManager) {
     this.taskDispatcher = taskDispatcher;
@@ -85,6 +88,7 @@ public final class StreamingScheduler implements Scheduler {
     this.taskOffloadingManager = taskOffloadingManager;
     this.pairStageTaskManager = pairStageTaskManager;
     this.taskScheduledMapMaster = taskScheduledMapMaster;
+    this.evalConf = evalConf;
   }
 
   @Override
@@ -187,10 +191,31 @@ public final class StreamingScheduler implements Scheduler {
     }
 
     // Schedule everything at once
-    LOG.info("All tasks: {}", allTasks);
+    LOG.info("All tasks: {}", allTasks.size());
+
+    final Set<String> stageToMoves = new HashSet<>();
+    if (evalConf.stageMoves.length() > 1) {
+      final String[] stages = evalConf.stageMoves.split(",");
+      for (int i = 0; i < stages.length; i++) {
+        stageToMoves.add("Stage" + stages[i].split(":")[1]);
+      }
+    }
+
+    LOG.info("Stage to moves {}", stageToMoves);
+
+    final List<Task> filteredTasks;
+    if (stageToMoves.isEmpty()) {
+      filteredTasks = allTasks;
+    } else {
+      filteredTasks = allTasks.stream().filter(t -> t.isVMTask() ||
+        stageToMoves.contains(RuntimeIdManager.getStageIdFromTaskId(t.getTaskId())))
+        .collect(Collectors.toList());
+    }
+
+    LOG.info("Filtered tasks: {}", filteredTasks.size());
 
     // Add pending tasks
-    taskScheduledMapMaster.tasksToBeScheduled(allTasks);
+    taskScheduledMapMaster.tasksToBeScheduled(filteredTasks);
 
     try {
       Thread.sleep(6000);
@@ -198,9 +223,9 @@ public final class StreamingScheduler implements Scheduler {
       e.printStackTrace();
     }
 
-    final List<Task> lambdaTasks = allTasks.stream()
+    final List<Task> lambdaTasks = filteredTasks.stream()
       .filter(task -> task.isTransientTask()).collect(Collectors.toList());
-    final List<Task> vmTasks = allTasks.stream()
+    final List<Task> vmTasks = filteredTasks.stream()
       .filter(task -> !task.isTransientTask()).collect(Collectors.toList());
 
     LOG.info("VM tasks: {}", vmTasks);
