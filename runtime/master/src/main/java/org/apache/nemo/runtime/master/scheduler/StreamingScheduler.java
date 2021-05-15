@@ -208,7 +208,7 @@ public final class StreamingScheduler implements Scheduler {
       filteredTasks = allTasks;
     } else {
       filteredTasks = allTasks.stream().filter(t -> {
-        if (t.isVMTask() || t.isMerger()) {
+        if (!t.isTransientTask()) {
           return true;
         }
 
