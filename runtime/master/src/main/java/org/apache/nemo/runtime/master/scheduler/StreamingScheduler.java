@@ -207,10 +207,17 @@ public final class StreamingScheduler implements Scheduler {
     if (stageToMoves.isEmpty()) {
       filteredTasks = allTasks;
     } else {
-      filteredTasks = allTasks.stream().filter(t -> t.isVMTask() ||
-        stageToMoves.contains(
-          RuntimeIdManager.getStageIdFromTaskId(
-            pairStageTaskManager.getPairTaskEdgeId(t.getTaskId()).get(0).left())))
+      filteredTasks = allTasks.stream().filter(t -> {
+        if (t.isVMTask()) {
+          return true;
+        }
+
+        final String pairTask = t.getPairTaskId();
+        LOG.info("Pair task of transient {}: {}", t.getTaskId(), t.getPairTaskId());
+
+        return stageToMoves.contains(
+          RuntimeIdManager.getStageIdFromTaskId(pairTask));
+      })
         .collect(Collectors.toList());
     }
 
