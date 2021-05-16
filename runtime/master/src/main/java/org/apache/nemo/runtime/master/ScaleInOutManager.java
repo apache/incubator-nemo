@@ -26,6 +26,7 @@ public final class ScaleInOutManager {
   private final PairStageTaskManager pairStageTaskManager;
   private final Backpressure backpressure;
 
+  private final Set<String> prevSelectedTasksToMoveLambda = new HashSet<>();
 
   @Inject
   private ScaleInOutManager(final TaskDispatcher taskDispatcher,
@@ -64,6 +65,16 @@ public final class ScaleInOutManager {
 
     final List<Future<String>> futures = new LinkedList<>();
 
+    // Caching
+    if (!prevSelectedTasksToMoveLambda.isEmpty() && resourceTyp.equals(ResourcePriorityProperty.LAMBDA)) {
+      // stop prev stopped tasks
+      prevSelectedTasksToMoveLambda.forEach(task -> {
+        futures.add(taskScheduledMapMaster.stopTask(task, resourceTyp));
+      });
+      return futures;
+    }
+
+
     executors.stream().forEach(executor -> {
       // find list of tasks that the lambda executor has
       // executor 마다 정해진 number의 task들을 옮김.
@@ -88,6 +99,9 @@ public final class ScaleInOutManager {
           if (stageIdMoveCounterMap.getOrDefault(task.getStageId(), 0) < maxCnt) {
 
             LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
+            if (resourceTyp.equals(ResourcePriorityProperty.LAMBDA)) {
+              prevSelectedTasksToMoveLambda.add(task.getTaskId());
+            }
             futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), resourceTyp));
 
             stageIdMoveCounterMap.putIfAbsent(task.getStageId(), 0);
@@ -123,6 +137,9 @@ public final class ScaleInOutManager {
                 ResourcePriorityProperty.COMPUTE));
             } else {
               LOG.info("Stop task {} from {}", task.getTaskId(), executor.getExecutorId());
+              if (resourceTyp.equals(ResourcePriorityProperty.LAMBDA)) {
+                prevSelectedTasksToMoveLambda.add(task.getTaskId());
+              }
               futures.add(taskScheduledMapMaster.stopTask(task.getTaskId(), resourceTyp));
             }
 

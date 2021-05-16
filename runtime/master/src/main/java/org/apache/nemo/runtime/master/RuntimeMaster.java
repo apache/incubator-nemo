@@ -771,6 +771,8 @@ public final class RuntimeMaster {
   }
 
   private final Set<String> prevRedirectionTasks = new HashSet<>();
+  private boolean prevRedirectedToLambda = false;
+  final Map<ExecutorRepresenter, List<String>> lambdaExecutorTaskToMoveMap = new HashMap<>();
 
   public void redirectionToLambda(final List<Integer> nums,
                                   final List<String> stageIds,
@@ -791,6 +793,39 @@ public final class RuntimeMaster {
       }
     }
 
+    final List<Future> futures = new LinkedList<>();
+
+    // for caching
+    if (prevRedirectedToLambda) {
+      lambdaExecutorTaskToMoveMap.forEach((lambdaExecutor, tasks) -> {
+        LOG.info("Redirection to lambda tasks {} / executor {}",
+          tasks, lambdaExecutor.getExecutorId());
+        prevRedirectionTasks.addAll(tasks);
+        futures.add(lambdaContainerManager.redirectionToLambda(tasks, lambdaExecutor));
+      });
+
+      metricStatistics.redirectPrepartion(System.currentTimeMillis() - stt);
+
+      if (waiting) {
+        // Waiting for redirection done
+        LOG.info("Start Waiting activation");
+        for (final Future future : futures) {
+          try {
+            future.get();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          } catch (ExecutionException e) {
+            e.printStackTrace();
+          }
+        }
+
+        LOG.info("Waiting activation done");
+
+      }
+      return;
+    }
+
+    prevRedirectedToLambda = true;
     final List<Task> vmTasksToBeRedirected = new LinkedList<>();
 
     executorRegistry.getVMComputeExecutors().forEach(executor -> {
@@ -835,8 +870,7 @@ public final class RuntimeMaster {
 
     // Redircte vmTasksToBeRedircteed!
     LOG.info("VM tasks to be redirected size: {}", vmTasksToBeRedirected.size());
-    final Map<ExecutorRepresenter, List<String>> lambdaExecutorTaskToMoveMap = new HashMap<>();
-    final List<Future> futures = new LinkedList<>();
+
 
     vmTasksToBeRedirected.forEach(task -> {
       if (pairStageTaskManager.getPairTaskEdgeId(task.getTaskId()) == null ||
