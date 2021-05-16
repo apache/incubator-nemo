@@ -251,11 +251,7 @@ public final class TaskDispatcher {
               System.currentTimeMillis() - st);
             // send the task
             metricStatistics.taskScheduleDone(task.getTaskId());
-
-            executorService.execute(() -> {
-              ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
-              selectedExecutor.onTaskScheduled(task);
-            });
+            selectedExecutor.onTaskScheduled(task);
             continue;
           }
 
@@ -290,10 +286,7 @@ public final class TaskDispatcher {
               metricStatistics.taskScheduleDone(task.getTaskId());
 
               // send the task
-              executorService.execute(() -> {
-                ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
-                selectedExecutor.onTaskScheduled(task);
-              });
+              selectedExecutor.onTaskScheduled(task);
             } else {
 
               final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
@@ -323,10 +316,7 @@ public final class TaskDispatcher {
 
                   metricStatistics.taskScheduleDone(task.getTaskId());
                   // send the task
-                  executorService.execute(() -> {
-                    ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
                     selectedExecutor.onTaskScheduled(task);
-                  });
                 } catch (final Exception e) {
                   e.printStackTrace();
                   throw new RuntimeException("Exception in scheduling task " + task.getTaskId() + ", " +
