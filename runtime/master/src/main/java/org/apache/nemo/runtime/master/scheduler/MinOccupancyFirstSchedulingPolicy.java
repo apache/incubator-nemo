@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
@@ -44,6 +46,8 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   private final TaskScheduledMapMaster taskScheduledMap;
   private final ExecutorRegistry executorRegistry;
 
+  private final Map<String, ExecutorRepresenter> lambdaPreScheduledExecutor;
+
   @Inject
   private MinOccupancyFirstSchedulingPolicy(final PlanStateManager planStateManager,
                                             final TaskScheduledMapMaster taskScheduledMapMaster,
@@ -51,6 +55,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     this.planStateManager = planStateManager;
     this.taskScheduledMap = taskScheduledMapMaster;
     this.executorRegistry = executorRegistry;
+    this.lambdaPreScheduledExecutor = new HashMap<>();
   }
 
 
@@ -60,6 +65,12 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
 
     // LOG.info("Candidate executors for scheudling task {}: {}",
     //  task.getTaskId(), executors);
+
+    if (task.getPropertyValue(ResourcePriorityProperty.class).equals(ResourcePriorityProperty.LAMBDA)) {
+      if (lambdaPreScheduledExecutor.containsKey(task.getTaskId())) {
+        return lambdaPreScheduledExecutor.get(task.getTaskId());
+      }
+    }
 
     final Set<String> scheduledTasks = executors.stream()
       .map(e -> e.getScheduledTasks())
@@ -117,10 +128,17 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
 
    //   LOG.info("O2o-aware scheduling task {} to {}", task.getTaskId(), candidates);
 
-      return candidates.stream()
+      final ExecutorRepresenter er = candidates.stream()
         .filter(executor -> executor.getScheduledTasks().size() == minOccupancy.getAsInt())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
+
+      if (er.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+        lambdaPreScheduledExecutor.put(task.getTaskId(), er);
+      }
+
+      return er;
+
     } else {
       // avoid allocating same stage tasks in the same executor as much as possible.
       final List<ExecutorRepresenter> nonConflictExecutors = executors.stream()
@@ -138,10 +156,17 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
           .map(executor -> executor.getScheduledTasks().size())
           .mapToLong(i -> i).min();
 
-        return nonConflictExecutors.stream()
+        final ExecutorRepresenter er = nonConflictExecutors.stream()
           .filter(executor -> executor.getScheduledTasks().size() == minOccupancy.getAsLong())
           .findFirst()
           .orElseThrow(() -> new RuntimeException("No such executor"));
+
+
+        if (er.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+          lambdaPreScheduledExecutor.put(task.getTaskId(), er);
+        }
+
+        return er;
 
       } else {
         // Avoid allocating same stage tasks in the same executor as much as possible.
@@ -152,11 +177,18 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
               .count())
           .mapToLong(i -> i).min();
 
-        return executors.stream()
+        final ExecutorRepresenter er = executors.stream()
         .filter(executor -> (executor.getScheduledTasks().stream()
           .filter(t -> t.getStageId().equals(task.getStageId())).count()) == minOccupancy.getAsLong())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
+
+
+        if (er.getContainerType().equals(ResourcePriorityProperty.LAMBDA)) {
+          lambdaPreScheduledExecutor.put(task.getTaskId(), er);
+        }
+
+        return er;
       }
     }
   }
