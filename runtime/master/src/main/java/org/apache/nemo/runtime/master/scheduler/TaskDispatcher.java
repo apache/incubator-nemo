@@ -246,6 +246,7 @@ public final class TaskDispatcher {
             executorService.execute(() -> {
               selectedExecutor.onTaskScheduled(task);
             });
+            continue;
           }
 
           // LOG.info("Start to scheduling task {}, resource {}", task,
