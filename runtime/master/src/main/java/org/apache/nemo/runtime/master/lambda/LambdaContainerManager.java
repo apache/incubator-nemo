@@ -386,10 +386,12 @@ public final class LambdaContainerManager {
         LOG.info("Starting deactivate workers...");
         requestIdControlChannelMap.values().forEach(worker -> {
           if (!worker.isActive()) {
-            throw new RuntimeException("Worker still active " + worker.getId());
+            LOG.info("Worker inactive " + worker.getId() + ", deactivated "
+              + worker.isDeactivated() + ", activating " + worker.isActivating());
           }
 
           ((DefaultExecutorRepresenterImpl) worker.getExecutorRepresenter()).checkAndDeactivate();
+
           // worker.deactivate();
         });
       }
