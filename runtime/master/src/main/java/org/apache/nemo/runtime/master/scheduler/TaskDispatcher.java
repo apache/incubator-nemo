@@ -68,6 +68,8 @@ public final class TaskDispatcher {
 
   private final Set<String> filteredOutExecutors;
 
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
@@ -246,7 +248,9 @@ public final class TaskDispatcher {
 
               LOG.info("{} scheduled to {} for origin", task.getTaskId(), selectedExecutor.getExecutorId());
               // send the task
-              selectedExecutor.onTaskScheduled(task);
+              executorService.execute(() -> {
+                selectedExecutor.onTaskScheduled(task);
+              });
             } else {
 
               final Set<ExecutorRepresenter> finalCandidates = candidateExecutors.getValue()
@@ -272,7 +276,9 @@ public final class TaskDispatcher {
 
                 LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
                 // send the task
-                selectedExecutor.onTaskScheduled(task);
+                executorService.execute(() -> {
+                  selectedExecutor.onTaskScheduled(task);
+                });
               } else {
                 couldNotSchedule.add(task);
               }
