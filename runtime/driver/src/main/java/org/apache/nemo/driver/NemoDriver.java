@@ -532,7 +532,7 @@ public final class NemoDriver {
       });
 
       // runtimeMaster.throttleSource(10000000);
-      LOG.info("End of Redirection to lambda start {} / {}", nums, stages, System.currentTimeMillis() - st);
+      LOG.info("End of Redirection to lambda start {} / {} / {}", nums, stages, System.currentTimeMillis() - st);
     });
   }
 
