@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.master.scheduler;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.TaskState;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
@@ -229,7 +230,8 @@ public final class TaskDispatcher {
             continue;
           }
 
-          if (prevLambdaScheduleMap.map.containsKey(task.getTaskId())) {
+          if (prevLambdaScheduleMap.map.containsKey(task.getTaskId())
+            && task.getPropertyValue(ResourcePriorityProperty.class).get().equals(ResourcePriorityProperty.LAMBDA)) {
             // Select executor
             // For o2o-aware scheduling
             final ExecutorRepresenter selectedExecutor
