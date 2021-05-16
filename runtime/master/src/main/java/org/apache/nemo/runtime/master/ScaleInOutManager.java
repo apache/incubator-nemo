@@ -41,9 +41,9 @@ public final class ScaleInOutManager {
     this.backpressure = backpressure;
   }
 
-  public synchronized List<Future<String>> sendMigration(final double ratio,
+  public synchronized List<Future<String>> sendMigration(final List<Double> ratios,
                                                          final Collection<ExecutorRepresenter> executors,
-                                                         final Collection<String> stages,
+                                                         final List<String> stages,
                                                          final String resourceTyp) {
 
     long st = System.currentTimeMillis();
@@ -79,7 +79,7 @@ public final class ScaleInOutManager {
       // find list of tasks that the lambda executor has
       // executor 마다 정해진 number의 task들을 옮김.
       final Pair<Map<String, Integer>, List<Task>> stageIdCntMapAndTasksToBeMoved =
-        MasterUtils.getMaxMigrationCntPerStage(executor, ratio, stages);
+        MasterUtils.getMaxMigrationCntPerStage(executor, ratios, stages);
       final Map<String, Integer> stageIdCounterMap = stageIdCntMapAndTasksToBeMoved.left();
       final List<Task> tasksToBeMoved = stageIdCntMapAndTasksToBeMoved.right();
 
@@ -209,6 +209,9 @@ public final class ScaleInOutManager {
         .map(t -> t.getStageId()))
       .collect(Collectors.toSet());
 
-    return sendMigration(ratio, executors, stages, resourceType);
+    final List<String> slist = new ArrayList<>(stages);
+
+    return sendMigration(slist.stream().map(s -> 1.0)
+      .collect(Collectors.toList()), executors, slist, resourceType);
   }
 }

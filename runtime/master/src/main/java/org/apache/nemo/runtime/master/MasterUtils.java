@@ -11,8 +11,8 @@ import java.util.concurrent.Future;
 public final class MasterUtils {
 
   public static Pair<Map<String, Integer>, List<Task>> getMaxMigrationCntPerStage(final ExecutorRepresenter executor,
-                                                                                  final double ratio,
-                                                                                  final Collection<String> stages) {
+                                                                                  final List<Double> ratios,
+                                                                                  final List<String> stages) {
     final Map<String, Integer> stageIdCounterMap = new HashMap<>();
     final List<Task> tasksToBeMoved = new LinkedList<>();
 
@@ -28,6 +28,8 @@ public final class MasterUtils {
       });
 
     for (final String key : stageIdCounterMap.keySet()) {
+      final int index = stages.indexOf(key);
+      final double ratio = ratios.get(index);
       stageIdCounterMap.put(key, Math.min(stageIdCounterMap.get(key),
         (int) (stageIdCounterMap.get(key) * ratio)));
     }

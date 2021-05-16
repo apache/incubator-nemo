@@ -382,20 +382,16 @@ public final class NemoDriver {
               final Pair<List<Integer>, List<String>> pair = parseRedirection(message.getScalingMsg().getInfo());
               final List<Integer> nums = pair.left();
               final List<String> stages = pair.right();
+              final List<Double> ratios = nums.stream().map(n -> 1.0).collect(Collectors.toList());
 
               threadPool.execute(() -> {
                 LOG.info("Redirection done to lambda start {} / {}", nums, stages);
                 final long st = System.currentTimeMillis();
                 final List<Future> futures = new LinkedList<>();
                 // lambdaContainerManager.activateAllWorkers();
-                for (int i = 0; i < nums.size(); i++) {
-                  final int num = nums.get(i);
-                  final String stage = stages.get(i);
-
-                  futures.addAll(scaleInOutManager.sendMigration(1,
-                    executorRegistry.getLambdaExecutors(),
-                    stages, ResourcePriorityProperty.COMPUTE));
-                }
+                futures.addAll(scaleInOutManager.sendMigration(ratios,
+                  executorRegistry.getLambdaExecutors(),
+                  stages, ResourcePriorityProperty.COMPUTE));
 
                 futures.forEach(f -> {
                   try {
@@ -510,15 +506,13 @@ public final class NemoDriver {
       final long st = System.currentTimeMillis();
       final List<Future> futures = new LinkedList<>();
       // lambdaContainerManager.activateAllWorkers();
-      for (int i = 0; i < nums.size(); i++) {
-        final int num = nums.get(i);
-        final String stage = stages.get(i);
-        final double ratio = 1.0 * num / evalConf.sourceParallelism;
+      final List<Double> ratios =
+        nums.stream().map(num -> 1.0 * num / evalConf.sourceParallelism)
+        .collect(Collectors.toList());
 
-        futures.addAll(scaleInOutManager.sendMigration(ratio,
-          executorRegistry.getVMComputeExecutors(),
-          stages, resource));
-      }
+      futures.addAll(scaleInOutManager.sendMigration(ratios,
+        executorRegistry.getVMComputeExecutors(),
+        stages, resource));
 
       futures.forEach(f -> {
         try {
