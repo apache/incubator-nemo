@@ -66,7 +66,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     // LOG.info("Candidate executors for scheudling task {}: {}",
     //  task.getTaskId(), executors);
 
-    if (task.getPropertyValue(ResourcePriorityProperty.class).equals(ResourcePriorityProperty.LAMBDA)) {
+    if (task.getPropertyValue(ResourcePriorityProperty.class).get().equals(ResourcePriorityProperty.LAMBDA)) {
       if (lambdaPreScheduledExecutor.containsKey(task.getTaskId())) {
         return lambdaPreScheduledExecutor.get(task.getTaskId());
       }
