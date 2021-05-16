@@ -24,6 +24,7 @@ import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.mutable.MutableObject;
+import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -252,6 +253,7 @@ public final class TaskDispatcher {
             metricStatistics.taskScheduleDone(task.getTaskId());
 
             executorService.execute(() -> {
+              ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
               selectedExecutor.onTaskScheduled(task);
             });
             continue;
@@ -289,6 +291,7 @@ public final class TaskDispatcher {
 
               // send the task
               executorService.execute(() -> {
+                ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
                 selectedExecutor.onTaskScheduled(task);
               });
             } else {
@@ -321,6 +324,7 @@ public final class TaskDispatcher {
                   metricStatistics.taskScheduleDone(task.getTaskId());
                   // send the task
                   executorService.execute(() -> {
+                    ((DefaultExecutorRepresenterImpl)selectedExecutor).beforeOnTaskScheduled(task);
                     selectedExecutor.onTaskScheduled(task);
                   });
                 } catch (final Exception e) {

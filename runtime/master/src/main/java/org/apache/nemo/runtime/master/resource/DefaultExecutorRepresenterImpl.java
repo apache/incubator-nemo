@@ -439,14 +439,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
   private final Set<Task> prevScheduledTasks = new HashSet<>();
 
-  /**
-   * Marks the Task as running, and sends scheduling message to the executor.
-   * @param task the task to run
-   */
-  @Override
-  public synchronized void onTaskScheduled(final Task task) {
+  public synchronized void beforeOnTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
-        ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
+      ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     scheduledTaskToAttempt.put(task, task.getAttemptIdx());
     pendingTasksToBeStart.add(task.getTaskId());
     failedTasks.remove(task);
@@ -454,6 +449,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     if (!optPolicy.contains("R2") && task.isTransientTask()) {
       activatedTasks.add(task.getTaskId());
     }
+  }
+
+  /**
+   * Marks the Task as running, and sends scheduling message to the executor.
+   * @param task the task to run
+   */
+  @Override
+  public synchronized void onTaskScheduled(final Task task) {
 
     if (lambdaControlProxy != null && executorId.contains("Lambda")) {
       if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
