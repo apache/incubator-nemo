@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.PrevLambdaScheduleMap;
 import org.apache.nemo.runtime.master.TaskScheduledMapMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -51,11 +52,12 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   @Inject
   private MinOccupancyFirstSchedulingPolicy(final PlanStateManager planStateManager,
                                             final TaskScheduledMapMaster taskScheduledMapMaster,
-                                            final ExecutorRegistry executorRegistry) {
+                                            final ExecutorRegistry executorRegistry,
+                                            final PrevLambdaScheduleMap prevLambdaScheduleMap) {
     this.planStateManager = planStateManager;
     this.taskScheduledMap = taskScheduledMapMaster;
     this.executorRegistry = executorRegistry;
-    this.lambdaPreScheduledExecutor = new HashMap<>();
+    this.lambdaPreScheduledExecutor = prevLambdaScheduleMap.map;
   }
 
 

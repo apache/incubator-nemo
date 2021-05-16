@@ -70,6 +70,8 @@ public final class TaskDispatcher {
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
+  private final PrevLambdaScheduleMap prevLambdaScheduleMap;
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
@@ -78,7 +80,8 @@ public final class TaskDispatcher {
                          final PlanStateManager planStateManager,
                          final ResourceRequestCounter resourceRequestCounter,
                          final TaskScheduledMapMaster taskScheduledMap,
-                         final RendevousServer rendevousServer) {
+                         final RendevousServer rendevousServer,
+                         final PrevLambdaScheduleMap prevLambdaScheduleMap) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
@@ -93,6 +96,7 @@ public final class TaskDispatcher {
     this.rendevousServer = rendevousServer;
     this.reclaiming = false;
     this.filteredOutExecutors = new HashSet<>();
+    this.prevLambdaScheduleMap = prevLambdaScheduleMap;
   }
 
   public void setFilteredOutExecutors(final Set<String> filteredOutExecutors) {
@@ -174,9 +178,10 @@ public final class TaskDispatcher {
       }
 
       final List<Task> taskList = pendingTaskCollectionPointer.getTasks();
+      final long st = System.currentTimeMillis();
       if (taskList == null) {
         try {
-          Thread.sleep(100);
+          Thread.sleep(5);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -207,7 +212,12 @@ public final class TaskDispatcher {
 
       LOG.info("Size of tasks: {}", taskList.size());
       // Reverse order by stage number
-      final List<List<Task>> stageTasks = getStageTasks(taskList);
+      final List<List<Task>> stageTasks;
+      if ( taskList.size() > 1) {
+        stageTasks = getStageTasks(taskList);
+      } else {
+        stageTasks = Collections.singletonList(taskList);
+      }
 
       final List<Task> couldNotSchedule = new ArrayList<>();
 
@@ -217,6 +227,25 @@ public final class TaskDispatcher {
             // Guard against race conditions causing duplicate task launches
             LOG.debug("Skipping {} as it is not READY", task.getTaskId());
             continue;
+          }
+
+          if (prevLambdaScheduleMap.map.containsKey(task.getTaskId())) {
+            // Select executor
+            // For o2o-aware scheduling
+            final ExecutorRepresenter selectedExecutor
+              = prevLambdaScheduleMap.map.get(task.getTaskId());
+
+            taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
+
+            // update metadata first
+            planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+            LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
+              System.currentTimeMillis() - st);
+            // send the task
+            executorService.execute(() -> {
+              selectedExecutor.onTaskScheduled(task);
+            });
           }
 
           // LOG.info("Start to scheduling task {}, resource {}", task,
@@ -274,7 +303,8 @@ public final class TaskDispatcher {
                 // update metadata first
                 planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
-                LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+                LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
+                  System.currentTimeMillis() - st);
                 // send the task
                 executorService.execute(() -> {
                   selectedExecutor.onTaskScheduled(task);
