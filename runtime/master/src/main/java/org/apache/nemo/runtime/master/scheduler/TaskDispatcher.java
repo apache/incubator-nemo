@@ -306,22 +306,28 @@ public final class TaskDispatcher {
               if (!finalCandidates.isEmpty()) {
                 // Select executor
                 // For o2o-aware scheduling
-                final ExecutorRepresenter selectedExecutor
-                  = schedulingPolicy.selectExecutor(finalCandidates, task);
+                try {
+                  final ExecutorRepresenter selectedExecutor
+                    = schedulingPolicy.selectExecutor(finalCandidates, task);
 
-                taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
+                  taskScheduledMap.getPrevTaskExecutorIdMap().remove(task.getTaskId());
 
-                // update metadata first
-                planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+                  // update metadata first
+                  planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
-                LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
-                  System.currentTimeMillis() - st);
+                  LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
+                    System.currentTimeMillis() - st);
 
-                metricStatistics.taskScheduleDone(task.getTaskId());
-                // send the task
-                executorService.execute(() -> {
-                  selectedExecutor.onTaskScheduled(task);
-                });
+                  metricStatistics.taskScheduleDone(task.getTaskId());
+                  // send the task
+                  executorService.execute(() -> {
+                    selectedExecutor.onTaskScheduled(task);
+                  });
+                } catch (final Exception e) {
+                  e.printStackTrace();
+                  throw new RuntimeException("Exception in scheduling task " + task.getTaskId() + ", " +
+                    "finalCandidates " + finalCandidates);
+                }
               } else {
                 couldNotSchedule.add(task);
               }
