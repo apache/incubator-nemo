@@ -25,11 +25,11 @@ public final class MetricStatistics {
   private long collectionTime = System.currentTimeMillis();
 
   public void redirectPrepartion(final long elapsed) {
-    LOG.info("Redirection preparation time {}", elapsed);
+    LOG.info("STAT Redirection preparation time {}", elapsed);
   }
 
   public void redirectionDone(final long elapsed) {
-    LOG.info("Redirection done time {}", elapsed);
+    LOG.info("STAT Redirection done time {}", elapsed);
   }
 
 
@@ -44,7 +44,7 @@ public final class MetricStatistics {
   public void taskStopDone(final String taskId) {
     final long et = System.currentTimeMillis();
     if (taskStopTimeMap.containsKey(taskId)) {
-      LOG.info("Task stop elapsed time {}", et - taskStopTimeMap.remove(taskId));
+      LOG.info("STAT Task stop elapsed time {}", et - taskStopTimeMap.remove(taskId));
     }
     taskRescheduleTimeMap.put(taskId, et);
   }
@@ -52,7 +52,7 @@ public final class MetricStatistics {
   public void taskScheduleDone(final String taskId) {
     final long et = System.currentTimeMillis();
     if (taskRescheduleTimeMap.containsKey(taskId)) {
-      LOG.info("Task reschedule elapsed time {}", et - taskRescheduleTimeMap.remove(taskId));
+      LOG.info("STAT Task reschedule elapsed time {}", et - taskRescheduleTimeMap.remove(taskId));
     }
     taskRestartTimeMap.put(taskId, et);
   }
@@ -60,7 +60,7 @@ public final class MetricStatistics {
   public void taskRestart(final String taskId) {
     final long et = System.currentTimeMillis();
     if (taskRestartTimeMap.containsKey(taskId)) {
-      LOG.info("Task restart elapsed time {}", et - taskRestartTimeMap.remove(taskId));
+      LOG.info("STAT Task restart elapsed time {}", et - taskRestartTimeMap.remove(taskId));
     }
   }
 
