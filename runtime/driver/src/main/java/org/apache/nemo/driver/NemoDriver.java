@@ -130,6 +130,8 @@ public final class NemoDriver {
 
   private String addedExecutorType;
 
+  private final MetricStatistics metricStatistics;
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -140,6 +142,7 @@ public final class NemoDriver {
                      final Scaler scaler,
                      final ExecutorRegistry executorRegistry,
                      final NettyVMStateStore nettyVMStateStore,
+                     final MetricStatistics metricStatistics,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
@@ -153,6 +156,7 @@ public final class NemoDriver {
                      final VMScalingUtils vmScalingUtils,
                      final JobScaler jobScaler) {
     IdManager.setInDriver();
+    this.metricStatistics = metricStatistics;
     this.nettyVMStateStore = nettyVMStateStore;
     this.backpressure = backpressure;
     this.userApplicationRunner = userApplicationRunner;
@@ -328,11 +332,13 @@ public final class NemoDriver {
 
               // activate partial
               threadPool.execute(() -> {
+                final long tt = System.currentTimeMillis();
                 LOG.info("Redirection to lambda start {} / {}", nums, stages);
                 // lambdaContainerManager.activateAllWorkers();
                 runtimeMaster.redirectionToLambda(nums, stages, true);
                 // runtimeMaster.throttleSource(10000000);
-                LOG.info("End of Redirection to lambda start {} / {}", nums, stages);
+                metricStatistics.redirectionDone(System.currentTimeMillis() - tt);
+                LOG.info("End of Redirection to lambda start {} / {}, time {}", nums, stages, System.currentTimeMillis() - tt);
               });
 
             } else if (decision.equals("redirection")) {

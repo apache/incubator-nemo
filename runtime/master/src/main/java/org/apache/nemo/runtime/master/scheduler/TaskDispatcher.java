@@ -73,12 +73,15 @@ public final class TaskDispatcher {
 
   private final PrevLambdaScheduleMap prevLambdaScheduleMap;
 
+  private final MetricStatistics metricStatistics;
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager,
+                         final MetricStatistics metricStatistics,
                          final ResourceRequestCounter resourceRequestCounter,
                          final TaskScheduledMapMaster taskScheduledMap,
                          final RendevousServer rendevousServer,
@@ -88,6 +91,7 @@ public final class TaskDispatcher {
         new Thread(runnable, "TaskDispatcher thread"));
     this.planStateManager = planStateManager;
     this.isSchedulerRunning = false;
+    this.metricStatistics = metricStatistics;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
     this.resourceRequestCounter = resourceRequestCounter;
@@ -245,6 +249,8 @@ public final class TaskDispatcher {
             LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
               System.currentTimeMillis() - st);
             // send the task
+            metricStatistics.taskScheduleDone(task.getTaskId());
+
             executorService.execute(() -> {
               selectedExecutor.onTaskScheduled(task);
             });
@@ -279,6 +285,8 @@ public final class TaskDispatcher {
               planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
               LOG.info("{} scheduled to {} for origin", task.getTaskId(), selectedExecutor.getExecutorId());
+              metricStatistics.taskScheduleDone(task.getTaskId());
+
               // send the task
               executorService.execute(() -> {
                 selectedExecutor.onTaskScheduled(task);
@@ -308,6 +316,8 @@ public final class TaskDispatcher {
 
                 LOG.info("{} scheduled to {}, time {}", task.getTaskId(), selectedExecutor.getExecutorId(),
                   System.currentTimeMillis() - st);
+
+                metricStatistics.taskScheduleDone(task.getTaskId());
                 // send the task
                 executorService.execute(() -> {
                   selectedExecutor.onTaskScheduled(task);

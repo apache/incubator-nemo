@@ -63,9 +63,12 @@ public final class TaskScheduledMapMaster {
 
   private PendingTaskCollectionPointer pendingTaskCollectionPointer;
 
+  private final MetricStatistics metricStatistics;
+
   @Inject
   private TaskScheduledMapMaster(final ExecutorRegistry executorRegistry,
                                  final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                                 final MetricStatistics metricStatistics,
                                  final MessageEnvironment messageEnvironment,
                                  final PairStageTaskManager pairStageTaskManager,
                                  final LambdaTaskContainerEventHandler lambdaEventHandler,
@@ -76,6 +79,7 @@ public final class TaskScheduledMapMaster {
     this.executorAddressMap = new ConcurrentHashMap<>();
     this.executorRegistry = executorRegistry;
     this.lambdaEventHandler = lambdaEventHandler;
+    this.metricStatistics = metricStatistics;
     this.pairStageTaskManager = pairStageTaskManager;
     this.optPolicy= optPolicy;
     messageEnvironment.setupListener(TASK_SCHEDULE_MAP_LISTENER_ID,
@@ -155,6 +159,7 @@ public final class TaskScheduledMapMaster {
 
     final String executorId = taskExecutorIdMap.get(parent);
 
+
     final List<String> descendants = new LinkedList<>();
     descendants.add(parent);
 
@@ -175,6 +180,7 @@ public final class TaskScheduledMapMaster {
       taskIdTaskMap.get(taskId).setProperty(ResourcePriorityProperty.of(resourcePriorityProperty));
 
       LOG.info("Send stop signal {} to task {}", taskId.equals(parent), taskId);
+      metricStatistics.taskStopStart(taskId);
       representer.stopTask(taskId, taskId.equals(parent));
 
       synchronized (stageTaskMap) {
@@ -342,6 +348,8 @@ public final class TaskScheduledMapMaster {
         case TaskExecuting: {
           final ControlMessage.TaskExecutingMessage m = message.getTaskExecutingMsg();
           LOG.info("Receive task executing message {} from {}", m.getTaskId(), m.getExecutorId());
+          metricStatistics.taskRestart(m.getTaskId());
+
           executingTask(m.getExecutorId(), m.getTaskId());
           if (isAllLambdaTaskExecuting()) {
             lambdaEventHandler.onAllLambdaTaskScheduled();
