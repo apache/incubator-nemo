@@ -462,7 +462,6 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         // activate signal
         LOG.info("Activate lambda before scheduling tasks");
         lambdaControlProxy.activate();
-        waitForActivation();
       }
     }
 
@@ -488,6 +487,14 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
       }
 
       serializedTaskMap.setSerializedTask(task.getTaskId(), bos.toByteArray());
+
+      if (lambdaControlProxy != null && executorId.contains("Lambda")) {
+        if (lambdaControlProxy.isActive() || lambdaControlProxy.isActivating()) {
+          // just send task
+        } else {
+          waitForActivation();
+        }
+      }
 
       if (prevScheduled) {
         sendControlMessage(
