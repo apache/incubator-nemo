@@ -350,8 +350,9 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
         getRunningTasks().stream().map(t -> t.getTaskId()).collect(Collectors.toSet()));
       runnings.removeAll(deactivatedTasks);
 
-      LOG.info("{} activatedTasks {}, tasksToBeStopped {}, runnings: {}, deactivated {}",
+      LOG.info("{} activatedTasks {}, activatedPending: {}, tasksToBeStopped {}, runnings: {}, deactivated {}",
         activatedTasks,
+        activatedPendingTasks,
         tasksToBeStopped,
         runnings,
         deactivatedTasks);
@@ -452,6 +453,10 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     failedTasks.remove(task);
 
     if (!optPolicy.contains("R2") && task.isTransientTask()) {
+      activatedTasks.add(task.getTaskId());
+    }
+
+    if (optPolicy.contains("R2") && !task.isTransientTask()) {
       activatedTasks.add(task.getTaskId());
     }
 
@@ -685,6 +690,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   private Task removeFromRunningTasks(final String taskId) {
     final Task task;
+    activatedTasks.remove(taskId);
     scheduledTaskToAttempt.remove(taskId);
     if (runningComplyingTasks.containsKey(taskId)) {
       task = runningComplyingTasks.remove(taskId);

@@ -74,7 +74,6 @@ public final class ScaleInOutManager {
       return futures;
     }
 
-
     executors.stream().forEach(executor -> {
       // find list of tasks that the lambda executor has
       // executor 마다 정해진 number의 task들을 옮김.
