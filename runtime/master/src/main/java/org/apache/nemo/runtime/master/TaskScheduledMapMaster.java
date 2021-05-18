@@ -203,7 +203,8 @@ public final class TaskScheduledMapMaster {
   }
 
   public boolean isTaskScheduled(final String taskId) {
-    return !taskToBeStopped.contains(taskId) && taskExecutorIdMap.containsKey(taskId);
+    // return !taskToBeStopped.contains(taskId) && taskExecutorIdMap.containsKey(taskId);
+    return !taskToBeStopped.contains(taskId);
   }
 
   public boolean isAllTasksScheduledAtStartTime() {
