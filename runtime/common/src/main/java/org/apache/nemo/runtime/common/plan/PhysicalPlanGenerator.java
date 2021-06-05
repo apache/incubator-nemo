@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -56,6 +57,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlanGenerator.class.getName());
 
   private final String dagDirectory;
+  private final EvalConf evalConf;
 
   /**
    * Private constructor.
@@ -63,8 +65,10 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    * @param dagDirectory the directory in which to store DAG data.
    */
   @Inject
-  private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+  private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
+                                final EvalConf evalConf) {
     this.dagDirectory = dagDirectory;
+    this.evalConf = evalConf;
   }
 
   /**
@@ -132,7 +136,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    * @return the DAG composed of stages and stage edges.
    */
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
-    final StagePartitioner stagePartitioner = new StagePartitioner();
+    final StagePartitioner stagePartitioner = new StagePartitioner(evalConf);
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();

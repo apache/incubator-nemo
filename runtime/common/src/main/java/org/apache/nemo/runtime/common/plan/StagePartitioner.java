@@ -30,6 +30,7 @@ import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
 import org.apache.nemo.common.ir.vertex.utility.StateMergerVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,12 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
   private static final Logger LOG = LoggerFactory.getLogger(StagePartitioner.class.getName());
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
+
+  private final EvalConf evalConf;
+
+  public StagePartitioner(final EvalConf evalConf) {
+    this.evalConf = evalConf;
+  }
 
   /**
    * By default, the stage partitioner merges two vertices into one stage if and only if the two vertices have
@@ -121,6 +128,21 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       return false;
     }
     */
+
+    // for query 4
+    if (evalConf.queryId == 4 && edge.getDst().getId().equals("vertex14")
+      || evalConf.queryId == 4 && edge.getDst().getId().equals("vertex15")) {
+      return false;
+    }
+
+    if (evalConf.queryId == 5 && edge.getDst().getId().equals("vertex10")) {
+      return false;
+    }
+
+    if (evalConf.queryId == 6 && edge.getDst().getId().equals("vertex14")
+      || evalConf.queryId == 6 && edge.getDst().getId().equals("vertex15")) {
+      return false;
+    }
 
 
     // If the destination vertex has multiple inEdges, return false

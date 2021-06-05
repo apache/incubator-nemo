@@ -187,6 +187,9 @@ public final class EvalConf {
   @NamedParameter(short_name = "partial_warmup", default_value = "false")
   public static final class PartialWarmup implements Name<Boolean> {}
 
+  @NamedParameter(short_name = "query_id")
+  public final class QueryId implements Name<Integer> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int flushBytes;
@@ -237,12 +240,15 @@ public final class EvalConf {
   public final boolean fluidMigration;
   public final int fluidDelay;
 
+  public final int queryId;
+
   // LEGACY
   // NOT USED
   public final int numLambdaPool = 1;
   public final int numOffloadingWorkerAfterMerging = 1;
 
   public final String stageMoves;
+
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -288,6 +294,7 @@ public final class EvalConf {
                    @Parameter(FluidMigration.class) final boolean fluidMigration,
                    @Parameter(FluidDelay.class) final int fluidDelay,
                    @Parameter(StageMoves.class) final String stageMoves,
+                   @Parameter(QueryId.class) final int queryId,
                    @Parameter(LatencyLimit.class) final long latencyLimit) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
@@ -334,6 +341,8 @@ public final class EvalConf {
     this.fluidMigration = fluidMigration;
     this.fluidDelay = fluidDelay;
     this.stageMoves = stageMoves;
+
+    this.queryId = queryId;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -389,6 +398,8 @@ public final class EvalConf {
     jcb.bindNamedParameter(FluidMigration.class, Boolean.toString(fluidMigration));
     jcb.bindNamedParameter(FluidDelay.class, Integer.toString(fluidDelay));
     jcb.bindNamedParameter(StageMoves.class, stageMoves);
+
+    jcb.bindNamedParameter(QueryId.class, Integer.toString(queryId));
     return jcb.build();
   }
 
@@ -437,6 +448,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(FluidMigration.class);
     cl.registerShortNameOfClass(FluidDelay.class);
     cl.registerShortNameOfClass(StageMoves.class);
+    cl.registerShortNameOfClass(QueryId.class);
   }
 
   @Override
@@ -486,6 +498,7 @@ public final class EvalConf {
     sb.append("fluidMigration: "); sb.append(fluidMigration); sb.append("\n");
     sb.append("fluidDelay: "); sb.append(fluidDelay); sb.append("\n");
     sb.append("stageMoves: "); sb.append(stageMoves); sb.append("\n");
+    sb.append("queryId: "); sb.append(queryId); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
