@@ -141,8 +141,8 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
       return false;
     }
 
-    if (evalConf.queryId == 13 && edge.getDst().getId().equals("vertex15")
-      || evalConf.queryId == 13 && edge.getDst().getId().equals("vertex16")) {
+    if (evalConf.queryId == 13 && edge.getDst().getId().equals("vertex14")
+      || evalConf.queryId == 13 && edge.getDst().getId().equals("vertex15")) {
       return false;
     }
 
