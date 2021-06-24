@@ -16,6 +16,10 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 
 ## Nemo prerequisites and setup
 
+### Simple installation
+
+Run `$ ./bin/install_nemo.sh` on the Nemo home directory. This script includes the actions described below.
+
 ### Prerequisites
 * Java 8 or later (tested on Java 8 and Java 11)
 * Maven

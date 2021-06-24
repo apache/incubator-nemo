@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+#!/usr/bin/env bash
 
 # Run this script at NEMO_HOME as `bin/install_nemo.sh`
 
