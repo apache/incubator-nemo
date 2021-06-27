@@ -46,6 +46,9 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then # Mac OSX
   make -j 4
   sudo make install
   popd
+
+else
+  echo "Unsupported OS type $OSTYPE for the installation script"
 fi
 
 mvn clean install -T1C
