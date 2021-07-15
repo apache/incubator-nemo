@@ -81,6 +81,7 @@ public final class BatchScheduler implements Scheduler {
    * Data Structures for work stealing.
    */
   private final Map<String, Map<Integer, Long>> stageIdToOutputPartitionSizeMap = new HashMap<>();
+  private final Map<String, Long> taskIdToProcessedBytes = new HashMap<>();
 
   @Inject
   private BatchScheduler(final PlanRewriter planRewriter,
@@ -390,6 +391,14 @@ public final class BatchScheduler implements Scheduler {
   }
 
   // Methods for work stealing
+
+  /**
+   * Accumulate the execution result of each stage in Map[STAGE ID, Map[KEY, SIZE]] format.
+   * KEY is assumed to be Integer because of the HashPartition.
+   *
+   * @param taskId            id of task to accumulate.
+   * @param partitionSizeMap  map of (K) - (partition size) of the task.
+   */
   public void aggregateStageIdToPartitionSizeMap(final String taskId,
                                                  final Map<Integer, Long> partitionSizeMap) {
     final Map<Integer, Long> partitionSizeMapForThisStage = stageIdToOutputPartitionSizeMap
@@ -403,5 +412,16 @@ public final class BatchScheduler implements Scheduler {
       }
     }
     stageIdToOutputPartitionSizeMap.put(RuntimeIdManager.getStageIdFromTaskId(taskId), partitionSizeMapForThisStage);
+  }
+
+  /**
+   * Store the tracked processed bytes per task by the current time.
+   *
+   * @param taskId          id of task to track.
+   * @param processedBytes  size of the processed bytes till now.
+   */
+  public void aggregateTaskIdToProcessedBytes(final String taskId,
+                                              final long processedBytes) {
+    taskIdToProcessedBytes.put(taskId, processedBytes);
   }
 }

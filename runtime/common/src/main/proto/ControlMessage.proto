@@ -87,6 +87,7 @@ enum MessageType {
     RequestPipeLoc = 14;
     PipeLocInfo = 15;
     ParentTaskDataCollected = 16;
+  CurrentlyProcessedBytesCollected = 17;
 }
 
 message Message {
@@ -109,6 +110,7 @@ message Message {
     optional RequestPipeLocationMessage requestPipeLocMsg = 17;
     optional PipeLocationInfoMessage pipeLocInfoMsg = 18;
     optional ParentTaskDataCollectMsg ParentTaskDataCollected = 19;
+    optional CurrentlyProcessedBytesCollectMsg currentlyProcessedBytesCollected = 20;
 }
 
 // Messages from Master to Executors
@@ -262,4 +264,9 @@ message PipeLocationInfoMessage {
 message ParentTaskDataCollectMsg {
   required string taskId = 1;
   required bytes partitionSizeMap = 2;
+}
+
+message CurrentlyProcessedBytesCollectMsg {
+  required string taskId = 1;
+  required int64 processedDataBytes = 2;
 }

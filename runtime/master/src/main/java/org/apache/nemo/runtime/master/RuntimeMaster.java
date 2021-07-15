@@ -487,6 +487,13 @@ public final class RuntimeMaster {
           ((BatchScheduler) scheduler).aggregateStageIdToPartitionSizeMap(taskId, partitionSizeMap);
         }
         break;
+      case CurrentlyProcessedBytesCollected:
+        if (scheduler instanceof BatchScheduler) {
+          ((BatchScheduler) scheduler).aggregateTaskIdToProcessedBytes(
+            message.getCurrentlyProcessedBytesCollected().getTaskId(),
+            message.getCurrentlyProcessedBytesCollected().getProcessedDataBytes()
+          );
+        }
       case MetricFlushed:
         metricCountDownLatch.countDown();
         break;

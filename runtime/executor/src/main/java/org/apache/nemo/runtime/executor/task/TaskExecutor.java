@@ -746,9 +746,11 @@ public final class TaskExecutor {
     }
   }
 
+  // Methods for work stealing
   /**
-   * Gather the KV statistics of processed data.
-   * This method is for work stealing implementation.
+   * Gather the KV statistics of processed data when execution is completed.
+   * This method is for work stealing implementation: the accumulated statistics will be used to
+   * detect skewed tasks of the child stage.
    *
    * @param totalPartitionSizeMap     accumulated partitionSizeMap of task.
    * @param singlePartitionSizeMap    partitionSizeMap gained from single OutputWriter.
@@ -763,5 +765,23 @@ public final class TaskExecutor {
         totalPartitionSizeMap.put(hashedKey, partitionSize);
       }
     }
+  }
+
+  /**
+   * Send the temporally processed bytes of the current task on request from the scheduler.
+   * This method is for work stealing implementation.
+   */
+  public void onRequestForProcessedData() {
+    LOG.error("{}, bytes {}, replying for the request", taskId, serializedReadBytes);
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.CurrentlyProcessedBytesCollected)
+        .setCurrentlyProcessedBytesCollected(ControlMessage.CurrentlyProcessedBytesCollectMsg.newBuilder()
+          .setTaskId(this.taskId)
+          .setProcessedDataBytes(serializedReadBytes)
+          .build())
+        .build());
   }
 }
