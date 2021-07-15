@@ -86,6 +86,7 @@ enum MessageType {
     PipeInit = 13;
     RequestPipeLoc = 14;
     PipeLocInfo = 15;
+    ParentTaskDataCollected = 16;
 }
 
 message Message {
@@ -107,6 +108,7 @@ message Message {
     optional PipeInitMessage pipeInitMsg = 16;
     optional RequestPipeLocationMessage requestPipeLocMsg = 17;
     optional PipeLocationInfoMessage pipeLocInfoMsg = 18;
+    optional ParentTaskDataCollectMsg ParentTaskDataCollected = 19;
 }
 
 // Messages from Master to Executors
@@ -255,4 +257,9 @@ message RequestPipeLocationMessage {
 message PipeLocationInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required string executorId = 2;
+}
+
+message ParentTaskDataCollectMsg {
+  required string taskId = 1;
+  required bytes partitionSizeMap = 2;
 }

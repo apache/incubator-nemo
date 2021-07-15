@@ -77,6 +77,11 @@ public final class BatchScheduler implements Scheduler {
    */
   private List<List<Stage>> sortedScheduleGroups;  // Stages, sorted in the order to be scheduled.
 
+  /**
+   * Data Structures for work stealing.
+   */
+  private final Map<String, Map<Integer, Long>> stageIdToOutputPartitionSizeMap = new HashMap<>();
+
   @Inject
   private BatchScheduler(final PlanRewriter planRewriter,
                          final TaskDispatcher taskDispatcher,
@@ -382,5 +387,21 @@ public final class BatchScheduler implements Scheduler {
     }
 
     return false;
+  }
+
+  // Methods for work stealing
+  public void aggregateStageIdToPartitionSizeMap(final String taskId,
+                                                 final Map<Integer, Long> partitionSizeMap) {
+    final Map<Integer, Long> partitionSizeMapForThisStage = stageIdToOutputPartitionSizeMap
+      .getOrDefault(RuntimeIdManager.getStageIdFromTaskId(taskId), new HashMap<>());
+    for (Integer hashedKey : partitionSizeMap.keySet()) {
+      final Long partitionSize = partitionSizeMap.get(hashedKey);
+      if (partitionSizeMapForThisStage.containsKey(hashedKey)) {
+        partitionSizeMapForThisStage.put(hashedKey, partitionSize + partitionSizeMapForThisStage.get(hashedKey));
+      } else {
+        partitionSizeMapForThisStage.put(hashedKey, partitionSize);
+      }
+    }
+    stageIdToOutputPartitionSizeMap.put(RuntimeIdManager.getStageIdFromTaskId(taskId), partitionSizeMapForThisStage);
   }
 }

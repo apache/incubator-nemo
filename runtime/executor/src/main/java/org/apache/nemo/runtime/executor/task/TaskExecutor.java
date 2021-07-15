@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.common.Pair;
@@ -688,12 +689,21 @@ public final class TaskExecutor {
    */
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
+    final HashMap<Integer, Long> partitionSizeMap = new HashMap<>();
 
     // finalize OutputWriters for main children
     vertexHarness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
+
+      // Send partitionSizeMap to Scheduler
+      if (true) {
+        final Optional<Map<Integer, Long>> partitionSizes = outputWriter.getPartitionSizeMap();
+        if (partitionSizes.isPresent()) {
+          computePartitionSizeMap(partitionSizeMap, partitionSizes.get());
+        }
+      }
     });
 
     // finalize OutputWriters for additional tagged children
@@ -702,6 +712,14 @@ public final class TaskExecutor {
         outputWriter.close();
         final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
         writtenBytes.ifPresent(writtenBytesList::add);
+
+        // Send partitionSizeMap to Scheduler
+        if (true) {
+          final Optional<Map<Integer, Long>> partitionSizes = outputWriter.getPartitionSizeMap();
+          if (partitionSizes.isPresent()) {
+            computePartitionSizeMap(partitionSizeMap, partitionSizes.get());
+          }
+        }
       })
     );
 
@@ -713,5 +731,37 @@ public final class TaskExecutor {
     // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send(TASK_METRIC_ID, taskId, "taskOutputBytes",
       SerializationUtils.serialize(totalWrittenBytes));
+
+    if (!partitionSizeMap.isEmpty()) {
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ParentTaskDataCollected)
+          .setParentTaskDataCollected(ControlMessage.ParentTaskDataCollectMsg.newBuilder()
+            .setTaskId(taskId)
+            .setPartitionSizeMap(ByteString.copyFrom(SerializationUtils.serialize(partitionSizeMap)))
+            .build())
+          .build());
+    }
+  }
+
+  /**
+   * Gather the KV statistics of processed data.
+   * This method is for work stealing implementation.
+   *
+   * @param totalPartitionSizeMap     accumulated partitionSizeMap of task.
+   * @param singlePartitionSizeMap    partitionSizeMap gained from single OutputWriter.
+   */
+  private void computePartitionSizeMap(final Map<Integer, Long> totalPartitionSizeMap,
+                                       final Map<Integer, Long> singlePartitionSizeMap) {
+    for (Integer hashedKey : singlePartitionSizeMap.keySet()) {
+      final Long partitionSize = singlePartitionSizeMap.get(hashedKey);
+      if (totalPartitionSizeMap.containsKey(hashedKey)) {
+        totalPartitionSizeMap.compute(hashedKey, (existingKey, existingValue) -> existingValue + partitionSize);
+      } else {
+        totalPartitionSizeMap.put(hashedKey, partitionSize);
+      }
+    }
   }
 }
