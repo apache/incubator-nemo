@@ -22,6 +22,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.slf4j.Logger;
@@ -98,6 +99,11 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
         return element;
       }
     }
+  }
+
+  @Override
+  Object fetchDataElementWithTrace(String taskId, MetricMessageSender metricMessageSender) throws IOException {
+    return fetchDataElement();
   }
 
   private void fetchDataLazily() {
