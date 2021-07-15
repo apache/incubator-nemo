@@ -103,8 +103,8 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElementWithTrace(String taskId,
-                                   MetricMessageSender metricMessageSender) throws IOException {
+  Object fetchDataElementWithTrace(final String taskId,
+                                   final MetricMessageSender metricMessageSender) throws IOException {
     try {
       if (firstFetch) {
         fetchDataLazily();

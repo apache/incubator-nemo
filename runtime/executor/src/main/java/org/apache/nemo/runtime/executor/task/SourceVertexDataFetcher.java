@@ -25,7 +25,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 
-import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -77,7 +76,7 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElementWithTrace(String taskId, MetricMessageSender metricMessageSender) {
+  Object fetchDataElementWithTrace(final String taskId, final MetricMessageSender metricMessageSender) {
     return fetchDataElement();
   }
 
