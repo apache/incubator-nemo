@@ -58,10 +58,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.Serializable;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -481,6 +478,22 @@ public final class RuntimeMaster {
           .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
           .build());
         break;
+      case ParentTaskDataCollected:
+        if (scheduler instanceof BatchScheduler) {
+          final ControlMessage.ParentTaskDataCollectMsg workStealingMsg = message.getParentTaskDataCollected();
+          final String taskId = workStealingMsg.getTaskId();
+          final Map<Integer, Long> partitionSizeMap = SerializationUtils
+            .deserialize(workStealingMsg.getPartitionSizeMap().toByteArray());
+          ((BatchScheduler) scheduler).aggregateStageIdToPartitionSizeMap(taskId, partitionSizeMap);
+        }
+        break;
+      case CurrentlyProcessedBytesCollected:
+        if (scheduler instanceof BatchScheduler) {
+          ((BatchScheduler) scheduler).aggregateTaskIdToProcessedBytes(
+            message.getCurrentlyProcessedBytesCollected().getTaskId(),
+            message.getCurrentlyProcessedBytesCollected().getProcessedDataBytes()
+          );
+        }
       case MetricFlushed:
         metricCountDownLatch.countDown();
         break;

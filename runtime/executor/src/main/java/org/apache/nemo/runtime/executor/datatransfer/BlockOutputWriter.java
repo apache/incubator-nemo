@@ -52,6 +52,8 @@ public final class BlockOutputWriter implements OutputWriter {
 
   private long writtenBytes;
 
+  private Optional<Map<Integer, Long>> partitionSizeMap;
+
   /**
    * Constructor.
    *
@@ -109,7 +111,7 @@ public final class BlockOutputWriter implements OutputWriter {
     final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
       .getPropertyValue(DataPersistenceProperty.class).orElseThrow(IllegalStateException::new);
 
-    final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
+    partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
     if (partitionSizeMap.isPresent()) {
       long blockSizeTotal = 0;
@@ -123,6 +125,16 @@ public final class BlockOutputWriter implements OutputWriter {
     blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
   }
 
+  @Override
+  public Optional<Map<Integer, Long>> getPartitionSizeMap() {
+    if (partitionSizeMap.isPresent()) {
+      return partitionSizeMap;
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  @Override
   public Optional<Long> getWrittenBytes() {
     if (writtenBytes == -1) {
       return Optional.empty();
