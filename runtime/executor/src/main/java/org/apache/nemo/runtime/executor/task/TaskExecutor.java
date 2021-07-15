@@ -458,7 +458,7 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
         final DataFetcher dataFetcher = availableIterator.next();
         try {
-          final Object element = dataFetcher.fetchDataElement();
+          final Object element = dataFetcher.fetchDataElementWithTrace(taskId, metricMessageSender);
           onEventFromDataFetcher(element, dataFetcher);
           if (element instanceof Finishmark) {
             availableIterator.remove();
