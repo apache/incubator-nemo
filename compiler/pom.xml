@@ -47,6 +47,8 @@ under the License.
   <modules>
     <module>backend</module>
     <module>frontend/beam</module>
+    <module>frontend/beam/spectestsbundle</module>
+    <module>frontend/beam/spectests</module>
     <module>frontend/spark</module>
     <module>optimizer</module>
     <module>test</module>
