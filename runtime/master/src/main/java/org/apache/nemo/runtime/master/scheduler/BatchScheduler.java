@@ -283,10 +283,11 @@ public final class BatchScheduler implements Scheduler {
     List<String> scheduleGroupInId = scheduleGroup.stream().map(Stage::getId).collect(Collectors.toList());
     isWorkStealingConditionSatisfied.setValue(checkForWorkStealingBaseConditions(scheduleGroupInId));
 
-    if (isWorkStealingConditionSatisfied.booleanValue()) {
-      taskIdToProcessedBytes.clear();
-      final List<String> skewedTasks = detectSkew(scheduleGroupInId);
+    if (!isWorkStealingConditionSatisfied.booleanValue()) {
+      return;
     }
+    taskIdToProcessedBytes.clear();
+    final List<String> skewedTasks = detectSkew(scheduleGroupInId);
 
     // TODO #469 Split tasks using iterator interface.
 
