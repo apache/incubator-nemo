@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -72,6 +73,11 @@ class SourceVertexDataFetcher extends DataFetcher {
       boundedSourceReadTime += System.currentTimeMillis() - start;
       return element;
     }
+  }
+
+  @Override
+  Object fetchDataElementWithTrace(final String taskId, final MetricMessageSender metricMessageSender) {
+    return fetchDataElement();
   }
 
   final long getBoundedSourceReadTime() {

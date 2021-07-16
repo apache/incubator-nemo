@@ -20,16 +20,19 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.exception.UnrecoverableFailureException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.metric.TaskMetric;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.PlanAppender;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -66,6 +69,7 @@ public final class BatchScheduler implements Scheduler {
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;  // A 'pointer' to the list of pending tasks.
   private final ExecutorRegistry executorRegistry;  // A registry for executors available for the job.
   private final PlanStateManager planStateManager;  // A component that manages the state of the plan.
+  private final MetricStore metricStore = MetricStore.getStore();
 
   /**
    * Other necessary components of this {@link org.apache.nemo.runtime.master.RuntimeMaster}.
@@ -76,6 +80,14 @@ public final class BatchScheduler implements Scheduler {
    * The below variables depend on the submitted plan to execute.
    */
   private List<List<Stage>> sortedScheduleGroups;  // Stages, sorted in the order to be scheduled.
+
+  /**
+   * Data Structures for work stealing.
+   */
+  private final Set<String> workStealingCandidates = new HashSet<>();
+  private final Map<String, Map<Integer, Long>> stageIdToOutputPartitionSizeMap = new HashMap<>();
+  private final Map<String, Long> taskIdToProcessedBytes = new HashMap<>();
+  private final Map<String, Boolean> stageIdToWorkStealingExecuted = new HashMap<>();
 
   @Inject
   private BatchScheduler(final PlanRewriter planRewriter,
@@ -111,6 +123,11 @@ public final class BatchScheduler implements Scheduler {
   private void updatePlan(final PhysicalPlan newPhysicalPlan,
                           final int maxScheduleAttempt) {
     planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
+
+    for (Stage stage : planStateManager.getPhysicalPlan().getStageDAG().getVertices()) {
+      stageIdToWorkStealingExecuted.putIfAbsent(stage.getId(), false);
+    }
+
     this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
       .collect(Collectors.groupingBy(Stage::getScheduleGroup))
       .entrySet().stream()
@@ -259,6 +276,25 @@ public final class BatchScheduler implements Scheduler {
   }
 
   @Override
+  public void onWorkStealingCheck() {
+    MutableBoolean isWorkStealingConditionSatisfied = new MutableBoolean(false);
+    List<Stage> scheduleGroup = BatchSchedulerUtils
+      .selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager).orElse(new ArrayList<>());
+    List<String> scheduleGroupInId = scheduleGroup.stream().map(Stage::getId).collect(Collectors.toList());
+    isWorkStealingConditionSatisfied.setValue(checkForWorkStealingBaseConditions(scheduleGroupInId));
+
+    if (!isWorkStealingConditionSatisfied.booleanValue()) {
+      return;
+    }
+    taskIdToProcessedBytes.clear();
+    final List<String> skewedTasks = detectSkew(scheduleGroupInId);
+
+    // TODO #469 Split tasks using iterator interface.
+
+    return;
+  }
+
+  @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
     executorRegistry.registerExecutor(executorRepresenter);
@@ -304,6 +340,9 @@ public final class BatchScheduler implements Scheduler {
    * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
    */
   private void doSchedule() {
+    taskIdToProcessedBytes.clear();
+    workStealingCandidates.clear();
+
     final Optional<List<Stage>> earliest =
       BatchSchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
 
@@ -382,5 +421,233 @@ public final class BatchScheduler implements Scheduler {
     }
 
     return false;
+  }
+
+  ///////////////////////////////////////////////////////////////// Methods for work stealing
+
+  /**
+   * Accumulate the execution result of each stage in Map[STAGE ID, Map[KEY, SIZE]] format.
+   * KEY is assumed to be Integer because of the HashPartition.
+   *
+   * @param taskId            id of task to accumulate.
+   * @param partitionSizeMap  map of (K) - (partition size) of the task.
+   */
+  public void aggregateStageIdToPartitionSizeMap(final String taskId,
+                                                 final Map<Integer, Long> partitionSizeMap) {
+    final Map<Integer, Long> partitionSizeMapForThisStage = stageIdToOutputPartitionSizeMap
+      .getOrDefault(RuntimeIdManager.getStageIdFromTaskId(taskId), new HashMap<>());
+    for (Integer hashedKey : partitionSizeMap.keySet()) {
+      final Long partitionSize = partitionSizeMap.get(hashedKey);
+      if (partitionSizeMapForThisStage.containsKey(hashedKey)) {
+        partitionSizeMapForThisStage.put(hashedKey, partitionSize + partitionSizeMapForThisStage.get(hashedKey));
+      } else {
+        partitionSizeMapForThisStage.put(hashedKey, partitionSize);
+      }
+    }
+    stageIdToOutputPartitionSizeMap.put(RuntimeIdManager.getStageIdFromTaskId(taskId), partitionSizeMapForThisStage);
+  }
+
+  /**
+   * Store the tracked processed bytes per task by the current time.
+   *
+   * @param taskId          id of task to track.
+   * @param processedBytes  size of the processed bytes till now.
+   */
+  public void aggregateTaskIdToProcessedBytes(final String taskId,
+                                              final long processedBytes) {
+    taskIdToProcessedBytes.put(taskId, processedBytes);
+  }
+
+  /**
+   * Check if work stealing can be conducted.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return  true if work stealing is possible.
+   */
+  private boolean checkForWorkStealingBaseConditions(final List<String> scheduleGroup) {
+    if (scheduleGroup.isEmpty()) {
+      return false;
+    }
+
+    /* If the stage of the given schedule group contains sharded tasks, return false */
+    if (scheduleGroup.stream().anyMatch(stageId -> stageIdToWorkStealingExecuted.get(stageId).equals(true))) {
+      return false;
+    }
+
+    /* If there are idle executors and the number of remaining tasks are smaller than number of executors,
+     * return true. */
+    final boolean executorStatus = executorRegistry.isExecutorSlotAvailable();
+    final int totalNumberOfSlots = executorRegistry.getTotalNumberOfExecutorSlots();
+    int remainingTasks = 0;
+    for (String stage : scheduleGroup) {
+      remainingTasks += planStateManager.getNumberOfTasksRemainingInStage(stage); // ready + executing?
+    }
+    return executorStatus && (totalNumberOfSlots > remainingTasks);
+  }
+
+  /**
+   * Get the ids of tasks in execution.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return ids of running tasks.
+   */
+  private Set<String> getRunningTaskId(final List<String> scheduleGroup) {
+    final Set<String> onGoingTasksOfSchedulingGroup = new HashSet<>();
+    for (String stageId : scheduleGroup) {
+      onGoingTasksOfSchedulingGroup.addAll(planStateManager.getOngoingTaskIdsInStage(stageId));
+    }
+    return onGoingTasksOfSchedulingGroup;
+  }
+
+  /**
+   * Get parent stages of given schedule group.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return Map of stage and set of its parent.
+   */
+  private Map<String, Set<String>> getParentStages(final List<String> scheduleGroup) {
+    Map<String, Set<String>> parentStages = new HashMap<>();
+    for (String stageId : scheduleGroup) {
+      parentStages.put(stageId, planStateManager.getPhysicalPlan().getStageDAG().getParents(stageId)
+        .stream()
+        .map(Vertex::getId)
+        .collect(Collectors.toSet()));
+    }
+    return parentStages;
+  }
+
+  /**
+   * Get the input size of running tasks.
+   *
+   * @param parentStageIds  id of parent stages.
+   * @param runningTaskIds  id of running tasks.
+   * @return Map of task id to its input size.
+   */
+  private Map<String, Long> getInputSizeOfRunningTasks(final Set<String> parentStageIds,
+                                                       final Set<String> runningTaskIds) {
+    Map<String, Long> currentlyRunningTaskIdsToTotalSize = new HashMap<>();
+    for (String parent : parentStageIds) {
+      Map<Integer, Long> taskIdxToSize = stageIdToOutputPartitionSizeMap.get(parent);
+      for (String taskId : runningTaskIds) {
+        if (currentlyRunningTaskIdsToTotalSize.containsKey(taskId)) {
+          final long existingValue = currentlyRunningTaskIdsToTotalSize.get(taskId);
+          currentlyRunningTaskIdsToTotalSize.put(taskId,
+            existingValue + taskIdxToSize.get(RuntimeIdManager.getIndexFromTaskId(taskId)));
+        } else {
+          currentlyRunningTaskIdsToTotalSize
+            .put(taskId, taskIdxToSize.get(RuntimeIdManager.getIndexFromTaskId(taskId)));
+        }
+      }
+    }
+    return currentlyRunningTaskIdsToTotalSize;
+  }
+
+  /**
+   * get current execution time of running tasks in millisecond.
+   * Note that this is the execution time of incomplete tasks.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return  Map of task id to its execution time.
+   */
+  private Map<String, Long> getCurrentExecutionTimeMsOfRunningTasks(final List<String> scheduleGroup) {
+    final Map<String, Long> taskToExecutionTime = new HashMap<>();
+    for (String stageId : scheduleGroup) {
+      taskToExecutionTime.putAll(planStateManager.getExecutingTaskToRunningTimeMs(stageId));
+    }
+    return taskToExecutionTime;
+  }
+
+  private List<String> getScheduleGroupByStage(final String stageId) {
+    return sortedScheduleGroups.get(
+      planStateManager.getPhysicalPlan().getStageDAG().getVertexById(stageId).getScheduleGroup())
+      .stream()
+      .map(Vertex::getId)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Detect skewed tasks.
+   *
+   * @param scheduleGroup current schedule group.
+   * @return List of skewed tasks.
+   */
+  private List<String> detectSkew(final List<String> scheduleGroup) {
+    final Map<String, Pair<Integer, Integer>> taskIdToIteratorInformation = new HashMap<>();
+    final Map<String, Long> taskIdToInitializationOverhead = new HashMap<>();
+    final Map<String, Long> inputSizeOfCandidateTasks = new HashMap<>();
+    final Map<String, Set<String>> parentStageId = getParentStages(scheduleGroup);
+
+
+    /* if this schedule group contains a source stage, return empty list */
+    if (scheduleGroup.stream().anyMatch(stage ->
+      planStateManager.getPhysicalPlan().getStageDAG().getParents(stage).isEmpty())) {
+      return new ArrayList<>();
+    }
+
+    workStealingCandidates.addAll(getRunningTaskId(scheduleGroup));
+
+    /* Gather statistics of work stealing candidates */
+
+    /* get size of running tasks */
+    for (String stage : scheduleGroup) {
+      inputSizeOfCandidateTasks.putAll(
+        getInputSizeOfRunningTasks(parentStageId.get(stage), workStealingCandidates));
+    }
+
+    /* get elapsed time */
+    Map<String, Long> taskIdToElapsedTime = getCurrentExecutionTimeMsOfRunningTasks(scheduleGroup);
+
+    /* gather task metric */
+    for (String taskId : workStealingCandidates) {
+      TaskMetric taskMetric = metricStore.getMetricWithId(TaskMetric.class, taskId);
+
+      taskIdToProcessedBytes.put(taskId, taskMetric.getSerializedReadBytes());
+      taskIdToIteratorInformation.put(taskId, Pair.of(
+        taskMetric.getCurrentIteratorIndex(), taskMetric.getTotalIteratorNumber()));
+      taskIdToInitializationOverhead.put(taskId, taskMetric.getTaskPreparationTime());
+    }
+
+    /* If gathered statistic is not sufficient for skew detection, return empty list. */
+    if (taskIdToProcessedBytes.size() <= workStealingCandidates.size() / 2) {
+      return new ArrayList<>();
+    }
+
+    /* estimate the remaining time */
+    List<Pair<String, Long>> estimatedTimeToFinishPerTask = new ArrayList<>(taskIdToElapsedTime.size());
+
+    for (String taskId : taskIdToProcessedBytes.keySet()) {
+      // if processed bytes are not available, do not detect skew.
+      if (taskIdToProcessedBytes.get(taskId) <= 0) {
+        return new ArrayList<>();
+      }
+
+      // if this task is almost finished, ignore it.
+      Pair<Integer, Integer> iteratorInformation = taskIdToIteratorInformation.get(taskId);
+      if (iteratorInformation.right() - iteratorInformation.left() <= 2) {
+        continue;
+      }
+
+      long timeToFinishExecute = taskIdToElapsedTime.get(taskId) * inputSizeOfCandidateTasks.get(taskId)
+        / taskIdToProcessedBytes.get(taskId);
+
+      // if the estimated left time is shorter than the initialization overhead, stop!
+      if (timeToFinishExecute < taskIdToInitializationOverhead.get(taskId) * 2) {
+        continue;
+      }
+
+      estimatedTimeToFinishPerTask.add(Pair.of(taskId, timeToFinishExecute));
+    }
+
+    /* detect skew */
+    Collections.sort(estimatedTimeToFinishPerTask, new Comparator<Pair<String, Long>>() {
+      @Override
+      public int compare(final Pair<String, Long> o1, final Pair<String, Long> o2) {
+        return o2.right().compareTo(o1.right());
+      }
+    });
+
+    return estimatedTimeToFinishPerTask
+      .subList(0, estimatedTimeToFinishPerTask.size() / 2)
+      .stream().map(Pair::left).collect(Collectors.toList());
   }
 }

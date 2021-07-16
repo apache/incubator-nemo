@@ -58,10 +58,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.Serializable;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -85,9 +82,11 @@ public final class RuntimeMaster {
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
   private static final int REST_SERVER_PORT = 10101;
   private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
+  private static final int WORK_STEALING_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
   private final ScheduledExecutorService speculativeTaskCloningThread;
+  private final ScheduledExecutorService workStealingThread;
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
@@ -159,6 +158,16 @@ public final class RuntimeMaster {
       SPECULATION_CHECKING_PERIOD_MS,
       SPECULATION_CHECKING_PERIOD_MS,
       TimeUnit.MILLISECONDS);
+
+    // Check for work stealing every second
+    this.workStealingThread = Executors
+      .newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "WorkStealing master thread"));
+    this.workStealingThread.scheduleWithFixedDelay(
+      () -> this.runtimeMasterThread.submit(scheduler::onWorkStealingCheck),
+      WORK_STEALING_CHECKING_PERIOD_MS,
+      WORK_STEALING_CHECKING_PERIOD_MS,
+      TimeUnit.MILLISECONDS);
+
 
     this.scheduler = scheduler;
     this.containerManager = containerManager;
@@ -481,6 +490,22 @@ public final class RuntimeMaster {
           .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
           .build());
         break;
+      case ParentTaskDataCollected:
+        if (scheduler instanceof BatchScheduler) {
+          final ControlMessage.ParentTaskDataCollectMsg workStealingMsg = message.getParentTaskDataCollected();
+          final String taskId = workStealingMsg.getTaskId();
+          final Map<Integer, Long> partitionSizeMap = SerializationUtils
+            .deserialize(workStealingMsg.getPartitionSizeMap().toByteArray());
+          ((BatchScheduler) scheduler).aggregateStageIdToPartitionSizeMap(taskId, partitionSizeMap);
+        }
+        break;
+      case CurrentlyProcessedBytesCollected:
+        if (scheduler instanceof BatchScheduler) {
+          ((BatchScheduler) scheduler).aggregateTaskIdToProcessedBytes(
+            message.getCurrentlyProcessedBytesCollected().getTaskId(),
+            message.getCurrentlyProcessedBytesCollected().getProcessedDataBytes()
+          );
+        }
       case MetricFlushed:
         metricCountDownLatch.countDown();
         break;

@@ -86,6 +86,10 @@ public final class PlanStateManager {
   private final Map<String, Map<Integer, Integer>> stageIdToTaskIndexToNumOfClones = new HashMap<>();
 
   /**
+   * Used for work stealing.
+   */
+  private final Map<String, Map<Integer, List<TaskState>>> stageIdToTaskIdxToWSAttemptStates = new HashMap<>();
+  /**
    * Represents the plan to manage.
    */
   private PhysicalPlan physicalPlan;
@@ -127,7 +131,7 @@ public final class PlanStateManager {
   }
 
   /**
-   * @param metricStore set the metric store of the paln state manager.
+   * @param metricStore set the metric store of the plan state manager.
    */
   public void setMetricStore(final MetricStore metricStore) {
     this.metricStore = metricStore;
@@ -326,16 +330,8 @@ public final class PlanStateManager {
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final Map<Integer, List<TaskState>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
-    final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.values().stream()
-      .filter(attempts -> {
-        final List<TaskState.State> states = attempts
-          .stream()
-          .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
-          .collect(Collectors.toList());
-        return states.stream().anyMatch(curState -> curState.equals(TaskState.State.ON_HOLD)) // one of them is ON_HOLD
-          || states.stream().anyMatch(curState -> curState.equals(TaskState.State.COMPLETE)); // one of them is COMPLETE
-      })
-      .count();
+    final long numOfCompletedTaskIndicesInThisStage = getNumberOfCompletedTasksInStage(taskStatesOfThisStage);
+
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
         taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
@@ -575,6 +571,59 @@ public final class PlanStateManager {
     return otherAttemptsforTheSameTaskIndex.stream()
       .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
       .collect(Collectors.toList());
+  }
+
+  /**
+   * Get number of remaining tasks of the stage.
+   *
+   * @param stageId   stage id.
+   * @return          number of remaining tasks.
+   */
+  public int getNumberOfTasksRemainingInStage(final String stageId) {
+    final Map<Integer, List<TaskState>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
+    final Map<Integer, List<TaskState>> wsTaskStatesOfThisStage = stageIdToTaskIdxToWSAttemptStates
+      .getOrDefault(stageId, new HashMap<>());
+    final long numOfCompletedTaskIndices = getNumberOfCompletedTasksInStage(taskStatesOfThisStage);
+    if (wsTaskStatesOfThisStage.isEmpty()) {
+      return (int) (taskStatesOfThisStage.size() - numOfCompletedTaskIndices);
+    } else {
+      final long numOfCompletedWorkStealingTaskIndices = getNumberOfCompletedTasksInStage(wsTaskStatesOfThisStage);
+      return (int) (taskStatesOfThisStage.size() - numOfCompletedTaskIndices
+        + wsTaskStatesOfThisStage.size() - numOfCompletedWorkStealingTaskIndices);
+    }
+  }
+
+  /**
+   * Get tasks which are currently being executed.
+   *
+   * @param stageId   stage id.
+   * @return  Set of tasksIds in execution.
+   */
+  public Set<String> getOngoingTaskIdsInStage(final String stageId) {
+    final Map<Integer, List<TaskState>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
+    final Set<String> onGoingTaskIds = new HashSet<>();
+    for (final int taskIndex : taskIdToState.keySet()) {
+      final List<TaskState> attemptStates = taskIdToState.get(taskIndex);
+      for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+        if (attemptStates.get(attempt).getStateMachine().getCurrentState().equals(TaskState.State.EXECUTING)) {
+          onGoingTaskIds.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+        }
+      }
+    }
+    return onGoingTaskIds;
+  }
+
+  private long getNumberOfCompletedTasksInStage(final Map<Integer, List<TaskState>> taskIdxToState) {
+    return taskIdxToState.values().stream()
+      .filter(attempts -> {
+        final List<TaskState.State> states = attempts
+          .stream()
+          .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
+          .collect(Collectors.toList());
+        return states.stream().anyMatch(curState -> curState.equals(TaskState.State.ON_HOLD))
+          || states.stream().anyMatch(curState -> curState.equals(TaskState.State.COMPLETE));
+      })
+      .count();
   }
 
   /**
