@@ -452,6 +452,12 @@ public final class SimulationScheduler implements Scheduler {
   }
 
   @Override
+  public void onWorkStealingCheck() {
+    // we don't simulate work stealing yet.
+    return;
+  }
+
+  @Override
   public void terminate() {
     this.taskDispatcher.terminate();
     this.executorRegistry.terminate();
