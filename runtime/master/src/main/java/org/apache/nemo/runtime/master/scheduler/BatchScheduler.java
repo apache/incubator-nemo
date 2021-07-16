@@ -461,6 +461,7 @@ public final class BatchScheduler implements Scheduler {
    * Check if work stealing can be conducted.
    *
    * @param scheduleGroup  schedule group.
+   * @return  true if work stealing is possible.
    */
   private boolean checkForWorkStealingBaseConditions(final List<String> scheduleGroup) {
     if (scheduleGroup.isEmpty()) {
@@ -473,8 +474,7 @@ public final class BatchScheduler implements Scheduler {
     }
 
     /* If there are idle executors and the number of remaining tasks are smaller than number of executors,
-     * return true.
-     */
+     * return true. */
     final boolean executorStatus = executorRegistry.isExecutorSlotAvailable();
     final int totalNumberOfSlots = executorRegistry.getTotalNumberOfExecutorSlots();
     int remainingTasks = 0;
@@ -484,7 +484,13 @@ public final class BatchScheduler implements Scheduler {
     return executorStatus && (totalNumberOfSlots > remainingTasks);
   }
 
-  private Set<String> getCurrentlyRunningTaskId(final List<String> scheduleGroup) {
+  /**
+   * Get the ids of tasks in execution.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return ids of running tasks.
+   */
+  private Set<String> getRunningTaskId(final List<String> scheduleGroup) {
     final Set<String> onGoingTasksOfSchedulingGroup = new HashSet<>();
     for (String stageId : scheduleGroup) {
       onGoingTasksOfSchedulingGroup.addAll(planStateManager.getOngoingTaskIdsInStage(stageId));
@@ -492,22 +498,36 @@ public final class BatchScheduler implements Scheduler {
     return onGoingTasksOfSchedulingGroup;
   }
 
+  /**
+   * Get parent stages of given schedule group.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return Map of stage and set of its parent.
+   */
   private Map<String, Set<String>> getParentStages(final List<String> scheduleGroup) {
     Map<String, Set<String>> parentStages = new HashMap<>();
     for (String stageId : scheduleGroup) {
-      parentStages.put(stageId, planStateManager.getPhysicalPlan().getStageDAG().getParents(stageId).stream()
+      parentStages.put(stageId, planStateManager.getPhysicalPlan().getStageDAG().getParents(stageId)
+        .stream()
         .map(Vertex::getId)
         .collect(Collectors.toSet()));
     }
     return parentStages;
   }
 
-  private Map<String, Long> getInputSizesOfRunningTaskIds(final Set<String> parentStageIds,
-                                                          final Set<String> currentlyRunningTaskIds) {
+  /**
+   * Get the input size of running tasks.
+   *
+   * @param parentStageIds  id of parent stages.
+   * @param runningTaskIds  id of running tasks.
+   * @return Map of task id to its input size.
+   */
+  private Map<String, Long> getInputSizeOfRunningTasks(final Set<String> parentStageIds,
+                                                       final Set<String> runningTaskIds) {
     Map<String, Long> currentlyRunningTaskIdsToTotalSize = new HashMap<>();
     for (String parent : parentStageIds) {
       Map<Integer, Long> taskIdxToSize = stageIdToOutputPartitionSizeMap.get(parent);
-      for (String taskId : currentlyRunningTaskIds) {
+      for (String taskId : runningTaskIds) {
         if (currentlyRunningTaskIdsToTotalSize.containsKey(taskId)) {
           final long existingValue = currentlyRunningTaskIdsToTotalSize.get(taskId);
           currentlyRunningTaskIdsToTotalSize.put(taskId,
@@ -521,6 +541,13 @@ public final class BatchScheduler implements Scheduler {
     return currentlyRunningTaskIdsToTotalSize;
   }
 
+  /**
+   * get current execution time of running tasks in millisecond.
+   * Note that this is the execution time of incomplete tasks.
+   *
+   * @param scheduleGroup  schedule group.
+   * @return  Map of task id to its execution time.
+   */
   private Map<String, Long> getCurrentExecutionTimeMsOfRunningTasks(final List<String> scheduleGroup) {
     final Map<String, Long> taskToExecutionTime = new HashMap<>();
     for (String stageId : scheduleGroup) {
@@ -556,14 +583,14 @@ public final class BatchScheduler implements Scheduler {
       return new ArrayList<>();
     }
 
-    workStealingCandidates.addAll(getCurrentlyRunningTaskId(scheduleGroup));
+    workStealingCandidates.addAll(getRunningTaskId(scheduleGroup));
 
     /* Gather statistics of work stealing candidates */
 
     /* get size of running tasks */
     for (String stage : scheduleGroup) {
       inputSizeOfCandidateTasks.putAll(
-        getInputSizesOfRunningTaskIds(parentStageId.get(stage), workStealingCandidates));
+        getInputSizeOfRunningTasks(parentStageId.get(stage), workStealingCandidates));
     }
 
     /* get elapsed time */
@@ -610,7 +637,7 @@ public final class BatchScheduler implements Scheduler {
       estimatedTimeToFinishPerTask.add(Pair.of(taskId, timeToFinishExecute));
     }
 
-    // detect skew
+    /* detect skew */
     Collections.sort(estimatedTimeToFinishPerTask, new Comparator<Pair<String, Long>>() {
       @Override
       public int compare(final Pair<String, Long> o1, final Pair<String, Long> o2) {
