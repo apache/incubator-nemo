@@ -347,8 +347,8 @@ public final class PlanStateManager {
     final Map<Integer, List<TaskState>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
     final Map<Integer, List<TaskState>> wsTaskStatesOfThisStage =
       stageIdToTaskIdxToWSAttemptStates.getOrDefault(stageId, new HashMap<>());
-    final long numOfCompletedTaskIndicesInThisStage = getNumberOfCompletedTasksInStage(taskStatesOfThisStage) +
-      getNumberOfCompletedTasksInStage(wsTaskStatesOfThisStage);
+    final long numOfCompletedTaskIndicesInThisStage = getNumberOfCompletedTasksInStage(taskStatesOfThisStage)
+      + getNumberOfCompletedTasksInStage(wsTaskStatesOfThisStage);
 
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",

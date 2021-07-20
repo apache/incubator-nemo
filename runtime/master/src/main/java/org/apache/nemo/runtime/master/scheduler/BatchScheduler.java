@@ -18,13 +18,18 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import com.google.protobuf.ByteString;
 import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.exception.UnrecoverableFailureException;
+import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.metric.TaskMetric;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.StageState;
@@ -41,7 +46,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
+import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -277,10 +284,12 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void onWorkStealingCheck() {
-    MutableBoolean isWorkStealingConditionSatisfied = new MutableBoolean(false);
-    List<Stage> scheduleGroup = BatchSchedulerUtils
+    final List<Stage> scheduleGroup = BatchSchedulerUtils
       .selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager).orElse(new ArrayList<>());
-    List<String> scheduleGroupInId = scheduleGroup.stream().map(Stage::getId).collect(Collectors.toList());
+    final List<String> scheduleGroupInId = scheduleGroup.stream().map(Stage::getId).collect(Collectors.toList());
+    final Map<String, Pair<Integer, Integer>> wsResult = new HashMap<>();
+    final MutableBoolean isWorkStealingConditionSatisfied = new MutableBoolean(false);
+
     isWorkStealingConditionSatisfied.setValue(checkForWorkStealingBaseConditions(scheduleGroupInId));
 
     if (!isWorkStealingConditionSatisfied.booleanValue()) {
@@ -290,7 +299,29 @@ public final class BatchScheduler implements Scheduler {
     final List<String> skewedTasks = detectSkew(scheduleGroupInId);
 
     // TODO #469 Split tasks using iterator interface.
+    if (skewedTasks.isEmpty()) {
+      return;
+    }
 
+    final Map<String, Pair<Integer, Integer>> taskToSplitIteratorInfo = splitIterator(skewedTasks);
+    final List<Task> wsTasks = generateWorkStealingTasks(scheduleGroup, skewedTasks, taskToSplitIteratorInfo);
+
+    // accumulate the Victim tasks and non skewed tasks result
+    for (String taskId : workStealingCandidates) {
+      if (skewedTasks.contains(taskId)) { // this is for skewed task
+        Pair<Integer, Integer> iteratorInfo = taskToSplitIteratorInfo.get(taskId);
+        wsResult.put(taskId, Pair.of(0, iteratorInfo.left()));
+      } else { // this is for non skewed tasks
+        wsResult.put(taskId, Pair.of(0, Integer.MAX_VALUE));
+      }
+    }
+
+    /* notify the updated information to executors */
+    sendWorkStealingResultToExecutor(wsResult);
+
+    // schedule new tasks
+    pendingTaskCollectionPointer.setToOverwrite(wsTasks);
+    taskDispatcher.onNewPendingTaskCollectionAvailable();
     return;
   }
 
@@ -587,7 +618,6 @@ public final class BatchScheduler implements Scheduler {
     workStealingCandidates.addAll(getRunningTaskId(scheduleGroup));
 
     /* Gather statistics of work stealing candidates */
-
     /* get size of running tasks */
     for (String stage : scheduleGroup) {
       inputSizeOfCandidateTasks.putAll(
@@ -649,5 +679,108 @@ public final class BatchScheduler implements Scheduler {
     return estimatedTimeToFinishPerTask
       .subList(0, estimatedTimeToFinishPerTask.size() / 2)
       .stream().map(Pair::left).collect(Collectors.toList());
+  }
+
+  private Map<String, Pair<Integer, Integer>> splitIterator(final List<String> skewedTasks) {
+    final Map<String, Pair<Integer, Integer>> taskToIteratorInfo = new HashMap<>();
+
+    for (String taskId : skewedTasks) {
+      TaskMetric taskMetric = metricStore.getMetricWithId(TaskMetric.class, taskId);
+      int currIterIdx = taskMetric.getCurrentIteratorIndex();
+      int totalIterIndex = taskMetric.getTotalIteratorNumber();
+      int changePoint = (int) Math.floor((totalIterIndex + currIterIdx) / 2 + 1);
+
+      taskToIteratorInfo.put(taskId, Pair.of(changePoint, totalIterIndex));
+    }
+
+    return taskToIteratorInfo;
+  }
+
+  private List<Task> generateWorkStealingTasks(final List<Stage> scheduleGroup,
+                                               final List<String> skewedTasks,
+                                               final Map<String, Pair<Integer, Integer>> taskToIteratorInfo) {
+    /* Split the skewed tasks */
+    final List<Task> tasksToSchedule = new ArrayList<>(skewedTasks.size());
+
+
+    // tasks are generated in "stage" based : loop on stages, not schedule group
+    for (Stage stageToSchedule : scheduleGroup) {
+      String stageId = stageToSchedule.getId();
+
+      // make new task ids and store that information in corresponding stage and plan state manager
+      // for now, id logic for robber tasks are as follows:
+      // - same stage id (obvious)
+      // - same index number (need to fetch the same data as the victim task)
+      // - attempt number is replaced with "*", similar withe the block wildcard id.
+
+      //generate the robber tasks' id
+      final Set<String> newTaskIds = skewedTasks.stream()
+        .filter(taskId -> taskId.contains(stageId))
+        .map(taskId -> RuntimeIdManager.generateWorkStealingTaskId(taskId))
+        .collect(Collectors.toSet());
+
+      if (newTaskIds.isEmpty()) {
+        continue;
+      }
+
+      // update the work stealing tasks in Stage and PlanStateManager
+      planStateManager.getPhysicalPlan().getStageDAG()
+        .getVertexById(stageId).setWorkStealingTaskIds(newTaskIds);
+      planStateManager.addWorkStealingTasks(newTaskIds);
+
+      // house keeping stuffs needed for initializing tasks
+      // create and return Robber tasks
+      final List<StageEdge> stageIncomingEdges =
+        planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
+      final List<StageEdge> stageOutgoingEdges =
+        planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
+      final List<Map<String, Readable>> vertexIdToReadable = stageToSchedule.getVertexIdToReadables();
+
+      skewedTasks.forEach(taskId -> {
+        final Set<String> blockIds = BatchSchedulerUtils.getOutputBlockIds(planStateManager, taskId);
+        blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
+        final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
+
+        int startIterIdx = taskToIteratorInfo.get(taskId).left();
+        int endIterIndex = taskToIteratorInfo.get(taskId).right();
+
+        tasksToSchedule.add(new Task(
+          planStateManager.getPhysicalPlan().getPlanId(),
+          RuntimeIdManager.generateWorkStealingTaskId(taskId),
+          stageToSchedule.getExecutionProperties(),
+          stageToSchedule.getSerializedIRDAG(),
+          stageIncomingEdges,
+          stageOutgoingEdges,
+          vertexIdToReadable.get(taskIdx),
+          new AtomicInteger(startIterIdx),
+          new AtomicInteger(endIterIndex)));
+      });
+
+
+      // do work stealing for only once : this is because of the index based task state tracking system
+      // Need to be handled in the near future!
+      stageIdToWorkStealingExecuted.put(stageId, true);
+    }
+
+    return tasksToSchedule;
+  }
+
+  /**
+   * Send the accumulated iterator information (work stealing result) to executor.
+   * @param result  result to send.
+   */
+  private void sendWorkStealingResultToExecutor(final Map<String, Pair<Integer, Integer>> result) {
+    // driver sends message to executors
+    // ask executors to flush metric
+    final byte[] serialized = SerializationUtils.serialize((Serializable) result);
+    ControlMessage.Message message = ControlMessage.Message.newBuilder()
+      .setId(RuntimeIdManager.generateMessageId())
+      .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+      .setType(ControlMessage.MessageType.SendWorkStealingResult)
+      .setSendWorkStealingResult(ControlMessage.WorkStealingResultMsg.newBuilder()
+        .setWorkStealingResult(ByteString.copyFrom(serialized))
+        .build())
+      .build();
+    executorRegistry.viewExecutors(executors -> executors.forEach(executor -> executor.sendControlMessage(message)));
   }
 }
