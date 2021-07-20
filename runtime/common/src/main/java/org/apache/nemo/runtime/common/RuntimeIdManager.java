@@ -75,6 +75,15 @@ public final class RuntimeIdManager {
   }
 
   /**
+   * Generates the ID of a task created by Work Stealing.
+   * @param taskId  the ID of original task.
+   * @return the generated ID.
+   */
+  public static String generateWorkStealingTaskId(final String taskId) {
+    return getStageIdFromTaskId(taskId) + SPLITTER + getIndexFromTaskId(taskId) + SPLITTER + "*";
+  }
+
+  /**
    * Generates the ID for executor.
    *
    * @return the generated ID

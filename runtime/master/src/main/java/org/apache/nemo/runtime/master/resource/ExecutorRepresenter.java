@@ -108,4 +108,9 @@ public interface ExecutorRepresenter {
    * @param taskId id of the Task
    */
   void onTaskExecutionFailed(String taskId);
+
+  /**
+   * @return true if this executor has an available slot.
+   */
+  boolean isExecutorSlotAvailable();
 }

@@ -87,6 +87,11 @@ public interface Scheduler {
   void onSpeculativeExecutionCheck();
 
   /**
+   * Called to check for work stealing condition.
+   */
+  void onWorkStealingCheck();
+
+  /**
    * To be called when a job should be terminated.
    * Any clean up code should be implemented in this method.
    */

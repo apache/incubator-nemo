@@ -18,10 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -80,6 +82,49 @@ class ParentTaskDataFetcher extends DataFetcher {
         if (currentIteratorIndex < expectedNumOfIterators) {
           // Next iterator has the element
           countBytes(currentIterator);
+          advanceIterator();
+          continue;
+        } else {
+          // We've consumed all the iterators
+          break;
+        }
+
+      }
+    } catch (final Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
+      // "throw Exception" that the TaskExecutor thread can catch and handle.
+      throw new IOException(e);
+    }
+
+    return Finishmark.getInstance();
+  }
+
+  @Override
+  Object fetchDataElementWithTrace(final String taskId,
+                                   final MetricMessageSender metricMessageSender) throws IOException {
+    try {
+      if (firstFetch) {
+        fetchDataLazily();
+        advanceIterator();
+        firstFetch = false;
+      }
+
+      while (true) {
+        // This iterator has the element
+        if (this.currentIterator.hasNext()) {
+          return this.currentIterator.next();
+        }
+
+        // This iterator does not have the element
+        if (currentIteratorIndex < expectedNumOfIterators) {
+          // Next iterator has the element
+          countBytes(currentIterator);
+          // Send the cumulative serBytes to MetricStore
+          metricMessageSender.send("TaskMetric", taskId, "serializedReadBytes",
+            SerializationUtils.serialize(serBytes));
           advanceIterator();
           continue;
         } else {

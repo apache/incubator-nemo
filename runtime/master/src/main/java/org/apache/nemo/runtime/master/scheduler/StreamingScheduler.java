@@ -150,6 +150,11 @@ public final class StreamingScheduler implements Scheduler {
   }
 
   @Override
+  public void onWorkStealingCheck() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
     taskDispatcher.onExecutorSlotAvailable();

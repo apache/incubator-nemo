@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -44,6 +45,11 @@ public interface OutputWriter {
    * @return the total written bytes.
    */
   Optional<Long> getWrittenBytes();
+
+  /**
+   * @return the map of hashed key to partition size.
+   */
+  Optional<Map<Integer, Long>> getPartitionSizeMap();
 
   void close();
 }
