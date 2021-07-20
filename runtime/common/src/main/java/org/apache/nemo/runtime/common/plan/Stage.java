@@ -33,15 +33,14 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 
 import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Stage.
  */
 public final class Stage extends Vertex {
   private final List<Integer> taskIndices;
+  private final Set<String> workStealingTaskIds = new HashSet<>();
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
   private final List<Map<String, Readable>> vertexIdToReadables;
@@ -91,6 +90,18 @@ public final class Stage extends Vertex {
    */
   public List<Integer> getTaskIndices() {
     return taskIndices;
+  }
+
+  /**
+   * Set IDs for work stealing.
+   * @param workStealingTaskIds IDs of work stealer tasks.
+   */
+  public void setWorkStealingTaskIds(final Set<String> workStealingTaskIds) {
+    this.workStealingTaskIds.addAll(workStealingTaskIds);
+  }
+
+  public Set<String> getWorkStealingTaskIds() {
+    return this.workStealingTaskIds;
   }
 
   /**

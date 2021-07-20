@@ -27,6 +27,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A Task (attempt) is a self-contained executable that can be executed on a machine.
@@ -40,8 +41,13 @@ public final class Task implements Serializable {
   private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
 
+  /* For work stealing */
+  private final AtomicInteger iteratorStartIndex;
+  private final AtomicInteger iteratorEndIndex;
+
   /**
-   * Constructor.
+   * Default Constructor.
+   * It initializes iteratorStartIndex as 0 and iteratorEndIndex as Integer.MAX_VALUE.
    *
    * @param planId               the id of the physical plan.
    * @param taskId               the ID of this task attempt.
@@ -58,6 +64,33 @@ public final class Task implements Serializable {
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable) {
+    this(planId, taskId, executionProperties, serializedIRDag, taskIncomingEdges, taskOutgoingEdges,
+      irVertexIdToReadable, new AtomicInteger(0), new AtomicInteger(Integer.MAX_VALUE));
+  }
+
+  /**
+   * Constructor with iterator information.
+   * This constructor is used when creating work stealer tasks.
+   *
+   * @param planId               the id of the physical plan.
+   * @param taskId               the ID of this task attempt.
+   * @param executionProperties  {@link VertexExecutionProperty} map for the corresponding stage
+   * @param serializedIRDag      the serialized DAG of the task.
+   * @param taskIncomingEdges    the incoming edges of the task.
+   * @param taskOutgoingEdges    the outgoing edges of the task.
+   * @param irVertexIdToReadable the map between IRVertex id to readable.
+   * @param iteratorStartIndex   starting index of iterator.
+   * @param iteratorEndIndex     ending index of iterator.
+   */
+  public Task(final String planId,
+              final String taskId,
+              final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
+              final byte[] serializedIRDag,
+              final List<StageEdge> taskIncomingEdges,
+              final List<StageEdge> taskOutgoingEdges,
+              final Map<String, Readable> irVertexIdToReadable,
+              final AtomicInteger iteratorStartIndex,
+              final AtomicInteger iteratorEndIndex) {
     this.planId = planId;
     this.taskId = taskId;
     this.executionProperties = executionProperties;
@@ -65,6 +98,8 @@ public final class Task implements Serializable {
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.irVertexIdToReadable = irVertexIdToReadable;
+    this.iteratorStartIndex = iteratorStartIndex;
+    this.iteratorEndIndex = iteratorEndIndex;
   }
 
   /**
