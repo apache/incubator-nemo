@@ -287,26 +287,29 @@ public final class BatchScheduler implements Scheduler {
     final List<Stage> scheduleGroup = BatchSchedulerUtils
       .selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager).orElse(new ArrayList<>());
     final List<String> scheduleGroupInId = scheduleGroup.stream().map(Stage::getId).collect(Collectors.toList());
-    final Map<String, Pair<Integer, Integer>> wsResult = new HashMap<>();
     final MutableBoolean isWorkStealingConditionSatisfied = new MutableBoolean(false);
+    final Map<String, Pair<Integer, Integer>> wsResult = new HashMap<>();
 
+    /* check if work stealing is possible. If not, return */
     isWorkStealingConditionSatisfied.setValue(checkForWorkStealingBaseConditions(scheduleGroupInId));
-
     if (!isWorkStealingConditionSatisfied.booleanValue()) {
       return;
     }
+
+    /* detect skewed tasks */
     taskIdToProcessedBytes.clear();
     final List<String> skewedTasks = detectSkew(scheduleGroupInId);
 
-    // TODO #469 Split tasks using iterator interface.
+    /* if there are no skewed tasks, return */
     if (skewedTasks.isEmpty()) {
       return;
     }
 
+    /* generate work stealing tasks */
     final Map<String, Pair<Integer, Integer>> taskToSplitIteratorInfo = splitIterator(skewedTasks);
     final List<Task> wsTasks = generateWorkStealingTasks(scheduleGroup, skewedTasks, taskToSplitIteratorInfo);
 
-    // accumulate the Victim tasks and non skewed tasks result
+    /* accumulate result */
     for (String taskId : workStealingCandidates) {
       if (skewedTasks.contains(taskId)) { // this is for skewed task
         Pair<Integer, Integer> iteratorInfo = taskToSplitIteratorInfo.get(taskId);
@@ -319,10 +322,9 @@ public final class BatchScheduler implements Scheduler {
     /* notify the updated information to executors */
     sendWorkStealingResultToExecutor(wsResult);
 
-    // schedule new tasks
+    /* schedule new tasks */
     pendingTaskCollectionPointer.setToOverwrite(wsTasks);
     taskDispatcher.onNewPendingTaskCollectionAvailable();
-    return;
   }
 
   @Override
@@ -676,11 +678,20 @@ public final class BatchScheduler implements Scheduler {
       }
     });
 
+    /* return only longer half */
     return estimatedTimeToFinishPerTask
       .subList(0, estimatedTimeToFinishPerTask.size() / 2)
       .stream().map(Pair::left).collect(Collectors.toList());
   }
 
+  /**
+   * Calculate the iterator range of work stealing tasks.
+   * Given a skewed task, it calculates the iterator range which work stealing task will take from the task.
+   *
+   * @param skewedTasks List of skewed (original) tasks.
+   * @return  Map of skewed task ID to iterator information.
+   *          pair.left() is the starting index (inclusive) and pair.right() ending index (exclusive).
+   */
   private Map<String, Pair<Integer, Integer>> splitIterator(final List<String> skewedTasks) {
     final Map<String, Pair<Integer, Integer>> taskToIteratorInfo = new HashMap<>();
 
@@ -696,40 +707,47 @@ public final class BatchScheduler implements Scheduler {
     return taskToIteratorInfo;
   }
 
+  /**
+   * Generate work stealing tasks.
+   *
+   * @param scheduleGroup       schedule group.
+   * @param skewedTasks         List of skewed (original) tasks.
+   * @param taskToIteratorInfo  Map of work stealing task ID to its iterator range information.
+   * @return  List of work stealer tasks.
+   */
   private List<Task> generateWorkStealingTasks(final List<Stage> scheduleGroup,
                                                final List<String> skewedTasks,
                                                final Map<String, Pair<Integer, Integer>> taskToIteratorInfo) {
-    /* Split the skewed tasks */
     final List<Task> tasksToSchedule = new ArrayList<>(skewedTasks.size());
 
-
-    // tasks are generated in "stage" based : loop on stages, not schedule group
+    /* tasks are generated in stage based: loop by stage, not schedule group */
     for (Stage stageToSchedule : scheduleGroup) {
       String stageId = stageToSchedule.getId();
 
-      // make new task ids and store that information in corresponding stage and plan state manager
-      // for now, id logic for robber tasks are as follows:
-      // - same stage id (obvious)
-      // - same index number (need to fetch the same data as the victim task)
-      // - attempt number is replaced with "*", similar withe the block wildcard id.
+      /* make new task ids and store that information in stage and plan state manager.
+       * for now, id logic for work stealing tasks is as follows:
+       * - same stage id
+       * - same index number
+       * - attempt number is replaced with "*", similar with the block wildcard id.
+       */
 
-      //generate the robber tasks' id
+      /* generate work stealing task id */
       final Set<String> newTaskIds = skewedTasks.stream()
         .filter(taskId -> taskId.contains(stageId))
-        .map(taskId -> RuntimeIdManager.generateWorkStealingTaskId(taskId))
+        .map(RuntimeIdManager::generateWorkStealingTaskId)
         .collect(Collectors.toSet());
 
+      /* if there are no work stealing tasks in this stage, pass */
       if (newTaskIds.isEmpty()) {
         continue;
       }
 
-      // update the work stealing tasks in Stage and PlanStateManager
+      /* update the work stealing tasks in Stage and PlanStateManager */
       planStateManager.getPhysicalPlan().getStageDAG()
         .getVertexById(stageId).setWorkStealingTaskIds(newTaskIds);
       planStateManager.addWorkStealingTasks(newTaskIds);
 
-      // house keeping stuffs needed for initializing tasks
-      // create and return Robber tasks
+      /* create work stealing task */
       final List<StageEdge> stageIncomingEdges =
         planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
       final List<StageEdge> stageOutgoingEdges =
@@ -767,11 +785,10 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Send the accumulated iterator information (work stealing result) to executor.
+   *
    * @param result  result to send.
    */
   private void sendWorkStealingResultToExecutor(final Map<String, Pair<Integer, Integer>> result) {
-    // driver sends message to executors
-    // ask executors to flush metric
     final byte[] serialized = SerializationUtils.serialize((Serializable) result);
     ControlMessage.Message message = ControlMessage.Message.newBuilder()
       .setId(RuntimeIdManager.generateMessageId())
