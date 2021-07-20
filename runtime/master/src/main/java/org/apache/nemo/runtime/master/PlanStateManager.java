@@ -161,6 +161,21 @@ public final class PlanStateManager {
   }
 
   /**
+   * Add work stealing tasks to the plan.
+   * @param workStealingTasks   work stealing tasks.
+   */
+  public synchronized void addWorkStealingTasks(final Set<String> workStealingTasks) {
+    for (String taskId : workStealingTasks) {
+      final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+      final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
+      stageIdToTaskIdxToWSAttemptStates.putIfAbsent(stageId, new HashMap<>());
+      List<TaskState> attemptStatesForThisTask = new ArrayList<>();
+      attemptStatesForThisTask.add(new TaskState());
+      stageIdToTaskIdxToWSAttemptStates.get(stageId).putIfAbsent(taskIdx, attemptStatesForThisTask);
+    }
+  }
+
+  /**
    * Initializes the states for the plan/stages/tasks for this plan.
    * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
    */
@@ -330,7 +345,10 @@ public final class PlanStateManager {
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final Map<Integer, List<TaskState>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
-    final long numOfCompletedTaskIndicesInThisStage = getNumberOfCompletedTasksInStage(taskStatesOfThisStage);
+    final Map<Integer, List<TaskState>> wsTaskStatesOfThisStage =
+      stageIdToTaskIdxToWSAttemptStates.getOrDefault(stageId, new HashMap<>());
+    final long numOfCompletedTaskIndicesInThisStage = getNumberOfCompletedTasksInStage(taskStatesOfThisStage) +
+      getNumberOfCompletedTasksInStage(wsTaskStatesOfThisStage);
 
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
@@ -360,9 +378,18 @@ public final class PlanStateManager {
       // COMPLETE stage
       case COMPLETE:
       case ON_HOLD:
-        if (numOfCompletedTaskIndicesInThisStage
-          == physicalPlan.getStageDAG().getVertexById(stageId).getTaskIndices().size()) {
-          onStageStateChanged(stageId, StageState.State.COMPLETE);
+        // if work stealing enabled
+        if (!physicalPlan.getStageDAG().getVertexById(stageId).getWorkStealingTaskIds().isEmpty()) {
+          if (numOfCompletedTaskIndicesInThisStage
+            == physicalPlan.getStageDAG().getVertexById(stageId).getTaskIndices().size()
+            + physicalPlan.getStageDAG().getVertexById(stageId).getWorkStealingTaskIds().size()) {
+            onStageStateChanged(stageId, StageState.State.COMPLETE);
+          }
+        } else {
+          if (numOfCompletedTaskIndicesInThisStage
+            == physicalPlan.getStageDAG().getVertexById(stageId).getTaskIndices().size()) {
+            onStageStateChanged(stageId, StageState.State.COMPLETE);
+          }
         }
         break;
 
@@ -546,10 +573,18 @@ public final class PlanStateManager {
   }
 
   private TaskState getTaskStateHelper(final String taskId) {
-    return stageIdToTaskIdxToAttemptStates
-      .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
-      .get(RuntimeIdManager.getIndexFromTaskId(taskId))
-      .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
+    final boolean isWorkStealingTask = taskId.split("-")[2].equals("*");
+    if (isWorkStealingTask) {
+      return stageIdToTaskIdxToWSAttemptStates
+        .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
+        .get(RuntimeIdManager.getIndexFromTaskId(taskId))
+        .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
+    } else {
+      return stageIdToTaskIdxToAttemptStates
+        .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
+        .get(RuntimeIdManager.getIndexFromTaskId(taskId))
+        .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
+    }
   }
 
   private boolean isTaskNotDone(final TaskState taskState) {
