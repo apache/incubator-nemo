@@ -39,6 +39,8 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.common.metric.DelayMetric;
+import org.apache.nemo.runtime.common.metric.StreamMetric;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
@@ -53,7 +55,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -74,10 +80,13 @@ public final class TaskExecutor {
   private final List<VertexHarness> sortedHarnesses;
 
   // Metrics information
+  private ScheduledExecutorService periodicMetricService = null;
+
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
   private long timeSinceLastExecution;
+  private final HashMap<String, StreamMetric> streamMetricMap;
   private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
@@ -102,7 +111,8 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                      final int streamMetricPeriod) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
@@ -123,7 +133,26 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
+    this.streamMetricMap = new HashMap<>();
+    for (final DataFetcher dataFetcher : dataFetchers) {
+      String sourceVertexId = dataFetcher.getDataSource().getId();
+      this.streamMetricMap.put(sourceVertexId, new StreamMetric(sourceVertexId));
+    }
+
+    if (streamMetricPeriod > 0) {
+      this.periodicMetricService = Executors.newScheduledThreadPool(1);
+      this.periodicMetricService.scheduleAtFixedRate(this::saveMetric, 0, streamMetricPeriod, TimeUnit.MILLISECONDS);
+    }
     this.timeSinceLastExecution = System.currentTimeMillis();
+  }
+
+  // Send stream metric to the runtime master
+  private void saveMetric() {
+    long currentTimestamp = System.currentTimeMillis();
+    List<StreamMetric> streamMetrics = new ArrayList<>(streamMetricMap.values());
+    streamMetrics.forEach(s -> s.setTimestamp(currentTimestamp));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "streamMetric",
+      SerializationUtils.serialize((Serializable) streamMetrics));
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -405,9 +434,16 @@ public final class TaskExecutor {
     } else if (event instanceof Watermark) {
       // Watermark
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
+      long watermarkTimestamp = ((Watermark) event).getTimestamp();
+      long delay = System.currentTimeMillis() - watermarkTimestamp;
+      if (delay < 0) return;
+      DelayMetric metric = new DelayMetric(dataFetcher.getDataSource().getId(), watermarkTimestamp, delay);
+      metricMessageSender.send(TASK_METRIC_ID, taskId, "delay", SerializationUtils.serialize(metric));
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
+      StreamMetric streamMetric = streamMetricMap.get(dataFetcher.getDataSource().getId());
+      streamMetric.getNumOfProcessedTuples().inc();
     }
   }
 

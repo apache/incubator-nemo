@@ -78,6 +78,7 @@ public final class NemoDriver {
   private final UserApplicationRunner userApplicationRunner;
   private final RuntimeMaster runtimeMaster;
   private final String jobId;
+  private final Integer streamMetricPeriod;
   private final String localDirectory;
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
@@ -100,6 +101,7 @@ public final class NemoDriver {
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
+                     @Parameter(JobConf.StreamMetricPeriod.class) final int streamMetricPeriod,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
     IdManager.setInDriver();
@@ -109,6 +111,7 @@ public final class NemoDriver {
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
+    this.streamMetricPeriod = streamMetricPeriod;
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
@@ -250,6 +253,7 @@ public final class NemoDriver {
   private Configuration getExecutorConfiguration(final String executorId) {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
       .set(JobConf.EXECUTOR_ID, executorId)
+      .set(JobConf.STREAM_METRIC_PERIOD, streamMetricPeriod)
       .set(JobConf.GLUSTER_DISK_DIRECTORY, glusterDirectory)
       .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
       .set(JobConf.JOB_ID, jobId)

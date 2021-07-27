@@ -20,11 +20,14 @@ package org.apache.nemo.runtime.common.metric;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.reef.io.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
@@ -34,6 +37,8 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
+  private Map<String, List<StreamMetric>> streamMetric = new HashMap<>();
+  private Map<String, List<DelayMetric>> delay = new HashMap<>();
   private long taskDuration = -1;
   private long taskCPUTime = -1;
   private long schedulingOverhead = -1;
@@ -104,6 +109,32 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   private void setTaskDuration(final long taskDuration) {
     this.taskDuration = taskDuration;
+  }
+
+  /**
+   * Method related to stream metric.
+   */
+  public final Map<String, List<StreamMetric>> getStreamMetric() {
+    return this.streamMetric;
+  }
+
+  private void setStreamMetric(final List<StreamMetric> streamMetrics) {
+    for (StreamMetric streamMetric : streamMetrics) {
+      this.streamMetric.putIfAbsent(streamMetric.getId(), new ArrayList<>());
+      this.streamMetric.get(streamMetric.getId()).add(streamMetric);
+    }
+  }
+
+  /**
+   * Method related to delay.
+   */
+  public final Map<String, List<DelayMetric>> getDelay() {
+    return this.delay;
+  }
+
+  private void setDelay(final DelayMetric delayMetric) {
+    this.delay.putIfAbsent(delayMetric.getId(), new ArrayList<>());
+    this.delay.get(delayMetric.getId()).add(delayMetric);
   }
 
   /**
@@ -261,6 +292,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
+      case "streamMetric":
+        setStreamMetric(SerializationUtils.deserialize(metricValue));
+        break;
+      case "delay":
+        setDelay(SerializationUtils.deserialize(metricValue));
+        break;
       case "taskDuration":
         setTaskDuration(SerializationUtils.deserialize(metricValue));
         break;

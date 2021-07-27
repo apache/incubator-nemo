@@ -250,6 +250,16 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorJSONContents implements Name<String> {
   }
 
+  ///////////////////////// Metric Configurations
+  /**
+   * Period how often stream metrics are recorded. the unit of period is millisecond.
+   * -1 indicates that metrics are not recorded periodically.
+   */
+  @NamedParameter(doc = "Period how often stream-related metrics are recorded. the unit of period is millisecond.",
+    short_name = "stream_metric_period", default_value = "-1")
+  public final class StreamMetricPeriod implements Name<Integer> {
+  }
+
   //////////////////////////////// Runtime Data Plane Configurations
 
   /**
@@ -336,6 +346,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
+  public static final OptionalParameter<Integer> STREAM_METRIC_PERIOD = new OptionalParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
@@ -344,5 +355,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
     .bindNamedParameter(JobId.class, JOB_ID)
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
     .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
+    .bindNamedParameter(StreamMetricPeriod.class, STREAM_METRIC_PERIOD)
     .build();
 }
