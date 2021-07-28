@@ -148,9 +148,13 @@ public final class TaskExecutor {
 
   // Send stream metric to the runtime master
   private void saveMetric() {
-    long currentTimestamp = System.currentTimeMillis();
-    List<StreamMetric> streamMetrics = new ArrayList<>(streamMetricMap.values());
-    streamMetrics.forEach(s -> s.setTimestamp(currentTimestamp));
+    List<StreamMetric> streamMetrics = streamMetricMap.values().stream().map(streamMetric -> {
+      StreamMetric copy = SerializationUtils.clone(streamMetric);
+      copy.setTimestamp(System.currentTimeMillis());
+      streamMetric.getNumOfProcessedTuples().dec(copy.getNumOfProcessedTuples().getVal());
+      return copy;
+    }).collect(Collectors.toList());
+
     metricMessageSender.send(TASK_METRIC_ID, taskId, "streamMetric",
       SerializationUtils.serialize((Serializable) streamMetrics));
   }
