@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fetches data from a data source.
@@ -76,7 +77,9 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElementWithTrace(final String taskId, final MetricMessageSender metricMessageSender) {
+  Object fetchDataElementWithTrace(final String taskId,
+                                   final MetricMessageSender metricMessageSender,
+                                   final AtomicBoolean onHold) {
     return fetchDataElement();
   }
 

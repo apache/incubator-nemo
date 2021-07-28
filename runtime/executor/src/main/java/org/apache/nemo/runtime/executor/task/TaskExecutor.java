@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -83,6 +84,7 @@ public final class TaskExecutor {
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
+  private final AtomicBoolean onHold;
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
@@ -103,8 +105,10 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                      final AtomicBoolean onHold) {
     // Essential information
+    final long taskPrepareStart = System.currentTimeMillis();
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
@@ -116,6 +120,7 @@ public final class TaskExecutor {
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
     this.idOfVertexPutOnHold = null;
+    this.onHold = onHold;
 
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
@@ -125,6 +130,8 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     this.timeSinceLastExecution = System.currentTimeMillis();
+    metricMessageSender.send("TaskMetric", taskId, "taskPreparationTime",
+      SerializationUtils.serialize(System.currentTimeMillis() - taskPrepareStart));
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -292,7 +299,9 @@ public final class TaskExecutor {
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector,
+                  task.getIteratorStartIndex(),
+                  task.getIteratorEndIndex()));
             }
           }
         });
@@ -459,7 +468,7 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
         final DataFetcher dataFetcher = availableIterator.next();
         try {
-          final Object element = dataFetcher.fetchDataElementWithTrace(taskId, metricMessageSender);
+          final Object element = dataFetcher.fetchDataElementWithTrace(taskId, metricMessageSender, onHold);
           onEventFromDataFetcher(element, dataFetcher);
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -784,4 +793,9 @@ public final class TaskExecutor {
           .build())
         .build());
   }
+
+  public String getTaskId() {
+    return this.taskId;
+  }
+
 }

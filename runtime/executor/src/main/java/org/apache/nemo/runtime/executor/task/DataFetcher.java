@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * An abstraction for fetching data from task-external sources.
@@ -63,7 +64,8 @@ abstract class DataFetcher implements AutoCloseable {
    * @throws java.util.NoSuchElementException if no more element is available
    */
   abstract Object fetchDataElementWithTrace(String taskId,
-                                            MetricMessageSender metricMessageSender) throws IOException;
+                                            MetricMessageSender metricMessageSender,
+                                            AtomicBoolean onHold) throws IOException;
 
   OutputCollector getOutputCollector() {
     return outputCollector;

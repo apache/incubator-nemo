@@ -305,6 +305,8 @@ public final class BatchScheduler implements Scheduler {
       return;
     }
 
+    haltExecutors();
+
     /* generate work stealing tasks */
     final Map<String, Pair<Integer, Integer>> taskToSplitIteratorInfo = splitIterator(skewedTasks);
     final List<Task> wsTasks = generateWorkStealingTasks(scheduleGroup, skewedTasks, taskToSplitIteratorInfo);
@@ -799,5 +801,21 @@ public final class BatchScheduler implements Scheduler {
         .build())
       .build();
     executorRegistry.viewExecutors(executors -> executors.forEach(executor -> executor.sendControlMessage(message)));
+  }
+
+  private void haltExecutors() {
+    // driver sends message to executors
+    // ask executors to flush metric
+    ControlMessage.Message haltExecutorsMessage = ControlMessage.Message.newBuilder()
+      .setId(RuntimeIdManager.generateMessageId())
+      .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+      .setType(ControlMessage.MessageType.HaltExecutors)
+      .build();
+    executorRegistry.viewExecutors(executors -> executors.forEach(executor ->
+      executor.sendControlMessage(haltExecutorsMessage)));
+    try {
+      Thread.sleep(1000); // wait for 1 sec
+    } catch (InterruptedException ignored) {
+    }
   }
 }

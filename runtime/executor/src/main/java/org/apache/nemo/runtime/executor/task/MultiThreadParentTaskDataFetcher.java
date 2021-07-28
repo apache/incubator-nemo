@@ -36,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Task thread -> fetchDataElement() -> (((QUEUE))) <- List of iterators <- queueInsertionThreads
@@ -103,7 +104,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   @Override
   Object fetchDataElementWithTrace(final String taskId,
-                                   final MetricMessageSender metricMessageSender) throws IOException {
+                                   final MetricMessageSender metricMessageSender,
+                                   final AtomicBoolean onHold) throws IOException {
     return fetchDataElement();
   }
 

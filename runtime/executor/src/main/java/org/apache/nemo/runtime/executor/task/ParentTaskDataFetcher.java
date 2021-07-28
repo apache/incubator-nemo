@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Fetches data from parent tasks.
@@ -53,14 +55,21 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
+  private AtomicInteger iteratorStartIndex;
+  private AtomicInteger iteratorEndIndex;
+
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader inputReader,
-                        final OutputCollector outputCollector) {
+                        final OutputCollector outputCollector,
+                        final AtomicInteger iteratorStartIndex,
+                        final AtomicInteger iteratorEndIndex) {
     super(dataSource, outputCollector);
     this.inputReader = inputReader;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+    this.iteratorStartIndex = iteratorStartIndex;
+    this.iteratorEndIndex = iteratorEndIndex;
   }
 
   @Override
@@ -104,27 +113,41 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   @Override
   Object fetchDataElementWithTrace(final String taskId,
-                                   final MetricMessageSender metricMessageSender) throws IOException {
+                                   final MetricMessageSender metricMessageSender,
+                                   final AtomicBoolean onHold) throws IOException {
     try {
       if (firstFetch) {
         fetchDataLazily();
         advanceIterator();
+
+        // if this a work stealing task, move the iterator index to its starting point
+        while (currentIteratorIndex < iteratorStartIndex.get()) {
+          advanceIterator();
+        }
         firstFetch = false;
       }
 
-      while (true) {
+      while (!onHold.get()) {
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
           return this.currentIterator.next();
         }
 
         // This iterator does not have the element
+        if (currentIteratorIndex >= iteratorEndIndex.get()) {
+          break;
+        }
         if (currentIteratorIndex < expectedNumOfIterators) {
           // Next iterator has the element
           countBytes(currentIterator);
           // Send the cumulative serBytes to MetricStore
           metricMessageSender.send("TaskMetric", taskId, "serializedReadBytes",
             SerializationUtils.serialize(serBytes));
+          metricMessageSender.send("TaksMetric", taskId, "currentIteratorIndex",
+            SerializationUtils.serialize(currentIteratorIndex));
+          metricMessageSender.send("TaskMetric", taskId, "totalIteratorNumber",
+            SerializationUtils.serialize(expectedNumOfIterators));
+          metricMessageSender.flush();
           advanceIterator();
           continue;
         } else {
@@ -202,6 +225,9 @@ class ParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
     this.expectedNumOfIterators = futures.size();
+    if (iteratorEndIndex.get() > expectedNumOfIterators) {
+      iteratorEndIndex.set(expectedNumOfIterators);
+    }
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);

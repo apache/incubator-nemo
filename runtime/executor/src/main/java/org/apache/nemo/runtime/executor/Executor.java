@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
@@ -53,8 +54,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Executor.
@@ -68,6 +74,8 @@ public final class Executor {
    * To be used for a thread pool to execute tasks.
    */
   private final ExecutorService executorService;
+  /* For work stealing */
+  private final ScheduledExecutorService workStealingManager;
 
   /**
    * In charge of this executor's intermediate data transfer.
@@ -85,6 +93,12 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
+  /**
+   * For runtime optimizations.
+   */
+  private final List<Pair<TaskExecutor, AtomicBoolean>> listOfWorkingTaskExecutors;
+  private final Map<String, Pair<AtomicInteger, AtomicInteger>> taskIdToIteratorInfo;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -97,12 +111,19 @@ public final class Executor {
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
       .namingPattern("TaskExecutor thread-%d")
       .build());
+    this.workStealingManager = Executors.newSingleThreadScheduledExecutor(new BasicThreadFactory.Builder()
+      .namingPattern("workstealing manager in executorSide")
+      .build());
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
+
+    this.listOfWorkingTaskExecutors = Collections.synchronizedList(new LinkedList<>());
+    this.taskIdToIteratorInfo = new ConcurrentHashMap();
+
   }
 
   public String getExecutorId() {
@@ -148,8 +169,18 @@ public final class Executor {
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null))));
 
-      new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-        metricMessageSender, persistentConnectionToMasterMap).execute();
+      final AtomicBoolean onHold = new AtomicBoolean(false);
+      final TaskExecutor taskExecutor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory,
+        broadcastManagerWorker, metricMessageSender, persistentConnectionToMasterMap, onHold);
+      Pair<TaskExecutor, AtomicBoolean> taskExecutorPair = Pair.of(taskExecutor, onHold);
+
+      listOfWorkingTaskExecutors.add(taskExecutorPair);
+      taskIdToIteratorInfo.put(task.getTaskId(),
+        Pair.of(task.getIteratorStartIndex(), task.getIteratorEndIndex()));
+      taskExecutor.execute();
+      listOfWorkingTaskExecutors.remove(taskExecutorPair);
+      taskIdToIteratorInfo.remove(task.getTaskId());
+
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
@@ -206,6 +237,32 @@ public final class Executor {
     }
   }
 
+  /* Methods for work stealing */
+  private synchronized void onDataRequestReceived() {
+    listOfWorkingTaskExecutors.forEach(pair -> pair.right().set(true));
+    //listOfWorkingTaskExecutors.forEach(TaskExecutor::onRequestForProcessedData);
+  }
+
+  private synchronized void resumePausedTasks() {
+    listOfWorkingTaskExecutors.forEach(pair -> pair.right().set(false));
+  }
+
+  private synchronized void resumePausedTasksWithWorkStealing(final Map<String, Pair<Integer, Integer>> result) {
+    // update iterator information
+    // skewed tasks: set iterator value
+    // non skewed tasks: do not change iterator
+    for (String taskId : taskIdToIteratorInfo.keySet()) {
+      Pair<Integer, Integer> startAndEndIndex = result.get(taskId);
+      if (startAndEndIndex.left() == 0 && startAndEndIndex.right() == Integer.MAX_VALUE) {
+        continue;
+      }
+      Pair<AtomicInteger, AtomicInteger> currentInfo = taskIdToIteratorInfo.get(taskId);
+      currentInfo.left().set(startAndEndIndex.left()); // null pointer exception here!
+      currentInfo.right().set(startAndEndIndex.right());
+    }
+    resumePausedTasks();
+  }
+
   /**
    * MessageListener for Executor.
    */
@@ -219,6 +276,19 @@ public final class Executor {
           final Task task =
             SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
           onTaskReceived(task);
+          break;
+        case HaltExecutors:
+          onDataRequestReceived();
+          break;
+        case ResumeTask:
+          resumePausedTasks();
+          break;
+        case SendWorkStealingResult:
+          final ControlMessage.WorkStealingResultMsg workStealingResultMsg = message.getSendWorkStealingResult();
+          final Map<String, Pair<Integer, Integer>> iteratorInformationMap =
+            SerializationUtils.deserialize(workStealingResultMsg.getWorkStealingResult().toByteArray());
+          LOG.error("received: {}", iteratorInformationMap);
+          resumePausedTasksWithWorkStealing(iteratorInformationMap);
           break;
         case RequestMetricFlush:
           metricMessageSender.flush();
