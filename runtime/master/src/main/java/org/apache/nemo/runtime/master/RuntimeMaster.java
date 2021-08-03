@@ -41,6 +41,7 @@ import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -90,6 +91,7 @@ public final class RuntimeMaster {
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
+  private final ExecutorRegistry executorRegistry;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final ClientRPC clientRPC;
@@ -130,6 +132,7 @@ public final class RuntimeMaster {
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
+                        final ExecutorRegistry executorRegistry,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
                         final MetricManagerMaster metricManagerMaster,
@@ -159,6 +162,7 @@ public final class RuntimeMaster {
 
     this.scheduler = scheduler;
     this.containerManager = containerManager;
+    this.executorRegistry = executorRegistry;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -177,6 +181,7 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
+    this.metricCountDownLatch = new CountDownLatch(0);
   }
 
   /**
@@ -219,11 +224,27 @@ public final class RuntimeMaster {
    * Flush metrics.
    */
   public void flushMetrics() {
-    // send metric flush request to all executors
-    metricManagerMaster.sendMetricFlushRequest();
+    if (metricCountDownLatch.getCount() == 0) {
+      metricCountDownLatch = new CountDownLatch(executorRegistry.getNumberOfRunningExecutors());
+      // send metric flush request to all executors
+      metricManagerMaster.sendMetricFlushRequest();
+    }
 
+    try {
+      if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
+        LOG.warn("Write Metric before all metric messages arrived.");
+      }
+    } catch (InterruptedException e) {
+      LOG.warn("Waiting Save Metric Process interrupted: ", e);
+      // clean up state...
+      Thread.currentThread().interrupt();
+    }
+
+    // save metric to file
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
+
+    // save metric to database
     if (this.dbEnabled) {
       metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
     }
@@ -310,7 +331,6 @@ public final class RuntimeMaster {
           containerManager.requestContainer(resourceSpecification.left(), resourceSpecification.right());
         }
 
-        metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
         throw new ContainerException(e);
       }

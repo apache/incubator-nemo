@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -245,6 +246,8 @@ public final class MetricStore {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
       final String jsonDump = dumpAllMetricToJson();
       writer.write(jsonDump);
+    } catch (final FileNotFoundException e) {
+      LOG.warn("Failure while writing metrics to local file: {}", e);
     } catch (final IOException e) {
       throw new MetricException(e);
     }
