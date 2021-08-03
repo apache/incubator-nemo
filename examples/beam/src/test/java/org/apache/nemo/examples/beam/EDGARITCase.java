@@ -58,11 +58,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -78,11 +74,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedSlidingWindowOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -98,11 +90,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -118,11 +106,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -138,11 +122,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -158,11 +138,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -179,11 +155,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -199,11 +171,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -219,11 +187,7 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -239,10 +203,6 @@ public final class EDGARITCase {
       .addOptimizationPolicy(StreamingPolicy.class.getCanonicalName())
       .build());
 
-    // try {
-    //   ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
-    // } finally {
     ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
-    // }
   }
 }

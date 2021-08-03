@@ -77,7 +77,6 @@ public final class TaskExecutor {
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
-  private long numOfProcessedEvents = 0;
   private long timeSinceLastExecution;
   private final MetricMessageSender metricMessageSender;
 
@@ -383,8 +382,6 @@ public final class TaskExecutor {
       SerializationUtils.serialize(serializedReadBytes));
     metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
       SerializationUtils.serialize(encodedReadBytes));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "numOfProcessedElements",
-      SerializationUtils.serialize(numOfProcessedEvents));
   }
 
   /**
@@ -423,7 +420,6 @@ public final class TaskExecutor {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
     }
-    this.numOfProcessedEvents++;
   }
 
   /**
