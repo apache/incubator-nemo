@@ -77,7 +77,7 @@ public final class WindowedWordCount {
           @Override
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
-            final String documentId = words[0];
+            final String documentId = words[0] + "#" + words[1];
             if (words.length > 2) {
               final Long count = Long.parseLong(words[2]);
               return KV.of(documentId, count);
